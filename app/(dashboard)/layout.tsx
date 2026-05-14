@@ -9,18 +9,17 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('full_name, system_role')
-    .eq('id', user.id)
-    .single()
+  const [{ data: profile }, { data: membership }] = await Promise.all([
+    supabase.from('profiles').select('full_name, system_role').eq('id', user.id).single(),
+    supabase
+      .from('consultora_members')
+      .select('role, consultora_id, consultoras(nombre)')
+      .eq('user_id', user.id)
+      .eq('is_active', true)
+      .maybeSingle(),
+  ])
 
-  const { data: membership } = await supabase
-    .from('consultora_members')
-    .select('role, consultora_id')
-    .eq('user_id', user.id)
-    .eq('is_active', true)
-    .maybeSingle()
+  const consultoraNombre = (membership?.consultoras as { nombre?: string } | null)?.nombre ?? null
 
   return (
     <div className="flex min-h-screen">
@@ -29,8 +28,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
         email={user.email ?? ''}
         userRole={(membership?.role as UserRole) ?? null}
         systemRole={profile?.system_role ?? 'user'}
+        consultoraNombre={consultoraNombre}
       />
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-auto bg-gray-50">
         {children}
       </main>
     </div>
