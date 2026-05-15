@@ -98,7 +98,7 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
           type="text"
           defaultValue={
             establecimiento?.latitude != null && establecimiento?.longitude != null
-              ? `${establecimiento.latitud}, ${establecimiento.longitud}`
+              ? `${establecimiento.latitude}, ${establecimiento.longitude}`
               : ''
           }
           placeholder="Av. Corrientes 1234, Buenos Aires · o URL de Google Maps · o -34.6037, -58.3816"
