@@ -6,15 +6,28 @@ import { revalidatePath } from 'next/cache'
 import { SECTORES_PREDEFINIDOS } from '@/lib/constants'
 import type { ActionResult, TipoEstablecimiento } from '@/lib/types'
 
-function parseUbicacion(raw: string | null): { latitud: number | null; longitud: number | null } {
+async function parseUbicacion(raw: string | null): Promise<{ latitud: number | null; longitud: number | null }> {
   if (!raw?.trim()) return { latitud: null, longitud: null }
   const s = raw.trim()
+
   // Google Maps URL: .../@-34.6037,-58.3816,15z or ...?q=-34.6037,-58.3816
   const urlMatch = s.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/) ?? s.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/)
   if (urlMatch) return { latitud: parseFloat(urlMatch[1]), longitud: parseFloat(urlMatch[2]) }
-  // Direct: "-34.6037, -58.3816"
+
+  // Direct coordinates: "-34.6037, -58.3816"
   const directMatch = s.match(/^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/)
   if (directMatch) return { latitud: parseFloat(directMatch[1]), longitud: parseFloat(directMatch[2]) }
+
+  // Free-text address → geocode via Nominatim (OpenStreetMap, no API key needed)
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(s)}&format=json&limit=1`
+    const res = await fetch(url, { headers: { 'User-Agent': 'sigmetria-hys-app/1.0' } })
+    const data = await res.json()
+    if (data?.[0]) return { latitud: parseFloat(data[0].lat), longitud: parseFloat(data[0].lon) }
+  } catch {
+    // silently fall through
+  }
+
   return { latitud: null, longitud: null }
 }
 
@@ -33,7 +46,7 @@ export async function createEstablecimiento(
   const tipo = formData.get('tipo') as TipoEstablecimiento | null
   const cantidadStr = formData.get('cantidad_trabajadores') as string
   const cantidad = cantidadStr ? parseInt(cantidadStr, 10) : null
-  const { latitud, longitud } = parseUbicacion(formData.get('ubicacion_gmaps') as string)
+  const { latitud, longitud } = await parseUbicacion(formData.get('ubicacion_gmaps') as string)
 
   const { data, error } = await supabase
     .from('establecimientos')
@@ -85,7 +98,7 @@ export async function updateEstablecimiento(
   const tipo = formData.get('tipo') as TipoEstablecimiento | null
   const cantidadStr = formData.get('cantidad_trabajadores') as string
   const cantidad = cantidadStr ? parseInt(cantidadStr, 10) : null
-  const { latitud, longitud } = parseUbicacion(formData.get('ubicacion_gmaps') as string)
+  const { latitud, longitud } = await parseUbicacion(formData.get('ubicacion_gmaps') as string)
 
   const { error } = await supabase
     .from('establecimientos')

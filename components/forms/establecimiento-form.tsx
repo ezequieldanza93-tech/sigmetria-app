@@ -101,11 +101,11 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
               ? `${establecimiento.latitud}, ${establecimiento.longitud}`
               : ''
           }
-          placeholder="Pegá la URL de Google Maps o ingresá lat, lng"
+          placeholder="Av. Corrientes 1234, Buenos Aires · o URL de Google Maps · o -34.6037, -58.3816"
           className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         <p className="text-xs text-gray-400 mt-1">
-          Ejemplo: <code>https://maps.google.com/@-34.6037,-58.3816,15z</code> o <code>-34.6037, -58.3816</code>
+          Podés escribir una dirección, pegar una URL de Google Maps, o ingresar coordenadas.
         </p>
       </div>
 
