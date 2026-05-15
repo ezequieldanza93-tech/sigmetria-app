@@ -1,10 +1,9 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { MapContainer, TileLayer, Marker, Tooltip, useMap } from 'react-leaflet'
 import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
 
 interface EstWithCoords {
   id: string
@@ -27,13 +26,6 @@ function BoundsAdjuster({ points }: { points: [number, number][] }) {
   return null
 }
 
-const markerIcon = L.divIcon({
-  className: '',
-  html: `<div style="width:14px;height:14px;background:#2563eb;border:2.5px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.35);cursor:pointer"></div>`,
-  iconSize: [14, 14],
-  iconAnchor: [7, 7],
-})
-
 interface Props {
   establecimientos: EstWithCoords[]
   empresaId: string
@@ -43,6 +35,13 @@ export function EmpresaEstablecimientosMap({ establecimientos, empresaId }: Prop
   const router = useRouter()
   const center: [number, number] = [establecimientos[0].latitude, establecimientos[0].longitude]
   const points: [number, number][] = establecimientos.map(e => [e.latitude, e.longitude])
+
+  const markerIcon = useMemo(() => L.divIcon({
+    className: '',
+    html: `<div style="width:14px;height:14px;background:#2563eb;border:2.5px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.35);cursor:pointer"></div>`,
+    iconSize: [14, 14],
+    iconAnchor: [7, 7],
+  }), [])
 
   return (
     <MapContainer
