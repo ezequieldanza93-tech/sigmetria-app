@@ -56,7 +56,9 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <StatCard label="Empresas" value={empresasCount ?? 0} sub="con acceso" />
         <StatCard label="Establecimientos" value={establCount ?? 0} sub="habilitados" />
-        <StatCard label="Usuarios en consultora" value={membersCount ?? 0} sub="activos" />
+        {(isDeveloper || role === 'full_access_main' || role === 'full_access_branch') && (
+          <StatCard label="Usuarios en consultora" value={membersCount ?? 0} sub="activos" />
+        )}
         <StatCard label="Tu rol" value={displayRole ? (ROLE_LABELS as Record<string, string>)[displayRole] : '—'} />
       </div>
 
