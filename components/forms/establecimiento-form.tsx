@@ -22,7 +22,7 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
   const [state, formAction, isPending] = useActionState(action, null)
 
   return (
-    <form action={formAction} className="space-y-4" encType="multipart/form-data">
+    <form action={formAction} className="space-y-4">
       {state && !state.success && (
         <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
           {state.error}
