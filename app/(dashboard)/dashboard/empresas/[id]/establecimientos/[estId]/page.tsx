@@ -3,6 +3,7 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { canWrite, UserRole } from '@/lib/types'
 import { EstablecimientoTabs } from '@/components/establecimiento-tabs'
+import { EstablecimientoLocation } from '@/components/establecimiento-location'
 import { TIPO_ESTABLECIMIENTO_LABELS } from '@/lib/constants'
 import type { TipoEstablecimiento } from '@/lib/types'
 
@@ -113,7 +114,24 @@ export default async function EstablecimientoDetailPage({ params }: Props) {
             )}
           </div>
         </div>
+        {userCanWrite && (
+          <Link
+            href={`/dashboard/empresas/${id}/establecimientos/${estId}/editar`}
+            className="inline-flex items-center gap-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+          >
+            Editar establecimiento
+          </Link>
+        )}
       </div>
+
+      {/* Location widget */}
+      {establecimiento.latitud != null && establecimiento.longitud != null && (
+        <EstablecimientoLocation
+          lat={establecimiento.latitud}
+          lng={establecimiento.longitud}
+          nombre={establecimiento.nombre}
+        />
+      )}
 
       {/* Info */}
       {establecimiento.actividad_principal && (

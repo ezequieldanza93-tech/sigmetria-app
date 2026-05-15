@@ -91,6 +91,24 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
         placeholder="50"
       />
 
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Ubicación Google Maps</label>
+        <input
+          name="ubicacion_gmaps"
+          type="text"
+          defaultValue={
+            establecimiento?.latitud != null && establecimiento?.longitud != null
+              ? `${establecimiento.latitud}, ${establecimiento.longitud}`
+              : ''
+          }
+          placeholder="Pegá la URL de Google Maps o ingresá lat, lng"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <p className="text-xs text-gray-400 mt-1">
+          Ejemplo: <code>https://maps.google.com/@-34.6037,-58.3816,15z</code> o <code>-34.6037, -58.3816</code>
+        </p>
+      </div>
+
       <div className="flex gap-3 pt-2">
         <Button type="submit" disabled={isPending}>
           {isPending ? 'Guardando...' : submitLabel}

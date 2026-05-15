@@ -6,6 +6,18 @@ import { revalidatePath } from 'next/cache'
 import { SECTORES_PREDEFINIDOS } from '@/lib/constants'
 import type { ActionResult, TipoEstablecimiento } from '@/lib/types'
 
+function parseUbicacion(raw: string | null): { latitud: number | null; longitud: number | null } {
+  if (!raw?.trim()) return { latitud: null, longitud: null }
+  const s = raw.trim()
+  // Google Maps URL: .../@-34.6037,-58.3816,15z or ...?q=-34.6037,-58.3816
+  const urlMatch = s.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/) ?? s.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/)
+  if (urlMatch) return { latitud: parseFloat(urlMatch[1]), longitud: parseFloat(urlMatch[2]) }
+  // Direct: "-34.6037, -58.3816"
+  const directMatch = s.match(/^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/)
+  if (directMatch) return { latitud: parseFloat(directMatch[1]), longitud: parseFloat(directMatch[2]) }
+  return { latitud: null, longitud: null }
+}
+
 export async function createEstablecimiento(
   empresaId: string,
   _prev: ActionResult<{ id: string }> | null,
@@ -21,6 +33,7 @@ export async function createEstablecimiento(
   const tipo = formData.get('tipo') as TipoEstablecimiento | null
   const cantidadStr = formData.get('cantidad_trabajadores') as string
   const cantidad = cantidadStr ? parseInt(cantidadStr, 10) : null
+  const { latitud, longitud } = parseUbicacion(formData.get('ubicacion_gmaps') as string)
 
   const { data, error } = await supabase
     .from('establecimientos')
@@ -34,6 +47,8 @@ export async function createEstablecimiento(
       codigo_postal: (formData.get('codigo_postal') as string) || null,
       actividad_principal: (formData.get('actividad_principal') as string) || null,
       cantidad_trabajadores: isNaN(cantidad as number) ? null : cantidad,
+      latitud,
+      longitud,
     })
     .select('id')
     .single()
@@ -70,6 +85,7 @@ export async function updateEstablecimiento(
   const tipo = formData.get('tipo') as TipoEstablecimiento | null
   const cantidadStr = formData.get('cantidad_trabajadores') as string
   const cantidad = cantidadStr ? parseInt(cantidadStr, 10) : null
+  const { latitud, longitud } = parseUbicacion(formData.get('ubicacion_gmaps') as string)
 
   const { error } = await supabase
     .from('establecimientos')
@@ -82,6 +98,8 @@ export async function updateEstablecimiento(
       codigo_postal: (formData.get('codigo_postal') as string) || null,
       actividad_principal: (formData.get('actividad_principal') as string) || null,
       cantidad_trabajadores: isNaN(cantidad as number) ? null : cantidad,
+      latitud,
+      longitud,
     })
     .eq('id', id)
 
