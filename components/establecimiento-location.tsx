@@ -119,29 +119,23 @@ export function EstablecimientoLocation({ lat, lng, nombre, fotoUrl }: Props) {
         {/* Left panel */}
         <div className="flex flex-col p-5 gap-4 border-r border-gray-100">
 
-          {/* Date + time */}
-          <div>
-            {current ? (
-              <>
-                <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-0.5">
+          {/* Weather left + date/time right */}
+          {!error && current ? (
+            <div className="flex items-start gap-4">
+              <div className="flex items-center gap-2 flex-1">
+                <span className="text-4xl leading-none">{wmoIcon(current.weathercode)}</span>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900 leading-tight">{current.temperature}°C</p>
+                  <p className="text-sm text-gray-500">{wmoLabel(current.weathercode)}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">💨 {current.windspeed} km/h</p>
+                </div>
+              </div>
+              <div className="text-right shrink-0">
+                <p className="text-sm font-medium text-gray-700 capitalize leading-snug">
                   {formatDateLong(current.timezone)}
                 </p>
-                <p className="text-2xl font-mono font-bold text-gray-900">{time}</p>
-                <p className="text-xs text-gray-400">{current.timezone.replace(/_/g, ' ')}</p>
-              </>
-            ) : (
-              <div className="h-14 bg-gray-100 animate-pulse rounded-lg" />
-            )}
-          </div>
-
-          {/* Current weather */}
-          {!error && current ? (
-            <div className="flex items-center gap-3">
-              <span className="text-4xl">{wmoIcon(current.weathercode)}</span>
-              <div>
-                <p className="text-3xl font-bold text-gray-900 leading-tight">{current.temperature}°C</p>
-                <p className="text-sm text-gray-500">{wmoLabel(current.weathercode)}</p>
-                <p className="text-xs text-gray-400 mt-0.5">💨 {current.windspeed} km/h</p>
+                <p className="text-xl font-mono font-bold text-gray-900 mt-0.5">{time}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{current.timezone.replace(/_/g, ' ')}</p>
               </div>
             </div>
           ) : !error ? (
