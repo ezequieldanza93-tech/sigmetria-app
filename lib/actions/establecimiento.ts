@@ -1,7 +1,6 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { createServerClient } from '@supabase/ssr'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { SECTORES_PREDEFINIDOS } from '@/lib/constants'
@@ -27,26 +26,27 @@ async function parseUbicacion(raw: string | null): Promise<{ latitud: number | n
   return { latitud: null, longitud: null }
 }
 
-function createServiceClient() {
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { cookies: { getAll: () => [], setAll: () => {} } }
-  )
-}
-
 async function uploadFoto(file: File, establecimientoId: string): Promise<string | null> {
-  if (!file || file.size === 0) return null
-  const ext = file.name.split('.').pop() ?? 'jpg'
-  const path = `fotos/${establecimientoId}/${Date.now()}.${ext}`
-  const buffer = await file.arrayBuffer()
-  const admin = createServiceClient()
-  const { data, error } = await admin.storage
-    .from('establecimientos')
-    .upload(path, buffer, { contentType: file.type, upsert: true })
-  if (error || !data) return null
-  const { data: { publicUrl } } = admin.storage.from('establecimientos').getPublicUrl(data.path)
-  return publicUrl
+  try {
+    if (!file || file.size === 0) return null
+    const ext = file.name.split('.').pop() ?? 'jpg'
+    const path = `fotos/${establecimientoId}/${Date.now()}.${ext}`
+    const buffer = await file.arrayBuffer()
+    const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/establecimientos/${path}`
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+        'Content-Type': file.type || 'image/jpeg',
+        'x-upsert': 'true',
+      },
+      body: buffer,
+    })
+    if (!res.ok) return null
+    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/establecimientos/${path}`
+  } catch {
+    return null
+  }
 }
 
 export async function createEstablecimiento(
