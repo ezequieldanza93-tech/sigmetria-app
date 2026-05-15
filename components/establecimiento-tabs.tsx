@@ -23,6 +23,7 @@ import type {
   Inspeccion,
   Riesgo,
   Documento,
+  DocumentType,
   Empleado,
   ActionResult,
   RiesgoNivel,
@@ -41,6 +42,7 @@ interface EstablecimientoTabsProps {
   inspecciones: Inspeccion[]
   riesgos: Riesgo[]
   documentos: Documento[]
+  documentTypes: DocumentType[]
   empleados: Empleado[]
 }
 
@@ -451,24 +453,34 @@ function RiesgosTab({
 // ---- Documentos Tab ----
 function DocumentosTab({
   documentos,
+  documentTypes,
   establecimientoId,
   empresaId,
   canWrite,
 }: {
   documentos: Documento[]
+  documentTypes: DocumentType[]
   establecimientoId: string
   empresaId: string
   canWrite: boolean
 }) {
   const [showModal, setShowModal] = useState(false)
-  const documentoAction = createDocumento.bind(null, establecimientoId, empresaId)
+  const documentoAction = createDocumento.bind(null, empresaId, establecimientoId)
+
+  function vencimientoClass(fecha: string | null): string {
+    if (!fecha) return 'text-gray-400'
+    const days = Math.ceil((new Date(fecha).getTime() - Date.now()) / 86400000)
+    if (days < 0) return 'text-red-600 font-medium'
+    if (days <= 30) return 'text-yellow-600 font-medium'
+    return 'text-gray-500'
+  }
 
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold text-gray-900">Documentación</h3>
         {canWrite && (
-          <Button size="sm" onClick={() => setShowModal(true)}>+ Nuevo Documento</Button>
+          <Button size="sm" onClick={() => setShowModal(true)}>+ Agregar Documento</Button>
         )}
       </div>
 
@@ -481,37 +493,44 @@ function DocumentosTab({
           <table className="w-full text-sm">
             <thead className="border-b border-gray-100 bg-gray-50">
               <tr className="text-left">
-                <th className="px-5 py-3 text-gray-500 font-medium">Nombre</th>
                 <th className="px-5 py-3 text-gray-500 font-medium">Tipo</th>
-                <th className="px-5 py-3 text-gray-500 font-medium">F. Emisión</th>
-                <th className="px-5 py-3 text-gray-500 font-medium">F. Vencimiento</th>
-                <th className="px-5 py-3 text-gray-500 font-medium">Estado</th>
+                <th className="px-5 py-3 text-gray-500 font-medium">Vencimiento</th>
+                <th className="px-5 py-3 text-gray-500 font-medium">Legajo</th>
                 <th className="px-5 py-3 text-gray-500 font-medium">Archivo</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {documentos.map(d => (
-                <tr key={d.id} className="hover:bg-gray-50">
-                  <td className="px-5 py-3.5 font-medium text-gray-900">{d.nombre}</td>
-                  <td className="px-5 py-3.5 text-gray-500">{DOCUMENTO_TIPO_LABELS[d.tipo]}</td>
-                  <td className="px-5 py-3.5 text-gray-500">{formatDate(d.fecha_emision)}</td>
-                  <td className="px-5 py-3.5 text-gray-500">{formatDate(d.fecha_vencimiento)}</td>
-                  <td className="px-5 py-3.5">
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${d.es_vigente ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                      {d.es_vigente ? 'Vigente' : 'Vencido'}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3.5">
-                    {d.archivo_url ? (
-                      <a href={d.archivo_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-xs">
-                        Ver archivo
-                      </a>
-                    ) : (
-                      <span className="text-gray-400">—</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
+              {documentos.map(d => {
+                const fileUrl = d.file_url ?? d.archivo_url
+                const fileName = d.file_name ?? (d.archivo_url ? 'Ver archivo' : null)
+                const typeName = d.document_types?.name ?? d.nombre
+                return (
+                  <tr key={d.id} className="hover:bg-gray-50">
+                    <td className="px-5 py-3.5 font-medium text-gray-900">{typeName}</td>
+                    <td className={`px-5 py-3.5 ${vencimientoClass(d.fecha_vencimiento)}`}>
+                      {d.fecha_vencimiento ? formatDate(d.fecha_vencimiento) : '—'}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      {d.include_in_legajo ? (
+                        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                          Legajo
+                        </span>
+                      ) : (
+                        <span className="text-gray-300">—</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      {fileUrl ? (
+                        <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-xs truncate max-w-[160px] block">
+                          {fileName}
+                        </a>
+                      ) : (
+                        <span className="text-gray-400">—</span>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
@@ -520,6 +539,8 @@ function DocumentosTab({
       <Modal open={showModal} onClose={() => setShowModal(false)} title="Agregar Documento">
         <DocumentoForm
           action={documentoAction}
+          documentTypes={documentTypes}
+          context="establecimiento"
           onSuccess={() => setShowModal(false)}
         />
       </Modal>
@@ -546,6 +567,7 @@ export function EstablecimientoTabs({
   inspecciones,
   riesgos,
   documentos,
+  documentTypes,
   empleados,
 }: EstablecimientoTabsProps) {
   const [active, setActive] = useState<Tab>('sectores')
@@ -611,6 +633,7 @@ export function EstablecimientoTabs({
       {active === 'documentos' && (
         <DocumentosTab
           documentos={documentos}
+          documentTypes={documentTypes}
           establecimientoId={establecimientoId}
           empresaId={empresaId}
           canWrite={canWrite}

@@ -5,7 +5,8 @@ import dynamic from 'next/dynamic'
 import { canWrite, UserRole } from '@/lib/types'
 import { formatCUIT } from '@/lib/utils'
 import { TIPO_ESTABLECIMIENTO_LABELS } from '@/lib/constants'
-import type { TipoEstablecimiento } from '@/lib/types'
+import { EmpresaDocumentosSection } from '@/components/empresa-documentos-section'
+import type { TipoEstablecimiento, DocumentType, Documento } from '@/lib/types'
 
 const EmpresaEstablecimientosMap = dynamic(
   () => import('@/components/empresa-establecimientos-map').then(m => m.EmpresaEstablecimientosMap),
@@ -38,12 +39,25 @@ export default async function EmpresaDetailPage({ params }: Props) {
 
   if (!empresa) notFound()
 
-  const { data: establecimientos } = await supabase
-    .from('establecimientos')
-    .select('id, nombre, tipo, localidad, provincia, cantidad_trabajadores, latitude, longitude, is_active')
-    .eq('empresa_id', id)
-    .eq('is_active', true)
-    .order('nombre')
+  const [{ data: establecimientos }, { data: documentos }, { data: documentTypes }] = await Promise.all([
+    supabase
+      .from('establecimientos')
+      .select('id, nombre, tipo, localidad, provincia, cantidad_trabajadores, latitude, longitude, is_active')
+      .eq('empresa_id', id)
+      .eq('is_active', true)
+      .order('nombre'),
+    supabase
+      .from('documentos')
+      .select('*, document_types(name)')
+      .eq('empresa_id', id)
+      .is('establecimiento_id', null)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('document_types')
+      .select('id, name, applies_to, is_active')
+      .eq('is_active', true)
+      .order('name'),
+  ])
 
   const puedeEditar = canWrite(
     membership?.role as UserRole ?? null,
@@ -187,6 +201,15 @@ export default async function EmpresaDetailPage({ params }: Props) {
           </table>
         </div>
       )}
+      {/* Documentos de la empresa */}
+      <div className="mt-8">
+        <EmpresaDocumentosSection
+          empresaId={id}
+          documentos={(documentos ?? []) as Documento[]}
+          documentTypes={(documentTypes ?? []) as DocumentType[]}
+          canWrite={puedeEditar}
+        />
+      </div>
     </div>
   )
 }

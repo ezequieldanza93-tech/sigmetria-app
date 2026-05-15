@@ -236,6 +236,13 @@ export interface Medicion {
   created_at: string
 }
 
+export interface DocumentType {
+  id: string
+  name: string
+  applies_to: 'empresa' | 'establecimiento' | 'both'
+  is_active: boolean
+}
+
 export interface Documento {
   id: string
   empresa_id: string | null
@@ -246,6 +253,11 @@ export interface Documento {
   fecha_emision: string | null
   fecha_vencimiento: string | null
   es_vigente: boolean
+  document_type_id: string | null
+  document_types: { name: string } | null
+  include_in_legajo: boolean
+  file_url: string | null
+  file_name: string | null
   subido_por: string | null
   created_at: string
   updated_at: string

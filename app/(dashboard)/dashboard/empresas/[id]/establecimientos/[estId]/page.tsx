@@ -45,6 +45,7 @@ export default async function EstablecimientoDetailPage({ params }: Props) {
     { data: riesgos },
     { data: documentos },
     { data: empleados },
+    { data: documentTypes },
   ] = await Promise.all([
     supabase
       .from('sectores_establecimiento')
@@ -70,7 +71,7 @@ export default async function EstablecimientoDetailPage({ params }: Props) {
       .order('fecha_identificacion', { ascending: false }),
     supabase
       .from('documentos')
-      .select('*')
+      .select('*, document_types(name)')
       .eq('establecimiento_id', estId)
       .order('created_at', { ascending: false }),
     supabase
@@ -79,6 +80,11 @@ export default async function EstablecimientoDetailPage({ params }: Props) {
       .eq('establecimiento_id', estId)
       .eq('is_active', true)
       .order('apellido'),
+    supabase
+      .from('document_types')
+      .select('id, name, applies_to, is_active')
+      .eq('is_active', true)
+      .order('name'),
   ])
 
   return (
@@ -152,6 +158,7 @@ export default async function EstablecimientoDetailPage({ params }: Props) {
         inspecciones={inspecciones ?? []}
         riesgos={riesgos ?? []}
         documentos={documentos ?? []}
+        documentTypes={documentTypes ?? []}
         empleados={empleados ?? []}
       />
     </div>
