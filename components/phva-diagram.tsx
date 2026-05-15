@@ -275,31 +275,41 @@ export function PHVADiagram({ empresaId, establecimientoId }: PHVADiagramProps) 
               style={{ transition: 'all 200ms ease' }}
             />
             <text
-              x={CX} y={CY - 9}
+              x={CX} y={CY - 15}
               textAnchor="middle"
-              fontSize="10"
+              fontSize="9.5"
               fontWeight="700"
               fill={isHovered('center') ? '#2E7D32' : '#4CAF50'}
               fontFamily="Montserrat, system-ui, sans-serif"
               style={{ transition: 'fill 200ms ease' }}
             >
-              Contexto y
+              Liderazgo y
             </text>
             <text
-              x={CX} y={CY + 4}
+              x={CX} y={CY - 3}
               textAnchor="middle"
-              fontSize="10"
+              fontSize="9.5"
               fontWeight="700"
               fill={isHovered('center') ? '#2E7D32' : '#4CAF50'}
               fontFamily="Montserrat, system-ui, sans-serif"
               style={{ transition: 'fill 200ms ease' }}
             >
-              Stakeholders
+              participación
             </text>
             <text
-              x={CX} y={CY + 18}
+              x={CX} y={CY + 10}
               textAnchor="middle"
               fontSize="8.5"
+              fill={isHovered('center') ? '#2E7D32' : '#6B8F71'}
+              fontFamily="Poppins, system-ui, sans-serif"
+              style={{ transition: 'fill 200ms ease' }}
+            >
+              trabajadores
+            </text>
+            <text
+              x={CX} y={CY + 22}
+              textAnchor="middle"
+              fontSize="8"
               fill={isHovered('center') ? '#4CAF50' : '#9CA3AF'}
               fontFamily="Poppins, system-ui, sans-serif"
               style={{ transition: 'fill 200ms ease' }}
