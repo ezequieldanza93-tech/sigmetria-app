@@ -125,12 +125,12 @@ export default async function EstablecimientoDetailPage({ params }: Props) {
       </div>
 
       {/* Location widget */}
-      {establecimiento.latitud != null && establecimiento.longitud != null && (
+      {establecimiento.latitude != null && establecimiento.longitude != null && (
         <EstablecimientoLocation
-          lat={establecimiento.latitud}
-          lng={establecimiento.longitud}
+          lat={establecimiento.latitude}
+          lng={establecimiento.longitude}
           nombre={establecimiento.nombre}
-          fotoUrl={establecimiento.foto_url}
+          fotoUrl={establecimiento.photo_site}
         />
       )}
 

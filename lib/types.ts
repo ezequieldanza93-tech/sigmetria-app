@@ -118,9 +118,9 @@ export interface Establecimiento {
   codigo_postal: string | null
   actividad_principal: string | null
   cantidad_trabajadores: number | null
-  latitud: number | null
-  longitud: number | null
-  foto_url: string | null
+  latitude: number | null
+  longitude: number | null
+  photo_site: string | null
   is_active: boolean
   created_at: string
   updated_at: string

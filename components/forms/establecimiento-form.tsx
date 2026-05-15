@@ -97,7 +97,7 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
           name="ubicacion_gmaps"
           type="text"
           defaultValue={
-            establecimiento?.latitud != null && establecimiento?.longitud != null
+            establecimiento?.latitude != null && establecimiento?.longitude != null
               ? `${establecimiento.latitud}, ${establecimiento.longitud}`
               : ''
           }
@@ -111,9 +111,9 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Foto del establecimiento</label>
-        {establecimiento?.foto_url && (
+        {establecimiento?.photo_site && (
           <img
-            src={establecimiento.foto_url}
+            src={establecimiento.photo_site}
             alt="Foto actual"
             className="w-full h-40 object-cover rounded-lg mb-2 border border-gray-200"
           />

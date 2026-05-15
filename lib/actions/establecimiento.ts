@@ -6,24 +6,24 @@ import { revalidatePath } from 'next/cache'
 import { SECTORES_PREDEFINIDOS } from '@/lib/constants'
 import type { ActionResult, TipoEstablecimiento } from '@/lib/types'
 
-async function parseUbicacion(raw: string | null): Promise<{ latitud: number | null; longitud: number | null }> {
-  if (!raw?.trim()) return { latitud: null, longitud: null }
+async function parseUbicacion(raw: string | null): Promise<{ latitude: number | null; longitude: number | null }> {
+  if (!raw?.trim()) return { latitude: null, longitude: null }
   const s = raw.trim()
 
   const urlMatch = s.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/) ?? s.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/)
-  if (urlMatch) return { latitud: parseFloat(urlMatch[1]), longitud: parseFloat(urlMatch[2]) }
+  if (urlMatch) return { latitude: parseFloat(urlMatch[1]), longitude: parseFloat(urlMatch[2]) }
 
   const directMatch = s.match(/^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/)
-  if (directMatch) return { latitud: parseFloat(directMatch[1]), longitud: parseFloat(directMatch[2]) }
+  if (directMatch) return { latitude: parseFloat(directMatch[1]), longitude: parseFloat(directMatch[2]) }
 
   try {
     const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(s)}&format=json&limit=1`
     const res = await fetch(url, { headers: { 'User-Agent': 'sigmetria-hys-app/1.0' } })
     const data = await res.json()
-    if (data?.[0]) return { latitud: parseFloat(data[0].lat), longitud: parseFloat(data[0].lon) }
+    if (data?.[0]) return { latitude: parseFloat(data[0].lat), longitude: parseFloat(data[0].lon) }
   } catch { /* fall through */ }
 
-  return { latitud: null, longitud: null }
+  return { latitude: null, longitude: null }
 }
 
 async function uploadFoto(file: File, establecimientoId: string): Promise<string | null> {
@@ -64,7 +64,7 @@ export async function createEstablecimiento(
   const tipo = formData.get('tipo') as TipoEstablecimiento | null
   const cantidadStr = formData.get('cantidad_trabajadores') as string
   const cantidad = cantidadStr ? parseInt(cantidadStr, 10) : null
-  const { latitud, longitud } = await parseUbicacion(formData.get('ubicacion_gmaps') as string)
+  const { latitude, longitude } = await parseUbicacion(formData.get('ubicacion_gmaps') as string)
 
   const { data, error } = await supabase
     .from('establecimientos')
@@ -78,8 +78,8 @@ export async function createEstablecimiento(
       codigo_postal: (formData.get('codigo_postal') as string) || null,
       actividad_principal: (formData.get('actividad_principal') as string) || null,
       cantidad_trabajadores: isNaN(cantidad as number) ? null : cantidad,
-      latitud,
-      longitud,
+      latitude,
+      longitude,
     })
     .select('id')
     .single()
@@ -87,9 +87,9 @@ export async function createEstablecimiento(
   if (error) return { success: false, error: error.message }
 
   const foto = formData.get('foto') as File | null
-  const foto_url = foto ? await uploadFoto(foto, data.id) : null
-  if (foto_url) {
-    await supabase.from('establecimientos').update({ foto_url }).eq('id', data.id)
+  const photo_site = foto ? await uploadFoto(foto, data.id) : null
+  if (photo_site) {
+    await supabase.from('establecimientos').update({ photo_site }).eq('id', data.id)
   }
 
   const sectores = SECTORES_PREDEFINIDOS.map(nombre => ({
@@ -120,10 +120,10 @@ export async function updateEstablecimiento(
   const tipo = formData.get('tipo') as TipoEstablecimiento | null
   const cantidadStr = formData.get('cantidad_trabajadores') as string
   const cantidad = cantidadStr ? parseInt(cantidadStr, 10) : null
-  const { latitud, longitud } = await parseUbicacion(formData.get('ubicacion_gmaps') as string)
+  const { latitude, longitude } = await parseUbicacion(formData.get('ubicacion_gmaps') as string)
 
   const foto = formData.get('foto') as File | null
-  const foto_url = foto?.size ? await uploadFoto(foto, id) : undefined
+  const photo_site = foto?.size ? await uploadFoto(foto, id) : undefined
 
   const { error } = await supabase
     .from('establecimientos')
@@ -136,9 +136,9 @@ export async function updateEstablecimiento(
       codigo_postal: (formData.get('codigo_postal') as string) || null,
       actividad_principal: (formData.get('actividad_principal') as string) || null,
       cantidad_trabajadores: isNaN(cantidad as number) ? null : cantidad,
-      latitud,
-      longitud,
-      ...(foto_url !== undefined && { foto_url }),
+      latitude,
+      longitude,
+      ...(photo_site !== undefined && { photo_site }),
     })
     .eq('id', id)
 
