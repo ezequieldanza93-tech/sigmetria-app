@@ -55,6 +55,10 @@ interface PhaseModule {
 }
 
 const PHASE_MODULES: Record<string, PhaseModule[]> = {
+  context: [
+    { label: 'Feedback Clientes', tab: '' },
+    { label: 'Matrices Contexto', tab: '' },
+  ],
   P: [
     { label: 'Matrices de Riesgos', tab: 'riesgos' },
     { label: 'Objetivos', tab: 'riesgos' },
@@ -80,6 +84,7 @@ const PHASE_MODULES: Record<string, PhaseModule[]> = {
 }
 
 const PHASE_LABELS: Record<string, { title: string; iso: string }> = {
+  context: { title: 'Contexto de la Organización', iso: '4' },
   P: { title: 'Planificación', iso: '6' },
   H: { title: 'Apoyo y Operación', iso: '7-8' },
   V: { title: 'Evaluación del Desempeño', iso: '9' },
@@ -208,17 +213,33 @@ export function PHVADiagram({ empresaId, establecimientoId }: PHVADiagramProps) 
           />
 
           {/* Context labels */}
-          <text
-            x="280" y="36"
-            textAnchor="middle"
-            fontSize="9"
-            fontWeight="600"
-            fill="#9CA3AF"
-            fontFamily="Poppins, system-ui, sans-serif"
-            letterSpacing="0.06em"
+          <g
+            onClick={() => setSelectedPhase('context')}
+            onMouseEnter={() => setHovered('context')}
+            onMouseLeave={() => setHovered(null)}
+            style={{ cursor: 'pointer' }}
+            role="button"
+            aria-label="Contexto de la Organización ISO 4"
           >
-            CONTEXTO DE LA ORGANIZACIÓN · ISO 45001
-          </text>
+            <rect
+              x="140" y="22" width="280" height="20"
+              rx="4"
+              fill={isHovered('context') ? '#E8F5E9' : 'transparent'}
+              style={{ transition: 'fill 200ms ease' }}
+            />
+            <text
+              x="280" y="36"
+              textAnchor="middle"
+              fontSize="9"
+              fontWeight="600"
+              fill={isHovered('context') ? '#2E7D32' : '#9CA3AF'}
+              fontFamily="Poppins, system-ui, sans-serif"
+              letterSpacing="0.06em"
+              style={{ transition: 'fill 200ms ease' }}
+            >
+              CONTEXTO DE LA ORGANIZACIÓN · ISO 4
+            </text>
+          </g>
 
           <text
             x="42" y="255"
