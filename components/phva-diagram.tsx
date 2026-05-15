@@ -49,6 +49,44 @@ const SATELLITE_CIRCLES = [
   },
 ]
 
+interface PhaseModule {
+  label: string
+  tab: string
+}
+
+const PHASE_MODULES: Record<string, PhaseModule[]> = {
+  P: [
+    { label: 'Matrices de Riesgos', tab: 'riesgos' },
+    { label: 'Objetivos', tab: 'riesgos' },
+    { label: 'Planificaciones', tab: 'riesgos' },
+  ],
+  H: [
+    { label: 'Matriz de Comunicación', tab: 'inspecciones' },
+    { label: 'Controles Operativos', tab: 'inspecciones' },
+    { label: 'Formaciones', tab: 'inspecciones' },
+    { label: 'Reportes Semanales', tab: 'inspecciones' },
+  ],
+  V: [
+    { label: 'Auditorías', tab: 'siniestros' },
+    { label: 'Inspecciones y Denuncias', tab: 'siniestros' },
+    { label: 'Informes Periódicos', tab: 'siniestros' },
+  ],
+  A: [
+    { label: 'Seguimiento de Hallazgos', tab: 'documentos' },
+  ],
+  center: [
+    { label: 'Reuniones', tab: '' },
+  ],
+}
+
+const PHASE_LABELS: Record<string, { title: string; iso: string }> = {
+  P: { title: 'Planificación', iso: '6' },
+  H: { title: 'Apoyo y Operación', iso: '7-8' },
+  V: { title: 'Evaluación del Desempeño', iso: '9' },
+  A: { title: 'Mejora', iso: '10' },
+  center: { title: 'Liderazgo y Participación', iso: '5' },
+}
+
 const ARROW_MARKERS = [
   { x: 414, y: 121, rotate: 45 },
   { x: 414, y: 389, rotate: 135 },
@@ -110,6 +148,7 @@ function TextInCircle({
 export function PHVADiagram({ empresaId, establecimientoId }: PHVADiagramProps) {
   const router = useRouter()
   const [hovered, setHovered] = useState<string | null>(null)
+  const [selectedPhase, setSelectedPhase] = useState<string | null>(null)
 
   function getUrl(tab: string) {
     if (establecimientoId && empresaId) {
@@ -127,7 +166,17 @@ export function PHVADiagram({ empresaId, establecimientoId }: PHVADiagramProps) 
     return '/dashboard/empresas'
   }
 
+  function handleModuleClick(mod: PhaseModule) {
+    if (mod.tab) {
+      router.push(getUrl(mod.tab))
+    } else {
+      router.push(getCenterUrl())
+    }
+  }
+
   const isHovered = (key: string) => hovered === key
+  const modules = selectedPhase ? PHASE_MODULES[selectedPhase] : null
+  const phaseLabel = selectedPhase ? PHASE_LABELS[selectedPhase] : null
 
   return (
     <div className="w-full flex justify-center select-none">
@@ -228,7 +277,7 @@ export function PHVADiagram({ empresaId, establecimientoId }: PHVADiagramProps) 
             return (
               <g
                 key={c.key}
-                onClick={() => router.push(getUrl(c.tab))}
+                onClick={() => setSelectedPhase(c.key)}
                 onMouseEnter={() => setHovered(c.key)}
                 onMouseLeave={() => setHovered(null)}
                 style={{ cursor: 'pointer' }}
@@ -256,14 +305,14 @@ export function PHVADiagram({ empresaId, establecimientoId }: PHVADiagramProps) 
             )
           })}
 
-          {/* Center circle — Contexto y Stakeholders */}
+          {/* Center circle — Liderazgo y Participación */}
           <g
-            onClick={() => router.push(getCenterUrl())}
+            onClick={() => setSelectedPhase('center')}
             onMouseEnter={() => setHovered('center')}
             onMouseLeave={() => setHovered(null)}
             style={{ cursor: 'pointer' }}
             role="button"
-            aria-label="Contexto y Stakeholders"
+            aria-label="Liderazgo y Participación"
           >
             <circle
               cx={CX}
@@ -319,20 +368,52 @@ export function PHVADiagram({ empresaId, establecimientoId }: PHVADiagramProps) 
           </g>
         </svg>
 
-        {/* Phase hint legend */}
-        <div className="flex justify-center gap-6 mt-2 flex-wrap">
-          {SATELLITE_CIRCLES.map((c) => (
-            <button
-              key={c.key}
-              onClick={() => router.push(getUrl(c.tab))}
-              className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-green-600 transition-colors"
-            >
-              <span className="w-2 h-2 rounded-full bg-gray-300 inline-block" />
-              <span className="font-medium text-gray-500">{c.key}</span>
-              <span>{c.phva}</span>
-            </button>
-          ))}
-        </div>
+        {/* Module selection panel */}
+        {selectedPhase && modules && phaseLabel ? (
+          <div className="mt-3 bg-white rounded-xl border border-gray-200 p-4 animate-in fade-in slide-in-from-bottom-2 duration-200">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-gray-900">{phaseLabel.title}</span>
+                <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded font-mono">
+                  ISO {phaseLabel.iso}
+                </span>
+              </div>
+              <button
+                onClick={() => setSelectedPhase(null)}
+                className="text-gray-400 hover:text-gray-600 transition-colors text-lg leading-none"
+                aria-label="Cerrar"
+              >
+                ×
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {modules.map((mod) => (
+                <button
+                  key={mod.label}
+                  onClick={() => handleModuleClick(mod)}
+                  className="text-left px-3 py-2.5 rounded-lg border border-gray-100 bg-gray-50 hover:bg-green-50 hover:border-green-200 hover:text-green-700 text-sm font-medium text-gray-700 transition-colors"
+                >
+                  {mod.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          /* Phase hint legend */
+          <div className="flex justify-center gap-6 mt-2 flex-wrap">
+            {SATELLITE_CIRCLES.map((c) => (
+              <button
+                key={c.key}
+                onClick={() => setSelectedPhase(c.key)}
+                className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-green-600 transition-colors"
+              >
+                <span className="w-2 h-2 rounded-full bg-gray-300 inline-block" />
+                <span className="font-medium text-gray-500">{c.key}</span>
+                <span>{c.phva}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
