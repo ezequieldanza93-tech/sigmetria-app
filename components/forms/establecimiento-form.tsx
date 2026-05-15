@@ -22,7 +22,7 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
   const [state, formAction, isPending] = useActionState(action, null)
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form action={formAction} className="space-y-4" encType="multipart/form-data">
       {state && !state.success && (
         <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
           {state.error}
@@ -107,6 +107,24 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
         <p className="text-xs text-gray-400 mt-1">
           Podés escribir una dirección, pegar una URL de Google Maps, o ingresar coordenadas.
         </p>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Foto del establecimiento</label>
+        {establecimiento?.foto_url && (
+          <img
+            src={establecimiento.foto_url}
+            alt="Foto actual"
+            className="w-full h-40 object-cover rounded-lg mb-2 border border-gray-200"
+          />
+        )}
+        <input
+          name="foto"
+          type="file"
+          accept="image/*"
+          className="w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+        />
+        <p className="text-xs text-gray-400 mt-1">JPG, PNG o WebP. Se reemplaza la existente al guardar.</p>
       </div>
 
       <div className="flex gap-3 pt-2">

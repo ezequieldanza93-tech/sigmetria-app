@@ -50,13 +50,24 @@ function formatDay(dateStr: string, index: number) {
   return `${DAY_NAMES[d.getDay()]} ${d.getDate()} ${MONTH_NAMES[d.getMonth()]}`
 }
 
+function formatDateLong(tz: string) {
+  return new Date().toLocaleDateString('es-AR', {
+    timeZone: tz,
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+}
+
 interface Props {
   lat: number
   lng: number
   nombre: string
+  fotoUrl?: string | null
 }
 
-export function EstablecimientoLocation({ lat, lng, nombre }: Props) {
+export function EstablecimientoLocation({ lat, lng, nombre, fotoUrl }: Props) {
   const [current, setCurrent] = useState<CurrentWeather | null>(null)
   const [forecast, setForecast] = useState<DayForecast[]>([])
   const [time, setTime] = useState('')
@@ -76,14 +87,13 @@ export function EstablecimientoLocation({ lat, lng, nombre }: Props) {
           weathercode: d.current_weather.weathercode,
           timezone: d.timezone,
         })
-        const days: DayForecast[] = d.daily.time.map((date: string, i: number) => ({
+        setForecast(d.daily.time.map((date: string, i: number) => ({
           date,
           weathercode: d.daily.weathercode[i],
           max: d.daily.temperature_2m_max[i],
           min: d.daily.temperature_2m_min[i],
           rain: d.daily.precipitation_sum[i] ?? 0,
-        }))
-        setForecast(days)
+        })))
       })
       .catch(() => setError(true))
   }, [lat, lng])
@@ -103,56 +113,84 @@ export function EstablecimientoLocation({ lat, lng, nombre }: Props) {
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden mb-6">
-      {/* Map */}
-      <div className="relative">
-        <iframe
-          src={mapsEmbedUrl}
-          width="100%"
-          height="260"
-          style={{ border: 0, display: 'block' }}
-          allowFullScreen
-          loading="lazy"
-          referrerPolicy="no-referrer-when-downgrade"
-          title={`Mapa de ${nombre}`}
-        />
-        <a
-          href={mapsOpenUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="absolute bottom-3 right-3 bg-white text-xs text-blue-600 font-medium px-3 py-1.5 rounded-lg shadow-md hover:shadow-lg transition-shadow border border-gray-200"
-        >
-          Ver en Google Maps ↗
-        </a>
-      </div>
+      {/* Top: info left + map right */}
+      <div className="grid grid-cols-2" style={{ minHeight: '320px' }}>
 
-      {/* Current weather + clock */}
-      <div className="flex items-center gap-6 px-5 py-3.5 border-t border-gray-100 bg-gray-50 flex-wrap">
-        {!error && current ? (
-          <>
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">{wmoIcon(current.weathercode)}</span>
+        {/* Left panel */}
+        <div className="flex flex-col p-5 gap-4 border-r border-gray-100">
+
+          {/* Date + time */}
+          <div>
+            {current ? (
+              <>
+                <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-0.5">
+                  {formatDateLong(current.timezone)}
+                </p>
+                <p className="text-2xl font-mono font-bold text-gray-900">{time}</p>
+                <p className="text-xs text-gray-400">{current.timezone.replace(/_/g, ' ')}</p>
+              </>
+            ) : (
+              <div className="h-14 bg-gray-100 animate-pulse rounded-lg" />
+            )}
+          </div>
+
+          {/* Current weather */}
+          {!error && current ? (
+            <div className="flex items-center gap-3">
+              <span className="text-4xl">{wmoIcon(current.weathercode)}</span>
               <div>
-                <p className="text-lg font-bold text-gray-900 leading-tight">{current.temperature}°C</p>
-                <p className="text-xs text-gray-500">{wmoLabel(current.weathercode)}</p>
+                <p className="text-3xl font-bold text-gray-900 leading-tight">{current.temperature}°C</p>
+                <p className="text-sm text-gray-500">{wmoLabel(current.weathercode)}</p>
+                <p className="text-xs text-gray-400 mt-0.5">💨 {current.windspeed} km/h</p>
               </div>
             </div>
-            <div className="text-sm text-gray-500">💨 {current.windspeed} km/h</div>
-            <div className="flex items-center gap-2 ml-auto">
-              <span className="text-gray-400 text-sm">🕐</span>
-              <div className="text-right">
-                <p className="text-base font-mono font-semibold text-gray-900">{time}</p>
-                <p className="text-xs text-gray-400">{current.timezone.replace('_', ' ')}</p>
+          ) : !error ? (
+            <div className="h-16 bg-gray-100 animate-pulse rounded-lg" />
+          ) : (
+            <p className="text-sm text-gray-400">No se pudo cargar el clima</p>
+          )}
+
+          {/* Photo */}
+          <div className="flex-1 relative overflow-hidden rounded-xl border border-gray-100 bg-gray-50 min-h-[120px]">
+            {fotoUrl ? (
+              <img
+                src={fotoUrl}
+                alt={`Foto de ${nombre}`}
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+            ) : (
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-300">
+                <span className="text-3xl mb-1">🏭</span>
+                <p className="text-xs">Sin foto</p>
               </div>
-            </div>
-          </>
-        ) : !error ? (
-          <p className="text-sm text-gray-400 animate-pulse">Cargando datos meteorológicos...</p>
-        ) : (
-          <p className="text-sm text-gray-400">No se pudo cargar el clima</p>
-        )}
+            )}
+          </div>
+        </div>
+
+        {/* Right: Map */}
+        <div className="relative">
+          <iframe
+            src={mapsEmbedUrl}
+            width="100%"
+            height="100%"
+            style={{ border: 0, display: 'block', minHeight: '320px' }}
+            allowFullScreen
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            title={`Mapa de ${nombre}`}
+          />
+          <a
+            href={mapsOpenUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="absolute bottom-3 right-3 bg-white text-xs text-blue-600 font-medium px-3 py-1.5 rounded-lg shadow-md hover:shadow-lg transition-shadow border border-gray-200"
+          >
+            Abrir en Google Maps ↗
+          </a>
+        </div>
       </div>
 
-      {/* 14-day forecast */}
+      {/* Bottom: 14-day forecast */}
       {forecast.length > 0 && (
         <div className="border-t border-gray-100">
           <p className="text-xs font-medium text-gray-400 uppercase tracking-wider px-5 pt-3 pb-2">

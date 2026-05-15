@@ -130,6 +130,7 @@ export default async function EstablecimientoDetailPage({ params }: Props) {
           lat={establecimiento.latitud}
           lng={establecimiento.longitud}
           nombre={establecimiento.nombre}
+          fotoUrl={establecimiento.foto_url}
         />
       )}
 

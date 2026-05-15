@@ -120,6 +120,7 @@ export interface Establecimiento {
   cantidad_trabajadores: number | null
   latitud: number | null
   longitud: number | null
+  foto_url: string | null
   is_active: boolean
   created_at: string
   updated_at: string

@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createServerClient } from '@supabase/ssr'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { SECTORES_PREDEFINIDOS } from '@/lib/constants'
@@ -10,25 +11,42 @@ async function parseUbicacion(raw: string | null): Promise<{ latitud: number | n
   if (!raw?.trim()) return { latitud: null, longitud: null }
   const s = raw.trim()
 
-  // Google Maps URL: .../@-34.6037,-58.3816,15z or ...?q=-34.6037,-58.3816
   const urlMatch = s.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/) ?? s.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/)
   if (urlMatch) return { latitud: parseFloat(urlMatch[1]), longitud: parseFloat(urlMatch[2]) }
 
-  // Direct coordinates: "-34.6037, -58.3816"
   const directMatch = s.match(/^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/)
   if (directMatch) return { latitud: parseFloat(directMatch[1]), longitud: parseFloat(directMatch[2]) }
 
-  // Free-text address → geocode via Nominatim (OpenStreetMap, no API key needed)
   try {
     const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(s)}&format=json&limit=1`
     const res = await fetch(url, { headers: { 'User-Agent': 'sigmetria-hys-app/1.0' } })
     const data = await res.json()
     if (data?.[0]) return { latitud: parseFloat(data[0].lat), longitud: parseFloat(data[0].lon) }
-  } catch {
-    // silently fall through
-  }
+  } catch { /* fall through */ }
 
   return { latitud: null, longitud: null }
+}
+
+function createServiceClient() {
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { cookies: { getAll: () => [], setAll: () => {} } }
+  )
+}
+
+async function uploadFoto(file: File, establecimientoId: string): Promise<string | null> {
+  if (!file || file.size === 0) return null
+  const ext = file.name.split('.').pop() ?? 'jpg'
+  const path = `fotos/${establecimientoId}/${Date.now()}.${ext}`
+  const buffer = await file.arrayBuffer()
+  const admin = createServiceClient()
+  const { data, error } = await admin.storage
+    .from('establecimientos')
+    .upload(path, buffer, { contentType: file.type, upsert: true })
+  if (error || !data) return null
+  const { data: { publicUrl } } = admin.storage.from('establecimientos').getPublicUrl(data.path)
+  return publicUrl
 }
 
 export async function createEstablecimiento(
@@ -68,14 +86,18 @@ export async function createEstablecimiento(
 
   if (error) return { success: false, error: error.message }
 
-  // Auto-insert sectores predefinidos
+  const foto = formData.get('foto') as File | null
+  const foto_url = foto ? await uploadFoto(foto, data.id) : null
+  if (foto_url) {
+    await supabase.from('establecimientos').update({ foto_url }).eq('id', data.id)
+  }
+
   const sectores = SECTORES_PREDEFINIDOS.map(nombre => ({
     establecimiento_id: data.id,
     nombre,
     es_custom: false,
     cantidad_trabajadores: 0,
   }))
-
   await supabase.from('sectores_establecimiento').insert(sectores)
 
   revalidatePath(`/dashboard/empresas/${empresaId}`)
@@ -100,6 +122,9 @@ export async function updateEstablecimiento(
   const cantidad = cantidadStr ? parseInt(cantidadStr, 10) : null
   const { latitud, longitud } = await parseUbicacion(formData.get('ubicacion_gmaps') as string)
 
+  const foto = formData.get('foto') as File | null
+  const foto_url = foto?.size ? await uploadFoto(foto, id) : undefined
+
   const { error } = await supabase
     .from('establecimientos')
     .update({
@@ -113,6 +138,7 @@ export async function updateEstablecimiento(
       cantidad_trabajadores: isNaN(cantidad as number) ? null : cantidad,
       latitud,
       longitud,
+      ...(foto_url !== undefined && { foto_url }),
     })
     .eq('id', id)
 
