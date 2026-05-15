@@ -123,7 +123,7 @@ export default async function EmpresaDetailPage({ params }: Props) {
       {(() => {
         const conCoordenadas = (establecimientos ?? []).filter(
           e => e.latitude != null && e.longitude != null
-        ) as Array<typeof establecimientos[number] & { latitude: number; longitude: number }>
+        ) as Array<NonNullable<typeof establecimientos>[number] & { latitude: number; longitude: number }>
         if (!conCoordenadas.length) return null
         return (
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden mb-6" style={{ height: 288 }}>
