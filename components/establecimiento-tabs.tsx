@@ -44,6 +44,7 @@ interface EstablecimientoTabsProps {
   documentos: Documento[]
   documentTypes: DocumentType[]
   empleados: Empleado[]
+  defaultTab?: Tab
 }
 
 // ---- Sectores Tab ----
@@ -569,8 +570,9 @@ export function EstablecimientoTabs({
   documentos,
   documentTypes,
   empleados,
+  defaultTab,
 }: EstablecimientoTabsProps) {
-  const [active, setActive] = useState<Tab>('sectores')
+  const [active, setActive] = useState<Tab>(defaultTab ?? 'sectores')
 
   return (
     <div>

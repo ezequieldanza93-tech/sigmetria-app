@@ -9,10 +9,16 @@ import type { TipoEstablecimiento } from '@/lib/types'
 
 interface Props {
   params: Promise<{ id: string; estId: string }>
+  searchParams: Promise<{ tab?: string }>
 }
 
-export default async function EstablecimientoDetailPage({ params }: Props) {
+const VALID_TABS = ['sectores', 'empleados', 'siniestros', 'inspecciones', 'riesgos', 'documentos'] as const
+type Tab = typeof VALID_TABS[number]
+
+export default async function EstablecimientoDetailPage({ params, searchParams }: Props) {
   const { id, estId } = await params
+  const { tab } = await searchParams
+  const defaultTab = (VALID_TABS as readonly string[]).includes(tab ?? '') ? tab as Tab : undefined
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -160,6 +166,7 @@ export default async function EstablecimientoDetailPage({ params }: Props) {
         documentos={documentos ?? []}
         documentTypes={documentTypes ?? []}
         empleados={empleados ?? []}
+        defaultTab={defaultTab}
       />
     </div>
   )

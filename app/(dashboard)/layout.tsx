@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { Sidebar } from '@/components/sidebar'
+import { AppHeader } from '@/components/app-header'
 import { UserRole } from '@/lib/types'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -22,15 +22,15 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const consultoraNombre = (membership?.consultoras as { nombre?: string } | null)?.nombre ?? null
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <AppHeader
         fullName={profile?.full_name ?? user.email ?? 'Usuario'}
         email={user.email ?? ''}
         userRole={(membership?.role as UserRole) ?? null}
         systemRole={profile?.system_role ?? 'user'}
         consultoraNombre={consultoraNombre}
       />
-      <main className="flex-1 overflow-auto bg-gray-50">
+      <main className="flex-1">
         {children}
       </main>
     </div>
