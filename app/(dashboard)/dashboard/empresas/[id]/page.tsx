@@ -1,10 +1,19 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import { canWrite, UserRole } from '@/lib/types'
 import { formatCUIT } from '@/lib/utils'
 import { TIPO_ESTABLECIMIENTO_LABELS } from '@/lib/constants'
 import type { TipoEstablecimiento } from '@/lib/types'
+
+const EmpresaEstablecimientosMap = dynamic(
+  () => import('@/components/empresa-establecimientos-map').then(m => m.EmpresaEstablecimientosMap),
+  {
+    ssr: false,
+    loading: () => <div className="h-72 bg-gray-100 rounded-xl animate-pulse mb-6" />,
+  }
+)
 
 interface Props {
   params: Promise<{ id: string }>
@@ -31,7 +40,7 @@ export default async function EmpresaDetailPage({ params }: Props) {
 
   const { data: establecimientos } = await supabase
     .from('establecimientos')
-    .select('id, nombre, tipo, localidad, provincia, cantidad_trabajadores, is_active')
+    .select('id, nombre, tipo, localidad, provincia, cantidad_trabajadores, latitude, longitude, is_active')
     .eq('empresa_id', id)
     .eq('is_active', true)
     .order('nombre')
@@ -95,6 +104,22 @@ export default async function EmpresaDetailPage({ params }: Props) {
           <p className="text-gray-900">{empresa.codigo_postal ?? '—'}</p>
         </div>
       </div>
+
+      {/* Mapa de establecimientos */}
+      {(() => {
+        const conCoordenadas = (establecimientos ?? []).filter(
+          e => e.latitude != null && e.longitude != null
+        ) as Array<typeof establecimientos[number] & { latitude: number; longitude: number }>
+        if (!conCoordenadas.length) return null
+        return (
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden mb-6" style={{ height: 288 }}>
+            <EmpresaEstablecimientosMap
+              establecimientos={conCoordenadas}
+              empresaId={id}
+            />
+          </div>
+        )
+      })()}
 
       {/* Establecimientos */}
       <div className="mb-4 flex items-center justify-between">
