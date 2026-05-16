@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { AppHeader } from '@/components/app-header'
+import { BreadcrumbNav } from '@/components/breadcrumb-nav'
 import { UserRole } from '@/lib/types'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -30,6 +31,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         systemRole={profile?.system_role ?? 'user'}
         consultoraNombre={consultoraNombre}
       />
+      <BreadcrumbNav />
       <main className="flex-1">
         {children}
       </main>
