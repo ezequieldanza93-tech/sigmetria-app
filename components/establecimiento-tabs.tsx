@@ -16,6 +16,7 @@ import { createInspeccion } from '@/lib/actions/inspeccion'
 import { createRiesgo, resolverRiesgo } from '@/lib/actions/riesgo'
 import { createDocumento } from '@/lib/actions/documento'
 import { createClient } from '@/lib/supabase/client'
+import { EmpleadoModal } from '@/components/empleado-modal'
 import { formatDate } from '@/lib/utils'
 import { RIESGO_NIVEL_LABELS, DOCUMENTO_TIPO_LABELS } from '@/lib/constants'
 import { RIESGO_NIVEL_COLORS, SINIESTRO_ESTADO_COLORS, INSPECCION_ESTADO_COLORS } from '@/lib/types'
@@ -122,6 +123,7 @@ function PuestoRow({
   const [open, setOpen] = useState(false)
   const [empleados, setEmpleados] = useState<EmpleadoPuesto[] | null>(null)
   const [showAddEmpleado, setShowAddEmpleado] = useState(false)
+  const [selectedEp, setSelectedEp] = useState<EmpleadoPuesto | null>(null)
   const [isPending, startTransition] = useTransition()
 
   useEffect(() => {
@@ -186,10 +188,13 @@ function PuestoRow({
             <ul className="divide-y divide-gray-50 mt-1">
               {empleados.map(ep => (
                 <li key={ep.id} className="flex items-center justify-between py-1.5 text-sm">
-                  <span className="text-gray-800">
+                  <button
+                    onClick={() => setSelectedEp(ep)}
+                    className="text-left text-blue-600 hover:text-blue-800 font-medium"
+                  >
                     {ep.empleados?.apellido}, {ep.empleados?.nombre}
-                    {ep.empleados?.dni && <span className="text-gray-400 text-xs ml-2">DNI {ep.empleados.dni}</span>}
-                  </span>
+                    {ep.empleados?.dni && <span className="text-gray-400 text-xs font-normal ml-2">DNI {ep.empleados.dni}</span>}
+                  </button>
                   {canWrite && (
                     <button
                       onClick={() => handleRemoveEmpleado(ep.id)}
@@ -224,6 +229,17 @@ function PuestoRow({
             />
           )}
         </div>
+      )}
+
+      {selectedEp?.empleados && (
+        <EmpleadoModal
+          empleado={selectedEp.empleados}
+          open={!!selectedEp}
+          onClose={() => setSelectedEp(null)}
+          establecimientoId={establecimientoId}
+          empresaId={empresaId}
+          canWrite={canWrite}
+        />
       )}
     </div>
   )
