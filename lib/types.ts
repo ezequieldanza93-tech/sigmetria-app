@@ -59,6 +59,9 @@ export type DocumentoTipo =
   | 'instructivo'
   | 'otro'
 
+export type UnidadMedida =
+  | 'g' | 'kg' | 'ml' | 'l' | 'unidad' | 'par' | 'caja' | 'rollo' | 'metro'
+
 export interface Profile {
   id: string
   full_name: string
@@ -157,15 +160,95 @@ export interface UserAccess {
   created_at: string
 }
 
-export interface Empleado {
+export interface TipoPersona {
   id: string
   nombre: string
-  apellido: string
-  dni: string | null
-  fecha_ingreso: string | null
+  descripcion: string | null
+  created_at: string
+}
+
+export interface TipoOrganizacion {
+  id: string
+  nombre: string
+  descripcion: string | null
+  created_at: string
+}
+
+export interface Organizacion {
+  id: string
+  nombre: string
+  tipo_id: string
+  email: string | null
+  telefono: string | null
+  notas: string | null
   is_active: boolean
   created_at: string
   updated_at: string
+  tipo_organizaciones?: { nombre: string } | null
+}
+
+export interface DirectorioPersona {
+  id: string
+  tipo_id: string
+  nombre: string
+  apellido: string
+  dni: string | null
+  fecha_nacimiento: string | null
+  fecha_ingreso: string | null
+  legajo: string | null
+  telefono: string | null
+  email: string | null
+  organizacion_id: string | null
+  notas: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+  tipo_personas?: { nombre: string } | null
+  organizaciones?: { nombre: string } | null
+}
+
+export interface CategoriaProducto {
+  id: string
+  nombre: string
+  descripcion: string | null
+  created_at: string
+}
+
+export interface Producto {
+  id: string
+  nombre: string
+  descripcion: string | null
+  marca_id: string | null
+  categoria_id: string
+  tamano: number | null
+  unidad: UnidadMedida | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+  categoria_productos?: { nombre: string } | null
+  organizaciones?: { nombre: string } | null
+}
+
+export interface EppPorPuesto {
+  id: string
+  puesto_id: string
+  producto_id: string
+  horas_vida_util: number | null
+  created_at: string
+  productos?: Producto | null
+}
+
+export interface AsistenciaDiaria {
+  id: string
+  persona_id: string
+  establecimiento_id: string
+  fecha: string
+  hora_entrada: string
+  hora_salida: string | null
+  observaciones: string | null
+  registrado_por: string | null
+  created_at: string
+  directorio_personas?: { nombre: string; apellido: string } | null
 }
 
 export interface PuestoDeTrabajo {
@@ -179,17 +262,17 @@ export interface PuestoDeTrabajo {
 
 export interface EmpleadoPuesto {
   id: string
-  empleado_id: string
+  persona_id: string
   puesto_id: string
   fecha_desde: string | null
   created_at: string
-  empleados?: Empleado
+  directorio_personas?: DirectorioPersona
 }
 
 export interface Siniestro {
   id: string
   establecimiento_id: string
-  empleado_id: string | null
+  persona_id: string | null
   tipo: SiniestroTipo
   estado: SiniestroEstado
   fecha_ocurrencia: string
@@ -200,7 +283,7 @@ export interface Siniestro {
   reportado_por: string | null
   created_at: string
   updated_at: string
-  empleado?: Empleado
+  persona?: DirectorioPersona
 }
 
 export interface Inspeccion {

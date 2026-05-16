@@ -23,9 +23,19 @@ export async function createEmpleado(
   if (!nombre?.trim()) return { success: false, error: 'El nombre es obligatorio' }
   if (!apellido?.trim()) return { success: false, error: 'El apellido es obligatorio' }
 
-  const { data: empleado, error: empError } = await supabase
-    .from('empleados')
+  // Find tipo 'Empleado' id
+  const { data: tipoEmpleado } = await supabase
+    .from('tipo_personas')
+    .select('id')
+    .eq('nombre', 'Empleado')
+    .single()
+
+  if (!tipoEmpleado) return { success: false, error: 'Tipo de persona "Empleado" no encontrado' }
+
+  const { data: persona, error: personaError } = await supabase
+    .from('directorio_personas')
     .insert({
+      tipo_id: tipoEmpleado.id,
       nombre: nombre.trim(),
       apellido: apellido.trim(),
       dni: dni?.trim() || null,
@@ -34,17 +44,23 @@ export async function createEmpleado(
     .select('id')
     .single()
 
-  if (empError || !empleado) return { success: false, error: empError?.message ?? 'Error al crear empleado' }
+  if (personaError || !persona) return { success: false, error: personaError?.message ?? 'Error al crear persona' }
 
   const { error: junctionError } = await supabase
     .from('empleado_puesto')
     .insert({
-      empleado_id: empleado.id,
+      persona_id: persona.id,
       puesto_id: puestoId,
       fecha_desde: fechaIngreso || null,
     })
 
   if (junctionError) return { success: false, error: junctionError.message }
+
+  // Link persona to establecimiento (ignore conflict — might already be linked via another puesto)
+  await supabase.from('persona_establecimiento').upsert(
+    { persona_id: persona.id, establecimiento_id: establecimientoId },
+    { onConflict: 'persona_id,establecimiento_id', ignoreDuplicates: true }
+  )
 
   revalidatePath(`/dashboard/empresas/${empresaId}/establecimientos/${establecimientoId}`)
   return { success: true, data: null }

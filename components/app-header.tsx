@@ -25,6 +25,8 @@ function SigmetriaIsotipo() {
 const NAV = [
   { label: 'Dashboard', href: '/dashboard', exact: true },
   { label: 'Empresas', href: '/dashboard/empresas', exact: false },
+  { label: 'Organizaciones', href: '/dashboard/organizaciones', exact: false },
+  { label: 'Productos', href: '/dashboard/productos', exact: false },
 ]
 
 export function AppHeader({ fullName, email, consultoraNombre, userRole, systemRole }: AppHeaderProps) {

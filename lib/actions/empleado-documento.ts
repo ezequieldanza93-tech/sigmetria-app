@@ -40,7 +40,7 @@ export async function createEmpleadoDocumento(
   const { error } = await supabase
     .from('empleado_documentos')
     .insert({
-      empleado_id: empleadoId,
+      persona_id: empleadoId,
       tipo_id: tipoId,
       archivo_url: archivoUrl,
       fecha_emision: fechaEmision || null,

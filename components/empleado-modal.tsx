@@ -6,14 +6,14 @@ import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import { createEmpleadoDocumento } from '@/lib/actions/empleado-documento'
 import { formatDate } from '@/lib/utils'
-import type { Empleado, ActionResult } from '@/lib/types'
+import type { DirectorioPersona, ActionResult } from '@/lib/types'
 
 interface DocumentoTipo {
   id: string
   nombre: string
 }
 
-interface EmpleadoDoc {
+interface PersonaDoc {
   id: string
   tipo_id: string
   archivo_url: string | null
@@ -23,8 +23,8 @@ interface EmpleadoDoc {
   documento_tipos: { nombre: string } | null
 }
 
-interface EmpleadoModalProps {
-  empleado: Empleado
+interface PersonaModalProps {
+  persona: DirectorioPersona
   open: boolean
   onClose: () => void
   establecimientoId: string
@@ -88,15 +88,15 @@ function DocumentoForm({
 }
 
 export function EmpleadoModal({
-  empleado,
+  persona,
   open,
   onClose,
   establecimientoId,
   empresaId,
   canWrite,
-}: EmpleadoModalProps) {
+}: PersonaModalProps) {
   const [tab, setTab] = useState<'datos' | 'documentos'>('datos')
-  const [documentos, setDocumentos] = useState<EmpleadoDoc[] | null>(null)
+  const [documentos, setDocumentos] = useState<PersonaDoc[] | null>(null)
   const [tiposDoc, setTiposDoc] = useState<DocumentoTipo[] | null>(null)
   const [showForm, setShowForm] = useState(false)
 
@@ -113,9 +113,9 @@ export function EmpleadoModal({
       supabase
         .from('empleado_documentos')
         .select('id, tipo_id, archivo_url, fecha_emision, fecha_vencimiento, created_at, documento_tipos(nombre)')
-        .eq('empleado_id', empleado.id)
+        .eq('persona_id', persona.id)
         .order('created_at', { ascending: false })
-        .then(({ data }) => setDocumentos((data as EmpleadoDoc[]) ?? []))
+        .then(({ data }) => setDocumentos((data as PersonaDoc[]) ?? []))
     }
 
     if (tiposDoc === null) {
@@ -127,15 +127,15 @@ export function EmpleadoModal({
         .order('nombre')
         .then(({ data }) => setTiposDoc((data as DocumentoTipo[]) ?? []))
     }
-  }, [tab, open, empleado.id, documentos, tiposDoc])
+  }, [tab, open, persona.id, documentos, tiposDoc])
 
-  const docAction = createEmpleadoDocumento.bind(null, empleado.id, establecimientoId, empresaId)
+  const docAction = createEmpleadoDocumento.bind(null, persona.id, establecimientoId, empresaId)
 
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title={`${empleado.apellido}, ${empleado.nombre}`}
+      title={`${persona.apellido}, ${persona.nombre}`}
     >
       {/* Tabs */}
       <div className="flex gap-1 border-b border-gray-200 mb-4 -mt-1">
@@ -160,20 +160,44 @@ export function EmpleadoModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <p className="text-xs text-gray-400 font-medium mb-0.5">Nombre</p>
-              <p className="text-gray-900">{empleado.nombre}</p>
+              <p className="text-gray-900">{persona.nombre}</p>
             </div>
             <div>
               <p className="text-xs text-gray-400 font-medium mb-0.5">Apellido</p>
-              <p className="text-gray-900">{empleado.apellido}</p>
+              <p className="text-gray-900">{persona.apellido}</p>
             </div>
             <div>
               <p className="text-xs text-gray-400 font-medium mb-0.5">DNI</p>
-              <p className="text-gray-900">{empleado.dni ?? '—'}</p>
+              <p className="text-gray-900">{persona.dni ?? '—'}</p>
             </div>
             <div>
               <p className="text-xs text-gray-400 font-medium mb-0.5">Fecha de ingreso</p>
-              <p className="text-gray-900">{empleado.fecha_ingreso ? formatDate(empleado.fecha_ingreso) : '—'}</p>
+              <p className="text-gray-900">{persona.fecha_ingreso ? formatDate(persona.fecha_ingreso) : '—'}</p>
             </div>
+            {persona.legajo && (
+              <div>
+                <p className="text-xs text-gray-400 font-medium mb-0.5">Legajo</p>
+                <p className="text-gray-900">{persona.legajo}</p>
+              </div>
+            )}
+            {persona.telefono && (
+              <div>
+                <p className="text-xs text-gray-400 font-medium mb-0.5">Teléfono</p>
+                <p className="text-gray-900">{persona.telefono}</p>
+              </div>
+            )}
+            {persona.email && (
+              <div className="col-span-2">
+                <p className="text-xs text-gray-400 font-medium mb-0.5">Email</p>
+                <p className="text-gray-900">{persona.email}</p>
+              </div>
+            )}
+            {persona.tipo_personas && (
+              <div>
+                <p className="text-xs text-gray-400 font-medium mb-0.5">Tipo</p>
+                <p className="text-gray-900">{persona.tipo_personas.nombre}</p>
+              </div>
+            )}
           </div>
         </div>
       )}

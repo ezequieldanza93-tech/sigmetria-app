@@ -15,6 +15,8 @@ import { createSiniestro } from '@/lib/actions/siniestro'
 import { createInspeccion } from '@/lib/actions/inspeccion'
 import { createRiesgo, resolverRiesgo } from '@/lib/actions/riesgo'
 import { createDocumento } from '@/lib/actions/documento'
+import { addEppToPuesto, removeEppFromPuesto } from '@/lib/actions/epp-por-puesto'
+import { createAsistencia } from '@/lib/actions/asistencia'
 import { createClient } from '@/lib/supabase/client'
 import { EmpleadoModal } from '@/components/empleado-modal'
 import { formatDate } from '@/lib/utils'
@@ -30,14 +32,16 @@ import type {
   Riesgo,
   Documento,
   DocumentType,
-  Empleado,
+  DirectorioPersona,
+  EppPorPuesto,
+  Producto,
   ActionResult,
   RiesgoNivel,
   SiniestroEstado,
   InspeccionEstado,
 } from '@/lib/types'
 
-type Tab = 'sectores' | 'empleados' | 'siniestros' | 'inspecciones' | 'riesgos' | 'documentos'
+type Tab = 'sectores' | 'personas' | 'siniestros' | 'inspecciones' | 'riesgos' | 'documentos' | 'asistencia'
 
 interface EstablecimientoTabsProps {
   establecimientoId: string
@@ -49,12 +53,11 @@ interface EstablecimientoTabsProps {
   riesgos: Riesgo[]
   documentos: Documento[]
   documentTypes: DocumentType[]
-  empleados: Empleado[]
   defaultTab?: Tab
 }
 
-// ---- Empleado form inline ----
-function EmpleadoInlineForm({
+// ---- Persona inline form ----
+function PersonaInlineForm({
   action,
   onSuccess,
   onCancel,
@@ -106,7 +109,65 @@ function PuestoInlineForm({
   )
 }
 
-// ---- Puesto row (expandable → empleados) ----
+// ---- EPP inline form ----
+function EppInlineForm({
+  action,
+  onSuccess,
+  onCancel,
+}: {
+  action: (prev: ActionResult<null> | null, fd: FormData) => Promise<ActionResult<null>>
+  onSuccess: () => void
+  onCancel: () => void
+}) {
+  const [state, formAction, pending] = useActionState(action, null)
+  const [productos, setProductos] = useState<Producto[] | null>(null)
+
+  useEffect(() => { if (state?.success) onSuccess() }, [state])
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase
+      .from('productos')
+      .select('id, nombre, tamano, unidad, categoria_productos(nombre)')
+      .eq('is_active', true)
+      .order('nombre')
+      .then(({ data }) => setProductos((data as Producto[]) ?? []))
+  }, [])
+
+  return (
+    <form action={formAction} className="bg-blue-50 rounded-lg p-3 mt-2 space-y-2">
+      <p className="text-xs font-semibold text-blue-700 mb-1">Agregar EPP</p>
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="text-xs text-gray-600 block mb-1">Producto *</label>
+          <select name="producto_id" required className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm bg-white">
+            <option value="">Seleccioná…</option>
+            {productos === null ? (
+              <option disabled>Cargando…</option>
+            ) : (
+              productos.map(p => (
+                <option key={p.id} value={p.id}>
+                  {p.nombre}{p.tamano ? ` ${p.tamano}${p.unidad ?? ''}` : ''}
+                </option>
+              ))
+            )}
+          </select>
+        </div>
+        <div>
+          <label className="text-xs text-gray-600 block mb-1">Vida útil (hs)</label>
+          <input name="horas_vida_util" type="number" min="0" step="0.5" placeholder="Opcional" className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
+        </div>
+      </div>
+      {state?.error && <p className="text-xs text-red-600">{state.error}</p>}
+      <div className="flex gap-2 justify-end">
+        <Button size="sm" variant="secondary" type="button" onClick={onCancel}>Cancelar</Button>
+        <Button size="sm" type="submit" disabled={pending}>{pending ? '…' : 'Agregar'}</Button>
+      </div>
+    </form>
+  )
+}
+
+// ---- Puesto row (expandable → personas + EPP) ----
 function PuestoRow({
   puesto,
   establecimientoId,
@@ -121,25 +182,43 @@ function PuestoRow({
   onDeleted: () => void
 }) {
   const [open, setOpen] = useState(false)
-  const [empleados, setEmpleados] = useState<EmpleadoPuesto[] | null>(null)
-  const [showAddEmpleado, setShowAddEmpleado] = useState(false)
+  const [personas, setPersonas] = useState<EmpleadoPuesto[] | null>(null)
+  const [epp, setEpp] = useState<EppPorPuesto[] | null>(null)
+  const [showAddPersona, setShowAddPersona] = useState(false)
+  const [showAddEpp, setShowAddEpp] = useState(false)
   const [selectedEp, setSelectedEp] = useState<EmpleadoPuesto | null>(null)
   const [isPending, startTransition] = useTransition()
 
   useEffect(() => {
-    if (!open || empleados !== null) return
+    if (!open) return
     const supabase = createClient()
-    supabase
-      .from('empleado_puesto')
-      .select('id, empleado_id, fecha_desde, empleados(id, nombre, apellido, dni, fecha_ingreso)')
-      .eq('puesto_id', puesto.id)
-      .then(({ data }) => setEmpleados((data as EmpleadoPuesto[]) ?? []))
-  }, [open, empleados, puesto.id])
+    if (personas === null) {
+      supabase
+        .from('empleado_puesto')
+        .select('id, persona_id, fecha_desde, directorio_personas(id, nombre, apellido, dni, fecha_ingreso, legajo, telefono, email, tipo_id, tipo_personas(nombre))')
+        .eq('puesto_id', puesto.id)
+        .then(({ data }) => setPersonas((data as EmpleadoPuesto[]) ?? []))
+    }
+    if (epp === null) {
+      supabase
+        .from('epp_por_puesto')
+        .select('id, puesto_id, producto_id, horas_vida_util, productos(id, nombre, tamano, unidad, categoria_productos(nombre))')
+        .eq('puesto_id', puesto.id)
+        .then(({ data }) => setEpp((data as EppPorPuesto[]) ?? []))
+    }
+  }, [open, personas, epp, puesto.id])
 
-  function handleRemoveEmpleado(epId: string) {
+  function handleRemovePersona(epId: string) {
     startTransition(async () => {
       await removeEmpleadoFromPuesto(epId, establecimientoId, empresaId)
-      setEmpleados(prev => prev?.filter(e => e.id !== epId) ?? null)
+      setPersonas(prev => prev?.filter(e => e.id !== epId) ?? null)
+    })
+  }
+
+  function handleRemoveEpp(eppId: string) {
+    startTransition(async () => {
+      await removeEppFromPuesto(eppId, establecimientoId, empresaId)
+      setEpp(prev => prev?.filter(e => e.id !== eppId) ?? null)
     })
   }
 
@@ -150,7 +229,8 @@ function PuestoRow({
     })
   }
 
-  const empleadoAction = createEmpleado.bind(null, puesto.id, establecimientoId, empresaId)
+  const personaAction = createEmpleado.bind(null, puesto.id, establecimientoId, empresaId)
+  const eppAction = addEppToPuesto.bind(null, puesto.id, establecimientoId, empresaId)
 
   return (
     <div className="border border-gray-100 rounded-lg">
@@ -163,8 +243,11 @@ function PuestoRow({
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
           </svg>
           {puesto.nombre}
-          {empleados !== null && (
-            <span className="text-xs text-gray-400 font-normal">({empleados.length})</span>
+          {personas !== null && (
+            <span className="text-xs text-gray-400 font-normal">({personas.length} persona{personas.length !== 1 ? 's' : ''})</span>
+          )}
+          {epp !== null && epp.length > 0 && (
+            <span className="text-xs bg-blue-100 text-blue-700 font-medium px-1.5 py-0.5 rounded">{epp.length} EPP</span>
           )}
         </button>
         {canWrite && (
@@ -179,61 +262,106 @@ function PuestoRow({
       </div>
 
       {open && (
-        <div className="px-4 pb-3 border-t border-gray-50">
-          {empleados === null ? (
-            <p className="text-xs text-gray-400 py-2">Cargando…</p>
-          ) : empleados.length === 0 && !showAddEmpleado ? (
-            <p className="text-xs text-gray-400 py-2">Sin empleados en este puesto.</p>
-          ) : (
-            <ul className="divide-y divide-gray-50 mt-1">
-              {empleados.map(ep => (
-                <li key={ep.id} className="flex items-center justify-between py-1.5 text-sm">
-                  <button
-                    onClick={() => setSelectedEp(ep)}
-                    className="text-left text-blue-600 hover:text-blue-800 font-medium"
-                  >
-                    {ep.empleados?.apellido}, {ep.empleados?.nombre}
-                    {ep.empleados?.dni && <span className="text-gray-400 text-xs font-normal ml-2">DNI {ep.empleados.dni}</span>}
-                  </button>
-                  {canWrite && (
+        <div className="px-4 pb-3 border-t border-gray-50 space-y-3">
+          {/* Personas section */}
+          <div>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mt-2 mb-1">Personas</p>
+            {personas === null ? (
+              <p className="text-xs text-gray-400 py-1">Cargando…</p>
+            ) : personas.length === 0 && !showAddPersona ? (
+              <p className="text-xs text-gray-400 py-1">Sin personas en este puesto.</p>
+            ) : (
+              <ul className="divide-y divide-gray-50">
+                {personas.map(ep => (
+                  <li key={ep.id} className="flex items-center justify-between py-1.5 text-sm">
                     <button
-                      onClick={() => handleRemoveEmpleado(ep.id)}
-                      disabled={isPending}
-                      className="text-xs text-red-400 hover:text-red-600"
+                      onClick={() => setSelectedEp(ep)}
+                      className="text-left text-blue-600 hover:text-blue-800 font-medium"
                     >
-                      Quitar
+                      {ep.directorio_personas?.apellido}, {ep.directorio_personas?.nombre}
+                      {ep.directorio_personas?.dni && <span className="text-gray-400 text-xs font-normal ml-2">DNI {ep.directorio_personas.dni}</span>}
                     </button>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
+                    {canWrite && (
+                      <button
+                        onClick={() => handleRemovePersona(ep.id)}
+                        disabled={isPending}
+                        className="text-xs text-red-400 hover:text-red-600"
+                      >
+                        Quitar
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {canWrite && !showAddPersona && (
+              <button
+                onClick={() => setShowAddPersona(true)}
+                className="mt-1 text-xs text-blue-600 hover:text-blue-800 font-medium"
+              >
+                + Agregar persona
+              </button>
+            )}
+            {showAddPersona && (
+              <PersonaInlineForm
+                action={personaAction}
+                onSuccess={() => { setShowAddPersona(false); setPersonas(null) }}
+                onCancel={() => setShowAddPersona(false)}
+              />
+            )}
+          </div>
 
-          {canWrite && !showAddEmpleado && (
-            <button
-              onClick={() => setShowAddEmpleado(true)}
-              className="mt-2 text-xs text-blue-600 hover:text-blue-800 font-medium"
-            >
-              + Agregar empleado
-            </button>
-          )}
-
-          {showAddEmpleado && (
-            <EmpleadoInlineForm
-              action={empleadoAction}
-              onSuccess={() => {
-                setShowAddEmpleado(false)
-                setEmpleados(null)
-              }}
-              onCancel={() => setShowAddEmpleado(false)}
-            />
-          )}
+          {/* EPP section */}
+          <div>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">EPP Requerido</p>
+            {epp === null ? (
+              <p className="text-xs text-gray-400 py-1">Cargando…</p>
+            ) : epp.length === 0 && !showAddEpp ? (
+              <p className="text-xs text-gray-400 py-1">Sin EPP definido.</p>
+            ) : (
+              <ul className="divide-y divide-gray-50">
+                {epp.map(e => (
+                  <li key={e.id} className="flex items-center justify-between py-1.5 text-sm">
+                    <span className="text-gray-800">
+                      {e.productos?.nombre}
+                      {e.productos?.tamano && <span className="text-gray-500 ml-1">{e.productos.tamano}{e.productos.unidad ?? ''}</span>}
+                      {e.horas_vida_util && <span className="text-gray-400 text-xs ml-2">{e.horas_vida_util}hs vida útil</span>}
+                    </span>
+                    {canWrite && (
+                      <button
+                        onClick={() => handleRemoveEpp(e.id)}
+                        disabled={isPending}
+                        className="text-xs text-red-400 hover:text-red-600"
+                      >
+                        Quitar
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {canWrite && !showAddEpp && (
+              <button
+                onClick={() => setShowAddEpp(true)}
+                className="mt-1 text-xs text-blue-600 hover:text-blue-800 font-medium"
+              >
+                + Agregar EPP
+              </button>
+            )}
+            {showAddEpp && (
+              <EppInlineForm
+                action={eppAction}
+                onSuccess={() => { setShowAddEpp(false); setEpp(null) }}
+                onCancel={() => setShowAddEpp(false)}
+              />
+            )}
+          </div>
         </div>
       )}
 
-      {selectedEp?.empleados && (
+      {selectedEp?.directorio_personas && (
         <EmpleadoModal
-          empleado={selectedEp.empleados}
+          persona={selectedEp.directorio_personas}
           open={!!selectedEp}
           onClose={() => setSelectedEp(null)}
           establecimientoId={establecimientoId}
@@ -316,7 +444,6 @@ function SectorRow({
           )}
         </button>
 
-        {/* Workers count inline edit */}
         {canWrite && editingId === sector.id ? (
           <div className="flex items-center gap-1.5">
             <input
@@ -385,10 +512,7 @@ function SectorRow({
           {showAddPuesto && (
             <PuestoInlineForm
               action={puestoAction}
-              onSuccess={() => {
-                setShowAddPuesto(false)
-                setPuestos(null)
-              }}
+              onSuccess={() => { setShowAddPuesto(false); setPuestos(null) }}
               onCancel={() => setShowAddPuesto(false)}
             />
           )}
@@ -454,16 +578,270 @@ function SectoresTab({
   )
 }
 
+// ---- Personas Tab ----
+function PersonasTab({
+  establecimientoId,
+  empresaId,
+  canWrite,
+}: {
+  establecimientoId: string
+  empresaId: string
+  canWrite: boolean
+}) {
+  const [personas, setPersonas] = useState<DirectorioPersona[] | null>(null)
+  const [tiposPersona, setTiposPersona] = useState<{ id: string; nombre: string }[]>([])
+  const [activeTipo, setActiveTipo] = useState<string>('todos')
+  const [selectedPersona, setSelectedPersona] = useState<DirectorioPersona | null>(null)
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase
+      .from('persona_establecimiento')
+      .select('directorio_personas(id, nombre, apellido, dni, fecha_nacimiento, fecha_ingreso, legajo, telefono, email, tipo_id, tipo_personas(nombre), organizacion_id, notas, is_active, created_at, updated_at)')
+      .eq('establecimiento_id', establecimientoId)
+      .then(({ data }) => {
+        const list = (data ?? []).map((r: { directorio_personas: DirectorioPersona }) => r.directorio_personas).filter(Boolean)
+        setPersonas(list)
+      })
+
+    supabase
+      .from('tipo_personas')
+      .select('id, nombre')
+      .order('nombre')
+      .then(({ data }) => setTiposPersona(data ?? []))
+  }, [establecimientoId])
+
+  const filtered = personas === null
+    ? null
+    : activeTipo === 'todos'
+      ? personas
+      : personas.filter(p => p.tipo_id === activeTipo)
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-semibold text-gray-900">Directorio de Personas</h3>
+      </div>
+
+      {/* Filter tabs */}
+      <div className="flex gap-1 mb-4 flex-wrap">
+        <button
+          onClick={() => setActiveTipo('todos')}
+          className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${activeTipo === 'todos' ? 'bg-gray-900 text-white border-gray-900' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
+        >
+          Todos {personas !== null && `(${personas.length})`}
+        </button>
+        {tiposPersona.map(t => {
+          const count = personas?.filter(p => p.tipo_id === t.id).length ?? 0
+          return (
+            <button
+              key={t.id}
+              onClick={() => setActiveTipo(t.id)}
+              className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${activeTipo === t.id ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
+            >
+              {t.nombre} {personas !== null && `(${count})`}
+            </button>
+          )
+        })}
+      </div>
+
+      {filtered === null ? (
+        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400 text-sm">Cargando…</div>
+      ) : filtered.length === 0 ? (
+        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400 text-sm">
+          No hay personas registradas{activeTipo !== 'todos' ? ' de este tipo' : ''}.
+          <p className="text-xs mt-1">Las personas se agregan desde la vista de Sectores → Puestos.</p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="border-b border-gray-100 bg-gray-50">
+              <tr className="text-left">
+                <th className="px-5 py-3 text-gray-500 font-medium">Nombre</th>
+                <th className="px-5 py-3 text-gray-500 font-medium">DNI</th>
+                <th className="px-5 py-3 text-gray-500 font-medium">Tipo</th>
+                <th className="px-5 py-3 text-gray-500 font-medium">Ingreso</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {filtered.map(p => (
+                <tr key={p.id} className="hover:bg-gray-50">
+                  <td className="px-5 py-3.5">
+                    <button
+                      onClick={() => setSelectedPersona(p)}
+                      className="text-blue-600 hover:text-blue-800 font-medium text-left"
+                    >
+                      {p.apellido}, {p.nombre}
+                    </button>
+                  </td>
+                  <td className="px-5 py-3.5 text-gray-500">{p.dni ?? '—'}</td>
+                  <td className="px-5 py-3.5">
+                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
+                      {p.tipo_personas?.nombre ?? '—'}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3.5 text-gray-500">{p.fecha_ingreso ? formatDate(p.fecha_ingreso) : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {selectedPersona && (
+        <EmpleadoModal
+          persona={selectedPersona}
+          open={!!selectedPersona}
+          onClose={() => setSelectedPersona(null)}
+          establecimientoId={establecimientoId}
+          empresaId={empresaId}
+          canWrite={canWrite}
+        />
+      )}
+    </div>
+  )
+}
+
+// ---- Asistencia Tab ----
+function AsistenciaTab({
+  establecimientoId,
+  empresaId,
+  canWrite,
+}: {
+  establecimientoId: string
+  empresaId: string
+  canWrite: boolean
+}) {
+  const [registros, setRegistros] = useState<{ id: string; fecha: string; hora_entrada: string; hora_salida: string | null; directorio_personas: { nombre: string; apellido: string } | null }[] | null>(null)
+  const [personas, setPersonas] = useState<DirectorioPersona[]>([])
+  const [showForm, setShowForm] = useState(false)
+
+  useEffect(() => {
+    const supabase = createClient()
+    const today = new Date().toISOString().split('T')[0]
+    supabase
+      .from('asistencia_diaria')
+      .select('id, fecha, hora_entrada, hora_salida, directorio_personas(nombre, apellido)')
+      .eq('establecimiento_id', establecimientoId)
+      .eq('fecha', today)
+      .order('hora_entrada', { ascending: true })
+      .then(({ data }) => setRegistros(data ?? []))
+
+    supabase
+      .from('persona_establecimiento')
+      .select('directorio_personas(id, nombre, apellido, tipo_personas(nombre))')
+      .eq('establecimiento_id', establecimientoId)
+      .then(({ data }) => {
+        const list = (data ?? []).map((r: { directorio_personas: DirectorioPersona }) => r.directorio_personas).filter(Boolean)
+        setPersonas(list)
+      })
+  }, [establecimientoId])
+
+  const [state, formAction, pending] = useActionState(
+    createAsistencia.bind(null, establecimientoId, empresaId),
+    null
+  )
+
+  useEffect(() => {
+    if (state?.success) {
+      setShowForm(false)
+      setRegistros(null)
+    }
+  }, [state])
+
+  const today = new Date().toISOString().split('T')[0]
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-semibold text-gray-900">Asistencia del día</h3>
+        {canWrite && !showForm && (
+          <Button size="sm" onClick={() => setShowForm(true)}>+ Registrar</Button>
+        )}
+      </div>
+
+      {showForm && (
+        <form action={formAction} className="bg-gray-50 rounded-xl border border-gray-200 p-4 mb-4 space-y-3">
+          <p className="text-sm font-medium text-gray-700">Nuevo registro de asistencia</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-gray-600 block mb-1">Persona *</label>
+              <select name="persona_id" required className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm bg-white">
+                <option value="">Seleccioná…</option>
+                {personas.map(p => (
+                  <option key={p.id} value={p.id}>{p.apellido}, {p.nombre}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-gray-600 block mb-1">Fecha *</label>
+              <input name="fecha" type="date" required defaultValue={today} className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-600 block mb-1">Hora entrada *</label>
+              <input name="hora_entrada" type="time" required className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-600 block mb-1">Hora salida</label>
+              <input name="hora_salida" type="time" className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs text-gray-600 block mb-1">Observaciones</label>
+            <input name="observaciones" type="text" placeholder="Opcional…" className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
+          </div>
+          {state?.error && <p className="text-xs text-red-600">{state.error}</p>}
+          <div className="flex gap-2 justify-end">
+            <Button size="sm" variant="secondary" type="button" onClick={() => setShowForm(false)}>Cancelar</Button>
+            <Button size="sm" type="submit" disabled={pending}>{pending ? 'Guardando…' : 'Registrar'}</Button>
+          </div>
+        </form>
+      )}
+
+      {registros === null ? (
+        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400 text-sm">Cargando…</div>
+      ) : registros.length === 0 ? (
+        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400 text-sm">
+          Sin registros para hoy.
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="border-b border-gray-100 bg-gray-50">
+              <tr className="text-left">
+                <th className="px-5 py-3 text-gray-500 font-medium">Persona</th>
+                <th className="px-5 py-3 text-gray-500 font-medium">Fecha</th>
+                <th className="px-5 py-3 text-gray-500 font-medium">Entrada</th>
+                <th className="px-5 py-3 text-gray-500 font-medium">Salida</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {registros.map(r => (
+                <tr key={r.id} className="hover:bg-gray-50">
+                  <td className="px-5 py-3.5 font-medium text-gray-900">
+                    {r.directorio_personas ? `${r.directorio_personas.apellido}, ${r.directorio_personas.nombre}` : '—'}
+                  </td>
+                  <td className="px-5 py-3.5 text-gray-500">{formatDate(r.fecha)}</td>
+                  <td className="px-5 py-3.5 text-gray-700">{new Date(r.hora_entrada).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}</td>
+                  <td className="px-5 py-3.5 text-gray-500">{r.hora_salida ? new Date(r.hora_salida).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ---- Siniestros Tab ----
 function SiniestrosTab({
   siniestros,
-  empleados,
   establecimientoId,
   empresaId,
   canWrite,
 }: {
   siniestros: Siniestro[]
-  empleados: Empleado[]
   establecimientoId: string
   empresaId: string
   canWrite: boolean
@@ -524,7 +902,7 @@ function SiniestrosTab({
       <Modal open={showModal} onClose={() => setShowModal(false)} title="Registrar Siniestro">
         <SiniestroForm
           action={siniestroAction}
-          empleados={empleados}
+          personas={[]}
           onSuccess={() => setShowModal(false)}
         />
       </Modal>
@@ -701,7 +1079,6 @@ function RiesgosTab({
             )
           })}
 
-          {/* Resueltos */}
           {riesgos.some(r => r.resuelto) && (
             <details className="mt-2">
               <summary className="text-sm text-gray-500 cursor-pointer hover:text-gray-700">
@@ -779,7 +1156,6 @@ function DocumentosTab({
               <tr className="text-left">
                 <th className="px-5 py-3 text-gray-500 font-medium">Tipo</th>
                 <th className="px-5 py-3 text-gray-500 font-medium">Vencimiento</th>
-                <th className="px-5 py-3 text-gray-500 font-medium">Legajo</th>
                 <th className="px-5 py-3 text-gray-500 font-medium">Archivo</th>
               </tr>
             </thead>
@@ -791,9 +1167,6 @@ function DocumentosTab({
                     <td className="px-5 py-3.5 font-medium text-gray-900">{typeName}</td>
                     <td className={`px-5 py-3.5 ${vencimientoClass(d.fecha_vencimiento)}`}>
                       {d.fecha_vencimiento ? formatDate(d.fecha_vencimiento) : '—'}
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <span className="text-gray-300">—</span>
                     </td>
                     <td className="px-5 py-3.5">
                       {d.archivo_url ? (
@@ -827,7 +1200,8 @@ function DocumentosTab({
 // ---- Main component ----
 const TABS: { id: Tab; label: string }[] = [
   { id: 'sectores', label: 'Sectores' },
-  { id: 'empleados', label: 'Empleados' },
+  { id: 'personas', label: 'Personas' },
+  { id: 'asistencia', label: 'Asistencia' },
   { id: 'siniestros', label: 'Siniestros' },
   { id: 'inspecciones', label: 'Inspecciones' },
   { id: 'riesgos', label: 'Riesgos' },
@@ -844,7 +1218,6 @@ export function EstablecimientoTabs({
   riesgos,
   documentos,
   documentTypes,
-  empleados,
   defaultTab,
 }: EstablecimientoTabsProps) {
   const [active, setActive] = useState<Tab>(defaultTab ?? 'sectores')
@@ -877,15 +1250,23 @@ export function EstablecimientoTabs({
           canWrite={canWrite}
         />
       )}
-      {active === 'empleados' && (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400">
-          Gestión de empleados próximamente
-        </div>
+      {active === 'personas' && (
+        <PersonasTab
+          establecimientoId={establecimientoId}
+          empresaId={empresaId}
+          canWrite={canWrite}
+        />
+      )}
+      {active === 'asistencia' && (
+        <AsistenciaTab
+          establecimientoId={establecimientoId}
+          empresaId={empresaId}
+          canWrite={canWrite}
+        />
       )}
       {active === 'siniestros' && (
         <SiniestrosTab
           siniestros={siniestros}
-          empleados={empleados}
           establecimientoId={establecimientoId}
           empresaId={empresaId}
           canWrite={canWrite}

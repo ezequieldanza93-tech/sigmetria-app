@@ -27,7 +27,7 @@ export async function createSiniestro(
     .from('siniestros')
     .insert({
       establecimiento_id: establecimientoId,
-      empleado_id: (formData.get('empleado_id') as string) || null,
+      persona_id: (formData.get('persona_id') as string) || null,
       tipo,
       estado: 'pendiente' as SiniestroEstado,
       fecha_ocurrencia: fechaOcurrencia,

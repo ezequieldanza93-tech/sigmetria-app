@@ -12,7 +12,7 @@ interface Props {
   searchParams: Promise<{ tab?: string }>
 }
 
-const VALID_TABS = ['sectores', 'empleados', 'siniestros', 'inspecciones', 'riesgos', 'documentos'] as const
+const VALID_TABS = ['sectores', 'personas', 'asistencia', 'siniestros', 'inspecciones', 'riesgos', 'documentos'] as const
 type Tab = typeof VALID_TABS[number]
 
 export default async function EstablecimientoDetailPage({ params, searchParams }: Props) {
@@ -50,7 +50,6 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
     { data: inspecciones },
     { data: riesgos },
     { data: documentos },
-    { data: empleados },
     { data: documentTypes },
   ] = await Promise.all([
     supabase
@@ -80,7 +79,6 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
       .select('*, documento_tipos(nombre)')
       .eq('establecimiento_id', estId)
       .order('created_at', { ascending: false }),
-    Promise.resolve({ data: [] }),
     supabase
       .from('documento_tipos')
       .select('id, nombre, aplica_empresa, aplica_establecimiento, aplica_empleado, is_active')
@@ -161,7 +159,6 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
         riesgos={riesgos ?? []}
         documentos={documentos ?? []}
         documentTypes={documentTypes ?? []}
-        empleados={empleados ?? []}
         defaultTab={defaultTab}
       />
     </div>

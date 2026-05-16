@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { SINIESTRO_TIPO_OPTIONS } from '@/lib/constants'
-import type { ActionResult, Empleado } from '@/lib/types'
+import type { ActionResult, DirectorioPersona } from '@/lib/types'
 
 type SiniestroFormAction = (
   prevState: ActionResult<null> | null,
@@ -15,11 +15,11 @@ type SiniestroFormAction = (
 
 interface SiniestroFormProps {
   action: SiniestroFormAction
-  empleados: Empleado[]
+  personas: DirectorioPersona[]
   onSuccess: () => void
 }
 
-export function SiniestroForm({ action, empleados, onSuccess }: SiniestroFormProps) {
+export function SiniestroForm({ action, personas, onSuccess }: SiniestroFormProps) {
   const [state, formAction, isPending] = useActionState(
     async (prev: ActionResult<null> | null, fd: FormData) => {
       const result = await action(prev, fd)
@@ -29,9 +29,9 @@ export function SiniestroForm({ action, empleados, onSuccess }: SiniestroFormPro
     null
   )
 
-  const empleadoOptions = empleados.map(e => ({
-    value: e.id,
-    label: `${e.apellido}, ${e.nombre} — ${e.cargo ?? 'Sin cargo'}`,
+  const personaOptions = personas.map(p => ({
+    value: p.id,
+    label: `${p.apellido}, ${p.nombre}${p.dni ? ` — DNI ${p.dni}` : ''}`,
   }))
 
   return (
@@ -43,10 +43,10 @@ export function SiniestroForm({ action, empleados, onSuccess }: SiniestroFormPro
       )}
 
       <Select
-        label="Empleado involucrado"
-        name="empleado_id"
-        options={empleadoOptions}
-        placeholder="Seleccionar empleado..."
+        label="Persona involucrada"
+        name="persona_id"
+        options={personaOptions}
+        placeholder="Seleccionar persona..."
       />
 
       <div className="grid grid-cols-2 gap-4">
