@@ -78,7 +78,7 @@ function PersonaInlineForm({
         <input name="dni" placeholder="DNI" className="border border-gray-300 rounded px-2 py-1.5 text-sm" />
         <input name="fecha_ingreso" type="date" className="border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-600" />
       </div>
-      {state?.error && <p className="text-xs text-red-600">{state.error}</p>}
+      {state && !state.success && <p className="text-xs text-red-600">{state.error}</p>}
       <div className="flex gap-2 justify-end">
         <Button size="sm" variant="secondary" type="button" onClick={onCancel}>Cancelar</Button>
         <Button size="sm" type="submit" disabled={pending}>{pending ? 'Guardando…' : 'Agregar'}</Button>
@@ -102,7 +102,7 @@ function PuestoInlineForm({
   return (
     <form action={formAction} className="flex items-center gap-2 mt-2">
       <input name="nombre" placeholder="Nombre del puesto *" required className="flex-1 border border-gray-300 rounded px-2 py-1.5 text-sm" />
-      {state?.error && <span className="text-xs text-red-600">{state.error}</span>}
+      {state && !state.success && <span className="text-xs text-red-600">{state.error}</span>}
       <Button size="sm" variant="secondary" type="button" onClick={onCancel}>×</Button>
       <Button size="sm" type="submit" disabled={pending}>{pending ? '…' : 'Agregar'}</Button>
     </form>
@@ -158,7 +158,7 @@ function EppInlineForm({
           <input name="horas_vida_util" type="number" min="0" step="0.5" placeholder="Opcional" className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
         </div>
       </div>
-      {state?.error && <p className="text-xs text-red-600">{state.error}</p>}
+      {state && !state.success && <p className="text-xs text-red-600">{state.error}</p>}
       <div className="flex gap-2 justify-end">
         <Button size="sm" variant="secondary" type="button" onClick={onCancel}>Cancelar</Button>
         <Button size="sm" type="submit" disabled={pending}>{pending ? '…' : 'Agregar'}</Button>
@@ -790,7 +790,7 @@ function AsistenciaTab({
             <label className="text-xs text-gray-600 block mb-1">Observaciones</label>
             <input name="observaciones" type="text" placeholder="Opcional…" className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
           </div>
-          {state?.error && <p className="text-xs text-red-600">{state.error}</p>}
+          {state && !state.success && <p className="text-xs text-red-600">{state.error}</p>}
           <div className="flex gap-2 justify-end">
             <Button size="sm" variant="secondary" type="button" onClick={() => setShowForm(false)}>Cancelar</Button>
             <Button size="sm" type="submit" disabled={pending}>{pending ? 'Guardando…' : 'Registrar'}</Button>
