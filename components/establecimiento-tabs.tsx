@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect, useActionState } from 'react'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { SectorForm } from '@/components/forms/sector-form'
@@ -9,16 +9,21 @@ import { InspeccionForm } from '@/components/forms/inspeccion-form'
 import { RiesgoForm } from '@/components/forms/riesgo-form'
 import { DocumentoForm } from '@/components/forms/documento-form'
 import { updateSectorTrabajadores, createSectorCustom, deleteSector } from '@/lib/actions/sector'
+import { createPuesto, deletePuesto } from '@/lib/actions/puesto'
+import { createEmpleado, removeEmpleadoFromPuesto } from '@/lib/actions/empleado'
 import { createSiniestro } from '@/lib/actions/siniestro'
 import { createInspeccion } from '@/lib/actions/inspeccion'
 import { createRiesgo, resolverRiesgo } from '@/lib/actions/riesgo'
 import { createDocumento } from '@/lib/actions/documento'
+import { createClient } from '@/lib/supabase/client'
 import { formatDate } from '@/lib/utils'
 import { RIESGO_NIVEL_LABELS, DOCUMENTO_TIPO_LABELS } from '@/lib/constants'
 import { RIESGO_NIVEL_COLORS, SINIESTRO_ESTADO_COLORS, INSPECCION_ESTADO_COLORS } from '@/lib/types'
 import { SINIESTRO_TIPO_LABELS, SINIESTRO_ESTADO_LABELS, INSPECCION_ESTADO_LABELS } from '@/lib/constants'
 import type {
   SectorEstablecimiento,
+  PuestoDeTrabajo,
+  EmpleadoPuesto,
   Siniestro,
   Inspeccion,
   Riesgo,
@@ -47,6 +52,336 @@ interface EstablecimientoTabsProps {
   defaultTab?: Tab
 }
 
+// ---- Empleado form inline ----
+function EmpleadoInlineForm({
+  action,
+  onSuccess,
+  onCancel,
+}: {
+  action: (prev: ActionResult<null> | null, fd: FormData) => Promise<ActionResult<null>>
+  onSuccess: () => void
+  onCancel: () => void
+}) {
+  const [state, formAction, pending] = useActionState(action, null)
+  useEffect(() => { if (state?.success) onSuccess() }, [state])
+  return (
+    <form action={formAction} className="bg-gray-50 rounded-lg p-3 mt-2 space-y-2">
+      <div className="grid grid-cols-2 gap-2">
+        <input name="nombre" placeholder="Nombre *" required className="border border-gray-300 rounded px-2 py-1.5 text-sm" />
+        <input name="apellido" placeholder="Apellido *" required className="border border-gray-300 rounded px-2 py-1.5 text-sm" />
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <input name="dni" placeholder="DNI" className="border border-gray-300 rounded px-2 py-1.5 text-sm" />
+        <input name="fecha_ingreso" type="date" className="border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-600" />
+      </div>
+      {state?.error && <p className="text-xs text-red-600">{state.error}</p>}
+      <div className="flex gap-2 justify-end">
+        <Button size="sm" variant="secondary" type="button" onClick={onCancel}>Cancelar</Button>
+        <Button size="sm" type="submit" disabled={pending}>{pending ? 'Guardando…' : 'Agregar'}</Button>
+      </div>
+    </form>
+  )
+}
+
+// ---- Puesto form inline ----
+function PuestoInlineForm({
+  action,
+  onSuccess,
+  onCancel,
+}: {
+  action: (prev: ActionResult<null> | null, fd: FormData) => Promise<ActionResult<null>>
+  onSuccess: () => void
+  onCancel: () => void
+}) {
+  const [state, formAction, pending] = useActionState(action, null)
+  useEffect(() => { if (state?.success) onSuccess() }, [state])
+  return (
+    <form action={formAction} className="flex items-center gap-2 mt-2">
+      <input name="nombre" placeholder="Nombre del puesto *" required className="flex-1 border border-gray-300 rounded px-2 py-1.5 text-sm" />
+      {state?.error && <span className="text-xs text-red-600">{state.error}</span>}
+      <Button size="sm" variant="secondary" type="button" onClick={onCancel}>×</Button>
+      <Button size="sm" type="submit" disabled={pending}>{pending ? '…' : 'Agregar'}</Button>
+    </form>
+  )
+}
+
+// ---- Puesto row (expandable → empleados) ----
+function PuestoRow({
+  puesto,
+  establecimientoId,
+  empresaId,
+  canWrite,
+  onDeleted,
+}: {
+  puesto: PuestoDeTrabajo
+  establecimientoId: string
+  empresaId: string
+  canWrite: boolean
+  onDeleted: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [empleados, setEmpleados] = useState<EmpleadoPuesto[] | null>(null)
+  const [showAddEmpleado, setShowAddEmpleado] = useState(false)
+  const [isPending, startTransition] = useTransition()
+
+  useEffect(() => {
+    if (!open || empleados !== null) return
+    const supabase = createClient()
+    supabase
+      .from('empleado_puesto')
+      .select('id, empleado_id, fecha_desde, empleados(id, nombre, apellido, dni, fecha_ingreso)')
+      .eq('puesto_id', puesto.id)
+      .then(({ data }) => setEmpleados((data as EmpleadoPuesto[]) ?? []))
+  }, [open, empleados, puesto.id])
+
+  function handleRemoveEmpleado(epId: string) {
+    startTransition(async () => {
+      await removeEmpleadoFromPuesto(epId, establecimientoId, empresaId)
+      setEmpleados(prev => prev?.filter(e => e.id !== epId) ?? null)
+    })
+  }
+
+  function handleDeletePuesto() {
+    startTransition(async () => {
+      await deletePuesto(puesto.id, establecimientoId, empresaId)
+      onDeleted()
+    })
+  }
+
+  const empleadoAction = createEmpleado.bind(null, puesto.id, establecimientoId, empresaId)
+
+  return (
+    <div className="border border-gray-100 rounded-lg">
+      <div className="flex items-center gap-2 px-4 py-2.5">
+        <button
+          onClick={() => setOpen(v => !v)}
+          className="flex items-center gap-2 flex-1 text-left text-sm font-medium text-gray-800 hover:text-gray-900"
+        >
+          <svg className={`w-3.5 h-3.5 text-gray-400 transition-transform shrink-0 ${open ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+          {puesto.nombre}
+          {empleados !== null && (
+            <span className="text-xs text-gray-400 font-normal">({empleados.length})</span>
+          )}
+        </button>
+        {canWrite && (
+          <button
+            onClick={handleDeletePuesto}
+            disabled={isPending}
+            className="text-xs text-red-400 hover:text-red-600 transition-colors"
+          >
+            Eliminar
+          </button>
+        )}
+      </div>
+
+      {open && (
+        <div className="px-4 pb-3 border-t border-gray-50">
+          {empleados === null ? (
+            <p className="text-xs text-gray-400 py-2">Cargando…</p>
+          ) : empleados.length === 0 && !showAddEmpleado ? (
+            <p className="text-xs text-gray-400 py-2">Sin empleados en este puesto.</p>
+          ) : (
+            <ul className="divide-y divide-gray-50 mt-1">
+              {empleados.map(ep => (
+                <li key={ep.id} className="flex items-center justify-between py-1.5 text-sm">
+                  <span className="text-gray-800">
+                    {ep.empleados?.apellido}, {ep.empleados?.nombre}
+                    {ep.empleados?.dni && <span className="text-gray-400 text-xs ml-2">DNI {ep.empleados.dni}</span>}
+                  </span>
+                  {canWrite && (
+                    <button
+                      onClick={() => handleRemoveEmpleado(ep.id)}
+                      disabled={isPending}
+                      className="text-xs text-red-400 hover:text-red-600"
+                    >
+                      Quitar
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {canWrite && !showAddEmpleado && (
+            <button
+              onClick={() => setShowAddEmpleado(true)}
+              className="mt-2 text-xs text-blue-600 hover:text-blue-800 font-medium"
+            >
+              + Agregar empleado
+            </button>
+          )}
+
+          {showAddEmpleado && (
+            <EmpleadoInlineForm
+              action={empleadoAction}
+              onSuccess={() => {
+                setShowAddEmpleado(false)
+                setEmpleados(null)
+              }}
+              onCancel={() => setShowAddEmpleado(false)}
+            />
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ---- Sector row (expandable → puestos) ----
+function SectorRow({
+  sector,
+  establecimientoId,
+  empresaId,
+  canWrite,
+  onDeleted,
+}: {
+  sector: SectorEstablecimiento
+  establecimientoId: string
+  empresaId: string
+  canWrite: boolean
+  onDeleted: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [puestos, setPuestos] = useState<PuestoDeTrabajo[] | null>(null)
+  const [showAddPuesto, setShowAddPuesto] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingVal, setEditingVal] = useState('')
+  const [isPending, startTransition] = useTransition()
+
+  useEffect(() => {
+    if (!open || puestos !== null) return
+    const supabase = createClient()
+    supabase
+      .from('puestos_de_trabajo')
+      .select('*')
+      .eq('sector_id', sector.id)
+      .eq('is_active', true)
+      .order('nombre')
+      .then(({ data }) => setPuestos((data as PuestoDeTrabajo[]) ?? []))
+  }, [open, puestos, sector.id])
+
+  function saveWorkers(sectorId: string) {
+    const val = parseInt(editingVal, 10)
+    if (isNaN(val) || val < 0) return
+    startTransition(async () => {
+      await updateSectorTrabajadores(sectorId, val, establecimientoId, empresaId)
+      setEditingId(null)
+    })
+  }
+
+  function handleDeleteSector() {
+    startTransition(async () => {
+      await deleteSector(sector.id, establecimientoId, empresaId)
+      onDeleted()
+    })
+  }
+
+  const puestoAction = createPuesto.bind(null, sector.id, establecimientoId, empresaId)
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200">
+      {/* Sector header */}
+      <div className="flex items-center gap-3 px-5 py-3.5">
+        <button
+          onClick={() => setOpen(v => !v)}
+          className="flex items-center gap-2 flex-1 text-left"
+        >
+          <svg className={`w-4 h-4 text-gray-400 transition-transform shrink-0 ${open ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+          <span className="font-medium text-gray-900 text-sm">{sector.nombre}</span>
+          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${sector.es_custom ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'}`}>
+            {sector.es_custom ? 'Custom' : 'Predefinido'}
+          </span>
+          {puestos !== null && (
+            <span className="text-xs text-gray-400">{puestos.length} puesto{puestos.length !== 1 ? 's' : ''}</span>
+          )}
+        </button>
+
+        {/* Workers count inline edit */}
+        {canWrite && editingId === sector.id ? (
+          <div className="flex items-center gap-1.5">
+            <input
+              type="number" min="0" value={editingVal}
+              onChange={e => setEditingVal(e.target.value)}
+              className="w-16 border border-gray-300 rounded px-2 py-1 text-xs text-center"
+              autoFocus
+            />
+            <Button size="sm" onClick={() => saveWorkers(sector.id)} disabled={isPending}>OK</Button>
+            <Button size="sm" variant="secondary" onClick={() => setEditingId(null)}>×</Button>
+          </div>
+        ) : (
+          <button
+            onClick={() => canWrite && (setEditingId(sector.id), setEditingVal(sector.cantidad_trabajadores.toString()))}
+            className={`text-sm text-gray-500 ${canWrite ? 'hover:text-blue-600 cursor-pointer' : 'cursor-default'}`}
+            title={canWrite ? 'Click para editar trabajadores' : undefined}
+          >
+            {sector.cantidad_trabajadores} trabajadores
+          </button>
+        )}
+
+        {canWrite && sector.es_custom && (
+          <button
+            onClick={handleDeleteSector}
+            disabled={isPending}
+            className="text-xs text-red-400 hover:text-red-600 transition-colors"
+          >
+            Eliminar
+          </button>
+        )}
+      </div>
+
+      {/* Puestos section */}
+      {open && (
+        <div className="border-t border-gray-100 px-5 py-3 space-y-2">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Puestos de trabajo</p>
+
+          {puestos === null ? (
+            <p className="text-xs text-gray-400">Cargando…</p>
+          ) : puestos.length === 0 && !showAddPuesto ? (
+            <p className="text-xs text-gray-400">Sin puestos definidos.</p>
+          ) : (
+            <div className="space-y-1.5">
+              {puestos.map(puesto => (
+                <PuestoRow
+                  key={puesto.id}
+                  puesto={puesto}
+                  establecimientoId={establecimientoId}
+                  empresaId={empresaId}
+                  canWrite={canWrite}
+                  onDeleted={() => setPuestos(prev => prev?.filter(p => p.id !== puesto.id) ?? null)}
+                />
+              ))}
+            </div>
+          )}
+
+          {canWrite && !showAddPuesto && (
+            <button
+              onClick={() => setShowAddPuesto(true)}
+              className="text-xs text-blue-600 hover:text-blue-800 font-medium mt-1"
+            >
+              + Agregar puesto
+            </button>
+          )}
+
+          {showAddPuesto && (
+            <PuestoInlineForm
+              action={puestoAction}
+              onSuccess={() => {
+                setShowAddPuesto(false)
+                setPuestos(null)
+              }}
+              onCancel={() => setShowAddPuesto(false)}
+            />
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ---- Sectores Tab ----
 function SectoresTab({
   sectores,
@@ -60,31 +395,8 @@ function SectoresTab({
   canWrite: boolean
 }) {
   const [showModal, setShowModal] = useState(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editingVal, setEditingVal] = useState<string>('')
-  const [isPending, startTransition] = useTransition()
-
+  const [localSectores, setLocalSectores] = useState(sectores)
   const sectorAction = createSectorCustom.bind(null, establecimientoId, empresaId)
-
-  function startEdit(sector: SectorEstablecimiento) {
-    setEditingId(sector.id)
-    setEditingVal(sector.cantidad_trabajadores.toString())
-  }
-
-  function saveEdit(sectorId: string) {
-    const val = parseInt(editingVal, 10)
-    if (isNaN(val) || val < 0) return
-    startTransition(async () => {
-      await updateSectorTrabajadores(sectorId, val, establecimientoId, empresaId)
-      setEditingId(null)
-    })
-  }
-
-  function handleDelete(sectorId: string) {
-    startTransition(async () => {
-      await deleteSector(sectorId, establecimientoId, empresaId)
-    })
-  }
 
   return (
     <div>
@@ -97,69 +409,24 @@ function SectoresTab({
         )}
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="border-b border-gray-100 bg-gray-50">
-            <tr className="text-left">
-              <th className="px-5 py-3 text-gray-500 font-medium">Sector</th>
-              <th className="px-5 py-3 text-gray-500 font-medium">Tipo</th>
-              <th className="px-5 py-3 text-gray-500 font-medium text-center">Trabajadores</th>
-              {canWrite && <th className="px-5 py-3 text-gray-500 font-medium"></th>}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {sectores.map(s => (
-              <tr key={s.id} className="hover:bg-gray-50">
-                <td className="px-5 py-3.5 font-medium text-gray-900">{s.nombre}</td>
-                <td className="px-5 py-3.5">
-                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${s.es_custom ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'}`}>
-                    {s.es_custom ? 'Custom' : 'Predefinido'}
-                  </span>
-                </td>
-                <td className="px-5 py-3.5 text-center">
-                  {canWrite && editingId === s.id ? (
-                    <div className="flex items-center justify-center gap-2">
-                      <input
-                        type="number"
-                        min="0"
-                        value={editingVal}
-                        onChange={e => setEditingVal(e.target.value)}
-                        className="w-20 border border-gray-300 rounded px-2 py-1 text-sm text-center"
-                        autoFocus
-                      />
-                      <Button size="sm" onClick={() => saveEdit(s.id)} disabled={isPending}>OK</Button>
-                      <Button size="sm" variant="secondary" onClick={() => setEditingId(null)}>×</Button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => canWrite && startEdit(s)}
-                      className={`font-medium ${canWrite ? 'cursor-pointer hover:text-blue-600' : 'cursor-default'} text-gray-900`}
-                      title={canWrite ? 'Click para editar' : undefined}
-                    >
-                      {s.cantidad_trabajadores}
-                    </button>
-                  )}
-                </td>
-                {canWrite && (
-                  <td className="px-5 py-3.5 text-right">
-                    {s.es_custom && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleDelete(s.id)}
-                        disabled={isPending}
-                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                      >
-                        Eliminar
-                      </Button>
-                    )}
-                  </td>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {localSectores.length === 0 ? (
+        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400 text-sm">
+          No hay sectores registrados
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {localSectores.map(sector => (
+            <SectorRow
+              key={sector.id}
+              sector={sector}
+              establecimientoId={establecimientoId}
+              empresaId={empresaId}
+              canWrite={canWrite}
+              onDeleted={() => setLocalSectores(prev => prev.filter(s => s.id !== sector.id))}
+            />
+          ))}
+        </div>
+      )}
 
       <Modal open={showModal} onClose={() => setShowModal(false)} title="Agregar Sector Personalizado">
         <SectorForm

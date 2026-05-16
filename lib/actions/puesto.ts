@@ -1,0 +1,49 @@
+'use server'
+
+import { createClient } from '@/lib/supabase/server'
+import { revalidatePath } from 'next/cache'
+import type { ActionResult } from '@/lib/types'
+
+export async function createPuesto(
+  sectorId: string,
+  establecimientoId: string,
+  empresaId: string,
+  _prev: ActionResult<null> | null,
+  formData: FormData
+): Promise<ActionResult<null>> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'No autenticado' }
+
+  const nombre = formData.get('nombre') as string
+  if (!nombre?.trim()) return { success: false, error: 'El nombre es obligatorio' }
+
+  const { error } = await supabase
+    .from('puestos_de_trabajo')
+    .insert({ sector_id: sectorId, nombre: nombre.trim() })
+
+  if (error) return { success: false, error: error.message }
+
+  revalidatePath(`/dashboard/empresas/${empresaId}/establecimientos/${establecimientoId}`)
+  return { success: true, data: null }
+}
+
+export async function deletePuesto(
+  puestoId: string,
+  establecimientoId: string,
+  empresaId: string
+): Promise<ActionResult<null>> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'No autenticado' }
+
+  const { error } = await supabase
+    .from('puestos_de_trabajo')
+    .delete()
+    .eq('id', puestoId)
+
+  if (error) return { success: false, error: error.message }
+
+  revalidatePath(`/dashboard/empresas/${empresaId}/establecimientos/${establecimientoId}`)
+  return { success: true, data: null }
+}

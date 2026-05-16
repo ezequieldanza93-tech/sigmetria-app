@@ -159,15 +159,31 @@ export interface UserAccess {
 
 export interface Empleado {
   id: string
-  establecimiento_id: string
   nombre: string
   apellido: string
   dni: string | null
-  cargo: string | null
   fecha_ingreso: string | null
   is_active: boolean
   created_at: string
   updated_at: string
+}
+
+export interface PuestoDeTrabajo {
+  id: string
+  sector_id: string
+  nombre: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface EmpleadoPuesto {
+  id: string
+  empleado_id: string
+  puesto_id: string
+  fecha_desde: string | null
+  created_at: string
+  empleados?: Empleado
 }
 
 export interface Siniestro {
