@@ -70,7 +70,7 @@ export default function OrganizacionesPage() {
       .select('*, tipo_organizaciones(nombre)')
       .eq('is_active', true)
       .order('nombre')
-      .then(({ data }) => setOrganizaciones((data as Organizacion[]) ?? []))
+      .then(({ data }) => setOrganizaciones((data as unknown as Organizacion[]) ?? []))
   }
 
   useEffect(() => {

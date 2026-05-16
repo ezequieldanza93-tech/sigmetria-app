@@ -131,7 +131,7 @@ function EppInlineForm({
       .select('id, nombre, tamano, unidad, categoria_productos(nombre)')
       .eq('is_active', true)
       .order('nombre')
-      .then(({ data }) => setProductos((data as Producto[]) ?? []))
+      .then(({ data }) => setProductos((data as unknown as Producto[]) ?? []))
   }, [])
 
   return (
@@ -197,14 +197,14 @@ function PuestoRow({
         .from('empleado_puesto')
         .select('id, persona_id, fecha_desde, directorio_personas(id, nombre, apellido, dni, fecha_ingreso, legajo, telefono, email, tipo_id, tipo_personas(nombre))')
         .eq('puesto_id', puesto.id)
-        .then(({ data }) => setPersonas((data as EmpleadoPuesto[]) ?? []))
+        .then(({ data }) => setPersonas((data as unknown as EmpleadoPuesto[]) ?? []))
     }
     if (epp === null) {
       supabase
         .from('epp_por_puesto')
         .select('id, puesto_id, producto_id, horas_vida_util, productos(id, nombre, tamano, unidad, categoria_productos(nombre))')
         .eq('puesto_id', puesto.id)
-        .then(({ data }) => setEpp((data as EppPorPuesto[]) ?? []))
+        .then(({ data }) => setEpp((data as unknown as EppPorPuesto[]) ?? []))
     }
   }, [open, personas, epp, puesto.id])
 
@@ -600,7 +600,7 @@ function PersonasTab({
       .select('directorio_personas(id, nombre, apellido, dni, fecha_nacimiento, fecha_ingreso, legajo, telefono, email, tipo_id, tipo_personas(nombre), organizacion_id, notas, is_active, created_at, updated_at)')
       .eq('establecimiento_id', establecimientoId)
       .then(({ data }) => {
-        const list = (data ?? []).map((r: { directorio_personas: DirectorioPersona }) => r.directorio_personas).filter(Boolean)
+        const list = ((data ?? []) as unknown as { directorio_personas: DirectorioPersona }[]).map(r => r.directorio_personas).filter(Boolean)
         setPersonas(list)
       })
 
@@ -732,7 +732,7 @@ function AsistenciaTab({
       .select('directorio_personas(id, nombre, apellido, tipo_personas(nombre))')
       .eq('establecimiento_id', establecimientoId)
       .then(({ data }) => {
-        const list = (data ?? []).map((r: { directorio_personas: DirectorioPersona }) => r.directorio_personas).filter(Boolean)
+        const list = ((data ?? []) as unknown as { directorio_personas: DirectorioPersona }[]).map(r => r.directorio_personas).filter(Boolean)
         setPersonas(list)
       })
   }, [establecimientoId])

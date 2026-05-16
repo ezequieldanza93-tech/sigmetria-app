@@ -87,7 +87,7 @@ export default function ProductosPage() {
       .select('*, categoria_productos(nombre), organizaciones(nombre)')
       .eq('is_active', true)
       .order('nombre')
-      .then(({ data }) => setProductos((data as Producto[]) ?? []))
+      .then(({ data }) => setProductos((data as unknown as Producto[]) ?? []))
   }
 
   useEffect(() => {

@@ -115,7 +115,7 @@ export function EmpleadoModal({
         .select('id, tipo_id, archivo_url, fecha_emision, fecha_vencimiento, created_at, documento_tipos(nombre)')
         .eq('persona_id', persona.id)
         .order('created_at', { ascending: false })
-        .then(({ data }) => setDocumentos((data as PersonaDoc[]) ?? []))
+        .then(({ data }) => setDocumentos((data as unknown as PersonaDoc[]) ?? []))
     }
 
     if (tiposDoc === null) {
