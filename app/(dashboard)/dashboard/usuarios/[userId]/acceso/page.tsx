@@ -58,7 +58,7 @@ export default async function UserAccesoPage({ params }: Props) {
     .from('empresas')
     .select(`
       id, consultora_id, razon_social, cuit, rubro, domicilio, localidad, provincia, codigo_postal, is_active, created_at, updated_at,
-      establecimientos(id, empresa_id, nombre, tipo, domicilio, localidad, provincia, codigo_postal, actividad_principal, cantidad_trabajadores, is_active, created_at, updated_at)
+      establecimientos(id, empresa_id, nombre, tipo, domicilio, localidad, provincia, codigo_postal, actividad_principal, cantidad_trabajadores, status, created_at, updated_at)
     `)
     .eq('is_active', true)
     .order('razon_social')
@@ -71,7 +71,7 @@ export default async function UserAccesoPage({ params }: Props) {
 
   const empresas: EmpresaConEstablecimientos[] = (empresasRaw ?? []).map(e => ({
     ...e,
-    establecimientos: ((e.establecimientos ?? []) as Establecimiento[]).filter(est => est.is_active),
+    establecimientos: ((e.establecimientos ?? []) as Establecimiento[]).filter(est => est.status !== 'cancelled'),
   }))
 
   return (

@@ -24,7 +24,7 @@ export default async function DashboardPage({ searchParams }: Props) {
     supabase.from('profiles').select('full_name, system_role').eq('id', user.id).single(),
     supabase.from('consultora_members').select('role, consultoras(nombre)').eq('user_id', user.id).eq('is_active', true).maybeSingle(),
     supabase.from('empresas').select('id, razon_social').eq('is_active', true).order('razon_social'),
-    supabase.from('establecimientos').select('id, nombre, empresa_id').eq('is_active', true).order('nombre'),
+    supabase.from('establecimientos').select('id, nombre, empresa_id').neq('status', 'cancelled').order('nombre'),
   ])
 
   const isDeveloper = profile?.system_role === 'developer'
@@ -45,7 +45,7 @@ export default async function DashboardPage({ searchParams }: Props) {
     ] = await Promise.all([
       supabase.from('riesgos').select('*', { count: 'exact', head: true }).eq('establecimiento_id', estId).eq('resuelto', false),
       supabase.from('inspecciones').select('*', { count: 'exact', head: true }).eq('establecimiento_id', estId).eq('estado', 'programada'),
-      supabase.from('documentos').select('id')
+      supabase.from('establecimiento_documentos').select('id')
         .eq('establecimiento_id', estId)
         .not('fecha_vencimiento', 'is', null)
         .lte('fecha_vencimiento', new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0])

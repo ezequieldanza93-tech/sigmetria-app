@@ -58,9 +58,7 @@ export function EmpresaDocumentosSection({ empresaId, documentos, documentTypes,
             </thead>
             <tbody className="divide-y divide-gray-50">
               {documentos.map(d => {
-                const fileUrl = d.file_url ?? d.archivo_url
-                const fileName = d.file_name ?? (d.archivo_url ? 'Ver archivo' : null)
-                const typeName = d.document_types?.name ?? d.nombre
+                const typeName = d.documento_tipos?.nombre ?? '—'
                 return (
                   <tr key={d.id} className="hover:bg-gray-50">
                     <td className="px-5 py-3.5 font-medium text-gray-900">{typeName}</td>
@@ -68,23 +66,17 @@ export function EmpresaDocumentosSection({ empresaId, documentos, documentTypes,
                       {d.fecha_vencimiento ? formatDate(d.fecha_vencimiento) : '—'}
                     </td>
                     <td className="px-5 py-3.5">
-                      {d.include_in_legajo ? (
-                        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
-                          Legajo
-                        </span>
-                      ) : (
-                        <span className="text-gray-300">—</span>
-                      )}
+                      <span className="text-gray-300">—</span>
                     </td>
                     <td className="px-5 py-3.5">
-                      {fileUrl ? (
+                      {d.archivo_url ? (
                         <a
-                          href={fileUrl}
+                          href={d.archivo_url}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-blue-600 hover:underline text-xs truncate max-w-[200px] block"
                         >
-                          {fileName}
+                          Ver archivo
                         </a>
                       ) : (
                         <span className="text-gray-400">—</span>

@@ -107,6 +107,15 @@ export interface Empresa {
   updated_at: string
 }
 
+export type EstablecimientoStatus =
+  | 'active'
+  | 'finished'
+  | 'proposal'
+  | 'lead'
+  | 'on_hold'
+  | 'not_awarded'
+  | 'cancelled'
+
 export interface Establecimiento {
   id: string
   empresa_id: string
@@ -121,7 +130,7 @@ export interface Establecimiento {
   latitude: number | null
   longitude: number | null
   photo_site: string | null
-  is_active: boolean
+  status: EstablecimientoStatus
   created_at: string
   updated_at: string
 }
@@ -238,8 +247,10 @@ export interface Medicion {
 
 export interface DocumentType {
   id: string
-  name: string
-  applies_to: 'empresa' | 'establecimiento' | 'both'
+  nombre: string
+  aplica_empresa: boolean
+  aplica_establecimiento: boolean
+  aplica_empleado: boolean
   is_active: boolean
 }
 
@@ -247,20 +258,13 @@ export interface Documento {
   id: string
   empresa_id: string | null
   establecimiento_id: string | null
-  tipo: DocumentoTipo
-  nombre: string
+  tipo_id: string | null
+  documento_tipos: { nombre: string } | null
   archivo_url: string | null
   fecha_emision: string | null
   fecha_vencimiento: string | null
-  es_vigente: boolean
-  document_type_id: string | null
-  document_types: { name: string } | null
-  include_in_legajo: boolean
-  file_url: string | null
-  file_name: string | null
   subido_por: string | null
   created_at: string
-  updated_at: string
 }
 
 // ---- Labels & Colors ----

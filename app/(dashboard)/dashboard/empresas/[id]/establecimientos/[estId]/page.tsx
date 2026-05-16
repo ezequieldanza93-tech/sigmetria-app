@@ -76,21 +76,17 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
       .eq('establecimiento_id', estId)
       .order('fecha_identificacion', { ascending: false }),
     supabase
-      .from('documentos')
-      .select('*, document_types(name)')
+      .from('establecimiento_documentos')
+      .select('*, documento_tipos(nombre)')
       .eq('establecimiento_id', estId)
       .order('created_at', { ascending: false }),
+    Promise.resolve({ data: [] }),
     supabase
-      .from('empleados')
-      .select('*')
-      .eq('establecimiento_id', estId)
+      .from('documento_tipos')
+      .select('id, nombre, aplica_empresa, aplica_establecimiento, aplica_empleado, is_active')
       .eq('is_active', true)
-      .order('apellido'),
-    supabase
-      .from('document_types')
-      .select('id, name, applies_to, is_active')
-      .eq('is_active', true)
-      .order('name'),
+      .eq('aplica_establecimiento', true)
+      .order('nombre'),
   ])
 
   return (

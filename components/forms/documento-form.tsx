@@ -18,9 +18,13 @@ export function DocumentoForm({ action, documentTypes, context, onSuccess }: Pro
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
 
-  const filteredTypes = documentTypes.filter(
-    dt => dt.is_active && (dt.applies_to === 'both' || dt.applies_to === context)
-  )
+  const filteredTypes = documentTypes.filter(dt => {
+    if (!dt.is_active) return false
+    if (context === 'empresa') return dt.aplica_empresa
+    if (context === 'establecimiento') return dt.aplica_establecimiento
+    if (context === 'empleado') return dt.aplica_empleado
+    return false
+  })
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -88,7 +92,7 @@ export function DocumentoForm({ action, documentTypes, context, onSuccess }: Pro
         >
           <option value="">Seleccionar tipo...</option>
           {filteredTypes.map(dt => (
-            <option key={dt.id} value={dt.id}>{dt.name}</option>
+            <option key={dt.id} value={dt.id}>{dt.nombre}</option>
           ))}
         </select>
       </div>

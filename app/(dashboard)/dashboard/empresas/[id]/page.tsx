@@ -33,21 +33,21 @@ export default async function EmpresaDetailPage({ params }: Props) {
   const [{ data: establecimientos }, { data: documentos }, { data: documentTypes }] = await Promise.all([
     supabase
       .from('establecimientos')
-      .select('id, nombre, tipo, localidad, provincia, cantidad_trabajadores, latitude, longitude, is_active')
+      .select('id, nombre, tipo, localidad, provincia, cantidad_trabajadores, latitude, longitude')
       .eq('empresa_id', id)
-      .eq('is_active', true)
+      .neq('status', 'cancelled')
       .order('nombre'),
     supabase
-      .from('documentos')
-      .select('*, document_types(name)')
+      .from('empresa_documentos')
+      .select('*, documento_tipos(nombre)')
       .eq('empresa_id', id)
-      .is('establecimiento_id', null)
       .order('created_at', { ascending: false }),
     supabase
-      .from('document_types')
-      .select('id, name, applies_to, is_active')
+      .from('documento_tipos')
+      .select('id, nombre, aplica_empresa, aplica_establecimiento, aplica_empleado, is_active')
       .eq('is_active', true)
-      .order('name'),
+      .eq('aplica_empresa', true)
+      .order('nombre'),
   ])
 
   const puedeEditar = canWrite(
