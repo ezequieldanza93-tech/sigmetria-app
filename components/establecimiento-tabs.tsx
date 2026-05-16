@@ -35,6 +35,7 @@ import type {
   DirectorioPersona,
   EppPorPuesto,
   Producto,
+  AsistenciaDiaria,
   ActionResult,
   RiesgoNivel,
   SiniestroEstado,
@@ -712,7 +713,7 @@ function AsistenciaTab({
   empresaId: string
   canWrite: boolean
 }) {
-  const [registros, setRegistros] = useState<{ id: string; fecha: string; hora_entrada: string; hora_salida: string | null; directorio_personas: { nombre: string; apellido: string } | null }[] | null>(null)
+  const [registros, setRegistros] = useState<AsistenciaDiaria[] | null>(null)
   const [personas, setPersonas] = useState<DirectorioPersona[]>([])
   const [showForm, setShowForm] = useState(false)
 
@@ -725,7 +726,7 @@ function AsistenciaTab({
       .eq('establecimiento_id', establecimientoId)
       .eq('fecha', today)
       .order('hora_entrada', { ascending: true })
-      .then(({ data }) => setRegistros(data ?? []))
+      .then(({ data }) => setRegistros((data as unknown as AsistenciaDiaria[]) ?? []))
 
     supabase
       .from('persona_establecimiento')
