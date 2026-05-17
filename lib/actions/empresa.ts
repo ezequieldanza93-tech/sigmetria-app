@@ -41,12 +41,18 @@ export async function createEmpresa(_prev: ActionResult<{ id: string }> | null, 
     .insert({
       consultora_id: consultoraId,
       razon_social: razonSocial.trim(),
+      tipo_identidad_impositiva: (formData.get('tipo_identidad_impositiva') as string) || null,
       cuit: (formData.get('cuit') as string) || null,
       rubro: (formData.get('rubro') as string) || null,
       domicilio: (formData.get('domicilio') as string) || null,
       localidad: (formData.get('localidad') as string) || null,
       provincia: (formData.get('provincia') as string) || null,
       codigo_postal: (formData.get('codigo_postal') as string) || null,
+      art: (formData.get('art') as string) || null,
+      art_numero_contrato: (formData.get('art_numero_contrato') as string) || null,
+      logo_small_url: (formData.get('logo_small_url') as string) || null,
+      logo_destacado_url: (formData.get('logo_destacado_url') as string) || null,
+      informacion_general: (formData.get('informacion_general') as string) || null,
     })
     .select('id')
     .single()
@@ -69,12 +75,18 @@ export async function updateEmpresa(id: string, _prev: ActionResult<null> | null
     .from('empresas')
     .update({
       razon_social: razonSocial.trim(),
+      tipo_identidad_impositiva: (formData.get('tipo_identidad_impositiva') as string) || null,
       cuit: (formData.get('cuit') as string) || null,
       rubro: (formData.get('rubro') as string) || null,
       domicilio: (formData.get('domicilio') as string) || null,
       localidad: (formData.get('localidad') as string) || null,
       provincia: (formData.get('provincia') as string) || null,
       codigo_postal: (formData.get('codigo_postal') as string) || null,
+      art: (formData.get('art') as string) || null,
+      art_numero_contrato: (formData.get('art_numero_contrato') as string) || null,
+      logo_small_url: (formData.get('logo_small_url') as string) || null,
+      logo_destacado_url: (formData.get('logo_destacado_url') as string) || null,
+      informacion_general: (formData.get('informacion_general') as string) || null,
     })
     .eq('id', id)
 

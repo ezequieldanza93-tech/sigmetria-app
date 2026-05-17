@@ -37,9 +37,20 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
         placeholder="Empresa S.A."
       />
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-3 gap-4">
+        <Select
+          label="Tipo identidad impositiva"
+          name="tipo_identidad_impositiva"
+          defaultValue={empresa?.tipo_identidad_impositiva ?? ''}
+          options={[
+            { value: 'CUIT', label: 'CUIT' },
+            { value: 'CUIL', label: 'CUIL' },
+            { value: 'CDI', label: 'CDI' },
+          ]}
+          placeholder="—"
+        />
         <Input
-          label="CUIT"
+          label="Código único impositivo"
           name="cuit"
           defaultValue={empresa?.cuit ?? ''}
           placeholder="20-12345678-9"
@@ -82,6 +93,47 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
         placeholder="1001"
         className="w-32"
       />
+
+      <div className="grid grid-cols-2 gap-4">
+        <Input
+          label="ART"
+          name="art"
+          defaultValue={empresa?.art ?? ''}
+          placeholder="Nombre de la aseguradora"
+        />
+        <Input
+          label="Nº de contrato ART"
+          name="art_numero_contrato"
+          defaultValue={empresa?.art_numero_contrato ?? ''}
+          placeholder="Nº de contrato"
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <Input
+          label="Logo pequeño (URL)"
+          name="logo_small_url"
+          defaultValue={empresa?.logo_small_url ?? ''}
+          placeholder="https://…"
+        />
+        <Input
+          label="Logo destacado (URL)"
+          name="logo_destacado_url"
+          defaultValue={empresa?.logo_destacado_url ?? ''}
+          placeholder="https://…"
+        />
+      </div>
+
+      <div>
+        <label className="text-sm font-medium text-gray-700 block mb-1">Información general</label>
+        <textarea
+          name="informacion_general"
+          defaultValue={empresa?.informacion_general ?? ''}
+          rows={3}
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500 focus:border-transparent resize-none"
+          placeholder="Descripción, notas o información adicional de la empresa…"
+        />
+      </div>
 
       <div className="flex gap-3 pt-2">
         <Button type="submit" disabled={isPending}>

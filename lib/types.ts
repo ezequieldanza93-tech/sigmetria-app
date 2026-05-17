@@ -131,12 +131,18 @@ export interface Empresa {
   id: string
   consultora_id: string
   razon_social: string
+  tipo_identidad_impositiva: string | null
   cuit: string | null
   rubro: string | null
   domicilio: string | null
   localidad: string | null
   provincia: string | null
   codigo_postal: string | null
+  art: string | null
+  art_numero_contrato: string | null
+  logo_small_url: string | null
+  logo_destacado_url: string | null
+  informacion_general: string | null
   is_active: boolean
   created_at: string
   updated_at: string
