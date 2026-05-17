@@ -22,10 +22,20 @@ function SigmetriaIsotipo() {
   )
 }
 
-const NAV = [
+type NavLeaf = { label: string; href: string; exact: boolean; children?: never }
+type NavGroup = { label: string; href?: never; exact?: never; children: { label: string; href: string }[] }
+type NavItem = NavLeaf | NavGroup
+
+const NAV: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', exact: true },
   { label: 'Empresas', href: '/dashboard/empresas', exact: false },
-  { label: 'Organizaciones', href: '/dashboard/organizaciones', exact: false },
+  {
+    label: 'Stakeholders',
+    children: [
+      { label: 'Personas', href: '/dashboard/personas' },
+      { label: 'Org. Externas', href: '/dashboard/organizaciones-externas' },
+    ],
+  },
   { label: 'Productos', href: '/dashboard/productos', exact: false },
 ]
 
@@ -54,14 +64,20 @@ export function AppHeader({ fullName, email, consultoraNombre, userRole, systemR
     router.refresh()
   }
 
-  const navItems = [
+  const navItems: NavItem[] = [
     ...NAV,
-    ...(isAdmin ? [{ label: 'Usuarios', href: '/dashboard/usuarios', exact: false }] : []),
-    ...(isDeveloper ? [{ label: 'Nueva Consultora', href: '/onboarding', exact: false }] : []),
+    ...(isAdmin ? [{ label: 'Usuarios', href: '/dashboard/usuarios', exact: false } as NavLeaf] : []),
+    ...(isDeveloper ? [{ label: 'Nueva Consultora', href: '/onboarding', exact: false } as NavLeaf] : []),
   ]
 
-  function isActive(item: { href: string; exact: boolean }) {
-    return item.exact ? pathname === item.href : pathname.startsWith(item.href) && (item.href !== '/dashboard' || pathname === '/dashboard')
+  function isLeafActive(item: NavLeaf): boolean {
+    return item.exact
+      ? pathname === item.href
+      : pathname.startsWith(item.href) && (item.href !== '/dashboard' || pathname === '/dashboard')
+  }
+
+  function isGroupActive(item: NavGroup): boolean {
+    return item.children.some(child => pathname.startsWith(child.href))
   }
 
   return (
@@ -83,20 +99,59 @@ export function AppHeader({ fullName, email, consultoraNombre, userRole, systemR
 
         {/* Nav links */}
         <nav className="hidden md:flex items-center gap-1 ml-4">
-          {navItems.map(item => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
-                isActive(item)
-                  ? 'bg-green-50 text-green-700 font-medium'
-                  : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
-              }`}
-              style={{ fontFamily: 'Poppins, system-ui' }}
-            >
-              {item.label}
-            </Link>
-          ))}
+          {navItems.map(item => {
+            if (item.children) {
+              const active = isGroupActive(item)
+              return (
+                <div key={item.label} className="relative group">
+                  <button
+                    className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-sm transition-colors ${
+                      active
+                        ? 'bg-green-50 text-green-700 font-medium'
+                        : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+                    }`}
+                    style={{ fontFamily: 'Poppins, system-ui' }}
+                  >
+                    {item.label}
+                    <svg className="w-3 h-3 opacity-60" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <path d="M2 4l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                  <div className="absolute left-0 top-full mt-1 w-44 bg-white border border-gray-200 rounded-xl shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 py-1">
+                    {item.children.map(child => (
+                      <Link
+                        key={child.href}
+                        href={child.href}
+                        className={`block px-4 py-2 text-sm transition-colors ${
+                          pathname.startsWith(child.href)
+                            ? 'text-green-700 font-medium bg-green-50'
+                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                        }`}
+                        style={{ fontFamily: 'Poppins, system-ui' }}
+                      >
+                        {child.label}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )
+            }
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
+                  isLeafActive(item)
+                    ? 'bg-green-50 text-green-700 font-medium'
+                    : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+                style={{ fontFamily: 'Poppins, system-ui' }}
+              >
+                {item.label}
+              </Link>
+            )
+          })}
         </nav>
 
         {/* Center: user name */}
@@ -116,13 +171,32 @@ export function AppHeader({ fullName, email, consultoraNombre, userRole, systemR
         {/* Right: consultora + user menu */}
         <div className="flex items-center gap-3 shrink-0">
           {consultoraNombre && (
-            <div className="text-right hidden md:block">
-              <p className="text-xs text-gray-400 uppercase tracking-wider" style={{ fontFamily: 'Poppins, system-ui' }}>
-                Consultora
-              </p>
-              <p className="text-sm font-semibold text-gray-700" style={{ fontFamily: 'Montserrat, system-ui' }}>
-                {consultoraNombre}
-              </p>
+            <div className="relative group hidden md:block">
+              <button className="text-right cursor-pointer">
+                <p className="text-xs text-gray-400 uppercase tracking-wider" style={{ fontFamily: 'Poppins, system-ui' }}>
+                  Consultora
+                </p>
+                <p className="text-sm font-semibold text-gray-700" style={{ fontFamily: 'Montserrat, system-ui' }}>
+                  {consultoraNombre}
+                </p>
+              </button>
+              <div className="absolute right-0 top-full mt-2 w-52 bg-white border border-gray-200 rounded-xl shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                <div className="px-4 py-2.5 border-b border-gray-100">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Equipo Consultora</p>
+                </div>
+                <Link
+                  href="/dashboard/equipo"
+                  className="block px-4 py-2.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors"
+                >
+                  Ver Equipo
+                </Link>
+                <Link
+                  href="/dashboard/instrumentos"
+                  className="block px-4 py-2.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors rounded-b-xl"
+                >
+                  Instrumentos Habilitados
+                </Link>
+              </div>
             </div>
           )}
 

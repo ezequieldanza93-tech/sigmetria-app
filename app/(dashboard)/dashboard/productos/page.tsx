@@ -84,7 +84,7 @@ export default function ProductosPage() {
     const supabase = createClient()
     supabase
       .from('productos')
-      .select('*, categoria_productos(nombre), organizaciones(nombre)')
+      .select('*, categoria_productos(nombre), organizaciones_externas(nombre)')
       .eq('is_active', true)
       .order('nombre')
       .then(({ data }) => setProductos((data as unknown as Producto[]) ?? []))
@@ -95,7 +95,7 @@ export default function ProductosPage() {
     const supabase = createClient()
     supabase.from('categoria_productos').select('*').order('nombre')
       .then(({ data }) => setCategorias(data ?? []))
-    supabase.from('organizaciones').select('id, nombre, tipo_id, tipo_organizaciones(nombre)')
+    supabase.from('organizaciones_externas').select('id, nombre, tipo_id, tipo_organizaciones(nombre)')
       .eq('is_active', true).order('nombre')
       .then(({ data }) => {
         const marcasOnly = ((data ?? []) as unknown as Organizacion[]).filter(o => o.tipo_organizaciones?.nombre === 'Marca')
@@ -174,7 +174,7 @@ export default function ProductosPage() {
                       {p.categoria_productos?.nombre ?? '—'}
                     </span>
                   </td>
-                  <td className="px-5 py-3.5 text-gray-500">{p.organizaciones?.nombre ?? '—'}</td>
+                  <td className="px-5 py-3.5 text-gray-500">{p.organizaciones_externas?.nombre ?? '—'}</td>
                   <td className="px-5 py-3.5 text-gray-500">
                     {p.tamano ? `${p.tamano} ${p.unidad ?? ''}`.trim() : '—'}
                   </td>

@@ -204,7 +204,7 @@ export interface DirectorioPersona {
   created_at: string
   updated_at: string
   tipo_personas?: { nombre: string } | null
-  organizaciones?: { nombre: string } | null
+  organizaciones_externas?: { nombre: string } | null
 }
 
 export interface CategoriaProducto {
@@ -226,7 +226,7 @@ export interface Producto {
   created_at: string
   updated_at: string
   categoria_productos?: { nombre: string } | null
-  organizaciones?: { nombre: string } | null
+  organizaciones_externas?: { nombre: string } | null
 }
 
 export interface EppPorPuesto {
@@ -422,6 +422,114 @@ export function canManageUsers(role: UserRole | null, systemRole: SystemRole): b
 export function canViewAll(role: UserRole | null, systemRole: SystemRole): boolean {
   if (systemRole === 'developer') return true
   return role === 'full_access_main' || role === 'full_access_branch' || role === 'full_viewer'
+}
+
+export interface TipoInstrumentoMedicion {
+  id: string
+  nombre: string
+  descripcion: string | null
+  created_at: string
+}
+
+export interface InstrumentoMedicion {
+  id: string
+  tipo_id: string
+  marca_id: string | null
+  modelo: string
+  numero_serie: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+  tipo_instrumento_medicion?: { nombre: string } | null
+  organizaciones_externas?: { nombre: string } | null
+}
+
+export interface Matricula {
+  id: string
+  persona_id: string
+  numero: string
+  organismo_emisor_id: string | null
+  fecha_emision: string
+  fecha_vencimiento: string
+  certificado_url: string | null
+  activa: boolean
+  created_at: string
+  directorio_personas?: { nombre: string; apellido: string } | null
+  organizaciones_externas?: { nombre: string } | null
+}
+
+export interface CertificadoCalibracion {
+  id: string
+  instrumento_id: string
+  fecha_emision: string
+  fecha_vencimiento: string
+  organismo_emisor_id: string | null
+  certificado_url: string | null
+  activo: boolean
+  created_at: string
+  organizaciones_externas?: { nombre: string } | null
+}
+
+export interface CategoriaGestion {
+  id: string
+  nombre: string
+  descripcion: string | null
+  created_at: string
+}
+
+export interface Gestion {
+  id: string
+  nombre: string
+  categoria_id: string
+  descripcion: string | null
+  created_at: string
+  categoria_gestiones?: { nombre: string } | null
+}
+
+export interface GestionEstablecimiento {
+  id: string
+  gestion_id: string
+  establecimiento_id: string
+  created_at: string
+  gestiones?: Gestion | null
+}
+
+export interface RegistroGestion {
+  id: string
+  gestion_establecimiento_id: string
+  index: number | null
+  fecha_planificada: string
+  fecha_ejecutada: string | null
+  responsable_id: string | null
+  evidencia_url: string | null
+  notas: string | null
+  created_at: string
+  updated_at: string
+  directorio_personas?: { nombre: string; apellido: string } | null
+}
+
+export interface ObservacionGestion {
+  id: string
+  registro_gestion_id: string
+  descripcion: string
+  fecha_planificada: string
+  fecha_cierre: string | null
+  responsable_cierre_id: string | null
+  evidencia_cierre_url: string | null
+  created_at: string
+  updated_at: string
+  directorio_personas?: { nombre: string; apellido: string } | null
+}
+
+export type EstadoGestion = 'Ejecutado' | 'Pendiente' | 'Planificado'
+
+export function calcularEstadoGestion(fechaEjecutada: string | null, fechaPlanificada: string): EstadoGestion {
+  if (fechaEjecutada) return 'Ejecutado'
+  const hoy = new Date()
+  hoy.setHours(0, 0, 0, 0)
+  const planificada = new Date(fechaPlanificada)
+  planificada.setHours(0, 0, 0, 0)
+  return planificada < hoy ? 'Pendiente' : 'Planificado'
 }
 
 // ---- Action result ----
