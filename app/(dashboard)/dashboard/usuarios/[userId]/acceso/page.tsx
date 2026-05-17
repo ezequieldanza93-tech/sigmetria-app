@@ -56,10 +56,7 @@ export default async function UserAccesoPage({ params }: Props) {
   // Get all empresas with establecimientos
   let empresasQuery = supabase
     .from('empresas')
-    .select(`
-      id, consultora_id, razon_social, cuit, rubro, domicilio, localidad, provincia, codigo_postal, is_active, created_at, updated_at,
-      establecimientos(id, empresa_id, nombre, tipo, domicilio, localidad, provincia, codigo_postal, actividad_principal, cantidad_trabajadores, status, created_at, updated_at)
-    `)
+    .select('*, establecimientos(*)')
     .eq('is_active', true)
     .order('razon_social')
 
