@@ -70,7 +70,7 @@ function PlanificarModal({
   }
 
   return (
-    <Modal title="Planificar Nueva Gestión" onClose={onClose}>
+    <Modal open title="Planificar Nueva Gestión" onClose={onClose}>
       <form action={formAction} className="space-y-4">
         <input type="hidden" name="establecimiento_id" value={establecimientoId} />
 
