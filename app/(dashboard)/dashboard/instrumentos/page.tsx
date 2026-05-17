@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { createClient } from '@/lib/supabase/client'
 import { createInstrumento, deleteInstrumento } from '@/lib/actions/instrumento'
+import { InstrumentoModal } from '@/components/instrumento-modal'
 import type { InstrumentoMedicion, TipoInstrumentoMedicion, Organizacion, ActionResult } from '@/lib/types'
 
 function InstrumentoForm({
@@ -62,6 +63,7 @@ export default function InstrumentosPage() {
   const [marcas, setMarcas] = useState<Organizacion[]>([])
   const [activeTipo, setActiveTipo] = useState<string>('todos')
   const [showModal, setShowModal] = useState(false)
+  const [selectedInstrumento, setSelectedInstrumento] = useState<InstrumentoMedicion | null>(null)
 
   function load() {
     const supabase = createClient()
@@ -153,7 +155,7 @@ export default function InstrumentosPage() {
             </thead>
             <tbody className="divide-y divide-gray-50">
               {filtered.map(i => (
-                <tr key={i.id} className="hover:bg-gray-50">
+                <tr key={i.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => setSelectedInstrumento(i)}>
                   <td className="px-5 py-3.5 font-medium text-gray-900">{i.modelo}</td>
                   <td className="px-5 py-3.5">
                     <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-sig-50 text-sig-700">
@@ -164,7 +166,7 @@ export default function InstrumentosPage() {
                   <td className="px-5 py-3.5 text-gray-500">{i.numero_serie ?? '—'}</td>
                   <td className="px-5 py-3.5 text-right">
                     <button
-                      onClick={() => handleDelete(i.id)}
+                      onClick={e => { e.stopPropagation(); handleDelete(i.id) }}
                       className="text-xs text-red-400 hover:text-red-600"
                     >
                       Dar de baja
@@ -175,6 +177,15 @@ export default function InstrumentosPage() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {selectedInstrumento && (
+        <InstrumentoModal
+          instrumento={selectedInstrumento}
+          open={!!selectedInstrumento}
+          onClose={() => setSelectedInstrumento(null)}
+          canWrite={true}
+        />
       )}
 
       <Modal open={showModal} onClose={() => setShowModal(false)} title="Nuevo Instrumento">
