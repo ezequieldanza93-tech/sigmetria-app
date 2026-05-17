@@ -603,6 +603,8 @@ function StakeholdersTab({
   const [activeTipo, setActiveTipo] = useState<string>('todos')
   const [selectedPersona, setSelectedPersona] = useState<DirectorioPersona | null>(null)
   const [orgExternas, setOrgExternas] = useState<Organizacion[] | null>(null)
+  const [personasOpen, setPersonasOpen] = useState(true)
+  const [orgsOpen, setOrgsOpen] = useState(true)
 
   useEffect(() => {
     const supabase = createClient()
@@ -641,74 +643,92 @@ function StakeholdersTab({
       : personas.filter(p => p.tipo_id === activeTipo)
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       {/* ── Personas ── */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-gray-900">Personas</h3>
-        </div>
-
-        <div className="flex gap-1 mb-4 flex-wrap">
-          <button
-            onClick={() => setActiveTipo('todos')}
-            className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${activeTipo === 'todos' ? 'bg-gray-900 text-white border-gray-900' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
-          >
-            Todos {personas !== null && `(${personas.length})`}
-          </button>
-          {tiposPersona.map(t => {
-            const count = personas?.filter(p => p.tipo_id === t.id).length ?? 0
-            return (
-              <button
-                key={t.id}
-                onClick={() => setActiveTipo(t.id)}
-                className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${activeTipo === t.id ? 'bg-sig-500 text-white border-sig-500' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
-              >
-                {t.nombre} {personas !== null && `(${count})`}
-              </button>
-            )
-          })}
-        </div>
-
-        {filtered === null ? (
-          <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400 text-sm">Cargando…</div>
-        ) : filtered.length === 0 ? (
-          <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400 text-sm">
-            No hay personas registradas{activeTipo !== 'todos' ? ' de este tipo' : ''}.
-            <p className="text-xs mt-1">Las personas se agregan desde la vista de Sectores → Puestos.</p>
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <button
+          onClick={() => setPersonasOpen(o => !o)}
+          className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <span className="font-semibold text-gray-900">Personas</span>
+            {personas !== null && (
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                {personas.length}
+              </span>
+            )}
           </div>
-        ) : (
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="border-b border-gray-100 bg-gray-50">
-                <tr className="text-left">
-                  <th className="px-5 py-3 text-gray-500 font-medium">Nombre</th>
-                  <th className="px-5 py-3 text-gray-500 font-medium">DNI</th>
-                  <th className="px-5 py-3 text-gray-500 font-medium">Tipo</th>
-                  <th className="px-5 py-3 text-gray-500 font-medium">Ingreso</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {filtered.map(p => (
-                  <tr key={p.id} className="hover:bg-gray-50">
-                    <td className="px-5 py-3.5">
-                      <button
-                        onClick={() => setSelectedPersona(p)}
-                        className="text-sig-500 hover:text-sig-700 font-medium text-left"
-                      >
-                        {p.apellido}, {p.nombre}
-                      </button>
-                    </td>
-                    <td className="px-5 py-3.5 text-gray-500">{p.dni ?? '—'}</td>
-                    <td className="px-5 py-3.5">
-                      <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
-                        {p.tipo_personas?.nombre ?? '—'}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5 text-gray-500">{p.fecha_ingreso ? formatDate(p.fecha_ingreso) : '—'}</td>
+          <svg
+            className={`w-4 h-4 text-gray-400 transition-transform ${personasOpen ? 'rotate-180' : ''}`}
+            viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5"
+          >
+            <path d="M2 4l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+
+        {personasOpen && (
+          <div className="border-t border-gray-100">
+            <div className="flex gap-1 px-5 py-3 flex-wrap border-b border-gray-100">
+              <button
+                onClick={() => setActiveTipo('todos')}
+                className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${activeTipo === 'todos' ? 'bg-gray-900 text-white border-gray-900' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
+              >
+                Todos {personas !== null && `(${personas.length})`}
+              </button>
+              {tiposPersona.map(t => {
+                const count = personas?.filter(p => p.tipo_id === t.id).length ?? 0
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => setActiveTipo(t.id)}
+                    className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${activeTipo === t.id ? 'bg-sig-500 text-white border-sig-500' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
+                  >
+                    {t.nombre} {personas !== null && `(${count})`}
+                  </button>
+                )
+              })}
+            </div>
+
+            {filtered === null ? (
+              <div className="p-8 text-center text-gray-400 text-sm">Cargando…</div>
+            ) : filtered.length === 0 ? (
+              <div className="p-8 text-center text-gray-400 text-sm">
+                No hay personas registradas{activeTipo !== 'todos' ? ' de este tipo' : ''}.
+                <p className="text-xs mt-1">Las personas se agregan desde la vista de Sectores → Puestos.</p>
+              </div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="border-b border-gray-100 bg-gray-50">
+                  <tr className="text-left">
+                    <th className="px-5 py-3 text-gray-500 font-medium">Nombre</th>
+                    <th className="px-5 py-3 text-gray-500 font-medium">DNI</th>
+                    <th className="px-5 py-3 text-gray-500 font-medium">Tipo</th>
+                    <th className="px-5 py-3 text-gray-500 font-medium">Ingreso</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {filtered.map(p => (
+                    <tr key={p.id} className="hover:bg-gray-50">
+                      <td className="px-5 py-3.5">
+                        <button
+                          onClick={() => setSelectedPersona(p)}
+                          className="text-sig-500 hover:text-sig-700 font-medium text-left"
+                        >
+                          {p.apellido}, {p.nombre}
+                        </button>
+                      </td>
+                      <td className="px-5 py-3.5 text-gray-500">{p.dni ?? '—'}</td>
+                      <td className="px-5 py-3.5">
+                        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
+                          {p.tipo_personas?.nombre ?? '—'}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 text-gray-500">{p.fecha_ingreso ? formatDate(p.fecha_ingreso) : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         )}
 
@@ -725,43 +745,61 @@ function StakeholdersTab({
       </div>
 
       {/* ── Organizaciones Externas ── */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-gray-900">Organizaciones Externas</h3>
-        </div>
-
-        {orgExternas === null ? (
-          <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400 text-sm">Cargando…</div>
-        ) : orgExternas.length === 0 ? (
-          <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400 text-sm">
-            No hay organizaciones externas vinculadas a este establecimiento.
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <button
+          onClick={() => setOrgsOpen(o => !o)}
+          className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <span className="font-semibold text-gray-900">Organizaciones Externas</span>
+            {orgExternas !== null && (
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                {orgExternas.length}
+              </span>
+            )}
           </div>
-        ) : (
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="border-b border-gray-100 bg-gray-50">
-                <tr className="text-left">
-                  <th className="px-5 py-3 text-gray-500 font-medium">Nombre</th>
-                  <th className="px-5 py-3 text-gray-500 font-medium">Tipo</th>
-                  <th className="px-5 py-3 text-gray-500 font-medium">Email</th>
-                  <th className="px-5 py-3 text-gray-500 font-medium">Teléfono</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {orgExternas.map(o => (
-                  <tr key={o.id} className="hover:bg-gray-50">
-                    <td className="px-5 py-3.5 font-medium text-gray-900">{o.nombre}</td>
-                    <td className="px-5 py-3.5">
-                      <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
-                        {o.tipo_organizaciones?.nombre ?? '—'}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5 text-gray-500">{o.email ?? '—'}</td>
-                    <td className="px-5 py-3.5 text-gray-500">{o.telefono ?? '—'}</td>
+          <svg
+            className={`w-4 h-4 text-gray-400 transition-transform ${orgsOpen ? 'rotate-180' : ''}`}
+            viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5"
+          >
+            <path d="M2 4l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+
+        {orgsOpen && (
+          <div className="border-t border-gray-100">
+            {orgExternas === null ? (
+              <div className="p-8 text-center text-gray-400 text-sm">Cargando…</div>
+            ) : orgExternas.length === 0 ? (
+              <div className="p-8 text-center text-gray-400 text-sm">
+                No hay organizaciones externas vinculadas a este establecimiento.
+              </div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="border-b border-gray-100 bg-gray-50">
+                  <tr className="text-left">
+                    <th className="px-5 py-3 text-gray-500 font-medium">Nombre</th>
+                    <th className="px-5 py-3 text-gray-500 font-medium">Tipo</th>
+                    <th className="px-5 py-3 text-gray-500 font-medium">Email</th>
+                    <th className="px-5 py-3 text-gray-500 font-medium">Teléfono</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {orgExternas.map(o => (
+                    <tr key={o.id} className="hover:bg-gray-50">
+                      <td className="px-5 py-3.5 font-medium text-gray-900">{o.nombre}</td>
+                      <td className="px-5 py-3.5">
+                        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
+                          {o.tipo_organizaciones?.nombre ?? '—'}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 text-gray-500">{o.email ?? '—'}</td>
+                      <td className="px-5 py-3.5 text-gray-500">{o.telefono ?? '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         )}
       </div>
