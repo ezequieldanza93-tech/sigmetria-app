@@ -122,9 +122,9 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
     : null
 
   return (
-    <div className="flex min-h-[calc(100vh-64px)]">
+    <div className="flex">
       {/* Left sidebar */}
-      <aside className="w-52 shrink-0 border-r border-gray-200 bg-white flex flex-col pt-8 px-3">
+      <aside className="w-52 shrink-0 border-r border-gray-200 bg-white flex flex-col pt-8 px-3 sticky top-0 h-screen overflow-y-auto">
         <div className="px-2 mb-6">
           <p className="text-xs text-gray-400 font-medium truncate mb-0.5">{empresa.razon_social}</p>
           <p className="text-sm font-bold text-gray-900 truncate">{establecimiento.nombre}</p>
@@ -173,7 +173,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 min-w-0 p-8 overflow-auto">
+      <div className="flex-1 min-w-0 p-8">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm text-gray-500 mb-6 flex-wrap">
           <Link href="/dashboard/empresas" className="hover:text-gray-900">Empresas</Link>
@@ -264,7 +264,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
             <p className="text-sm text-gray-400 mt-1">Próximamente disponible.</p>
           </div>
         )}
-      </main>
+      </div>
     </div>
   )
 }
