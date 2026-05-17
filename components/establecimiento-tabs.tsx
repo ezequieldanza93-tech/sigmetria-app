@@ -1207,6 +1207,100 @@ function DocumentosTab({
   )
 }
 
+// ---- Add Gestion Tree (3-level: grupo → categoria → gestion) ----
+function AddGestionTree({
+  gestionsNotAdded,
+  onAdd,
+}: {
+  gestionsNotAdded: Gestion[]
+  onAdd: (gestionId: string) => void
+}) {
+  const [openGrupos, setOpenGrupos] = useState<Set<string>>(new Set())
+  const [openCategorias, setOpenCategorias] = useState<Set<string>>(new Set())
+
+  const byGrupo = new Map<string, Map<string, Gestion[]>>()
+  for (const g of gestionsNotAdded) {
+    const grupoNombre = g.categoria_gestiones?.grupo_gestiones?.nombre ?? 'Sin grupo'
+    const catNombre = g.categoria_gestiones?.nombre ?? 'Sin categoría'
+    if (!byGrupo.has(grupoNombre)) byGrupo.set(grupoNombre, new Map())
+    const byCat = byGrupo.get(grupoNombre)!
+    if (!byCat.has(catNombre)) byCat.set(catNombre, [])
+    byCat.get(catNombre)!.push(g)
+  }
+
+  function toggleGrupo(nombre: string) {
+    setOpenGrupos(prev => { const s = new Set(prev); s.has(nombre) ? s.delete(nombre) : s.add(nombre); return s })
+  }
+  function toggleCategoria(key: string) {
+    setOpenCategorias(prev => { const s = new Set(prev); s.has(key) ? s.delete(key) : s.add(key); return s })
+  }
+
+  if (gestionsNotAdded.length === 0) {
+    return (
+      <div className="bg-gray-50 rounded-lg p-3 mb-4">
+        <p className="text-xs text-gray-400">Todas las gestiones ya fueron agregadas.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-gray-50 rounded-lg p-3 mb-4">
+      <p className="text-xs font-medium text-gray-600 mb-2">Seleccioná gestiones para agregar:</p>
+      <div className="space-y-0.5 max-h-80 overflow-y-auto pr-1">
+        {Array.from(byGrupo.entries()).map(([grupoNombre, byCat]) => {
+          const isOpen = openGrupos.has(grupoNombre)
+          const total = Array.from(byCat.values()).reduce((s, g) => s + g.length, 0)
+          return (
+            <div key={grupoNombre}>
+              <button
+                onClick={() => toggleGrupo(grupoNombre)}
+                className="flex items-center gap-2 w-full text-left px-2 py-1.5 text-xs font-semibold text-gray-700 hover:bg-white rounded-lg transition-colors"
+              >
+                <svg className={`w-3 h-3 text-gray-400 transition-transform shrink-0 ${isOpen ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+                {grupoNombre}
+                <span className="text-gray-400 font-normal ml-1">({total})</span>
+              </button>
+              {isOpen && Array.from(byCat.entries()).map(([catNombre, gestiones]) => {
+                const catKey = `${grupoNombre}:${catNombre}`
+                const isCatOpen = openCategorias.has(catKey)
+                return (
+                  <div key={catNombre} className="ml-4">
+                    <button
+                      onClick={() => toggleCategoria(catKey)}
+                      className="flex items-center gap-2 w-full text-left px-2 py-1 text-xs text-gray-600 hover:bg-white rounded transition-colors"
+                    >
+                      <svg className={`w-2.5 h-2.5 text-gray-400 transition-transform shrink-0 ${isCatOpen ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                      </svg>
+                      {catNombre}
+                      <span className="text-gray-400 font-normal">({gestiones.length})</span>
+                    </button>
+                    {isCatOpen && (
+                      <div className="ml-4 py-0.5 space-y-0.5">
+                        {gestiones.map(g => (
+                          <button
+                            key={g.id}
+                            onClick={() => onAdd(g.id)}
+                            className="block w-full text-left text-xs py-1 px-2 text-gray-700 hover:bg-sig-50 hover:text-sig-700 rounded transition-colors"
+                          >
+                            {g.nombre}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 // ---- Gestiones Tab ----
 function GestionesTab({ establecimientoId, canWrite }: { establecimientoId: string; canWrite: boolean }) {
   type PHVASection = 'planificar' | 'hacer' | 'verificar' | 'actuar'
@@ -1224,7 +1318,7 @@ function GestionesTab({ establecimientoId, canWrite }: { establecimientoId: stri
     const supabase = createClient()
     supabase
       .from('gestion_establecimiento')
-      .select('*, gestiones(nombre, categoria_id, categoria_gestiones(nombre))')
+      .select('*, gestiones(nombre, categoria_id, categoria_gestiones(nombre, grupo_gestiones(nombre)))')
       .eq('establecimiento_id', establecimientoId)
       .then(({ data }) => setGestionesEstablecimiento((data as unknown as GestionEstablecimiento[]) ?? []))
     supabase
@@ -1260,7 +1354,7 @@ function GestionesTab({ establecimientoId, canWrite }: { establecimientoId: stri
   useEffect(() => {
     loadData()
     const supabase = createClient()
-    supabase.from('gestiones').select('*, categoria_gestiones(nombre)').order('nombre')
+    supabase.from('gestiones').select('*, categoria_gestiones(nombre, grupo_gestiones(nombre))').order('nombre')
       .then(({ data }) => setTodasGestiones((data as unknown as Gestion[]) ?? []))
   }, [establecimientoId])
 
@@ -1330,90 +1424,95 @@ function GestionesTab({ establecimientoId, canWrite }: { establecimientoId: stri
             </div>
 
             {showAddGestion && (
-              <div className="bg-gray-50 rounded-lg p-3 mb-4 space-y-2">
-                <p className="text-xs font-medium text-gray-600">Seleccioná una gestión para agregar:</p>
-                <div className="flex flex-wrap gap-2">
-                  {gestionsNotAdded.map(g => (
-                    <button
-                      key={g.id}
-                      onClick={async () => {
-                        await addGestionToEstablecimiento(g.id, establecimientoId)
-                        const supabase = createClient()
-                        supabase.from('gestion_establecimiento').select('*, gestiones(nombre, categoria_id, categoria_gestiones(nombre))').eq('establecimiento_id', establecimientoId)
-                          .then(({ data }) => { setGestionesEstablecimiento((data as unknown as GestionEstablecimiento[]) ?? []); setShowAddGestion(false) })
-                      }}
-                      className="px-3 py-1 text-xs bg-white border border-gray-300 rounded-full hover:border-sig-500 hover:text-sig-500 transition-colors"
-                    >
-                      {g.nombre}
-                    </button>
-                  ))}
-                  {gestionsNotAdded.length === 0 && <p className="text-xs text-gray-400">Todas las gestiones ya fueron agregadas.</p>}
-                </div>
-              </div>
+              <AddGestionTree
+                gestionsNotAdded={gestionsNotAdded}
+                onAdd={async (gestionId) => {
+                  await addGestionToEstablecimiento(gestionId, establecimientoId)
+                  const supabase = createClient()
+                  supabase
+                    .from('gestion_establecimiento')
+                    .select('*, gestiones(nombre, categoria_id, categoria_gestiones(nombre, grupo_gestiones(nombre)))')
+                    .eq('establecimiento_id', establecimientoId)
+                    .then(({ data }) => setGestionesEstablecimiento((data as unknown as GestionEstablecimiento[]) ?? []))
+                }}
+              />
             )}
 
             {gestionesEstablecimiento === null ? (
               <p className="text-sm text-gray-400">Cargando…</p>
             ) : gestionesEstablecimiento.length === 0 ? (
               <p className="text-sm text-gray-400">No hay gestiones asignadas a este establecimiento.</p>
-            ) : (
-              <div className="space-y-2">
-                {gestionesEstablecimiento.map(ge => {
-                  const geRegistros = registros?.filter(r => r.gestion_establecimiento_id === ge.id) ?? []
-                  return (
-                    <div key={ge.id} className="bg-white border border-gray-200 rounded-xl p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <div>
-                          <p className="font-medium text-gray-900 text-sm">{ge.gestiones?.nombre ?? '—'}</p>
-                          {ge.gestiones?.categoria_gestiones && (
-                            <p className="text-xs text-gray-400">{ge.gestiones.categoria_gestiones.nombre}</p>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-400">{geRegistros.length} registros</span>
-                          {canWrite && (
-                            <button
-                              onClick={() => setShowRegistroForm(showRegistroForm === ge.id ? null : ge.id)}
-                              className="text-xs text-sig-500 hover:text-sig-700 font-medium"
-                            >
-                              + Planificar
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
-                      {showRegistroForm === ge.id && (
-                        <RegistroGestionForm
-                          gestionEstablecimientoId={ge.id}
-                          personas={personas}
-                          onSuccess={() => {
-                            setShowRegistroForm(null)
-                            loadRegistros(gestionesEstablecimiento.map(x => x.id))
-                          }}
-                        />
-                      )}
-
-                      {geRegistros.length > 0 && (
-                        <div className="mt-2 space-y-1">
-                          {geRegistros.map(r => {
-                            const estado = calcularEstadoGestion(r.fecha_ejecutada, r.fecha_planificada)
-                            return (
-                              <div key={r.id} className="flex items-center justify-between text-xs bg-gray-50 rounded-lg px-3 py-1.5">
-                                <span className="text-gray-600">{r.fecha_planificada}</span>
-                                <span className={`px-2 py-0.5 rounded-full font-medium ${estadoColors[estado]}`}>{estado}</span>
-                                {r.directorio_personas && (
-                                  <span className="text-gray-400">{r.directorio_personas.apellido}</span>
-                                )}
+            ) : (() => {
+              const byGrupo = new Map<string, GestionEstablecimiento[]>()
+              for (const ge of gestionesEstablecimiento) {
+                const g = ge.gestiones?.categoria_gestiones?.grupo_gestiones?.nombre ?? 'Sin grupo'
+                if (!byGrupo.has(g)) byGrupo.set(g, [])
+                byGrupo.get(g)!.push(ge)
+              }
+              return (
+                <div className="space-y-5">
+                  {Array.from(byGrupo.entries()).map(([grupoNombre, items]) => (
+                    <div key={grupoNombre}>
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{grupoNombre}</p>
+                      <div className="space-y-2">
+                        {items.map(ge => {
+                          const geRegistros = registros?.filter(r => r.gestion_establecimiento_id === ge.id) ?? []
+                          return (
+                            <div key={ge.id} className="bg-white border border-gray-200 rounded-xl p-4">
+                              <div className="flex items-center justify-between mb-2">
+                                <div>
+                                  <p className="font-medium text-gray-900 text-sm">{ge.gestiones?.nombre ?? '—'}</p>
+                                  {ge.gestiones?.categoria_gestiones && (
+                                    <p className="text-xs text-gray-400">{ge.gestiones.categoria_gestiones.nombre}</p>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-gray-400">{geRegistros.length} registros</span>
+                                  {canWrite && (
+                                    <button
+                                      onClick={() => setShowRegistroForm(showRegistroForm === ge.id ? null : ge.id)}
+                                      className="text-xs text-sig-500 hover:text-sig-700 font-medium"
+                                    >
+                                      + Planificar
+                                    </button>
+                                  )}
+                                </div>
                               </div>
-                            )
-                          })}
-                        </div>
-                      )}
+                              {showRegistroForm === ge.id && (
+                                <RegistroGestionForm
+                                  gestionEstablecimientoId={ge.id}
+                                  personas={personas}
+                                  onSuccess={() => {
+                                    setShowRegistroForm(null)
+                                    loadRegistros(gestionesEstablecimiento.map(x => x.id))
+                                  }}
+                                />
+                              )}
+                              {geRegistros.length > 0 && (
+                                <div className="mt-2 space-y-1">
+                                  {geRegistros.map(r => {
+                                    const estado = calcularEstadoGestion(r.fecha_ejecutada, r.fecha_planificada)
+                                    return (
+                                      <div key={r.id} className="flex items-center justify-between text-xs bg-gray-50 rounded-lg px-3 py-1.5">
+                                        <span className="text-gray-600">{r.fecha_planificada}</span>
+                                        <span className={`px-2 py-0.5 rounded-full font-medium ${estadoColors[estado]}`}>{estado}</span>
+                                        {r.directorio_personas && (
+                                          <span className="text-gray-400">{r.directorio_personas.apellido}</span>
+                                        )}
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
                     </div>
-                  )
-                })}
-              </div>
-            )}
+                  ))}
+                </div>
+              )
+            })()}
           </div>
         )}
 

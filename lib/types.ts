@@ -470,11 +470,19 @@ export interface CertificadoCalibracion {
   organizaciones_externas?: { nombre: string } | null
 }
 
+export interface GrupoGestion {
+  id: string
+  nombre: string
+  created_at: string
+}
+
 export interface CategoriaGestion {
   id: string
   nombre: string
+  grupo_id: string
   descripcion: string | null
   created_at: string
+  grupo_gestiones?: { nombre: string } | null
 }
 
 export interface Gestion {
@@ -483,7 +491,7 @@ export interface Gestion {
   categoria_id: string
   descripcion: string | null
   created_at: string
-  categoria_gestiones?: { nombre: string } | null
+  categoria_gestiones?: { nombre: string; grupo_gestiones?: { nombre: string } | null } | null
 }
 
 export interface GestionEstablecimiento {
