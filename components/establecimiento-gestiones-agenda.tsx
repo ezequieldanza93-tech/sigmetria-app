@@ -63,8 +63,8 @@ function PlanificarModal({
 
   const byGrupo = new Map<string, { cat: string; g: Gestion }[]>()
   for (const g of todasGestiones) {
-    const grupo = (g as GestionConJoin & { categoria_gestiones?: { nombre: string; grupo_gestiones?: { nombre: string } | null } | null }).categoria_gestiones?.grupo_gestiones?.nombre ?? 'Sin grupo'
-    const cat = (g as GestionConJoin & { categoria_gestiones?: { nombre: string; grupo_gestiones?: { nombre: string } | null } | null }).categoria_gestiones?.nombre ?? 'Sin categoría'
+    const grupo = g.categoria_gestiones?.grupo_gestiones?.nombre ?? 'Sin grupo'
+    const cat = g.categoria_gestiones?.nombre ?? 'Sin categoría'
     if (!byGrupo.has(grupo)) byGrupo.set(grupo, [])
     byGrupo.get(grupo)!.push({ cat, g })
   }
