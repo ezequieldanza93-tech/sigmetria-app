@@ -102,7 +102,7 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
               : ''
           }
           placeholder="Av. Corrientes 1234, Buenos Aires · o URL de Google Maps · o -34.6037, -58.3816"
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500"
         />
         <p className="text-xs text-gray-400 mt-1">
           Podés escribir una dirección, pegar una URL de Google Maps, o ingresar coordenadas.
@@ -122,7 +122,7 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
           name="foto"
           type="file"
           accept="image/*"
-          className="w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+          className="w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-sig-50 file:text-sig-700 hover:file:bg-sig-100 cursor-pointer"
         />
         <p className="text-xs text-gray-400 mt-1">JPG, PNG o WebP. Se reemplaza la existente al guardar.</p>
       </div>

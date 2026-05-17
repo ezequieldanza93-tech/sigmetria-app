@@ -48,7 +48,7 @@ export class DevErrorBoundary extends Component<{ children: ReactNode }, State> 
               </button>
               <button
                 onClick={() => { this.setState({ error: null, info: null }); window.location.reload() }}
-                className="bg-blue-700 hover:bg-blue-600 text-xs px-3 py-1.5 rounded transition-colors"
+                className="bg-sig-700 hover:bg-sig-500 text-xs px-3 py-1.5 rounded transition-colors"
               >
                 Recargar
               </button>

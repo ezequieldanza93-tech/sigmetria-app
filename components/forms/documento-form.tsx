@@ -88,7 +88,7 @@ export function DocumentoForm({ action, documentTypes, context, onSuccess }: Pro
         <select
           name="document_type_id"
           required
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500"
         >
           <option value="">Seleccionar tipo...</option>
           {filteredTypes.map(dt => (
@@ -104,7 +104,7 @@ export function DocumentoForm({ action, documentTypes, context, onSuccess }: Pro
         <input
           name="fecha_vencimiento"
           type="date"
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500"
         />
       </div>
 
@@ -117,10 +117,10 @@ export function DocumentoForm({ action, documentTypes, context, onSuccess }: Pro
           accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp"
           onChange={handleFileChange}
           disabled={uploading}
-          className="w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+          className="w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-sig-50 file:text-sig-700 hover:file:bg-sig-100 cursor-pointer"
         />
         {uploading && (
-          <p className="text-xs text-blue-600 mt-1">Subiendo archivo...</p>
+          <p className="text-xs text-sig-500 mt-1">Subiendo archivo...</p>
         )}
         {fileData && !uploading && (
           <p className="text-xs text-green-600 mt-1">✓ {fileData.name}</p>
@@ -133,7 +133,7 @@ export function DocumentoForm({ action, documentTypes, context, onSuccess }: Pro
           name="include_in_legajo"
           type="checkbox"
           value="1"
-          className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          className="w-4 h-4 rounded border-gray-300 text-sig-500 focus:ring-sig-500"
         />
         <label htmlFor="include_in_legajo" className="text-sm text-gray-700 cursor-pointer">
           Incluir en el <span className="font-medium">Legajo Técnico Digital</span>

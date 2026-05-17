@@ -123,7 +123,7 @@ export function AccessAssignment({ targetUserId, empresas, currentAccess }: Acce
                 id={`emp-${empresa.id}`}
                 checked={isEmpresaEntera(empresa.id)}
                 onChange={() => toggleEmpresaEntera(empresa.id)}
-                className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                className="w-4 h-4 text-sig-500 rounded border-gray-300 focus:ring-sig-500"
               />
               <label
                 htmlFor={`emp-${empresa.id}`}
@@ -136,7 +136,7 @@ export function AccessAssignment({ targetUserId, empresas, currentAccess }: Acce
               {empresa.establecimientos.length > 0 && (
                 <button
                   onClick={() => toggleExpand(empresa.id)}
-                  className="text-xs text-blue-600 hover:text-blue-800"
+                  className="text-xs text-sig-500 hover:text-sig-700"
                 >
                   {expanded.has(empresa.id) ? 'Ocultar' : `Ver establecimientos (${empresa.establecimientos.length})`}
                 </button>
@@ -153,7 +153,7 @@ export function AccessAssignment({ targetUserId, empresas, currentAccess }: Acce
                       id={`est-${est.id}`}
                       checked={isEstablecimientoSelected(empresa.id, est.id)}
                       onChange={() => toggleEstablecimiento(empresa.id, est.id)}
-                      className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                      className="w-4 h-4 text-sig-500 rounded border-gray-300 focus:ring-sig-500"
                     />
                     <label
                       htmlFor={`est-${est.id}`}

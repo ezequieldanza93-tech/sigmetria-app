@@ -136,8 +136,8 @@ function EppInlineForm({
   }, [])
 
   return (
-    <form action={formAction} className="bg-blue-50 rounded-lg p-3 mt-2 space-y-2">
-      <p className="text-xs font-semibold text-blue-700 mb-1">Agregar EPP</p>
+    <form action={formAction} className="bg-sig-50 rounded-lg p-3 mt-2 space-y-2">
+      <p className="text-xs font-semibold text-sig-700 mb-1">Agregar EPP</p>
       <div className="grid grid-cols-2 gap-2">
         <div>
           <label className="text-xs text-gray-600 block mb-1">Producto *</label>
@@ -248,7 +248,7 @@ function PuestoRow({
             <span className="text-xs text-gray-400 font-normal">({personas.length} persona{personas.length !== 1 ? 's' : ''})</span>
           )}
           {epp !== null && epp.length > 0 && (
-            <span className="text-xs bg-blue-100 text-blue-700 font-medium px-1.5 py-0.5 rounded">{epp.length} EPP</span>
+            <span className="text-xs bg-sig-50 text-sig-700 font-medium px-1.5 py-0.5 rounded">{epp.length} EPP</span>
           )}
         </button>
         {canWrite && (
@@ -277,7 +277,7 @@ function PuestoRow({
                   <li key={ep.id} className="flex items-center justify-between py-1.5 text-sm">
                     <button
                       onClick={() => setSelectedEp(ep)}
-                      className="text-left text-blue-600 hover:text-blue-800 font-medium"
+                      className="text-left text-sig-500 hover:text-sig-700 font-medium"
                     >
                       {ep.directorio_personas?.apellido}, {ep.directorio_personas?.nombre}
                       {ep.directorio_personas?.dni && <span className="text-gray-400 text-xs font-normal ml-2">DNI {ep.directorio_personas.dni}</span>}
@@ -298,7 +298,7 @@ function PuestoRow({
             {canWrite && !showAddPersona && (
               <button
                 onClick={() => setShowAddPersona(true)}
-                className="mt-1 text-xs text-blue-600 hover:text-blue-800 font-medium"
+                className="mt-1 text-xs text-sig-500 hover:text-sig-700 font-medium"
               >
                 + Agregar persona
               </button>
@@ -344,7 +344,7 @@ function PuestoRow({
             {canWrite && !showAddEpp && (
               <button
                 onClick={() => setShowAddEpp(true)}
-                className="mt-1 text-xs text-blue-600 hover:text-blue-800 font-medium"
+                className="mt-1 text-xs text-sig-500 hover:text-sig-700 font-medium"
               >
                 + Agregar EPP
               </button>
@@ -459,7 +459,7 @@ function SectorRow({
         ) : (
           <button
             onClick={() => canWrite && (setEditingId(sector.id), setEditingVal(sector.cantidad_trabajadores.toString()))}
-            className={`text-sm text-gray-500 ${canWrite ? 'hover:text-blue-600 cursor-pointer' : 'cursor-default'}`}
+            className={`text-sm text-gray-500 ${canWrite ? 'hover:text-sig-500 cursor-pointer' : 'cursor-default'}`}
             title={canWrite ? 'Click para editar trabajadores' : undefined}
           >
             {sector.cantidad_trabajadores} trabajadores
@@ -504,7 +504,7 @@ function SectorRow({
           {canWrite && !showAddPuesto && (
             <button
               onClick={() => setShowAddPuesto(true)}
-              className="text-xs text-blue-600 hover:text-blue-800 font-medium mt-1"
+              className="text-xs text-sig-500 hover:text-sig-700 font-medium mt-1"
             >
               + Agregar puesto
             </button>
@@ -638,7 +638,7 @@ function PersonasTab({
             <button
               key={t.id}
               onClick={() => setActiveTipo(t.id)}
-              className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${activeTipo === t.id ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
+              className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${activeTipo === t.id ? 'bg-sig-500 text-white border-sig-500' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
             >
               {t.nombre} {personas !== null && `(${count})`}
             </button>
@@ -670,7 +670,7 @@ function PersonasTab({
                   <td className="px-5 py-3.5">
                     <button
                       onClick={() => setSelectedPersona(p)}
-                      className="text-blue-600 hover:text-blue-800 font-medium text-left"
+                      className="text-sig-500 hover:text-sig-700 font-medium text-left"
                     >
                       {p.apellido}, {p.nombre}
                     </button>
@@ -1171,7 +1171,7 @@ function DocumentosTab({
                     </td>
                     <td className="px-5 py-3.5">
                       {d.archivo_url ? (
-                        <a href={d.archivo_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-xs truncate max-w-[160px] block">
+                        <a href={d.archivo_url} target="_blank" rel="noopener noreferrer" className="text-sig-500 hover:underline text-xs truncate max-w-[160px] block">
                           Ver archivo
                         </a>
                       ) : (
@@ -1233,7 +1233,7 @@ export function EstablecimientoTabs({
               onClick={() => setActive(tab.id)}
               className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap rounded-t-lg transition-colors -mb-px border-b-2 ${
                 tab.id === active
-                  ? 'border-blue-600 text-blue-600'
+                  ? 'border-sig-500 text-sig-500'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >

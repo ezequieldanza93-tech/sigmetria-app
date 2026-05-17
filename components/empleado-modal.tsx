@@ -75,7 +75,7 @@ function DocumentoForm({
       </div>
       <div>
         <label className="text-xs font-medium text-gray-600 block mb-1">Archivo</label>
-        <input name="archivo" type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" className="w-full text-sm text-gray-600 file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+        <input name="archivo" type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" className="w-full text-sm text-gray-600 file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-medium file:bg-sig-50 file:text-sig-700 hover:file:bg-sig-100" />
       </div>
       {state && !state.success && <p className="text-xs text-red-600">{state.error}</p>}
       <div className="flex justify-end">
@@ -145,7 +145,7 @@ export function EmpleadoModal({
             onClick={() => setTab(t)}
             className={`px-4 py-2 text-sm font-medium capitalize -mb-px border-b-2 transition-colors ${
               tab === t
-                ? 'border-blue-600 text-blue-600'
+                ? 'border-sig-500 text-sig-500'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
@@ -226,7 +226,7 @@ export function EmpleadoModal({
                       href={d.archivo_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs text-blue-600 hover:underline ml-3 shrink-0"
+                      className="text-xs text-sig-500 hover:underline ml-3 shrink-0"
                     >
                       Ver archivo
                     </a>
@@ -239,7 +239,7 @@ export function EmpleadoModal({
           {canWrite && !showForm && (
             <button
               onClick={() => setShowForm(true)}
-              className="mt-3 text-sm text-blue-600 hover:text-blue-800 font-medium"
+              className="mt-3 text-sm text-sig-500 hover:text-sig-700 font-medium"
             >
               + Agregar documento
             </button>

@@ -139,7 +139,7 @@ export default function ProductosPage() {
             <button
               key={c.id}
               onClick={() => setActiveCategoria(c.id)}
-              className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${activeCategoria === c.id ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
+              className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${activeCategoria === c.id ? 'bg-sig-500 text-white border-sig-500' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
             >
               {c.nombre} ({count})
             </button>
@@ -170,7 +170,7 @@ export default function ProductosPage() {
                 <tr key={p.id} className="hover:bg-gray-50">
                   <td className="px-5 py-3.5 font-medium text-gray-900">{p.nombre}</td>
                   <td className="px-5 py-3.5">
-                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-sig-50 text-sig-700">
                       {p.categoria_productos?.nombre ?? '—'}
                     </span>
                   </td>

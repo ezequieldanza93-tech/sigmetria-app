@@ -45,7 +45,7 @@ export default function OnboardingPage() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 bg-blue-600 rounded-2xl mb-4">
+          <div className="inline-flex items-center justify-center w-14 h-14 bg-sig-500 rounded-2xl mb-4">
             <span className="text-white text-2xl font-bold">S</span>
           </div>
           <h1 className="text-2xl font-bold text-gray-900">Configuración Inicial</h1>
@@ -55,13 +55,13 @@ export default function OnboardingPage() {
         {/* Stepper */}
         <div className="flex items-center gap-2 mb-8">
           <div className={`flex items-center gap-2 flex-1`}>
-            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${step >= 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'}`}>1</div>
-            <span className={`text-sm font-medium ${step === 1 ? 'text-blue-600' : step > 1 ? 'text-gray-500' : 'text-gray-400'}`}>Datos de la Consultora</span>
+            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${step >= 1 ? 'bg-sig-500 text-white' : 'bg-gray-200 text-gray-500'}`}>1</div>
+            <span className={`text-sm font-medium ${step === 1 ? 'text-sig-500' : step > 1 ? 'text-gray-500' : 'text-gray-400'}`}>Datos de la Consultora</span>
           </div>
           <div className="w-6 h-px bg-gray-300 shrink-0" />
           <div className={`flex items-center gap-2 flex-1`}>
-            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${step >= 2 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'}`}>2</div>
-            <span className={`text-sm font-medium ${step === 2 ? 'text-blue-600' : 'text-gray-400'}`}>Admin Principal</span>
+            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${step >= 2 ? 'bg-sig-500 text-white' : 'bg-gray-200 text-gray-500'}`}>2</div>
+            <span className={`text-sm font-medium ${step === 2 ? 'text-sig-500' : 'text-gray-400'}`}>Admin Principal</span>
           </div>
         </div>
 

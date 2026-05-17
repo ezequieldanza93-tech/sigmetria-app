@@ -31,7 +31,7 @@ export function Tabs({ tabs, defaultTab, className }: TabsProps) {
               className={cn(
                 'px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors -mb-px border-b-2',
                 tab.id === active
-                  ? 'border-blue-600 text-blue-600'
+                  ? 'border-sig-500 text-sig-500'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               )}
             >

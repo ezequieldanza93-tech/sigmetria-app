@@ -79,7 +79,7 @@ export default async function UsuariosPage() {
                   <td className="px-5 py-4">
                     <Link
                       href={`/dashboard/usuarios/${m.user_id}/acceso`}
-                      className="text-xs text-blue-600 hover:underline"
+                      className="text-xs text-sig-500 hover:underline"
                     >
                       Gestionar acceso
                     </Link>

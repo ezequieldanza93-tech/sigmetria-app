@@ -74,7 +74,7 @@ export function EmpresaDocumentosSection({ empresaId, documentos, documentTypes,
                           href={d.archivo_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline text-xs truncate max-w-[200px] block"
+                          className="text-sig-500 hover:underline text-xs truncate max-w-[200px] block"
                         >
                           Ver archivo
                         </a>

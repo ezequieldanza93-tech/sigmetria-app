@@ -39,7 +39,7 @@ export default async function EmpresasPage() {
         {puedeCrear && (
           <Link
             href="/dashboard/empresas/nueva"
-            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            className="inline-flex items-center gap-2 bg-sig-500 hover:bg-sig-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
           >
             <span>+</span> Nueva Empresa
           </Link>
@@ -53,7 +53,7 @@ export default async function EmpresasPage() {
           {puedeCrear && (
             <Link
               href="/dashboard/empresas/nueva"
-              className="mt-4 inline-block text-blue-600 hover:underline text-sm"
+              className="mt-4 inline-block text-sig-500 hover:underline text-sm"
             >
               Crear la primera empresa
             </Link>
@@ -78,7 +78,7 @@ export default async function EmpresasPage() {
                 return (
                   <tr key={e.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-5 py-4 font-medium text-gray-900">
-                      <Link href={`/dashboard/empresas/${e.id}`} className="hover:text-blue-600 transition-colors">
+                      <Link href={`/dashboard/empresas/${e.id}`} className="hover:text-sig-500 transition-colors">
                         {e.razon_social}
                       </Link>
                     </td>

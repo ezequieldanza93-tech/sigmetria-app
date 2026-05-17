@@ -125,7 +125,7 @@ export default function InstrumentosPage() {
             <button
               key={t.id}
               onClick={() => setActiveTipo(t.id)}
-              className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${activeTipo === t.id ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
+              className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${activeTipo === t.id ? 'bg-sig-500 text-white border-sig-500' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
             >
               {t.nombre} ({count})
             </button>
@@ -156,7 +156,7 @@ export default function InstrumentosPage() {
                 <tr key={i.id} className="hover:bg-gray-50">
                   <td className="px-5 py-3.5 font-medium text-gray-900">{i.modelo}</td>
                   <td className="px-5 py-3.5">
-                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-sig-50 text-sig-700">
                       {i.tipo_instrumento_medicion?.nombre ?? '—'}
                     </span>
                   </td>

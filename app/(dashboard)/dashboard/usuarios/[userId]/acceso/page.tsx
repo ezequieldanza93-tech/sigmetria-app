@@ -88,7 +88,7 @@ export default async function UserAccesoPage({ params }: Props) {
         </p>
       </div>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 text-sm text-blue-700">
+      <div className="bg-sig-50 border border-sig-100 rounded-xl p-4 mb-6 text-sm text-sig-700">
         <p className="font-medium mb-1">Modos de asignación:</p>
         <ul className="space-y-1 text-xs">
           <li>• <strong>Empresa entera</strong>: el usuario accede a todos los establecimientos de esa empresa, incluyendo los futuros</li>

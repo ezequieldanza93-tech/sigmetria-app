@@ -120,7 +120,7 @@ export default async function EmpresaDetailPage({ params }: Props) {
         {puedeEditar && (
           <Link
             href={`/dashboard/empresas/${id}/establecimientos/nuevo`}
-            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            className="inline-flex items-center gap-2 bg-sig-500 hover:bg-sig-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
           >
             <span>+</span> Nuevo Establecimiento
           </Link>
@@ -134,7 +134,7 @@ export default async function EmpresaDetailPage({ params }: Props) {
           {puedeEditar && (
             <Link
               href={`/dashboard/empresas/${id}/establecimientos/nuevo`}
-              className="mt-4 inline-block text-blue-600 hover:underline text-sm"
+              className="mt-4 inline-block text-sig-500 hover:underline text-sm"
             >
               Agregar el primero
             </Link>
@@ -157,7 +157,7 @@ export default async function EmpresaDetailPage({ params }: Props) {
                   <td className="px-5 py-4 font-medium text-gray-900">
                     <Link
                       href={`/dashboard/empresas/${id}/establecimientos/${est.id}`}
-                      className="hover:text-blue-600 transition-colors"
+                      className="hover:text-sig-500 transition-colors"
                     >
                       {est.nombre}
                     </Link>

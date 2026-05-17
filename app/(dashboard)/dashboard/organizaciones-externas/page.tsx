@@ -116,7 +116,7 @@ export default function OrganizacionesExternasPage() {
             <button
               key={t.id}
               onClick={() => setActiveTipo(t.id)}
-              className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${activeTipo === t.id ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
+              className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${activeTipo === t.id ? 'bg-sig-500 text-white border-sig-500' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
             >
               {t.nombre} ({count})
             </button>

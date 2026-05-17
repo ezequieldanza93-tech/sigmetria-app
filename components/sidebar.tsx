@@ -53,7 +53,7 @@ export function Sidebar({ fullName, email, userRole, systemRole, consultoraNombr
     <aside className="w-60 bg-slate-900 min-h-screen flex flex-col border-r border-slate-800">
       <div className="p-5 border-b border-slate-800">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shrink-0">
+          <div className="w-8 h-8 bg-sig-500 rounded-lg flex items-center justify-center shrink-0">
             <span className="text-white text-sm font-bold">S</span>
           </div>
           <div className="min-w-0">
@@ -74,7 +74,7 @@ export function Sidebar({ fullName, email, userRole, systemRole, consultoraNombr
               href={item.href}
               className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
                 active
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-sig-500 text-white'
                   : 'text-slate-400 hover:text-white hover:bg-slate-800'
               }`}
             >

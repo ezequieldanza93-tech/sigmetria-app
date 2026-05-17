@@ -177,7 +177,7 @@ export function EstablecimientoLocation({ lat, lng, nombre, fotoUrl }: Props) {
             href={mapsOpenUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="absolute bottom-3 right-3 bg-white text-xs text-blue-600 font-medium px-3 py-1.5 rounded-lg shadow-md hover:shadow-lg transition-shadow border border-gray-200"
+            className="absolute bottom-3 right-3 bg-white text-xs text-sig-500 font-medium px-3 py-1.5 rounded-lg shadow-md hover:shadow-lg transition-shadow border border-gray-200"
           >
             Abrir en Google Maps ↗
           </a>
@@ -196,10 +196,10 @@ export function EstablecimientoLocation({ lat, lng, nombre, fotoUrl }: Props) {
                 <div
                   key={day.date}
                   className={`flex flex-col items-center rounded-xl px-3 py-2.5 min-w-[80px] ${
-                    i === 0 ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50 border border-gray-100'
+                    i === 0 ? 'bg-sig-50 border border-sig-100' : 'bg-gray-50 border border-gray-100'
                   }`}
                 >
-                  <p className={`text-xs font-medium mb-1 ${i === 0 ? 'text-blue-600' : 'text-gray-500'}`}>
+                  <p className={`text-xs font-medium mb-1 ${i === 0 ? 'text-sig-500' : 'text-gray-500'}`}>
                     {formatDay(day.date, i)}
                   </p>
                   <span className="text-xl mb-1">{wmoIcon(day.weathercode)}</span>
