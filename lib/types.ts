@@ -83,6 +83,37 @@ export interface Consultora {
   updated_at: string
 }
 
+export interface PerfilProfesional {
+  id: string
+  user_id: string
+  telefono: string | null
+  fecha_nacimiento: string | null
+  provincia_residencia: string | null
+  localidad: string | null
+  provincia_matricula: string | null
+  canal_captacion: string | null
+  tipo_identidad_impositiva: string | null
+  cuit: string | null
+  firma_url: string | null
+  logo_small_url: string | null
+  logo_destacado_url: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface MatriculaProfesional {
+  id: string
+  perfil_id: string
+  emisor: string
+  numero: string
+  fecha_emision: string | null
+  fecha_vencimiento: string | null
+  foto_frente_url: string | null
+  foto_dorso_url: string | null
+  activa: boolean
+  created_at: string
+}
+
 export interface ConsultoraMember {
   id: string
   consultora_id: string
@@ -93,6 +124,7 @@ export interface ConsultoraMember {
   created_at: string
   updated_at: string
   profile?: Profile
+  profiles?: Profile & { perfiles_profesionales?: PerfilProfesional | null }
 }
 
 export interface Empresa {
