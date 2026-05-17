@@ -148,10 +148,11 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
       .select('id, gestiones(id, nombre, categoria_gestiones(nombre, grupo_gestiones(nombre)))')
       .eq('establecimiento_id', establecimientoId)
       .then(({ data: geData }) => {
-        const geIds = (geData ?? []).map((ge: GestionConJoin) => ge.id)
+        const ges = (geData ?? []) as unknown as GestionConJoin[]
+        const geIds = ges.map(ge => ge.id)
         if (geIds.length === 0) { setRegistros([]); return }
         const geMap = new Map<string, GestionConJoin>()
-        for (const ge of geData as GestionConJoin[]) geMap.set(ge.id, ge)
+        for (const ge of ges) geMap.set(ge.id, ge)
 
         supabase
           .from('registro_gestiones')
