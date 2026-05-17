@@ -124,9 +124,20 @@ export function AppHeader({ fullName, email, consultoraNombre, userRole, systemR
           </div>
         </Link>
 
+        {/* Productos nav */}
+        <nav className="hidden md:flex items-center ml-4">
+          <Link
+            href="/dashboard/productos"
+            className="px-3 py-1.5 rounded-md text-sm transition-colors text-gray-500 hover:text-gray-900 hover:bg-gray-50"
+            style={{ fontFamily: 'Poppins, system-ui' }}
+          >
+            Productos
+          </Link>
+        </nav>
+
         {/* Breadcrumb */}
         {crumbs.length > 0 && (
-          <nav className="hidden md:flex items-center gap-1.5 text-sm ml-4" aria-label="Breadcrumb">
+          <nav className="hidden md:flex items-center gap-1.5 text-sm" aria-label="Breadcrumb">
             {crumbs.map((crumb, i) => (
               <div key={i} className="flex items-center gap-1.5">
                 {i > 0 && <span className="text-gray-300 select-none">›</span>}

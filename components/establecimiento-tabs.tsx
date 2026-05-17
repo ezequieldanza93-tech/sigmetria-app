@@ -36,6 +36,7 @@ import type {
   Documento,
   DocumentType,
   DirectorioPersona,
+  Organizacion,
   EppPorPuesto,
   Producto,
   AsistenciaDiaria,
@@ -51,7 +52,7 @@ import type {
 } from '@/lib/types'
 import { calcularEstadoGestion } from '@/lib/types'
 
-type Tab = 'sectores' | 'personas' | 'siniestros' | 'inspecciones' | 'documentos' | 'asistencia' | 'legajo'
+type Tab = 'sectores' | 'stakeholders' | 'siniestros' | 'inspecciones' | 'documentos' | 'asistencia' | 'legajo'
 
 interface EstablecimientoTabsProps {
   establecimientoId: string
@@ -588,7 +589,7 @@ function SectoresTab({
 }
 
 // ---- Personas Tab ----
-function PersonasTab({
+function StakeholdersTab({
   establecimientoId,
   empresaId,
   canWrite,
@@ -601,9 +602,11 @@ function PersonasTab({
   const [tiposPersona, setTiposPersona] = useState<{ id: string; nombre: string }[]>([])
   const [activeTipo, setActiveTipo] = useState<string>('todos')
   const [selectedPersona, setSelectedPersona] = useState<DirectorioPersona | null>(null)
+  const [orgExternas, setOrgExternas] = useState<Organizacion[] | null>(null)
 
   useEffect(() => {
     const supabase = createClient()
+
     supabase
       .from('persona_establecimiento')
       .select('directorio_personas(id, nombre, apellido, dni, fecha_nacimiento, fecha_ingreso, legajo, telefono, email, tipo_id, tipo_personas(nombre), organizacion_id, notas, is_active, created_at, updated_at)')
@@ -618,6 +621,17 @@ function PersonasTab({
       .select('id, nombre')
       .order('nombre')
       .then(({ data }) => setTiposPersona(data ?? []))
+
+    supabase
+      .from('organizacion_establecimiento')
+      .select('organizaciones(id, nombre, email, telefono, notas, is_active, tipo_organizaciones(nombre))')
+      .eq('establecimiento_id', establecimientoId)
+      .then(({ data }) => {
+        const list = ((data ?? []) as unknown as { organizaciones: Organizacion }[])
+          .map(r => r.organizaciones)
+          .filter(o => o?.is_active)
+        setOrgExternas(list as Organizacion[])
+      })
   }, [establecimientoId])
 
   const filtered = personas === null
@@ -627,86 +641,130 @@ function PersonasTab({
       : personas.filter(p => p.tipo_id === activeTipo)
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-900">Directorio de Personas</h3>
-      </div>
-
-      {/* Filter tabs */}
-      <div className="flex gap-1 mb-4 flex-wrap">
-        <button
-          onClick={() => setActiveTipo('todos')}
-          className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${activeTipo === 'todos' ? 'bg-gray-900 text-white border-gray-900' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
-        >
-          Todos {personas !== null && `(${personas.length})`}
-        </button>
-        {tiposPersona.map(t => {
-          const count = personas?.filter(p => p.tipo_id === t.id).length ?? 0
-          return (
-            <button
-              key={t.id}
-              onClick={() => setActiveTipo(t.id)}
-              className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${activeTipo === t.id ? 'bg-sig-500 text-white border-sig-500' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
-            >
-              {t.nombre} {personas !== null && `(${count})`}
-            </button>
-          )
-        })}
-      </div>
-
-      {filtered === null ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400 text-sm">Cargando…</div>
-      ) : filtered.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400 text-sm">
-          No hay personas registradas{activeTipo !== 'todos' ? ' de este tipo' : ''}.
-          <p className="text-xs mt-1">Las personas se agregan desde la vista de Sectores → Puestos.</p>
+    <div className="space-y-8">
+      {/* ── Personas ── */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-gray-900">Personas</h3>
         </div>
-      ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="border-b border-gray-100 bg-gray-50">
-              <tr className="text-left">
-                <th className="px-5 py-3 text-gray-500 font-medium">Nombre</th>
-                <th className="px-5 py-3 text-gray-500 font-medium">DNI</th>
-                <th className="px-5 py-3 text-gray-500 font-medium">Tipo</th>
-                <th className="px-5 py-3 text-gray-500 font-medium">Ingreso</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {filtered.map(p => (
-                <tr key={p.id} className="hover:bg-gray-50">
-                  <td className="px-5 py-3.5">
-                    <button
-                      onClick={() => setSelectedPersona(p)}
-                      className="text-sig-500 hover:text-sig-700 font-medium text-left"
-                    >
-                      {p.apellido}, {p.nombre}
-                    </button>
-                  </td>
-                  <td className="px-5 py-3.5 text-gray-500">{p.dni ?? '—'}</td>
-                  <td className="px-5 py-3.5">
-                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
-                      {p.tipo_personas?.nombre ?? '—'}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3.5 text-gray-500">{p.fecha_ingreso ? formatDate(p.fecha_ingreso) : '—'}</td>
+
+        <div className="flex gap-1 mb-4 flex-wrap">
+          <button
+            onClick={() => setActiveTipo('todos')}
+            className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${activeTipo === 'todos' ? 'bg-gray-900 text-white border-gray-900' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
+          >
+            Todos {personas !== null && `(${personas.length})`}
+          </button>
+          {tiposPersona.map(t => {
+            const count = personas?.filter(p => p.tipo_id === t.id).length ?? 0
+            return (
+              <button
+                key={t.id}
+                onClick={() => setActiveTipo(t.id)}
+                className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${activeTipo === t.id ? 'bg-sig-500 text-white border-sig-500' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
+              >
+                {t.nombre} {personas !== null && `(${count})`}
+              </button>
+            )
+          })}
+        </div>
+
+        {filtered === null ? (
+          <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400 text-sm">Cargando…</div>
+        ) : filtered.length === 0 ? (
+          <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400 text-sm">
+            No hay personas registradas{activeTipo !== 'todos' ? ' de este tipo' : ''}.
+            <p className="text-xs mt-1">Las personas se agregan desde la vista de Sectores → Puestos.</p>
+          </div>
+        ) : (
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="border-b border-gray-100 bg-gray-50">
+                <tr className="text-left">
+                  <th className="px-5 py-3 text-gray-500 font-medium">Nombre</th>
+                  <th className="px-5 py-3 text-gray-500 font-medium">DNI</th>
+                  <th className="px-5 py-3 text-gray-500 font-medium">Tipo</th>
+                  <th className="px-5 py-3 text-gray-500 font-medium">Ingreso</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {filtered.map(p => (
+                  <tr key={p.id} className="hover:bg-gray-50">
+                    <td className="px-5 py-3.5">
+                      <button
+                        onClick={() => setSelectedPersona(p)}
+                        className="text-sig-500 hover:text-sig-700 font-medium text-left"
+                      >
+                        {p.apellido}, {p.nombre}
+                      </button>
+                    </td>
+                    <td className="px-5 py-3.5 text-gray-500">{p.dni ?? '—'}</td>
+                    <td className="px-5 py-3.5">
+                      <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
+                        {p.tipo_personas?.nombre ?? '—'}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5 text-gray-500">{p.fecha_ingreso ? formatDate(p.fecha_ingreso) : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
-      {selectedPersona && (
-        <EmpleadoModal
-          persona={selectedPersona}
-          open={!!selectedPersona}
-          onClose={() => setSelectedPersona(null)}
-          establecimientoId={establecimientoId}
-          empresaId={empresaId}
-          canWrite={canWrite}
-        />
-      )}
+        {selectedPersona && (
+          <EmpleadoModal
+            persona={selectedPersona}
+            open={!!selectedPersona}
+            onClose={() => setSelectedPersona(null)}
+            establecimientoId={establecimientoId}
+            empresaId={empresaId}
+            canWrite={canWrite}
+          />
+        )}
+      </div>
+
+      {/* ── Organizaciones Externas ── */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-gray-900">Organizaciones Externas</h3>
+        </div>
+
+        {orgExternas === null ? (
+          <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400 text-sm">Cargando…</div>
+        ) : orgExternas.length === 0 ? (
+          <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400 text-sm">
+            No hay organizaciones externas vinculadas a este establecimiento.
+          </div>
+        ) : (
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="border-b border-gray-100 bg-gray-50">
+                <tr className="text-left">
+                  <th className="px-5 py-3 text-gray-500 font-medium">Nombre</th>
+                  <th className="px-5 py-3 text-gray-500 font-medium">Tipo</th>
+                  <th className="px-5 py-3 text-gray-500 font-medium">Email</th>
+                  <th className="px-5 py-3 text-gray-500 font-medium">Teléfono</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {orgExternas.map(o => (
+                  <tr key={o.id} className="hover:bg-gray-50">
+                    <td className="px-5 py-3.5 font-medium text-gray-900">{o.nombre}</td>
+                    <td className="px-5 py-3.5">
+                      <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
+                        {o.tipo_organizaciones?.nombre ?? '—'}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5 text-gray-500">{o.email ?? '—'}</td>
+                    <td className="px-5 py-3.5 text-gray-500">{o.telefono ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -1723,7 +1781,7 @@ function ObservacionForm({
 // ---- Main component ----
 const TABS: { id: Tab; label: string }[] = [
   { id: 'sectores', label: 'Sectores' },
-  { id: 'personas', label: 'Personas' },
+  { id: 'stakeholders', label: 'Stakeholders' },
   { id: 'asistencia', label: 'Asistencia' },
   { id: 'siniestros', label: 'Siniestros' },
   { id: 'inspecciones', label: 'Inspecciones' },
@@ -1772,8 +1830,8 @@ export function EstablecimientoTabs({
           canWrite={canWrite}
         />
       )}
-      {active === 'personas' && (
-        <PersonasTab
+      {active === 'stakeholders' && (
+        <StakeholdersTab
           establecimientoId={establecimientoId}
           empresaId={empresaId}
           canWrite={canWrite}
