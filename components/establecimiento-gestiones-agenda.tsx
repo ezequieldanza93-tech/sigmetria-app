@@ -25,7 +25,7 @@ interface FullRegistro extends RegistroGestion {
   ge_id?: string
 }
 
-interface GestionConJoin extends GestionEstablecimiento {
+interface GestionConJoin extends Omit<GestionEstablecimiento, 'gestiones'> {
   gestiones?: {
     id: string
     nombre: string
