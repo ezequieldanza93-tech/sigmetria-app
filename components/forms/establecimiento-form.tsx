@@ -82,14 +82,33 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
         placeholder="Manufactura de piezas metálicas"
       />
 
-      <Input
-        label="Cantidad Total de Trabajadores"
-        name="cantidad_trabajadores"
-        type="number"
-        min="0"
-        defaultValue={establecimiento?.cantidad_trabajadores?.toString() ?? ''}
-        placeholder="50"
-      />
+      <div className="grid grid-cols-2 gap-4">
+        <Input
+          label="Cantidad Total de Trabajadores"
+          name="cantidad_trabajadores"
+          type="number"
+          min="0"
+          defaultValue={establecimiento?.cantidad_trabajadores?.toString() ?? ''}
+          placeholder="50"
+        />
+        <Input
+          label="Horario de Trabajo"
+          name="horario_trabajo"
+          defaultValue={establecimiento?.horario_trabajo ?? ''}
+          placeholder="Lun–Vie 08:00–17:00"
+        />
+      </div>
+
+      <div>
+        <label className="text-sm font-medium text-gray-700 block mb-1">Información del establecimiento</label>
+        <textarea
+          name="description"
+          defaultValue={establecimiento?.description ?? ''}
+          rows={3}
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500 focus:border-transparent resize-none"
+          placeholder="Descripción, notas o información adicional del establecimiento…"
+        />
+      </div>
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Ubicación Google Maps</label>

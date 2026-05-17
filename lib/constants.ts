@@ -24,19 +24,28 @@ export const SECTORES_PREDEFINIDOS = [
 ] as const
 
 export const TIPO_ESTABLECIMIENTO_LABELS: Record<TipoEstablecimiento, string> = {
-  obra_construccion: 'Obra de Construcción',
   industria: 'Industria',
+  agro: 'Agro',
+  construccion: 'Construcción',
+  comercio: 'Comercio',
+  administrativo: 'Administrativo',
+  logistica: 'Logística',
+  centro_salud: 'Centro de Salud',
+  otro: 'Otros tipos',
+  obra_construccion: 'Obra de Construcción',
   local_comercial: 'Local Comercial',
   local_administrativo: 'Local Administrativo',
-  otro: 'Otro',
 }
 
 export const TIPO_ESTABLECIMIENTO_OPTIONS: { value: TipoEstablecimiento; label: string }[] = [
-  { value: 'obra_construccion', label: 'Obra de Construcción' },
   { value: 'industria', label: 'Industria' },
-  { value: 'local_comercial', label: 'Local Comercial' },
-  { value: 'local_administrativo', label: 'Local Administrativo' },
-  { value: 'otro', label: 'Otro' },
+  { value: 'agro', label: 'Agro' },
+  { value: 'construccion', label: 'Construcción' },
+  { value: 'comercio', label: 'Comercio' },
+  { value: 'administrativo', label: 'Administrativo' },
+  { value: 'logistica', label: 'Logística' },
+  { value: 'centro_salud', label: 'Centro de Salud' },
+  { value: 'otro', label: 'Otros tipos' },
 ]
 
 export const SINIESTRO_TIPO_LABELS: Record<SiniestroTipo, string> = {

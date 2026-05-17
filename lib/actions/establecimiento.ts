@@ -78,6 +78,8 @@ export async function createEstablecimiento(
       codigo_postal: (formData.get('codigo_postal') as string) || null,
       actividad_principal: (formData.get('actividad_principal') as string) || null,
       cantidad_trabajadores: isNaN(cantidad as number) ? null : cantidad,
+      horario_trabajo: (formData.get('horario_trabajo') as string) || null,
+      description: (formData.get('description') as string) || null,
       latitude,
       longitude,
     })
@@ -136,6 +138,8 @@ export async function updateEstablecimiento(
       codigo_postal: (formData.get('codigo_postal') as string) || null,
       actividad_principal: (formData.get('actividad_principal') as string) || null,
       cantidad_trabajadores: isNaN(cantidad as number) ? null : cantidad,
+      horario_trabajo: (formData.get('horario_trabajo') as string) || null,
+      description: (formData.get('description') as string) || null,
       latitude,
       longitude,
       ...(photo_site !== undefined && { photo_site }),

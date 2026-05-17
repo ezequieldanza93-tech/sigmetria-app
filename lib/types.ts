@@ -7,11 +7,17 @@ export type UserRole =
   | 'colaborador_viewer'
 
 export type TipoEstablecimiento =
-  | 'obra_construccion'
   | 'industria'
+  | 'agro'
+  | 'construccion'
+  | 'comercio'
+  | 'administrativo'
+  | 'logistica'
+  | 'centro_salud'
+  | 'otro'
+  | 'obra_construccion'
   | 'local_comercial'
   | 'local_administrativo'
-  | 'otro'
 
 export type SiniestroTipo =
   | 'accidente'
@@ -168,6 +174,8 @@ export interface Establecimiento {
   codigo_postal: string | null
   actividad_principal: string | null
   cantidad_trabajadores: number | null
+  horario_trabajo: string | null
+  description: string | null
   latitude: number | null
   longitude: number | null
   photo_site: string | null
@@ -400,6 +408,7 @@ export interface Documento {
   archivo_url: string | null
   fecha_emision: string | null
   fecha_vencimiento: string | null
+  legajo_tecnico: boolean
   subido_por: string | null
   created_at: string
 }

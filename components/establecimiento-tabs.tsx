@@ -51,7 +51,7 @@ import type {
 } from '@/lib/types'
 import { calcularEstadoGestion } from '@/lib/types'
 
-type Tab = 'sectores' | 'personas' | 'siniestros' | 'inspecciones' | 'riesgos' | 'documentos' | 'asistencia' | 'gestiones'
+type Tab = 'sectores' | 'personas' | 'siniestros' | 'inspecciones' | 'documentos' | 'asistencia' | 'legajo'
 
 interface EstablecimientoTabsProps {
   establecimientoId: string
@@ -60,7 +60,6 @@ interface EstablecimientoTabsProps {
   sectores: SectorEstablecimiento[]
   siniestros: Siniestro[]
   inspecciones: Inspeccion[]
-  riesgos: Riesgo[]
   documentos: Documento[]
   documentTypes: DocumentType[]
   defaultTab?: Tab
@@ -1728,9 +1727,8 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'asistencia', label: 'Asistencia' },
   { id: 'siniestros', label: 'Siniestros' },
   { id: 'inspecciones', label: 'Inspecciones' },
-  { id: 'riesgos', label: 'Riesgos' },
   { id: 'documentos', label: 'Documentos' },
-  { id: 'gestiones', label: 'Gestiones' },
+  { id: 'legajo', label: 'Legajo Técnico' },
 ]
 
 export function EstablecimientoTabs({
@@ -1740,7 +1738,6 @@ export function EstablecimientoTabs({
   sectores,
   siniestros,
   inspecciones,
-  riesgos,
   documentos,
   documentTypes,
   defaultTab,
@@ -1805,14 +1802,6 @@ export function EstablecimientoTabs({
           canWrite={canWrite}
         />
       )}
-      {active === 'riesgos' && (
-        <RiesgosTab
-          riesgos={riesgos}
-          establecimientoId={establecimientoId}
-          empresaId={empresaId}
-          canWrite={canWrite}
-        />
-      )}
       {active === 'documentos' && (
         <DocumentosTab
           documentos={documentos}
@@ -1822,8 +1811,11 @@ export function EstablecimientoTabs({
           canWrite={canWrite}
         />
       )}
-      {active === 'gestiones' && (
-        <GestionesTab establecimientoId={establecimientoId} canWrite={canWrite} />
+      {active === 'legajo' && (
+        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400 text-sm">
+          <p className="font-medium text-gray-600 mb-1">Legajo Técnico</p>
+          <p>Próximamente — mostrará todos los documentos con check de legajo técnico.</p>
+        </div>
       )}
     </div>
   )
