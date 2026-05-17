@@ -170,45 +170,21 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
             )
           })}
         </nav>
+
+        {userCanWrite && section === 'informacion' && (
+          <div className="mt-auto px-2 pb-6 pt-4">
+            <Link
+              href={`/dashboard/empresas/${id}/establecimientos/${estId}/editar`}
+              className="flex items-center justify-center gap-1.5 w-full border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-800 text-xs font-medium px-3 py-2 rounded-lg transition-colors"
+            >
+              Editar
+            </Link>
+          </div>
+        )}
       </aside>
 
       {/* Main content */}
       <div className="flex-1 min-w-0 p-8">
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-sm text-gray-500 mb-6 flex-wrap">
-          <Link href="/dashboard/empresas" className="hover:text-gray-900">Empresas</Link>
-          <span>/</span>
-          <Link href={`/dashboard/empresas/${id}`} className="hover:text-gray-900">{empresa.razon_social}</Link>
-          <span>/</span>
-          <span className="text-gray-900">{establecimiento.nombre}</span>
-        </div>
-
-        {/* Header */}
-        <div className="flex items-start justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">{establecimiento.nombre}</h1>
-            <div className="flex items-center gap-3 mt-1 flex-wrap text-sm text-gray-500">
-              {tipoLabel && <span>{tipoLabel}</span>}
-              {establecimiento.localidad && (
-                <span>
-                  {[establecimiento.localidad, establecimiento.provincia].filter(Boolean).join(', ')}
-                </span>
-              )}
-              {establecimiento.cantidad_trabajadores != null && (
-                <span>{establecimiento.cantidad_trabajadores} trabajadores</span>
-              )}
-            </div>
-          </div>
-          {userCanWrite && section === 'informacion' && (
-            <Link
-              href={`/dashboard/empresas/${id}/establecimientos/${estId}/editar`}
-              className="inline-flex items-center gap-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium px-4 py-2 rounded-lg transition-colors shrink-0"
-            >
-              Editar establecimiento
-            </Link>
-          )}
-        </div>
-
         {/* ── Información ── */}
         {section === 'informacion' && (
           <>

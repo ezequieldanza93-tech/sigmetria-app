@@ -1,8 +1,9 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { canManageUsers, UserRole, SystemRole, ROLE_LABELS, ROLE_COLORS } from '@/lib/types'
+import { SystemRole, UserRole, ROLE_LABELS, ROLE_COLORS } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 
 interface AppHeaderProps {
@@ -13,6 +14,13 @@ interface AppHeaderProps {
   systemRole: SystemRole
 }
 
+interface Crumb {
+  label: string
+  href?: string
+}
+
+const ROUTE_PATTERN = /\/dashboard\/empresas(?:\/([^/]+)(?:\/establecimientos(?:\/([^/]+))?)?)?/
+
 function SigmetriaIsotipo() {
   return (
     <svg viewBox="0 0 24 26" height="28" aria-hidden="true">
@@ -22,31 +30,66 @@ function SigmetriaIsotipo() {
   )
 }
 
-type NavLeaf = { label: string; href: string; exact: boolean; children?: never }
-type NavGroup = { label: string; href?: never; exact?: never; children: { label: string; href: string }[] }
-type NavItem = NavLeaf | NavGroup
-
-const NAV: NavItem[] = [
-  { label: 'Dashboard', href: '/dashboard', exact: true },
-  { label: 'Empresas', href: '/dashboard/empresas', exact: false },
-  {
-    label: 'Stakeholders',
-    children: [
-      { label: 'Personas', href: '/dashboard/personas' },
-      { label: 'Org. Externas', href: '/dashboard/organizaciones-externas' },
-    ],
-  },
-  { label: 'Productos', href: '/dashboard/productos', exact: false },
-]
-
 export function AppHeader({ fullName, email, consultoraNombre, userRole, systemRole }: AppHeaderProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const isDeveloper = systemRole === 'developer'
-  const isAdmin = canManageUsers(userRole, systemRole)
+  const [crumbs, setCrumbs] = useState<Crumb[]>([])
+
+  useEffect(() => {
+    const match = pathname.match(ROUTE_PATTERN)
+    if (!match) {
+      setCrumbs([])
+      return
+    }
+
+    const empresaId = match[1]
+    const estId = match[2]
+
+    async function buildCrumbs() {
+      const items: Crumb[] = [{ label: 'Empresas', href: '/dashboard/empresas' }]
+
+      if (!empresaId || empresaId === 'nueva') {
+        setCrumbs(items)
+        return
+      }
+
+      const supabase = createClient()
+      const { data: empresa } = await supabase
+        .from('empresas')
+        .select('razon_social')
+        .eq('id', empresaId)
+        .single()
+
+      if (empresa) {
+        items.push({
+          label: empresa.razon_social,
+          href: estId ? `/dashboard/empresas/${empresaId}` : undefined,
+        })
+      }
+
+      if (!estId || estId === 'nuevo') {
+        setCrumbs(items)
+        return
+      }
+
+      const { data: est } = await supabase
+        .from('establecimientos')
+        .select('nombre')
+        .eq('id', estId)
+        .single()
+
+      if (est) {
+        items.push({ label: est.nombre })
+      }
+
+      setCrumbs(items)
+    }
+
+    buildCrumbs()
+  }, [pathname])
 
   const firstName = fullName.split(' ')[0] ?? fullName
-  const displayRole = isDeveloper ? 'developer' : userRole
+  const displayRole = systemRole === 'developer' ? 'developer' : userRole
   const roleColor = displayRole ? (ROLE_COLORS as Record<string, string>)[displayRole] ?? '' : ''
   const roleLabel = displayRole ? (ROLE_LABELS as Record<string, string>)[displayRole] ?? '' : ''
 
@@ -62,22 +105,6 @@ export function AppHeader({ fullName, email, consultoraNombre, userRole, systemR
     await supabase.auth.signOut()
     router.push('/login')
     router.refresh()
-  }
-
-  const navItems: NavItem[] = [
-    ...NAV,
-    ...(isAdmin ? [{ label: 'Usuarios', href: '/dashboard/usuarios', exact: false } as NavLeaf] : []),
-    ...(isDeveloper ? [{ label: 'Nueva Consultora', href: '/onboarding', exact: false } as NavLeaf] : []),
-  ]
-
-  function isLeafActive(item: NavLeaf): boolean {
-    return item.exact
-      ? pathname === item.href
-      : pathname.startsWith(item.href) && (item.href !== '/dashboard' || pathname === '/dashboard')
-  }
-
-  function isGroupActive(item: NavGroup): boolean {
-    return item.children.some(child => pathname.startsWith(child.href))
   }
 
   return (
@@ -97,62 +124,32 @@ export function AppHeader({ fullName, email, consultoraNombre, userRole, systemR
           </div>
         </Link>
 
-        {/* Nav links */}
-        <nav className="hidden md:flex items-center gap-1 ml-4">
-          {navItems.map(item => {
-            if (item.children) {
-              const active = isGroupActive(item)
-              return (
-                <div key={item.label} className="relative group">
-                  <button
-                    className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-sm transition-colors ${
-                      active
-                        ? 'bg-green-50 text-green-700 font-medium'
-                        : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
-                    }`}
+        {/* Breadcrumb */}
+        {crumbs.length > 0 && (
+          <nav className="hidden md:flex items-center gap-1.5 text-sm ml-4" aria-label="Breadcrumb">
+            {crumbs.map((crumb, i) => (
+              <div key={i} className="flex items-center gap-1.5">
+                {i > 0 && <span className="text-gray-300 select-none">›</span>}
+                {crumb.href ? (
+                  <Link
+                    href={crumb.href}
+                    className="text-gray-400 hover:text-gray-700 transition-colors"
                     style={{ fontFamily: 'Poppins, system-ui' }}
                   >
-                    {item.label}
-                    <svg className="w-3 h-3 opacity-60" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
-                      <path d="M2 4l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </button>
-                  <div className="absolute left-0 top-full mt-1 w-44 bg-white border border-gray-200 rounded-xl shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 py-1">
-                    {item.children.map(child => (
-                      <Link
-                        key={child.href}
-                        href={child.href}
-                        className={`block px-4 py-2 text-sm transition-colors ${
-                          pathname.startsWith(child.href)
-                            ? 'text-green-700 font-medium bg-green-50'
-                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                        }`}
-                        style={{ fontFamily: 'Poppins, system-ui' }}
-                      >
-                        {child.label}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )
-            }
-
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
-                  isLeafActive(item)
-                    ? 'bg-green-50 text-green-700 font-medium'
-                    : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
-                }`}
-                style={{ fontFamily: 'Poppins, system-ui' }}
-              >
-                {item.label}
-              </Link>
-            )
-          })}
-        </nav>
+                    {crumb.label}
+                  </Link>
+                ) : (
+                  <span
+                    className="text-gray-700 font-medium"
+                    style={{ fontFamily: 'Poppins, system-ui' }}
+                  >
+                    {crumb.label}
+                  </span>
+                )}
+              </div>
+            ))}
+          </nav>
+        )}
 
         {/* Center: user name */}
         <div className="flex-1 flex justify-center">
@@ -208,7 +205,6 @@ export function AppHeader({ fullName, email, consultoraNombre, userRole, systemR
               {initials || '?'}
             </button>
 
-            {/* Dropdown */}
             <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
               <div className="px-4 py-3 border-b border-gray-100">
                 <p className="text-sm font-medium text-gray-900 truncate">{fullName}</p>
