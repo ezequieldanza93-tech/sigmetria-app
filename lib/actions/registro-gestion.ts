@@ -41,6 +41,7 @@ export async function ejecutarGestion(
   const indexStr = formData.get('index') as string
   const notas = (formData.get('notas') as string) || null
   const responsableId = (formData.get('responsable_id') as string) || null
+  const file = formData.get('evidencia') as File | null
 
   if (!registroId) return { success: false, error: 'Registro requerido' }
   if (!fechaEjecutada) return { success: false, error: 'Fecha de ejecución requerida' }
@@ -52,6 +53,17 @@ export async function ejecutarGestion(
   }
   if (indexStr && !isNaN(Number(indexStr))) {
     updates.index = Number(indexStr)
+  }
+
+  if (file && file.size > 0) {
+    const ext = file.name.split('.').pop()
+    const path = `evidencias/${registroId}/${Date.now()}.${ext}`
+    const { data: upload, error: uploadError } = await supabase.storage
+      .from('documentos')
+      .upload(path, file, { upsert: false })
+    if (uploadError) return { success: false, error: 'Error al subir archivo: ' + uploadError.message }
+    const { data: { publicUrl } } = supabase.storage.from('documentos').getPublicUrl(upload.path)
+    updates.evidencia_url = publicUrl
   }
 
   const { error } = await supabase

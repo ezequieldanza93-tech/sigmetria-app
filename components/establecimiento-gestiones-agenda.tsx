@@ -392,6 +392,26 @@ function EjecucionModal({
         </div>
 
         <div>
+          <label className="text-sm font-medium text-gray-700 block mb-1">Evidencia</label>
+          {registro.evidencia_url && (
+            <a
+              href={registro.evidencia_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-sig-600 hover:underline block mb-1.5"
+            >
+              Ver archivo actual ↗
+            </a>
+          )}
+          <input
+            type="file"
+            name="evidencia"
+            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
+            className="w-full text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-sig-50 file:text-sig-700 hover:file:bg-sig-100 cursor-pointer"
+          />
+        </div>
+
+        <div>
           <label className="text-sm font-medium text-gray-700 block mb-1">Notas</label>
           <textarea
             name="notas"
