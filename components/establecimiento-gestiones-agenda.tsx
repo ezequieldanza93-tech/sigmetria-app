@@ -550,7 +550,7 @@ function EjecucionModal({
   }
 
   return (
-    <Modal open title="Cargar Evidencia" onClose={onClose}>
+    <Modal open title={registro.ge_gestion_nombre ?? 'Cargar Evidencia'} onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <input type="hidden" name="registro_id" value={registro.id} />
 
@@ -984,7 +984,7 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
       const estado = calcularEstadoGestion(r.fecha_ejecutada ?? null, r.fecha_planificada)
 
       return (
-        <tr key={r.id} className={ROW_BG_COLORS[estado]}>
+        <tr key={r.id} className={`${ROW_BG_COLORS[estado]} cursor-pointer`} onClick={() => setEditingRegistro(r)}>
           <td className="px-4 py-3 text-gray-400 text-xs text-center">{idx + 1}</td>
           <td className="px-4 py-3 font-medium text-gray-900" style={{ maxWidth: colW('gestion'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {r.ge_gestion_nombre ?? '—'}
@@ -1002,7 +1002,7 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
           {canWrite && (
             <td className="px-4 py-3">
               <button
-                onClick={() => setEditingRegistro(r)}
+                onClick={e => { e.stopPropagation(); setEditingRegistro(r) }}
                 className="text-xs font-medium text-sig-600 hover:text-sig-800 underline underline-offset-2 whitespace-nowrap"
               >
                 {r.fecha_ejecutada ? 'Editar evidencia' : 'Cargar evidencia'}
