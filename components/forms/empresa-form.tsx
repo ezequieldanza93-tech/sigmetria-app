@@ -1,11 +1,11 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
-import { PROVINCIAS_AR } from '@/lib/constants'
-import type { Empresa, ActionResult } from '@/lib/types'
+import { createClient } from '@/lib/supabase/client'
+import type { Empresa, Localidad, ActionResult } from '@/lib/types'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type EmpresaFormAction = (prevState: any, formData: FormData) => Promise<ActionResult<unknown>>
@@ -16,10 +16,34 @@ interface EmpresaFormProps {
   submitLabel?: string
 }
 
-const provinciaOptions = PROVINCIAS_AR.map(p => ({ value: p, label: p }))
-
 export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: EmpresaFormProps) {
   const [state, formAction, isPending] = useActionState(action, null)
+  const [artOrgs, setArtOrgs] = useState<{ id: string; nombre: string }[]>([])
+  const [localidades, setLocalidades] = useState<Localidad[]>([])
+  const [selectedProvincia, setSelectedProvincia] = useState(empresa?.localidades?.provincia ?? '')
+
+  useEffect(() => {
+    const supabase = createClient()
+    Promise.all([
+      supabase
+        .from('organizaciones_externas')
+        .select('id, nombre, tipo_organizaciones!inner(nombre)')
+        .eq('tipo_organizaciones.nombre', 'ART')
+        .eq('is_active', true)
+        .order('nombre'),
+      supabase
+        .from('localidades')
+        .select('id, nombre, provincia, is_active, created_at')
+        .eq('is_active', true)
+        .order('nombre'),
+    ]).then(([{ data: arts }, { data: locs }]) => {
+      if (arts) setArtOrgs(arts as { id: string; nombre: string }[])
+      if (locs) setLocalidades(locs as Localidad[])
+    })
+  }, [])
+
+  const provincias = [...new Set(localidades.map(l => l.provincia))].sort()
+  const localidadesFiltradas = localidades.filter(l => l.provincia === selectedProvincia)
 
   return (
     <form action={formAction} className="space-y-4">
@@ -71,18 +95,20 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
       />
 
       <div className="grid grid-cols-2 gap-4">
-        <Input
-          label="Localidad"
-          name="localidad"
-          defaultValue={empresa?.localidad ?? ''}
-          placeholder="Buenos Aires"
-        />
         <Select
           label="Provincia"
-          name="provincia"
-          defaultValue={empresa?.provincia ?? ''}
-          options={provinciaOptions}
-          placeholder="Seleccionar..."
+          value={selectedProvincia}
+          onChange={e => setSelectedProvincia(e.target.value)}
+          options={provincias.map(p => ({ value: p, label: p }))}
+          placeholder="Seleccionar provincia..."
+        />
+        <Select
+          label="Localidad"
+          name="localidad_id"
+          defaultValue={empresa?.localidad_id ?? ''}
+          options={localidadesFiltradas.map(l => ({ value: l.id, label: l.nombre }))}
+          placeholder={selectedProvincia ? 'Seleccionar localidad...' : 'Elegí provincia primero'}
+          disabled={!selectedProvincia}
         />
       </div>
 
@@ -95,11 +121,12 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
       />
 
       <div className="grid grid-cols-2 gap-4">
-        <Input
+        <Select
           label="ART"
-          name="art"
-          defaultValue={empresa?.art ?? ''}
-          placeholder="Nombre de la aseguradora"
+          name="art_id"
+          defaultValue={empresa?.art_id ?? ''}
+          options={artOrgs.map(o => ({ value: o.id, label: o.nombre }))}
+          placeholder="Seleccionar ART..."
         />
         <Input
           label="Nº de contrato ART"

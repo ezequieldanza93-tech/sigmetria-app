@@ -5,17 +5,17 @@ import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { createClient } from '@/lib/supabase/client'
 import { createProducto, deleteProducto } from '@/lib/actions/producto'
-import type { Producto, CategoriaProducto, Organizacion, ActionResult, UnidadMedida } from '@/lib/types'
-
-const UNIDADES: UnidadMedida[] = ['g', 'kg', 'ml', 'l', 'unidad', 'par', 'caja', 'rollo', 'metro']
+import type { Producto, CategoriaProducto, Organizacion, ActionResult, Unidad } from '@/lib/types'
 
 function ProductoForm({
   categorias,
   marcas,
+  unidades,
   onSuccess,
 }: {
   categorias: CategoriaProducto[]
   marcas: Organizacion[]
+  unidades: Unidad[]
   onSuccess: () => void
 }) {
   const [state, formAction, pending] = useActionState(
@@ -56,9 +56,9 @@ function ProductoForm({
         </div>
         <div>
           <label className="text-sm font-medium text-gray-700 block mb-1">Unidad</label>
-          <select name="unidad" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
+          <select name="unidad_id" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
             <option value="">—</option>
-            {UNIDADES.map(u => <option key={u} value={u}>{u}</option>)}
+            {unidades.map(u => <option key={u.id} value={u.id}>{u.nombre} ({u.simbolo})</option>)}
           </select>
         </div>
       </div>
@@ -77,6 +77,7 @@ export default function ProductosPage() {
   const [productos, setProductos] = useState<Producto[] | null>(null)
   const [categorias, setCategorias] = useState<CategoriaProducto[]>([])
   const [marcas, setMarcas] = useState<Organizacion[]>([])
+  const [unidades, setUnidades] = useState<Unidad[]>([])
   const [activeCategoria, setActiveCategoria] = useState<string>('todos')
   const [showModal, setShowModal] = useState(false)
 
@@ -84,7 +85,7 @@ export default function ProductosPage() {
     const supabase = createClient()
     supabase
       .from('productos')
-      .select('*, categoria_productos(nombre), organizaciones_externas(nombre)')
+      .select('*, categoria_productos(nombre), organizaciones_externas(nombre), unidades(nombre, simbolo)')
       .eq('is_active', true)
       .order('nombre')
       .then(({ data }) => setProductos((data as unknown as Producto[]) ?? []))
@@ -101,6 +102,9 @@ export default function ProductosPage() {
         const marcasOnly = ((data ?? []) as unknown as Organizacion[]).filter(o => o.tipo_organizaciones?.nombre === 'Marca')
         setMarcas(marcasOnly)
       })
+    supabase.from('unidades').select('id, nombre, simbolo, categoria')
+      .eq('is_active', true).order('categoria').order('nombre')
+      .then(({ data }) => setUnidades(data ?? []))
   }, [])
 
   const filtered = productos === null
@@ -176,7 +180,7 @@ export default function ProductosPage() {
                   </td>
                   <td className="px-5 py-3.5 text-gray-500">{p.organizaciones_externas?.nombre ?? '—'}</td>
                   <td className="px-5 py-3.5 text-gray-500">
-                    {p.tamano ? `${p.tamano} ${p.unidad ?? ''}`.trim() : '—'}
+                    {p.tamano ? `${p.tamano} ${p.unidades?.simbolo ?? ''}`.trim() : '—'}
                   </td>
                   <td className="px-5 py-3.5 text-right">
                     <button
@@ -197,6 +201,7 @@ export default function ProductosPage() {
         <ProductoForm
           categorias={categorias}
           marcas={marcas}
+          unidades={unidades}
           onSuccess={() => { setShowModal(false); load() }}
         />
       </Modal>

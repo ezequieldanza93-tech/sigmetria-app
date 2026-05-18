@@ -1,11 +1,12 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
-import { TIPO_ESTABLECIMIENTO_OPTIONS, PROVINCIAS_AR } from '@/lib/constants'
-import type { Establecimiento, ActionResult } from '@/lib/types'
+import { TIPO_ESTABLECIMIENTO_OPTIONS } from '@/lib/constants'
+import { createClient } from '@/lib/supabase/client'
+import type { Establecimiento, Localidad, ActionResult } from '@/lib/types'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type EstablecimientoFormAction = (prevState: any, formData: FormData) => Promise<ActionResult<unknown>>
@@ -16,10 +17,22 @@ interface EstablecimientoFormProps {
   submitLabel?: string
 }
 
-const provinciaOptions = PROVINCIAS_AR.map(p => ({ value: p, label: p }))
-
 export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Guardar' }: EstablecimientoFormProps) {
   const [state, formAction, isPending] = useActionState(action, null)
+  const [localidades, setLocalidades] = useState<Localidad[]>([])
+  const [selectedProvincia, setSelectedProvincia] = useState(establecimiento?.localidades?.provincia ?? '')
+
+  useEffect(() => {
+    createClient()
+      .from('localidades')
+      .select('id, nombre, provincia, is_active, created_at')
+      .eq('is_active', true)
+      .order('nombre')
+      .then(({ data }) => { if (data) setLocalidades(data as Localidad[]) })
+  }, [])
+
+  const provincias = [...new Set(localidades.map(l => l.provincia))].sort()
+  const localidadesFiltradas = localidades.filter(l => l.provincia === selectedProvincia)
 
   return (
     <form action={formAction} className="space-y-4">
@@ -53,18 +66,20 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
       />
 
       <div className="grid grid-cols-2 gap-4">
-        <Input
-          label="Localidad"
-          name="localidad"
-          defaultValue={establecimiento?.localidad ?? ''}
-          placeholder="Rosario"
-        />
         <Select
           label="Provincia"
-          name="provincia"
-          defaultValue={establecimiento?.provincia ?? ''}
-          options={provinciaOptions}
-          placeholder="Seleccionar..."
+          value={selectedProvincia}
+          onChange={e => setSelectedProvincia(e.target.value)}
+          options={provincias.map(p => ({ value: p, label: p }))}
+          placeholder="Seleccionar provincia..."
+        />
+        <Select
+          label="Localidad"
+          name="localidad_id"
+          defaultValue={establecimiento?.localidad_id ?? ''}
+          options={localidadesFiltradas.map(l => ({ value: l.id, label: l.nombre }))}
+          placeholder={selectedProvincia ? 'Seleccionar localidad...' : 'Elegí provincia primero'}
+          disabled={!selectedProvincia}
         />
       </div>
 

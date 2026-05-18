@@ -68,6 +68,16 @@ export type DocumentoTipo =
 export type UnidadMedida =
   | 'g' | 'kg' | 'ml' | 'l' | 'unidad' | 'par' | 'caja' | 'rollo' | 'metro'
 
+export interface Unidad {
+  id: string
+  nombre: string
+  simbolo: string
+  categoria: string
+  descripcion: string | null
+  is_active: boolean
+  created_at: string
+}
+
 export interface Profile {
   id: string
   full_name: string
@@ -133,6 +143,14 @@ export interface ConsultoraMember {
   profiles?: Profile & { perfiles_profesionales?: PerfilProfesional | null }
 }
 
+export interface Localidad {
+  id: string
+  nombre: string
+  provincia: string
+  is_active: boolean
+  created_at: string
+}
+
 export interface Empresa {
   id: string
   consultora_id: string
@@ -141,10 +159,9 @@ export interface Empresa {
   cuit: string | null
   rubro: string | null
   domicilio: string | null
-  localidad: string | null
-  provincia: string | null
   codigo_postal: string | null
-  art: string | null
+  localidad_id: string | null
+  art_id: string | null
   art_numero_contrato: string | null
   logo_small_url: string | null
   logo_destacado_url: string | null
@@ -152,6 +169,8 @@ export interface Empresa {
   is_active: boolean
   created_at: string
   updated_at: string
+  localidades?: { nombre: string; provincia: string } | null
+  organizaciones_externas?: { nombre: string } | null
 }
 
 export type EstablecimientoStatus =
@@ -169,9 +188,8 @@ export interface Establecimiento {
   nombre: string
   tipo: TipoEstablecimiento | null
   domicilio: string | null
-  localidad: string | null
-  provincia: string | null
   codigo_postal: string | null
+  localidad_id: string | null
   actividad_principal: string | null
   cantidad_trabajadores: number | null
   horario_trabajo: string | null
@@ -179,9 +197,17 @@ export interface Establecimiento {
   latitude: number | null
   longitude: number | null
   photo_site: string | null
+  code: string | null
+  ref: string | null
+  floor_plan_pdf_url: string | null
+  floor_plan_cad_url: string | null
+  google_maps_url: string | null
+  ac_area: number | null
+  gross_area: number | null
   status: EstablecimientoStatus
   created_at: string
   updated_at: string
+  localidades?: { nombre: string; provincia: string } | null
 }
 
 export interface SectorEstablecimiento {
@@ -267,7 +293,8 @@ export interface Producto {
   marca_id: string | null
   categoria_id: string
   tamano: number | null
-  unidad: UnidadMedida | null
+  unidad_id: string | null
+  unidades?: { nombre: string; simbolo: string } | null
   is_active: boolean
   created_at: string
   updated_at: string
@@ -348,17 +375,20 @@ export interface Inspeccion {
 
 export interface Capacitacion {
   id: string
-  empresa_id: string | null
+  empresa_id: string
   establecimiento_id: string | null
   titulo: string
   descripcion: string | null
   estado: CapacitacionEstado
   fecha_programada: string
   fecha_realizada: string | null
-  instructor: string | null
+  instructor_persona_id: string | null
+  instructor_externo: string | null
   duracion_horas: number | null
   created_at: string
   updated_at: string
+  directorio_personas?: { nombre: string; apellido: string } | null
+  capacitacion_asistentes?: { count: number }[]
 }
 
 export interface Riesgo {
@@ -382,8 +412,10 @@ export interface Medicion {
   tipo: MedicionTipo
   fecha: string
   valor: number
-  unidad: string | null
-  sector: string | null
+  unidad_id: string | null
+  unidades?: { nombre: string; simbolo: string } | null
+  sector_id: string | null
+  sectores_establecimiento?: { nombre: string } | null
   cumple_normativa: boolean
   observaciones: string | null
   realizado_por: string | null
@@ -567,6 +599,7 @@ export interface RegistroGestion {
   notas: string | null
   created_at: string
   updated_at: string
+  profiles?: { full_name: string } | null
   directorio_personas?: { nombre: string; apellido: string } | null
 }
 

@@ -1,0 +1,1 @@
+ALTER TABLE mediciones DROP COLUMN IF EXISTS sector;

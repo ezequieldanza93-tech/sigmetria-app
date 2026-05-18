@@ -27,7 +27,7 @@ export async function createProducto(
     marca_id: (formData.get('marca_id') as string) || null,
     categoria_id: categoriaId,
     tamano: tamano && !isNaN(tamano) ? tamano : null,
-    unidad: (formData.get('unidad') as string) || null,
+    unidad_id: (formData.get('unidad_id') as string) || null,
   })
 
   if (error) return { success: false, error: error.message }

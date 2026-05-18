@@ -21,7 +21,7 @@ export default async function EmpresaDetailPage({ params }: Props) {
   const [{ data: profile }, { data: membership }, { data: empresa }] = await Promise.all([
     supabase.from('profiles').select('system_role').eq('id', user.id).single(),
     supabase.from('consultora_members').select('role').eq('user_id', user.id).eq('is_active', true).maybeSingle(),
-    supabase.from('empresas').select('*').eq('id', id).single(),
+    supabase.from('empresas').select('*, localidades(nombre, provincia), organizaciones_externas!art_id(nombre)').eq('id', id).single(),
   ])
 
   if (!empresa) notFound()
@@ -29,7 +29,7 @@ export default async function EmpresaDetailPage({ params }: Props) {
   const [{ data: establecimientos }, { data: documentos }, { data: documentTypes }] = await Promise.all([
     supabase
       .from('establecimientos')
-      .select('id, nombre, tipo, localidad, provincia, cantidad_trabajadores')
+      .select('id, nombre, tipo, localidades(nombre, provincia), cantidad_trabajadores')
       .eq('empresa_id', id)
       .neq('status', 'cancelled')
       .order('nombre'),
@@ -80,16 +80,10 @@ export default async function EmpresaDetailPage({ params }: Props) {
                 <p className="text-gray-800">{empresa.domicilio}</p>
               </div>
             )}
-            {empresa.localidad && (
+            {empresa.localidades && (
               <div>
-                <p className="text-gray-400 text-xs font-medium mb-0.5">Localidad</p>
-                <p className="text-gray-800">{empresa.localidad}</p>
-              </div>
-            )}
-            {empresa.provincia && (
-              <div>
-                <p className="text-gray-400 text-xs font-medium mb-0.5">Provincia</p>
-                <p className="text-gray-800">{empresa.provincia}</p>
+                <p className="text-gray-400 text-xs font-medium mb-0.5">Ubicación</p>
+                <p className="text-gray-800">{empresa.localidades.nombre}, {empresa.localidades.provincia}</p>
               </div>
             )}
             {empresa.codigo_postal && (
@@ -98,10 +92,10 @@ export default async function EmpresaDetailPage({ params }: Props) {
                 <p className="text-gray-800">{empresa.codigo_postal}</p>
               </div>
             )}
-            {empresa.art && (
+            {empresa.organizaciones_externas && (
               <div>
                 <p className="text-gray-400 text-xs font-medium mb-0.5">ART</p>
-                <p className="text-gray-800">{empresa.art}</p>
+                <p className="text-gray-800">{empresa.organizaciones_externas.nombre}</p>
               </div>
             )}
           </div>
@@ -184,7 +178,7 @@ export default async function EmpresaDetailPage({ params }: Props) {
                       {est.tipo ? (TIPO_ESTABLECIMIENTO_LABELS[est.tipo as TipoEstablecimiento] ?? est.tipo) : '—'}
                     </td>
                     <td className="px-5 py-4 text-gray-500">
-                      {[est.localidad, est.provincia].filter(Boolean).join(', ') || '—'}
+                      {est.localidades ? [est.localidades.nombre, est.localidades.provincia].join(', ') : '—'}
                     </td>
                     <td className="px-5 py-4 text-gray-500 text-center">
                       {est.cantidad_trabajadores ?? '—'}
