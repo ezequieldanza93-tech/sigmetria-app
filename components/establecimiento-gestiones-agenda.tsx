@@ -648,7 +648,7 @@ function EjecucionModal({
               + Agregar
               </button>
             </div>
-            <p className="text-xs text-gray-400 text-center py-3 border border-dashed border-gray-200 rounded-lg">
+          {observaciones.length === 0 ? (<p className="text-xs text-gray-400 text-center py-3 border border-dashed border-gray-200 rounded-lg">
               Sin observaciones. Hacé clic en "+ Agregar" para registrar una.
             </p>
           ) : (
