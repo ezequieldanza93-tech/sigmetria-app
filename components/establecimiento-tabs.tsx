@@ -139,7 +139,7 @@ function EppInlineForm({
     const supabase = createClient()
     supabase
       .from('productos')
-      .select('id, nombre, tamano, unidad, categoria_productos(nombre)')
+      .select('id, nombre, tamano, unidad_id, unidades(simbolo), categoria_productos(nombre)')
       .eq('is_active', true)
       .order('nombre')
       .then(({ data }) => setProductos((data as unknown as Producto[]) ?? []))
@@ -158,7 +158,7 @@ function EppInlineForm({
             ) : (
               productos.map(p => (
                 <option key={p.id} value={p.id}>
-                  {p.nombre}{p.tamano ? ` ${p.tamano}${p.unidad ?? ''}` : ''}
+                  {p.nombre}{p.tamano ? ` ${p.tamano}${p.unidades?.simbolo ?? ''}` : ''}
                 </option>
               ))
             )}
@@ -215,7 +215,7 @@ function PuestoRow({
     if (epp === null) {
       supabase
         .from('epp_por_puesto')
-        .select('id, puesto_id, producto_id, horas_vida_util, productos(id, nombre, tamano, unidad, categoria_productos(nombre))')
+        .select('id, puesto_id, producto_id, horas_vida_util, productos(id, nombre, tamano, unidad_id, unidades(simbolo), categoria_productos(nombre))')
         .eq('puesto_id', puesto.id)
         .then(({ data }) => setEpp((data as unknown as EppPorPuesto[]) ?? []))
     }
@@ -337,7 +337,7 @@ function PuestoRow({
                   <li key={e.id} className="flex items-center justify-between py-1.5 text-sm">
                     <span className="text-gray-800">
                       {e.productos?.nombre}
-                      {e.productos?.tamano && <span className="text-gray-500 ml-1">{e.productos.tamano}{e.productos.unidad ?? ''}</span>}
+                      {e.productos?.tamano && <span className="text-gray-500 ml-1">{e.productos.tamano}{(e.productos as any).unidades?.simbolo ?? ''}</span>}
                       {e.horas_vida_util && <span className="text-gray-400 text-xs ml-2">{e.horas_vida_util}hs vida útil</span>}
                     </span>
                     {canDelete && (
