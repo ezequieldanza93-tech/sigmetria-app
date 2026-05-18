@@ -2,56 +2,101 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import type { ObservacionGestion } from '@/lib/types'
+import { Modal } from '@/components/ui/modal'
+import type { ObservacionGestion, RegistroGestion } from '@/lib/types'
 
 interface ObsRow extends ObservacionGestion {
-  gestion_nombre?: string
   fecha_ejecutada?: string | null
+  gestion_nombre?: string
+  gestion_categoria?: string
+  gestion_grupo?: string
+  registro_notas?: string | null
+  registro_observaciones?: string | null
+  registro_fecha_planificada?: string
+  registro_id?: string
 }
 
 export function ActuarView({ establecimientoId }: { establecimientoId: string }) {
   const [observaciones, setObservaciones] = useState<ObsRow[] | null>(null)
+  const [selectedObs, setSelectedObs] = useState<ObsRow | null>(null)
 
   useEffect(() => {
     const supabase = createClient()
 
     supabase
-      .from('gestion_establecimiento')
-      .select('id')
-      .eq('establecimiento_id', establecimientoId)
-      .then(({ data: geData }) => {
-        const geIds = (geData ?? []).map(ge => ge.id)
-        if (geIds.length === 0) { setObservaciones([]); return }
+      .from('registro_gestiones')
+      .select(`
+        id,
+        fecha_ejecutada,
+        fecha_planificada,
+        notas,
+        observaciones,
+        gestion_establecimiento_id,
+        gestion_establecimiento!inner(
+          gestiones!inner(
+            id,
+            nombre,
+            categoria_gestiones(
+              nombre,
+              grupo_gestiones(nombre)
+            )
+          )
+        )
+      `)
+      .not('fecha_ejecutada', 'is', null)
+      .then(({ data: rgData }) => {
+        const rgRecords = (rgData ?? []) as unknown as {
+          id: string
+          fecha_ejecutada: string | null
+          fecha_planificada: string
+          notas: string | null
+          observaciones: string | null
+          gestion_establecimiento_id: string
+          gestion_establecimiento: {
+            gestiones: {
+              id: string
+              nombre: string
+              categoria_gestiones: {
+                nombre: string
+                grupo_gestiones: { nombre: string } | null
+              } | null
+            }
+          }
+        }[]
+
+        if (rgRecords.length === 0) { setObservaciones([]); return }
+
+        const rgIds = rgRecords.map(rg => rg.id)
+        const rgMap = new Map(rgRecords.map(rg => [rg.id, rg]))
 
         supabase
-          .from('registro_gestiones')
-          .select('id, fecha_ejecutada, gestion_establecimiento_id')
-          .not('fecha_ejecutada', 'is', null)
-          .in('gestion_establecimiento_id', geIds)
-          .then(({ data: rgData }) => {
-            const rgIds = (rgData ?? []).map(rg => rg.id)
-            if (rgIds.length === 0) { setObservaciones([]); return }
-
-            const rgMap = new Map((rgData ?? []).map(rg => [rg.id, rg]))
-
-            supabase
-              .from('observaciones_gestiones')
-              .select('*, directorio_personas!responsable_id(nombre, apellido), clasificacion_observaciones(nombre)')
-              .in('registro_gestion_id', rgIds)
-              .order('fecha_planificada', { ascending: false })
-              .then(({ data: obsData }) => {
-                const full: ObsRow[] = ((obsData ?? []) as unknown as ObsRow[]).map(o => ({
-                  ...(o as unknown as ObservacionGestion),
-                  fecha_ejecutada: rgMap.get(o.registro_gestion_id)?.fecha_ejecutada ?? null,
-                }))
-                setObservaciones(full)
-              })
+          .from('observaciones_gestiones')
+          .select('*, directorio_personas!responsable_id(nombre, apellido), clasificacion_observaciones(nombre)')
+          .in('registro_gestion_id', rgIds)
+          .order('fecha_planificada', { ascending: false })
+          .then(({ data: obsData }) => {
+            const full: ObsRow[] = ((obsData ?? []) as unknown as ObsRow[]).map(o => {
+              const rg = rgMap.get(o.registro_gestion_id)
+              const gestionInfo = rg?.gestion_establecimiento?.gestiones
+              return {
+                ...(o as unknown as ObservacionGestion),
+                fecha_ejecutada: rg?.fecha_ejecutada ?? null,
+                gestion_nombre: gestionInfo?.nombre,
+                gestion_categoria: gestionInfo?.categoria_gestiones?.nombre,
+                gestion_grupo: gestionInfo?.categoria_gestiones?.grupo_gestiones?.nombre,
+                registro_notas: rg?.notas ?? null,
+                registro_observaciones: rg?.observaciones ?? null,
+                registro_fecha_planificada: rg?.fecha_planificada,
+                registro_id: rg?.id,
+              }
+            })
+            setObservaciones(full)
           })
       })
   }, [establecimientoId])
 
   if (observaciones === null) {
-    return <p className="text-sm text-gray-400">Cargando observaciones…</p>
+    return <p className="text-sm text-gray-400">Cargando observaciones...</p>
   }
 
   if (observaciones.length === 0) {
@@ -94,6 +139,14 @@ export function ActuarView({ establecimientoId }: { establecimientoId: string })
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-gray-900">{obs.descripcion}</p>
                   <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
+                    {obs.gestion_nombre && (
+                      <button
+                        onClick={() => setSelectedObs(obs)}
+                        className="text-xs font-medium text-sig-600 hover:text-sig-800 hover:underline text-left"
+                      >
+                        {obs.gestion_nombre}
+                      </button>
+                    )}
                     {obs.clasificacion_observaciones && (
                       <span className="text-xs text-gray-400">
                         {obs.clasificacion_observaciones.nombre}
@@ -125,6 +178,87 @@ export function ActuarView({ establecimientoId }: { establecimientoId: string })
           )
         })}
       </div>
+
+      <Modal
+        open={selectedObs !== null}
+        onClose={() => setSelectedObs(null)}
+        title={selectedObs?.gestion_nombre ?? 'Detalle de Gestión'}
+        className="max-w-2xl"
+      >
+        {selectedObs && (
+          <div className="space-y-5 text-sm">
+            {/* Grupo / Categoría */}
+            <div className="grid grid-cols-2 gap-4">
+              {selectedObs.gestion_grupo && (
+                <div>
+                  <p className="text-xs text-gray-400 mb-0.5">Grupo</p>
+                  <p className="text-gray-900 font-medium">{selectedObs.gestion_grupo}</p>
+                </div>
+              )}
+              {selectedObs.gestion_categoria && (
+                <div>
+                  <p className="text-xs text-gray-400 mb-0.5">Categoría</p>
+                  <p className="text-gray-900 font-medium">{selectedObs.gestion_categoria}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Fechas */}
+            <div className="grid grid-cols-2 gap-4">
+              {selectedObs.registro_fecha_planificada && (
+                <div>
+                  <p className="text-xs text-gray-400 mb-0.5">Fecha planificada</p>
+                  <p className="text-gray-900">{selectedObs.registro_fecha_planificada}</p>
+                </div>
+              )}
+              {selectedObs.fecha_ejecutada && (
+                <div>
+                  <p className="text-xs text-gray-400 mb-0.5">Fecha ejecutada</p>
+                  <p className="text-gray-900">{selectedObs.fecha_ejecutada}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Responsable */}
+            {selectedObs.directorio_personas && (
+              <div>
+                <p className="text-xs text-gray-400 mb-0.5">Responsable</p>
+                <p className="text-gray-900">
+                  {selectedObs.directorio_personas.apellido}, {selectedObs.directorio_personas.nombre}
+                </p>
+              </div>
+            )}
+
+            {/* Observaciones del registro */}
+            {selectedObs.registro_observaciones && (
+              <div>
+                <p className="text-xs text-gray-400 mb-0.5">Observaciones de la gestión</p>
+                <p className="text-gray-700 bg-gray-50 rounded-lg px-3 py-2">{selectedObs.registro_observaciones}</p>
+              </div>
+            )}
+
+            {/* Notas */}
+            {selectedObs.registro_notas && (
+              <div>
+                <p className="text-xs text-gray-400 mb-0.5">Notas</p>
+                <p className="text-gray-700 bg-gray-50 rounded-lg px-3 py-2">{selectedObs.registro_notas}</p>
+              </div>
+            )}
+
+            {/* Detalle de la observación */}
+            <div className="border-t border-gray-100 pt-4">
+              <p className="text-xs text-gray-400 mb-0.5">Observación de seguimiento</p>
+              <p className="text-gray-900 font-medium">{selectedObs.descripcion}</p>
+              {selectedObs.fecha_planificada && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Fecha límite: {selectedObs.fecha_planificada}
+                  {selectedObs.fecha_cierre && ` — Cerrado: ${selectedObs.fecha_cierre}`}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }
