@@ -725,63 +725,6 @@ function EjecucionModal({
   )
 }
 
-// ─── PlanificarModal ───────────────────────────────────────────────────────────
-function PlanificarModal({
-  establecimientoId,
-  todasGestiones,
-  grupos,
-  categorias,
-  onClose,
-  onSuccess,
-}: {
-  establecimientoId: string
-  todasGestiones: Gestion[]
-  grupos: GrupoGestion[]
-  categorias: CategoriaGestion[]
-  onClose: () => void
-  onSuccess: (month?: number) => void
-}) {
-  const [mode, setMode] = useState<'biblioteca' | 'nueva'>('biblioteca')
-
-  return (
-    <Modal open title="Planificar Gestión" onClose={onClose}>
-      <div className="flex border-b border-gray-200 mb-5 -mx-6 px-6">
-        {(['biblioteca', 'nueva'] as const).map(m => (
-          <button
-            key={m}
-            type="button"
-            onClick={() => setMode(m)}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-              mode === m
-                ? 'border-sig-500 text-sig-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            {m === 'biblioteca' ? 'Desde biblioteca' : 'Nueva gestión'}
-          </button>
-        ))}
-      </div>
-
-      {mode === 'biblioteca' ? (
-        <BibliotecaForm
-          establecimientoId={establecimientoId}
-          todasGestiones={todasGestiones}
-          onClose={onClose}
-          onSuccess={onSuccess}
-          onSwitchToNueva={() => setMode('nueva')}
-        />
-      ) : (
-        <NuevaGestionForm
-          establecimientoId={establecimientoId}
-          grupos={grupos}
-          categorias={categorias}
-          onClose={onClose}
-          onSuccess={onSuccess}
-        />
-      )}
-    </Modal>
-  )
-}
 
 // ─── Main component ────────────────────────────────────────────────────────────
 export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: GestionesAgendaProps) {
@@ -805,7 +748,6 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
   const [todasGestiones, setTodasGestiones] = useState<Gestion[]>([])
   const [grupos, setGrupos] = useState<GrupoGestion[]>([])
   const [categorias, setCategorias] = useState<CategoriaGestion[]>([])
-  const [showPlanModal, setShowPlanModal] = useState(false)
   const [showRiesgos, setShowRiesgos] = useState(false)
   const [editingRegistro, setEditingRegistro] = useState<FullRegistro | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
@@ -915,11 +857,6 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
     loadRegistros()
     loadCatalogo()
   }, [establecimientoId, year, refreshKey])
-
-  // Refresh catalog when modal opens so new grupos/categorias are available
-  useEffect(() => {
-    if (showPlanModal) loadCatalogo()
-  }, [showPlanModal])
 
   // ── Filtering & sorting ─────────────────────────────────────────────────────
   const monthCounts = MONTHS.map((_, i) => {
@@ -1221,24 +1158,10 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
           Ordenar por Categoría
         </button>
 
-        {activeMonthLabel && (
-          <span className="text-xs bg-sig-50 text-sig-700 border border-sig-200 rounded-lg px-3 py-1.5 font-medium">
-            {activeMonthLabel}
-          </span>
-        )}
-
         <div className="flex items-center gap-2 ml-auto">
           <span className="text-xs text-gray-400">
             {registros !== null ? `${filteredRegistros.length} gestiones` : ''}
           </span>
-          {canWrite && (
-            <button
-              onClick={() => setShowPlanModal(true)}
-              className="text-sm font-semibold bg-gray-900 text-white rounded-lg px-4 py-2 hover:bg-gray-700 transition-colors"
-            >
-              Planificar Nueva Gestión
-            </button>
-          )}
         </div>
       </div>
 
@@ -1345,21 +1268,6 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
           establecimientoId={establecimientoId}
           onClose={() => setEditingRegistro(null)}
           onSuccess={() => { setEditingRegistro(null); setRefreshKey(k => k + 1) }}
-        />
-      )}
-
-      {showPlanModal && (
-        <PlanificarModal
-          establecimientoId={establecimientoId}
-          todasGestiones={todasGestiones}
-          grupos={grupos}
-          categorias={categorias}
-          onClose={() => setShowPlanModal(false)}
-          onSuccess={(month?: number) => {
-            setShowPlanModal(false)
-            if (month !== undefined) setSelectedMonths(prev => new Set([...prev, month]))
-            setRefreshKey(k => k + 1)
-          }}
         />
       )}
     </div>
