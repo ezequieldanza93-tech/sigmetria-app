@@ -193,6 +193,9 @@ export async function createCategoriaGestion(
   if (error) {
     if (error.code === '23505') return { success: false, error: 'Ya existe una categoría con ese nombre' }
     return { success: false, error: error.message }
+  }
+
+  return { success: true, data: data as CategoriaGestion }
 }
 
 function lastDayOfMonth(year: number, month: number): string {
@@ -241,7 +244,4 @@ export async function planificarGestionMulti(
   if (insertError) return { success: false, error: insertError.message }
 
   return { success: true, data: { count: registros.length } }
-}
-
-  return { success: true, data: data as CategoriaGestion }
 }
