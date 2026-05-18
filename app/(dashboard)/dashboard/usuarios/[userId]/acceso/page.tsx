@@ -56,7 +56,7 @@ export default async function UserAccesoPage({ params }: Props) {
   // Get all empresas with establecimientos
   let empresasQuery = supabase
     .from('empresas')
-    .select('*, establecimientos(*)')
+    .select('*, establecimientos(*, localidades(nombre))')
     .eq('is_active', true)
     .order('razon_social')
 

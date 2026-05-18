@@ -160,8 +160,8 @@ export function AccessAssignment({ targetUserId, empresas, currentAccess }: Acce
                       className="text-sm text-gray-700 cursor-pointer"
                     >
                       {est.nombre}
-                      {est.localidad && (
-                        <span className="text-gray-400 ml-1">— {est.localidad}</span>
+                      {est.localidades && (
+                        <span className="text-gray-400 ml-1">— {(est.localidades as any).nombre}</span>
                       )}
                     </label>
                   </div>
