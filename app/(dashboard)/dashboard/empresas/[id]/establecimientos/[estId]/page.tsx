@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
-import { canWrite, UserRole } from '@/lib/types'
+import { canWrite, canDelete, UserRole } from '@/lib/types'
 import { EstablecimientoTabs } from '@/components/establecimiento-tabs'
 import { EstablecimientoLocation } from '@/components/establecimiento-location'
 import { GestionesAgenda } from '@/components/establecimiento-gestiones-agenda'
@@ -58,6 +58,11 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
   if (!establecimiento || !empresa) notFound()
 
   const userCanWrite = canWrite(
+    membership?.role as UserRole ?? null,
+    profile?.system_role ?? 'user'
+  )
+
+  const userCanDelete = canDelete(
     membership?.role as UserRole ?? null,
     profile?.system_role ?? 'user'
   )
@@ -200,6 +205,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
               establecimientoId={estId}
               empresaId={id}
               canWrite={userCanWrite}
+              canDelete={userCanDelete}
               sectores={sectores}
               siniestros={siniestros}
               inspecciones={inspecciones}

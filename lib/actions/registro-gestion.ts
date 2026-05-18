@@ -29,17 +29,31 @@ export async function createRegistroGestion(
 }
 
 export async function ejecutarGestion(
-  registroId: string,
-  fechaEjecutada: string,
-  notas: string | null
+  _prev: ActionResult<null> | null,
+  formData: FormData
 ): Promise<ActionResult<null>> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
+  const registroId = formData.get('registro_id') as string
+  const fechaEjecutada = formData.get('fecha_ejecutada') as string
+  const indexStr = formData.get('index') as string
+  const notas = (formData.get('notas') as string) || null
+  const responsableId = (formData.get('responsable_id') as string) || null
+
+  if (!registroId) return { success: false, error: 'Registro requerido' }
+  if (!fechaEjecutada) return { success: false, error: 'Fecha de ejecución requerida' }
+  if (!indexStr || isNaN(Number(indexStr))) return { success: false, error: 'Índice requerido' }
+
   const { error } = await supabase
     .from('registro_gestiones')
-    .update({ fecha_ejecutada: fechaEjecutada, notas })
+    .update({
+      fecha_ejecutada: fechaEjecutada,
+      index: Number(indexStr),
+      notas,
+      responsable_id: responsableId,
+    })
     .eq('id', registroId)
 
   if (error) return { success: false, error: error.message }

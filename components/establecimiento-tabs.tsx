@@ -58,6 +58,7 @@ interface EstablecimientoTabsProps {
   establecimientoId: string
   empresaId: string
   canWrite: boolean
+  canDelete: boolean
   sectores: SectorEstablecimiento[]
   siniestros: Siniestro[]
   inspecciones: Inspeccion[]
@@ -183,12 +184,14 @@ function PuestoRow({
   establecimientoId,
   empresaId,
   canWrite,
+  canDelete,
   onDeleted,
 }: {
   puesto: PuestoDeTrabajo
   establecimientoId: string
   empresaId: string
   canWrite: boolean
+  canDelete: boolean
   onDeleted: () => void
 }) {
   const [open, setOpen] = useState(false)
@@ -260,7 +263,7 @@ function PuestoRow({
             <span className="text-xs bg-sig-50 text-sig-700 font-medium px-1.5 py-0.5 rounded">{epp.length} EPP</span>
           )}
         </button>
-        {canWrite && (
+        {canDelete && (
           <button
             onClick={handleDeletePuesto}
             disabled={isPending}
@@ -291,7 +294,7 @@ function PuestoRow({
                       {ep.directorio_personas?.apellido}, {ep.directorio_personas?.nombre}
                       {ep.directorio_personas?.dni && <span className="text-gray-400 text-xs font-normal ml-2">DNI {ep.directorio_personas.dni}</span>}
                     </button>
-                    {canWrite && (
+                    {canDelete && (
                       <button
                         onClick={() => handleRemovePersona(ep.id)}
                         disabled={isPending}
@@ -337,7 +340,7 @@ function PuestoRow({
                       {e.productos?.tamano && <span className="text-gray-500 ml-1">{e.productos.tamano}{e.productos.unidad ?? ''}</span>}
                       {e.horas_vida_util && <span className="text-gray-400 text-xs ml-2">{e.horas_vida_util}hs vida útil</span>}
                     </span>
-                    {canWrite && (
+                    {canDelete && (
                       <button
                         onClick={() => handleRemoveEpp(e.id)}
                         disabled={isPending}
@@ -389,12 +392,14 @@ function SectorRow({
   establecimientoId,
   empresaId,
   canWrite,
+  canDelete,
   onDeleted,
 }: {
   sector: SectorEstablecimiento
   establecimientoId: string
   empresaId: string
   canWrite: boolean
+  canDelete: boolean
   onDeleted: () => void
 }) {
   const [open, setOpen] = useState(false)
@@ -475,7 +480,7 @@ function SectorRow({
           </button>
         )}
 
-        {canWrite && sector.es_custom && (
+        {canDelete && sector.es_custom && (
           <button
             onClick={handleDeleteSector}
             disabled={isPending}
@@ -504,6 +509,7 @@ function SectorRow({
                   establecimientoId={establecimientoId}
                   empresaId={empresaId}
                   canWrite={canWrite}
+                  canDelete={canDelete}
                   onDeleted={() => setPuestos(prev => prev?.filter(p => p.id !== puesto.id) ?? null)}
                 />
               ))}
@@ -538,11 +544,13 @@ function SectoresTab({
   establecimientoId,
   empresaId,
   canWrite,
+  canDelete,
 }: {
   sectores: SectorEstablecimiento[]
   establecimientoId: string
   empresaId: string
   canWrite: boolean
+  canDelete: boolean
 }) {
   const [showModal, setShowModal] = useState(false)
   const [localSectores, setLocalSectores] = useState(sectores)
@@ -572,6 +580,7 @@ function SectoresTab({
               establecimientoId={establecimientoId}
               empresaId={empresaId}
               canWrite={canWrite}
+              canDelete={canDelete}
               onDeleted={() => setLocalSectores(prev => prev.filter(s => s.id !== sector.id))}
             />
           ))}
@@ -1831,6 +1840,7 @@ export function EstablecimientoTabs({
   establecimientoId,
   empresaId,
   canWrite,
+  canDelete,
   sectores,
   siniestros,
   inspecciones,
@@ -1866,6 +1876,7 @@ export function EstablecimientoTabs({
           establecimientoId={establecimientoId}
           empresaId={empresaId}
           canWrite={canWrite}
+          canDelete={canDelete}
         />
       )}
       {active === 'stakeholders' && (

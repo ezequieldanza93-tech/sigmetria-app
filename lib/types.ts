@@ -461,6 +461,11 @@ export function canWrite(role: UserRole | null, systemRole: SystemRole): boolean
   return role === 'full_access_main' || role === 'full_access_branch' || role === 'colaborador'
 }
 
+export function canDelete(role: UserRole | null, systemRole: SystemRole): boolean {
+  if (systemRole === 'developer') return true
+  return role === 'full_access_main' || role === 'full_access_branch'
+}
+
 export function canManageUsers(role: UserRole | null, systemRole: SystemRole): boolean {
   if (systemRole === 'developer') return true
   return role === 'full_access_main'
@@ -556,7 +561,9 @@ export interface RegistroGestion {
   fecha_planificada: string
   fecha_ejecutada: string | null
   responsable_id: string | null
+  aprobado_por_id: string | null
   evidencia_url: string | null
+  observaciones: string | null
   notas: string | null
   created_at: string
   updated_at: string

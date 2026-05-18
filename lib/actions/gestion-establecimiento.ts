@@ -49,6 +49,61 @@ export async function planificarGestion(
   return { success: true, data: null }
 }
 
+export async function planificarGestionNueva(
+  _prev: ActionResult<null> | null,
+  formData: FormData
+): Promise<ActionResult<null>> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'No autenticado' }
+
+  const nombre = (formData.get('gestion_nombre') as string)?.trim()
+  const categoriaId = formData.get('categoria_id') as string
+  const establecimientoId = formData.get('establecimiento_id') as string
+  const fechaPlanificada = formData.get('fecha_planificada') as string
+  const notas = formData.get('notas') as string
+
+  if (!nombre) return { success: false, error: 'Nombre de gestión requerido' }
+  if (!categoriaId) return { success: false, error: 'Categoría requerida' }
+  if (!fechaPlanificada) return { success: false, error: 'Fecha planificada requerida' }
+
+  const { data: nuevaGestion, error: gestionError } = await supabase
+    .from('gestiones')
+    .insert({ nombre, categoria_id: categoriaId })
+    .select('id')
+    .single()
+
+  if (gestionError) {
+    if (gestionError.code === '23505') return { success: false, error: 'Ya existe una gestión con ese nombre en la librería' }
+    return { success: false, error: gestionError.message }
+  }
+
+  const { error: upsertError } = await supabase
+    .from('gestion_establecimiento')
+    .upsert(
+      { gestion_id: nuevaGestion.id, establecimiento_id: establecimientoId },
+      { onConflict: 'gestion_id,establecimiento_id', ignoreDuplicates: true }
+    )
+  if (upsertError) return { success: false, error: upsertError.message }
+
+  const { data: ge, error: geError } = await supabase
+    .from('gestion_establecimiento')
+    .select('id')
+    .eq('gestion_id', nuevaGestion.id)
+    .eq('establecimiento_id', establecimientoId)
+    .single()
+  if (geError || !ge) return { success: false, error: 'No se pudo vincular la gestión al establecimiento' }
+
+  const { error: registroError } = await supabase.from('registro_gestiones').insert({
+    gestion_establecimiento_id: ge.id,
+    fecha_planificada: fechaPlanificada,
+    notas: notas || null,
+  })
+  if (registroError) return { success: false, error: registroError.message }
+
+  return { success: true, data: null }
+}
+
 export async function addGestionToEstablecimiento(
   gestionId: string,
   establecimientoId: string
