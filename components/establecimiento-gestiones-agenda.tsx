@@ -30,9 +30,9 @@ const COL_MIN_WIDTHS: Record<string, number> = {
 }
 
 const ESTADO_COLORS: Record<EstadoGestion, string> = {
-  Ejecutado: 'bg-sig-50 text-sig-700',
+  Realizado: 'bg-green-100 text-green-700',
   Pendiente: 'bg-red-100 text-red-700',
-  Planificado: 'bg-gray-100 text-gray-600',
+  Planificado: 'bg-sky-100 text-sky-700',
 }
 
 function diffDays(a: string, b: string): number {
@@ -1166,7 +1166,7 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
           <option value="">Seleccione Estado</option>
           <option value="Planificado">Planificado</option>
           <option value="Pendiente">Pendiente</option>
-          <option value="Ejecutado">Ejecutado</option>
+          <option value="Realizado">Realizado</option>
         </select>
 
         <select

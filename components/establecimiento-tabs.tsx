@@ -1796,9 +1796,9 @@ function GestionesTab({ establecimientoId, canWrite }: { establecimientoId: stri
   ]
 
   const estadoColors: Record<EstadoGestion, string> = {
-    Ejecutado: 'bg-sig-50 text-sig-700',
+    Realizado: 'bg-green-100 text-green-700',
     Pendiente: 'bg-red-100 text-red-700',
-    Planificado: 'bg-gray-100 text-gray-600',
+    Planificado: 'bg-sky-100 text-sky-700',
   }
 
   const gestionsNotAdded = todasGestiones.filter(
@@ -1942,7 +1942,7 @@ function GestionesTab({ establecimientoId, canWrite }: { establecimientoId: stri
             ) : (
               <div className="space-y-2">
                 {registros
-                  .filter(r => calcularEstadoGestion(r.fecha_ejecutada, r.fecha_planificada) !== 'Ejecutado')
+                  .filter(r => calcularEstadoGestion(r.fecha_ejecutada, r.fecha_planificada) !== 'Realizado')
                   .map(r => {
                     const estado = calcularEstadoGestion(r.fecha_ejecutada, r.fecha_planificada)
                     const ge = gestionesEstablecimiento?.find(ge => ge.id === r.gestion_establecimiento_id)

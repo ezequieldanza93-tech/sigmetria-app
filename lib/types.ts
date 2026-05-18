@@ -643,10 +643,10 @@ export interface ObservacionGestion {
   directorio_personas?: { nombre: string; apellido: string } | null
 }
 
-export type EstadoGestion = 'Ejecutado' | 'Pendiente' | 'Planificado'
+export type EstadoGestion = 'Realizado' | 'Pendiente' | 'Planificado'
 
 export function calcularEstadoGestion(fechaEjecutada: string | null, fechaPlanificada: string): EstadoGestion {
-  if (fechaEjecutada) return 'Ejecutado'
+  if (fechaEjecutada) return 'Realizado'
   const hoy = new Date()
   hoy.setHours(0, 0, 0, 0)
   const planificada = new Date(fechaPlanificada)

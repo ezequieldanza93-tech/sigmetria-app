@@ -5,6 +5,7 @@ import { canWrite, canDelete, UserRole } from '@/lib/types'
 import { EstablecimientoTabs } from '@/components/establecimiento-tabs'
 import { EstablecimientoLocation } from '@/components/establecimiento-location'
 import { GestionesAgenda } from '@/components/establecimiento-gestiones-agenda'
+import { ActuarView } from '@/components/actuar-view'
 import { TIPO_ESTABLECIMIENTO_LABELS } from '@/lib/constants'
 import type {
   TipoEstablecimiento,
@@ -139,7 +140,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
         <nav className="flex flex-col gap-1">
           {SIDEBAR_ITEMS.map(item => {
             const isActive = section === item.id
-            const isDisabled = item.id === 'verificar' || item.id === 'actuar'
+            const isDisabled = item.id === 'verificar'
             if (isDisabled) {
               return (
                 <span
@@ -236,15 +237,9 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
           </div>
         )}
 
-        {/* ── Actuar (placeholder) ── */}
+        {/* ── Actuar ── */}
         {section === 'actuar' && (
-          <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-            <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center text-xl font-bold text-gray-400 mx-auto mb-4">
-              A
-            </div>
-            <p className="font-semibold text-gray-700">Actuar</p>
-            <p className="text-sm text-gray-400 mt-1">Próximamente disponible.</p>
-          </div>
+          <ActuarView establecimientoId={estId} />
         )}
       </div>
     </div>
