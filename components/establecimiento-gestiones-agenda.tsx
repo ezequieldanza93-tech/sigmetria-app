@@ -985,22 +985,22 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
 
       return (
         <tr key={r.id} className={`${ROW_BG_COLORS[estado]} cursor-pointer`} onClick={() => setEditingRegistro(r)}>
-          <td className="px-4 py-3 text-gray-400 text-xs text-center">{idx + 1}</td>
-          <td className="px-4 py-3 font-medium text-gray-900" style={{ maxWidth: colW('gestion'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <td className="px-4 py-1.5 text-gray-400 text-xs text-center">{idx + 1}</td>
+          <td className="px-4 py-1.5 font-medium text-gray-900" style={{ maxWidth: colW('gestion'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {r.ge_gestion_nombre ?? '—'}
           </td>
-          <td className="px-4 py-3 text-gray-500 tabular-nums text-xs">{r.fecha_planificada}</td>
-          <td className="px-4 py-3 text-gray-500 tabular-nums text-xs">
+          <td className="px-4 py-1.5 text-gray-500 tabular-nums text-xs">{r.fecha_planificada}</td>
+          <td className="px-4 py-1.5 text-gray-500 tabular-nums text-xs">
             {r.fecha_ejecutada ?? <span className="text-gray-300">—</span>}
           </td>
-          <td className="px-4 py-3 text-gray-500 text-xs" style={{ maxWidth: colW('responsable'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <td className="px-4 py-1.5 text-gray-500 text-xs" style={{ maxWidth: colW('responsable'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {r.responsable_nombre ?? <span className="text-gray-300">—</span>}
           </td>
-          <td className="px-4 py-3 text-center text-sm tabular-nums text-gray-700">
+          <td className="px-4 py-1.5 text-center text-sm tabular-nums text-gray-700">
             {r.index != null ? r.index : <span className="text-gray-300">—</span>}
           </td>
           {canWrite && (
-            <td className="px-4 py-3">
+            <td className="px-4 py-1.5">
               <button
                 onClick={e => { e.stopPropagation(); setEditingRegistro(r) }}
                 className="text-xs font-medium text-sig-600 hover:text-sig-800 underline underline-offset-2 whitespace-nowrap"
@@ -1028,24 +1028,24 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
   const tableHead = (
     <thead>
       <tr className="bg-gray-800 text-white text-left text-xs">
-        <th className="px-4 py-3 font-medium w-9 shrink-0">#</th>
-        <th style={{ width: colW('gestion') }} className="px-4 py-3 font-medium relative select-none">
+        <th className="px-4 py-1.5 font-medium w-9 shrink-0">#</th>
+        <th style={{ width: colW('gestion') }} className="px-4 py-1.5 font-medium relative select-none">
           Gestión{rh('gestion')}
         </th>
-        <th style={{ width: colW('fecha_plan') }} className="px-4 py-3 font-medium relative select-none">
+        <th style={{ width: colW('fecha_plan') }} className="px-4 py-1.5 font-medium relative select-none">
           Fecha Plan.{rh('fecha_plan')}
         </th>
-        <th style={{ width: colW('fecha_ejec') }} className="px-4 py-3 font-medium relative select-none">
+        <th style={{ width: colW('fecha_ejec') }} className="px-4 py-1.5 font-medium relative select-none">
           Fecha Ejec.{rh('fecha_ejec')}
         </th>
-        <th style={{ width: colW('responsable') }} className="px-4 py-3 font-medium relative select-none">
+        <th style={{ width: colW('responsable') }} className="px-4 py-1.5 font-medium relative select-none">
           Responsable{rh('responsable')}
         </th>
-        <th style={{ width: colW('indice') }} className="px-4 py-3 font-medium text-center relative select-none">
+        <th style={{ width: colW('indice') }} className="px-4 py-1.5 font-medium text-center relative select-none">
           Índice{rh('indice')}
         </th>
         {canWrite && (
-          <th style={{ width: colW('evidencia') }} className="px-4 py-3 font-medium relative select-none">
+          <th style={{ width: colW('evidencia') }} className="px-4 py-1.5 font-medium relative select-none">
             Evidencia{rh('evidencia')}
           </th>
         )}
