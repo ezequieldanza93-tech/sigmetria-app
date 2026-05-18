@@ -800,6 +800,8 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
 
   const [filterEstado, setFilterEstado] = useState<'' | EstadoGestion>('')
   const [filterCategoria, setFilterCategoria] = useState('')
+  const [filterGrupo, setFilterGrupo] = useState('')
+  const [filterResponsable, setFilterResponsable] = useState('')
   const [orderByCategoria, setOrderByCategoria] = useState(false)
   const [registros, setRegistros] = useState<FullRegistro[] | null>(null)
   const [todasGestiones, setTodasGestiones] = useState<Gestion[]>([])
@@ -934,6 +936,8 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
     const estado = calcularEstadoGestion(r.fecha_ejecutada ?? null, r.fecha_planificada)
     if (filterEstado && estado !== filterEstado) return false
     if (filterCategoria && r.ge_categoria_nombre !== filterCategoria) return false
+    if (filterGrupo && r.ge_grupo_nombre !== filterGrupo) return false
+    if (filterResponsable && r.responsable_nombre !== filterResponsable) return false
     return true
   })
 
@@ -945,6 +949,14 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
 
   const categoriasFiltro = Array.from(
     new Set((registros ?? []).map(r => r.ge_categoria_nombre).filter(Boolean))
+  ).sort() as string[]
+
+  const gruposFiltro = Array.from(
+    new Set((registros ?? []).map(r => r.ge_grupo_nombre).filter(Boolean))
+  ).sort() as string[]
+
+  const responsablesFiltro = Array.from(
+    new Set((registros ?? []).map(r => r.responsable_nombre).filter(Boolean))
   ).sort() as string[]
 
   // Task 2: group by month when multiple months selected
@@ -1134,6 +1146,33 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
       {/* Filter row */}
       <div className="flex items-center gap-2 mb-4 flex-wrap">
         <select
+          value={filterGrupo}
+          onChange={e => setFilterGrupo(e.target.value)}
+          className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-600 focus:outline-none"
+        >
+          <option value="">Seleccione Grupo</option>
+          {gruposFiltro.map(g => <option key={g} value={g}>{g}</option>)}
+        </select>
+
+        <select
+          value={filterCategoria}
+          onChange={e => setFilterCategoria(e.target.value)}
+          className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-600 focus:outline-none"
+        >
+          <option value="">Seleccione Categoría</option>
+          {categoriasFiltro.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+
+        <select
+          value={filterResponsable}
+          onChange={e => setFilterResponsable(e.target.value)}
+          className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-600 focus:outline-none"
+        >
+          <option value="">Seleccione Responsable</option>
+          {responsablesFiltro.map(r => <option key={r} value={r}>{r}</option>)}
+        </select>
+
+        <select
           value={filterEstado}
           onChange={e => setFilterEstado(e.target.value as '' | EstadoGestion)}
           className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-600 focus:outline-none"
@@ -1144,17 +1183,8 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
           <option value="Realizado">Realizado</option>
         </select>
 
-        <select
-          value={filterCategoria}
-          onChange={e => setFilterCategoria(e.target.value)}
-          className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-600 focus:outline-none"
-        >
-          <option value="">Seleccione Categorías</option>
-          {categoriasFiltro.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
-
         <button
-          onClick={() => { setFilterEstado(''); setFilterCategoria(''); setOrderByCategoria(false) }}
+          onClick={() => { setFilterEstado(''); setFilterCategoria(''); setFilterGrupo(''); setFilterResponsable(''); setOrderByCategoria(false) }}
           className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-50"
         >
           Restablecer filtros
