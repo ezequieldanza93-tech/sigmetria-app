@@ -646,20 +646,8 @@ function EjecucionModal({
               className="text-xs text-sig-600 hover:text-sig-700 font-medium flex items-center gap-1"
             >
               + Agregar
-        </button>
-        <button
-          onClick={() => setSelectedMonths(new Set())}
-          className={`text-xs border rounded-lg px-3 py-1.5 transition-colors ${
-            selectedMonths.size === 0
-              ? 'bg-green-100 border-green-300 text-green-700'
-              : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-          }`}
-        >
-          Ninguno
-        </button>
-      </div>
-
-          {observaciones.length === 0 ? (
+              </button>
+            </div>
             <p className="text-xs text-gray-400 text-center py-3 border border-dashed border-gray-200 rounded-lg">
               Sin observaciones. Hacé clic en "+ Agregar" para registrar una.
             </p>
