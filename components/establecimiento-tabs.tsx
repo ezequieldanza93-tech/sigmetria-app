@@ -332,7 +332,7 @@ function PuestoRow({
         .from('empleado_puesto')
         .select('id, persona_id, fecha_desde, directorio_personas(id, nombre, apellido, dni, fecha_ingreso, legajo, telefono, email, tipo_id, tipo_personas(nombre))')
         .eq('puesto_id', puesto.id)
-        .then(({ data }) => setPersonas((data as unknown as EmpleadoPuesto[]) ?? []))
+        .then(({ data }) => setPersonas((data as unknown as TrabajadorPuesto[]) ?? []))
     }
     if (epp === null) {
       supabase
