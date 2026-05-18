@@ -2114,11 +2114,35 @@ function ObservacionForm({
   onSuccess: () => void
 }) {
   const [state, formAction, pending] = useActionState(createObservacionGestion, null)
+  const [categorias, setCategorias] = useState<{ id: string; nombre: string; nivel: number }[]>([])
   useEffect(() => { if (state?.success) onSuccess() }, [state])
+
+  useEffect(() => {
+    createClient().from('observacion_categoria').select('id, nombre, nivel').order('nivel').then(({ data }) => {
+      setCategorias((data ?? []) as { id: string; nombre: string; nivel: number }[])
+    })
+  }, [])
+
+  const CAT_COLORS: Record<number, string> = {
+    1: 'bg-blue-100 text-blue-700',
+    2: 'bg-yellow-100 text-yellow-700',
+    3: 'bg-orange-100 text-orange-700',
+    4: 'bg-red-100 text-red-700',
+  }
+
   return (
     <form action={formAction} className="bg-white border border-gray-200 rounded-lg p-3 mt-2 space-y-2">
       <input type="hidden" name="registro_gestion_id" value={registroGestionId} />
       {state && !state.success && <p className="text-xs text-red-600">{state.error}</p>}
+      <div>
+        <label className="text-xs font-medium text-gray-600 block mb-1">Categoría</label>
+        <select name="categoria_id" className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs bg-white">
+          <option value="">Seleccionar...</option>
+          {categorias.map(c => (
+            <option key={c.id} value={c.id}>{c.nombre}</option>
+          ))}
+        </select>
+      </div>
       <div>
         <label className="text-xs font-medium text-gray-600 block mb-1">Descripción *</label>
         <textarea name="descripcion" required rows={2} className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs resize-none" />

@@ -23,6 +23,7 @@ export async function createObservacionGestion(
     descripcion,
     fecha_planificada: fechaPlanificada,
     responsable_cierre_id: (formData.get('responsable_cierre_id') as string) || null,
+    categoria_id: (formData.get('categoria_id') as string) || null,
   })
 
   if (error) return { success: false, error: error.message }

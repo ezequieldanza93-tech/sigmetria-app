@@ -627,6 +627,14 @@ export interface RegistroGestion {
   directorio_personas?: { nombre: string; apellido: string } | null
 }
 
+export interface ObservacionCategoria {
+  id: string
+  nombre: string
+  nivel: number
+  is_active: boolean
+  created_at: string
+}
+
 export interface ObservacionGestion {
   id: string
   registro_gestion_id: string
@@ -634,12 +642,14 @@ export interface ObservacionGestion {
   fecha_planificada: string
   fecha_cierre: string | null
   clasificacion_id: string | null
+  categoria_id: string | null
   responsable_id: string | null
   responsable_cierre_id: string | null
   evidencia_cierre_url: string | null
   created_at: string
   updated_at: string
   clasificacion_observaciones?: { nombre: string } | null
+  observacion_categoria?: { nombre: string; nivel: number } | null
   directorio_personas?: { nombre: string; apellido: string } | null
 }
 

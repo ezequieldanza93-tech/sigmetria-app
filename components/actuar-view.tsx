@@ -71,7 +71,7 @@ export function ActuarView({ establecimientoId }: { establecimientoId: string })
 
         supabase
           .from('observaciones_gestiones')
-          .select('*, directorio_personas!responsable_id(nombre, apellido), clasificacion_observaciones(nombre)')
+          .select('*, directorio_personas!responsable_id(nombre, apellido), clasificacion_observaciones(nombre), observacion_categoria(nombre, nivel)')
           .in('registro_gestion_id', rgIds)
           .order('fecha_planificada', { ascending: false })
           .then(({ data: obsData }) => {
@@ -132,6 +132,12 @@ export function ActuarView({ establecimientoId }: { establecimientoId: string })
             Pendiente: 'bg-red-100 text-red-700',
             Planificado: 'bg-sky-100 text-sky-700',
           }
+          const catDot: Record<number, string> = {
+            1: 'bg-yellow-400',
+            2: 'bg-orange-500',
+            3: 'bg-red-500',
+            4: 'bg-red-700',
+          }
 
           return (
             <div key={obs.id} className="bg-white border border-gray-200 rounded-xl p-4">
@@ -150,6 +156,12 @@ export function ActuarView({ establecimientoId }: { establecimientoId: string })
                     {obs.clasificacion_observaciones && (
                       <span className="text-xs text-gray-400">
                         {obs.clasificacion_observaciones.nombre}
+                      </span>
+                    )}
+                    {obs.observacion_categoria && (
+                      <span className="inline-flex items-center gap-1.5 text-xs text-gray-500">
+                        <span className={`w-2 h-2 rounded-full ${catDot[obs.observacion_categoria.nivel] ?? 'bg-gray-300'}`} />
+                        {obs.observacion_categoria.nombre}
                       </span>
                     )}
                     <span className="text-xs text-gray-400">
@@ -248,6 +260,18 @@ export function ActuarView({ establecimientoId }: { establecimientoId: string })
             {/* Detalle de la observación */}
             <div className="border-t border-gray-100 pt-4">
               <p className="text-xs text-gray-400 mb-0.5">Observación de seguimiento</p>
+              {selectedObs.observacion_categoria && (
+                <span className="inline-flex items-center gap-1.5 text-xs text-gray-500 mb-2">
+                  <span className={`w-2 h-2 rounded-full ${
+                    selectedObs.observacion_categoria.nivel === 4 ? 'bg-red-700' :
+                    selectedObs.observacion_categoria.nivel === 3 ? 'bg-red-500' :
+                    selectedObs.observacion_categoria.nivel === 2 ? 'bg-orange-500' :
+                    selectedObs.observacion_categoria.nivel === 1 ? 'bg-yellow-400' :
+                    'bg-gray-300'
+                  }`} />
+                  {selectedObs.observacion_categoria.nombre}
+                </span>
+              )}
               <p className="text-gray-900 font-medium">{selectedObs.descripcion}</p>
               {selectedObs.fecha_planificada && (
                 <p className="text-xs text-gray-500 mt-1">
