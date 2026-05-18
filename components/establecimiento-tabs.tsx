@@ -1010,7 +1010,7 @@ function StakeholdersTab({
         )}
 
         {selectedPersona && (
-          <EmpleadoModal
+          <TrabajadorModal
             persona={selectedPersona}
             open={!!selectedPersona}
             onClose={() => setSelectedPersona(null)}
