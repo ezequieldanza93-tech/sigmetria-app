@@ -808,6 +808,7 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
   const [showPlanModal, setShowPlanModal] = useState(false)
   const [showRiesgos, setShowRiesgos] = useState(false)
   const [editingRegistro, setEditingRegistro] = useState<FullRegistro | null>(null)
+  const [refreshKey, setRefreshKey] = useState(0)
 
   // Task 4: resizable columns with localStorage
   const [colWidths, setColWidths] = useState<Record<string, number>>(() => {
@@ -913,7 +914,7 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
   useEffect(() => {
     loadRegistros()
     loadCatalogo()
-  }, [establecimientoId, year])
+  }, [establecimientoId, year, refreshKey])
 
   // Refresh catalog when modal opens so new grupos/categorias are available
   useEffect(() => {
@@ -1318,7 +1319,7 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
           registro={editingRegistro}
           establecimientoId={establecimientoId}
           onClose={() => setEditingRegistro(null)}
-          onSuccess={() => { setEditingRegistro(null); loadRegistros() }}
+          onSuccess={() => { setEditingRegistro(null); setRefreshKey(k => k + 1) }}
         />
       )}
 
@@ -1332,7 +1333,7 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
           onSuccess={(month?: number) => {
             setShowPlanModal(false)
             if (month !== undefined) setSelectedMonths(prev => new Set([...prev, month]))
-            loadRegistros()
+            setRefreshKey(k => k + 1)
           }}
         />
       )}
