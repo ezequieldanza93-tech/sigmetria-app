@@ -4,8 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import type { ActionResult } from '@/lib/types'
 
-export async function createEmpleadoDocumento(
-  empleadoId: string,
+export async function createTrabajadorDocumento(
+  trabajadorId: string,
   establecimientoId: string,
   empresaId: string,
   _prev: ActionResult<null> | null,
@@ -26,7 +26,7 @@ export async function createEmpleadoDocumento(
 
   if (file && file.size > 0) {
     const ext = file.name.split('.').pop()
-    const path = `empleados/${empleadoId}/${Date.now()}.${ext}`
+    const path = `trabajadores/${trabajadorId}/${Date.now()}.${ext}`
     const { data: upload, error: uploadError } = await supabase.storage
       .from('documentos')
       .upload(path, file, { upsert: false })
@@ -40,7 +40,7 @@ export async function createEmpleadoDocumento(
   const { error } = await supabase
     .from('empleado_documentos')
     .insert({
-      persona_id: empleadoId,
+      persona_id: trabajadorId,
       tipo_id: tipoId,
       archivo_url: archivoUrl,
       fecha_emision: fechaEmision || null,

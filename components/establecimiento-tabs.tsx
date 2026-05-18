@@ -10,7 +10,7 @@ import { RiesgoForm } from '@/components/forms/riesgo-form'
 import { DocumentoForm } from '@/components/forms/documento-form'
 import { updateSectorTrabajadores, createSectorCustom, deleteSector } from '@/lib/actions/sector'
 import { createPuesto, deletePuesto } from '@/lib/actions/puesto'
-import { createEmpleado, removeEmpleadoFromPuesto } from '@/lib/actions/empleado'
+import { removeTrabajadorFromPuesto, assignTrabajadorToPuesto } from '@/lib/actions/trabajador'
 import { createSiniestro } from '@/lib/actions/siniestro'
 import { createInspeccion } from '@/lib/actions/inspeccion'
 import { createRiesgo, resolverRiesgo } from '@/lib/actions/riesgo'
@@ -23,7 +23,7 @@ import { addGestionToEstablecimiento } from '@/lib/actions/gestion-establecimien
 import { createRegistroGestion, ejecutarGestion } from '@/lib/actions/registro-gestion'
 import { createObservacionGestion, cerrarObservacion } from '@/lib/actions/observacion-gestion'
 import { createClient } from '@/lib/supabase/client'
-import { EmpleadoModal } from '@/components/empleado-modal'
+import { TrabajadorModal } from '@/components/trabajador-modal'
 import { formatDate } from '@/lib/utils'
 import { RIESGO_NIVEL_LABELS, DOCUMENTO_TIPO_LABELS } from '@/lib/constants'
 import { RIESGO_NIVEL_COLORS, SINIESTRO_ESTADO_COLORS, INSPECCION_ESTADO_COLORS } from '@/lib/types'
@@ -31,7 +31,7 @@ import { SINIESTRO_TIPO_LABELS, SINIESTRO_ESTADO_LABELS, INSPECCION_ESTADO_LABEL
 import type {
   SectorEstablecimiento,
   PuestoDeTrabajo,
-  EmpleadoPuesto,
+  TrabajadorPuesto,
   Siniestro,
   Inspeccion,
   Riesgo,
@@ -69,34 +69,136 @@ interface EstablecimientoTabsProps {
   defaultTab?: Tab
 }
 
-// ---- Persona inline form ----
-function PersonaInlineForm({
-  action,
-  onSuccess,
+// ---- Buscador de trabajadores sin sector asignado ----
+function TrabajadorSearchPicker({
+  establecimientoId,
+  puestoId,
+  empresaId,
+  onAssigned,
   onCancel,
 }: {
-  action: (prev: ActionResult<null> | null, fd: FormData) => Promise<ActionResult<null>>
-  onSuccess: () => void
+  establecimientoId: string
+  puestoId: string
+  empresaId: string
+  onAssigned: () => void
   onCancel: () => void
 }) {
-  const [state, formAction, pending] = useActionState(action, null)
-  useEffect(() => { if (state?.success) onSuccess() }, [state])
+  const [query, setQuery] = useState('')
+  const [available, setAvailable] = useState<{ id: string; nombre: string; apellido: string; dni: string | null }[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [isPending, startTransition] = useTransition()
+
+  useEffect(() => {
+    const supabase = createClient()
+    async function load() {
+      const { data: sectors } = await supabase
+        .from('sectores_establecimiento')
+        .select('id')
+        .eq('establecimiento_id', establecimientoId)
+
+      const sectorIds = sectors?.map(s => s.id) ?? []
+      const assignedIds = new Set<string>()
+
+      if (sectorIds.length > 0) {
+        const { data: puestos } = await supabase
+          .from('puestos_de_trabajo')
+          .select('id')
+          .in('sector_id', sectorIds)
+
+        const puestoIds = puestos?.map(p => p.id) ?? []
+        if (puestoIds.length > 0) {
+          const { data: eps } = await supabase
+            .from('empleado_puesto')
+            .select('persona_id')
+            .in('puesto_id', puestoIds)
+          eps?.forEach(ep => assignedIds.add(ep.persona_id))
+        }
+      }
+
+      const { data: links } = await supabase
+        .from('persona_establecimiento')
+        .select('persona_id')
+        .eq('establecimiento_id', establecimientoId)
+
+      const availableIds = (links?.map(l => l.persona_id) ?? []).filter(id => !assignedIds.has(id))
+
+      if (availableIds.length === 0) {
+        setAvailable([])
+        return
+      }
+
+      const { data: persons } = await supabase
+        .from('directorio_personas')
+        .select('id, nombre, apellido, dni')
+        .in('id', availableIds)
+        .eq('is_active', true)
+        .order('apellido')
+
+      setAvailable((persons as { id: string; nombre: string; apellido: string; dni: string | null }[]) ?? [])
+    }
+    load()
+  }, [establecimientoId])
+
+  const filtered = (available ?? []).filter(p => {
+    if (!query) return true
+    const q = query.toLowerCase()
+    return (
+      p.apellido?.toLowerCase().includes(q) ||
+      p.nombre?.toLowerCase().includes(q) ||
+      p.dni?.includes(q)
+    )
+  })
+
+  function assign(personaId: string) {
+    setError(null)
+    startTransition(async () => {
+      const result = await assignTrabajadorToPuesto(puestoId, personaId, establecimientoId, empresaId)
+      if (result.success) {
+        onAssigned()
+      } else {
+        setError(result.error ?? 'Error al asignar trabajador')
+      }
+    })
+  }
+
   return (
-    <form action={formAction} className="bg-gray-50 rounded-lg p-3 mt-2 space-y-2">
-      <div className="grid grid-cols-2 gap-2">
-        <input name="nombre" placeholder="Nombre *" required className="border border-gray-300 rounded px-2 py-1.5 text-sm" />
-        <input name="apellido" placeholder="Apellido *" required className="border border-gray-300 rounded px-2 py-1.5 text-sm" />
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        <input name="dni" placeholder="DNI" className="border border-gray-300 rounded px-2 py-1.5 text-sm" />
-        <input name="fecha_ingreso" type="date" className="border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-600" />
-      </div>
-      {state && !state.success && <p className="text-xs text-red-600">{state.error}</p>}
-      <div className="flex gap-2 justify-end">
+    <div className="bg-gray-50 rounded-lg p-3 mt-2 space-y-2">
+      <input
+        type="search"
+        placeholder="Buscar por apellido, nombre o DNI…"
+        value={query}
+        onChange={e => setQuery(e.target.value)}
+        autoFocus
+        className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-sig-400"
+      />
+      {available === null ? (
+        <p className="text-xs text-gray-400 py-2 text-center">Cargando trabajadores…</p>
+      ) : filtered.length === 0 ? (
+        <p className="text-xs text-gray-400 py-2 text-center">
+          {query ? 'Sin resultados para esa búsqueda.' : 'No hay trabajadores sin sector asignado.'}
+        </p>
+      ) : (
+        <ul className="divide-y divide-gray-100 max-h-48 overflow-y-auto rounded border border-gray-200 bg-white">
+          {filtered.map(p => (
+            <li key={p.id}>
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={() => assign(p.id)}
+                className="w-full text-left px-3 py-2 text-sm hover:bg-sig-50 transition-colors disabled:opacity-50"
+              >
+                <span className="font-medium text-gray-800">{p.apellido}, {p.nombre}</span>
+                {p.dni && <span className="text-gray-400 text-xs ml-2">DNI {p.dni}</span>}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {error && <p className="text-xs text-red-600">{error}</p>}
+      <div className="flex justify-end">
         <Button size="sm" variant="secondary" type="button" onClick={onCancel}>Cancelar</Button>
-        <Button size="sm" type="submit" disabled={pending}>{pending ? 'Guardando…' : 'Agregar'}</Button>
       </div>
-    </form>
+    </div>
   )
 }
 
@@ -215,11 +317,11 @@ function PuestoRow({
   onDeleted: () => void
 }) {
   const [open, setOpen] = useState(false)
-  const [personas, setPersonas] = useState<EmpleadoPuesto[] | null>(null)
+  const [personas, setPersonas] = useState<TrabajadorPuesto[] | null>(null)
   const [epp, setEpp] = useState<EppPorPuesto[] | null>(null)
   const [showAddPersona, setShowAddPersona] = useState(false)
   const [showAddEpp, setShowAddEpp] = useState(false)
-  const [selectedEp, setSelectedEp] = useState<EmpleadoPuesto | null>(null)
+  const [selectedEp, setSelectedEp] = useState<TrabajadorPuesto | null>(null)
   const [isPending, startTransition] = useTransition()
 
   useEffect(() => {
@@ -243,7 +345,7 @@ function PuestoRow({
 
   function handleRemovePersona(epId: string) {
     startTransition(async () => {
-      await removeEmpleadoFromPuesto(epId, establecimientoId, empresaId)
+      await removeTrabajadorFromPuesto(epId, establecimientoId, empresaId)
       setPersonas(prev => prev?.filter(e => e.id !== epId) ?? null)
     })
   }
@@ -262,7 +364,6 @@ function PuestoRow({
     })
   }
 
-  const personaAction = createEmpleado.bind(null, puesto.id, establecimientoId, empresaId)
   const eppAction = addEppToPuesto.bind(null, puesto.id, establecimientoId, empresaId)
 
   return (
@@ -286,7 +387,7 @@ function PuestoRow({
             </span>
           )}
           {personas !== null && (
-            <span className="text-xs text-gray-400 font-normal">({personas.length} persona{personas.length !== 1 ? 's' : ''})</span>
+            <span className="text-xs text-gray-400 font-normal">({personas.length} trabajador{personas.length !== 1 ? 'es' : ''})</span>
           )}
           {epp !== null && epp.length > 0 && (
             <span className="text-xs bg-sig-50 text-sig-700 font-medium px-1.5 py-0.5 rounded">{epp.length} EPP</span>
@@ -305,13 +406,13 @@ function PuestoRow({
 
       {open && (
         <div className="px-4 pb-3 border-t border-gray-50 space-y-3">
-          {/* Personas section */}
+          {/* Trabajadores section */}
           <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mt-2 mb-1">Personas</p>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mt-2 mb-1">Trabajadores</p>
             {personas === null ? (
               <p className="text-xs text-gray-400 py-1">Cargando…</p>
             ) : personas.length === 0 && !showAddPersona ? (
-              <p className="text-xs text-gray-400 py-1">Sin personas en este puesto.</p>
+              <p className="text-xs text-gray-400 py-1">Sin trabajadores en este puesto.</p>
             ) : (
               <ul className="divide-y divide-gray-50">
                 {personas.map(ep => (
@@ -341,13 +442,15 @@ function PuestoRow({
                 onClick={() => setShowAddPersona(true)}
                 className="mt-1 text-xs text-sig-500 hover:text-sig-700 font-medium"
               >
-                + Agregar persona
+                + Agregar trabajador
               </button>
             )}
             {showAddPersona && (
-              <PersonaInlineForm
-                action={personaAction}
-                onSuccess={() => { setShowAddPersona(false); setPersonas(null) }}
+              <TrabajadorSearchPicker
+                puestoId={puesto.id}
+                establecimientoId={establecimientoId}
+                empresaId={empresaId}
+                onAssigned={() => { setShowAddPersona(false); setPersonas(null) }}
                 onCancel={() => setShowAddPersona(false)}
               />
             )}
@@ -402,7 +505,7 @@ function PuestoRow({
       )}
 
       {selectedEp?.directorio_personas && (
-        <EmpleadoModal
+        <TrabajadorModal
           persona={selectedEp.directorio_personas}
           open={!!selectedEp}
           onClose={() => setSelectedEp(null)}

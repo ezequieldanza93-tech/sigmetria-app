@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import type { ActionResult } from '@/lib/types'
 
-export async function createEmpleado(
+export async function createTrabajador(
   puestoId: string,
   establecimientoId: string,
   empresaId: string,
@@ -23,19 +23,18 @@ export async function createEmpleado(
   if (!nombre?.trim()) return { success: false, error: 'El nombre es obligatorio' }
   if (!apellido?.trim()) return { success: false, error: 'El apellido es obligatorio' }
 
-  // Find tipo 'Empleado' id
-  const { data: tipoEmpleado } = await supabase
+  const { data: tipoTrabajador } = await supabase
     .from('tipo_personas')
     .select('id')
-    .eq('nombre', 'Empleado')
+    .eq('nombre', 'Trabajadores')
     .single()
 
-  if (!tipoEmpleado) return { success: false, error: 'Tipo de persona "Empleado" no encontrado' }
+  if (!tipoTrabajador) return { success: false, error: 'Tipo de persona "Trabajadores" no encontrado' }
 
   const { data: persona, error: personaError } = await supabase
     .from('directorio_personas')
     .insert({
-      tipo_id: tipoEmpleado.id,
+      tipo_id: tipoTrabajador.id,
       nombre: nombre.trim(),
       apellido: apellido.trim(),
       dni: dni?.trim() || null,
@@ -48,15 +47,10 @@ export async function createEmpleado(
 
   const { error: junctionError } = await supabase
     .from('empleado_puesto')
-    .insert({
-      persona_id: persona.id,
-      puesto_id: puestoId,
-      fecha_desde: fechaIngreso || null,
-    })
+    .insert({ persona_id: persona.id, puesto_id: puestoId, fecha_desde: fechaIngreso || null })
 
   if (junctionError) return { success: false, error: junctionError.message }
 
-  // Link persona to establecimiento (ignore conflict — might already be linked via another puesto)
   await supabase.from('persona_establecimiento').upsert(
     { persona_id: persona.id, establecimiento_id: establecimientoId },
     { onConflict: 'persona_id,establecimiento_id', ignoreDuplicates: true }
@@ -66,7 +60,32 @@ export async function createEmpleado(
   return { success: true, data: null }
 }
 
-export async function removeEmpleadoFromPuesto(
+export async function assignTrabajadorToPuesto(
+  puestoId: string,
+  personaId: string,
+  establecimientoId: string,
+  empresaId: string
+): Promise<ActionResult<null>> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'No autenticado' }
+
+  const { error } = await supabase
+    .from('empleado_puesto')
+    .insert({ persona_id: personaId, puesto_id: puestoId })
+
+  if (error) return { success: false, error: error.message }
+
+  await supabase.from('persona_establecimiento').upsert(
+    { persona_id: personaId, establecimiento_id: establecimientoId },
+    { onConflict: 'persona_id,establecimiento_id', ignoreDuplicates: true }
+  )
+
+  revalidatePath(`/dashboard/empresas/${empresaId}/establecimientos/${establecimientoId}`)
+  return { success: true, data: null }
+}
+
+export async function removeTrabajadorFromPuesto(
   empleadoPuestoId: string,
   establecimientoId: string,
   empresaId: string

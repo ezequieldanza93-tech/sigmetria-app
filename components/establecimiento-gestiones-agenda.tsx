@@ -142,15 +142,19 @@ function BibliotecaForm({
   establecimientoId: string
   todasGestiones: Gestion[]
   onClose: () => void
-  onSuccess: () => void
+  onSuccess: (month?: number) => void
   onSwitchToNueva: () => void
 }) {
   const [state, formAction, pending] = useActionState(planificarGestion, null)
   const [filterGrupo, setFilterGrupo] = useState('')
   const [filterCat, setFilterCat] = useState('')
+  const [fechaValue, setFechaValue] = useState('')
 
   useEffect(() => {
-    if (state?.success) onSuccess()
+    if (state?.success) {
+      const month = fechaValue ? new Date(fechaValue + 'T00:00:00').getMonth() : undefined
+      onSuccess(month)
+    }
   }, [state])
 
   const grupos = Array.from(
@@ -230,6 +234,8 @@ function BibliotecaForm({
           type="date"
           name="fecha_planificada"
           required
+          value={fechaValue}
+          onChange={e => setFechaValue(e.target.value)}
           className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500"
         />
       </div>
@@ -275,13 +281,14 @@ function NuevaGestionForm({
   grupos: GrupoGestion[]
   categorias: CategoriaGestion[]
   onClose: () => void
-  onSuccess: () => void
+  onSuccess: (month?: number) => void
 }) {
   const [state, formAction, pending] = useActionState(planificarGestionNueva, null)
   const [localGrupos, setLocalGrupos] = useState(gruposProp)
   const [localCategorias, setLocalCategorias] = useState(categoriasProp)
   const [selectedGrupoId, setSelectedGrupoId] = useState('')
   const [selectedCatId, setSelectedCatId] = useState('')
+  const [fechaValue, setFechaValue] = useState('')
 
   const [creandoGrupo, setCreandoGrupo] = useState(false)
   const [errorGrupo, setErrorGrupo] = useState('')
@@ -289,7 +296,10 @@ function NuevaGestionForm({
   const [errorCat, setErrorCat] = useState('')
 
   useEffect(() => {
-    if (state?.success) onSuccess()
+    if (state?.success) {
+      const month = fechaValue ? new Date(fechaValue + 'T00:00:00').getMonth() : undefined
+      onSuccess(month)
+    }
   }, [state])
 
   const catsFiltradas = selectedGrupoId
@@ -421,6 +431,8 @@ function NuevaGestionForm({
           type="date"
           name="fecha_planificada"
           required
+          value={fechaValue}
+          onChange={e => setFechaValue(e.target.value)}
           className={selectCls}
         />
       </div>
@@ -729,7 +741,7 @@ function PlanificarModal({
   grupos: GrupoGestion[]
   categorias: CategoriaGestion[]
   onClose: () => void
-  onSuccess: () => void
+  onSuccess: (month?: number) => void
 }) {
   const [mode, setMode] = useState<'biblioteca' | 'nueva'>('biblioteca')
 
@@ -1317,7 +1329,11 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
           grupos={grupos}
           categorias={categorias}
           onClose={() => setShowPlanModal(false)}
-          onSuccess={() => { setShowPlanModal(false); loadRegistros() }}
+          onSuccess={(month?: number) => {
+            setShowPlanModal(false)
+            if (month !== undefined) setSelectedMonths(prev => new Set([...prev, month]))
+            loadRegistros()
+          }}
         />
       )}
     </div>

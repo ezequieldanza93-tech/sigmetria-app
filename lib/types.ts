@@ -357,7 +357,7 @@ export interface PuestoDeTrabajo {
   updated_at: string
 }
 
-export interface EmpleadoPuesto {
+export interface TrabajadorPuesto {
   id: string
   persona_id: string
   puesto_id: string

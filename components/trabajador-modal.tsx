@@ -4,7 +4,7 @@ import { useState, useEffect, useActionState } from 'react'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
-import { createEmpleadoDocumento } from '@/lib/actions/empleado-documento'
+import { createTrabajadorDocumento } from '@/lib/actions/trabajador-documento'
 import { createMatricula } from '@/lib/actions/matricula'
 import { formatDate } from '@/lib/utils'
 import type { DirectorioPersona, ActionResult, Matricula } from '@/lib/types'
@@ -24,7 +24,7 @@ interface PersonaDoc {
   documento_tipos: { nombre: string } | null
 }
 
-interface PersonaModalProps {
+interface TrabajadorModalProps {
   persona: DirectorioPersona
   open: boolean
   onClose: () => void
@@ -119,14 +119,14 @@ function MatriculaForm({ personaId, onSuccess }: { personaId: string; onSuccess:
   )
 }
 
-export function EmpleadoModal({
+export function TrabajadorModal({
   persona,
   open,
   onClose,
   establecimientoId,
   empresaId,
   canWrite,
-}: PersonaModalProps) {
+}: TrabajadorModalProps) {
   const [tab, setTab] = useState<'datos' | 'documentos' | 'matriculas'>('datos')
   const [documentos, setDocumentos] = useState<PersonaDoc[] | null>(null)
   const [tiposDoc, setTiposDoc] = useState<DocumentoTipo[] | null>(null)
@@ -175,7 +175,7 @@ export function EmpleadoModal({
     }
   }, [tab, open, persona.id, documentos, tiposDoc])
 
-  const docAction = createEmpleadoDocumento.bind(null, persona.id, establecimientoId, empresaId)
+  const docAction = createTrabajadorDocumento.bind(null, persona.id, establecimientoId, empresaId)
 
   return (
     <Modal
