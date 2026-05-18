@@ -1125,18 +1125,44 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
       <div className="flex gap-2 mb-4 flex-wrap">
         <button
           onClick={() => setSelectedMonths(new Set([new Date().getMonth()]))}
-          className="text-xs border border-sig-200 bg-sig-50 text-sig-700 rounded-lg px-3 py-1.5 hover:bg-sig-100"
+          className={`text-xs border rounded-lg px-3 py-1.5 transition-colors ${
+            selectedMonths.size === 1 && selectedMonths.has(new Date().getMonth())
+              ? 'bg-green-100 border-green-300 text-green-700'
+              : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+          }`}
         >
           Mes actual
         </button>
         <button
           onClick={() => setSelectedMonths(new Set([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]))}
-          className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-50"
+          className={`text-xs border rounded-lg px-3 py-1.5 transition-colors ${
+            selectedMonths.size === 12
+              ? 'bg-green-100 border-green-300 text-green-700'
+              : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+          }`}
         >
           Todos los meses
         </button>
         <button
           onClick={() => setSelectedMonths(new Set())}
+          className={`text-xs border rounded-lg px-3 py-1.5 transition-colors ${
+            selectedMonths.size === 0
+              ? 'bg-green-100 border-green-300 text-green-700'
+              : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          Ninguno
+        </button>
+        <button
+          onClick={() => setSelectedMonths(prev => {
+            const all = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+            const inverted = new Set(all.filter(m => !prev.has(m)))
+            return inverted
+          })}
+          className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-50"
+        >
+          Invertir selección
+        </button>
           className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-50"
         >
           Ninguno
