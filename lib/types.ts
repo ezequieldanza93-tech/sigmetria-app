@@ -609,10 +609,13 @@ export interface ObservacionGestion {
   descripcion: string
   fecha_planificada: string
   fecha_cierre: string | null
+  clasificacion_id: string | null
+  responsable_id: string | null
   responsable_cierre_id: string | null
   evidencia_cierre_url: string | null
   created_at: string
   updated_at: string
+  clasificacion_observaciones?: { nombre: string } | null
   directorio_personas?: { nombre: string; apellido: string } | null
 }
 

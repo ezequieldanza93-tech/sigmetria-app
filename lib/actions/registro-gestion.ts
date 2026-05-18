@@ -74,3 +74,33 @@ export async function ejecutarGestion(
   if (error) return { success: false, error: error.message }
   return { success: true, data: null }
 }
+
+export async function crearObservaciones(
+  registroId: string,
+  observaciones: Array<{
+    descripcion: string
+    clasificacion_id: string
+    responsable_id: string
+    fecha_subsanacion: string
+  }>
+): Promise<ActionResult<null>> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'No autenticado' }
+
+  const rows = observaciones
+    .filter(o => o.descripcion.trim())
+    .map(o => ({
+      registro_gestion_id: registroId,
+      descripcion: o.descripcion.trim(),
+      clasificacion_id: o.clasificacion_id || null,
+      responsable_id: o.responsable_id || null,
+      fecha_planificada: o.fecha_subsanacion || null,
+    }))
+
+  if (rows.length === 0) return { success: true, data: null }
+
+  const { error } = await supabase.from('observaciones_gestiones').insert(rows)
+  if (error) return { success: false, error: error.message }
+  return { success: true, data: null }
+}

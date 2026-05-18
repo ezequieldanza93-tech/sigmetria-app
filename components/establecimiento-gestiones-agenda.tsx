@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useActionState, useRef, Fragment } from 'react'
+import { useState, useEffect, useActionState, useTransition, useRef, Fragment, type FormEvent } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { calcularEstadoGestion } from '@/lib/types'
 import type { EstadoGestion, Gestion, CategoriaGestion, GrupoGestion, GestionEstablecimiento, RegistroGestion, Riesgo, RiesgoNivel } from '@/lib/types'
@@ -12,7 +12,7 @@ import {
   createGrupoGestion,
   createCategoriaGestion,
 } from '@/lib/actions/gestion-establecimiento'
-import { ejecutarGestion } from '@/lib/actions/registro-gestion'
+import { ejecutarGestion, crearObservaciones } from '@/lib/actions/registro-gestion'
 import { RIESGO_NIVEL_LABELS } from '@/lib/constants'
 import { RIESGO_NIVEL_COLORS } from '@/lib/types'
 
@@ -451,6 +451,15 @@ function NuevaGestionForm({
 }
 
 // ─── EjecucionModal ────────────────────────────────────────────────────────────
+
+interface ObsDraft {
+  key: number
+  descripcion: string
+  clasificacion_id: string
+  responsable_id: string
+  fecha_subsanacion: string
+}
+
 function EjecucionModal({
   registro,
   establecimientoId,
@@ -462,12 +471,14 @@ function EjecucionModal({
   onClose: () => void
   onSuccess: () => void
 }) {
-  const [state, formAction, pending] = useActionState(ejecutarGestion, null)
+  const [isPending, startTransition] = useTransition()
+  const [error, setError] = useState<string | null>(null)
   const [personas, setPersonas] = useState<{ id: string; nombre: string; apellido: string }[]>([])
+  const [clasificaciones, setClasificaciones] = useState<{ id: string; nombre: string }[]>([])
+  const [observaciones, setObservaciones] = useState<ObsDraft[]>([])
+  const obsKeyRef = useRef(0)
 
-  useEffect(() => {
-    if (state?.success) onSuccess()
-  }, [state])
+  const inputCls = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sig-500'
 
   useEffect(() => {
     const supabase = createClient()
@@ -482,16 +493,58 @@ function EjecucionModal({
           .sort((a: any, b: any) => a.apellido.localeCompare(b.apellido))
         setPersonas(ps)
       })
+    supabase
+      .from('clasificacion_observaciones')
+      .select('id, nombre')
+      .eq('is_active', true)
+      .order('nombre')
+      .then(({ data }) => setClasificaciones((data ?? []) as { id: string; nombre: string }[]))
   }, [establecimientoId])
+
+  function addObs() {
+    setObservaciones(prev => [...prev, {
+      key: obsKeyRef.current++,
+      descripcion: '',
+      clasificacion_id: '',
+      responsable_id: '',
+      fecha_subsanacion: '',
+    }])
+  }
+
+  function removeObs(key: number) {
+    setObservaciones(prev => prev.filter(o => o.key !== key))
+  }
+
+  function updateObs(key: number, field: keyof Omit<ObsDraft, 'key'>, value: string) {
+    setObservaciones(prev => prev.map(o => o.key === key ? { ...o, [field]: value } : o))
+  }
+
+  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setError(null)
+    const fd = new FormData(e.currentTarget)
+    startTransition(async () => {
+      const result = await ejecutarGestion(null, fd)
+      if (!result.success) { setError(result.error); return }
+
+      const validObs = observaciones.filter(o => o.descripcion.trim())
+      if (validObs.length > 0) {
+        const obsResult = await crearObservaciones(registro.id, validObs)
+        if (!obsResult.success) { setError(obsResult.error); return }
+      }
+
+      onSuccess()
+    })
+  }
 
   return (
     <Modal open title="Cargar Evidencia" onClose={onClose}>
-      <form action={formAction} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <input type="hidden" name="registro_id" value={registro.id} />
 
-        {state && !state.success && (
+        {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-3 py-2">
-            {state.error}
+            {error}
           </div>
         )}
 
@@ -509,7 +562,7 @@ function EjecucionModal({
             name="fecha_ejecutada"
             required
             defaultValue={registro.fecha_ejecutada ?? ''}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500"
+            className={inputCls}
           />
         </div>
 
@@ -522,17 +575,13 @@ function EjecucionModal({
             step="any"
             defaultValue={registro.index ?? ''}
             placeholder="Ej: 85, 4.5, 3"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500"
+            className={inputCls}
           />
         </div>
 
         <div>
           <label className="text-sm font-medium text-gray-700 block mb-1">Responsable</label>
-          <select
-            name="responsable_id"
-            defaultValue={registro.responsable_id ?? ''}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sig-500"
-          >
+          <select name="responsable_id" defaultValue={registro.responsable_id ?? ''} className={inputCls}>
             <option value="">Sin asignar</option>
             {personas.map(p => (
               <option key={p.id} value={p.id}>{p.apellido}, {p.nombre}</option>
@@ -566,12 +615,99 @@ function EjecucionModal({
             name="notas"
             rows={2}
             defaultValue={registro.notas ?? ''}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sig-500"
+            className={`${inputCls} resize-none`}
           />
         </div>
 
+        {/* ── Observaciones ─────────────────────────────────────── */}
+        <div className="border-t border-gray-100 pt-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-gray-700">
+              Observaciones
+              {observaciones.length > 0 && (
+                <span className="ml-2 text-xs font-normal text-gray-400">({observaciones.length})</span>
+              )}
+            </h3>
+            <button
+              type="button"
+              onClick={addObs}
+              className="text-xs text-sig-600 hover:text-sig-700 font-medium flex items-center gap-1"
+            >
+              + Agregar
+            </button>
+          </div>
+
+          {observaciones.length === 0 ? (
+            <p className="text-xs text-gray-400 text-center py-3 border border-dashed border-gray-200 rounded-lg">
+              Sin observaciones. Hacé clic en "+ Agregar" para registrar una.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {observaciones.map((obs, idx) => (
+                <div key={obs.key} className="border border-gray-200 rounded-lg p-3 space-y-2 bg-gray-50/50">
+                  <div className="flex items-start gap-2">
+                    <span className="text-xs text-gray-400 mt-2 w-4 shrink-0">{idx + 1}.</span>
+                    <textarea
+                      value={obs.descripcion}
+                      onChange={e => updateObs(obs.key, 'descripcion', e.target.value)}
+                      placeholder="Descripción de la observación…"
+                      rows={2}
+                      className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sig-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeObs(obs.key)}
+                      className="text-gray-300 hover:text-red-400 mt-1 text-base leading-none shrink-0"
+                      title="Eliminar observación"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 pl-6">
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-0.5">Tipo de riesgo</label>
+                      <select
+                        value={obs.clasificacion_id}
+                        onChange={e => updateObs(obs.key, 'clasificacion_id', e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-sig-500"
+                      >
+                        <option value="">Sin clasificar</option>
+                        {clasificaciones.map(c => (
+                          <option key={c.id} value={c.id}>{c.nombre}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-0.5">Responsable</label>
+                      <select
+                        value={obs.responsable_id}
+                        onChange={e => updateObs(obs.key, 'responsable_id', e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-sig-500"
+                      >
+                        <option value="">Sin asignar</option>
+                        {personas.map(p => (
+                          <option key={p.id} value={p.id}>{p.apellido}, {p.nombre}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-0.5">Fecha subsanación</label>
+                      <input
+                        type="date"
+                        value={obs.fecha_subsanacion}
+                        onChange={e => updateObs(obs.key, 'fecha_subsanacion', e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-sig-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         <div className="flex gap-3 pt-1">
-          <Button type="submit" disabled={pending}>{pending ? 'Guardando…' : 'Guardar'}</Button>
+          <Button type="submit" disabled={isPending}>{isPending ? 'Guardando…' : 'Guardar'}</Button>
           <Button type="button" variant="secondary" onClick={onClose}>Cancelar</Button>
         </div>
       </form>
