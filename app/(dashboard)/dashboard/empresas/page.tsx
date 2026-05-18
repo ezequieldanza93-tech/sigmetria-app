@@ -85,7 +85,7 @@ export default async function EmpresasPage() {
                     <td className="px-5 py-4 text-gray-500 font-mono text-xs">{formatCUIT(e.cuit)}</td>
                     <td className="px-5 py-4 text-gray-500">{e.rubro ?? '—'}</td>
                     <td className="px-5 py-4 text-gray-500">
-                      {e.localidades ? [e.localidades.nombre, e.localidades.provincia].join(', ') : '—'}
+                      {e.localidades ? [(e.localidades as any).nombre, (e.localidades as any).provincia].join(', ') : '—'}
                     </td>
                     <td className="px-5 py-4 text-gray-500 text-center">{count}</td>
                     <td className="px-5 py-4">

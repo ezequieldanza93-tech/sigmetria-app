@@ -29,7 +29,7 @@ export default async function EmpresaDetailPage({ params }: Props) {
   const [{ data: establecimientos }, { data: documentos }, { data: documentTypes }] = await Promise.all([
     supabase
       .from('establecimientos')
-      .select('id, nombre, tipo, localidades(nombre, provincia), cantidad_trabajadores')
+      .select('id, nombre, tipo, localidades!localidad_id(nombre, provincia), cantidad_trabajadores')
       .eq('empresa_id', id)
       .neq('status', 'cancelled')
       .order('nombre'),
@@ -178,7 +178,7 @@ export default async function EmpresaDetailPage({ params }: Props) {
                       {est.tipo ? (TIPO_ESTABLECIMIENTO_LABELS[est.tipo as TipoEstablecimiento] ?? est.tipo) : '—'}
                     </td>
                     <td className="px-5 py-4 text-gray-500">
-                      {est.localidades ? [est.localidades.nombre, est.localidades.provincia].join(', ') : '—'}
+                      {est.localidades ? [(est.localidades as any).nombre, (est.localidades as any).provincia].join(', ') : '—'}
                     </td>
                     <td className="px-5 py-4 text-gray-500 text-center">
                       {est.cantidad_trabajadores ?? '—'}
