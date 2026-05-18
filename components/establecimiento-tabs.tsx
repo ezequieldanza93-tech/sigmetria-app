@@ -17,6 +17,8 @@ import { createRiesgo, resolverRiesgo } from '@/lib/actions/riesgo'
 import { createDocumento } from '@/lib/actions/documento'
 import { addEppToPuesto, removeEppFromPuesto } from '@/lib/actions/epp-por-puesto'
 import { createAsistencia } from '@/lib/actions/asistencia'
+import { createPersona } from '@/lib/actions/persona'
+import { addOrganizacionToEstablecimiento } from '@/lib/actions/organizacion'
 import { addGestionToEstablecimiento } from '@/lib/actions/gestion-establecimiento'
 import { createRegistroGestion, ejecutarGestion } from '@/lib/actions/registro-gestion'
 import { createObservacionGestion, cerrarObservacion } from '@/lib/actions/observacion-gestion'
@@ -662,6 +664,80 @@ function SectoresTab({
   )
 }
 
+// ---- Agregar Persona form (StakeholdersTab) ----
+function AgregarPersonaStakeholderForm({
+  establecimientoId,
+  tiposPersona,
+  onSuccess,
+  onCancel,
+}: {
+  establecimientoId: string
+  tiposPersona: { id: string; nombre: string }[]
+  onSuccess: () => void
+  onCancel: () => void
+}) {
+  const [state, formAction, pending] = useActionState(createPersona, null)
+  useEffect(() => { if (state?.success) onSuccess() }, [state])
+  return (
+    <form action={formAction} className="bg-gray-50 rounded-lg p-4 space-y-3 border border-gray-200">
+      <p className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Nueva persona</p>
+      <input type="hidden" name="establecimiento_id" value={establecimientoId} />
+      <div className="grid grid-cols-2 gap-2">
+        <input name="nombre" placeholder="Nombre *" required className="border border-gray-300 rounded px-2 py-1.5 text-sm" />
+        <input name="apellido" placeholder="Apellido *" required className="border border-gray-300 rounded px-2 py-1.5 text-sm" />
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <select name="tipo_id" required className="border border-gray-300 rounded px-2 py-1.5 text-sm bg-white">
+          <option value="">Tipo *</option>
+          {tiposPersona.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+        </select>
+        <input name="dni" placeholder="DNI" className="border border-gray-300 rounded px-2 py-1.5 text-sm" />
+      </div>
+      <input name="fecha_ingreso" type="date" className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-600" />
+      {state && !state.success && <p className="text-xs text-red-600">{state.error}</p>}
+      <div className="flex gap-2 justify-end">
+        <Button size="sm" variant="secondary" type="button" onClick={onCancel}>Cancelar</Button>
+        <Button size="sm" type="submit" disabled={pending}>{pending ? 'Guardando…' : 'Agregar'}</Button>
+      </div>
+    </form>
+  )
+}
+
+// ---- Agregar Org Externa form (StakeholdersTab) ----
+function AgregarOrgStakeholderForm({
+  action,
+  tiposOrg,
+  onSuccess,
+  onCancel,
+}: {
+  action: (prev: ActionResult<null> | null, fd: FormData) => Promise<ActionResult<null>>
+  tiposOrg: { id: string; nombre: string }[]
+  onSuccess: () => void
+  onCancel: () => void
+}) {
+  const [state, formAction, pending] = useActionState(action, null)
+  useEffect(() => { if (state?.success) onSuccess() }, [state])
+  return (
+    <form action={formAction} className="bg-gray-50 rounded-lg p-4 space-y-3 border border-gray-200">
+      <p className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Nueva organización externa</p>
+      <input name="nombre" placeholder="Nombre *" required className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
+      <select name="tipo_id" required className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm bg-white">
+        <option value="">Tipo *</option>
+        {tiposOrg.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+      </select>
+      <div className="grid grid-cols-2 gap-2">
+        <input name="email" type="email" placeholder="Email" className="border border-gray-300 rounded px-2 py-1.5 text-sm" />
+        <input name="telefono" placeholder="Teléfono" className="border border-gray-300 rounded px-2 py-1.5 text-sm" />
+      </div>
+      {state && !state.success && <p className="text-xs text-red-600">{state.error}</p>}
+      <div className="flex gap-2 justify-end">
+        <Button size="sm" variant="secondary" type="button" onClick={onCancel}>Cancelar</Button>
+        <Button size="sm" type="submit" disabled={pending}>{pending ? 'Guardando…' : 'Agregar'}</Button>
+      </div>
+    </form>
+  )
+}
+
 // ---- Personas Tab ----
 function StakeholdersTab({
   establecimientoId,
@@ -674,16 +750,17 @@ function StakeholdersTab({
 }) {
   const [personas, setPersonas] = useState<DirectorioPersona[] | null>(null)
   const [tiposPersona, setTiposPersona] = useState<{ id: string; nombre: string }[]>([])
+  const [tiposOrg, setTiposOrg] = useState<{ id: string; nombre: string }[]>([])
   const [activeTipo, setActiveTipo] = useState<string>('todos')
   const [selectedPersona, setSelectedPersona] = useState<DirectorioPersona | null>(null)
   const [orgExternas, setOrgExternas] = useState<Organizacion[] | null>(null)
   const [personasOpen, setPersonasOpen] = useState(true)
   const [orgsOpen, setOrgsOpen] = useState(true)
+  const [showAddPersona, setShowAddPersona] = useState(false)
+  const [showAddOrg, setShowAddOrg] = useState(false)
 
-  useEffect(() => {
-    const supabase = createClient()
-
-    supabase
+  const loadPersonas = () => {
+    createClient()
       .from('persona_establecimiento')
       .select('directorio_personas(id, nombre, apellido, dni, fecha_nacimiento, fecha_ingreso, legajo, telefono, email, tipo_id, tipo_personas(nombre), organizacion_id, notas, is_active, created_at, updated_at)')
       .eq('establecimiento_id', establecimientoId)
@@ -691,14 +768,10 @@ function StakeholdersTab({
         const list = ((data ?? []) as unknown as { directorio_personas: DirectorioPersona }[]).map(r => r.directorio_personas).filter(Boolean)
         setPersonas(list)
       })
+  }
 
-    supabase
-      .from('tipo_personas')
-      .select('id, nombre')
-      .order('nombre')
-      .then(({ data }) => setTiposPersona(data ?? []))
-
-    supabase
+  const loadOrgs = () => {
+    createClient()
       .from('organizacion_establecimiento')
       .select('organizaciones(id, nombre, email, telefono, notas, is_active, tipo_organizaciones(nombre))')
       .eq('establecimiento_id', establecimientoId)
@@ -708,7 +781,17 @@ function StakeholdersTab({
           .filter(o => o?.is_active)
         setOrgExternas(list as Organizacion[])
       })
-  }, [establecimientoId])
+  }
+
+  const orgAction = addOrganizacionToEstablecimiento.bind(null, establecimientoId, empresaId)
+
+  useEffect(() => {
+    const supabase = createClient()
+    loadPersonas()
+    supabase.from('tipo_personas').select('id, nombre').order('nombre').then(({ data }) => setTiposPersona(data ?? []))
+    loadOrgs()
+    supabase.from('tipo_organizaciones').select('id, nombre').order('nombre').then(({ data }) => setTiposOrg(data ?? []))
+  }, [establecimientoId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const filtered = personas === null
     ? null
@@ -720,25 +803,33 @@ function StakeholdersTab({
     <div className="space-y-4">
       {/* ── Personas ── */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <button
-          onClick={() => setPersonasOpen(o => !o)}
-          className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors"
-        >
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between px-5 py-4">
+          <button
+            onClick={() => setPersonasOpen(o => !o)}
+            className="flex items-center gap-3 hover:opacity-75 transition-opacity"
+          >
             <span className="font-semibold text-gray-900">Personas</span>
             {personas !== null && (
               <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
                 {personas.length}
               </span>
             )}
-          </div>
-          <svg
-            className={`w-4 h-4 text-gray-400 transition-transform ${personasOpen ? 'rotate-180' : ''}`}
-            viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5"
-          >
-            <path d="M2 4l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
+            <svg
+              className={`w-4 h-4 text-gray-400 transition-transform ${personasOpen ? 'rotate-180' : ''}`}
+              viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5"
+            >
+              <path d="M2 4l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+          {canWrite && (
+            <button
+              onClick={() => { setShowAddPersona(true); setPersonasOpen(true) }}
+              className="text-xs font-medium text-sig-600 hover:text-sig-800"
+            >
+              + Agregar persona
+            </button>
+          )}
+        </div>
 
         {personasOpen && (
           <div className="border-t border-gray-100">
@@ -768,7 +859,6 @@ function StakeholdersTab({
             ) : filtered.length === 0 ? (
               <div className="p-8 text-center text-gray-400 text-sm">
                 No hay personas registradas{activeTipo !== 'todos' ? ' de este tipo' : ''}.
-                <p className="text-xs mt-1">Las personas se agregan desde la vista de Sectores → Puestos.</p>
               </div>
             ) : (
               <table className="w-full text-sm">
@@ -803,6 +893,16 @@ function StakeholdersTab({
                 </tbody>
               </table>
             )}
+            {showAddPersona && canWrite && (
+              <div className="px-5 pb-4">
+                <AgregarPersonaStakeholderForm
+                  establecimientoId={establecimientoId}
+                  tiposPersona={tiposPersona}
+                  onSuccess={() => { setShowAddPersona(false); loadPersonas() }}
+                  onCancel={() => setShowAddPersona(false)}
+                />
+              </div>
+            )}
           </div>
         )}
 
@@ -820,25 +920,33 @@ function StakeholdersTab({
 
       {/* ── Organizaciones Externas ── */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <button
-          onClick={() => setOrgsOpen(o => !o)}
-          className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors"
-        >
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between px-5 py-4">
+          <button
+            onClick={() => setOrgsOpen(o => !o)}
+            className="flex items-center gap-3 hover:opacity-75 transition-opacity"
+          >
             <span className="font-semibold text-gray-900">Organizaciones Externas</span>
             {orgExternas !== null && (
               <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
                 {orgExternas.length}
               </span>
             )}
-          </div>
-          <svg
-            className={`w-4 h-4 text-gray-400 transition-transform ${orgsOpen ? 'rotate-180' : ''}`}
-            viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5"
-          >
-            <path d="M2 4l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
+            <svg
+              className={`w-4 h-4 text-gray-400 transition-transform ${orgsOpen ? 'rotate-180' : ''}`}
+              viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5"
+            >
+              <path d="M2 4l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+          {canWrite && (
+            <button
+              onClick={() => { setShowAddOrg(true); setOrgsOpen(true) }}
+              className="text-xs font-medium text-sig-600 hover:text-sig-800"
+            >
+              + Agregar organización
+            </button>
+          )}
+        </div>
 
         {orgsOpen && (
           <div className="border-t border-gray-100">
@@ -874,6 +982,16 @@ function StakeholdersTab({
                 </tbody>
               </table>
             )}
+            {showAddOrg && canWrite && (
+              <div className="px-5 pb-4">
+                <AgregarOrgStakeholderForm
+                  action={orgAction}
+                  tiposOrg={tiposOrg}
+                  onSuccess={() => { setShowAddOrg(false); loadOrgs() }}
+                  onCancel={() => setShowAddOrg(false)}
+                />
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -894,10 +1012,13 @@ function AsistenciaTab({
   const [registros, setRegistros] = useState<AsistenciaDiaria[] | null>(null)
   const [personas, setPersonas] = useState<DirectorioPersona[]>([])
   const [showForm, setShowForm] = useState(false)
+  const [horarioHoy, setHorarioHoy] = useState<{ inicio: string; fin: string } | null>(null)
 
   useEffect(() => {
     const supabase = createClient()
     const today = new Date().toISOString().split('T')[0]
+    const diaSemana = new Date().getDay()
+
     supabase
       .from('asistencia_diaria')
       .select('id, fecha, hora_entrada, hora_salida, directorio_personas(nombre, apellido)')
@@ -913,6 +1034,18 @@ function AsistenciaTab({
       .then(({ data }) => {
         const list = ((data ?? []) as unknown as { directorio_personas: DirectorioPersona }[]).map(r => r.directorio_personas).filter(Boolean)
         setPersonas(list)
+      })
+
+    supabase
+      .from('horarios_establecimiento')
+      .select('hora_inicio, hora_fin, activo')
+      .eq('establecimiento_id', establecimientoId)
+      .eq('dia_semana', diaSemana)
+      .single()
+      .then(({ data }) => {
+        if (data?.activo && data.hora_inicio && data.hora_fin) {
+          setHorarioHoy({ inicio: data.hora_inicio.slice(0, 5), fin: data.hora_fin.slice(0, 5) })
+        }
       })
   }, [establecimientoId])
 
@@ -941,7 +1074,14 @@ function AsistenciaTab({
 
       {showForm && (
         <form action={formAction} className="bg-gray-50 rounded-xl border border-gray-200 p-4 mb-4 space-y-3">
-          <p className="text-sm font-medium text-gray-700">Nuevo registro de asistencia</p>
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-gray-700">Nuevo registro de asistencia</p>
+            {horarioHoy && (
+              <span className="text-xs text-gray-400">
+                Horario del establecimiento: {horarioHoy.inicio} – {horarioHoy.fin}
+              </span>
+            )}
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-gray-600 block mb-1">Persona *</label>
@@ -957,12 +1097,18 @@ function AsistenciaTab({
               <input name="fecha" type="date" required defaultValue={today} className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
             </div>
             <div>
-              <label className="text-xs text-gray-600 block mb-1">Hora entrada *</label>
-              <input name="hora_entrada" type="time" required className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
+              <label className="text-xs text-gray-600 block mb-1">
+                Hora entrada *
+                {horarioHoy && <span className="text-gray-400 font-normal ml-1">(default: {horarioHoy.inicio})</span>}
+              </label>
+              <input name="hora_entrada" type="time" required defaultValue={horarioHoy?.inicio ?? ''} className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
             </div>
             <div>
-              <label className="text-xs text-gray-600 block mb-1">Hora salida</label>
-              <input name="hora_salida" type="time" className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
+              <label className="text-xs text-gray-600 block mb-1">
+                Hora salida
+                {horarioHoy && <span className="text-gray-400 font-normal ml-1">(default: {horarioHoy.fin})</span>}
+              </label>
+              <input name="hora_salida" type="time" defaultValue={horarioHoy?.fin ?? ''} className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
             </div>
           </div>
           <div>

@@ -221,6 +221,16 @@ export interface Establecimiento {
   created_at: string
   updated_at: string
   localidades?: { nombre: string; provincia: string } | null
+  horarios_establecimiento?: HorarioEstablecimiento[]
+}
+
+export interface HorarioEstablecimiento {
+  id: string
+  establecimiento_id: string
+  dia_semana: 0 | 1 | 2 | 3 | 4 | 5 | 6
+  hora_inicio: string | null
+  hora_fin: string | null
+  activo: boolean
 }
 
 export interface SectorEstablecimiento {

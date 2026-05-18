@@ -49,6 +49,23 @@ async function parseUbicacion(raw: string | null): Promise<{ latitude: number | 
   return { latitude: null, longitude: null }
 }
 
+async function saveHorarios(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  establecimientoId: string,
+  formData: FormData,
+) {
+  const rows = [0, 1, 2, 3, 4, 5, 6].map(dia => ({
+    establecimiento_id: establecimientoId,
+    dia_semana: dia,
+    activo: formData.get(`dia_${dia}_activo`) === 'true',
+    hora_inicio: (formData.get(`dia_${dia}_inicio`) as string) || null,
+    hora_fin:    (formData.get(`dia_${dia}_fin`)    as string) || null,
+  }))
+  await supabase
+    .from('horarios_establecimiento')
+    .upsert(rows, { onConflict: 'establecimiento_id,dia_semana' })
+}
+
 async function uploadFoto(file: File, establecimientoId: string): Promise<string | null> {
   try {
     if (!file || file.size === 0) return null
@@ -97,7 +114,6 @@ export async function createEstablecimiento(
       localidad_id: (formData.get('localidad_id') as string) || null,
       codigo_postal: (formData.get('codigo_postal') as string) || null,
       actividad_principal: (formData.get('actividad_principal') as string) || null,
-      horario_trabajo: (formData.get('horario_trabajo') as string) || null,
       description: (formData.get('description') as string) || null,
       latitude,
       longitude,
@@ -113,6 +129,8 @@ export async function createEstablecimiento(
   if (photo_site) {
     await supabase.from('establecimientos').update({ photo_site }).eq('id', data.id)
   }
+
+  await saveHorarios(supabase, data.id, formData)
 
   const sectores = SECTORES_PREDEFINIDOS.map(nombre => ({
     establecimiento_id: data.id,
@@ -154,7 +172,6 @@ export async function updateEstablecimiento(
       localidad_id: (formData.get('localidad_id') as string) || null,
       codigo_postal: (formData.get('codigo_postal') as string) || null,
       actividad_principal: (formData.get('actividad_principal') as string) || null,
-      horario_trabajo: (formData.get('horario_trabajo') as string) || null,
       description: (formData.get('description') as string) || null,
       latitude,
       longitude,
@@ -164,6 +181,8 @@ export async function updateEstablecimiento(
     .eq('id', id)
 
   if (error) return { success: false, error: error.message }
+
+  await saveHorarios(supabase, id, formData)
 
   revalidatePath(`/dashboard/empresas/${empresaId}/establecimientos/${id}`)
   redirect(`/dashboard/empresas/${empresaId}/establecimientos/${id}`)

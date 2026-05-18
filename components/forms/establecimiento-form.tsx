@@ -17,11 +17,34 @@ interface EstablecimientoFormProps {
   submitLabel?: string
 }
 
+type DiaConfig = { activo: boolean; inicio: string; fin: string }
+
+const DIAS_SEMANA = [
+  { dia: 1, label: 'Lunes' },
+  { dia: 2, label: 'Martes' },
+  { dia: 3, label: 'Miércoles' },
+  { dia: 4, label: 'Jueves' },
+  { dia: 5, label: 'Viernes' },
+  { dia: 6, label: 'Sábado' },
+  { dia: 0, label: 'Domingo' },
+]
+
+const HORARIO_DEFAULT: Record<number, DiaConfig> = {
+  0: { activo: false, inicio: '', fin: '' },
+  1: { activo: true,  inicio: '08:00', fin: '17:00' },
+  2: { activo: true,  inicio: '08:00', fin: '17:00' },
+  3: { activo: true,  inicio: '08:00', fin: '17:00' },
+  4: { activo: true,  inicio: '08:00', fin: '17:00' },
+  5: { activo: true,  inicio: '08:00', fin: '17:00' },
+  6: { activo: false, inicio: '', fin: '' },
+}
+
 export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Guardar' }: EstablecimientoFormProps) {
   const [state, formAction, isPending] = useActionState(action, null)
   const [localidades, setLocalidades] = useState<Localidad[]>([])
   const [selectedProvincia, setSelectedProvincia] = useState(establecimiento?.localidades?.provincia ?? '')
   const [selectedTipo, setSelectedTipo] = useState(establecimiento?.tipo ?? '')
+  const [semana, setSemana] = useState<Record<number, DiaConfig>>(HORARIO_DEFAULT)
 
   useEffect(() => {
     createClient()
@@ -31,6 +54,28 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
       .order('nombre')
       .then(({ data }) => { if (data) setLocalidades(data as Localidad[]) })
   }, [])
+
+  useEffect(() => {
+    if (!establecimiento?.id) return
+    createClient()
+      .from('horarios_establecimiento')
+      .select('dia_semana, hora_inicio, hora_fin, activo')
+      .eq('establecimiento_id', establecimiento.id)
+      .then(({ data }) => {
+        if (!data?.length) return
+        setSemana(prev => {
+          const next = { ...prev }
+          data.forEach((h: { dia_semana: number; hora_inicio: string | null; hora_fin: string | null; activo: boolean }) => {
+            next[h.dia_semana] = {
+              activo: h.activo,
+              inicio: h.hora_inicio ?? '',
+              fin: h.hora_fin ?? '',
+            }
+          })
+          return next
+        })
+      })
+  }, [establecimiento?.id])
 
   const provincias = [...new Set(localidades.map(l => l.provincia))].sort()
   const localidadesFiltradas = localidades.filter(l => l.provincia === selectedProvincia)
@@ -99,12 +144,51 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
         placeholder="Manufactura de piezas metálicas"
       />
 
-      <Input
-        label="Horario de Trabajo"
-        name="horario_trabajo"
-        defaultValue={establecimiento?.horario_trabajo ?? ''}
-        placeholder="Lun–Vie 08:00–17:00"
-      />
+      <div>
+        <label className="text-sm font-medium text-gray-700 block mb-2">Horario por día</label>
+        <div className="border border-gray-200 rounded-lg divide-y divide-gray-100">
+          {DIAS_SEMANA.map(({ dia, label }) => {
+            const cfg = semana[dia]
+            return (
+              <div key={dia} className="flex items-center gap-3 px-3 py-2.5">
+                <input
+                  type="checkbox"
+                  id={`dia_${dia}_activo`}
+                  checked={cfg.activo}
+                  onChange={e => setSemana(prev => ({ ...prev, [dia]: { ...prev[dia], activo: e.target.checked } }))}
+                  value="true"
+                  name={`dia_${dia}_activo`}
+                  className="w-4 h-4 rounded border-gray-300 text-sig-500 focus:ring-sig-400"
+                />
+                <label htmlFor={`dia_${dia}_activo`} className="w-24 text-sm text-gray-700 select-none cursor-pointer">{label}</label>
+                {cfg.activo ? (
+                  <div className="flex items-center gap-2 flex-1">
+                    <input
+                      type="time"
+                      name={`dia_${dia}_inicio`}
+                      value={cfg.inicio}
+                      onChange={e => setSemana(prev => ({ ...prev, [dia]: { ...prev[dia], inicio: e.target.value } }))}
+                      required
+                      className="border border-gray-300 rounded px-2 py-1 text-sm w-28 focus:outline-none focus:ring-2 focus:ring-sig-400"
+                    />
+                    <span className="text-gray-400 text-sm">a</span>
+                    <input
+                      type="time"
+                      name={`dia_${dia}_fin`}
+                      value={cfg.fin}
+                      onChange={e => setSemana(prev => ({ ...prev, [dia]: { ...prev[dia], fin: e.target.value } }))}
+                      required
+                      className="border border-gray-300 rounded px-2 py-1 text-sm w-28 focus:outline-none focus:ring-2 focus:ring-sig-400"
+                    />
+                  </div>
+                ) : (
+                  <span className="text-sm text-gray-400">Sin actividad</span>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </div>
 
       <div>
         <label className="text-sm font-medium text-gray-700 block mb-1">Información del establecimiento</label>
