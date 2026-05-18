@@ -1173,14 +1173,6 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
       ) : filteredRegistros.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400 text-sm">
           No hay gestiones para el período seleccionado.
-          {canWrite && (
-            <button
-              onClick={() => setShowPlanModal(true)}
-              className="block mx-auto mt-3 text-sig-500 hover:text-sig-700 font-medium text-sm"
-            >
-              + Planificar una gestión
-            </button>
-          )}
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden mb-8">
