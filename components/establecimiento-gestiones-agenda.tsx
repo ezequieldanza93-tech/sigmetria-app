@@ -22,17 +22,17 @@ const MONTHS_FULL = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Jul
 const COL_WIDTHS_KEY = 'gestiones_col_widths'
 const DEFAULT_COL_WIDTHS: Record<string, number> = {
   gestion: 180, categoria: 130, fecha_plan: 100, fecha_ejec: 100,
-  responsable: 130, observaciones: 160, indice: 70, evidencia: 120, estado: 90,
+  responsable: 130, indice: 70, evidencia: 120,
 }
 const COL_MIN_WIDTHS: Record<string, number> = {
   gestion: 80, categoria: 60, fecha_plan: 80, fecha_ejec: 80,
-  responsable: 80, observaciones: 80, indice: 50, evidencia: 80, estado: 70,
+  responsable: 80, indice: 50, evidencia: 80,
 }
 
-const ESTADO_COLORS: Record<EstadoGestion, string> = {
-  Realizado: 'bg-green-100 text-green-700',
-  Pendiente: 'bg-red-100 text-red-700',
-  Planificado: 'bg-sky-100 text-sky-700',
+const ROW_BG_COLORS: Record<EstadoGestion, string> = {
+  Realizado: 'bg-green-50 hover:bg-green-100',
+  Pendiente: 'bg-red-50 hover:bg-red-100',
+  Planificado: 'bg-sky-50 hover:bg-sky-100',
 }
 
 function diffDays(a: string, b: string): number {
@@ -966,8 +966,7 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
   const activeRiesgos = riesgos.filter(r => !r.resuelto)
   const today = todayYMD()
 
-  // ── Columns: 10 with canWrite, 9 without ────────────────────────────────────
-  const totalCols = canWrite ? 10 : 9
+  const totalCols = canWrite ? 8 : 7
 
   // ── Row renderer ────────────────────────────────────────────────────────────
   function renderRows(regs: FullRegistro[]) {
@@ -975,7 +974,7 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
       const estado = calcularEstadoGestion(r.fecha_ejecutada ?? null, r.fecha_planificada)
 
       return (
-        <tr key={r.id} className="hover:bg-gray-50">
+        <tr key={r.id} className={ROW_BG_COLORS[estado]}>
           <td className="px-4 py-3 text-gray-400 text-xs text-center">{idx + 1}</td>
           <td className="px-4 py-3 font-medium text-gray-900" style={{ maxWidth: colW('gestion'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {r.ge_gestion_nombre ?? '—'}
@@ -990,13 +989,6 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
           <td className="px-4 py-3 text-gray-500 text-xs" style={{ maxWidth: colW('responsable'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {r.responsable_nombre ?? <span className="text-gray-300">—</span>}
           </td>
-          <td className="px-4 py-3 text-gray-500 text-xs" style={{ maxWidth: colW('observaciones') }}>
-            {r.observaciones ? (
-              <span title={r.observaciones} className="truncate block">{r.observaciones}</span>
-            ) : (
-              <span className="text-gray-300">—</span>
-            )}
-          </td>
           <td className="px-4 py-3 text-center text-sm tabular-nums text-gray-700">
             {r.index != null ? r.index : <span className="text-gray-300">—</span>}
           </td>
@@ -1010,11 +1002,6 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
               </button>
             </td>
           )}
-          <td className="px-4 py-3">
-            <span className={`text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${ESTADO_COLORS[estado]}`}>
-              {estado}
-            </span>
-          </td>
         </tr>
       )
     })
@@ -1050,9 +1037,6 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
         <th style={{ width: colW('responsable') }} className="px-4 py-3 font-medium relative select-none">
           Responsable{rh('responsable')}
         </th>
-        <th style={{ width: colW('observaciones') }} className="px-4 py-3 font-medium relative select-none">
-          Observaciones{rh('observaciones')}
-        </th>
         <th style={{ width: colW('indice') }} className="px-4 py-3 font-medium text-center relative select-none">
           Índice{rh('indice')}
         </th>
@@ -1061,9 +1045,6 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
             Evidencia{rh('evidencia')}
           </th>
         )}
-        <th style={{ width: colW('estado') }} className="px-4 py-3 font-medium relative select-none">
-          Estado{rh('estado')}
-        </th>
       </tr>
     </thead>
   )
