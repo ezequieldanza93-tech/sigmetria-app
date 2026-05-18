@@ -44,16 +44,19 @@ export async function ejecutarGestion(
 
   if (!registroId) return { success: false, error: 'Registro requerido' }
   if (!fechaEjecutada) return { success: false, error: 'Fecha de ejecución requerida' }
-  if (!indexStr || isNaN(Number(indexStr))) return { success: false, error: 'Índice requerido' }
+
+  const updates: Record<string, unknown> = {
+    fecha_ejecutada: fechaEjecutada,
+    notas,
+    responsable_id: responsableId,
+  }
+  if (indexStr && !isNaN(Number(indexStr))) {
+    updates.index = Number(indexStr)
+  }
 
   const { error } = await supabase
     .from('registro_gestiones')
-    .update({
-      fecha_ejecutada: fechaEjecutada,
-      index: Number(indexStr),
-      notas,
-      responsable_id: responsableId,
-    })
+    .update(updates)
     .eq('id', registroId)
 
   if (error) return { success: false, error: error.message }

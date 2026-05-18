@@ -1648,7 +1648,11 @@ function GestionesTab({ establecimientoId, canWrite }: { establecimientoId: stri
                               <button
                                 onClick={async () => {
                                   const hoy = new Date().toISOString().split('T')[0]
-                                  await ejecutarGestion(r.id, hoy, r.notas)
+                                  const fd = new FormData()
+                                  fd.set('registro_id', r.id)
+                                  fd.set('fecha_ejecutada', hoy)
+                                  if (r.notas) fd.set('notas', r.notas)
+                                  await ejecutarGestion(null, fd)
                                   loadRegistros(gestionesEstablecimiento?.map(ge => ge.id) ?? [])
                                 }}
                                 className="text-xs bg-sig-500 hover:bg-sig-700 text-white px-3 py-1 rounded-lg font-medium transition-colors"
