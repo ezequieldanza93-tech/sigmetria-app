@@ -30,9 +30,9 @@ const COL_MIN_WIDTHS: Record<string, number> = {
 }
 
 const ROW_BG_COLORS: Record<EstadoGestion, string> = {
-  Realizado: 'bg-green-50 hover:bg-green-100',
-  Pendiente: 'bg-red-50 hover:bg-red-100',
-  Planificado: 'bg-sky-50 hover:bg-sky-100',
+  Realizado: 'bg-green-100 hover:bg-green-200',
+  Pendiente: 'bg-red-100 hover:bg-red-200',
+  Planificado: 'bg-sky-100 hover:bg-sky-200',
 }
 
 function diffDays(a: string, b: string): number {
