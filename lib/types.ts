@@ -196,6 +196,19 @@ export interface Establecimiento {
   description: string | null
   latitude: number | null
   longitude: number | null
+  // Construcción
+  tiene_demolicion: boolean
+  tiene_excavacion: boolean
+  tiene_submuración: boolean
+  tiene_alturas_mayores_6m: boolean
+  tiene_equipamiento_izaje: boolean
+  tipo_contratista: '35/98' | '51/97' | '319/99' | null
+  // Industria
+  tiene_agentes_cancerigenos: boolean
+  tiene_sustancias_quimicas: boolean
+  tiene_exposicion_vibraciones: boolean
+  tiene_exposicion_radiaciones: boolean
+  descripcion_productos: string | null
   photo_site: string | null
   code: string | null
   ref: string | null

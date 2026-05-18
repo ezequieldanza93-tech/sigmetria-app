@@ -21,6 +21,7 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
   const [state, formAction, isPending] = useActionState(action, null)
   const [localidades, setLocalidades] = useState<Localidad[]>([])
   const [selectedProvincia, setSelectedProvincia] = useState(establecimiento?.localidades?.provincia ?? '')
+  const [selectedTipo, setSelectedTipo] = useState(establecimiento?.tipo ?? '')
 
   useEffect(() => {
     createClient()
@@ -53,7 +54,8 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
       <Select
         label="Tipo"
         name="tipo"
-        defaultValue={establecimiento?.tipo ?? ''}
+        value={selectedTipo}
+        onChange={e => setSelectedTipo(e.target.value)}
         options={TIPO_ESTABLECIMIENTO_OPTIONS}
         placeholder="Seleccionar tipo..."
       />
@@ -114,6 +116,88 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
           placeholder="Descripción, notas o información adicional del establecimiento…"
         />
       </div>
+
+      {/* ── Campos específicos Construcción ───────────────────── */}
+      {(selectedTipo === 'construccion' || selectedTipo === 'obra_construccion') && (
+        <div className="border border-orange-200 rounded-xl p-4 space-y-3 bg-orange-50/40">
+          <p className="text-xs font-semibold text-orange-700 uppercase tracking-wider">Datos de Construcción</p>
+
+          <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+            {([
+              ['tiene_demolicion',         'Demolición'],
+              ['tiene_excavacion',         'Excavación'],
+              ['tiene_submuración',        'Submuración'],
+              ['tiene_alturas_mayores_6m', 'Trabajos en altura &gt; 6m'],
+              ['tiene_equipamiento_izaje', 'Equipamiento de izaje'],
+            ] as [string, string][]).map(([name, label]) => (
+              <label key={name} className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  name={name}
+                  value="true"
+                  defaultChecked={!!(establecimiento as any)?.[name]}
+                  className="w-4 h-4 rounded border-gray-300 text-orange-500 focus:ring-orange-400"
+                />
+                <span className="text-sm text-gray-700"
+                  dangerouslySetInnerHTML={{ __html: label }}
+                />
+              </label>
+            ))}
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-1">Tipo de contratista</label>
+            <select
+              name="tipo_contratista"
+              defaultValue={establecimiento?.tipo_contratista ?? ''}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400"
+            >
+              <option value="">Sin especificar</option>
+              <option value="35/98">Contratista principal — Dec. 35/98</option>
+              <option value="51/97">Subcontratista — Dec. 51/97</option>
+              <option value="319/99">Subcontratista corta duración — Dec. 319/99</option>
+            </select>
+          </div>
+        </div>
+      )}
+
+      {/* ── Campos específicos Industria ────────────────────── */}
+      {selectedTipo === 'industria' && (
+        <div className="border border-blue-200 rounded-xl p-4 space-y-3 bg-blue-50/40">
+          <p className="text-xs font-semibold text-blue-700 uppercase tracking-wider">Datos de Industria</p>
+
+          <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+            {([
+              ['tiene_agentes_cancerigenos',   'Agentes cancerígenos'],
+              ['tiene_sustancias_quimicas',    'Sustancias químicas'],
+              ['tiene_exposicion_vibraciones', 'Exposición a vibraciones'],
+              ['tiene_exposicion_radiaciones', 'Exposición a radiaciones'],
+            ] as [string, string][]).map(([name, label]) => (
+              <label key={name} className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  name={name}
+                  value="true"
+                  defaultChecked={!!(establecimiento as any)?.[name]}
+                  className="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-400"
+                />
+                <span className="text-sm text-gray-700">{label}</span>
+              </label>
+            ))}
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-1">Descripción de productos fabricados</label>
+            <textarea
+              name="descripcion_productos"
+              defaultValue={establecimiento?.descripcion_productos ?? ''}
+              rows={3}
+              placeholder="Descripción de los productos que se fabrican o procesan en el establecimiento…"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+          </div>
+        </div>
+      )}
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Ubicación Google Maps</label>

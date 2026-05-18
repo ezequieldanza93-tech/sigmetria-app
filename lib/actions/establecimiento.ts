@@ -6,6 +6,29 @@ import { revalidatePath } from 'next/cache'
 import { SECTORES_PREDEFINIDOS } from '@/lib/constants'
 import type { ActionResult, TipoEstablecimiento } from '@/lib/types'
 
+function parseTipoEspecifico(formData: FormData, tipo: string | null) {
+  if (tipo === 'construccion' || tipo === 'obra_construccion') {
+    return {
+      tiene_demolicion:         formData.get('tiene_demolicion') === 'true',
+      tiene_excavacion:         formData.get('tiene_excavacion') === 'true',
+      tiene_submuración:        formData.get('tiene_submuración') === 'true',
+      tiene_alturas_mayores_6m: formData.get('tiene_alturas_mayores_6m') === 'true',
+      tiene_equipamiento_izaje: formData.get('tiene_equipamiento_izaje') === 'true',
+      tipo_contratista:        (formData.get('tipo_contratista') as string) || null,
+    }
+  }
+  if (tipo === 'industria') {
+    return {
+      tiene_agentes_cancerigenos:   formData.get('tiene_agentes_cancerigenos') === 'true',
+      tiene_sustancias_quimicas:    formData.get('tiene_sustancias_quimicas') === 'true',
+      tiene_exposicion_vibraciones: formData.get('tiene_exposicion_vibraciones') === 'true',
+      tiene_exposicion_radiaciones: formData.get('tiene_exposicion_radiaciones') === 'true',
+      descripcion_productos:       (formData.get('descripcion_productos') as string) || null,
+    }
+  }
+  return {}
+}
+
 async function parseUbicacion(raw: string | null): Promise<{ latitude: number | null; longitude: number | null }> {
   if (!raw?.trim()) return { latitude: null, longitude: null }
   const s = raw.trim()
@@ -62,8 +85,6 @@ export async function createEstablecimiento(
   if (!nombre?.trim()) return { success: false, error: 'El nombre es obligatorio' }
 
   const tipo = formData.get('tipo') as TipoEstablecimiento | null
-  const cantidadStr = formData.get('cantidad_trabajadores') as string
-  const cantidad = cantidadStr ? parseInt(cantidadStr, 10) : null
   const { latitude, longitude } = await parseUbicacion(formData.get('ubicacion_gmaps') as string)
 
   const { data, error } = await supabase
@@ -76,11 +97,11 @@ export async function createEstablecimiento(
       localidad_id: (formData.get('localidad_id') as string) || null,
       codigo_postal: (formData.get('codigo_postal') as string) || null,
       actividad_principal: (formData.get('actividad_principal') as string) || null,
-      cantidad_trabajadores: isNaN(cantidad as number) ? null : cantidad,
       horario_trabajo: (formData.get('horario_trabajo') as string) || null,
       description: (formData.get('description') as string) || null,
       latitude,
       longitude,
+      ...parseTipoEspecifico(formData, tipo),
     })
     .select('id')
     .single()
@@ -119,8 +140,6 @@ export async function updateEstablecimiento(
   if (!nombre?.trim()) return { success: false, error: 'El nombre es obligatorio' }
 
   const tipo = formData.get('tipo') as TipoEstablecimiento | null
-  const cantidadStr = formData.get('cantidad_trabajadores') as string
-  const cantidad = cantidadStr ? parseInt(cantidadStr, 10) : null
   const { latitude, longitude } = await parseUbicacion(formData.get('ubicacion_gmaps') as string)
 
   const foto = formData.get('foto') as File | null
@@ -135,11 +154,11 @@ export async function updateEstablecimiento(
       localidad_id: (formData.get('localidad_id') as string) || null,
       codigo_postal: (formData.get('codigo_postal') as string) || null,
       actividad_principal: (formData.get('actividad_principal') as string) || null,
-      cantidad_trabajadores: isNaN(cantidad as number) ? null : cantidad,
       horario_trabajo: (formData.get('horario_trabajo') as string) || null,
       description: (formData.get('description') as string) || null,
       latitude,
       longitude,
+      ...parseTipoEspecifico(formData, tipo),
       ...(photo_site !== undefined && { photo_site }),
     })
     .eq('id', id)
