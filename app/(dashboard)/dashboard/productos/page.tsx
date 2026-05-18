@@ -104,7 +104,7 @@ export default function ProductosPage() {
       })
     supabase.from('unidades').select('id, nombre, simbolo, categoria')
       .eq('is_active', true).order('categoria').order('nombre')
-      .then(({ data }) => setUnidades(data ?? []))
+      .then(({ data }) => setUnidades((data ?? []) as unknown as Unidad[]))
   }, [])
 
   const filtered = productos === null
