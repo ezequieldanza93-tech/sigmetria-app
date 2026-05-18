@@ -165,14 +165,14 @@ export function PlanificarView({ establecimientoId }: PlanificarViewProps) {
               <div>
                 <label className="text-sm font-medium text-gray-700 block mb-1">Grupo</label>
                 <select value={filterGrupo} onChange={e => { setFilterGrupo(e.target.value); setFilterCat('') }} className={selectCls}>
-                  <option value="">Todos</option>
+                  <option value="">Filtrar por grupo</option>
                   {gruposUnicos.map(g => <option key={g} value={g}>{g}</option>)}
                 </select>
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-700 block mb-1">Categoría</label>
                 <select value={filterCat} onChange={e => setFilterCat(e.target.value)} className={selectCls}>
-                  <option value="">Todas</option>
+                  <option value="">Filtrar por categoría</option>
                   {cats.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
