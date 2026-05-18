@@ -1,17 +1,33 @@
 'use client'
 
-import { useState, useEffect, useActionState } from 'react'
+import { useState, useEffect, useActionState, useRef, Fragment } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { calcularEstadoGestion } from '@/lib/types'
 import type { EstadoGestion, Gestion, CategoriaGestion, GrupoGestion, GestionEstablecimiento, RegistroGestion, Riesgo, RiesgoNivel } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
-import { planificarGestion, planificarGestionNueva } from '@/lib/actions/gestion-establecimiento'
+import {
+  planificarGestion,
+  planificarGestionNueva,
+  createGrupoGestion,
+  createCategoriaGestion,
+} from '@/lib/actions/gestion-establecimiento'
 import { ejecutarGestion } from '@/lib/actions/registro-gestion'
 import { RIESGO_NIVEL_LABELS } from '@/lib/constants'
 import { RIESGO_NIVEL_COLORS } from '@/lib/types'
 
 const MONTHS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+const MONTHS_FULL = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+
+const COL_WIDTHS_KEY = 'gestiones_col_widths'
+const DEFAULT_COL_WIDTHS: Record<string, number> = {
+  gestion: 180, categoria: 130, fecha_plan: 100, fecha_ejec: 100,
+  responsable: 130, observaciones: 160, indice: 70, evidencia: 120, estado: 90,
+}
+const COL_MIN_WIDTHS: Record<string, number> = {
+  gestion: 80, categoria: 60, fecha_plan: 80, fecha_ejec: 80,
+  responsable: 80, observaciones: 80, indice: 50, evidencia: 80, estado: 70,
+}
 
 const ESTADO_COLORS: Record<EstadoGestion, string> = {
   Ejecutado: 'bg-sig-50 text-sig-700',
@@ -59,17 +75,75 @@ interface GestionesAgendaProps {
   riesgos: Riesgo[]
 }
 
-// ---- BibliotecaForm ----
+// ─── InlineCreator ─────────────────────────────────────────────────────────────
+// Shared inline input + confirm/cancel for creating grupo or categoría
+function InlineCreator({
+  placeholder,
+  onConfirm,
+  onCancel,
+  error,
+}: {
+  placeholder: string
+  onConfirm: (nombre: string) => Promise<void>
+  onCancel: () => void
+  error: string
+}) {
+  const [nombre, setNombre] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  async function handle() {
+    if (!nombre.trim()) return
+    setSaving(true)
+    await onConfirm(nombre.trim())
+    setSaving(false)
+  }
+
+  return (
+    <div className="mt-2 space-y-1">
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={nombre}
+          onChange={e => setNombre(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handle() } }}
+          placeholder={placeholder}
+          autoFocus
+          className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500"
+        />
+        <button
+          type="button"
+          onClick={handle}
+          disabled={saving || !nombre.trim()}
+          className="text-xs bg-sig-500 text-white rounded-lg px-3 py-1.5 hover:bg-sig-700 disabled:opacity-50"
+        >
+          {saving ? '…' : 'Crear'}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-50"
+        >
+          ✕
+        </button>
+      </div>
+      {error && <p className="text-xs text-red-600">{error}</p>}
+    </div>
+  )
+}
+
+// ─── BibliotecaForm ────────────────────────────────────────────────────────────
 function BibliotecaForm({
   establecimientoId,
   todasGestiones,
   onClose,
   onSuccess,
+  onSwitchToNueva,
 }: {
   establecimientoId: string
   todasGestiones: Gestion[]
   onClose: () => void
   onSuccess: () => void
+  onSwitchToNueva: () => void
 }) {
   const [state, formAction, pending] = useActionState(planificarGestion, null)
   const [filterGrupo, setFilterGrupo] = useState('')
@@ -103,6 +177,8 @@ function BibliotecaForm({
     setFilterCat('')
   }
 
+  const selectCls = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sig-500'
+
   return (
     <form action={formAction} className="space-y-4">
       <input type="hidden" name="establecimiento_id" value={establecimientoId} />
@@ -115,29 +191,21 @@ function BibliotecaForm({
 
       {todasGestiones.length === 0 ? (
         <div className="bg-amber-50 border border-amber-200 text-amber-700 text-sm rounded-lg px-3 py-2">
-          No se encontraron gestiones en la librería. Usá la pestaña "Nueva gestión" para crear una.
+          No se encontraron gestiones en la librería.
         </div>
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-sm font-medium text-gray-700 block mb-1">Grupo</label>
-              <select
-                value={filterGrupo}
-                onChange={e => handleGrupoChange(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sig-500"
-              >
+              <select value={filterGrupo} onChange={e => handleGrupoChange(e.target.value)} className={selectCls}>
                 <option value="">Todos</option>
                 {grupos.map(g => <option key={g} value={g}>{g}</option>)}
               </select>
             </div>
             <div>
               <label className="text-sm font-medium text-gray-700 block mb-1">Categoría</label>
-              <select
-                value={filterCat}
-                onChange={e => setFilterCat(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sig-500"
-              >
+              <select value={filterCat} onChange={e => setFilterCat(e.target.value)} className={selectCls}>
                 <option value="">Todas</option>
                 {cats.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
@@ -146,16 +214,10 @@ function BibliotecaForm({
 
           <div>
             <label className="text-sm font-medium text-gray-700 block mb-1">Gestión *</label>
-            <select
-              name="gestion_id"
-              required
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sig-500"
-            >
+            <select name="gestion_id" required className={selectCls}>
               <option value="">Seleccionar gestión…</option>
               {gestionesFiltradas.map(g => (
-                <option key={g.id} value={g.id}>
-                  {g.nombre}
-                </option>
+                <option key={g.id} value={g.id}>{g.nombre}</option>
               ))}
             </select>
           </div>
@@ -185,19 +247,27 @@ function BibliotecaForm({
         <Button type="submit" disabled={pending || todasGestiones.length === 0}>
           {pending ? 'Guardando…' : 'Planificar'}
         </Button>
-        <Button type="button" variant="secondary" onClick={onClose}>
-          Cancelar
-        </Button>
+        <Button type="button" variant="secondary" onClick={onClose}>Cancelar</Button>
+      </div>
+
+      <div className="border-t border-gray-100 pt-3">
+        <button
+          type="button"
+          onClick={onSwitchToNueva}
+          className="text-xs text-sig-600 hover:text-sig-800 hover:underline"
+        >
+          ¿No encontrás la gestión? → Crear nueva gestión
+        </button>
       </div>
     </form>
   )
 }
 
-// ---- NuevaGestionForm ----
+// ─── NuevaGestionForm ──────────────────────────────────────────────────────────
 function NuevaGestionForm({
   establecimientoId,
-  grupos,
-  categorias,
+  grupos: gruposProp,
+  categorias: categoriasProp,
   onClose,
   onSuccess,
 }: {
@@ -208,21 +278,75 @@ function NuevaGestionForm({
   onSuccess: () => void
 }) {
   const [state, formAction, pending] = useActionState(planificarGestionNueva, null)
+  const [localGrupos, setLocalGrupos] = useState(gruposProp)
+  const [localCategorias, setLocalCategorias] = useState(categoriasProp)
   const [selectedGrupoId, setSelectedGrupoId] = useState('')
+  const [selectedCatId, setSelectedCatId] = useState('')
+
+  const [creandoGrupo, setCreandoGrupo] = useState(false)
+  const [errorGrupo, setErrorGrupo] = useState('')
+  const [creandoCat, setCreandoCat] = useState(false)
+  const [errorCat, setErrorCat] = useState('')
 
   useEffect(() => {
     if (state?.success) onSuccess()
   }, [state])
 
-  const categoriasFiltradas = selectedGrupoId
-    ? categorias.filter(c => c.grupo_id === selectedGrupoId)
+  const catsFiltradas = selectedGrupoId
+    ? localCategorias.filter(c => c.grupo_id === selectedGrupoId)
     : []
+
+  async function handleCrearGrupo(nombre: string) {
+    setErrorGrupo('')
+    const res = await createGrupoGestion(nombre)
+    if (!res.success) { setErrorGrupo(res.error ?? 'Error'); return }
+    const newG = res.data!
+    setLocalGrupos(prev => [...prev, newG].sort((a, b) => a.nombre.localeCompare(b.nombre)))
+    setSelectedGrupoId(newG.id)
+    setSelectedCatId('')
+    setCreandoGrupo(false)
+  }
+
+  async function handleCrearCat(nombre: string) {
+    if (!selectedGrupoId) { setErrorCat('Seleccioná un grupo primero'); return }
+    setErrorCat('')
+    const res = await createCategoriaGestion(nombre, selectedGrupoId)
+    if (!res.success) { setErrorCat(res.error ?? 'Error'); return }
+    const newC = res.data!
+    setLocalCategorias(prev => [...prev, newC].sort((a, b) => a.nombre.localeCompare(b.nombre)))
+    setSelectedCatId(newC.id)
+    setCreandoCat(false)
+  }
+
+  function handleGrupoSelect(e: React.ChangeEvent<HTMLSelectElement>) {
+    if (e.target.value === '__create__') {
+      setCreandoGrupo(true)
+    } else {
+      setSelectedGrupoId(e.target.value)
+      setSelectedCatId('')
+      setCreandoGrupo(false)
+    }
+  }
+
+  function handleCatSelect(e: React.ChangeEvent<HTMLSelectElement>) {
+    if (e.target.value === '__create__') {
+      setCreandoCat(true)
+    } else {
+      setSelectedCatId(e.target.value)
+      setCreandoCat(false)
+    }
+  }
+
+  const selectCls = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sig-500'
+  const selectErrCls = 'border-red-300 bg-red-50'
+  const hasSubmitError = state && !state.success
 
   return (
     <form action={formAction} className="space-y-4">
       <input type="hidden" name="establecimiento_id" value={establecimientoId} />
+      <input type="hidden" name="categoria_id" value={selectedCatId} />
 
-      {state && !state.success && (
+      {hasSubmitError && (
         <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-3 py-2">
           {state.error}
         </div>
@@ -235,39 +359,60 @@ function NuevaGestionForm({
           name="gestion_nombre"
           required
           placeholder="Ej: Simulacro de Evacuación"
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500"
+          className={selectCls}
         />
         <p className="text-xs text-gray-400 mt-1">Se agregará a la librería global de gestiones.</p>
       </div>
 
+      {/* Grupo */}
       <div>
         <label className="text-sm font-medium text-gray-700 block mb-1">Grupo *</label>
         <select
           value={selectedGrupoId}
-          onChange={e => setSelectedGrupoId(e.target.value)}
-          required
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sig-500"
+          onChange={handleGrupoSelect}
+          className={`${selectCls} ${hasSubmitError && !selectedGrupoId ? selectErrCls : ''}`}
         >
           <option value="">Seleccionar grupo…</option>
-          {grupos.map(g => (
-            <option key={g.id} value={g.id}>{g.nombre}</option>
-          ))}
+          {localGrupos.map(g => <option key={g.id} value={g.id}>{g.nombre}</option>)}
+          <option value="__create__">+ Crear nuevo grupo</option>
         </select>
+        {hasSubmitError && !selectedGrupoId && (
+          <p className="text-xs text-red-600 mt-1">Grupo requerido</p>
+        )}
+        {creandoGrupo && (
+          <InlineCreator
+            placeholder="Nombre del nuevo grupo"
+            onConfirm={handleCrearGrupo}
+            onCancel={() => { setCreandoGrupo(false); setErrorGrupo('') }}
+            error={errorGrupo}
+          />
+        )}
       </div>
 
+      {/* Categoría */}
       <div>
         <label className="text-sm font-medium text-gray-700 block mb-1">Categoría *</label>
         <select
-          name="categoria_id"
-          required
+          value={selectedCatId}
+          onChange={handleCatSelect}
           disabled={!selectedGrupoId}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sig-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          className={`${selectCls} disabled:opacity-50 disabled:cursor-not-allowed ${hasSubmitError && !selectedCatId ? selectErrCls : ''}`}
         >
           <option value="">{selectedGrupoId ? 'Seleccionar categoría…' : 'Seleccioná un grupo primero'}</option>
-          {categoriasFiltradas.map(c => (
-            <option key={c.id} value={c.id}>{c.nombre}</option>
-          ))}
+          {catsFiltradas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+          {selectedGrupoId && <option value="__create__">+ Crear nueva categoría</option>}
         </select>
+        {hasSubmitError && !selectedCatId && (
+          <p className="text-xs text-red-600 mt-1">Categoría requerida</p>
+        )}
+        {creandoCat && (
+          <InlineCreator
+            placeholder="Nombre de la nueva categoría"
+            onConfirm={handleCrearCat}
+            onCancel={() => { setCreandoCat(false); setErrorCat('') }}
+            error={errorCat}
+          />
+        )}
       </div>
 
       <div>
@@ -276,7 +421,7 @@ function NuevaGestionForm({
           type="date"
           name="fecha_planificada"
           required
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500"
+          className={selectCls}
         />
       </div>
 
@@ -285,23 +430,27 @@ function NuevaGestionForm({
         <textarea
           name="notas"
           rows={2}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sig-500"
+          className={`${selectCls} resize-none`}
         />
       </div>
 
       <div className="flex gap-3 pt-1">
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" disabled={pending || !selectedCatId}>
           {pending ? 'Guardando…' : 'Crear y planificar'}
         </Button>
-        <Button type="button" variant="secondary" onClick={onClose}>
-          Cancelar
-        </Button>
+        <Button type="button" variant="secondary" onClick={onClose}>Cancelar</Button>
       </div>
+
+      {!selectedCatId && (
+        <p className="text-xs text-amber-600">
+          {!selectedGrupoId ? 'Seleccioná un Grupo y una Categoría para continuar.' : 'Seleccioná una Categoría para continuar.'}
+        </p>
+      )}
     </form>
   )
 }
 
-// ---- EjecucionModal ----
+// ─── EjecucionModal ────────────────────────────────────────────────────────────
 function EjecucionModal({
   registro,
   establecimientoId,
@@ -422,19 +571,15 @@ function EjecucionModal({
         </div>
 
         <div className="flex gap-3 pt-1">
-          <Button type="submit" disabled={pending}>
-            {pending ? 'Guardando…' : 'Guardar'}
-          </Button>
-          <Button type="button" variant="secondary" onClick={onClose}>
-            Cancelar
-          </Button>
+          <Button type="submit" disabled={pending}>{pending ? 'Guardando…' : 'Guardar'}</Button>
+          <Button type="button" variant="secondary" onClick={onClose}>Cancelar</Button>
         </div>
       </form>
     </Modal>
   )
 }
 
-// ---- PlanificarModal ----
+// ─── PlanificarModal ───────────────────────────────────────────────────────────
 function PlanificarModal({
   establecimientoId,
   todasGestiones,
@@ -455,28 +600,20 @@ function PlanificarModal({
   return (
     <Modal open title="Planificar Gestión" onClose={onClose}>
       <div className="flex border-b border-gray-200 mb-5 -mx-6 px-6">
-        <button
-          type="button"
-          onClick={() => setMode('biblioteca')}
-          className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-            mode === 'biblioteca'
-              ? 'border-sig-500 text-sig-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          Desde biblioteca
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode('nueva')}
-          className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-            mode === 'nueva'
-              ? 'border-sig-500 text-sig-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          Nueva gestión
-        </button>
+        {(['biblioteca', 'nueva'] as const).map(m => (
+          <button
+            key={m}
+            type="button"
+            onClick={() => setMode(m)}
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+              mode === m
+                ? 'border-sig-500 text-sig-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {m === 'biblioteca' ? 'Desde biblioteca' : 'Nueva gestión'}
+          </button>
+        ))}
       </div>
 
       {mode === 'biblioteca' ? (
@@ -485,6 +622,7 @@ function PlanificarModal({
           todasGestiones={todasGestiones}
           onClose={onClose}
           onSuccess={onSuccess}
+          onSwitchToNueva={() => setMode('nueva')}
         />
       ) : (
         <NuevaGestionForm
@@ -499,13 +637,19 @@ function PlanificarModal({
   )
 }
 
-// ---- Main component ----
+// ─── Main component ────────────────────────────────────────────────────────────
 export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: GestionesAgendaProps) {
   const currentYear = new Date().getFullYear()
   const [year, setYear] = useState(currentYear)
+
+  // Task 1: default = current month
   const [selectedMonths, setSelectedMonths] = useState<Set<number>>(
-    new Set([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11])
+    () => new Set([new Date().getMonth()])
   )
+
+  // Task 2: collapsed months for group view
+  const [collapsedMonths, setCollapsedMonths] = useState<Set<number>>(new Set())
+
   const [filterEstado, setFilterEstado] = useState<'' | EstadoGestion>('')
   const [filterCategoria, setFilterCategoria] = useState('')
   const [orderByCategoria, setOrderByCategoria] = useState(false)
@@ -516,6 +660,49 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
   const [showPlanModal, setShowPlanModal] = useState(false)
   const [showRiesgos, setShowRiesgos] = useState(false)
   const [editingRegistro, setEditingRegistro] = useState<FullRegistro | null>(null)
+
+  // Task 4: resizable columns with localStorage
+  const [colWidths, setColWidths] = useState<Record<string, number>>(() => {
+    if (typeof window === 'undefined') return {}
+    try { return JSON.parse(localStorage.getItem(COL_WIDTHS_KEY) ?? '{}') } catch { return {} }
+  })
+  const resizingRef = useRef<{ col: string; startX: number; startW: number } | null>(null)
+
+  function colW(col: string): number {
+    return colWidths[col] ?? DEFAULT_COL_WIDTHS[col] ?? 100
+  }
+
+  function startResize(col: string, e: React.MouseEvent<HTMLDivElement>) {
+    e.preventDefault()
+    e.stopPropagation()
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+    const startW = colWidths[col] ?? DEFAULT_COL_WIDTHS[col] ?? 100
+    resizingRef.current = { col, startX: e.clientX, startW }
+
+    function onMove(ev: MouseEvent) {
+      const r = resizingRef.current
+      if (!r) return
+      const minW = COL_MIN_WIDTHS[r.col] ?? 50
+      const newW = Math.max(minW, r.startW + (ev.clientX - r.startX))
+      setColWidths(prev => {
+        const next = { ...prev, [r.col]: newW }
+        try { localStorage.setItem(COL_WIDTHS_KEY, JSON.stringify(next)) } catch {}
+        return next
+      })
+    }
+
+    function onUp() {
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+      resizingRef.current = null
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }
 
   function loadRegistros() {
     const supabase = createClient()
@@ -565,38 +752,27 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
       })
   }
 
+  function loadCatalogo() {
+    const supabase = createClient()
+    supabase.from('gestiones').select('*, categoria_gestiones(id, nombre, grupo_gestiones(nombre))').order('nombre')
+      .then(({ data }) => { if (data) setTodasGestiones(data as unknown as Gestion[]) })
+    supabase.from('grupo_gestiones').select('*').order('nombre')
+      .then(({ data }) => { if (data) setGrupos(data as unknown as GrupoGestion[]) })
+    supabase.from('categoria_gestiones').select('*').order('nombre')
+      .then(({ data }) => { if (data) setCategorias(data as unknown as CategoriaGestion[]) })
+  }
+
   useEffect(() => {
     loadRegistros()
-    const supabase = createClient()
-
-    supabase
-      .from('gestiones')
-      .select('*, categoria_gestiones(id, nombre, grupo_gestiones(nombre))')
-      .order('nombre')
-      .then(({ data, error }) => {
-        if (error) console.error('[GestionesAgenda] gestiones:', error.message)
-        setTodasGestiones((data as unknown as Gestion[]) ?? [])
-      })
-
-    supabase
-      .from('grupo_gestiones')
-      .select('*')
-      .order('nombre')
-      .then(({ data, error }) => {
-        if (error) console.error('[GestionesAgenda] grupos:', error.message)
-        setGrupos((data as unknown as GrupoGestion[]) ?? [])
-      })
-
-    supabase
-      .from('categoria_gestiones')
-      .select('*')
-      .order('nombre')
-      .then(({ data, error }) => {
-        if (error) console.error('[GestionesAgenda] categorias:', error.message)
-        setCategorias((data as unknown as CategoriaGestion[]) ?? [])
-      })
+    loadCatalogo()
   }, [establecimientoId, year])
 
+  // Refresh catalog when modal opens so new grupos/categorias are available
+  useEffect(() => {
+    if (showPlanModal) loadCatalogo()
+  }, [showPlanModal])
+
+  // ── Filtering & sorting ─────────────────────────────────────────────────────
   const monthCounts = MONTHS.map((_, i) => {
     if (!registros) return 0
     const m = String(i + 1).padStart(2, '0')
@@ -622,39 +798,165 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
     new Set((registros ?? []).map(r => r.ge_categoria_nombre).filter(Boolean))
   ).sort() as string[]
 
+  // Task 2: group by month when multiple months selected
+  const grouped = selectedMonths.size > 1
+    ? Array.from(selectedMonths).sort((a, b) => a - b).map(mi => ({
+        monthIdx: mi,
+        regs: sortedRegistros.filter(r => {
+          const m = parseInt(r.fecha_planificada?.split('-')[1] ?? '0') - 1
+          return m === mi
+        }),
+      })).filter(g => g.regs.length > 0)
+    : []
+
   const activeMonthLabel =
-    selectedMonths.size === 12
-      ? null
-      : selectedMonths.size === 1
-      ? MONTHS[Array.from(selectedMonths)[0]]
-      : `${selectedMonths.size} meses`
+    selectedMonths.size === 12 ? null
+    : selectedMonths.size === 1 ? MONTHS[Array.from(selectedMonths)[0]]
+    : `${selectedMonths.size} meses`
 
   const activeRiesgos = riesgos.filter(r => !r.resuelto)
   const today = todayYMD()
 
+  // ── Columns: 10 with canWrite, 9 without ────────────────────────────────────
+  const totalCols = canWrite ? 10 : 9
+
+  // ── Row renderer ────────────────────────────────────────────────────────────
+  function renderRows(regs: FullRegistro[]) {
+    return regs.map((r, idx) => {
+      const estado = calcularEstadoGestion(r.fecha_ejecutada ?? null, r.fecha_planificada)
+
+      return (
+        <tr key={r.id} className="hover:bg-gray-50">
+          <td className="px-4 py-3 text-gray-400 text-xs text-center">{idx + 1}</td>
+          <td className="px-4 py-3 font-medium text-gray-900" style={{ maxWidth: colW('gestion'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {r.ge_gestion_nombre ?? '—'}
+          </td>
+          <td className="px-4 py-3 text-gray-500 text-xs" style={{ maxWidth: colW('categoria'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {r.ge_categoria_nombre ?? '—'}
+          </td>
+          <td className="px-4 py-3 text-gray-500 tabular-nums text-xs">{r.fecha_planificada}</td>
+          <td className="px-4 py-3 text-gray-500 tabular-nums text-xs">
+            {r.fecha_ejecutada ?? <span className="text-gray-300">—</span>}
+          </td>
+          <td className="px-4 py-3 text-gray-500 text-xs" style={{ maxWidth: colW('responsable'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {r.responsable_nombre ?? <span className="text-gray-300">—</span>}
+          </td>
+          <td className="px-4 py-3 text-gray-500 text-xs" style={{ maxWidth: colW('observaciones') }}>
+            {r.observaciones ? (
+              <span title={r.observaciones} className="truncate block">{r.observaciones}</span>
+            ) : (
+              <span className="text-gray-300">—</span>
+            )}
+          </td>
+          <td className="px-4 py-3 text-center text-sm tabular-nums text-gray-700">
+            {r.index != null ? r.index : <span className="text-gray-300">—</span>}
+          </td>
+          {canWrite && (
+            <td className="px-4 py-3">
+              <button
+                onClick={() => setEditingRegistro(r)}
+                className="text-xs font-medium text-sig-600 hover:text-sig-800 underline underline-offset-2 whitespace-nowrap"
+              >
+                {r.fecha_ejecutada ? 'Editar evidencia' : 'Cargar evidencia'}
+              </button>
+            </td>
+          )}
+          <td className="px-4 py-3">
+            <span className={`text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${ESTADO_COLORS[estado]}`}>
+              {estado}
+            </span>
+          </td>
+        </tr>
+      )
+    })
+  }
+
+  // ── Resize handle helper ────────────────────────────────────────────────────
+  function rh(col: string) {
+    return (
+      <div
+        className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-white/30 select-none"
+        onMouseDown={e => startResize(col, e)}
+      />
+    )
+  }
+
+  // ── Table header ────────────────────────────────────────────────────────────
+  const tableHead = (
+    <thead>
+      <tr className="bg-gray-800 text-white text-left text-xs">
+        <th className="px-4 py-3 font-medium w-9 shrink-0">#</th>
+        <th style={{ width: colW('gestion') }} className="px-4 py-3 font-medium relative select-none">
+          Gestión{rh('gestion')}
+        </th>
+        <th style={{ width: colW('categoria') }} className="px-4 py-3 font-medium relative select-none">
+          Categoría{rh('categoria')}
+        </th>
+        <th style={{ width: colW('fecha_plan') }} className="px-4 py-3 font-medium relative select-none">
+          Fecha Plan.{rh('fecha_plan')}
+        </th>
+        <th style={{ width: colW('fecha_ejec') }} className="px-4 py-3 font-medium relative select-none">
+          Fecha Ejec.{rh('fecha_ejec')}
+        </th>
+        <th style={{ width: colW('responsable') }} className="px-4 py-3 font-medium relative select-none">
+          Responsable{rh('responsable')}
+        </th>
+        <th style={{ width: colW('observaciones') }} className="px-4 py-3 font-medium relative select-none">
+          Observaciones{rh('observaciones')}
+        </th>
+        <th style={{ width: colW('indice') }} className="px-4 py-3 font-medium text-center relative select-none">
+          Índice{rh('indice')}
+        </th>
+        {canWrite && (
+          <th style={{ width: colW('evidencia') }} className="px-4 py-3 font-medium relative select-none">
+            Evidencia{rh('evidencia')}
+          </th>
+        )}
+        <th style={{ width: colW('estado') }} className="px-4 py-3 font-medium relative select-none">
+          Estado{rh('estado')}
+        </th>
+      </tr>
+    </thead>
+  )
+
+  // ── Month group header row ──────────────────────────────────────────────────
+  function groupHeaderRow(monthIdx: number, count: number) {
+    const collapsed = collapsedMonths.has(monthIdx)
+    return (
+      <tr
+        className="cursor-pointer select-none"
+        onClick={() => setCollapsedMonths(prev => {
+          const next = new Set(prev)
+          if (next.has(monthIdx)) next.delete(monthIdx)
+          else next.add(monthIdx)
+          return next
+        })}
+      >
+        <td colSpan={totalCols} className="bg-gray-50 px-4 py-2.5 border-y border-gray-100">
+          <div className="flex items-center gap-2">
+            <span className="text-gray-500 text-xs">{collapsed ? '▶' : '▼'}</span>
+            <span className="font-semibold text-sm text-gray-700">{MONTHS_FULL[monthIdx]}</span>
+            <span className="text-xs bg-gray-200 text-gray-600 rounded-full px-2 py-0.5">{count}</span>
+          </div>
+        </td>
+      </tr>
+    )
+  }
+
+  // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div>
       {/* Year navigation */}
       <div className="bg-gray-800 text-white rounded-xl px-6 py-4 mb-4 flex items-center justify-between">
-        <button
-          onClick={() => setYear(y => y - 1)}
-          className="text-gray-400 hover:text-white text-sm font-medium w-12"
-        >
+        <button onClick={() => setYear(y => y - 1)} className="text-gray-400 hover:text-white text-sm font-medium w-12">
           {year - 1}
         </button>
         <div className="flex items-center gap-3">
-          <button onClick={() => setYear(y => y - 1)} className="text-gray-300 hover:text-white text-lg leading-none">
-            ‹‹
-          </button>
+          <button onClick={() => setYear(y => y - 1)} className="text-gray-300 hover:text-white text-lg leading-none">‹‹</button>
           <span className="text-base font-semibold tracking-wide">Agenda de Gestiones {year}</span>
-          <button onClick={() => setYear(y => y + 1)} className="text-gray-300 hover:text-white text-lg leading-none">
-            ››
-          </button>
+          <button onClick={() => setYear(y => y + 1)} className="text-gray-300 hover:text-white text-lg leading-none">››</button>
         </div>
-        <button
-          onClick={() => setYear(y => y + 1)}
-          className="text-gray-400 hover:text-white text-sm font-medium w-12 text-right"
-        >
+        <button onClick={() => setYear(y => y + 1)} className="text-gray-400 hover:text-white text-sm font-medium w-12 text-right">
           {year + 1}
         </button>
       </div>
@@ -666,18 +968,14 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
           return (
             <button
               key={m}
-              onClick={() =>
-                setSelectedMonths(prev => {
-                  const next = new Set(prev)
-                  if (next.has(i)) next.delete(i)
-                  else next.add(i)
-                  return next
-                })
-              }
+              onClick={() => setSelectedMonths(prev => {
+                const next = new Set(prev)
+                if (next.has(i)) next.delete(i)
+                else next.add(i)
+                return next
+              })}
               className={`rounded-lg py-2 text-center transition-colors ${
-                isSelected
-                  ? 'bg-sig-500 text-white'
-                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                isSelected ? 'bg-sig-500 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
               }`}
             >
               <div className="text-xs font-medium">{m}</div>
@@ -687,19 +985,25 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
         })}
       </div>
 
-      {/* Select / Deselect all */}
-      <div className="flex gap-2 mb-4">
+      {/* Month quick-select buttons */}
+      <div className="flex gap-2 mb-4 flex-wrap">
+        <button
+          onClick={() => setSelectedMonths(new Set([new Date().getMonth()]))}
+          className="text-xs border border-sig-200 bg-sig-50 text-sig-700 rounded-lg px-3 py-1.5 hover:bg-sig-100"
+        >
+          Mes actual
+        </button>
         <button
           onClick={() => setSelectedMonths(new Set([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]))}
           className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-50"
         >
-          Seleccionar todos los meses
+          Todos los meses
         </button>
         <button
           onClick={() => setSelectedMonths(new Set())}
           className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-50"
         >
-          Deseleccionar todos los meses
+          Ninguno
         </button>
       </div>
 
@@ -722,9 +1026,7 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
           className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-600 focus:outline-none"
         >
           <option value="">Seleccione Categorías</option>
-          {categoriasFiltro.map(c => (
-            <option key={c} value={c}>{c}</option>
-          ))}
+          {categoriasFiltro.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
 
         <button
@@ -786,93 +1088,28 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden mb-8">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-gray-800 text-white text-left">
-                  <th className="px-4 py-3 font-medium text-xs w-10">#</th>
-                  <th className="px-4 py-3 font-medium min-w-[180px]">Gestión</th>
-                  <th className="px-4 py-3 font-medium min-w-[130px]">Categoría</th>
-                  <th className="px-4 py-3 font-medium min-w-[100px]">Fecha Plan.</th>
-                  <th className="px-4 py-3 font-medium min-w-[100px]">Fecha Ejec.</th>
-                  <th className="px-4 py-3 font-medium w-16 text-center">Días</th>
-                  <th className="px-4 py-3 font-medium min-w-[130px]">Responsable</th>
-                  <th className="px-4 py-3 font-medium min-w-[130px]">Aprobado Por</th>
-                  <th className="px-4 py-3 font-medium min-w-[160px]">Observaciones</th>
-                  <th className="px-4 py-3 font-medium w-20 text-center">Índice</th>
-                  {canWrite && <th className="px-4 py-3 font-medium w-36">Evidencia</th>}
-                  <th className="px-4 py-3 font-medium min-w-[90px]">Estado</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {sortedRegistros.map((r, idx) => {
-                  const estado = calcularEstadoGestion(r.fecha_ejecutada ?? null, r.fecha_planificada)
-                  const dias = r.fecha_ejecutada
-                    ? diffDays(r.fecha_ejecutada, r.fecha_planificada)
-                    : diffDays(today, r.fecha_planificada)
-                  const diasLabel = r.fecha_ejecutada
-                    ? dias === 0 ? '0' : `${dias > 0 ? '+' : ''}${dias}`
-                    : estado === 'Planificado' ? `${dias}d` : `+${dias}d`
-                  const diasColor = r.fecha_ejecutada
-                    ? dias <= 0 ? 'text-sig-600 font-medium' : 'text-orange-500 font-medium'
-                    : estado === 'Planificado' ? 'text-gray-400' : 'text-red-500 font-medium'
+            <table className="text-sm" style={{ tableLayout: 'fixed', width: '100%', minWidth: 700 }}>
+              {tableHead}
 
-                  return (
-                    <tr key={r.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-gray-400 text-xs text-center">
-                        {idx + 1}
-                      </td>
-                      <td className="px-4 py-3 font-medium text-gray-900">
-                        {r.ge_gestion_nombre ?? '—'}
-                      </td>
-                      <td className="px-4 py-3 text-gray-500 text-xs">
-                        {r.ge_categoria_nombre ?? '—'}
-                      </td>
-                      <td className="px-4 py-3 text-gray-500 tabular-nums">
-                        {r.fecha_planificada}
-                      </td>
-                      <td className="px-4 py-3 text-gray-500 tabular-nums">
-                        {r.fecha_ejecutada ?? <span className="text-gray-300">—</span>}
-                      </td>
-                      <td className={`px-4 py-3 text-xs text-center tabular-nums ${diasColor}`}>
-                        {diasLabel}
-                      </td>
-                      <td className="px-4 py-3 text-gray-500 text-xs">
-                        {r.responsable_nombre ?? <span className="text-gray-300">—</span>}
-                      </td>
-                      <td className="px-4 py-3 text-gray-500 text-xs">
-                        {r.aprobado_nombre ?? <span className="text-gray-300">—</span>}
-                      </td>
-                      <td className="px-4 py-3 text-gray-500 text-xs max-w-[160px]">
-                        {r.observaciones ? (
-                          <span title={r.observaciones} className="truncate block max-w-[150px]">
-                            {r.observaciones}
-                          </span>
-                        ) : (
-                          <span className="text-gray-300">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-center text-sm tabular-nums text-gray-700">
-                        {r.index != null ? r.index : <span className="text-gray-300">—</span>}
-                      </td>
-                      {canWrite && (
-                        <td className="px-4 py-3">
-                          <button
-                            onClick={() => setEditingRegistro(r)}
-                            className="text-xs font-medium text-sig-600 hover:text-sig-800 underline underline-offset-2"
-                          >
-                            {r.fecha_ejecutada ? 'Editar evidencia' : 'Cargar evidencia'}
-                          </button>
-                        </td>
-                      )}
-                      <td className="px-4 py-3">
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${ESTADO_COLORS[estado]}`}>
-                          {estado}
-                        </span>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
+              {/* Task 2: grouped view when multiple months, flat otherwise */}
+              {selectedMonths.size > 1 ? (
+                grouped.map(group => (
+                  <Fragment key={group.monthIdx}>
+                    <tbody>
+                      {groupHeaderRow(group.monthIdx, group.regs.length)}
+                    </tbody>
+                    {!collapsedMonths.has(group.monthIdx) && (
+                      <tbody className="divide-y divide-gray-50">
+                        {renderRows(group.regs)}
+                      </tbody>
+                    )}
+                  </Fragment>
+                ))
+              ) : (
+                <tbody className="divide-y divide-gray-50">
+                  {renderRows(sortedRegistros)}
+                </tbody>
+              )}
             </table>
           </div>
         </div>
@@ -909,16 +1146,10 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <span
-                        className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                          RIESGO_NIVEL_COLORS[r.nivel as RiesgoNivel]
-                        }`}
-                      >
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${RIESGO_NIVEL_COLORS[r.nivel as RiesgoNivel]}`}>
                         {RIESGO_NIVEL_LABELS[r.nivel as RiesgoNivel]}
                       </span>
-                      {r.resuelto && (
-                        <span className="text-xs text-gray-400">Resuelto</span>
-                      )}
+                      {r.resuelto && <span className="text-xs text-gray-400">Resuelto</span>}
                     </div>
                     <p className="text-sm text-gray-900 font-medium">{r.descripcion}</p>
                     {r.medida_correctiva && (
@@ -939,10 +1170,7 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
           registro={editingRegistro}
           establecimientoId={establecimientoId}
           onClose={() => setEditingRegistro(null)}
-          onSuccess={() => {
-            setEditingRegistro(null)
-            loadRegistros()
-          }}
+          onSuccess={() => { setEditingRegistro(null); loadRegistros() }}
         />
       )}
 
@@ -953,10 +1181,7 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
           grupos={grupos}
           categorias={categorias}
           onClose={() => setShowPlanModal(false)}
-          onSuccess={() => {
-            setShowPlanModal(false)
-            loadRegistros()
-          }}
+          onSuccess={() => { setShowPlanModal(false); loadRegistros() }}
         />
       )}
     </div>

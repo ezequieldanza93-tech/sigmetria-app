@@ -1,6 +1,6 @@
 'use server'
 import { createClient } from '@/lib/supabase/server'
-import type { ActionResult } from '@/lib/types'
+import type { ActionResult, GrupoGestion, CategoriaGestion } from '@/lib/types'
 
 export async function planificarGestion(
   _prev: ActionResult<null> | null,
@@ -137,4 +137,63 @@ export async function removeGestionFromEstablecimiento(
 
   if (error) return { success: false, error: error.message }
   return { success: true, data: null }
+}
+
+export async function createGrupoGestion(
+  nombre: string
+): Promise<ActionResult<GrupoGestion>> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'No autenticado' }
+
+  const nombreTrim = nombre.trim()
+  if (!nombreTrim) return { success: false, error: 'Nombre requerido' }
+
+  const { data, error } = await supabase
+    .from('grupo_gestiones')
+    .insert({ nombre: nombreTrim })
+    .select('id, nombre, created_at')
+    .single()
+
+  if (error) {
+    if (error.code === '23505') return { success: false, error: 'Ya existe un grupo con ese nombre' }
+    return { success: false, error: error.message }
+  }
+
+  return { success: true, data: data as GrupoGestion }
+}
+
+export async function createCategoriaGestion(
+  nombre: string,
+  grupoId: string
+): Promise<ActionResult<CategoriaGestion>> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'No autenticado' }
+
+  const nombreTrim = nombre.trim()
+  if (!nombreTrim) return { success: false, error: 'Nombre requerido' }
+  if (!grupoId) return { success: false, error: 'Grupo requerido' }
+
+  const { data: existing } = await supabase
+    .from('categoria_gestiones')
+    .select('id')
+    .eq('grupo_id', grupoId)
+    .ilike('nombre', nombreTrim)
+    .maybeSingle()
+
+  if (existing) return { success: false, error: 'Ya existe una categoría con ese nombre en este grupo' }
+
+  const { data, error } = await supabase
+    .from('categoria_gestiones')
+    .insert({ nombre: nombreTrim, grupo_id: grupoId })
+    .select('id, nombre, grupo_id, descripcion, created_at')
+    .single()
+
+  if (error) {
+    if (error.code === '23505') return { success: false, error: 'Ya existe una categoría con ese nombre' }
+    return { success: false, error: error.message }
+  }
+
+  return { success: true, data: data as CategoriaGestion }
 }
