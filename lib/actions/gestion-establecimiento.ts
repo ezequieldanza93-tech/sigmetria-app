@@ -167,13 +167,13 @@ export async function createCategoriaGestion(
   nombre: string,
   grupoId: string
 ): Promise<ActionResult<CategoriaGestion>> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'No autenticado' }
-
   const nombreTrim = nombre.trim()
   if (!nombreTrim) return { success: false, error: 'Nombre requerido' }
   if (!grupoId) return { success: false, error: 'Grupo requerido' }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'No autenticado' }
 
   const { data: existing } = await supabase
     .from('categoria_gestiones')
@@ -194,6 +194,57 @@ export async function createCategoriaGestion(
     if (error.code === '23505') return { success: false, error: 'Ya existe una categoría con ese nombre' }
     return { success: false, error: error.message }
   }
+
+  return { success: true, data: data as CategoriaGestion }
+}
+
+function lastDayOfMonth(year: number, month: number): string {
+  const d = new Date(year, month + 1, 0)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+export async function planificarGestionMulti(
+  gestionId: string,
+  establecimientoId: string,
+  months: number[],
+  year: number,
+  responsableId: string | null,
+  notas: string | null,
+): Promise<ActionResult<{ count: number }>> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'No autenticado' }
+  if (!gestionId) return { success: false, error: 'Gestión requerida' }
+  if (!months.length) return { success: false, error: 'Seleccioná al menos un mes' }
+
+  const { error: upsertError } = await supabase
+    .from('gestion_establecimiento')
+    .upsert(
+      { gestion_id: gestionId, establecimiento_id: establecimientoId },
+      { onConflict: 'gestion_id,establecimiento_id', ignoreDuplicates: true }
+    )
+  if (upsertError) return { success: false, error: upsertError.message }
+
+  const { data: ge, error: geError } = await supabase
+    .from('gestion_establecimiento')
+    .select('id')
+    .eq('gestion_id', gestionId)
+    .eq('establecimiento_id', establecimientoId)
+    .single()
+  if (geError || !ge) return { success: false, error: 'No se pudo obtener la gestión del establecimiento' }
+
+  const registros = months.map(m => ({
+    gestion_establecimiento_id: ge.id,
+    fecha_planificada: lastDayOfMonth(year, m),
+    responsable_id: responsableId,
+    notas: notas,
+  }))
+
+  const { error: insertError } = await supabase.from('registro_gestiones').insert(registros)
+  if (insertError) return { success: false, error: insertError.message }
+
+  return { success: true, data: { count: registros.length } }
+}
 
   return { success: true, data: data as CategoriaGestion }
 }

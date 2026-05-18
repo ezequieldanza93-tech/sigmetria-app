@@ -5,6 +5,7 @@ import { canWrite, canDelete, UserRole } from '@/lib/types'
 import { EstablecimientoTabs } from '@/components/establecimiento-tabs'
 import { EstablecimientoLocation } from '@/components/establecimiento-location'
 import { GestionesAgenda } from '@/components/establecimiento-gestiones-agenda'
+import { PlanificarView } from '@/components/planificar-view'
 import { ActuarView } from '@/components/actuar-view'
 import { TIPO_ESTABLECIMIENTO_LABELS } from '@/lib/constants'
 import type {
@@ -216,8 +217,16 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
           </>
         )}
 
-        {/* ── Planificar / Hacer ── */}
-        {(section === 'planificar' || section === 'hacer') && (
+        {/* ── Planificar ── */}
+        {section === 'planificar' && (
+          <PlanificarView
+            establecimientoId={estId}
+            empresaId={id}
+          />
+        )}
+
+        {/* ── Hacer ── */}
+        {section === 'hacer' && (
           <GestionesAgenda
             establecimientoId={estId}
             empresaId={id}
