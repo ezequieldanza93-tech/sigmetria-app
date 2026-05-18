@@ -1763,7 +1763,7 @@ function GestionesTab({ establecimientoId, canWrite }: { establecimientoId: stri
     const supabase = createClient()
     supabase
       .from('observaciones_gestiones')
-      .select('*, directorio_personas(nombre, apellido)')
+      .select('*, directorio_personas!responsable_id(nombre, apellido)')
       .in('registro_gestion_id', registroIds)
       .order('fecha_planificada')
       .then(({ data }) => setObservaciones((data as unknown as ObservacionGestion[]) ?? []))
