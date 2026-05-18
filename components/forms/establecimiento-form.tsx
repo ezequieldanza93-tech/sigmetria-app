@@ -97,22 +97,12 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
         placeholder="Manufactura de piezas metálicas"
       />
 
-      <div className="grid grid-cols-2 gap-4">
-        <Input
-          label="Cantidad Total de Trabajadores"
-          name="cantidad_trabajadores"
-          type="number"
-          min="0"
-          defaultValue={establecimiento?.cantidad_trabajadores?.toString() ?? ''}
-          placeholder="50"
-        />
-        <Input
-          label="Horario de Trabajo"
-          name="horario_trabajo"
-          defaultValue={establecimiento?.horario_trabajo ?? ''}
-          placeholder="Lun–Vie 08:00–17:00"
-        />
-      </div>
+      <Input
+        label="Horario de Trabajo"
+        name="horario_trabajo"
+        defaultValue={establecimiento?.horario_trabajo ?? ''}
+        placeholder="Lun–Vie 08:00–17:00"
+      />
 
       <div>
         <label className="text-sm font-medium text-gray-700 block mb-1">Información del establecimiento</label>

@@ -111,11 +111,29 @@ function PuestoInlineForm({
   const [state, formAction, pending] = useActionState(action, null)
   useEffect(() => { if (state?.success) onSuccess() }, [state])
   return (
-    <form action={formAction} className="flex items-center gap-2 mt-2">
-      <input name="nombre" placeholder="Nombre del puesto *" required className="flex-1 border border-gray-300 rounded px-2 py-1.5 text-sm" />
-      {state && !state.success && <span className="text-xs text-red-600">{state.error}</span>}
-      <Button size="sm" variant="secondary" type="button" onClick={onCancel}>×</Button>
-      <Button size="sm" type="submit" disabled={pending}>{pending ? '…' : 'Agregar'}</Button>
+    <form action={formAction} className="mt-2 space-y-2 bg-gray-50 rounded-lg p-3">
+      <div className="flex gap-2">
+        <input
+          name="nombre"
+          placeholder="Nombre del puesto *"
+          required
+          className="flex-1 border border-gray-300 rounded px-2 py-1.5 text-sm"
+        />
+        <select
+          name="tipo"
+          required
+          className="border border-gray-300 rounded px-2 py-1.5 text-sm bg-white"
+        >
+          <option value="">Tipo *</option>
+          <option value="operativo">Operativo</option>
+          <option value="administrativo">Administrativo</option>
+        </select>
+      </div>
+      {state && !state.success && <p className="text-xs text-red-600">{state.error}</p>}
+      <div className="flex justify-end gap-2">
+        <Button size="sm" variant="secondary" type="button" onClick={onCancel}>Cancelar</Button>
+        <Button size="sm" type="submit" disabled={pending}>{pending ? '…' : 'Agregar'}</Button>
+      </div>
     </form>
   )
 }
@@ -256,6 +274,15 @@ function PuestoRow({
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
           </svg>
           {puesto.nombre}
+          {puesto.tipo && (
+            <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${
+              puesto.tipo === 'operativo'
+                ? 'bg-blue-50 text-blue-700'
+                : 'bg-purple-50 text-purple-700'
+            }`}>
+              {puesto.tipo === 'operativo' ? 'Op.' : 'Admin.'}
+            </span>
+          )}
           {personas !== null && (
             <span className="text-xs text-gray-400 font-normal">({personas.length} persona{personas.length !== 1 ? 's' : ''})</span>
           )}
@@ -554,12 +581,50 @@ function SectoresTab({
 }) {
   const [showModal, setShowModal] = useState(false)
   const [localSectores, setLocalSectores] = useState(sectores)
+  const [workerCounts, setWorkerCounts] = useState<{ operativo: number; administrativo: number } | null>(null)
   const sectorAction = createSectorCustom.bind(null, establecimientoId, empresaId)
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase
+      .from('sectores_establecimiento')
+      .select('id')
+      .eq('establecimiento_id', establecimientoId)
+      .then(({ data: secs }) => {
+        const ids = (secs ?? []).map(s => s.id)
+        if (ids.length === 0) { setWorkerCounts({ operativo: 0, administrativo: 0 }); return }
+        supabase
+          .from('puestos_de_trabajo')
+          .select('tipo, empleado_puesto(persona_id)')
+          .in('sector_id', ids)
+          .not('tipo', 'is', null)
+          .then(({ data: puestos }) => {
+            const ops = new Set<string>()
+            const adm = new Set<string>()
+            ;(puestos ?? []).forEach((p: any) => {
+              ;(p.empleado_puesto ?? []).forEach((ep: any) => {
+                if (p.tipo === 'operativo') ops.add(ep.persona_id)
+                else adm.add(ep.persona_id)
+              })
+            })
+            setWorkerCounts({ operativo: ops.size, administrativo: adm.size })
+          })
+      })
+  }, [establecimientoId])
 
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-900">Sectores del Establecimiento</h3>
+        <div>
+          <h3 className="font-semibold text-gray-900">Sectores del Establecimiento</h3>
+          {workerCounts !== null && (workerCounts.operativo > 0 || workerCounts.administrativo > 0) && (
+            <p className="text-xs text-gray-500 mt-0.5">
+              <span className="text-blue-600 font-medium">{workerCounts.operativo} operativo{workerCounts.operativo !== 1 ? 's' : ''}</span>
+              <span className="text-gray-300 mx-1.5">·</span>
+              <span className="text-purple-600 font-medium">{workerCounts.administrativo} administrativo{workerCounts.administrativo !== 1 ? 's' : ''}</span>
+            </p>
+          )}
+        </div>
         {canWrite && (
           <Button size="sm" onClick={() => setShowModal(true)}>
             + Sector Personalizado

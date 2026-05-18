@@ -328,6 +328,7 @@ export interface PuestoDeTrabajo {
   id: string
   sector_id: string
   nombre: string
+  tipo: 'operativo' | 'administrativo' | null
   is_active: boolean
   created_at: string
   updated_at: string

@@ -18,9 +18,11 @@ export async function createPuesto(
   const nombre = formData.get('nombre') as string
   if (!nombre?.trim()) return { success: false, error: 'El nombre es obligatorio' }
 
+  const tipo = formData.get('tipo') as 'operativo' | 'administrativo' | null
+
   const { error } = await supabase
     .from('puestos_de_trabajo')
-    .insert({ sector_id: sectorId, nombre: nombre.trim() })
+    .insert({ sector_id: sectorId, nombre: nombre.trim(), tipo: tipo || null })
 
   if (error) return { success: false, error: error.message }
 
