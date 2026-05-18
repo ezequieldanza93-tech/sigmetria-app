@@ -1999,7 +1999,7 @@ function GestionesTab({ establecimientoId, canWrite }: { establecimientoId: stri
                       </div>
                     )
                   })}
-                {registros.filter(r => calcularEstadoGestion(r.fecha_ejecutada, r.fecha_planificada) !== 'Ejecutado').length === 0 && (
+                {registros.filter(r => calcularEstadoGestion(r.fecha_ejecutada, r.fecha_planificada) !== 'Realizado').length === 0 && (
                   <p className="text-sm text-gray-400">No hay gestiones pendientes de ejecución.</p>
                 )}
               </div>
