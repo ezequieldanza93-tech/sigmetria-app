@@ -17,7 +17,7 @@ export async function createDenuncia(
   if (!fecha) return { success: false, error: 'Fecha requerida' }
   if (!descripcion?.trim()) return { success: false, error: 'Descripción requerida' }
 
-  const { error } = await supabase.from('establecimiento_denuncias').insert({
+  const { error } = await supabase.from('establecimientos_denuncias').insert({
     establecimiento_id: establecimientoId,
     fecha,
     descripcion: descripcion.trim(),
@@ -46,7 +46,7 @@ export async function createFeedbackCliente(
   if (!tipo) return { success: false, error: 'Tipo requerido' }
   if (!descripcion?.trim()) return { success: false, error: 'Descripción requerida' }
 
-  const { error } = await supabase.from('establecimiento_feedback_clientes').insert({
+  const { error } = await supabase.from('establecimientos_feedback_clientes').insert({
     establecimiento_id: establecimientoId,
     fecha,
     cliente: cliente.trim(),

@@ -39,7 +39,7 @@ async function saveHorarios(
     hora_fin:    (formData.get(`dia_${dia}_fin`)    as string) || null,
   }))
   await supabase
-    .from('horarios_establecimiento')
+    .from('establecimientos_horarios')
     .upsert(rows, { onConflict: 'establecimiento_id,dia_semana' })
 }
 
@@ -56,7 +56,7 @@ async function saveRespuestas(
     respuesta: formData.get(`resp_${pid}`) === 'true',
   }))
   await supabase
-    .from('establecimiento_respuestas')
+    .from('establecimientos_respuestas')
     .upsert(entries, { onConflict: 'establecimiento_id,pregunta_id' })
 }
 
@@ -132,7 +132,7 @@ export async function createEstablecimiento(
     es_custom: false,
     cantidad_trabajadores: 0,
   }))
-  await supabase.from('sectores_establecimiento').insert(sectores)
+  await supabase.from('establecimientos_sectores').insert(sectores)
 
   revalidatePath(`/dashboard/empresas/${empresaId}`)
   redirect(`/dashboard/empresas/${empresaId}/establecimientos/${data.id}`)

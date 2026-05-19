@@ -17,7 +17,7 @@ export async function createRegistroGestion(
   if (!gestionEstablecimientoId) return { success: false, error: 'Gestión requerida' }
   if (!fechaPlanificada) return { success: false, error: 'Fecha planificada requerida' }
 
-  const { error } = await supabase.from('registro_gestiones').insert({
+  const { error } = await supabase.from('gestiones_registros').insert({
     gestion_establecimiento_id: gestionEstablecimientoId,
     fecha_planificada: fechaPlanificada,
     responsable_id: responsableId || null,
@@ -67,7 +67,7 @@ export async function ejecutarGestion(
   }
 
   const { error } = await supabase
-    .from('registro_gestiones')
+    .from('gestiones_registros')
     .update(updates)
     .eq('id', registroId)
 
@@ -100,7 +100,7 @@ export async function crearObservaciones(
 
   if (rows.length === 0) return { success: true, data: null }
 
-  const { error } = await supabase.from('observaciones_gestiones').insert(rows)
+  const { error } = await supabase.from('gestiones_observaciones').insert(rows)
   if (error) return { success: false, error: error.message }
   return { success: true, data: null }
 }

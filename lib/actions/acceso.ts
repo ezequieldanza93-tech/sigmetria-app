@@ -18,7 +18,7 @@ export async function setUserAccess(
   if (!user) return { success: false, error: 'No autenticado' }
 
   const { data: membership } = await supabase
-    .from('consultora_members')
+    .from('consultoras_members')
     .select('consultora_id, role')
     .eq('user_id', user.id)
     .eq('is_active', true)

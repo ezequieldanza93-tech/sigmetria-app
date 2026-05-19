@@ -18,7 +18,7 @@ export default async function NuevoEstablecimientoPage({ params }: Props) {
 
   const [{ data: profile }, { data: membership }, { data: empresa }] = await Promise.all([
     supabase.from('profiles').select('system_role').eq('id', user.id).single(),
-    supabase.from('consultora_members').select('role').eq('user_id', user.id).eq('is_active', true).maybeSingle(),
+    supabase.from('consultoras_members').select('role').eq('user_id', user.id).eq('is_active', true).maybeSingle(),
     supabase.from('empresas').select('razon_social').eq('id', id).single(),
   ])
 

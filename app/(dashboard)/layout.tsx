@@ -12,7 +12,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const [{ data: profile }, { data: membership }] = await Promise.all([
     supabase.from('profiles').select('full_name, system_role').eq('id', user.id).single(),
     supabase
-      .from('consultora_members')
+      .from('consultoras_members')
       .select('role, consultora_id, consultoras(nombre)')
       .eq('user_id', user.id)
       .eq('is_active', true)

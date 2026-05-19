@@ -38,7 +38,7 @@ export async function createTrabajadorDocumento(
   }
 
   const { error } = await supabase
-    .from('empleado_documentos')
+    .from('personas_documentos')
     .insert({
       persona_id: trabajadorId,
       tipo_id: tipoId,

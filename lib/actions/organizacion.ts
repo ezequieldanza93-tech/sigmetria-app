@@ -88,7 +88,7 @@ export async function createOrganizacionExterna(
 
     const preguntaIds = formData.getAll('pregunta_ids') as string[]
     if (preguntaIds.length > 0) {
-      await supabase.from('subcontratista_respuestas').upsert(
+      await supabase.from('subcontratistas_respuestas').upsert(
         preguntaIds.map(pid => ({
           subcontratista_id: sub.id,
           pregunta_id: pid,
@@ -134,7 +134,7 @@ export async function addOrganizacionToEstablecimiento(
   if (orgError || !org) return { success: false, error: orgError?.message ?? 'Error al crear organización' }
 
   const { error: linkError } = await supabase
-    .from('organizacion_establecimiento')
+    .from('organizaciones_establecimientos')
     .upsert(
       { organizacion_id: org.id, establecimiento_id: establecimientoId },
       { onConflict: 'organizacion_id,establecimiento_id', ignoreDuplicates: true }

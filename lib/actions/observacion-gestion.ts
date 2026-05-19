@@ -18,7 +18,7 @@ export async function createObservacionGestion(
   if (!descripcion) return { success: false, error: 'Descripción requerida' }
   if (!fechaPlanificada) return { success: false, error: 'Fecha planificada requerida' }
 
-  const { error } = await supabase.from('observaciones_gestiones').insert({
+  const { error } = await supabase.from('gestiones_observaciones').insert({
     registro_gestion_id: registroGestionId,
     descripcion,
     fecha_planificada: fechaPlanificada,
@@ -40,7 +40,7 @@ export async function cerrarObservacion(
   if (!user) return { success: false, error: 'No autenticado' }
 
   const { error } = await supabase
-    .from('observaciones_gestiones')
+    .from('gestiones_observaciones')
     .update({ fecha_cierre: fechaCierre, responsable_cierre_id: responsableCierreId })
     .eq('id', id)
 

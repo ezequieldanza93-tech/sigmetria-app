@@ -28,12 +28,12 @@ export async function createDocumento(
 
   if (establecimientoId) {
     const result = await supabase
-      .from('establecimiento_documentos')
+      .from('establecimientos_documentos')
       .insert({ ...commonFields, establecimiento_id: establecimientoId })
     error = result.error
   } else {
     const result = await supabase
-      .from('empresa_documentos')
+      .from('empresas_documentos')
       .insert({ ...commonFields, empresa_id: empresaId })
     error = result.error
   }

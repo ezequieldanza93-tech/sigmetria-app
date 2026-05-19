@@ -18,7 +18,7 @@ export async function createInstrumento(
   if (!modelo) return { success: false, error: 'El modelo es obligatorio' }
   if (!tipoId) return { success: false, error: 'El tipo es obligatorio' }
 
-  const { error } = await supabase.from('instrumentos_medicion').insert({
+  const { error } = await supabase.from('mediciones_instrumentos').insert({
     tipo_id: tipoId,
     marca_id: (formData.get('marca_id') as string) || null,
     modelo,
@@ -37,7 +37,7 @@ export async function deleteInstrumento(id: string): Promise<ActionResult<null>>
   if (!user) return { success: false, error: 'No autenticado' }
 
   const { error } = await supabase
-    .from('instrumentos_medicion')
+    .from('mediciones_instrumentos')
     .update({ is_active: false })
     .eq('id', id)
 

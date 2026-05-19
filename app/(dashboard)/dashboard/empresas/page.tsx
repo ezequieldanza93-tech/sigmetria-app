@@ -15,7 +15,7 @@ export default async function EmpresasPage() {
     { data: empresas },
   ] = await Promise.all([
     supabase.from('profiles').select('system_role').eq('id', user.id).single(),
-    supabase.from('consultora_members').select('role').eq('user_id', user.id).eq('is_active', true).maybeSingle(),
+    supabase.from('consultoras_members').select('role').eq('user_id', user.id).eq('is_active', true).maybeSingle(),
     supabase
       .from('empresas')
       .select(`id, razon_social, cuit, rubro, localidades(nombre, provincia), is_active, establecimientos(count)`)

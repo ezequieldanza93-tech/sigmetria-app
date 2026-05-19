@@ -500,8 +500,8 @@ function EjecucionModal({
   useEffect(() => {
     const supabase = createClient()
     supabase
-      .from('persona_establecimiento')
-      .select('directorio_personas!persona_id(id, nombre, apellido)')
+      .from('personas_establecimientos')
+      .select('personas_directorio!persona_id(id, nombre, apellido)')
       .eq('establecimiento_id', establecimientoId)
       .then(({ data }) => {
         const ps = ((data ?? []) as any[])
@@ -511,7 +511,7 @@ function EjecucionModal({
         setPersonas(ps)
       })
     supabase
-      .from('clasificacion_observaciones')
+      .from('observaciones_clasificaciones')
       .select('id, nombre')
       .eq('is_active', true)
       .order('nombre')
@@ -804,8 +804,8 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
   function loadRegistros() {
     const supabase = createClient()
     supabase
-      .from('gestion_establecimiento')
-      .select('id, mostrar_lt, gestiones!inner(id, nombre, categoria_gestiones(nombre, grupo_gestiones(nombre)))')
+      .from('gestiones_establecimientos')
+      .select('id, mostrar_lt, gestiones!inner(id, nombre, gestiones_categorias(nombre, gestiones_grupos(nombre)))')
       .eq('establecimiento_id', establecimientoId)
       .then(({ data: geData, error: geError }) => {
         if (geError) console.error('[GestionesAgenda] gestion_establecimiento:', geError.message)
@@ -818,8 +818,8 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
         const gestionIds = ges.map(ge => ge.gestiones?.id).filter(Boolean) as string[]
 
         supabase
-          .from('registro_gestiones')
-          .select('*, responsable:directorio_personas!responsable_id(nombre, apellido), aprobado_por:directorio_personas!aprobado_por_id(nombre, apellido)')
+          .from('gestiones_registros')
+          .select('*, responsable:personas_directorio!responsable_id(nombre, apellido), aprobado_por:personas_directorio!aprobado_por_id(nombre, apellido)')
           .in('gestion_establecimiento_id', geIds)
           .gte('fecha_planificada', `${year}-01-01`)
           .lte('fecha_planificada', `${year}-12-31`)
@@ -832,7 +832,7 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
             }
 
             supabase
-              .from('formulario_secciones')
+              .from('formularios_secciones')
               .select('gestion_id')
               .in('gestion_id', gestionIds)
               .then(({ data: seccionesData }) => {

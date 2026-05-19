@@ -23,7 +23,7 @@ export async function createPersona(
   if (!establecimientoId) return { success: false, error: 'El establecimiento es obligatorio' }
 
   const { data: persona, error: personaError } = await supabase
-    .from('directorio_personas')
+    .from('personas_directorio')
     .insert({
       nombre,
       apellido,
@@ -44,7 +44,7 @@ export async function createPersona(
 
   // Link to selected establecimiento
   const { error: junctionError } = await supabase
-    .from('persona_establecimiento')
+    .from('personas_establecimientos')
     .upsert(
       { persona_id: persona.id, establecimiento_id: establecimientoId },
       { onConflict: 'persona_id,establecimiento_id', ignoreDuplicates: true }
@@ -62,7 +62,7 @@ export async function deletePersona(id: string): Promise<ActionResult<null>> {
   if (!user) return { success: false, error: 'No autenticado' }
 
   const { error } = await supabase
-    .from('directorio_personas')
+    .from('personas_directorio')
     .update({ is_active: false })
     .eq('id', id)
 

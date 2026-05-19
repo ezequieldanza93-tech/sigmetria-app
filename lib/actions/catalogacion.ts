@@ -12,7 +12,7 @@ async function getUser() {
 
 export async function getTiposEstablecimiento() {
   const { supabase } = await getUser()
-  const { data } = await supabase.from('tipos_establecimiento').select('id, nombre, codigo').order('nombre')
+  const { data } = await supabase.from('establecimientos_tipos').select('id, nombre, codigo').order('nombre')
   return data ?? []
 }
 
@@ -28,7 +28,7 @@ export async function getGestionesConTipos(): Promise<GestionRow[]> {
   const { supabase } = await getUser()
   const [gesRes, relRes] = await Promise.all([
     supabase.from('gestiones').select('id, nombre, aplica_por_iso').order('nombre'),
-    supabase.from('gestion_tipos_establecimiento').select('gestion_id, tipo_establecimiento_id'),
+    supabase.from('gestiones_tipos_establecimiento').select('gestion_id, tipo_establecimiento_id'),
   ])
   const idx = new Map<string, string[]>()
   for (const r of relRes.data ?? []) {
@@ -46,13 +46,13 @@ export async function getGestionesConTipos(): Promise<GestionRow[]> {
 export async function toggleGestionTipo(gestionId: string, tipoId: string, active: boolean): Promise<ActionResult<null>> {
   const { supabase } = await getUser()
   if (active) {
-    const { error } = await supabase.from('gestion_tipos_establecimiento').upsert(
+    const { error } = await supabase.from('gestiones_tipos_establecimiento').upsert(
       { gestion_id: gestionId, tipo_establecimiento_id: tipoId },
       { onConflict: 'gestion_id,tipo_establecimiento_id', ignoreDuplicates: true },
     )
     if (error) return { success: false, error: error.message }
   } else {
-    const { error } = await supabase.from('gestion_tipos_establecimiento').delete()
+    const { error } = await supabase.from('gestiones_tipos_establecimiento').delete()
       .eq('gestion_id', gestionId).eq('tipo_establecimiento_id', tipoId)
     if (error) return { success: false, error: error.message }
   }
@@ -84,8 +84,8 @@ export interface SeccionRow {
 export async function getSeccionesConAspectos(): Promise<SeccionRow[]> {
   const { supabase } = await getUser()
   const [secRes, relRes] = await Promise.all([
-    supabase.from('formulario_secciones').select('id, gestion_id, title, aplica_por_iso').order('title'),
-    supabase.from('formulario_seccion_aspectos').select('section_id, aspecto_id'),
+    supabase.from('formularios_secciones').select('id, gestion_id, title, aplica_por_iso').order('title'),
+    supabase.from('formularios_secciones_aspectos').select('section_id, aspecto_id'),
   ])
   const idx = new Map<string, string[]>()
   for (const r of relRes.data ?? []) {
@@ -103,13 +103,13 @@ export async function getSeccionesConAspectos(): Promise<SeccionRow[]> {
 export async function toggleSeccionAspecto(sectionId: string, aspectoId: string, active: boolean): Promise<ActionResult<null>> {
   const { supabase } = await getUser()
   if (active) {
-    const { error } = await supabase.from('formulario_seccion_aspectos').upsert(
+    const { error } = await supabase.from('formularios_secciones_aspectos').upsert(
       { section_id: sectionId, aspecto_id: aspectoId },
       { onConflict: 'section_id,aspecto_id', ignoreDuplicates: true },
     )
     if (error) return { success: false, error: error.message }
   } else {
-    const { error } = await supabase.from('formulario_seccion_aspectos').delete()
+    const { error } = await supabase.from('formularios_secciones_aspectos').delete()
       .eq('section_id', sectionId).eq('aspecto_id', aspectoId)
     if (error) return { success: false, error: error.message }
   }
@@ -118,7 +118,7 @@ export async function toggleSeccionAspecto(sectionId: string, aspectoId: string,
 
 export async function toggleSeccionAplicaPorIso(sectionId: string, value: boolean): Promise<ActionResult<null>> {
   const { supabase } = await getUser()
-  const { error } = await supabase.from('formulario_secciones').update({ aplica_por_iso: value }).eq('id', sectionId)
+  const { error } = await supabase.from('formularios_secciones').update({ aplica_por_iso: value }).eq('id', sectionId)
   if (error) return { success: false, error: error.message }
   return { success: true, data: null }
 }
@@ -134,8 +134,8 @@ export interface DocumentoRow {
 export async function getDocumentoTiposConTipos(): Promise<DocumentoRow[]> {
   const { supabase } = await getUser()
   const [docRes, relRes] = await Promise.all([
-    supabase.from('documento_tipos').select('id, nombre, aplica_por_iso').order('nombre'),
-    supabase.from('documentacion_tipos_establecimiento').select('documento_tipo_id, tipo_establecimiento_id'),
+    supabase.from('documentos_tipos').select('id, nombre, aplica_por_iso').order('nombre'),
+    supabase.from('establecimientos_tipos_documentos').select('documento_tipo_id, tipo_establecimiento_id'),
   ])
   const idx = new Map<string, string[]>()
   for (const r of relRes.data ?? []) {
@@ -153,13 +153,13 @@ export async function getDocumentoTiposConTipos(): Promise<DocumentoRow[]> {
 export async function toggleDocumentoTipo(documentoTipoId: string, tipoId: string, active: boolean): Promise<ActionResult<null>> {
   const { supabase } = await getUser()
   if (active) {
-    const { error } = await supabase.from('documentacion_tipos_establecimiento').upsert(
+    const { error } = await supabase.from('establecimientos_tipos_documentos').upsert(
       { documento_tipo_id: documentoTipoId, tipo_establecimiento_id: tipoId },
       { onConflict: 'documento_tipo_id,tipo_establecimiento_id', ignoreDuplicates: true },
     )
     if (error) return { success: false, error: error.message }
   } else {
-    const { error } = await supabase.from('documentacion_tipos_establecimiento').delete()
+    const { error } = await supabase.from('establecimientos_tipos_documentos').delete()
       .eq('documento_tipo_id', documentoTipoId).eq('tipo_establecimiento_id', tipoId)
     if (error) return { success: false, error: error.message }
   }
@@ -168,7 +168,7 @@ export async function toggleDocumentoTipo(documentoTipoId: string, tipoId: strin
 
 export async function toggleDocTipoAplicaPorIso(documentoTipoId: string, value: boolean): Promise<ActionResult<null>> {
   const { supabase } = await getUser()
-  const { error } = await supabase.from('documento_tipos').update({ aplica_por_iso: value }).eq('id', documentoTipoId)
+  const { error } = await supabase.from('documentos_tipos').update({ aplica_por_iso: value }).eq('id', documentoTipoId)
   if (error) return { success: false, error: error.message }
   return { success: true, data: null }
 }
@@ -176,7 +176,7 @@ export async function toggleDocTipoAplicaPorIso(documentoTipoId: string, value: 
 // ─── DOCUMENTACIÓN ↔ RUBROS EMPRESA ───
 export async function getRubrosEmpresa() {
   const { supabase } = await getUser()
-  const { data } = await supabase.from('rubros_empresa').select('id, nombre').eq('is_active', true).order('nombre')
+  const { data } = await supabase.from('empresas_rubros').select('id, nombre').eq('is_active', true).order('nombre')
   return data ?? []
 }
 
@@ -190,8 +190,8 @@ export interface DocumentoRubroRow {
 export async function getDocTiposConRubros(): Promise<DocumentoRubroRow[]> {
   const { supabase } = await getUser()
   const [docRes, relRes] = await Promise.all([
-    supabase.from('documento_tipos').select('id, nombre, aplica_por_iso').order('nombre'),
-    supabase.from('documentacion_rubros_empresa').select('documento_tipo_id, rubro_empresa_id'),
+    supabase.from('documentos_tipos').select('id, nombre, aplica_por_iso').order('nombre'),
+    supabase.from('empresas_rubros_documentos').select('documento_tipo_id, rubro_empresa_id'),
   ])
   const idx = new Map<string, string[]>()
   for (const r of relRes.data ?? []) {
@@ -209,13 +209,13 @@ export async function getDocTiposConRubros(): Promise<DocumentoRubroRow[]> {
 export async function toggleDocumentoRubro(documentoTipoId: string, rubroId: string, active: boolean): Promise<ActionResult<null>> {
   const { supabase } = await getUser()
   if (active) {
-    const { error } = await supabase.from('documentacion_rubros_empresa').upsert(
+    const { error } = await supabase.from('empresas_rubros_documentos').upsert(
       { documento_tipo_id: documentoTipoId, rubro_empresa_id: rubroId },
       { onConflict: 'documento_tipo_id,rubro_empresa_id', ignoreDuplicates: true },
     )
     if (error) return { success: false, error: error.message }
   } else {
-    const { error } = await supabase.from('documentacion_rubros_empresa').delete()
+    const { error } = await supabase.from('empresas_rubros_documentos').delete()
       .eq('documento_tipo_id', documentoTipoId).eq('rubro_empresa_id', rubroId)
     if (error) return { success: false, error: error.message }
   }
@@ -224,7 +224,7 @@ export async function toggleDocumentoRubro(documentoTipoId: string, rubroId: str
 
 export async function toggleDocRubroAplicaPorIso(documentoTipoId: string, value: boolean): Promise<ActionResult<null>> {
   const { supabase } = await getUser()
-  const { error } = await supabase.from('documento_tipos').update({ aplica_por_iso: value }).eq('id', documentoTipoId)
+  const { error } = await supabase.from('documentos_tipos').update({ aplica_por_iso: value }).eq('id', documentoTipoId)
   if (error) return { success: false, error: error.message }
   return { success: true, data: null }
 }

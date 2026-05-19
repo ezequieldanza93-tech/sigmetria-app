@@ -21,7 +21,7 @@ export async function planificarGestion(
 
   // Upsert the gestion_establecimiento link
   const { error: upsertError } = await supabase
-    .from('gestion_establecimiento')
+    .from('gestiones_establecimientos')
     .upsert(
       { gestion_id: gestionId, establecimiento_id: establecimientoId },
       { onConflict: 'gestion_id,establecimiento_id', ignoreDuplicates: true }
@@ -30,7 +30,7 @@ export async function planificarGestion(
 
   // Get the GE record ID
   const { data: ge, error: geError } = await supabase
-    .from('gestion_establecimiento')
+    .from('gestiones_establecimientos')
     .select('id')
     .eq('gestion_id', gestionId)
     .eq('establecimiento_id', establecimientoId)
@@ -38,7 +38,7 @@ export async function planificarGestion(
   if (geError || !ge) return { success: false, error: 'No se pudo obtener la gestión del establecimiento' }
 
   // Create the registro
-  const { error: registroError } = await supabase.from('registro_gestiones').insert({
+  const { error: registroError } = await supabase.from('gestiones_registros').insert({
     gestion_establecimiento_id: ge.id,
     fecha_planificada: fechaPlanificada,
     responsable_id: responsableId || null,
@@ -79,7 +79,7 @@ export async function planificarGestionNueva(
   }
 
   const { error: upsertError } = await supabase
-    .from('gestion_establecimiento')
+    .from('gestiones_establecimientos')
     .upsert(
       { gestion_id: nuevaGestion.id, establecimiento_id: establecimientoId },
       { onConflict: 'gestion_id,establecimiento_id', ignoreDuplicates: true }
@@ -87,14 +87,14 @@ export async function planificarGestionNueva(
   if (upsertError) return { success: false, error: upsertError.message }
 
   const { data: ge, error: geError } = await supabase
-    .from('gestion_establecimiento')
+    .from('gestiones_establecimientos')
     .select('id')
     .eq('gestion_id', nuevaGestion.id)
     .eq('establecimiento_id', establecimientoId)
     .single()
   if (geError || !ge) return { success: false, error: 'No se pudo vincular la gestión al establecimiento' }
 
-  const { error: registroError } = await supabase.from('registro_gestiones').insert({
+  const { error: registroError } = await supabase.from('gestiones_registros').insert({
     gestion_establecimiento_id: ge.id,
     fecha_planificada: fechaPlanificada,
     notas: notas || null,
@@ -113,7 +113,7 @@ export async function addGestionToEstablecimiento(
   if (!user) return { success: false, error: 'No autenticado' }
 
   const { error } = await supabase
-    .from('gestion_establecimiento')
+    .from('gestiones_establecimientos')
     .upsert(
       { gestion_id: gestionId, establecimiento_id: establecimientoId },
       { onConflict: 'gestion_id,establecimiento_id', ignoreDuplicates: true }
@@ -131,7 +131,7 @@ export async function removeGestionFromEstablecimiento(
   if (!user) return { success: false, error: 'No autenticado' }
 
   const { error } = await supabase
-    .from('gestion_establecimiento')
+    .from('gestiones_establecimientos')
     .delete()
     .eq('id', gestionEstablecimientoId)
 
@@ -150,7 +150,7 @@ export async function createGrupoGestion(
   if (!nombreTrim) return { success: false, error: 'Nombre requerido' }
 
   const { data, error } = await supabase
-    .from('grupo_gestiones')
+    .from('gestiones_grupos')
     .insert({ nombre: nombreTrim })
     .select('id, nombre, created_at')
     .single()
@@ -176,7 +176,7 @@ export async function createCategoriaGestion(
   if (!user) return { success: false, error: 'No autenticado' }
 
   const { data: existing } = await supabase
-    .from('categoria_gestiones')
+    .from('gestiones_categorias')
     .select('id')
     .eq('grupo_id', grupoId)
     .ilike('nombre', nombreTrim)
@@ -185,7 +185,7 @@ export async function createCategoriaGestion(
   if (existing) return { success: false, error: 'Ya existe una categoría con ese nombre en este grupo' }
 
   const { data, error } = await supabase
-    .from('categoria_gestiones')
+    .from('gestiones_categorias')
     .insert({ nombre: nombreTrim, grupo_id: grupoId })
     .select('id, nombre, grupo_id, descripcion, created_at')
     .single()
@@ -219,7 +219,7 @@ export async function planificarGestionMulti(
   if (!months.length) return { success: false, error: 'Seleccioná al menos un mes' }
 
   const { error: upsertError } = await supabase
-    .from('gestion_establecimiento')
+    .from('gestiones_establecimientos')
     .upsert(
       { gestion_id: gestionId, establecimiento_id: establecimientoId },
       { onConflict: 'gestion_id,establecimiento_id', ignoreDuplicates: true }
@@ -227,7 +227,7 @@ export async function planificarGestionMulti(
   if (upsertError) return { success: false, error: upsertError.message }
 
   const { data: ge, error: geError } = await supabase
-    .from('gestion_establecimiento')
+    .from('gestiones_establecimientos')
     .select('id')
     .eq('gestion_id', gestionId)
     .eq('establecimiento_id', establecimientoId)
@@ -243,7 +243,7 @@ export async function planificarGestionMulti(
     }))
   )
 
-  const { error: insertError } = await supabase.from('registro_gestiones').insert(registros)
+  const { error: insertError } = await supabase.from('gestiones_registros').insert(registros)
   if (insertError) return { success: false, error: insertError.message }
 
   return { success: true, data: { count: registros.length } }

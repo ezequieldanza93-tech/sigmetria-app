@@ -77,7 +77,7 @@ export async function inviteConsultoraAdmin(formData: FormData): Promise<ActionR
       system_role: 'user',
     }, { onConflict: 'id' })
 
-    const { error: memberError } = await adminClient.from('consultora_members').insert({
+    const { error: memberError } = await adminClient.from('consultoras_members').insert({
       consultora_id: consultoraId,
       user_id: invited.user.id,
       role: 'full_access_main',

@@ -24,7 +24,7 @@ export async function createTrabajador(
   if (!apellido?.trim()) return { success: false, error: 'El apellido es obligatorio' }
 
   const { data: tipoTrabajador } = await supabase
-    .from('tipo_personas')
+    .from('personas_tipos')
     .select('id')
     .eq('nombre', 'Trabajadores')
     .single()
@@ -32,7 +32,7 @@ export async function createTrabajador(
   if (!tipoTrabajador) return { success: false, error: 'Tipo de persona "Trabajadores" no encontrado' }
 
   const { data: persona, error: personaError } = await supabase
-    .from('directorio_personas')
+    .from('personas_directorio')
     .insert({
       tipo_id: tipoTrabajador.id,
       nombre: nombre.trim(),
@@ -46,12 +46,12 @@ export async function createTrabajador(
   if (personaError || !persona) return { success: false, error: personaError?.message ?? 'Error al crear persona' }
 
   const { error: junctionError } = await supabase
-    .from('empleado_puesto')
+    .from('puestos_personas')
     .insert({ persona_id: persona.id, puesto_id: puestoId, fecha_desde: fechaIngreso || null })
 
   if (junctionError) return { success: false, error: junctionError.message }
 
-  await supabase.from('persona_establecimiento').upsert(
+  await supabase.from('personas_establecimientos').upsert(
     { persona_id: persona.id, establecimiento_id: establecimientoId },
     { onConflict: 'persona_id,establecimiento_id', ignoreDuplicates: true }
   )
@@ -71,12 +71,12 @@ export async function assignTrabajadorToPuesto(
   if (!user) return { success: false, error: 'No autenticado' }
 
   const { error } = await supabase
-    .from('empleado_puesto')
+    .from('puestos_personas')
     .insert({ persona_id: personaId, puesto_id: puestoId })
 
   if (error) return { success: false, error: error.message }
 
-  await supabase.from('persona_establecimiento').upsert(
+  await supabase.from('personas_establecimientos').upsert(
     { persona_id: personaId, establecimiento_id: establecimientoId },
     { onConflict: 'persona_id,establecimiento_id', ignoreDuplicates: true }
   )
@@ -95,7 +95,7 @@ export async function removeTrabajadorFromPuesto(
   if (!user) return { success: false, error: 'No autenticado' }
 
   const { error } = await supabase
-    .from('empleado_puesto')
+    .from('puestos_personas')
     .delete()
     .eq('id', empleadoPuestoId)
 

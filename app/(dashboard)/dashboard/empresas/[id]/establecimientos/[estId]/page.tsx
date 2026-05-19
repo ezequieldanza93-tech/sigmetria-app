@@ -110,7 +110,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
         .select('*, documento_tipos(nombre)')
         .eq('establecimiento_id', estId)
         .order('created_at', { ascending: false }),
-      getDocTiposAplicables(estId, id),
+      getDocTiposAplicables(estId),
     ])
     sectores = (s1.data ?? []) as unknown as SectorEstablecimiento[]
     siniestros = (s2.data ?? []) as unknown as Siniestro[]

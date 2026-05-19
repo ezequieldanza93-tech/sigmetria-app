@@ -15,7 +15,7 @@ export async function updateSectorTrabajadores(
   if (!user) return { success: false, error: 'No autenticado' }
 
   const { error } = await supabase
-    .from('sectores_establecimiento')
+    .from('establecimientos_sectores')
     .update({ cantidad_trabajadores: cantidad })
     .eq('id', sectorId)
 
@@ -42,7 +42,7 @@ export async function createSectorCustom(
   const cantidad = cantidadStr ? parseInt(cantidadStr, 10) : 0
 
   const { error } = await supabase
-    .from('sectores_establecimiento')
+    .from('establecimientos_sectores')
     .insert({
       establecimiento_id: establecimientoId,
       nombre: nombre.trim(),
@@ -67,7 +67,7 @@ export async function deleteSector(
 
   // Solo se pueden borrar sectores custom
   const { data: sector } = await supabase
-    .from('sectores_establecimiento')
+    .from('establecimientos_sectores')
     .select('es_custom')
     .eq('id', sectorId)
     .single()
@@ -77,7 +77,7 @@ export async function deleteSector(
   }
 
   const { error } = await supabase
-    .from('sectores_establecimiento')
+    .from('establecimientos_sectores')
     .update({ is_active: false })
     .eq('id', sectorId)
 

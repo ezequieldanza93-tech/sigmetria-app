@@ -20,7 +20,7 @@ export default async function EmpresaDetailPage({ params }: Props) {
 
   const [{ data: profile }, { data: membership }, { data: empresa }] = await Promise.all([
     supabase.from('profiles').select('system_role').eq('id', user.id).single(),
-    supabase.from('consultora_members').select('role').eq('user_id', user.id).eq('is_active', true).maybeSingle(),
+    supabase.from('consultoras_members').select('role').eq('user_id', user.id).eq('is_active', true).maybeSingle(),
     supabase.from('empresas').select('*, localidades(nombre, provincia), organizaciones_externas!art_id(nombre)').eq('id', id).single(),
   ])
 
@@ -29,17 +29,17 @@ export default async function EmpresaDetailPage({ params }: Props) {
   const [{ data: establecimientos }, { data: documentos }, { data: documentTypes }] = await Promise.all([
     supabase
       .from('establecimientos')
-      .select('id, nombre, tipos_establecimiento(nombre), localidades!localidad_id(nombre, provincia), cantidad_trabajadores')
+      .select('id, nombre, establecimientos_tipos(nombre), localidades!localidad_id(nombre, provincia), cantidad_trabajadores')
       .eq('empresa_id', id)
       .neq('status', 'cancelled')
       .order('nombre'),
     supabase
-      .from('empresa_documentos')
-      .select('*, documento_tipos(nombre)')
+      .from('empresas_documentos')
+      .select('*, documentos_tipos(nombre)')
       .eq('empresa_id', id)
       .order('created_at', { ascending: false }),
     supabase
-      .from('documento_tipos')
+      .from('documentos_tipos')
       .select('id, nombre, aplica_empresa, aplica_establecimiento, aplica_empleado, is_active')
       .eq('is_active', true)
       .eq('aplica_empresa', true)
@@ -50,12 +50,12 @@ export default async function EmpresaDetailPage({ params }: Props) {
   const [{ data: personasLinks }, { data: orgsLinks }] = estIds.length > 0
     ? await Promise.all([
         supabase
-          .from('persona_establecimiento')
-          .select('persona_id, establecimiento_id, directorio_personas!persona_id(id, nombre, apellido, dni, fecha_ingreso, tipo_personas!tipo_id(nombre)), establecimientos!establecimiento_id(id, nombre)')
+          .from('personas_establecimientos')
+          .select('persona_id, establecimiento_id, personas_directorio!persona_id(id, nombre, apellido, dni, fecha_ingreso, personas_tipos!tipo_id(nombre)), establecimientos!establecimiento_id(id, nombre)')
           .in('establecimiento_id', estIds),
         supabase
-          .from('organizacion_establecimiento')
-          .select('organizacion_id, establecimiento_id, organizaciones!organizacion_id(id, nombre, email, telefono, tipo_organizaciones!tipo_id(nombre)), establecimientos!establecimiento_id(id, nombre)')
+          .from('organizaciones_establecimientos')
+          .select('organizacion_id, establecimiento_id, organizaciones!organizacion_id(id, nombre, email, telefono, organizaciones_tipos!tipo_id(nombre)), establecimientos!establecimiento_id(id, nombre)')
           .in('establecimiento_id', estIds),
       ])
     : [{ data: [] }, { data: [] }]

@@ -11,7 +11,7 @@ export async function createEmpresa(_prev: ActionResult<{ id: string }> | null, 
   if (!user) return { success: false, error: 'No autenticado' }
 
   const { data: membership } = await supabase
-    .from('consultora_members')
+    .from('consultoras_members')
     .select('consultora_id, role')
     .eq('user_id', user.id)
     .eq('is_active', true)
@@ -106,7 +106,7 @@ export async function createPrivateArt(
   if (!nombreTrimmed) return { success: false, error: 'El nombre es obligatorio' }
 
   const { data: tipoArt } = await supabase
-    .from('tipo_organizaciones')
+    .from('organizaciones_tipos')
     .select('id')
     .eq('nombre', 'ART')
     .single()

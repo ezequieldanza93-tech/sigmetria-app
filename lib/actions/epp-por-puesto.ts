@@ -21,7 +21,7 @@ export async function addEppToPuesto(
   const horasStr = formData.get('horas_vida_util') as string
   const horas = horasStr ? parseFloat(horasStr) : null
 
-  const { error } = await supabase.from('epp_por_puesto').insert({
+  const { error } = await supabase.from('puestos_epp').insert({
     puesto_id: puestoId,
     producto_id: productoId,
     horas_vida_util: horas && !isNaN(horas) ? horas : null,
@@ -42,7 +42,7 @@ export async function removeEppFromPuesto(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
-  const { error } = await supabase.from('epp_por_puesto').delete().eq('id', eppId)
+  const { error } = await supabase.from('puestos_epp').delete().eq('id', eppId)
   if (error) return { success: false, error: error.message }
 
   revalidatePath(`/dashboard/empresas/${empresaId}/establecimientos/${establecimientoId}`)

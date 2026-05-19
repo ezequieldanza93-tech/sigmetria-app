@@ -24,7 +24,7 @@ export function ActuarView({ establecimientoId }: { establecimientoId: string })
     const supabase = createClient()
 
     supabase
-      .from('registro_gestiones')
+      .from('gestiones_registros')
       .select(`
         id,
         fecha_ejecutada,
@@ -32,13 +32,13 @@ export function ActuarView({ establecimientoId }: { establecimientoId: string })
         notas,
         observaciones,
         gestion_establecimiento_id,
-        gestion_establecimiento!inner(
+        gestiones_establecimientos!inner(
           gestiones!inner(
             id,
             nombre,
-            categoria_gestiones(
+            gestiones_categorias(
               nombre,
-              grupo_gestiones(nombre)
+              gestiones_grupos(nombre)
             )
           )
         )
@@ -70,8 +70,8 @@ export function ActuarView({ establecimientoId }: { establecimientoId: string })
         const rgMap = new Map(rgRecords.map(rg => [rg.id, rg]))
 
         supabase
-          .from('observaciones_gestiones')
-          .select('*, directorio_personas!responsable_id(nombre, apellido), clasificacion_observaciones(nombre), observacion_categoria(nombre, nivel)')
+          .from('gestiones_observaciones')
+          .select('*, personas_directorio!responsable_id(nombre, apellido), observaciones_clasificaciones(nombre), observaciones_categorias(nombre, nivel)')
           .in('registro_gestion_id', rgIds)
           .order('fecha_planificada', { ascending: false })
           .then(({ data: obsData }) => {

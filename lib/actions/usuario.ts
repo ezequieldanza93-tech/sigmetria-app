@@ -13,7 +13,7 @@ async function assertCanManage() {
 
   const [{ data: profile }, { data: membership }] = await Promise.all([
     supabase.from('profiles').select('system_role').eq('id', user.id).single(),
-    supabase.from('consultora_members').select('role, consultora_id').eq('user_id', user.id).eq('is_active', true).maybeSingle(),
+    supabase.from('consultoras_members').select('role, consultora_id').eq('user_id', user.id).eq('is_active', true).maybeSingle(),
   ])
 
   if (!canManageUsers(membership?.role as UserRole ?? null, profile?.system_role ?? 'user')) return null
@@ -52,7 +52,7 @@ export async function inviteUsuario(_prevState: ActionResult<null> | null, formD
       system_role: 'user',
     }, { onConflict: 'id' })
 
-    const { error: memberError } = await adminClient.from('consultora_members').insert({
+    const { error: memberError } = await adminClient.from('consultoras_members').insert({
       consultora_id: consultoraId,
       user_id: invited.user.id,
       role,
@@ -72,7 +72,7 @@ export async function updateRol(memberId: string, role: UserRole): Promise<Actio
 
   const supabase = await createServerClient()
   const { error } = await supabase
-    .from('consultora_members')
+    .from('consultoras_members')
     .update({ role })
     .eq('id', memberId)
 
@@ -88,7 +88,7 @@ export async function revokeAcceso(memberId: string): Promise<ActionResult<null>
 
   const supabase = await createServerClient()
   const { error } = await supabase
-    .from('consultora_members')
+    .from('consultoras_members')
     .update({ is_active: false })
     .eq('id', memberId)
 

@@ -45,14 +45,14 @@ export async function finalizarFormulario(
 
   // Save item responses
   const { error: deleteError } = await supabase
-    .from('formulario_item_respuestas')
+    .from('formularios_items_respuestas')
     .delete()
     .eq('respuesta_id', respuestaId)
 
   if (deleteError) return { success: false, error: 'Error al limpiar respuestas: ' + deleteError.message }
 
   const { error: insertError } = await supabase
-    .from('formulario_item_respuestas')
+    .from('formularios_items_respuestas')
     .insert(
       itemResponses.map(ir => ({
         respuesta_id: respuestaId,
@@ -66,7 +66,7 @@ export async function finalizarFormulario(
 
   // Mark formulario_respuesta as completed
   const { error: respUpdateError } = await supabase
-    .from('formulario_respuestas')
+    .from('formularios_respuestas')
     .update({ status: 'completed', executed_at: new Date().toISOString() })
     .eq('id', respuestaId)
 
@@ -105,7 +105,7 @@ export async function finalizarFormulario(
   }
 
   const { error: regError } = await supabase
-    .from('registro_gestiones')
+    .from('gestiones_registros')
     .update(updates)
     .eq('id', registroId)
 
@@ -118,8 +118,8 @@ export async function getFormularioData(gestionId: string) {
   const supabase = await createClient()
 
   const { data: secciones, error } = await supabase
-    .from('formulario_secciones')
-    .select('*, formulario_items(*)')
+    .from('formularios_secciones')
+    .select('*, formularios_items(*)')
     .eq('gestion_id', gestionId)
     .order('order_index')
 
@@ -135,7 +135,7 @@ export async function getOrCreateRespuesta(
   const supabase = await createClient()
 
   const { data: existing } = await supabase
-    .from('formulario_respuestas')
+    .from('formularios_respuestas')
     .select('id, status')
     .eq('gestion_id', gestionId)
     .eq('establecimiento_id', establecimientoId)
@@ -145,7 +145,7 @@ export async function getOrCreateRespuesta(
   if (existing) return { success: true, data: existing }
 
   const { data: nueva, error } = await supabase
-    .from('formulario_respuestas')
+    .from('formularios_respuestas')
     .insert({
       gestion_id: gestionId,
       establecimiento_id: establecimientoId,
