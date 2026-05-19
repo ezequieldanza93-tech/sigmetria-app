@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { canWrite, UserRole } from '@/lib/types'
 import { formatCUIT } from '@/lib/utils'
 import { EmpresaDocumentosSection } from '@/components/empresa-documentos-section'
+import { EmpresaRightPanel } from '@/components/empresa-right-panel'
 import type { DocumentType, Documento } from '@/lib/types'
 
 interface Props {
@@ -44,6 +45,20 @@ export default async function EmpresaDetailPage({ params }: Props) {
       .eq('aplica_empresa', true)
       .order('nombre'),
   ])
+
+  const estIds = (establecimientos ?? []).map(e => e.id)
+  const [{ data: personasLinks }, { data: orgsLinks }] = estIds.length > 0
+    ? await Promise.all([
+        supabase
+          .from('persona_establecimiento')
+          .select('persona_id, establecimiento_id, directorio_personas!persona_id(id, nombre, apellido, dni, fecha_ingreso, tipo_personas!tipo_id(nombre)), establecimientos!establecimiento_id(id, nombre)')
+          .in('establecimiento_id', estIds),
+        supabase
+          .from('organizacion_establecimiento')
+          .select('organizacion_id, establecimiento_id, organizaciones!organizacion_id(id, nombre, email, telefono, tipo_organizaciones!tipo_id(nombre)), establecimientos!establecimiento_id(id, nombre)')
+          .in('establecimiento_id', estIds),
+      ])
+    : [{ data: [] }, { data: [] }]
 
   const puedeEditar = canWrite(
     membership?.role as UserRole ?? null,
@@ -121,74 +136,13 @@ export default async function EmpresaDetailPage({ params }: Props) {
         </div>
       </aside>
 
-      {/* Right panel — 70% */}
-      <div className="flex-1 min-w-0 p-8">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-semibold text-gray-900">
-            Establecimientos
-            <span className="ml-2 text-sm font-normal text-gray-400">({establecimientos?.length ?? 0})</span>
-          </h2>
-          {puedeEditar && (
-            <Link
-              href={`/dashboard/empresas/${id}/establecimientos/nuevo`}
-              className="inline-flex items-center gap-1.5 bg-sig-500 hover:bg-sig-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-            >
-              <span>+</span> Nuevo Establecimiento
-            </Link>
-          )}
-        </div>
-
-        {!establecimientos?.length ? (
-          <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-            <p className="text-gray-400 text-4xl mb-3">🏭</p>
-            <p className="text-gray-500">No hay establecimientos registrados</p>
-            {puedeEditar && (
-              <Link
-                href={`/dashboard/empresas/${id}/establecimientos/nuevo`}
-                className="mt-4 inline-block text-sig-500 hover:underline text-sm"
-              >
-                Agregar el primero
-              </Link>
-            )}
-          </div>
-        ) : (
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="border-b border-gray-100 bg-gray-50">
-                <tr className="text-left">
-                  <th className="px-5 py-3.5 text-gray-500 font-medium">Nombre</th>
-                  <th className="px-5 py-3.5 text-gray-500 font-medium">Tipo</th>
-                  <th className="px-5 py-3.5 text-gray-500 font-medium">Ubicación</th>
-                  <th className="px-5 py-3.5 text-gray-500 font-medium text-center">Trabajadores</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {establecimientos.map(est => (
-                  <tr key={est.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-5 py-4 font-medium text-gray-900">
-                      <Link
-                        href={`/dashboard/empresas/${id}/establecimientos/${est.id}`}
-                        className="hover:text-sig-500 transition-colors"
-                      >
-                        {est.nombre}
-                      </Link>
-                    </td>
-                    <td className="px-5 py-4 text-gray-500">
-                      {(est.tipos_establecimiento as { nombre: string }[])?.[0]?.nombre ?? '—'}
-                    </td>
-                    <td className="px-5 py-4 text-gray-500">
-                      {est.localidades ? [(est.localidades as any).nombre, (est.localidades as any).provincia].join(', ') : '—'}
-                    </td>
-                    <td className="px-5 py-4 text-gray-500 text-center">
-                      {est.cantidad_trabajadores ?? '—'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      <EmpresaRightPanel
+        empresaId={id}
+        establecimientos={(establecimientos ?? []) as any}
+        personasLinks={(personasLinks ?? []) as any}
+        orgsLinks={(orgsLinks ?? []) as any}
+        puedeEditar={puedeEditar}
+      />
     </div>
   )
 }
