@@ -40,7 +40,7 @@ export function PlanificarView({ establecimientoId }: PlanificarViewProps) {
       .then(({ data }) => { if (data) setGrupos(data as unknown as GrupoGestion[]) })
     supabase.from('categoria_gestiones').select('*').order('nombre')
       .then(({ data }) => { if (data) setCategorias(data as unknown as CategoriaGestion[]) })
-      .finally(() => setLoading(false))
+      .then(() => setLoading(false), () => setLoading(false))
   }, [establecimientoId])
 
   function toggleMonth(m: number) {
