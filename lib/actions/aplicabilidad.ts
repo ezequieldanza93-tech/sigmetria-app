@@ -51,42 +51,11 @@ export async function getDocTiposAplicables(establecimientoId: string): Promise<
   const aplicaIso = establecimiento.aplica_iso_45001
 
   const { data: porTipo } = await supabase
-    .from('documentacion_tipos_establecimiento')
-    .select('documento_tipo_id')
-    .eq('tipo_establecimiento_id', tipoId)
-
-  const idsPorTipo = new Set((porTipo ?? []).map(r => r.documento_tipo_id))
-
-  const { data: todos } = await supabase
-    .from('documento_tipos')
-    .select('*')
-    .eq('is_active', true)
-    .eq('aplica_establecimiento', true)
-    .order('nombre')
-
-  if (!todos) return []
-
-  return (todos as unknown as DocumentType[]).filter(dt =>
-    idsPorTipo.has(dt.id) || (aplicaIso && dt.aplica_por_iso)
-  )
-}
-
-  const { data: porTipo } = await supabase
     .from('establecimientos_tipos_documentos')
     .select('documento_tipo_id')
     .eq('tipo_establecimiento_id', tipoId)
 
-  let porRubro: { documento_tipo_id: string }[] = []
-  if (rubroEmpresaId) {
-    const { data: d } = await supabase
-      .from('empresas_rubros_documentos')
-      .select('documento_tipo_id')
-      .eq('rubro_empresa_id', rubroEmpresaId)
-    porRubro = d ?? []
-  }
-
   const idsPorTipo = new Set((porTipo ?? []).map(r => r.documento_tipo_id))
-  const idsPorRubro = new Set(porRubro.map(r => r.documento_tipo_id))
 
   const { data: todos } = await supabase
     .from('documentos_tipos')
@@ -98,8 +67,6 @@ export async function getDocTiposAplicables(establecimientoId: string): Promise<
   if (!todos) return []
 
   return (todos as unknown as DocumentType[]).filter(dt =>
-    idsPorTipo.has(dt.id) ||
-    idsPorRubro.has(dt.id) ||
-    (aplicaIso && dt.aplica_por_iso)
+    idsPorTipo.has(dt.id) || (aplicaIso && dt.aplica_por_iso)
   )
 }

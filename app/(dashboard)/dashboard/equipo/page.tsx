@@ -43,7 +43,7 @@ export default function EquipoPage() {
       setCurrentUserId(user.id)
 
       supabase
-        .from('consultora_members')
+        .from('consultoras_members')
         .select('consultora_id')
         .eq('user_id', user.id)
         .eq('is_active', true)
@@ -52,7 +52,7 @@ export default function EquipoPage() {
           if (!membership) return
 
           supabase
-            .from('consultora_members')
+            .from('consultoras_members')
             .select('*, profiles(id, full_name, avatar_url, perfiles_profesionales(*))')
             .eq('consultora_id', membership.consultora_id)
             .eq('is_active', true)

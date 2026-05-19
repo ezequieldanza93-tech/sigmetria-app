@@ -94,8 +94,8 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
     if (!gid) return
 
     supabase
-      .from('formulario_secciones')
-      .select('*, formulario_items(*)')
+      .from('formularios_secciones')
+      .select('*, formularios_items(*)')
       .eq('gestion_id', gid)
       .order('order_index')
       .then(({ data }) => {
@@ -103,8 +103,8 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
       })
 
     supabase
-      .from('persona_establecimiento')
-      .select('directorio_personas!persona_id(id, nombre, apellido)')
+      .from('personas_establecimientos')
+      .select('personas_directorio!persona_id(id, nombre, apellido)')
       .eq('establecimiento_id', establecimientoId)
       .then(({ data }) => {
         const ps = ((data ?? []) as any[])
@@ -115,7 +115,7 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
       })
 
     supabase
-      .from('clasificacion_observaciones')
+      .from('observaciones_clasificaciones')
       .select('id, nombre')
       .eq('is_active', true)
       .order('nombre')

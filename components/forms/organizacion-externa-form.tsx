@@ -53,7 +53,7 @@ export function OrganizacionExternaForm({ action }: Props) {
 
   // Load tipos on mount
   useEffect(() => {
-    createClient().from('tipo_organizaciones').select('*').order('nombre')
+    createClient().from('organizaciones_tipos').select('*').order('nombre')
       .then(({ data }) => { if (data) setTiposOrg(data as TipoOrganizacion[]) })
   }, [])
 
@@ -64,10 +64,10 @@ export function OrganizacionExternaForm({ action }: Props) {
     Promise.all([
       supabase.from('subcontratistas_rubros').select('*').eq('is_active', true).order('nombre'),
       supabase.from('localidades').select('id, nombre, provincia, is_active, created_at').eq('is_active', true).order('nombre'),
-      supabase.from('tipos_establecimiento').select('id, codigo, nombre, created_at').order('nombre'),
+      supabase.from('establecimientos_tipos').select('id, codigo, nombre, created_at').order('nombre'),
       supabase.from('organizaciones_externas')
-        .select('id, nombre, tipo_organizaciones!inner(nombre)')
-        .eq('tipo_organizaciones.nombre', 'ART')
+        .select('id, nombre, organizaciones_tipos!inner(nombre)')
+        .eq('organizaciones_tipos.nombre', 'ART')
         .eq('is_active', true)
         .eq('scope', 'global')
         .order('nombre'),
@@ -83,8 +83,8 @@ export function OrganizacionExternaForm({ action }: Props) {
   useEffect(() => {
     if (!selectedTipoEstId) { setPreguntas([]); return }
     createClient()
-      .from('pregunta_tipos')
-      .select('pregunta_id, orden, preguntas_riesgo!pregunta_id(id, codigo, texto, orden, is_active)')
+      .from('preguntas_tipos')
+      .select('pregunta_id, orden, riesgos_preguntas!pregunta_id(id, codigo, texto, orden, is_active)')
       .eq('tipo_id', selectedTipoEstId)
       .order('orden')
       .then(({ data }) => {

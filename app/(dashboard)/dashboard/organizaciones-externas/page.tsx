@@ -15,7 +15,7 @@ export default function OrganizacionesExternasPage() {
   function load() {
     createClient()
       .from('organizaciones_externas')
-      .select('*, tipo_organizaciones(nombre)')
+      .select('*, organizaciones_tipos(nombre)')
       .eq('is_active', true)
       .order('nombre')
       .then(({ data }) => setOrganizaciones((data as unknown as Organizacion[]) ?? []))
@@ -23,7 +23,7 @@ export default function OrganizacionesExternasPage() {
 
   useEffect(() => {
     load()
-    createClient().from('tipo_organizaciones').select('*').order('nombre')
+    createClient().from('organizaciones_tipos').select('*').order('nombre')
       .then(({ data }) => setTiposOrg(data ?? []))
   }, [])
 

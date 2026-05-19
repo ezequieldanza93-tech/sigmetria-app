@@ -54,7 +54,7 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
     supabase.from('localidades').select('id, nombre, provincia, is_active, created_at')
       .eq('is_active', true).order('nombre')
       .then(({ data }) => { if (data) setLocalidades(data as Localidad[]) })
-    supabase.from('tipos_establecimiento').select('id, codigo, nombre, created_at').order('nombre')
+    supabase.from('establecimientos_tipos').select('id, codigo, nombre, created_at').order('nombre')
       .then(({ data }) => { if (data) setTipos(data as TiposEstablecimiento[]) })
   }, [])
 
@@ -62,7 +62,7 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
   useEffect(() => {
     if (!establecimiento?.id) return
     createClient()
-      .from('horarios_establecimiento')
+      .from('establecimientos_horarios')
       .select('dia_semana, hora_inicio, hora_fin, activo')
       .eq('establecimiento_id', establecimiento.id)
       .then(({ data }) => {
@@ -81,7 +81,7 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
   useEffect(() => {
     if (!establecimiento?.id) return
     createClient()
-      .from('establecimiento_respuestas')
+      .from('establecimientos_respuestas')
       .select('pregunta_id, respuesta')
       .eq('establecimiento_id', establecimiento.id)
       .then(({ data }) => {
@@ -96,8 +96,8 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
   useEffect(() => {
     if (!selectedTipoId) { setPreguntas([]); return }
     createClient()
-      .from('pregunta_tipos')
-      .select('pregunta_id, orden, preguntas_riesgo!pregunta_id(id, codigo, texto, orden, is_active)')
+      .from('preguntas_tipos')
+      .select('pregunta_id, orden, riesgos_preguntas!pregunta_id(id, codigo, texto, orden, is_active)')
       .eq('tipo_id', selectedTipoId)
       .order('orden')
       .then(({ data }) => {

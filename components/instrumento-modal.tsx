@@ -81,7 +81,7 @@ export function InstrumentoModal({ instrumento, open, onClose, canWrite }: Instr
           <div className="grid grid-cols-2 gap-3">
             <div>
               <p className="text-xs text-gray-400 font-medium mb-0.5">Tipo</p>
-              <p className="text-gray-900">{instrumento.tipo_instrumento_medicion?.nombre ?? '—'}</p>
+              <p className="text-gray-900">{instrumento.mediciones_instrumentos_tipos?.nombre ?? '—'}</p>
             </div>
             <div>
               <p className="text-xs text-gray-400 font-medium mb-0.5">Marca</p>

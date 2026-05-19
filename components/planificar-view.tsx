@@ -34,11 +34,11 @@ export function PlanificarView({ establecimientoId }: PlanificarViewProps) {
   const [mode, setMode] = useState<'biblioteca' | 'nueva'>('biblioteca')
 
   useEffect(() => {
-    supabase.from('gestiones').select('*, categoria_gestiones(nombre, grupo_gestiones(nombre))').order('nombre')
+    supabase.from('gestiones').select('*, gestiones_categorias(nombre, gestiones_grupos(nombre))').order('nombre')
       .then(({ data }) => { if (data) setTodasGestiones(data as unknown as Gestion[]) })
-    supabase.from('grupo_gestiones').select('*').order('nombre')
+    supabase.from('gestiones_grupos').select('*').order('nombre')
       .then(({ data }) => { if (data) setGrupos(data as unknown as GrupoGestion[]) })
-    supabase.from('categoria_gestiones').select('*').order('nombre')
+    supabase.from('gestiones_categorias').select('*').order('nombre')
       .then(({ data }) => { if (data) setCategorias(data as unknown as CategoriaGestion[]) })
       .then(() => setLoading(false), () => setLoading(false))
   }, [])

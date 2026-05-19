@@ -105,7 +105,7 @@ function TrabajadorSearchPicker({
     const supabase = createClient()
     async function load() {
       const { data: sectors } = await supabase
-        .from('sectores_establecimiento')
+        .from('establecimientos_sectores')
         .select('id')
         .eq('establecimiento_id', establecimientoId)
 
@@ -121,7 +121,7 @@ function TrabajadorSearchPicker({
         const puestoIds = puestos?.map(p => p.id) ?? []
         if (puestoIds.length > 0) {
           const { data: eps } = await supabase
-            .from('empleado_puesto')
+            .from('puestos_personas')
             .select('persona_id')
             .in('puesto_id', puestoIds)
           eps?.forEach(ep => assignedIds.add(ep.persona_id))
@@ -129,7 +129,7 @@ function TrabajadorSearchPicker({
       }
 
       const { data: links } = await supabase
-        .from('persona_establecimiento')
+        .from('personas_establecimientos')
         .select('persona_id')
         .eq('establecimiento_id', establecimientoId)
 
@@ -141,7 +141,7 @@ function TrabajadorSearchPicker({
       }
 
       const { data: persons } = await supabase
-        .from('directorio_personas')
+        .from('personas_directorio')
         .select('id, nombre, apellido, dni')
         .in('id', availableIds)
         .eq('is_active', true)
@@ -274,7 +274,7 @@ function EppInlineForm({
     const supabase = createClient()
     supabase
       .from('productos')
-      .select('id, nombre, tamano, unidad_id, unidades(simbolo), categoria_productos(nombre)')
+      .select('id, nombre, tamano, unidad_id, unidades(simbolo), productos_categorias(nombre)')
       .eq('is_active', true)
       .order('nombre')
       .then(({ data }) => setProductos((data as unknown as Producto[]) ?? []))
@@ -342,15 +342,15 @@ function PuestoRow({
     const supabase = createClient()
     if (personas === null) {
       supabase
-        .from('empleado_puesto')
-        .select('id, persona_id, fecha_desde, directorio_personas(id, nombre, apellido, dni, fecha_ingreso, legajo, telefono, email, tipo_id, tipo_personas(nombre))')
+        .from('puestos_personas')
+        .select('id, persona_id, fecha_desde, personas_directorio(id, nombre, apellido, dni, fecha_ingreso, legajo, telefono, email, tipo_id, personas_tipos(nombre))')
         .eq('puesto_id', puesto.id)
         .then(({ data }) => setPersonas((data as unknown as TrabajadorPuesto[]) ?? []))
     }
     if (epp === null) {
       supabase
-        .from('epp_por_puesto')
-        .select('id, puesto_id, producto_id, horas_vida_util, productos(id, nombre, tamano, unidad_id, unidades(simbolo), categoria_productos(nombre))')
+        .from('puestos_epp')
+        .select('id, puesto_id, producto_id, horas_vida_util, productos(id, nombre, tamano, unidad_id, unidades(simbolo), productos_categorias(nombre))')
         .eq('puesto_id', puesto.id)
         .then(({ data }) => setEpp((data as unknown as EppPorPuesto[]) ?? []))
     }
@@ -705,7 +705,7 @@ function SectoresTab({
   useEffect(() => {
     const supabase = createClient()
     supabase
-      .from('sectores_establecimiento')
+      .from('establecimientos_sectores')
       .select('id')
       .eq('establecimiento_id', establecimientoId)
       .then(({ data: secs }) => {
@@ -713,7 +713,7 @@ function SectoresTab({
         if (ids.length === 0) { setWorkerCounts({ operativo: 0, administrativo: 0 }); return }
         supabase
           .from('puestos_de_trabajo')
-          .select('tipo, empleado_puesto(persona_id)')
+          .select('tipo, puestos_personas(persona_id)')
           .in('sector_id', ids)
           .not('tipo', 'is', null)
           .then(({ data: puestos }) => {
@@ -877,8 +877,8 @@ function StakeholdersTab({
 
   const loadPersonas = () => {
     createClient()
-      .from('persona_establecimiento')
-      .select('directorio_personas(id, nombre, apellido, dni, fecha_nacimiento, fecha_ingreso, legajo, telefono, email, tipo_id, tipo_personas(nombre), organizacion_id, notas, is_active, created_at, updated_at)')
+      .from('personas_establecimientos')
+      .select('personas_directorio(id, nombre, apellido, dni, fecha_nacimiento, fecha_ingreso, legajo, telefono, email, tipo_id, personas_tipos(nombre), organizacion_id, notas, is_active, created_at, updated_at)')
       .eq('establecimiento_id', establecimientoId)
       .then(({ data }) => {
         const list = ((data ?? []) as unknown as { directorio_personas: DirectorioPersona }[]).map(r => r.directorio_personas).filter(Boolean)
@@ -888,8 +888,8 @@ function StakeholdersTab({
 
   const loadOrgs = () => {
     createClient()
-      .from('organizacion_establecimiento')
-      .select('organizaciones(id, nombre, email, telefono, notas, is_active, tipo_organizaciones(nombre))')
+      .from('organizaciones_establecimientos')
+      .select('organizaciones(id, nombre, email, telefono, notas, is_active, organizaciones_tipos(nombre))')
       .eq('establecimiento_id', establecimientoId)
       .then(({ data }) => {
         const list = ((data ?? []) as unknown as { organizaciones: Organizacion }[])
@@ -904,9 +904,9 @@ function StakeholdersTab({
   useEffect(() => {
     const supabase = createClient()
     loadPersonas()
-    supabase.from('tipo_personas').select('id, nombre').order('nombre').then(({ data }) => setTiposPersona(data ?? []))
+    supabase.from('personas_tipos').select('id, nombre').order('nombre').then(({ data }) => setTiposPersona(data ?? []))
     loadOrgs()
-    supabase.from('tipo_organizaciones').select('id, nombre').order('nombre').then(({ data }) => setTiposOrg(data ?? []))
+    supabase.from('organizaciones_tipos').select('id, nombre').order('nombre').then(({ data }) => setTiposOrg(data ?? []))
   }, [establecimientoId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const filtered = personas === null
@@ -1000,7 +1000,7 @@ function StakeholdersTab({
                       <td className="px-5 py-3.5 text-gray-500">{p.dni ?? '—'}</td>
                       <td className="px-5 py-3.5">
                         <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
-                          {p.tipo_personas?.nombre ?? '—'}
+                          {p.personas_tipos?.nombre ?? '—'}
                         </span>
                       </td>
                       <td className="px-5 py-3.5 text-gray-500">{p.fecha_ingreso ? formatDate(p.fecha_ingreso) : '—'}</td>
@@ -1137,15 +1137,15 @@ function AsistenciaTab({
 
     supabase
       .from('asistencia_diaria')
-      .select('id, fecha, hora_entrada, hora_salida, directorio_personas(nombre, apellido)')
+      .select('id, fecha, hora_entrada, hora_salida, personas_directorio(nombre, apellido)')
       .eq('establecimiento_id', establecimientoId)
       .eq('fecha', today)
       .order('hora_entrada', { ascending: true })
       .then(({ data }) => setRegistros((data as unknown as AsistenciaDiaria[]) ?? []))
 
     supabase
-      .from('persona_establecimiento')
-      .select('directorio_personas(id, nombre, apellido, tipo_personas(nombre))')
+      .from('personas_establecimientos')
+      .select('personas_directorio(id, nombre, apellido, personas_tipos(nombre))')
       .eq('establecimiento_id', establecimientoId)
       .then(({ data }) => {
         const list = ((data ?? []) as unknown as { directorio_personas: DirectorioPersona }[]).map(r => r.directorio_personas).filter(Boolean)
@@ -1153,7 +1153,7 @@ function AsistenciaTab({
       })
 
     supabase
-      .from('horarios_establecimiento')
+      .from('establecimientos_horarios')
       .select('hora_inicio, hora_fin, activo')
       .eq('establecimiento_id', establecimientoId)
       .eq('dia_semana', diaSemana)
@@ -1748,12 +1748,12 @@ function GestionesTab({ establecimientoId, canWrite }: { establecimientoId: stri
   function loadData() {
     const supabase = createClient()
     supabase
-      .from('gestion_establecimiento')
-      .select('*, gestiones(nombre, categoria_id, categoria_gestiones(nombre, grupo_gestiones(nombre)))')
+      .from('gestiones_establecimientos')
+      .select('*, gestiones(nombre, categoria_id, gestiones_categorias(nombre, gestiones_grupos(nombre)))')
       .eq('establecimiento_id', establecimientoId)
       .then(({ data }) => setGestionesEstablecimiento((data as unknown as GestionEstablecimiento[]) ?? []))
     supabase
-      .from('directorio_personas')
+      .from('personas_directorio')
       .select('id, nombre, apellido')
       .eq('is_active', true)
       .order('apellido')
@@ -1764,8 +1764,8 @@ function GestionesTab({ establecimientoId, canWrite }: { establecimientoId: stri
     if (geIds.length === 0) { setRegistros([]); return }
     const supabase = createClient()
     supabase
-      .from('registro_gestiones')
-      .select('*, directorio_personas(nombre, apellido)')
+      .from('gestiones_registros')
+      .select('*, personas_directorio(nombre, apellido)')
       .in('gestion_establecimiento_id', geIds)
       .order('fecha_planificada')
       .then(({ data }) => setRegistros((data as unknown as RegistroGestion[]) ?? []))
@@ -1775,8 +1775,8 @@ function GestionesTab({ establecimientoId, canWrite }: { establecimientoId: stri
     if (registroIds.length === 0) { setObservaciones([]); return }
     const supabase = createClient()
     supabase
-      .from('observaciones_gestiones')
-      .select('*, directorio_personas!responsable_id(nombre, apellido)')
+      .from('gestiones_observaciones')
+      .select('*, personas_directorio!responsable_id(nombre, apellido)')
       .in('registro_gestion_id', registroIds)
       .order('fecha_planificada')
       .then(({ data }) => setObservaciones((data as unknown as ObservacionGestion[]) ?? []))
@@ -1859,8 +1859,8 @@ function GestionesTab({ establecimientoId, canWrite }: { establecimientoId: stri
                   await addGestionToEstablecimiento(gestionId, establecimientoId)
                   const supabase = createClient()
                   supabase
-                    .from('gestion_establecimiento')
-                    .select('*, gestiones(nombre, categoria_id, categoria_gestiones(nombre, grupo_gestiones(nombre)))')
+                    .from('gestiones_establecimientos')
+                    .select('*, gestiones(nombre, categoria_id, gestiones_categorias(nombre, gestiones_grupos(nombre)))')
                     .eq('establecimiento_id', establecimientoId)
                     .then(({ data }) => setGestionesEstablecimiento((data as unknown as GestionEstablecimiento[]) ?? []))
                 }}
@@ -2129,7 +2129,7 @@ function ObservacionForm({
   useEffect(() => { if (state?.success) onSuccess() }, [state])
 
   useEffect(() => {
-    createClient().from('observacion_categoria').select('id, nombre, nivel').order('nivel').then(({ data }) => {
+    createClient().from('observaciones_categorias').select('id, nombre, nivel').order('nivel').then(({ data }) => {
       setCategorias((data ?? []) as { id: string; nombre: string; nivel: number }[])
     })
   }, [])

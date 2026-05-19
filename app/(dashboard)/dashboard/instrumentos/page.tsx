@@ -68,8 +68,8 @@ export default function InstrumentosPage() {
   function load() {
     const supabase = createClient()
     supabase
-      .from('instrumentos_medicion')
-      .select('*, tipo_instrumento_medicion(nombre), organizaciones_externas(nombre)')
+      .from('mediciones_instrumentos')
+      .select('*, mediciones_instrumentos_tipos(nombre), organizaciones_externas(nombre)')
       .eq('is_active', true)
       .order('modelo')
       .then(({ data }) => setInstrumentos((data as unknown as InstrumentoMedicion[]) ?? []))
@@ -78,11 +78,11 @@ export default function InstrumentosPage() {
   useEffect(() => {
     load()
     const supabase = createClient()
-    supabase.from('tipo_instrumento_medicion').select('*').order('nombre')
+    supabase.from('mediciones_instrumentos_tipos').select('*').order('nombre')
       .then(({ data }) => setTipos(data ?? []))
     supabase
       .from('organizaciones_externas')
-      .select('id, nombre, tipo_id, tipo_organizaciones(nombre)')
+      .select('id, nombre, tipo_id, organizaciones_tipos(nombre)')
       .eq('is_active', true)
       .order('nombre')
       .then(({ data }) => {
@@ -159,7 +159,7 @@ export default function InstrumentosPage() {
                   <td className="px-5 py-3.5 font-medium text-gray-900">{i.modelo}</td>
                   <td className="px-5 py-3.5">
                     <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-sig-50 text-sig-700">
-                      {i.tipo_instrumento_medicion?.nombre ?? '—'}
+                      {i.mediciones_instrumentos_tipos?.nombre ?? '—'}
                     </span>
                   </td>
                   <td className="px-5 py-3.5 text-gray-500">{i.organizaciones_externas?.nombre ?? '—'}</td>

@@ -33,8 +33,8 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
     Promise.all([
       supabase
         .from('organizaciones_externas')
-        .select('id, nombre, tipo_organizaciones!inner(nombre)')
-        .eq('tipo_organizaciones.nombre', 'ART')
+        .select('id, nombre, organizaciones_tipos!inner(nombre)')
+        .eq('organizaciones_tipos.nombre', 'ART')
         .eq('is_active', true)
         .or(empresa?.id ? `scope.eq.global,empresa_id.eq.${empresa.id}` : 'scope.eq.global')
         .order('nombre'),

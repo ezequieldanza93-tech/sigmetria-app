@@ -21,7 +21,7 @@ interface PersonaLink {
     apellido: string
     dni: string | null
     fecha_ingreso: string | null
-    tipo_personas: { nombre: string } | null
+    personas_tipos: { nombre: string } | null
   } | null
   establecimientos: { id: string; nombre: string } | null
 }
@@ -34,7 +34,7 @@ interface OrgLink {
     nombre: string
     email: string | null
     telefono: string | null
-    tipo_organizaciones: { nombre: string } | null
+    organizaciones_tipos: { nombre: string } | null
   } | null
   establecimientos: { id: string; nombre: string } | null
 }

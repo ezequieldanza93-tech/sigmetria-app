@@ -22,7 +22,7 @@ export default async function UserAccesoPage({ params }: Props) {
 
   const [{ data: profile }, { data: membership }] = await Promise.all([
     supabase.from('profiles').select('system_role').eq('id', user.id).single(),
-    supabase.from('consultora_members').select('role, consultora_id').eq('user_id', user.id).eq('is_active', true).maybeSingle(),
+    supabase.from('consultoras_members').select('role, consultora_id').eq('user_id', user.id).eq('is_active', true).maybeSingle(),
   ])
 
   if (!canManageUsers(membership?.role as UserRole ?? null, profile?.system_role ?? 'user')) {

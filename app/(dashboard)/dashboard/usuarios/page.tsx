@@ -12,7 +12,7 @@ export default async function UsuariosPage() {
 
   const [{ data: profile }, { data: myMembership }] = await Promise.all([
     supabase.from('profiles').select('system_role').eq('id', user.id).single(),
-    supabase.from('consultora_members').select('role, consultora_id').eq('user_id', user.id).eq('is_active', true).maybeSingle(),
+    supabase.from('consultoras_members').select('role, consultora_id').eq('user_id', user.id).eq('is_active', true).maybeSingle(),
   ])
 
   if (!canManageUsers(myMembership?.role as UserRole ?? null, profile?.system_role ?? 'user')) {
@@ -20,7 +20,7 @@ export default async function UsuariosPage() {
   }
 
   const { data: members } = await supabase
-    .from('consultora_members')
+    .from('consultoras_members')
     .select('id, role, is_active, user_id, profiles(full_name, system_role)')
     .order('role')
 

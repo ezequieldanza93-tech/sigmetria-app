@@ -146,8 +146,8 @@ export function TrabajadorModal({
 
       if (documentos === null) {
         supabase
-          .from('empleado_documentos')
-          .select('id, tipo_id, archivo_url, fecha_emision, fecha_vencimiento, created_at, documento_tipos(nombre)')
+          .from('personas_documentos')
+          .select('id, tipo_id, archivo_url, fecha_emision, fecha_vencimiento, created_at, documentos_tipos(nombre)')
           .eq('persona_id', persona.id)
           .order('created_at', { ascending: false })
           .then(({ data }) => setDocumentos((data as unknown as PersonaDoc[]) ?? []))
@@ -155,7 +155,7 @@ export function TrabajadorModal({
 
       if (tiposDoc === null) {
         supabase
-          .from('documento_tipos')
+          .from('documentos_tipos')
           .select('id, nombre')
           .eq('aplica_empleado', true)
           .eq('is_active', true)
@@ -238,10 +238,10 @@ export function TrabajadorModal({
                 <p className="text-gray-900">{persona.email}</p>
               </div>
             )}
-            {persona.tipo_personas && (
+            {persona.personas_tipos && (
               <div>
                 <p className="text-xs text-gray-400 font-medium mb-0.5">Tipo</p>
-                <p className="text-gray-900">{persona.tipo_personas.nombre}</p>
+                <p className="text-gray-900">{persona.personas_tipos.nombre}</p>
               </div>
             )}
           </div>

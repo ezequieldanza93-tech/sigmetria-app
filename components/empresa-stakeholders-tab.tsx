@@ -12,7 +12,7 @@ interface PersonaLink {
     apellido: string
     dni: string | null
     fecha_ingreso: string | null
-    tipo_personas: { nombre: string } | null
+    personas_tipos: { nombre: string } | null
   } | null
   establecimientos: { id: string; nombre: string } | null
 }
@@ -25,7 +25,7 @@ interface OrgLink {
     nombre: string
     email: string | null
     telefono: string | null
-    tipo_organizaciones: { nombre: string } | null
+    organizaciones_tipos: { nombre: string } | null
   } | null
   establecimientos: { id: string; nombre: string } | null
 }
@@ -153,7 +153,7 @@ export function EmpresaStakeholdersTab({ establecimientos, personasLinks, orgsLi
                   <td className="px-5 py-3.5 text-gray-500">{persona!.dni ?? '—'}</td>
                   <td className="px-5 py-3.5">
                     <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
-                      {persona!.tipo_personas?.nombre ?? '—'}
+                      {persona!.personas_tipos?.nombre ?? '—'}
                     </span>
                   </td>
                   <td className="px-5 py-3.5 text-gray-500">
@@ -207,7 +207,7 @@ export function EmpresaStakeholdersTab({ establecimientos, personasLinks, orgsLi
                   <td className="px-5 py-3.5 font-medium text-gray-900">{org!.nombre}</td>
                   <td className="px-5 py-3.5">
                     <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
-                      {org!.tipo_organizaciones?.nombre ?? '—'}
+                      {org!.organizaciones_tipos?.nombre ?? '—'}
                     </span>
                   </td>
                   <td className="px-5 py-3.5 text-gray-500">{org!.email ?? '—'}</td>

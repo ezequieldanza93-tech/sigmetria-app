@@ -865,11 +865,11 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
 
   function loadCatalogo() {
     const supabase = createClient()
-    supabase.from('gestiones').select('*, categoria_gestiones(id, nombre, grupo_gestiones(nombre))').order('nombre')
+    supabase.from('gestiones').select('*, gestiones_categorias(id, nombre, gestiones_grupos(nombre))').order('nombre')
       .then(({ data }) => { if (data) setTodasGestiones(data as unknown as Gestion[]) })
-    supabase.from('grupo_gestiones').select('*').order('nombre')
+    supabase.from('gestiones_grupos').select('*').order('nombre')
       .then(({ data }) => { if (data) setGrupos(data as unknown as GrupoGestion[]) })
-    supabase.from('categoria_gestiones').select('*').order('nombre')
+    supabase.from('gestiones_categorias').select('*').order('nombre')
       .then(({ data }) => { if (data) setCategorias(data as unknown as CategoriaGestion[]) })
   }
 
@@ -966,7 +966,7 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
               onChange={e => {
                 e.stopPropagation()
                 const supabase = createClient()
-                supabase.from('gestion_establecimiento').update({ mostrar_lt: e.target.checked }).eq('id', r.ge_id)
+                supabase.from('gestiones_establecimientos').update({ mostrar_lt: e.target.checked }).eq('id', r.ge_id)
                 setRegistros(prev => prev?.map(rr => rr.id === r.id ? { ...rr, ge_mostrar_lt: e.target.checked } : rr) ?? null)
               }}
               className="accent-sig-600 cursor-pointer"

@@ -85,7 +85,7 @@ export default function ProductosPage() {
     const supabase = createClient()
     supabase
       .from('productos')
-      .select('*, categoria_productos(nombre), organizaciones_externas(nombre), unidades(nombre, simbolo)')
+      .select('*, productos_categorias(nombre), organizaciones_externas(nombre), unidades(nombre, simbolo)')
       .eq('is_active', true)
       .order('nombre')
       .then(({ data }) => setProductos((data as unknown as Producto[]) ?? []))
@@ -94,9 +94,9 @@ export default function ProductosPage() {
   useEffect(() => {
     load()
     const supabase = createClient()
-    supabase.from('categoria_productos').select('*').order('nombre')
+    supabase.from('productos_categorias').select('*').order('nombre')
       .then(({ data }) => setCategorias(data ?? []))
-    supabase.from('organizaciones_externas').select('id, nombre, tipo_id, tipo_organizaciones(nombre)')
+    supabase.from('organizaciones_externas').select('id, nombre, tipo_id, organizaciones_tipos(nombre)')
       .eq('is_active', true).order('nombre')
       .then(({ data }) => {
         const marcasOnly = ((data ?? []) as unknown as Organizacion[]).filter(o => o.tipo_organizaciones?.nombre === 'Marca')
@@ -175,7 +175,7 @@ export default function ProductosPage() {
                   <td className="px-5 py-3.5 font-medium text-gray-900">{p.nombre}</td>
                   <td className="px-5 py-3.5">
                     <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-sig-50 text-sig-700">
-                      {p.categoria_productos?.nombre ?? '—'}
+                      {p.productos_categorias?.nombre ?? '—'}
                     </span>
                   </td>
                   <td className="px-5 py-3.5 text-gray-500">{p.organizaciones_externas?.nombre ?? '—'}</td>

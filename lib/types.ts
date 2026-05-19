@@ -338,7 +338,7 @@ export interface DirectorioPersona {
   is_active: boolean
   created_at: string
   updated_at: string
-  tipo_personas?: { nombre: string } | null
+  personas_tipos?: { nombre: string } | null
   organizaciones_externas?: { nombre: string } | null
 }
 
@@ -361,7 +361,7 @@ export interface Producto {
   is_active: boolean
   created_at: string
   updated_at: string
-  categoria_productos?: { nombre: string } | null
+  productos_categorias?: { nombre: string } | null
   organizaciones_externas?: { nombre: string } | null
 }
 
@@ -624,7 +624,7 @@ export interface InstrumentoMedicion {
   is_active: boolean
   created_at: string
   updated_at: string
-  tipo_instrumento_medicion?: { nombre: string } | null
+  mediciones_instrumentos_tipos?: { nombre: string } | null
   organizaciones_externas?: { nombre: string } | null
 }
 

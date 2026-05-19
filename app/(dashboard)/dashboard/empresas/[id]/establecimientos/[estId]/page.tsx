@@ -56,8 +56,8 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
     { data: empresa },
   ] = await Promise.all([
     supabase.from('profiles').select('system_role').eq('id', user.id).single(),
-    supabase.from('consultora_members').select('role').eq('user_id', user.id).eq('is_active', true).maybeSingle(),
-    supabase.from('establecimientos').select('*, tipos_establecimiento(id, codigo, nombre)').eq('id', estId).single(),
+    supabase.from('consultoras_members').select('role').eq('user_id', user.id).eq('is_active', true).maybeSingle(),
+    supabase.from('establecimientos').select('*, establecimientos_tipos(id, codigo, nombre)').eq('id', estId).single(),
     supabase.from('empresas').select('id, razon_social').eq('id', id).single(),
   ])
 
@@ -89,7 +89,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
   if (section === 'informacion') {
     const [s1, s2, s3, s4, s5] = await Promise.all([
       supabase
-        .from('sectores_establecimiento')
+        .from('establecimientos_sectores')
         .select('*')
         .eq('establecimiento_id', estId)
         .eq('is_active', true)
@@ -106,8 +106,8 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
         .eq('establecimiento_id', estId)
         .order('fecha_programada', { ascending: false }),
       supabase
-        .from('establecimiento_documentos')
-        .select('*, documento_tipos(nombre)')
+        .from('establecimientos_documentos')
+        .select('*, documentos_tipos(nombre)')
         .eq('establecimiento_id', estId)
         .order('created_at', { ascending: false }),
       getDocTiposAplicables(estId),
@@ -120,13 +120,13 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
 
     const today = new Date().toISOString().split('T')[0]
     const [d1, d2, d3, d4] = await Promise.all([
-      supabase.from('establecimiento_denuncias').select('*').eq('establecimiento_id', estId).order('fecha', { ascending: false }),
-      supabase.from('establecimiento_feedback_clientes').select('*').eq('establecimiento_id', estId).order('fecha', { ascending: false }),
-      supabase.from('empresa_documentos').select('*, documento_tipos(nombre)').eq('empresa_id', id).order('created_at', { ascending: false }),
+      supabase.from('establecimientos_denuncias').select('*').eq('establecimiento_id', estId).order('fecha', { ascending: false }),
+      supabase.from('establecimientos_feedback_clientes').select('*').eq('establecimiento_id', estId).order('fecha', { ascending: false }),
+      supabase.from('empresas_documentos').select('*, documentos_tipos(nombre)').eq('empresa_id', id).order('created_at', { ascending: false }),
       supabase
-        .from('registro_gestiones')
-        .select('id, fecha_planificada, notas, gestion_establecimiento!inner(establecimiento_id, gestiones!inner(nombre, categoria_gestiones(nombre)))')
-        .eq('gestion_establecimiento.establecimiento_id', estId)
+        .from('gestiones_registros')
+        .select('id, fecha_planificada, notas, gestiones_establecimientos!inner(establecimiento_id, gestiones!inner(nombre, gestiones_categorias(nombre)))')
+        .eq('gestiones_establecimientos.establecimiento_id', estId)
         .is('fecha_ejecutada', null)
         .gte('fecha_planificada', today)
         .order('fecha_planificada'),
@@ -137,14 +137,14 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
     gestionesLegajo = (d4.data ?? []) as unknown as LegajoGestion[]
 
     const { data: peData } = await supabase
-      .from('persona_establecimiento')
+      .from('personas_establecimientos')
       .select('persona_id')
       .eq('establecimiento_id', estId)
     const personaIds = ((peData ?? []) as { persona_id: string }[]).map(p => p.persona_id)
     if (personaIds.length > 0) {
       const { data: empDocs } = await supabase
-        .from('empleado_documentos')
-        .select('*, documento_tipos(nombre), directorio_personas(nombre, apellido, legajo)')
+        .from('personas_documentos')
+        .select('*, documentos_tipos(nombre), personas_directorio(nombre, apellido, legajo)')
         .in('persona_id', personaIds)
         .order('created_at', { ascending: false })
       trabajadorDocumentos = (empDocs ?? []) as unknown as EmpleadoDocumentoLegajo[]
@@ -160,7 +160,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
     riesgos = (data ?? []) as unknown as Riesgo[]
   }
 
-  const tipoLabel = establecimiento.tipos_establecimiento?.nombre ?? null
+  const tipoLabel = establecimiento.establecimientos_tipos?.nombre ?? null
 
   return (
     <div className="flex">

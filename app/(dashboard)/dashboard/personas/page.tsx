@@ -135,8 +135,8 @@ export default function PersonasPage() {
   function load() {
     const supabase = createClient()
     supabase
-      .from('directorio_personas')
-      .select('*, tipo_personas(nombre)')
+      .from('personas_directorio')
+      .select('*, personas_tipos(nombre)')
       .eq('is_active', true)
       .order('apellido')
       .then(({ data }) => setPersonas((data as unknown as DirectorioPersona[]) ?? []))
@@ -145,7 +145,7 @@ export default function PersonasPage() {
   useEffect(() => {
     load()
     const supabase = createClient()
-    supabase.from('tipo_personas').select('*').order('nombre')
+    supabase.from('personas_tipos').select('*').order('nombre')
       .then(({ data }) => setTiposPersona(data ?? []))
     supabase.from('empresas').select('*').eq('is_active', true).order('razon_social')
       .then(({ data }) => setEmpresas((data as unknown as Empresa[]) ?? []))
@@ -220,7 +220,7 @@ export default function PersonasPage() {
                   <td className="px-5 py-3.5 font-medium text-gray-900">{p.apellido}, {p.nombre}</td>
                   <td className="px-5 py-3.5">
                     <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
-                      {p.tipo_personas?.nombre ?? '—'}
+                      {p.personas_tipos?.nombre ?? '—'}
                     </span>
                   </td>
                   <td className="px-5 py-3.5 text-gray-500">{p.dni ?? '—'}</td>
