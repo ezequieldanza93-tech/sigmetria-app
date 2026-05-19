@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { planificarGestionMulti, planificarGestionNueva, createGrupoGestion, createCategoriaGestion } from '@/lib/actions/gestion-establecimiento'
-import { getGestionesAplicables } from '@/lib/actions/aplicabilidad'
 import { Button } from '@/components/ui/button'
 import type { Gestion, GrupoGestion, CategoriaGestion } from '@/lib/types'
 
@@ -35,13 +34,14 @@ export function PlanificarView({ establecimientoId }: PlanificarViewProps) {
   const [mode, setMode] = useState<'biblioteca' | 'nueva'>('biblioteca')
 
   useEffect(() => {
-    getGestionesAplicables(establecimientoId).then(setTodasGestiones).catch(() => setTodasGestiones([]))
+    supabase.from('gestiones').select('*, categoria_gestiones(nombre, grupo_gestiones(nombre))').order('nombre')
+      .then(({ data }) => { if (data) setTodasGestiones(data as unknown as Gestion[]) })
     supabase.from('grupo_gestiones').select('*').order('nombre')
       .then(({ data }) => { if (data) setGrupos(data as unknown as GrupoGestion[]) })
     supabase.from('categoria_gestiones').select('*').order('nombre')
       .then(({ data }) => { if (data) setCategorias(data as unknown as CategoriaGestion[]) })
       .then(() => setLoading(false), () => setLoading(false))
-  }, [establecimientoId])
+  }, [])
 
   function toggleMonth(m: number) {
     setSelectedMonths(prev => {
