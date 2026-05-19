@@ -36,6 +36,7 @@ export function AppHeader({ fullName, email, consultoraNombre, userRole, systemR
   const router = useRouter()
   const [crumbs, setCrumbs] = useState<Crumb[]>([])
   const [contextAddress, setContextAddress] = useState<string | null>(null)
+  const [forecastCoords, setForecastCoords] = useState<{ lat: number; lng: number } | null>(null)
 
   // "home" = the empresas list (no empresa selected yet)
   const isHome = pathname === '/dashboard' || pathname === '/dashboard/empresas'
@@ -45,6 +46,7 @@ export function AppHeader({ fullName, email, consultoraNombre, userRole, systemR
     if (!match) {
       setCrumbs([])
       setContextAddress(null)
+      setForecastCoords(null)
       return
     }
 
@@ -82,7 +84,7 @@ export function AppHeader({ fullName, email, consultoraNombre, userRole, systemR
 
       const { data: est } = await supabase
         .from('establecimientos')
-        .select('nombre, domicilio, codigo_postal, localidades!localidad_id(nombre, provincia)')
+        .select('nombre, domicilio, codigo_postal, latitude, longitude, localidades!localidad_id(nombre, provincia)')
         .eq('id', estId)
         .single()
 
@@ -94,8 +96,14 @@ export function AppHeader({ fullName, email, consultoraNombre, userRole, systemR
         const loc = locs?.[0]
         if (loc) parts.push(`${loc.nombre}, ${loc.provincia}`)
         setContextAddress(parts.length ? parts.join(' · ') : null)
+        if (est.latitude != null && est.longitude != null) {
+          setForecastCoords({ lat: est.latitude, lng: est.longitude })
+        } else {
+          setForecastCoords(null)
+        }
       } else {
         setContextAddress(null)
+        setForecastCoords(null)
       }
 
       setCrumbs(items)
@@ -190,7 +198,7 @@ export function AppHeader({ fullName, email, consultoraNombre, userRole, systemR
 
         {/* Right: weather + consultora + user menu */}
         <div className="flex items-center gap-4 shrink-0">
-          {!isHome && <WeatherClock />}
+          {!isHome && <WeatherClock forecastLat={forecastCoords?.lat} forecastLng={forecastCoords?.lng} />}
 
           {consultoraNombre && (
             <div className="relative group hidden md:block">
