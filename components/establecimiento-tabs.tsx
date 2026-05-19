@@ -20,6 +20,7 @@ import { createAsistencia } from '@/lib/actions/asistencia'
 import { createPersona } from '@/lib/actions/persona'
 import { addOrganizacionToEstablecimiento } from '@/lib/actions/organizacion'
 import { addGestionToEstablecimiento } from '@/lib/actions/gestion-establecimiento'
+import { getGestionesAplicables } from '@/lib/actions/aplicabilidad'
 import { createRegistroGestion, ejecutarGestion } from '@/lib/actions/registro-gestion'
 import { createObservacionGestion, cerrarObservacion } from '@/lib/actions/observacion-gestion'
 import { createDenuncia, createFeedbackCliente } from '@/lib/actions/establecimiento-info'
@@ -1783,9 +1784,7 @@ function GestionesTab({ establecimientoId, canWrite }: { establecimientoId: stri
 
   useEffect(() => {
     loadData()
-    const supabase = createClient()
-    supabase.from('gestiones').select('*, categoria_gestiones(nombre, grupo_gestiones(nombre))').order('nombre')
-      .then(({ data }) => setTodasGestiones((data as unknown as Gestion[]) ?? []))
+    getGestionesAplicables(establecimientoId).then(data => setTodasGestiones(data))
   }, [establecimientoId])
 
   useEffect(() => {

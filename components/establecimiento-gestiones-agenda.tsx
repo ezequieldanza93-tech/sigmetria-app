@@ -13,6 +13,7 @@ import {
   createCategoriaGestion,
 } from '@/lib/actions/gestion-establecimiento'
 import { ejecutarGestion, crearObservaciones } from '@/lib/actions/registro-gestion'
+import { getGestionesAplicables } from '@/lib/actions/aplicabilidad'
 import { FormularioEjecucion } from '@/components/formulario-ejecucion'
 import { RIESGO_NIVEL_LABELS } from '@/lib/constants'
 import { RIESGO_NIVEL_COLORS } from '@/lib/types'
@@ -864,9 +865,8 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
   }
 
   function loadCatalogo() {
+    getGestionesAplicables(establecimientoId).then(data => setTodasGestiones(data))
     const supabase = createClient()
-    supabase.from('gestiones').select('*, categoria_gestiones(id, nombre, grupo_gestiones(nombre))').order('nombre')
-      .then(({ data }) => { if (data) setTodasGestiones(data as unknown as Gestion[]) })
     supabase.from('grupo_gestiones').select('*').order('nombre')
       .then(({ data }) => { if (data) setGrupos(data as unknown as GrupoGestion[]) })
     supabase.from('categoria_gestiones').select('*').order('nombre')

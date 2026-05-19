@@ -7,6 +7,7 @@ import { EstablecimientoLocation } from '@/components/establecimiento-location'
 import { GestionesAgenda } from '@/components/establecimiento-gestiones-agenda'
 import { PlanificarView } from '@/components/planificar-view'
 import { ActuarView } from '@/components/actuar-view'
+import { getDocTiposAplicables } from '@/lib/actions/aplicabilidad'
 import type {
   SectorEstablecimiento,
   Siniestro,
@@ -109,18 +110,13 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
         .select('*, documento_tipos(nombre)')
         .eq('establecimiento_id', estId)
         .order('created_at', { ascending: false }),
-      supabase
-        .from('documento_tipos')
-        .select('id, nombre, aplica_empresa, aplica_establecimiento, aplica_empleado, is_active')
-        .eq('is_active', true)
-        .eq('aplica_establecimiento', true)
-        .order('nombre'),
+      getDocTiposAplicables(estId, id),
     ])
     sectores = (s1.data ?? []) as unknown as SectorEstablecimiento[]
     siniestros = (s2.data ?? []) as unknown as Siniestro[]
     inspecciones = (s3.data ?? []) as unknown as Inspeccion[]
     documentos = (s4.data ?? []) as unknown as Documento[]
-    documentTypes = (s5.data ?? []) as unknown as DocumentType[]
+    documentTypes = s5
 
     const today = new Date().toISOString().split('T')[0]
     const [d1, d2, d3, d4] = await Promise.all([

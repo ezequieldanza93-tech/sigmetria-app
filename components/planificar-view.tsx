@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { planificarGestionMulti, planificarGestionNueva, createGrupoGestion, createCategoriaGestion } from '@/lib/actions/gestion-establecimiento'
+import { getGestionesAplicables } from '@/lib/actions/aplicabilidad'
 import { Button } from '@/components/ui/button'
 import type { Gestion, GrupoGestion, CategoriaGestion } from '@/lib/types'
 
@@ -35,16 +36,16 @@ export function PlanificarView({ establecimientoId }: PlanificarViewProps) {
 
   useEffect(() => {
     Promise.all([
-      supabase.from('gestiones').select('*, categoria_gestiones(nombre, grupo_gestiones(nombre))').order('nombre'),
+      getGestionesAplicables(establecimientoId),
       supabase.from('grupo_gestiones').select('*').order('nombre'),
       supabase.from('categoria_gestiones').select('*').order('nombre'),
     ]).then(([ges, grp, cat]) => {
-      setTodasGestiones((ges.data ?? []) as unknown as Gestion[])
+      setTodasGestiones(ges)
       setGrupos((grp.data ?? []) as unknown as GrupoGestion[])
       setCategorias((cat.data ?? []) as unknown as CategoriaGestion[])
       setLoading(false)
     })
-  }, [])
+  }, [establecimientoId])
 
   function toggleMonth(m: number) {
     setSelectedMonths(prev => {
