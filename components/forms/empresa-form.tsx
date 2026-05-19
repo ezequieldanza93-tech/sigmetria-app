@@ -30,6 +30,7 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
         .select('id, nombre, tipo_organizaciones!inner(nombre)')
         .eq('tipo_organizaciones.nombre', 'ART')
         .eq('is_active', true)
+        .or(empresa?.id ? `scope.eq.global,empresa_id.eq.${empresa.id}` : 'scope.eq.global')
         .order('nombre'),
       supabase
         .from('localidades')
