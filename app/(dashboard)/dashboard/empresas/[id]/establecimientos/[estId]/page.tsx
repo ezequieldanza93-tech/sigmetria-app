@@ -7,9 +7,7 @@ import { EstablecimientoLocation } from '@/components/establecimiento-location'
 import { GestionesAgenda } from '@/components/establecimiento-gestiones-agenda'
 import { PlanificarView } from '@/components/planificar-view'
 import { ActuarView } from '@/components/actuar-view'
-import { TIPO_ESTABLECIMIENTO_LABELS } from '@/lib/constants'
 import type {
-  TipoEstablecimiento,
   SectorEstablecimiento,
   Siniestro,
   Inspeccion,
@@ -55,7 +53,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
   ] = await Promise.all([
     supabase.from('profiles').select('system_role').eq('id', user.id).single(),
     supabase.from('consultora_members').select('role').eq('user_id', user.id).eq('is_active', true).maybeSingle(),
-    supabase.from('establecimientos').select('*').eq('id', estId).single(),
+    supabase.from('establecimientos').select('*, tipos_establecimiento(id, codigo, nombre)').eq('id', estId).single(),
     supabase.from('empresas').select('id, razon_social').eq('id', id).single(),
   ])
 
@@ -135,9 +133,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
     riesgos = (data ?? []) as unknown as Riesgo[]
   }
 
-  const tipoLabel = establecimiento.tipo
-    ? (TIPO_ESTABLECIMIENTO_LABELS[establecimiento.tipo as TipoEstablecimiento] ?? establecimiento.tipo)
-    : null
+  const tipoLabel = establecimiento.tipos_establecimiento?.nombre ?? null
 
   return (
     <div className="flex">

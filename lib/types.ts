@@ -19,6 +19,28 @@ export type TipoEstablecimiento =
   | 'local_comercial'
   | 'local_administrativo'
 
+export interface TiposEstablecimiento {
+  id: string
+  codigo: string
+  nombre: string
+  created_at: string
+}
+
+export interface PreguntaRiesgo {
+  id: string
+  codigo: string
+  texto: string
+  orden: number
+  is_active: boolean
+}
+
+export interface EstablecimientoRespuesta {
+  id: string
+  establecimiento_id: string
+  pregunta_id: string
+  respuesta: boolean
+}
+
 export type SiniestroTipo =
   | 'accidente'
   | 'incidente'
@@ -187,6 +209,8 @@ export interface Establecimiento {
   empresa_id: string
   nombre: string
   tipo: TipoEstablecimiento | null
+  tipo_id: string | null
+  tipos_establecimiento?: { id: string; codigo: string; nombre: string } | null
   domicilio: string | null
   codigo_postal: string | null
   localidad_id: string | null
@@ -196,19 +220,6 @@ export interface Establecimiento {
   description: string | null
   latitude: number | null
   longitude: number | null
-  // Construcción
-  tiene_demolicion: boolean
-  tiene_excavacion: boolean
-  tiene_submuración: boolean
-  tiene_alturas_mayores_6m: boolean
-  tiene_equipamiento_izaje: boolean
-  tipo_contratista: '35/98' | '51/97' | '319/99' | null
-  // Industria
-  tiene_agentes_cancerigenos: boolean
-  tiene_sustancias_quimicas: boolean
-  tiene_exposicion_vibraciones: boolean
-  tiene_exposicion_radiaciones: boolean
-  descripcion_productos: string | null
   photo_site: string | null
   code: string | null
   ref: string | null

@@ -4,30 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { SECTORES_PREDEFINIDOS } from '@/lib/constants'
-import type { ActionResult, TipoEstablecimiento } from '@/lib/types'
-
-function parseTipoEspecifico(formData: FormData, tipo: string | null) {
-  if (tipo === 'construccion' || tipo === 'obra_construccion') {
-    return {
-      tiene_demolicion:         formData.get('tiene_demolicion') === 'true',
-      tiene_excavacion:         formData.get('tiene_excavacion') === 'true',
-      tiene_submuración:        formData.get('tiene_submuración') === 'true',
-      tiene_alturas_mayores_6m: formData.get('tiene_alturas_mayores_6m') === 'true',
-      tiene_equipamiento_izaje: formData.get('tiene_equipamiento_izaje') === 'true',
-      tipo_contratista:        (formData.get('tipo_contratista') as string) || null,
-    }
-  }
-  if (tipo === 'industria') {
-    return {
-      tiene_agentes_cancerigenos:   formData.get('tiene_agentes_cancerigenos') === 'true',
-      tiene_sustancias_quimicas:    formData.get('tiene_sustancias_quimicas') === 'true',
-      tiene_exposicion_vibraciones: formData.get('tiene_exposicion_vibraciones') === 'true',
-      tiene_exposicion_radiaciones: formData.get('tiene_exposicion_radiaciones') === 'true',
-      descripcion_productos:       (formData.get('descripcion_productos') as string) || null,
-    }
-  }
-  return {}
-}
+import type { ActionResult } from '@/lib/types'
 
 async function parseUbicacion(raw: string | null): Promise<{ latitude: number | null; longitude: number | null }> {
   if (!raw?.trim()) return { latitude: null, longitude: null }
@@ -66,6 +43,23 @@ async function saveHorarios(
     .upsert(rows, { onConflict: 'establecimiento_id,dia_semana' })
 }
 
+async function saveRespuestas(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  establecimientoId: string,
+  formData: FormData,
+) {
+  const preguntaIds = formData.getAll('pregunta_ids') as string[]
+  if (preguntaIds.length === 0) return
+  const entries = preguntaIds.map(pid => ({
+    establecimiento_id: establecimientoId,
+    pregunta_id: pid,
+    respuesta: formData.get(`resp_${pid}`) === 'true',
+  }))
+  await supabase
+    .from('establecimiento_respuestas')
+    .upsert(entries, { onConflict: 'establecimiento_id,pregunta_id' })
+}
+
 async function uploadFoto(file: File, establecimientoId: string): Promise<string | null> {
   try {
     if (!file || file.size === 0) return null
@@ -101,7 +95,6 @@ export async function createEstablecimiento(
   const nombre = formData.get('nombre') as string
   if (!nombre?.trim()) return { success: false, error: 'El nombre es obligatorio' }
 
-  const tipo = formData.get('tipo') as TipoEstablecimiento | null
   const { latitude, longitude } = await parseUbicacion(formData.get('ubicacion_gmaps') as string)
 
   const { data, error } = await supabase
@@ -109,7 +102,7 @@ export async function createEstablecimiento(
     .insert({
       empresa_id: empresaId,
       nombre: nombre.trim(),
-      tipo: tipo || null,
+      tipo_id: (formData.get('tipo_id') as string) || null,
       domicilio: (formData.get('domicilio') as string) || null,
       localidad_id: (formData.get('localidad_id') as string) || null,
       codigo_postal: (formData.get('codigo_postal') as string) || null,
@@ -117,7 +110,6 @@ export async function createEstablecimiento(
       description: (formData.get('description') as string) || null,
       latitude,
       longitude,
-      ...parseTipoEspecifico(formData, tipo),
     })
     .select('id')
     .single()
@@ -131,6 +123,7 @@ export async function createEstablecimiento(
   }
 
   await saveHorarios(supabase, data.id, formData)
+  await saveRespuestas(supabase, data.id, formData)
 
   const sectores = SECTORES_PREDEFINIDOS.map(nombre => ({
     establecimiento_id: data.id,
@@ -157,7 +150,6 @@ export async function updateEstablecimiento(
   const nombre = formData.get('nombre') as string
   if (!nombre?.trim()) return { success: false, error: 'El nombre es obligatorio' }
 
-  const tipo = formData.get('tipo') as TipoEstablecimiento | null
   const { latitude, longitude } = await parseUbicacion(formData.get('ubicacion_gmaps') as string)
 
   const foto = formData.get('foto') as File | null
@@ -167,7 +159,7 @@ export async function updateEstablecimiento(
     .from('establecimientos')
     .update({
       nombre: nombre.trim(),
-      tipo: tipo || null,
+      tipo_id: (formData.get('tipo_id') as string) || null,
       domicilio: (formData.get('domicilio') as string) || null,
       localidad_id: (formData.get('localidad_id') as string) || null,
       codigo_postal: (formData.get('codigo_postal') as string) || null,
@@ -175,7 +167,6 @@ export async function updateEstablecimiento(
       description: (formData.get('description') as string) || null,
       latitude,
       longitude,
-      ...parseTipoEspecifico(formData, tipo),
       ...(photo_site !== undefined && { photo_site }),
     })
     .eq('id', id)
@@ -183,6 +174,7 @@ export async function updateEstablecimiento(
   if (error) return { success: false, error: error.message }
 
   await saveHorarios(supabase, id, formData)
+  await saveRespuestas(supabase, id, formData)
 
   revalidatePath(`/dashboard/empresas/${empresaId}/establecimientos/${id}`)
   redirect(`/dashboard/empresas/${empresaId}/establecimientos/${id}`)

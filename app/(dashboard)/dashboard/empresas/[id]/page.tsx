@@ -3,9 +3,8 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { canWrite, UserRole } from '@/lib/types'
 import { formatCUIT } from '@/lib/utils'
-import { TIPO_ESTABLECIMIENTO_LABELS } from '@/lib/constants'
 import { EmpresaDocumentosSection } from '@/components/empresa-documentos-section'
-import type { TipoEstablecimiento, DocumentType, Documento } from '@/lib/types'
+import type { DocumentType, Documento } from '@/lib/types'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -29,7 +28,7 @@ export default async function EmpresaDetailPage({ params }: Props) {
   const [{ data: establecimientos }, { data: documentos }, { data: documentTypes }] = await Promise.all([
     supabase
       .from('establecimientos')
-      .select('id, nombre, tipo, localidades!localidad_id(nombre, provincia), cantidad_trabajadores')
+      .select('id, nombre, tipos_establecimiento(nombre), localidades!localidad_id(nombre, provincia), cantidad_trabajadores')
       .eq('empresa_id', id)
       .neq('status', 'cancelled')
       .order('nombre'),
@@ -175,7 +174,7 @@ export default async function EmpresaDetailPage({ params }: Props) {
                       </Link>
                     </td>
                     <td className="px-5 py-4 text-gray-500">
-                      {est.tipo ? (TIPO_ESTABLECIMIENTO_LABELS[est.tipo as TipoEstablecimiento] ?? est.tipo) : '—'}
+                      {(est.tipos_establecimiento as { nombre: string } | null)?.nombre ?? '—'}
                     </td>
                     <td className="px-5 py-4 text-gray-500">
                       {est.localidades ? [(est.localidades as any).nombre, (est.localidades as any).provincia].join(', ') : '—'}

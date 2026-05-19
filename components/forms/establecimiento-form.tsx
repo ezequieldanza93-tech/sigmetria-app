@@ -4,9 +4,8 @@ import { useActionState, useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
-import { TIPO_ESTABLECIMIENTO_OPTIONS } from '@/lib/constants'
 import { createClient } from '@/lib/supabase/client'
-import type { Establecimiento, Localidad, ActionResult } from '@/lib/types'
+import type { Establecimiento, Localidad, ActionResult, TiposEstablecimiento, PreguntaRiesgo, EstablecimientoRespuesta } from '@/lib/types'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type EstablecimientoFormAction = (prevState: any, formData: FormData) => Promise<ActionResult<unknown>>
@@ -42,19 +41,24 @@ const HORARIO_DEFAULT: Record<number, DiaConfig> = {
 export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Guardar' }: EstablecimientoFormProps) {
   const [state, formAction, isPending] = useActionState(action, null)
   const [localidades, setLocalidades] = useState<Localidad[]>([])
+  const [tipos, setTipos] = useState<TiposEstablecimiento[]>([])
+  const [preguntas, setPreguntas] = useState<PreguntaRiesgo[]>([])
+  const [respuestas, setRespuestas] = useState<Record<string, boolean>>({})
   const [selectedProvincia, setSelectedProvincia] = useState(establecimiento?.localidades?.provincia ?? '')
-  const [selectedTipo, setSelectedTipo] = useState(establecimiento?.tipo ?? '')
+  const [selectedTipoId, setSelectedTipoId] = useState(establecimiento?.tipo_id ?? '')
   const [semana, setSemana] = useState<Record<number, DiaConfig>>(HORARIO_DEFAULT)
 
+  // Load localidades and tipos on mount
   useEffect(() => {
-    createClient()
-      .from('localidades')
-      .select('id, nombre, provincia, is_active, created_at')
-      .eq('is_active', true)
-      .order('nombre')
+    const supabase = createClient()
+    supabase.from('localidades').select('id, nombre, provincia, is_active, created_at')
+      .eq('is_active', true).order('nombre')
       .then(({ data }) => { if (data) setLocalidades(data as Localidad[]) })
+    supabase.from('tipos_establecimiento').select('id, codigo, nombre, created_at').order('nombre')
+      .then(({ data }) => { if (data) setTipos(data as TiposEstablecimiento[]) })
   }, [])
 
+  // Load horarios for existing establishment
   useEffect(() => {
     if (!establecimiento?.id) return
     createClient()
@@ -66,16 +70,46 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
         setSemana(prev => {
           const next = { ...prev }
           data.forEach((h: { dia_semana: number; hora_inicio: string | null; hora_fin: string | null; activo: boolean }) => {
-            next[h.dia_semana] = {
-              activo: h.activo,
-              inicio: h.hora_inicio ?? '',
-              fin: h.hora_fin ?? '',
-            }
+            next[h.dia_semana] = { activo: h.activo, inicio: h.hora_inicio ?? '', fin: h.hora_fin ?? '' }
           })
           return next
         })
       })
   }, [establecimiento?.id])
+
+  // Load existing respuestas for edit mode
+  useEffect(() => {
+    if (!establecimiento?.id) return
+    createClient()
+      .from('establecimiento_respuestas')
+      .select('pregunta_id, respuesta')
+      .eq('establecimiento_id', establecimiento.id)
+      .then(({ data }) => {
+        if (!data) return
+        const map: Record<string, boolean> = {}
+        ;(data as EstablecimientoRespuesta[]).forEach(r => { map[r.pregunta_id] = r.respuesta })
+        setRespuestas(map)
+      })
+  }, [establecimiento?.id])
+
+  // Load preguntas when tipo changes
+  useEffect(() => {
+    if (!selectedTipoId) { setPreguntas([]); return }
+    createClient()
+      .from('pregunta_tipos')
+      .select('pregunta_id, orden, preguntas_riesgo!pregunta_id(id, codigo, texto, orden, is_active)')
+      .eq('tipo_id', selectedTipoId)
+      .order('orden')
+      .then(({ data }) => {
+        if (!data) return
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const ps = (data as any[])
+          .map(row => row.preguntas_riesgo)
+          .filter(Boolean)
+          .sort((a: PreguntaRiesgo, b: PreguntaRiesgo) => a.orden - b.orden)
+        setPreguntas(ps as PreguntaRiesgo[])
+      })
+  }, [selectedTipoId])
 
   const provincias = [...new Set(localidades.map(l => l.provincia))].sort()
   const localidadesFiltradas = localidades.filter(l => l.provincia === selectedProvincia)
@@ -96,14 +130,20 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
         placeholder="Planta Norte"
       />
 
-      <Select
-        label="Tipo"
-        name="tipo"
-        value={selectedTipo}
-        onChange={e => setSelectedTipo(e.target.value)}
-        options={TIPO_ESTABLECIMIENTO_OPTIONS}
-        placeholder="Seleccionar tipo..."
-      />
+      <div>
+        <label className="text-sm font-medium text-gray-700 block mb-1">Tipo *</label>
+        <select
+          name="tipo_id"
+          value={selectedTipoId}
+          onChange={e => setSelectedTipoId(e.target.value)}
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sig-500"
+        >
+          <option value="">Seleccionar tipo...</option>
+          {tipos.map(t => (
+            <option key={t.id} value={t.id}>{t.nombre}</option>
+          ))}
+        </select>
+      </div>
 
       <Input
         label="Domicilio"
@@ -201,84 +241,33 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
         />
       </div>
 
-      {/* ── Campos específicos Construcción ───────────────────── */}
-      {(selectedTipo === 'construccion' || selectedTipo === 'obra_construccion') && (
-        <div className="border border-orange-200 rounded-xl p-4 space-y-3 bg-orange-50/40">
-          <p className="text-xs font-semibold text-orange-700 uppercase tracking-wider">Datos de Construcción</p>
-
-          <div className="grid grid-cols-2 gap-x-6 gap-y-2">
-            {([
-              ['tiene_demolicion',         'Demolición'],
-              ['tiene_excavacion',         'Excavación'],
-              ['tiene_submuración',        'Submuración'],
-              ['tiene_alturas_mayores_6m', 'Trabajos en altura &gt; 6m'],
-              ['tiene_equipamiento_izaje', 'Equipamiento de izaje'],
-            ] as [string, string][]).map(([name, label]) => (
-              <label key={name} className="flex items-center gap-2 cursor-pointer select-none">
+      {/* ── Preguntas de riesgo dinámicas ───────────────────── */}
+      {preguntas.length > 0 && (
+        <div className="border border-sig-200 rounded-xl p-4 space-y-3 bg-sig-50/30">
+          <p className="text-xs font-semibold text-sig-700 uppercase tracking-wider">
+            Condiciones del establecimiento
+          </p>
+          <p className="text-xs text-gray-500">
+            Respondé las siguientes preguntas para identificar qué requisitos legales aplican.
+          </p>
+          {/* Hidden inputs to tell the server action which pregunta_ids are active */}
+          {preguntas.map(p => (
+            <input key={`pid_${p.id}`} type="hidden" name="pregunta_ids" value={p.id} />
+          ))}
+          <div className="space-y-2.5">
+            {preguntas.map(p => (
+              <label key={p.id} className="flex items-start gap-3 cursor-pointer select-none group">
                 <input
                   type="checkbox"
-                  name={name}
+                  name={`resp_${p.id}`}
                   value="true"
-                  defaultChecked={!!(establecimiento as any)?.[name]}
-                  className="w-4 h-4 rounded border-gray-300 text-orange-500 focus:ring-orange-400"
+                  checked={respuestas[p.id] ?? false}
+                  onChange={e => setRespuestas(prev => ({ ...prev, [p.id]: e.target.checked }))}
+                  className="w-4 h-4 mt-0.5 rounded border-gray-300 text-sig-500 focus:ring-sig-400 shrink-0"
                 />
-                <span className="text-sm text-gray-700"
-                  dangerouslySetInnerHTML={{ __html: label }}
-                />
+                <span className="text-sm text-gray-700 group-hover:text-gray-900">{p.texto}</span>
               </label>
             ))}
-          </div>
-
-          <div>
-            <label className="text-sm font-medium text-gray-700 block mb-1">Tipo de contratista</label>
-            <select
-              name="tipo_contratista"
-              defaultValue={establecimiento?.tipo_contratista ?? ''}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400"
-            >
-              <option value="">Sin especificar</option>
-              <option value="35/98">Contratista principal — Dec. 35/98</option>
-              <option value="51/97">Subcontratista — Dec. 51/97</option>
-              <option value="319/99">Subcontratista corta duración — Dec. 319/99</option>
-            </select>
-          </div>
-        </div>
-      )}
-
-      {/* ── Campos específicos Industria ────────────────────── */}
-      {selectedTipo === 'industria' && (
-        <div className="border border-blue-200 rounded-xl p-4 space-y-3 bg-blue-50/40">
-          <p className="text-xs font-semibold text-blue-700 uppercase tracking-wider">Datos de Industria</p>
-
-          <div className="grid grid-cols-2 gap-x-6 gap-y-2">
-            {([
-              ['tiene_agentes_cancerigenos',   'Agentes cancerígenos'],
-              ['tiene_sustancias_quimicas',    'Sustancias químicas'],
-              ['tiene_exposicion_vibraciones', 'Exposición a vibraciones'],
-              ['tiene_exposicion_radiaciones', 'Exposición a radiaciones'],
-            ] as [string, string][]).map(([name, label]) => (
-              <label key={name} className="flex items-center gap-2 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  name={name}
-                  value="true"
-                  defaultChecked={!!(establecimiento as any)?.[name]}
-                  className="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-400"
-                />
-                <span className="text-sm text-gray-700">{label}</span>
-              </label>
-            ))}
-          </div>
-
-          <div>
-            <label className="text-sm font-medium text-gray-700 block mb-1">Descripción de productos fabricados</label>
-            <textarea
-              name="descripcion_productos"
-              defaultValue={establecimiento?.descripcion_productos ?? ''}
-              rows={3}
-              placeholder="Descripción de los productos que se fabrican o procesan en el establecimiento…"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
           </div>
         </div>
       )}
