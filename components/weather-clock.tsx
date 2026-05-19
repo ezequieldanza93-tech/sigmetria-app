@@ -157,29 +157,29 @@ export function WeatherClock({ forecastLat, forecastLng }: WeatherClockProps = {
         </div>
       </div>
 
-      {/* 14-day forecast dropdown */}
+      {/* 14-day forecast dropdown — fixed centrado en pantalla bajo el header */}
       {forecast.length > 0 && (
-        <div className="absolute right-0 top-full mt-2 z-50 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden opacity-0 invisible group-hover/wx:opacity-100 group-hover/wx:visible transition-all duration-200">
-          <p className="text-xs font-medium text-gray-400 uppercase tracking-wider px-5 pt-3 pb-2 whitespace-nowrap">
+        <div className="fixed top-12 left-1/2 -translate-x-1/2 z-50 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden opacity-0 invisible group-hover/wx:opacity-100 group-hover/wx:visible transition-all duration-200 max-w-[90vw]">
+          <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider px-3.5 pt-2 pb-1.5 whitespace-nowrap">
             Pronóstico — próximas 2 semanas
           </p>
           <div className="overflow-x-auto pb-1">
-            <div className="flex gap-2 px-4 pb-4" style={{ minWidth: 'max-content' }}>
+            <div className="flex gap-1.5 px-3 pb-3" style={{ minWidth: 'max-content' }}>
               {forecast.map((day, i) => (
                 <div
                   key={day.date}
-                  className={`flex flex-col items-center rounded-xl px-3 py-2.5 min-w-[80px] ${
+                  className={`flex flex-col items-center rounded-lg px-2 py-1.5 min-w-[56px] ${
                     i === 0 ? 'bg-sig-50 border border-sig-100' : 'bg-gray-50 border border-gray-100'
                   }`}
                 >
-                  <p className={`text-xs font-medium mb-1 ${i === 0 ? 'text-sig-500' : 'text-gray-500'}`}>
+                  <p className={`text-[10px] font-medium mb-0.5 ${i === 0 ? 'text-sig-500' : 'text-gray-500'}`}>
                     {formatDay(day.date, i)}
                   </p>
-                  <span className="text-xl mb-1">{wmoIcon(day.weathercode)}</span>
-                  <p className="text-sm font-bold text-gray-900">{Math.round(day.max)}°</p>
-                  <p className="text-xs text-gray-400">{Math.round(day.min)}°</p>
+                  <span className="text-base mb-0.5">{wmoIcon(day.weathercode)}</span>
+                  <p className="text-xs font-bold text-gray-900">{Math.round(day.max)}°</p>
+                  <p className="text-[10px] text-gray-400">{Math.round(day.min)}°</p>
                   {day.rain > 0 && (
-                    <p className="text-xs text-blue-500 mt-1">💧{day.rain.toFixed(1)}mm</p>
+                    <p className="text-[10px] text-blue-500 mt-0.5">💧{day.rain.toFixed(1)}</p>
                   )}
                 </div>
               ))}
