@@ -25,6 +25,7 @@ export function PlanificarView({ establecimientoId }: PlanificarViewProps) {
   const [filterCat, setFilterCat] = useState('')
   const [selectedGestionId, setSelectedGestionId] = useState('')
   const [selectedMonths, setSelectedMonths] = useState<Set<number>>(new Set())
+  const [cantidad, setCantidad] = useState(1)
   const [notas, setNotas] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -95,12 +96,14 @@ export function PlanificarView({ establecimientoId }: PlanificarViewProps) {
       year,
       null,
       notas || null,
+      cantidad,
     )
     setSaving(false)
 
     if (!result.success) { setError(result.error); return }
     setSuccess(result.data!.count)
     setSelectedMonths(new Set())
+    setCantidad(1)
     setNotas('')
   }
 
@@ -231,6 +234,18 @@ export function PlanificarView({ establecimientoId }: PlanificarViewProps) {
               )}
             </div>
 
+            {/* Cantidad por mes */}
+            <div>
+              <label className="text-sm font-medium text-gray-700 block mb-1">Cantidad por mes</label>
+              <input
+                type="number"
+                min={1}
+                value={cantidad}
+                onChange={e => setCantidad(Math.max(1, parseInt(e.target.value) || 1))}
+                className="w-24 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500"
+              />
+            </div>
+
             {/* Notas */}
             <div>
               <label className="text-sm font-medium text-gray-700 block mb-1">Notas</label>
@@ -244,7 +259,7 @@ export function PlanificarView({ establecimientoId }: PlanificarViewProps) {
 
             <div className="flex gap-3 pt-2">
               <Button type="submit" disabled={saving || !selectedGestionId || selectedMonths.size === 0}>
-                {saving ? 'Guardando...' : `Planificar (${selectedMonths.size} mes${selectedMonths.size !== 1 ? 'es' : ''})`}
+                {saving ? 'Guardando...' : `Planificar (${selectedMonths.size * cantidad} en total)`}
               </Button>
             </div>
           </form>

@@ -210,6 +210,7 @@ export async function planificarGestionMulti(
   year: number,
   responsableId: string | null,
   notas: string | null,
+  cantidad: number = 1,
 ): Promise<ActionResult<{ count: number }>> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -233,12 +234,14 @@ export async function planificarGestionMulti(
     .single()
   if (geError || !ge) return { success: false, error: 'No se pudo obtener la gestión del establecimiento' }
 
-  const registros = months.map(m => ({
-    gestion_establecimiento_id: ge.id,
-    fecha_planificada: lastDayOfMonth(year, m),
-    responsable_id: responsableId,
-    notas: notas,
-  }))
+  const registros = months.flatMap(m =>
+    Array.from({ length: cantidad }, () => ({
+      gestion_establecimiento_id: ge.id,
+      fecha_planificada: lastDayOfMonth(year, m),
+      responsable_id: responsableId,
+      notas: notas,
+    }))
+  )
 
   const { error: insertError } = await supabase.from('registro_gestiones').insert(registros)
   if (insertError) return { success: false, error: insertError.message }
