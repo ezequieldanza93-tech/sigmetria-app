@@ -1,22 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-
-interface Gestion {
-  id: string
-  nombre: string
-  categoria_gestiones: { nombre: string; grupo_gestiones: { nombre: string } | null } | null
-}
-
-interface DocumentType {
-  id: string
-  nombre: string
-  aplica_empresa: boolean
-  aplica_establecimiento: boolean
-  aplica_empleado: boolean
-  aplica_por_iso: boolean
-  is_active: boolean
-}
+import type { Gestion, DocumentType } from '@/lib/types'
 
 export async function getGestionesAplicables(establecimientoId: string): Promise<Gestion[]> {
   const supabase = await createClient()
@@ -41,12 +26,12 @@ export async function getGestionesAplicables(establecimientoId: string): Promise
 
   const { data: todas } = await supabase
     .from('gestiones')
-    .select('id, nombre, aplica_por_iso, categoria_gestiones(nombre, grupo_gestiones(nombre))')
+    .select('*, categoria_gestiones(nombre, grupo_gestiones(nombre))')
     .order('nombre')
 
   if (!todas) return []
 
-  return (todas as unknown as (Gestion & { aplica_por_iso: boolean })[]).filter(g =>
+  return (todas as unknown as Gestion[]).filter(g =>
     idsPorTipo.has(g.id) || (aplicaIso && g.aplica_por_iso)
   )
 }
@@ -78,13 +63,11 @@ export async function getDocTiposAplicables(
     rubroEmpresaId = empresa?.rubro_empresa_id ?? null
   }
 
-  // Get doc IDs by tipo_establecimiento
   const { data: porTipo } = await supabase
     .from('documentacion_tipos_establecimiento')
     .select('documento_tipo_id')
     .eq('tipo_establecimiento_id', tipoId)
 
-  // Get doc IDs by rubro
   let porRubro: { documento_tipo_id: string }[] = []
   if (rubroEmpresaId) {
     const { data: d } = await supabase
@@ -99,16 +82,14 @@ export async function getDocTiposAplicables(
 
   const { data: todos } = await supabase
     .from('documento_tipos')
-    .select('id, nombre, aplica_empresa, aplica_establecimiento, aplica_empleado, aplica_por_iso, is_active')
+    .select('*')
     .eq('is_active', true)
     .eq('aplica_establecimiento', true)
     .order('nombre')
 
   if (!todos) return []
 
-  const items = todos as unknown as DocumentType[]
-
-  return items.filter(dt =>
+  return (todos as unknown as DocumentType[]).filter(dt =>
     idsPorTipo.has(dt.id) ||
     idsPorRubro.has(dt.id) ||
     (aplicaIso && dt.aplica_por_iso)

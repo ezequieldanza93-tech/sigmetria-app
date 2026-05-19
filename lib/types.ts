@@ -493,6 +493,7 @@ export interface DocumentType {
   aplica_empresa: boolean
   aplica_establecimiento: boolean
   aplica_empleado: boolean
+  aplica_por_iso: boolean
   is_active: boolean
 }
 
@@ -675,6 +676,7 @@ export interface Gestion {
   categoria_id: string
   descripcion: string | null
   created_at: string
+  aplica_por_iso: boolean
   categoria_gestiones?: { nombre: string; grupo_gestiones?: { nombre: string } | null } | null
 }
 
