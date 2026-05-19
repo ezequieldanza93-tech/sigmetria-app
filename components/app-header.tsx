@@ -90,7 +90,8 @@ export function AppHeader({ fullName, email, consultoraNombre, userRole, systemR
         items.push({ label: est.nombre })
         const parts: string[] = []
         if (est.domicilio) parts.push(est.domicilio)
-        const loc = est.localidades as { nombre: string; provincia: string } | null
+        const locs = est.localidades as { nombre: string; provincia: string }[] | null
+        const loc = locs?.[0]
         if (loc) parts.push(`${loc.nombre}, ${loc.provincia}`)
         setContextAddress(parts.length ? parts.join(' · ') : null)
       } else {
