@@ -22,6 +22,7 @@ import { addOrganizacionToEstablecimiento } from '@/lib/actions/organizacion'
 import { addGestionToEstablecimiento } from '@/lib/actions/gestion-establecimiento'
 import { createRegistroGestion, ejecutarGestion } from '@/lib/actions/registro-gestion'
 import { createObservacionGestion, cerrarObservacion } from '@/lib/actions/observacion-gestion'
+import { createDenuncia, createFeedbackCliente } from '@/lib/actions/establecimiento-info'
 import { createClient } from '@/lib/supabase/client'
 import { TrabajadorModal } from '@/components/trabajador-modal'
 import { formatDate } from '@/lib/utils'
@@ -51,10 +52,13 @@ import type {
   RegistroGestion,
   ObservacionGestion,
   EstadoGestion,
+  Denuncia,
+  FeedbackCliente,
+  FeedbackTipo,
 } from '@/lib/types'
 import { calcularEstadoGestion } from '@/lib/types'
 
-type Tab = 'sectores' | 'stakeholders' | 'siniestros' | 'inspecciones' | 'documentos' | 'asistencia' | 'legajo'
+type Tab = 'sectores' | 'stakeholders' | 'siniestros' | 'inspecciones' | 'documentos' | 'asistencia' | 'legajo' | 'denuncias' | 'feedback'
 
 interface EstablecimientoTabsProps {
   establecimientoId: string
@@ -66,6 +70,8 @@ interface EstablecimientoTabsProps {
   inspecciones: Inspeccion[]
   documentos: Documento[]
   documentTypes: DocumentType[]
+  denuncias: Denuncia[]
+  feedbackClientes: FeedbackCliente[]
   defaultTab?: Tab
 }
 
@@ -2167,6 +2173,230 @@ function ObservacionForm({
   )
 }
 
+// ---- Denuncias Tab ----
+const FEEDBACK_TIPO_LABELS: Record<FeedbackTipo, string> = {
+  positivo: 'Positivo',
+  negativo: 'Negativo',
+  sugerencia: 'Sugerencia',
+}
+
+const FEEDBACK_TIPO_COLORS: Record<FeedbackTipo, string> = {
+  positivo: 'bg-green-100 text-green-700',
+  negativo: 'bg-red-100 text-red-700',
+  sugerencia: 'bg-blue-100 text-blue-700',
+}
+
+function DenunciasTab({
+  denuncias,
+  establecimientoId,
+  canWrite,
+}: {
+  denuncias: Denuncia[]
+  establecimientoId: string
+  canWrite: boolean
+}) {
+  const [showModal, setShowModal] = useState(false)
+  const denunciaAction = createDenuncia.bind(null, establecimientoId)
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-semibold text-gray-900">Denuncias</h3>
+        {canWrite && (
+          <Button size="sm" onClick={() => setShowModal(true)}>+ Nueva Denuncia</Button>
+        )}
+      </div>
+
+      {!denuncias.length ? (
+        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400">
+          No hay denuncias registradas
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="border-b border-gray-100 bg-gray-50">
+              <tr className="text-left">
+                <th className="px-5 py-3 text-gray-500 font-medium">Fecha</th>
+                <th className="px-5 py-3 text-gray-500 font-medium">Descripción</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {denuncias.map(d => (
+                <tr key={d.id} className="hover:bg-gray-50">
+                  <td className="px-5 py-3.5 text-gray-500 whitespace-nowrap">{formatDate(d.fecha)}</td>
+                  <td className="px-5 py-3.5 text-gray-900">{d.descripcion}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <Modal open={showModal} onClose={() => setShowModal(false)} title="Registrar Denuncia">
+        <DenunciaForm
+          action={denunciaAction}
+          onSuccess={() => setShowModal(false)}
+        />
+      </Modal>
+    </div>
+  )
+}
+
+function DenunciaForm({
+  action,
+  onSuccess,
+}: {
+  action: (prev: ActionResult<null> | null, formData: FormData) => Promise<ActionResult<null>>
+  onSuccess: () => void
+}) {
+  const [state, formAction, pending] = useActionState(action, null)
+
+  useEffect(() => {
+    if (state?.success) onSuccess()
+  }, [state])
+
+  const inputCls = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sig-500'
+
+  return (
+    <form action={formAction} className="space-y-4">
+      {state && !state.success && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-3 py-2">{state.error}</div>
+      )}
+
+      <div>
+        <label className="text-sm font-medium text-gray-700 block mb-1">Fecha *</label>
+        <input type="date" name="fecha" required defaultValue={new Date().toISOString().split('T')[0]} className={inputCls} />
+      </div>
+
+      <div>
+        <label className="text-sm font-medium text-gray-700 block mb-1">Descripción *</label>
+        <textarea name="descripcion" required rows={3} className={`${inputCls} resize-none`} />
+      </div>
+
+      <div className="flex gap-3 pt-1">
+        <Button type="submit" disabled={pending}>{pending ? 'Guardando…' : 'Guardar'}</Button>
+      </div>
+    </form>
+  )
+}
+
+// ---- Feedback Clientes Tab ----
+function FeedbackTab({
+  feedbackClientes,
+  establecimientoId,
+  canWrite,
+}: {
+  feedbackClientes: FeedbackCliente[]
+  establecimientoId: string
+  canWrite: boolean
+}) {
+  const [showModal, setShowModal] = useState(false)
+  const feedbackAction = createFeedbackCliente.bind(null, establecimientoId)
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-semibold text-gray-900">Feedback de Clientes</h3>
+        {canWrite && (
+          <Button size="sm" onClick={() => setShowModal(true)}>+ Nuevo Feedback</Button>
+        )}
+      </div>
+
+      {!feedbackClientes.length ? (
+        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400">
+          No hay feedback registrado
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="border-b border-gray-100 bg-gray-50">
+              <tr className="text-left">
+                <th className="px-5 py-3 text-gray-500 font-medium">Fecha</th>
+                <th className="px-5 py-3 text-gray-500 font-medium">Cliente</th>
+                <th className="px-5 py-3 text-gray-500 font-medium">Tipo</th>
+                <th className="px-5 py-3 text-gray-500 font-medium">Descripción</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {feedbackClientes.map(f => (
+                <tr key={f.id} className="hover:bg-gray-50">
+                  <td className="px-5 py-3.5 text-gray-500 whitespace-nowrap">{formatDate(f.fecha)}</td>
+                  <td className="px-5 py-3.5 font-medium text-gray-900">{f.cliente}</td>
+                  <td className="px-5 py-3.5">
+                    <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${FEEDBACK_TIPO_COLORS[f.tipo]}`}>
+                      {FEEDBACK_TIPO_LABELS[f.tipo]}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3.5 text-gray-900">{f.descripcion}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <Modal open={showModal} onClose={() => setShowModal(false)} title="Registrar Feedback">
+        <FeedbackForm
+          action={feedbackAction}
+          onSuccess={() => setShowModal(false)}
+        />
+      </Modal>
+    </div>
+  )
+}
+
+function FeedbackForm({
+  action,
+  onSuccess,
+}: {
+  action: (prev: ActionResult<null> | null, formData: FormData) => Promise<ActionResult<null>>
+  onSuccess: () => void
+}) {
+  const [state, formAction, pending] = useActionState(action, null)
+
+  useEffect(() => {
+    if (state?.success) onSuccess()
+  }, [state])
+
+  const inputCls = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sig-500'
+
+  return (
+    <form action={formAction} className="space-y-4">
+      {state && !state.success && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-3 py-2">{state.error}</div>
+      )}
+
+      <div>
+        <label className="text-sm font-medium text-gray-700 block mb-1">Fecha *</label>
+        <input type="date" name="fecha" required defaultValue={new Date().toISOString().split('T')[0]} className={inputCls} />
+      </div>
+
+      <div>
+        <label className="text-sm font-medium text-gray-700 block mb-1">Cliente *</label>
+        <input type="text" name="cliente" required placeholder="Nombre del cliente" className={inputCls} />
+      </div>
+
+      <div>
+        <label className="text-sm font-medium text-gray-700 block mb-1">Tipo *</label>
+        <select name="tipo" required className={inputCls}>
+          <option value="positivo">Positivo</option>
+          <option value="negativo">Negativo</option>
+          <option value="sugerencia">Sugerencia</option>
+        </select>
+      </div>
+
+      <div>
+        <label className="text-sm font-medium text-gray-700 block mb-1">Descripción *</label>
+        <textarea name="descripcion" required rows={3} className={`${inputCls} resize-none`} />
+      </div>
+
+      <div className="flex gap-3 pt-1">
+        <Button type="submit" disabled={pending}>{pending ? 'Guardando…' : 'Guardar'}</Button>
+      </div>
+    </form>
+  )
+}
+
 // ---- Main component ----
 const TABS: { id: Tab; label: string }[] = [
   { id: 'sectores', label: 'Sectores' },
@@ -2176,6 +2406,8 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'inspecciones', label: 'Inspecciones' },
   { id: 'documentos', label: 'Documentos' },
   { id: 'legajo', label: 'Legajo Técnico' },
+  { id: 'denuncias', label: 'Denuncias' },
+  { id: 'feedback', label: 'Feedback Clientes' },
 ]
 
 export function EstablecimientoTabs({
@@ -2188,6 +2420,8 @@ export function EstablecimientoTabs({
   inspecciones,
   documentos,
   documentTypes,
+  denuncias,
+  feedbackClientes,
   defaultTab,
 }: EstablecimientoTabsProps) {
   const [active, setActive] = useState<Tab>(defaultTab ?? 'sectores')
@@ -2265,6 +2499,20 @@ export function EstablecimientoTabs({
           <p className="font-medium text-gray-600 mb-1">Legajo Técnico</p>
           <p>Próximamente — mostrará todos los documentos con check de legajo técnico.</p>
         </div>
+      )}
+      {active === 'denuncias' && (
+        <DenunciasTab
+          denuncias={denuncias}
+          establecimientoId={establecimientoId}
+          canWrite={canWrite}
+        />
+      )}
+      {active === 'feedback' && (
+        <FeedbackTab
+          feedbackClientes={feedbackClientes}
+          establecimientoId={establecimientoId}
+          canWrite={canWrite}
+        />
       )}
     </div>
   )

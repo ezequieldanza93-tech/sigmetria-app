@@ -16,6 +16,8 @@ import type {
   Riesgo,
   Documento,
   DocumentType,
+  Denuncia,
+  FeedbackCliente,
 } from '@/lib/types'
 
 type Section = 'informacion' | 'planificar' | 'hacer' | 'verificar' | 'actuar'
@@ -76,6 +78,8 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
   let riesgos: Riesgo[] = []
   let documentos: Documento[] = []
   let documentTypes: DocumentType[] = []
+  let denuncias: Denuncia[] = []
+  let feedbackClientes: FeedbackCliente[] = []
 
   if (section === 'informacion') {
     const [s1, s2, s3, s4, s5] = await Promise.all([
@@ -113,6 +117,13 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
     inspecciones = (s3.data ?? []) as unknown as Inspeccion[]
     documentos = (s4.data ?? []) as unknown as Documento[]
     documentTypes = (s5.data ?? []) as unknown as DocumentType[]
+
+    const [d1, d2] = await Promise.all([
+      supabase.from('establecimiento_denuncias').select('*').eq('establecimiento_id', estId).order('fecha', { ascending: false }),
+      supabase.from('establecimiento_feedback_clientes').select('*').eq('establecimiento_id', estId).order('fecha', { ascending: false }),
+    ])
+    denuncias = (d1.data ?? []) as unknown as Denuncia[]
+    feedbackClientes = (d2.data ?? []) as unknown as FeedbackCliente[]
   }
 
   if (section === 'planificar' || section === 'hacer') {
@@ -213,6 +224,8 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
               inspecciones={inspecciones}
               documentos={documentos}
               documentTypes={documentTypes}
+              denuncias={denuncias}
+              feedbackClientes={feedbackClientes}
             />
           </>
         )}

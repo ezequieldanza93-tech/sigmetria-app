@@ -653,6 +653,26 @@ export interface ObservacionGestion {
   directorio_personas?: { nombre: string; apellido: string } | null
 }
 
+export interface Denuncia {
+  id: string
+  establecimiento_id: string
+  fecha: string
+  descripcion: string
+  created_at: string
+}
+
+export type FeedbackTipo = 'positivo' | 'negativo' | 'sugerencia'
+
+export interface FeedbackCliente {
+  id: string
+  establecimiento_id: string
+  fecha: string
+  cliente: string
+  tipo: FeedbackTipo
+  descripcion: string
+  created_at: string
+}
+
 export type EstadoGestion = 'Realizado' | 'Pendiente' | 'Planificado'
 
 export function calcularEstadoGestion(fechaEjecutada: string | null, fechaPlanificada: string): EstadoGestion {
