@@ -974,14 +974,24 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
           </td>
           {canWrite && (
             <td className="px-4 py-1.5">
-              {r.ge_tiene_formulario && !r.fecha_ejecutada && (
+              {r.ge_tiene_formulario && !r.fecha_ejecutada ? (
                 <button
                   onClick={e => { e.stopPropagation(); setExecutingFormulario(r) }}
-                  className="text-xs font-semibold text-white bg-sig-600 hover:bg-sig-700 rounded-lg px-3 py-1 whitespace-nowrap"
+                  className="text-xs font-semibold text-white bg-gray-700 hover:bg-gray-800 rounded-lg px-3 py-1 whitespace-nowrap"
                 >
                   Ejecutar
                 </button>
-              )}
+              ) : r.evidencia_url ? (
+                <a
+                  href={r.evidencia_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={e => e.stopPropagation()}
+                  className="text-xs font-medium text-sig-600 hover:text-sig-800 underline underline-offset-2 whitespace-nowrap"
+                >
+                  Ver PDF
+                </a>
+              ) : null}
             </td>
           )}
         </tr>
