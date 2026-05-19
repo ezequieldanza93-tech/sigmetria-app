@@ -12,14 +12,14 @@ FROM tipos_establecimiento t
 WHERE e.tipo_id IS NULL
   AND e.tipo IS NOT NULL
   AND (
-    (e.tipo IN ('obra_construccion', 'construccion')       AND t.codigo = 'CONSTRUCCION') OR
-    (e.tipo = 'industria'                                  AND t.codigo = 'INDUSTRIA')    OR
-    (e.tipo IN ('local_comercial', 'comercio')             AND t.codigo = 'COMERCIO')     OR
-    (e.tipo IN ('local_administrativo', 'administrativo')  AND t.codigo = 'OFICINA')      OR
-    (e.tipo = 'agro'                                       AND t.codigo = 'AGRO')         OR
-    (e.tipo = 'logistica'                                  AND t.codigo = 'LOGISTICA')    OR
-    (e.tipo = 'centro_salud'                               AND t.codigo = 'CENTRO_SALUD') OR
-    (e.tipo = 'otro'                                       AND t.codigo = 'OTRO')
+    (e.tipo::text IN ('obra_construccion', 'construccion')       AND t.codigo = 'CONSTRUCCION') OR
+    (e.tipo::text = 'industria'                                  AND t.codigo = 'INDUSTRIA')    OR
+    (e.tipo::text IN ('local_comercial', 'comercio')             AND t.codigo = 'COMERCIO')     OR
+    (e.tipo::text IN ('local_administrativo', 'administrativo')  AND t.codigo = 'OFICINA')      OR
+    (e.tipo::text = 'agro'                                       AND t.codigo = 'AGRO')         OR
+    (e.tipo::text = 'logistica'                                  AND t.codigo = 'LOGISTICA')    OR
+    (e.tipo::text = 'centro_salud'                               AND t.codigo = 'CENTRO_SALUD') OR
+    (e.tipo::text = 'otro'                                       AND t.codigo = 'OTRO')
   );
 
 ALTER TABLE establecimientos DROP COLUMN IF EXISTS tipo;

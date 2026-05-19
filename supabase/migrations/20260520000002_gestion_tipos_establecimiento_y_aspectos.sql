@@ -10,6 +10,10 @@ CREATE TABLE IF NOT EXISTS public.gestion_tipos_establecimiento (
 
 ALTER TABLE public.gestion_tipos_establecimiento ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "gestion_tipos_establecimiento: select" ON public.gestion_tipos_establecimiento;
+DROP POLICY IF EXISTS "gestion_tipos_establecimiento: insert" ON public.gestion_tipos_establecimiento;
+DROP POLICY IF EXISTS "gestion_tipos_establecimiento: delete" ON public.gestion_tipos_establecimiento;
+
 CREATE POLICY "gestion_tipos_establecimiento: select"
   ON public.gestion_tipos_establecimiento FOR SELECT TO authenticated
   USING (auth.uid() IS NOT NULL);
@@ -40,6 +44,10 @@ CREATE TABLE IF NOT EXISTS public.documentacion_tipos_establecimiento (
 );
 
 ALTER TABLE public.documentacion_tipos_establecimiento ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "documentacion_tipos_establecimiento: select" ON public.documentacion_tipos_establecimiento;
+DROP POLICY IF EXISTS "documentacion_tipos_establecimiento: insert" ON public.documentacion_tipos_establecimiento;
+DROP POLICY IF EXISTS "documentacion_tipos_establecimiento: delete" ON public.documentacion_tipos_establecimiento;
 
 CREATE POLICY "documentacion_tipos_establecimiento: select"
   ON public.documentacion_tipos_establecimiento FOR SELECT TO authenticated

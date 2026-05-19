@@ -10,6 +10,9 @@ CREATE TABLE IF NOT EXISTS public.rubros_empresa (
 
 ALTER TABLE public.rubros_empresa ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "rubros_empresa: select" ON public.rubros_empresa;
+DROP POLICY IF EXISTS "rubros_empresa: insert" ON public.rubros_empresa;
+DROP POLICY IF EXISTS "rubros_empresa: update" ON public.rubros_empresa;
 CREATE POLICY "rubros_empresa: select" ON public.rubros_empresa FOR SELECT TO authenticated USING (auth.uid() IS NOT NULL);
 CREATE POLICY "rubros_empresa: insert" ON public.rubros_empresa FOR INSERT TO authenticated WITH CHECK (auth.uid() IS NOT NULL);
 CREATE POLICY "rubros_empresa: update" ON public.rubros_empresa FOR UPDATE TO authenticated USING (auth.uid() IS NOT NULL);
@@ -26,6 +29,9 @@ CREATE TABLE IF NOT EXISTS public.documentacion_rubros_empresa (
 
 ALTER TABLE public.documentacion_rubros_empresa ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "documentacion_rubros_empresa: select" ON public.documentacion_rubros_empresa;
+DROP POLICY IF EXISTS "documentacion_rubros_empresa: insert" ON public.documentacion_rubros_empresa;
+DROP POLICY IF EXISTS "documentacion_rubros_empresa: delete" ON public.documentacion_rubros_empresa;
 CREATE POLICY "documentacion_rubros_empresa: select" ON public.documentacion_rubros_empresa FOR SELECT TO authenticated USING (auth.uid() IS NOT NULL);
 CREATE POLICY "documentacion_rubros_empresa: insert" ON public.documentacion_rubros_empresa FOR INSERT TO authenticated WITH CHECK (auth.uid() IS NOT NULL);
 CREATE POLICY "documentacion_rubros_empresa: delete" ON public.documentacion_rubros_empresa FOR DELETE TO authenticated USING (auth.uid() IS NOT NULL);
