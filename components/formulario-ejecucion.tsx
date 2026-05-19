@@ -65,7 +65,6 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
   const [clasificaciones, setClasificaciones] = useState<{ id: string; nombre: string }[]>([])
   const [observaciones, setObservaciones] = useState<ObsDraft[]>([])
   const [fechaEjecutada, setFechaEjecutada] = useState(registro.fecha_ejecutada ?? new Date().toISOString().split('T')[0])
-  const [index, setIndex] = useState(registro.index?.toString() ?? '')
   const [responsableId, setResponsableId] = useState(registro.responsable_id ?? '')
   const [notas, setNotas] = useState(registro.notas ?? '')
   const obsKeyRef = useRef(0)
@@ -188,7 +187,7 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
       fd.set('establecimiento_id', establecimientoId)
       fd.set('respuesta_id', rid)
       fd.set('fecha_ejecutada', fechaEjecutada)
-      fd.set('index', index)
+      fd.set('index', String(pct))
       fd.set('responsable_id', responsableId)
       fd.set('notas', notas)
       fd.set('evidencia_pdf', pdfB64)
@@ -319,17 +318,10 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
                 className={inputCls}
               />
             </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700 block mb-1">Índice *</label>
-              <input
-                type="number"
-                required
-                step="any"
-                value={index}
-                onChange={e => setIndex(e.target.value)}
-                placeholder="Ej: 85, 4.5, 3"
-                className={inputCls}
-              />
+            <div className="flex items-end">
+              <div className="w-full bg-gray-100 rounded-lg px-3 py-2 text-sm text-gray-500">
+                Índice: <strong className="text-gray-800">{pct}%</strong> (auto)
+              </div>
             </div>
           </div>
 
