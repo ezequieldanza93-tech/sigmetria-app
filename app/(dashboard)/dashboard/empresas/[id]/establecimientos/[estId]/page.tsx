@@ -39,7 +39,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
   const { section: rawSection } = await searchParams
   const section: Section = (VALID_SECTIONS as string[]).includes(rawSection ?? '')
     ? (rawSection as Section)
-    : 'informacion'
+    : 'hacer'
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

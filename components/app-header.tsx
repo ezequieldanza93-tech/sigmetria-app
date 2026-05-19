@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { SystemRole, UserRole, ROLE_LABELS, ROLE_COLORS } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 import { WeatherClock } from '@/components/weather-clock'
@@ -34,6 +34,7 @@ function SigmetriaIsotipo() {
 export function AppHeader({ fullName, email, consultoraNombre, userRole, systemRole }: AppHeaderProps) {
   const pathname = usePathname()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [crumbs, setCrumbs] = useState<Crumb[]>([])
   const [contextAddress, setContextAddress] = useState<string | null>(null)
   const [forecastCoords, setForecastCoords] = useState<{ lat: number; lng: number } | null>(null)
@@ -198,7 +199,12 @@ export function AppHeader({ fullName, email, consultoraNombre, userRole, systemR
 
         {/* Right: weather + consultora + user menu */}
         <div className="flex items-center gap-4 shrink-0">
-          {!isHome && <WeatherClock forecastLat={forecastCoords?.lat} forecastLng={forecastCoords?.lng} />}
+          {!isHome && (
+            <WeatherClock
+              forecastLat={searchParams.get('section') === 'informacion' ? forecastCoords?.lat : undefined}
+              forecastLng={searchParams.get('section') === 'informacion' ? forecastCoords?.lng : undefined}
+            />
+          )}
 
           {consultoraNombre && (
             <div className="relative group hidden md:block">
