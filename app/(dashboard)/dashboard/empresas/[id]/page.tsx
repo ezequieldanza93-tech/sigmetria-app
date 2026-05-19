@@ -174,7 +174,7 @@ export default async function EmpresaDetailPage({ params }: Props) {
                       </Link>
                     </td>
                     <td className="px-5 py-4 text-gray-500">
-                      {(est.tipos_establecimiento as { nombre: string } | null)?.nombre ?? '—'}
+                      {(est.tipos_establecimiento as { nombre: string }[])?.[0]?.nombre ?? '—'}
                     </td>
                     <td className="px-5 py-4 text-gray-500">
                       {est.localidades ? [(est.localidades as any).nombre, (est.localidades as any).provincia].join(', ') : '—'}
