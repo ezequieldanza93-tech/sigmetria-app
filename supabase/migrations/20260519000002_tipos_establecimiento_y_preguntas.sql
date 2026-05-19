@@ -33,14 +33,11 @@ UPDATE public.establecimientos e
 SET tipo_id = t.id
 FROM public.tipos_establecimiento t
 WHERE
-  (e.tipo IN ('construccion','obra_construccion') AND t.codigo = 'CONSTRUCCION') OR
-  (e.tipo = 'industria'                           AND t.codigo = 'INDUSTRIA')    OR
-  (e.tipo IN ('comercio','local_comercial')        AND t.codigo = 'COMERCIO')     OR
-  (e.tipo IN ('administrativo','local_administrativo') AND t.codigo = 'OFICINA') OR
-  (e.tipo = 'agro'                                AND t.codigo = 'AGRO')         OR
-  (e.tipo = 'logistica'                           AND t.codigo = 'LOGISTICA')    OR
-  (e.tipo = 'centro_salud'                        AND t.codigo = 'CENTRO_SALUD') OR
-  (e.tipo = 'otro'                                AND t.codigo = 'OTRO');
+  (e.tipo::text = 'obra_construccion'    AND t.codigo = 'CONSTRUCCION') OR
+  (e.tipo::text = 'industria'            AND t.codigo = 'INDUSTRIA')    OR
+  (e.tipo::text = 'local_comercial'      AND t.codigo = 'COMERCIO')     OR
+  (e.tipo::text = 'local_administrativo' AND t.codigo = 'OFICINA')      OR
+  (e.tipo::text = 'otro'                 AND t.codigo = 'OTRO');
 
 -- ── 3. preguntas_riesgo ───────────────────────────────────────
 CREATE TABLE public.preguntas_riesgo (
@@ -159,28 +156,28 @@ INSERT INTO public.establecimiento_respuestas (establecimiento_id, pregunta_id, 
 SELECT e.id, p.id, e.tiene_demolicion
 FROM public.establecimientos e
 JOIN public.preguntas_riesgo p ON p.codigo = 'Q_DEMOLICION'
-WHERE e.tipo IN ('construccion','obra_construccion')
+WHERE e.tipo::text = 'obra_construccion'
 ON CONFLICT DO NOTHING;
 
 INSERT INTO public.establecimiento_respuestas (establecimiento_id, pregunta_id, respuesta)
 SELECT e.id, p.id, e.tiene_excavacion
 FROM public.establecimientos e
 JOIN public.preguntas_riesgo p ON p.codigo = 'Q_EXCAV_120'
-WHERE e.tipo IN ('construccion','obra_construccion')
+WHERE e.tipo::text = 'obra_construccion'
 ON CONFLICT DO NOTHING;
 
 INSERT INTO public.establecimiento_respuestas (establecimiento_id, pregunta_id, respuesta)
 SELECT e.id, p.id, e.tiene_alturas_mayores_6m
 FROM public.establecimientos e
 JOIN public.preguntas_riesgo p ON p.codigo = 'Q_ALTURA'
-WHERE e.tipo IN ('construccion','obra_construccion')
+WHERE e.tipo::text = 'obra_construccion'
 ON CONFLICT DO NOTHING;
 
 INSERT INTO public.establecimiento_respuestas (establecimiento_id, pregunta_id, respuesta)
 SELECT e.id, p.id, e.tiene_equipamiento_izaje
 FROM public.establecimientos e
 JOIN public.preguntas_riesgo p ON p.codigo = 'Q_MULTI_CONTRAT'
-WHERE e.tipo IN ('construccion','obra_construccion')
+WHERE e.tipo::text = 'obra_construccion'
 ON CONFLICT DO NOTHING;
 
 INSERT INTO public.establecimiento_respuestas (establecimiento_id, pregunta_id, respuesta)
