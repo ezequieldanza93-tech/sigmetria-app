@@ -573,7 +573,7 @@ function EjecucionModal({
             type="date"
             name="fecha_ejecutada"
             required
-            defaultValue={registro.fecha_ejecutada ?? ''}
+            defaultValue={registro.fecha_ejecutada ?? new Date().toISOString().split('T')[0]}
             className={inputCls}
           />
         </div>
