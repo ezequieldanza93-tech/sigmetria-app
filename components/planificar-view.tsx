@@ -59,21 +59,21 @@ export function PlanificarView({ establecimientoId }: PlanificarViewProps) {
   const year = new Date().getFullYear()
 
   const gruposUnicos = Array.from(
-    new Set(todasGestiones.map(g => g.categoria_gestiones?.grupo_gestiones?.nombre ?? '').filter(Boolean))
+    new Set(todasGestiones.map(g => g.gestiones_categorias?.gestiones_grupos?.nombre ?? '').filter(Boolean))
   ).sort()
 
   const cats = Array.from(
     new Set(
       todasGestiones
-        .filter(g => !filterGrupo || g.categoria_gestiones?.grupo_gestiones?.nombre === filterGrupo)
-        .map(g => g.categoria_gestiones?.nombre ?? '')
+        .filter(g => !filterGrupo || g.gestiones_categorias?.gestiones_grupos?.nombre === filterGrupo)
+        .map(g => g.gestiones_categorias?.nombre ?? '')
         .filter(Boolean)
     )
   ).sort()
 
   const gestionesFiltradas = todasGestiones.filter(g => {
-    if (filterGrupo && g.categoria_gestiones?.grupo_gestiones?.nombre !== filterGrupo) return false
-    if (filterCat && g.categoria_gestiones?.nombre !== filterCat) return false
+    if (filterGrupo && g.gestiones_categorias?.gestiones_grupos?.nombre !== filterGrupo) return false
+    if (filterCat && g.gestiones_categorias?.nombre !== filterCat) return false
     return true
   })
 

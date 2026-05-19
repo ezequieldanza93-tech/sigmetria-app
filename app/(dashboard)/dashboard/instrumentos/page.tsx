@@ -86,7 +86,7 @@ export default function InstrumentosPage() {
       .eq('is_active', true)
       .order('nombre')
       .then(({ data }) => {
-        const marcasOnly = ((data ?? []) as unknown as Organizacion[]).filter(o => o.tipo_organizaciones?.nombre === 'Marca')
+        const marcasOnly = ((data ?? []) as unknown as Organizacion[]).filter(o => o.organizaciones_tipos?.nombre === 'Marca')
         setMarcas(marcasOnly)
       })
   }, [])

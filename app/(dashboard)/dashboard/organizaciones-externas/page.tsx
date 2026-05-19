@@ -97,7 +97,7 @@ export default function OrganizacionesExternasPage() {
                   <td className="px-5 py-3.5 font-medium text-gray-900">{o.nombre}</td>
                   <td className="px-5 py-3.5">
                     <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
-                      {o.tipo_organizaciones?.nombre ?? '—'}
+                      {o.organizaciones_tipos?.nombre ?? '—'}
                     </span>
                   </td>
                   <td className="px-5 py-3.5 text-gray-500">{o.email ?? '—'}</td>

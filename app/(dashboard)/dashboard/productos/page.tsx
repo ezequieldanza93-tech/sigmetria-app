@@ -99,7 +99,7 @@ export default function ProductosPage() {
     supabase.from('organizaciones_externas').select('id, nombre, tipo_id, organizaciones_tipos(nombre)')
       .eq('is_active', true).order('nombre')
       .then(({ data }) => {
-        const marcasOnly = ((data ?? []) as unknown as Organizacion[]).filter(o => o.tipo_organizaciones?.nombre === 'Marca')
+        const marcasOnly = ((data ?? []) as unknown as Organizacion[]).filter(o => o.organizaciones_tipos?.nombre === 'Marca')
         setMarcas(marcasOnly)
       })
     supabase.from('unidades').select('id, nombre, simbolo, categoria')

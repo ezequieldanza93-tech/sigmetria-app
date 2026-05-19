@@ -7,7 +7,7 @@ import { EmpresaStakeholdersTab } from '@/components/empresa-stakeholders-tab'
 interface Establecimiento {
   id: string
   nombre: string
-  tipos_establecimiento: { nombre: string }[] | null
+  establecimientos_tipos: { nombre: string }[] | null
   localidades: { nombre: string; provincia: string } | null
   cantidad_trabajadores: number | null
 }
@@ -15,7 +15,7 @@ interface Establecimiento {
 interface PersonaLink {
   persona_id: string
   establecimiento_id: string
-  directorio_personas: {
+  personas_directorio: {
     id: string
     nombre: string
     apellido: string
@@ -77,7 +77,7 @@ export function EmpresaRightPanel({
           <button onClick={() => setActiveTab('stakeholders')} className={tabCls('stakeholders')}>
             Stakeholders
             <span className="ml-2 text-xs font-normal text-gray-400">
-              ({new Set(personasLinks.map(p => p.directorio_personas?.id).filter(Boolean)).size + new Set(orgsLinks.map(o => o.organizaciones?.id).filter(Boolean)).size})
+              ({new Set(personasLinks.map(p => p.personas_directorio?.id).filter(Boolean)).size + new Set(orgsLinks.map(o => o.organizaciones?.id).filter(Boolean)).size})
             </span>
           </button>
         </div>
@@ -131,7 +131,7 @@ export function EmpresaRightPanel({
                         </Link>
                       </td>
                       <td className="px-5 py-4 text-gray-500">
-                        {est.tipos_establecimiento?.[0]?.nombre ?? '—'}
+                        {est.establecimientos_tipos?.[0]?.nombre ?? '—'}
                       </td>
                       <td className="px-5 py-4 text-gray-500">
                         {est.localidades ? `${est.localidades.nombre}, ${est.localidades.provincia}` : '—'}

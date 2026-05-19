@@ -90,7 +90,7 @@ export function OrganizacionExternaForm({ action }: Props) {
       .then(({ data }) => {
         if (!data) return
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const ps = (data as any[]).map(r => r.preguntas_riesgo).filter(Boolean)
+        const ps = (data as any[]).map(r => r.riesgos_preguntas).filter(Boolean)
           .sort((a: PreguntaRiesgo, b: PreguntaRiesgo) => a.orden - b.orden)
         setPreguntas(ps as PreguntaRiesgo[])
       })

@@ -21,7 +21,7 @@ interface PersonaDoc {
   fecha_emision: string | null
   fecha_vencimiento: string | null
   created_at: string
-  documento_tipos: { nombre: string } | null
+  documentos_tipos: { nombre: string } | null
 }
 
 interface TrabajadorModalProps {
@@ -260,7 +260,7 @@ export function TrabajadorModal({
               {documentos.map(d => (
                 <div key={d.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-sm">
                   <div>
-                    <p className="font-medium text-gray-800">{d.documento_tipos?.nombre ?? '—'}</p>
+                    <p className="font-medium text-gray-800">{d.documentos_tipos?.nombre ?? '—'}</p>
                     {d.fecha_vencimiento && (
                       <p className={`text-xs ${vencimientoClass(d.fecha_vencimiento)}`}>
                         Vence: {formatDate(d.fecha_vencimiento)}

@@ -104,7 +104,7 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
         if (!data) return
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const ps = (data as any[])
-          .map(row => row.preguntas_riesgo)
+          .map(row => row.riesgos_preguntas)
           .filter(Boolean)
           .sort((a: PreguntaRiesgo, b: PreguntaRiesgo) => a.orden - b.orden)
         setPreguntas(ps as PreguntaRiesgo[])

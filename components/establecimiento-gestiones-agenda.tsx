@@ -66,9 +66,9 @@ interface GestionConJoin extends Omit<GestionEstablecimiento, 'gestiones'> {
   gestiones?: {
     id: string
     nombre: string
-    categoria_gestiones?: {
+    gestiones_categorias?: {
       nombre: string
-      grupo_gestiones?: { nombre: string } | null
+      gestiones_grupos?: { nombre: string } | null
     } | null
   } | null
 }
@@ -163,21 +163,21 @@ function BibliotecaForm({
   }, [state])
 
   const grupos = Array.from(
-    new Set(todasGestiones.map(g => g.categoria_gestiones?.grupo_gestiones?.nombre ?? '').filter(Boolean))
+    new Set(todasGestiones.map(g => g.gestiones_categorias?.gestiones_grupos?.nombre ?? '').filter(Boolean))
   ).sort()
 
   const cats = Array.from(
     new Set(
       todasGestiones
-        .filter(g => !filterGrupo || g.categoria_gestiones?.grupo_gestiones?.nombre === filterGrupo)
-        .map(g => g.categoria_gestiones?.nombre ?? '')
+        .filter(g => !filterGrupo || g.gestiones_categorias?.gestiones_grupos?.nombre === filterGrupo)
+        .map(g => g.gestiones_categorias?.nombre ?? '')
         .filter(Boolean)
     )
   ).sort()
 
   const gestionesFiltradas = todasGestiones.filter(g => {
-    if (filterGrupo && g.categoria_gestiones?.grupo_gestiones?.nombre !== filterGrupo) return false
-    if (filterCat && g.categoria_gestiones?.nombre !== filterCat) return false
+    if (filterGrupo && g.gestiones_categorias?.gestiones_grupos?.nombre !== filterGrupo) return false
+    if (filterCat && g.gestiones_categorias?.nombre !== filterCat) return false
     return true
   })
 
@@ -505,7 +505,7 @@ function EjecucionModal({
       .eq('establecimiento_id', establecimientoId)
       .then(({ data }) => {
         const ps = ((data ?? []) as any[])
-          .map(pe => pe.directorio_personas)
+          .map(pe => pe.personas_directorio)
           .filter(Boolean)
           .sort((a: any, b: any) => a.apellido.localeCompare(b.apellido))
         setPersonas(ps)
@@ -847,8 +847,8 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
                     ge_tiene_formulario: ge?.gestiones?.id ? gestionesConForm.has(ge.gestiones.id) : false,
                     ge_mostrar_lt: ge?.mostrar_lt ?? false,
                     ge_gestion_nombre: ge?.gestiones?.nombre,
-                    ge_categoria_nombre: ge?.gestiones?.categoria_gestiones?.nombre,
-                    ge_grupo_nombre: ge?.gestiones?.categoria_gestiones?.grupo_gestiones?.nombre,
+                    ge_categoria_nombre: ge?.gestiones?.gestiones_categorias?.nombre,
+                    ge_grupo_nombre: ge?.gestiones?.gestiones_categorias?.gestiones_grupos?.nombre,
                     responsable_nombre: r.responsable
                       ? `${r.responsable.nombre} ${r.responsable.apellido}`
                       : undefined,

@@ -6,7 +6,7 @@ import { formatDate } from '@/lib/utils'
 interface PersonaLink {
   persona_id: string
   establecimiento_id: string
-  directorio_personas: {
+  personas_directorio: {
     id: string
     nombre: string
     apellido: string
@@ -54,18 +54,18 @@ export function EmpresaStakeholdersTab({ establecimientos, personasLinks, orgsLi
 
   // Group personas: one entry per unique persona_id with all their establishments
   const personaMap = new Map<string, {
-    persona: PersonaLink['directorio_personas']
+    persona: PersonaLink['personas_directorio']
     establecimientos: string[]
   }>()
   for (const link of filteredPersonasLinks) {
-    if (!link.directorio_personas) continue
-    const existing = personaMap.get(link.directorio_personas.id)
+    if (!link.personas_directorio) continue
+    const existing = personaMap.get(link.personas_directorio.id)
     const estNombre = link.establecimientos?.nombre ?? '—'
     if (existing) {
       existing.establecimientos.push(estNombre)
     } else {
-      personaMap.set(link.directorio_personas.id, {
-        persona: link.directorio_personas,
+      personaMap.set(link.personas_directorio.id, {
+        persona: link.personas_directorio,
         establecimientos: [estNombre],
       })
     }

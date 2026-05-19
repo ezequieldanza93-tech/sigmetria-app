@@ -73,7 +73,7 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
 
   const inputCls = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sig-500'
 
-  const allItems = secciones.flatMap(s => s.formulario_items ?? [])
+  const allItems = secciones.flatMap(s => s.formularios_items ?? [])
 
   function setAnswer(itemId: string, answer: AnswerValue) {
     setRespuestas(prev => {
@@ -108,7 +108,7 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
       .eq('establecimiento_id', establecimientoId)
       .then(({ data }) => {
         const ps = ((data ?? []) as any[])
-          .map((pe: any) => pe.directorio_personas)
+          .map((pe: any) => pe.personas_directorio)
           .filter(Boolean)
           .sort((a: any, b: any) => a.apellido.localeCompare(b.apellido))
         setPersonas(ps)
@@ -480,7 +480,7 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
                 {sec.title}
               </h3>
               <div className="space-y-2">
-                {(sec.formulario_items ?? []).map(renderItem)}
+                {(sec.formularios_items ?? []).map(renderItem)}
               </div>
               {renderObservacionesBlock(sec.id, sec.title)}
             </div>
@@ -559,7 +559,7 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
                   </tr>
                 </thead>
                 <tbody>
-                  {(sec.formulario_items ?? []).map(item => {
+                  {(sec.formularios_items ?? []).map(item => {
                     const r = respuestas.get(item.id)
                     const ansColor = r?.answer === 'cumple' ? 'text-green-700 bg-green-50'
                       : r?.answer === 'no_cumple' ? 'text-red-700 bg-red-50'

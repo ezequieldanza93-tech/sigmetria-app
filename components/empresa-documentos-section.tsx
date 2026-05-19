@@ -58,7 +58,7 @@ export function EmpresaDocumentosSection({ empresaId, documentos, documentTypes,
             </thead>
             <tbody className="divide-y divide-gray-50">
               {documentos.map(d => {
-                const typeName = d.documento_tipos?.nombre ?? '—'
+                const typeName = d.documentos_tipos?.nombre ?? '—'
                 return (
                   <tr key={d.id} className="hover:bg-gray-50">
                     <td className="px-5 py-3.5 font-medium text-gray-900">{typeName}</td>

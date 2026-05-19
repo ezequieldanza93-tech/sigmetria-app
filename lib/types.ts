@@ -209,7 +209,7 @@ export interface Establecimiento {
   empresa_id: string
   nombre: string
   tipo_id: string | null
-  tipos_establecimiento?: { id: string; codigo: string; nombre: string } | null
+  establecimientos_tipos?: { id: string; codigo: string; nombre: string } | null
   domicilio: string | null
   codigo_postal: string | null
   localidad_id: string | null
@@ -232,7 +232,7 @@ export interface Establecimiento {
   created_at: string
   updated_at: string
   localidades?: { nombre: string; provincia: string } | null
-  horarios_establecimiento?: HorarioEstablecimiento[]
+  establecimientos_horarios?: HorarioEstablecimiento[]
 }
 
 export interface HorarioEstablecimiento {
@@ -306,7 +306,7 @@ export interface Subcontratista {
   updated_at: string
   subcontratistas_rubros?: { nombre: string } | null
   localidades?: { nombre: string; provincia: string } | null
-  tipos_establecimiento?: { nombre: string } | null
+  establecimientos_tipos?: { nombre: string } | null
 }
 
 export interface Organizacion {
@@ -319,7 +319,7 @@ export interface Organizacion {
   is_active: boolean
   created_at: string
   updated_at: string
-  tipo_organizaciones?: { nombre: string } | null
+  organizaciones_tipos?: { nombre: string } | null
 }
 
 export interface DirectorioPersona {
@@ -384,7 +384,7 @@ export interface AsistenciaDiaria {
   observaciones: string | null
   registrado_por: string | null
   created_at: string
-  directorio_personas?: { nombre: string; apellido: string } | null
+  personas_directorio?: { nombre: string; apellido: string } | null
 }
 
 export interface PuestoDeTrabajo {
@@ -403,7 +403,7 @@ export interface TrabajadorPuesto {
   puesto_id: string
   fecha_desde: string | null
   created_at: string
-  directorio_personas?: DirectorioPersona
+  personas_directorio?: DirectorioPersona
 }
 
 export interface Siniestro {
@@ -451,8 +451,8 @@ export interface Capacitacion {
   duracion_horas: number | null
   created_at: string
   updated_at: string
-  directorio_personas?: { nombre: string; apellido: string } | null
-  capacitacion_asistentes?: { count: number }[]
+  personas_directorio?: { nombre: string; apellido: string } | null
+  capacitaciones_asistentes?: { count: number }[]
 }
 
 export interface Riesgo {
@@ -479,7 +479,7 @@ export interface Medicion {
   unidad_id: string | null
   unidades?: { nombre: string; simbolo: string } | null
   sector_id: string | null
-  sectores_establecimiento?: { nombre: string } | null
+  establecimientos_sectores?: { nombre: string } | null
   cumple_normativa: boolean
   observaciones: string | null
   realizado_por: string | null
@@ -501,7 +501,7 @@ export interface Documento {
   empresa_id: string | null
   establecimiento_id: string | null
   tipo_id: string | null
-  documento_tipos: { nombre: string } | null
+  documentos_tipos: { nombre: string } | null
   archivo_url: string | null
   fecha_emision: string | null
   fecha_vencimiento: string | null
@@ -514,7 +514,7 @@ export interface EmpresaDocumento {
   id: string
   empresa_id: string
   tipo_id: string | null
-  documento_tipos: { nombre: string } | null
+  documentos_tipos: { nombre: string } | null
   archivo_url: string | null
   fecha_emision: string | null
   fecha_vencimiento: string | null
@@ -525,22 +525,22 @@ export interface EmpleadoDocumentoLegajo {
   id: string
   persona_id: string
   tipo_id: string | null
-  documento_tipos: { nombre: string } | null
+  documentos_tipos: { nombre: string } | null
   archivo_url: string | null
   fecha_emision: string | null
   fecha_vencimiento: string | null
   created_at: string
-  directorio_personas: { nombre: string; apellido: string; legajo: string | null } | null
+  personas_directorio: { nombre: string; apellido: string; legajo: string | null } | null
 }
 
 export interface LegajoGestion {
   id: string
   fecha_planificada: string
   notas: string | null
-  gestion_establecimiento: {
+  gestiones_establecimientos: {
     gestiones: {
       nombre: string
-      categoria_gestiones: { nombre: string } | null
+      gestiones_categorias: { nombre: string } | null
     } | null
   } | null
 }
@@ -638,7 +638,7 @@ export interface Matricula {
   certificado_url: string | null
   activa: boolean
   created_at: string
-  directorio_personas?: { nombre: string; apellido: string } | null
+  personas_directorio?: { nombre: string; apellido: string } | null
   organizaciones_externas?: { nombre: string } | null
 }
 
@@ -666,7 +666,7 @@ export interface CategoriaGestion {
   grupo_id: string
   descripcion: string | null
   created_at: string
-  grupo_gestiones?: { nombre: string } | null
+  gestiones_grupos?: { nombre: string } | null
 }
 
 export interface Gestion {
@@ -676,7 +676,7 @@ export interface Gestion {
   descripcion: string | null
   created_at: string
   aplica_por_iso: boolean
-  categoria_gestiones?: { nombre: string; grupo_gestiones?: { nombre: string } | null } | null
+  gestiones_categorias?: { nombre: string; gestiones_grupos?: { nombre: string } | null } | null
 }
 
 export interface GestionEstablecimiento {
@@ -701,7 +701,7 @@ export interface RegistroGestion {
   created_at: string
   updated_at: string
   profiles?: { full_name: string } | null
-  directorio_personas?: { nombre: string; apellido: string } | null
+  personas_directorio?: { nombre: string; apellido: string } | null
 }
 
 export interface ObservacionCategoria {
@@ -725,9 +725,9 @@ export interface ObservacionGestion {
   evidencia_cierre_url: string | null
   created_at: string
   updated_at: string
-  clasificacion_observaciones?: { nombre: string } | null
-  observacion_categoria?: { nombre: string; nivel: number } | null
-  directorio_personas?: { nombre: string; apellido: string } | null
+  observaciones_clasificaciones?: { nombre: string } | null
+  observaciones_categorias?: { nombre: string; nivel: number } | null
+  personas_directorio?: { nombre: string; apellido: string } | null
 }
 
 export interface Denuncia {
@@ -768,7 +768,7 @@ export interface FormularioSeccion {
   title: string
   order_index: number
   created_at: string
-  formulario_items?: FormularioItem[]
+  formularios_items?: FormularioItem[]
 }
 
 export interface FormularioItem {

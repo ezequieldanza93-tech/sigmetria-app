@@ -52,13 +52,13 @@ export function ActuarView({ establecimientoId }: { establecimientoId: string })
           notas: string | null
           observaciones: string | null
           gestion_establecimiento_id: string
-          gestion_establecimiento: {
+          gestiones_establecimientos: {
             gestiones: {
               id: string
               nombre: string
-              categoria_gestiones: {
+              gestiones_categorias: {
                 nombre: string
-                grupo_gestiones: { nombre: string } | null
+                gestiones_grupos: { nombre: string } | null
               } | null
             }
           }
@@ -77,13 +77,13 @@ export function ActuarView({ establecimientoId }: { establecimientoId: string })
           .then(({ data: obsData }) => {
             const full: ObsRow[] = ((obsData ?? []) as unknown as ObsRow[]).map(o => {
               const rg = rgMap.get(o.registro_gestion_id)
-              const gestionInfo = rg?.gestion_establecimiento?.gestiones
+              const gestionInfo = rg?.gestiones_establecimientos?.gestiones
               return {
                 ...(o as unknown as ObservacionGestion),
                 fecha_ejecutada: rg?.fecha_ejecutada ?? null,
                 gestion_nombre: gestionInfo?.nombre,
-                gestion_categoria: gestionInfo?.categoria_gestiones?.nombre,
-                gestion_grupo: gestionInfo?.categoria_gestiones?.grupo_gestiones?.nombre,
+                gestion_categoria: gestionInfo?.gestiones_categorias?.nombre,
+                gestion_grupo: gestionInfo?.gestiones_categorias?.gestiones_grupos?.nombre,
                 registro_notas: rg?.notas ?? null,
                 registro_observaciones: rg?.observaciones ?? null,
                 registro_fecha_planificada: rg?.fecha_planificada,
@@ -153,15 +153,15 @@ export function ActuarView({ establecimientoId }: { establecimientoId: string })
                         {obs.gestion_nombre}
                       </button>
                     )}
-                    {obs.clasificacion_observaciones && (
+                    {obs.observaciones_clasificaciones && (
                       <span className="text-xs text-gray-400">
-                        {obs.clasificacion_observaciones.nombre}
+                        {obs.observaciones_clasificaciones.nombre}
                       </span>
                     )}
-                    {obs.observacion_categoria && (
+                    {obs.observaciones_categorias && (
                       <span className="inline-flex items-center gap-1.5 text-xs text-gray-500">
-                        <span className={`w-2 h-2 rounded-full ${catDot[obs.observacion_categoria.nivel] ?? 'bg-gray-300'}`} />
-                        {obs.observacion_categoria.nombre}
+                        <span className={`w-2 h-2 rounded-full ${catDot[obs.observaciones_categorias.nivel] ?? 'bg-gray-300'}`} />
+                        {obs.observaciones_categorias.nombre}
                       </span>
                     )}
                     <span className="text-xs text-gray-400">
@@ -172,9 +172,9 @@ export function ActuarView({ establecimientoId }: { establecimientoId: string })
                         Gestión ejecutada: {obs.fecha_ejecutada}
                       </span>
                     )}
-                    {obs.directorio_personas && (
+                    {obs.personas_directorio && (
                       <span className="text-xs text-gray-400">
-                        Responsable: {obs.directorio_personas.apellido}, {obs.directorio_personas.nombre}
+                        Responsable: {obs.personas_directorio.apellido}, {obs.personas_directorio.nombre}
                       </span>
                     )}
                     {obs.fecha_cierre && (
@@ -232,11 +232,11 @@ export function ActuarView({ establecimientoId }: { establecimientoId: string })
             </div>
 
             {/* Responsable */}
-            {selectedObs.directorio_personas && (
+            {selectedObs.personas_directorio && (
               <div>
                 <p className="text-xs text-gray-400 mb-0.5">Responsable</p>
                 <p className="text-gray-900">
-                  {selectedObs.directorio_personas.apellido}, {selectedObs.directorio_personas.nombre}
+                  {selectedObs.personas_directorio.apellido}, {selectedObs.personas_directorio.nombre}
                 </p>
               </div>
             )}
@@ -260,16 +260,16 @@ export function ActuarView({ establecimientoId }: { establecimientoId: string })
             {/* Detalle de la observación */}
             <div className="border-t border-gray-100 pt-4">
               <p className="text-xs text-gray-400 mb-0.5">Observación de seguimiento</p>
-              {selectedObs.observacion_categoria && (
+              {selectedObs.observaciones_categorias && (
                 <span className="inline-flex items-center gap-1.5 text-xs text-gray-500 mb-2">
                   <span className={`w-2 h-2 rounded-full ${
-                    selectedObs.observacion_categoria.nivel === 4 ? 'bg-red-700' :
-                    selectedObs.observacion_categoria.nivel === 3 ? 'bg-red-500' :
-                    selectedObs.observacion_categoria.nivel === 2 ? 'bg-orange-500' :
-                    selectedObs.observacion_categoria.nivel === 1 ? 'bg-yellow-400' :
+                    selectedObs.observaciones_categorias.nivel === 4 ? 'bg-red-700' :
+                    selectedObs.observaciones_categorias.nivel === 3 ? 'bg-red-500' :
+                    selectedObs.observaciones_categorias.nivel === 2 ? 'bg-orange-500' :
+                    selectedObs.observaciones_categorias.nivel === 1 ? 'bg-yellow-400' :
                     'bg-gray-300'
                   }`} />
-                  {selectedObs.observacion_categoria.nombre}
+                  {selectedObs.observaciones_categorias.nombre}
                 </span>
               )}
               <p className="text-gray-900 font-medium">{selectedObs.descripcion}</p>

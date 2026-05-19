@@ -434,8 +434,8 @@ function PuestoRow({
                       onClick={() => setSelectedEp(ep)}
                       className="text-left text-sig-500 hover:text-sig-700 font-medium"
                     >
-                      {ep.directorio_personas?.apellido}, {ep.directorio_personas?.nombre}
-                      {ep.directorio_personas?.dni && <span className="text-gray-400 text-xs font-normal ml-2">DNI {ep.directorio_personas.dni}</span>}
+                      {ep.personas_directorio?.apellido}, {ep.personas_directorio?.nombre}
+                      {ep.personas_directorio?.dni && <span className="text-gray-400 text-xs font-normal ml-2">DNI {ep.personas_directorio.dni}</span>}
                     </button>
                     {canDelete && (
                       <button
@@ -517,9 +517,9 @@ function PuestoRow({
         </div>
       )}
 
-      {selectedEp?.directorio_personas && (
+      {selectedEp?.personas_directorio && (
         <TrabajadorModal
-          persona={selectedEp.directorio_personas}
+          persona={selectedEp.personas_directorio}
           open={!!selectedEp}
           onClose={() => setSelectedEp(null)}
           establecimientoId={establecimientoId}
@@ -720,7 +720,7 @@ function SectoresTab({
             const ops = new Set<string>()
             const adm = new Set<string>()
             ;(puestos ?? []).forEach((p: any) => {
-              ;(p.empleado_puesto ?? []).forEach((ep: any) => {
+              ;(p.puestos_personas ?? []).forEach((ep: any) => {
                 if (p.tipo === 'operativo') ops.add(ep.persona_id)
                 else adm.add(ep.persona_id)
               })
@@ -881,7 +881,7 @@ function StakeholdersTab({
       .select('personas_directorio(id, nombre, apellido, dni, fecha_nacimiento, fecha_ingreso, legajo, telefono, email, tipo_id, personas_tipos(nombre), organizacion_id, notas, is_active, created_at, updated_at)')
       .eq('establecimiento_id', establecimientoId)
       .then(({ data }) => {
-        const list = ((data ?? []) as unknown as { directorio_personas: DirectorioPersona }[]).map(r => r.directorio_personas).filter(Boolean)
+        const list = ((data ?? []) as unknown as { personas_directorio: DirectorioPersona }[]).map(r => r.personas_directorio).filter(Boolean)
         setPersonas(list)
       })
   }
@@ -1088,7 +1088,7 @@ function StakeholdersTab({
                       <td className="px-5 py-3.5 font-medium text-gray-900">{o.nombre}</td>
                       <td className="px-5 py-3.5">
                         <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
-                          {o.tipo_organizaciones?.nombre ?? '—'}
+                          {o.organizaciones_tipos?.nombre ?? '—'}
                         </span>
                       </td>
                       <td className="px-5 py-3.5 text-gray-500">{o.email ?? '—'}</td>
@@ -1148,7 +1148,7 @@ function AsistenciaTab({
       .select('personas_directorio(id, nombre, apellido, personas_tipos(nombre))')
       .eq('establecimiento_id', establecimientoId)
       .then(({ data }) => {
-        const list = ((data ?? []) as unknown as { directorio_personas: DirectorioPersona }[]).map(r => r.directorio_personas).filter(Boolean)
+        const list = ((data ?? []) as unknown as { personas_directorio: DirectorioPersona }[]).map(r => r.personas_directorio).filter(Boolean)
         setPersonas(list)
       })
 
@@ -1260,7 +1260,7 @@ function AsistenciaTab({
               {registros.map(r => (
                 <tr key={r.id} className="hover:bg-gray-50">
                   <td className="px-5 py-3.5 font-medium text-gray-900">
-                    {r.directorio_personas ? `${r.directorio_personas.apellido}, ${r.directorio_personas.nombre}` : '—'}
+                    {r.personas_directorio ? `${r.personas_directorio.apellido}, ${r.personas_directorio.nombre}` : '—'}
                   </td>
                   <td className="px-5 py-3.5 text-gray-500">{formatDate(r.fecha)}</td>
                   <td className="px-5 py-3.5 text-gray-700">{new Date(r.hora_entrada).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}</td>
@@ -1602,7 +1602,7 @@ function DocumentosTab({
             </thead>
             <tbody className="divide-y divide-gray-50">
               {documentos.map(d => {
-                const typeName = d.documento_tipos?.nombre ?? '—'
+                const typeName = d.documentos_tipos?.nombre ?? '—'
                 return (
                   <tr key={d.id} className="hover:bg-gray-50">
                     <td className="px-5 py-3.5 font-medium text-gray-900">{typeName}</td>
@@ -1651,8 +1651,8 @@ function AddGestionTree({
 
   const byGrupo = new Map<string, Map<string, Gestion[]>>()
   for (const g of gestionsNotAdded) {
-    const grupoNombre = g.categoria_gestiones?.grupo_gestiones?.nombre ?? 'Sin grupo'
-    const catNombre = g.categoria_gestiones?.nombre ?? 'Sin categoría'
+    const grupoNombre = g.gestiones_categorias?.gestiones_grupos?.nombre ?? 'Sin grupo'
+    const catNombre = g.gestiones_categorias?.nombre ?? 'Sin categoría'
     if (!byGrupo.has(grupoNombre)) byGrupo.set(grupoNombre, new Map())
     const byCat = byGrupo.get(grupoNombre)!
     if (!byCat.has(catNombre)) byCat.set(catNombre, [])
@@ -1874,7 +1874,7 @@ function GestionesTab({ establecimientoId, canWrite }: { establecimientoId: stri
             ) : (() => {
               const byGrupo = new Map<string, GestionEstablecimiento[]>()
               for (const ge of gestionesEstablecimiento) {
-                const g = ge.gestiones?.categoria_gestiones?.grupo_gestiones?.nombre ?? 'Sin grupo'
+                const g = ge.gestiones?.gestiones_categorias?.gestiones_grupos?.nombre ?? 'Sin grupo'
                 if (!byGrupo.has(g)) byGrupo.set(g, [])
                 byGrupo.get(g)!.push(ge)
               }
@@ -1891,8 +1891,8 @@ function GestionesTab({ establecimientoId, canWrite }: { establecimientoId: stri
                               <div className="flex items-center justify-between mb-2">
                                 <div>
                                   <p className="font-medium text-gray-900 text-sm">{ge.gestiones?.nombre ?? '—'}</p>
-                                  {ge.gestiones?.categoria_gestiones && (
-                                    <p className="text-xs text-gray-400">{ge.gestiones.categoria_gestiones.nombre}</p>
+                                  {ge.gestiones?.gestiones_categorias && (
+                                    <p className="text-xs text-gray-400">{ge.gestiones.gestiones_categorias.nombre}</p>
                                   )}
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -1925,8 +1925,8 @@ function GestionesTab({ establecimientoId, canWrite }: { establecimientoId: stri
                                       <div key={r.id} className="flex items-center justify-between text-xs bg-gray-50 rounded-lg px-3 py-1.5">
                                         <span className="text-gray-600">{r.fecha_planificada}</span>
                                         <span className={`px-2 py-0.5 rounded-full font-medium ${estadoColors[estado]}`}>{estado}</span>
-                                        {r.directorio_personas && (
-                                          <span className="text-gray-400">{r.directorio_personas.apellido}</span>
+                                        {r.personas_directorio && (
+                                          <span className="text-gray-400">{r.personas_directorio.apellido}</span>
                                         )}
                                       </div>
                                     )
@@ -1963,8 +1963,8 @@ function GestionesTab({ establecimientoId, canWrite }: { establecimientoId: stri
                           <div>
                             <p className="font-medium text-gray-900 text-sm">{ge?.gestiones?.nombre ?? '—'}</p>
                             <p className="text-xs text-gray-400 mt-0.5">Planificado: {r.fecha_planificada}</p>
-                            {r.directorio_personas && (
-                              <p className="text-xs text-gray-400">{r.directorio_personas.apellido}, {r.directorio_personas.nombre}</p>
+                            {r.personas_directorio && (
+                              <p className="text-xs text-gray-400">{r.personas_directorio.apellido}, {r.personas_directorio.nombre}</p>
                             )}
                           </div>
                           <div className="flex items-center gap-2">
@@ -2045,8 +2045,8 @@ function GestionesTab({ establecimientoId, canWrite }: { establecimientoId: stri
                         <div className="flex-1 min-w-0">
                           <p className="text-sm text-gray-900">{obs.descripcion}</p>
                           <p className="text-xs text-gray-400 mt-0.5">Planificado: {obs.fecha_planificada}</p>
-                          {obs.directorio_personas && (
-                            <p className="text-xs text-gray-400">Responsable: {obs.directorio_personas.apellido}</p>
+                          {obs.personas_directorio && (
+                            <p className="text-xs text-gray-400">Responsable: {obs.personas_directorio.apellido}</p>
                           )}
                           {obs.fecha_cierre && (
                             <p className="text-xs text-sig-500 mt-0.5">Cerrado: {obs.fecha_cierre}</p>
@@ -2472,9 +2472,9 @@ function LegajoTab({
     </div>
   )
 
-  const trabajadoresAgrupados = trabajadorDocumentos.reduce<Record<string, { persona: EmpleadoDocumentoLegajo['directorio_personas']; docs: EmpleadoDocumentoLegajo[] }>>((acc, d) => {
+  const trabajadoresAgrupados = trabajadorDocumentos.reduce<Record<string, { persona: EmpleadoDocumentoLegajo['personas_directorio']; docs: EmpleadoDocumentoLegajo[] }>>((acc, d) => {
     const key = d.persona_id
-    if (!acc[key]) acc[key] = { persona: d.directorio_personas, docs: [] }
+    if (!acc[key]) acc[key] = { persona: d.personas_directorio, docs: [] }
     acc[key].docs.push(d)
     return acc
   }, {})
@@ -2484,7 +2484,7 @@ function LegajoTab({
       {seccion('Documentos de la Empresa', empresaDocumentos.length, (
         <DocTable rows={empresaDocumentos.map(d => ({
           id: d.id,
-          tipo: d.documento_tipos?.nombre ?? '—',
+          tipo: d.documentos_tipos?.nombre ?? '—',
           vencimiento: d.fecha_vencimiento,
           url: d.archivo_url,
         }))} />
@@ -2493,7 +2493,7 @@ function LegajoTab({
       {seccion('Documentos del Establecimiento', establecimientoDocumentos.length, (
         <DocTable rows={establecimientoDocumentos.map(d => ({
           id: d.id,
-          tipo: d.documento_tipos?.nombre ?? '—',
+          tipo: d.documentos_tipos?.nombre ?? '—',
           vencimiento: d.fecha_vencimiento,
           url: d.archivo_url,
         }))} />
@@ -2513,10 +2513,10 @@ function LegajoTab({
             </thead>
             <tbody className="divide-y divide-gray-50">
               {gestionesLegajo.map(g => {
-                const gestion = g.gestion_establecimiento?.gestiones
+                const gestion = g.gestiones_establecimientos?.gestiones
                 return (
                   <tr key={g.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-xs text-gray-500">{gestion?.categoria_gestiones?.nombre ?? '—'}</td>
+                    <td className="px-4 py-3 text-xs text-gray-500">{gestion?.gestiones_categorias?.nombre ?? '—'}</td>
                     <td className="px-4 py-3 font-medium text-gray-900 text-sm">{gestion?.nombre ?? '—'}</td>
                     <td className="px-4 py-3 text-xs text-gray-500">{formatDate(g.fecha_planificada)}</td>
                   </tr>
@@ -2539,7 +2539,7 @@ function LegajoTab({
                 </p>
                 <DocTable rows={docs.map(d => ({
                   id: d.id,
-                  tipo: d.documento_tipos?.nombre ?? '—',
+                  tipo: d.documentos_tipos?.nombre ?? '—',
                   vencimiento: d.fecha_vencimiento,
                   url: d.archivo_url,
                 }))} />
