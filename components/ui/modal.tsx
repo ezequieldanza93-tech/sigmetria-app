@@ -9,9 +9,15 @@ interface ModalProps {
   title: string
   children: React.ReactNode
   className?: string
+  size?: 'default' | 'full'
 }
 
-export function Modal({ open, onClose, title, children, className }: ModalProps) {
+const SIZE_CLASSES = {
+  default: 'max-w-lg',
+  full: 'max-w-4xl',
+}
+
+export function Modal({ open, onClose, title, children, className, size = 'default' }: ModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
 
   useEffect(() => {
@@ -29,7 +35,8 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
       ref={dialogRef}
       onClose={onClose}
       className={cn(
-        'rounded-2xl border border-gray-200 shadow-xl p-0 backdrop:bg-black/40 max-w-lg w-full',
+        'rounded-2xl border border-gray-200 shadow-xl p-0 backdrop:bg-black/40 w-full',
+        SIZE_CLASSES[size],
         className
       )}
       onClick={e => {

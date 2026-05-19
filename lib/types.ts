@@ -684,6 +684,53 @@ export function calcularEstadoGestion(fechaEjecutada: string | null, fechaPlanif
   return planificada < hoy ? 'Pendiente' : 'Planificado'
 }
 
+// ---- Formularios ----
+export interface FormularioSeccion {
+  id: string
+  gestion_id: string
+  title: string
+  order_index: number
+  created_at: string
+  formulario_items?: FormularioItem[]
+}
+
+export interface FormularioItem {
+  id: string
+  section_id: string
+  question: string
+  order_index: number
+  response_type: string
+  required: boolean
+  numero_item: number | null
+  created_at: string
+}
+
+export interface FormularioRespuesta {
+  id: string
+  gestion_id: string
+  establecimiento_id: string
+  executed_by: string | null
+  executed_at: string | null
+  status: string
+}
+
+export interface FormularioItemRespuesta {
+  id: string
+  respuesta_id: string
+  item_id: string
+  answer: string
+  comment: string | null
+  created_at: string
+}
+
+export type AnswerValue = 'cumple' | 'no_cumple' | 'no_aplica'
+
+export interface RespuestaDraft {
+  item_id: string
+  answer: AnswerValue | null
+  comment: string
+}
+
 // ---- Action result ----
 export type ActionResult<T = null> =
   | { success: true; data: T }

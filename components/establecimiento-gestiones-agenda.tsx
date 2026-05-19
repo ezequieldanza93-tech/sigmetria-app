@@ -13,6 +13,7 @@ import {
   createCategoriaGestion,
 } from '@/lib/actions/gestion-establecimiento'
 import { ejecutarGestion, crearObservaciones } from '@/lib/actions/registro-gestion'
+import { FormularioEjecucion } from '@/components/formulario-ejecucion'
 import { RIESGO_NIVEL_LABELS } from '@/lib/constants'
 import { RIESGO_NIVEL_COLORS } from '@/lib/types'
 
@@ -53,6 +54,8 @@ interface FullRegistro extends RegistroGestion {
   ge_categoria_nombre?: string
   ge_grupo_nombre?: string
   ge_id?: string
+  ge_gestion_id?: string
+  ge_tiene_formulario?: boolean
   responsable_nombre?: string
   aprobado_nombre?: string
 }
@@ -750,6 +753,7 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
   const [categorias, setCategorias] = useState<CategoriaGestion[]>([])
   const [showRiesgos, setShowRiesgos] = useState(false)
   const [editingRegistro, setEditingRegistro] = useState<FullRegistro | null>(null)
+  const [executingFormulario, setExecutingFormulario] = useState<FullRegistro | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
 
   // Task 4: resizable columns with localStorage
@@ -799,7 +803,7 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
     const supabase = createClient()
     supabase
       .from('gestion_establecimiento')
-      .select('id, gestiones(id, nombre, categoria_gestiones(nombre, grupo_gestiones(nombre)))')
+      .select('id, gestiones!inner(id, nombre, categoria_gestiones(nombre, grupo_gestiones(nombre)))')
       .eq('establecimiento_id', establecimientoId)
       .then(({ data: geData, error: geError }) => {
         if (geError) console.error('[GestionesAgenda] gestion_establecimiento:', geError.message)
@@ -808,6 +812,8 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
         if (geIds.length === 0) { setRegistros([]); return }
         const geMap = new Map<string, GestionConJoin>()
         for (const ge of ges) geMap.set(ge.id, ge)
+
+        const gestionIds = ges.map(ge => ge.gestiones?.id).filter(Boolean) as string[]
 
         supabase
           .from('registro_gestiones')
@@ -822,23 +828,34 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
               responsable: { nombre: string; apellido: string } | null
               aprobado_por: { nombre: string; apellido: string } | null
             }
-            const full: FullRegistro[] = ((regData ?? []) as unknown as RegRaw[]).map(r => {
-              const ge = geMap.get(r.gestion_establecimiento_id)
-              return {
-                ...r,
-                ge_id: ge?.id,
-                ge_gestion_nombre: ge?.gestiones?.nombre,
-                ge_categoria_nombre: ge?.gestiones?.categoria_gestiones?.nombre,
-                ge_grupo_nombre: ge?.gestiones?.categoria_gestiones?.grupo_gestiones?.nombre,
-                responsable_nombre: r.responsable
-                  ? `${r.responsable.nombre} ${r.responsable.apellido}`
-                  : undefined,
-                aprobado_nombre: r.aprobado_por
-                  ? `${r.aprobado_por.nombre} ${r.aprobado_por.apellido}`
-                  : undefined,
-              }
-            })
-            setRegistros(full)
+
+            supabase
+              .from('formulario_secciones')
+              .select('gestion_id')
+              .in('gestion_id', gestionIds)
+              .then(({ data: seccionesData }) => {
+                const gestionesConForm = new Set((seccionesData ?? []).map(s => s.gestion_id))
+
+                const full: FullRegistro[] = ((regData ?? []) as unknown as RegRaw[]).map(r => {
+                  const ge = geMap.get(r.gestion_establecimiento_id)
+                  return {
+                    ...r,
+                    ge_id: ge?.id,
+                    ge_gestion_id: ge?.gestiones?.id,
+                    ge_tiene_formulario: ge?.gestiones?.id ? gestionesConForm.has(ge.gestiones.id) : false,
+                    ge_gestion_nombre: ge?.gestiones?.nombre,
+                    ge_categoria_nombre: ge?.gestiones?.categoria_gestiones?.nombre,
+                    ge_grupo_nombre: ge?.gestiones?.categoria_gestiones?.grupo_gestiones?.nombre,
+                    responsable_nombre: r.responsable
+                      ? `${r.responsable.nombre} ${r.responsable.apellido}`
+                      : undefined,
+                    aprobado_nombre: r.aprobado_por
+                      ? `${r.aprobado_por.nombre} ${r.aprobado_por.apellido}`
+                      : undefined,
+                  }
+                })
+                setRegistros(full)
+              })
           })
       })
   }
@@ -921,7 +938,10 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
       const estado = calcularEstadoGestion(r.fecha_ejecutada ?? null, r.fecha_planificada)
 
       return (
-        <tr key={r.id} className={`${ROW_BG_COLORS[estado]} cursor-pointer`} onClick={() => setEditingRegistro(r)}>
+        <tr key={r.id} className={`${ROW_BG_COLORS[estado]} cursor-pointer`} onClick={() => {
+          if (r.ge_tiene_formulario && !r.fecha_ejecutada) setExecutingFormulario(r)
+          else setEditingRegistro(r)
+        }}>
           <td className="px-4 py-1.5 text-gray-400 text-xs text-center">{idx + 1}</td>
           <td className="px-4 py-1.5 font-medium text-gray-900" style={{ maxWidth: colW('gestion'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {r.ge_gestion_nombre ?? '—'}
@@ -938,12 +958,29 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
           </td>
           {canWrite && (
             <td className="px-4 py-1.5">
-              <button
-                onClick={e => { e.stopPropagation(); setEditingRegistro(r) }}
-                className="text-xs font-medium text-sig-600 hover:text-sig-800 underline underline-offset-2 whitespace-nowrap"
-              >
-                {r.fecha_ejecutada ? 'Editar evidencia' : 'Cargar evidencia'}
-              </button>
+              {r.ge_tiene_formulario && !r.fecha_ejecutada ? (
+                <div className="flex gap-2">
+                  <button
+                    onClick={e => { e.stopPropagation(); setExecutingFormulario(r) }}
+                    className="text-xs font-semibold text-white bg-sig-600 hover:bg-sig-700 rounded-lg px-3 py-1 whitespace-nowrap"
+                  >
+                    Ejecutar
+                  </button>
+                  <button
+                    onClick={e => { e.stopPropagation(); setEditingRegistro(r) }}
+                    className="text-xs font-medium text-gray-500 hover:text-gray-700 underline underline-offset-2 whitespace-nowrap"
+                  >
+                    Cargar
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={e => { e.stopPropagation(); setEditingRegistro(r) }}
+                  className="text-xs font-medium text-sig-600 hover:text-sig-800 underline underline-offset-2 whitespace-nowrap"
+                >
+                  {r.fecha_ejecutada ? 'Editar evidencia' : 'Cargar evidencia'}
+                </button>
+              )}
             </td>
           )}
         </tr>
@@ -1254,6 +1291,14 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
       </div>
 
       {/* Modals */}
+      {executingFormulario && (
+        <FormularioEjecucion
+          registro={executingFormulario}
+          establecimientoId={establecimientoId}
+          onClose={() => setExecutingFormulario(null)}
+          onSuccess={() => { setExecutingFormulario(null); setRefreshKey(k => k + 1) }}
+        />
+      )}
       {editingRegistro && (
         <EjecucionModal
           registro={editingRegistro}
