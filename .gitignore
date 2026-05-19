@@ -11,3 +11,5 @@ yarn-error.log*
 .vercel
 .claude/
 supabase/.temp/
+
+auditoria_tablas.xlsx
