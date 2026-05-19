@@ -5,18 +5,18 @@ import {
   getTiposEstablecimiento,
   getGestionesConTipos,
   toggleGestionTipo,
-  toggleIsoGestionTipo,
+  toggleGestionAplicaPorIso,
   getAspectos,
   getSeccionesConAspectos,
   toggleSeccionAspecto,
-  toggleIsoSeccionAspecto,
+  toggleSeccionAplicaPorIso,
   getDocumentoTiposConTipos,
   toggleDocumentoTipo,
-  toggleIsoDocumentoTipo,
+  toggleDocTipoAplicaPorIso,
   getRubrosEmpresa,
   getDocTiposConRubros,
   toggleDocumentoRubro,
-  toggleIsoDocumentoRubro,
+  toggleDocRubroAplicaPorIso,
 } from '@/lib/actions/catalogacion'
 import type { GestionRow, SeccionRow, DocumentoRow, DocumentoRubroRow } from '@/lib/actions/catalogacion'
 import type { ActionResult } from '@/lib/types'
@@ -57,17 +57,13 @@ function Buscador({ value, onChange }: { value: string; onChange: (v: string) =>
 function CheckboxGrid({
   tipos,
   asignados,
-  isoMap,
   onToggle,
-  onToggleIso,
   loading,
   onSelectAll,
 }: {
   tipos: TipoItem[]
   asignados: string[]
-  isoMap: Record<string, boolean>
   onToggle: (tipoId: string, active: boolean) => void
-  onToggleIso: (tipoId: string, aplicaIso: boolean) => void
   loading: boolean
   onSelectAll?: (asignar: boolean) => void
 }) {
@@ -101,20 +97,29 @@ function CheckboxGrid({
                 </span>
                 <span className={`text-sm ${active ? 'text-gray-800 font-medium' : 'text-gray-500'}`}>{t.nombre}</span>
               </label>
-              <button
-                type="button"
-                onClick={() => active && onToggleIso(t.id, !isoMap[t.id])}
-                disabled={loading || !active}
-                className={`text-[10px] font-bold px-2 py-0.5 rounded transition-colors ${active ? (isoMap[t.id] ? 'bg-green-200 text-green-800 cursor-pointer hover:bg-green-300' : 'bg-gray-200 text-gray-500 cursor-pointer hover:bg-gray-300') : 'bg-gray-100 text-gray-300 cursor-not-allowed'}`}
-                title={active ? (isoMap[t.id] ? 'Aplica ISO 45001' : 'No aplica ISO 45001') : 'Primero asigná el elemento'}
-              >
-                ISO
-              </button>
             </div>
           )
         })}
       </div>
     </div>
+  )
+}
+
+function IsoToggle({ value, onChange, loading }: { value: boolean; onChange: (v: boolean) => void; loading: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!value)}
+      disabled={loading}
+      className={`text-[10px] font-bold px-2 py-0.5 rounded transition-colors ${
+        value
+          ? 'bg-green-200 text-green-800 hover:bg-green-300 cursor-pointer'
+          : 'bg-gray-200 text-gray-500 hover:bg-gray-300 cursor-pointer'
+      }`}
+      title={value ? 'Aplica por ISO 45001' : 'No aplica por ISO 45001'}
+    >
+      ISO
+    </button>
   )
 }
 
@@ -203,25 +208,21 @@ export default function CatalogacionPage() {
     [],
   )
 
-  const handleIsoToggle = useCallback(
+  const handleAplicaPorIso = useCallback(
     async (
       id: string,
-      tipoId: string,
-      aplicaIso: boolean,
-      toggleFn: (id: string, tipoId: string, aplicaIso: boolean) => Promise<ActionResult<null>>,
+      value: boolean,
+      toggleFn: (id: string, value: boolean) => Promise<ActionResult<null>>,
       setLocal: Dispatch<SetStateAction<any[]>>,
     ) => {
-      const key = `iso:${id}:${tipoId}`
+      const key = `iso:${id}`
       setSaving(prev => new Set(prev).add(key))
-      const res = await toggleFn(id, tipoId, aplicaIso)
-      setSaving(prev => { const next = new Set(prev); next.delete(key); return next })
-      if (res.success) {
-        setLocal(prev => prev.map((item: any) =>
-          item.id === id
-            ? { ...item, isoMap: { ...item.isoMap, [tipoId]: aplicaIso } }
-            : item,
-        ))
+      setLocal(prev => prev.map(item => item.id === id ? { ...item, aplicaPorIso: value } : item))
+      const res = await toggleFn(id, value)
+      if (!res.success) {
+        setLocal(prev => prev.map(item => item.id === id ? { ...item, aplicaPorIso: !value } : item))
       }
+      setSaving(prev => { const next = new Set(prev); next.delete(key); return next })
     },
     [],
   )
@@ -275,13 +276,14 @@ export default function CatalogacionPage() {
             <div className="space-y-3">
               {filteredGestiones.map(g => (
                 <div key={g.id} className="bg-white border border-gray-200 rounded-xl p-4">
-                  <p className="text-sm font-semibold text-gray-800 mb-3">{g.nombre}</p>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-sm font-semibold text-gray-800">{g.nombre}</p>
+                    <IsoToggle value={g.aplicaPorIso} onChange={v => handleAplicaPorIso(g.id, v, toggleGestionAplicaPorIso, setLocalGes)} loading={saving.has(`iso:${g.id}`)} />
+                  </div>
                   <CheckboxGrid
                     tipos={tipos ?? []}
                     asignados={g.tipos}
-                    isoMap={g.isoMap}
                     onToggle={(tipoId, active) => handleToggle(g.id, tipoId, active, toggleGestionTipo, setLocalGes, 'tipos')}
-                    onToggleIso={(tipoId, aplicaIso) => handleIsoToggle(g.id, tipoId, aplicaIso, toggleIsoGestionTipo, setLocalGes)}
                     onSelectAll={(asignar) => handleSelectAll(g.id, asignar, tipos ?? [], g.tipos, toggleGestionTipo, setLocalGes, 'tipos')}
                     loading={saving.size > 0}
                   />
@@ -315,14 +317,15 @@ export default function CatalogacionPage() {
             <div className="space-y-3">
               {filteredSecciones.map(s => (
                 <div key={s.id} className="bg-white border border-gray-200 rounded-xl p-4">
-                  <p className="text-sm font-semibold text-gray-800 mb-1">{s.title}</p>
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-sm font-semibold text-gray-800">{s.title}</p>
+                    <IsoToggle value={s.aplicaPorIso} onChange={v => handleAplicaPorIso(s.id, v, toggleSeccionAplicaPorIso, setLocalSec)} loading={saving.has(`iso:${s.id}`)} />
+                  </div>
                   <p className="text-xs text-gray-400 mb-3">{localGes.find(g => g.id === s.gestion_id)?.nombre ?? '?'}</p>
                   <CheckboxGrid
                     tipos={aspectos ?? []}
                     asignados={s.aspectos}
-                    isoMap={s.isoMap}
                     onToggle={(aspectoId, active) => handleToggle(s.id, aspectoId, active, toggleSeccionAspecto, setLocalSec, 'aspectos')}
-                    onToggleIso={(aspectoId, aplicaIso) => handleIsoToggle(s.id, aspectoId, aplicaIso, toggleIsoSeccionAspecto, setLocalSec)}
                     onSelectAll={(asignar) => handleSelectAll(s.id, asignar, aspectos ?? [], s.aspectos, toggleSeccionAspecto, setLocalSec, 'aspectos')}
                     loading={saving.size > 0}
                   />
@@ -343,13 +346,14 @@ export default function CatalogacionPage() {
             <div className="space-y-3">
               {filteredDocumentos.map(d => (
                 <div key={d.id} className="bg-white border border-gray-200 rounded-xl p-4">
-                  <p className="text-sm font-semibold text-gray-800 mb-3">{d.nombre}</p>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-sm font-semibold text-gray-800">{d.nombre}</p>
+                    <IsoToggle value={d.aplicaPorIso} onChange={v => handleAplicaPorIso(d.id, v, toggleDocTipoAplicaPorIso, setLocalDoc)} loading={saving.has(`iso:${d.id}`)} />
+                  </div>
                   <CheckboxGrid
                     tipos={tipos ?? []}
                     asignados={d.tipos}
-                    isoMap={d.isoMap}
                     onToggle={(tipoId, active) => handleToggle(d.id, tipoId, active, toggleDocumentoTipo, setLocalDoc, 'tipos')}
-                    onToggleIso={(tipoId, aplicaIso) => handleIsoToggle(d.id, tipoId, aplicaIso, toggleIsoDocumentoTipo, setLocalDoc)}
                     onSelectAll={(asignar) => handleSelectAll(d.id, asignar, tipos ?? [], d.tipos, toggleDocumentoTipo, setLocalDoc, 'tipos')}
                     loading={saving.size > 0}
                   />
@@ -369,13 +373,14 @@ export default function CatalogacionPage() {
             <div className="space-y-3">
               {localDocRubros.map(d => (
                 <div key={d.id} className="bg-white border border-gray-200 rounded-xl p-4">
-                  <p className="text-sm font-semibold text-gray-800 mb-3">{d.nombre}</p>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-sm font-semibold text-gray-800">{d.nombre}</p>
+                    <IsoToggle value={d.aplicaPorIso} onChange={v => handleAplicaPorIso(d.id, v, toggleDocRubroAplicaPorIso, setLocalDocRubros)} loading={saving.has(`iso:${d.id}`)} />
+                  </div>
                   <CheckboxGrid
                     tipos={rubros ?? []}
                     asignados={d.rubros}
-                    isoMap={d.isoMap}
                     onToggle={(rubroId, active) => handleToggle(d.id, rubroId, active, toggleDocumentoRubro, setLocalDocRubros, 'rubros')}
-                    onToggleIso={(rubroId, aplicaIso) => handleIsoToggle(d.id, rubroId, aplicaIso, toggleIsoDocumentoRubro, setLocalDocRubros)}
                     onSelectAll={(asignar) => handleSelectAll(d.id, asignar, rubros ?? [], d.rubros, toggleDocumentoRubro, setLocalDocRubros, 'rubros')}
                     loading={saving.size > 0}
                   />
