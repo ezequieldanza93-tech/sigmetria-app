@@ -75,7 +75,7 @@ export async function finalizarFormulario(
   // Upload PDF to storage if provided
   let evidenciaUrl: string | null = null
   if (evidenciaB64) {
-    const base64Data = evidenciaB64.replace(/^data:application\/pdf;base64,/, '')
+    const base64Data = evidenciaB64.replace(/^data:application\/pdf(?:;.*?)?;base64,/, '')
     const buffer = Buffer.from(base64Data, 'base64')
     const path = `formularios/${registroId}/${Date.now()}.pdf`
 

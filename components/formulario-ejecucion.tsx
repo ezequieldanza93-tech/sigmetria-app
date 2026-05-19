@@ -213,11 +213,16 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
       }
 
       if (downloadPdf && result.data.evidencia_url) {
+        const resp = await fetch(result.data.evidencia_url)
+        const blob = await resp.blob()
+        const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
-        a.href = result.data.evidencia_url
+        a.href = url
         a.download = `${registro.ge_gestion_nombre ?? 'formulario'}.pdf`
-        a.target = '_blank'
+        document.body.appendChild(a)
         a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
       }
 
       onSuccess()
