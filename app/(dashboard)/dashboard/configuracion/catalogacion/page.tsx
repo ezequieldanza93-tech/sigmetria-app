@@ -13,11 +13,15 @@ import {
   getDocumentoTiposConTipos,
   toggleDocumentoTipo,
   toggleIsoDocumentoTipo,
+  getRubrosEmpresa,
+  getDocTiposConRubros,
+  toggleDocumentoRubro,
+  toggleIsoDocumentoRubro,
 } from '@/lib/actions/catalogacion'
-import type { GestionRow, SeccionRow, DocumentoRow } from '@/lib/actions/catalogacion'
+import type { GestionRow, SeccionRow, DocumentoRow, DocumentoRubroRow } from '@/lib/actions/catalogacion'
 import type { ActionResult } from '@/lib/types'
 
-type TabName = 'gestiones' | 'secciones' | 'documentacion'
+type TabName = 'gestiones' | 'secciones' | 'documentacion' | 'documentacion_rubros'
 
 interface TipoItem {
   id: string
@@ -144,14 +148,18 @@ export default function CatalogacionPage() {
   const [aspectos] = useAsync(getAspectos)
   const [secciones, loadingSec, errSec] = useAsync(getSeccionesConAspectos)
   const [documentos, loadingDoc, errDoc] = useAsync(getDocumentoTiposConTipos)
+  const [rubros] = useAsync(getRubrosEmpresa)
+  const [docRubros, loadingDocRubros, errDocRubros] = useAsync(getDocTiposConRubros)
 
   const [localGes, setLocalGes] = useState<GestionRow[]>([])
   const [localSec, setLocalSec] = useState<SeccionRow[]>([])
   const [localDoc, setLocalDoc] = useState<DocumentoRow[]>([])
+  const [localDocRubros, setLocalDocRubros] = useState<DocumentoRubroRow[]>([])
 
   useEffect(() => { if (gestiones) setLocalGes(gestiones) }, [gestiones])
   useEffect(() => { if (secciones) setLocalSec(secciones) }, [secciones])
   useEffect(() => { if (documentos) setLocalDoc(documentos) }, [documentos])
+  useEffect(() => { if (docRubros) setLocalDocRubros(docRubros) }, [docRubros])
 
   const handleSelectAll = useCallback(
     async (
@@ -261,6 +269,7 @@ export default function CatalogacionPage() {
         <TabButton active={tab === 'gestiones'} onClick={() => setTab('gestiones')} label="Gestión → Tipo Est." />
         <TabButton active={tab === 'secciones'} onClick={() => setTab('secciones')} label="Secciones → Aspectos" />
         <TabButton active={tab === 'documentacion'} onClick={() => setTab('documentacion')} label="Documentación → Tipo Est." />
+        <TabButton active={tab === 'documentacion_rubros'} onClick={() => setTab('documentacion_rubros')} label="Documentación → Rubro" />
       </div>
 
       {tab === 'gestiones' && (
@@ -349,6 +358,32 @@ export default function CatalogacionPage() {
                     onToggle={(tipoId, active) => handleToggle(d.id, tipoId, active, toggleDocumentoTipo, setLocalDoc, 'tipos')}
                     onToggleIso={(tipoId, aplicaIso) => handleIsoToggle(d.id, tipoId, aplicaIso, toggleIsoDocumentoTipo, setLocalDoc)}
                     onSelectAll={(asignar) => handleSelectAll(d.id, asignar, tipos ?? [], d.tipos, toggleDocumentoTipo, setLocalDoc, 'tipos')}
+                    loading={saving.size > 0}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab === 'documentacion_rubros' && (
+        <div>
+          {errDocRubros && <p className="text-red-500 text-sm mb-2">{errDocRubros}</p>}
+          {loadingDocRubros ? (
+            <p className="text-gray-400 text-sm">Cargando...</p>
+          ) : (
+            <div className="space-y-3">
+              {localDocRubros.map(d => (
+                <div key={d.id} className="bg-white border border-gray-200 rounded-xl p-4">
+                  <p className="text-sm font-semibold text-gray-800 mb-3">{d.nombre}</p>
+                  <CheckboxGrid
+                    tipos={rubros ?? []}
+                    asignados={d.rubros}
+                    isoMap={d.isoMap}
+                    onToggle={(rubroId, active) => handleToggle(d.id, rubroId, active, toggleDocumentoRubro, setLocalDocRubros, 'rubros')}
+                    onToggleIso={(rubroId, aplicaIso) => handleIsoToggle(d.id, rubroId, aplicaIso, toggleIsoDocumentoRubro, setLocalDocRubros)}
+                    onSelectAll={(asignar) => handleSelectAll(d.id, asignar, rubros ?? [], d.rubros, toggleDocumentoRubro, setLocalDocRubros, 'rubros')}
                     loading={saving.size > 0}
                   />
                 </div>

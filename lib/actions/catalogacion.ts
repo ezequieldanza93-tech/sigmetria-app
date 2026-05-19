@@ -207,6 +207,78 @@ export async function toggleDocumentoTipo(
   return { success: true, data: null }
 }
 
+// ─── DOCUMENTACIÓN ↔ RUBROS EMPRESA ───
+export async function getRubrosEmpresa() {
+  const { supabase } = await getUser()
+  const { data } = await supabase.from('rubros_empresa').select('id, nombre').eq('is_active', true).order('nombre')
+  return data ?? []
+}
+
+export interface DocumentoRubroRow {
+  id: string
+  nombre: string
+  rubros: string[]
+  isoMap: Record<string, boolean>
+}
+
+export async function getDocTiposConRubros(): Promise<DocumentoRubroRow[]> {
+  const { supabase } = await getUser()
+  const [docRes, relRes] = await Promise.all([
+    supabase.from('documento_tipos').select('id, nombre').order('nombre'),
+    supabase.from('documentacion_rubros_empresa').select('documento_tipo_id, rubro_empresa_id, aplica_iso_45001'),
+  ])
+  const idx = new Map<string, string[]>()
+  const iso = new Map<string, Record<string, boolean>>()
+  for (const r of relRes.data ?? []) {
+    const arr = idx.get(r.documento_tipo_id) ?? []
+    arr.push(r.rubro_empresa_id)
+    idx.set(r.documento_tipo_id, arr)
+    const map = iso.get(r.documento_tipo_id) ?? {}
+    map[r.rubro_empresa_id] = r.aplica_iso_45001
+    iso.set(r.documento_tipo_id, map)
+  }
+  return (docRes.data ?? []).map(d => ({
+    id: d.id, nombre: d.nombre,
+    rubros: idx.get(d.id) ?? [],
+    isoMap: iso.get(d.id) ?? {},
+  }))
+}
+
+export async function toggleDocumentoRubro(
+  documentoTipoId: string,
+  rubroId: string,
+  active: boolean,
+): Promise<ActionResult<null>> {
+  const { supabase } = await getUser()
+  if (active) {
+    const { error } = await supabase.from('documentacion_rubros_empresa').upsert(
+      { documento_tipo_id: documentoTipoId, rubro_empresa_id: rubroId },
+      { onConflict: 'documento_tipo_id,rubro_empresa_id', ignoreDuplicates: true },
+    )
+    if (error) return { success: false, error: error.message }
+  } else {
+    const { error } = await supabase.from('documentacion_rubros_empresa').delete()
+      .eq('documento_tipo_id', documentoTipoId).eq('rubro_empresa_id', rubroId)
+    if (error) return { success: false, error: error.message }
+  }
+  return { success: true, data: null }
+}
+
+export async function toggleIsoDocumentoRubro(
+  documentoTipoId: string,
+  rubroId: string,
+  aplicaIso: boolean,
+): Promise<ActionResult<null>> {
+  const { supabase } = await getUser()
+  const { error } = await supabase
+    .from('documentacion_rubros_empresa')
+    .update({ aplica_iso_45001: aplicaIso })
+    .eq('documento_tipo_id', documentoTipoId)
+    .eq('rubro_empresa_id', rubroId)
+  if (error) return { success: false, error: error.message }
+  return { success: true, data: null }
+}
+
 export async function toggleIsoDocumentoTipo(
   documentoTipoId: string,
   tipoId: string,

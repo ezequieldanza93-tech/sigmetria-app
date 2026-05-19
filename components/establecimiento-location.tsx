@@ -63,54 +63,70 @@ export function EstablecimientoLocation({ lat, lng, nombre, fotoUrl }: Props) {
 
   const mapsEmbedUrl = `https://maps.google.com/maps?q=${lat},${lng}&z=15&output=embed`
   const mapsOpenUrl = `https://www.google.com/maps/@${lat},${lng},15z`
+  const today = forecast[0]
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden mb-6">
-      {/* Top: foto left + map right */}
-      <div className="grid grid-cols-2" style={{ minHeight: '260px' }}>
+    <div className="mb-6 relative group/card">
+      {/* Main card */}
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        {/* foto left + map right */}
+        <div className="grid grid-cols-2" style={{ minHeight: '182px' }}>
 
-        {/* Left: foto */}
-        <div className="relative border-r border-gray-100 bg-gray-50">
-          {fotoUrl ? (
-            <img
-              src={fotoUrl}
-              alt={`Foto de ${nombre}`}
-              className="absolute inset-0 w-full h-full object-cover"
+          {/* Left: foto */}
+          <div className="relative border-r border-gray-100 bg-gray-50">
+            {fotoUrl ? (
+              <img
+                src={fotoUrl}
+                alt={`Foto de ${nombre}`}
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+            ) : (
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-300">
+                <span className="text-3xl mb-1">🏭</span>
+                <p className="text-xs">Sin foto</p>
+              </div>
+            )}
+
+            {/* Weather trigger overlay — visible when forecast loaded */}
+            {today && (
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent px-3 py-2 pointer-events-none">
+                <p className="text-white text-xs font-medium flex items-center gap-1.5">
+                  <span>{wmoIcon(today.weathercode)}</span>
+                  <span>{Math.round(today.max)}° / {Math.round(today.min)}°</span>
+                  {today.rain > 0 && <span className="text-blue-200">💧{today.rain.toFixed(1)}mm</span>}
+                  <span className="ml-auto opacity-70 text-[10px]">2 semanas ↓</span>
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Right: Map */}
+          <div className="relative">
+            <iframe
+              src={mapsEmbedUrl}
+              width="100%"
+              height="100%"
+              style={{ border: 0, display: 'block', minHeight: '224px' }}
+              allowFullScreen
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              title={`Mapa de ${nombre}`}
             />
-          ) : (
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-300">
-              <span className="text-3xl mb-1">🏭</span>
-              <p className="text-xs">Sin foto</p>
-            </div>
-          )}
-        </div>
-
-        {/* Right: Map */}
-        <div className="relative">
-          <iframe
-            src={mapsEmbedUrl}
-            width="100%"
-            height="100%"
-            style={{ border: 0, display: 'block', minHeight: '320px' }}
-            allowFullScreen
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-            title={`Mapa de ${nombre}`}
-          />
-          <a
-            href={mapsOpenUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="absolute bottom-3 right-3 bg-white text-xs text-sig-500 font-medium px-3 py-1.5 rounded-lg shadow-md hover:shadow-lg transition-shadow border border-gray-200"
-          >
-            Abrir en Google Maps ↗
-          </a>
+            <a
+              href={mapsOpenUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="absolute bottom-3 right-3 bg-white text-xs text-sig-500 font-medium px-3 py-1.5 rounded-lg shadow-md hover:shadow-lg transition-shadow border border-gray-200"
+            >
+              Abrir en Google Maps ↗
+            </a>
+          </div>
         </div>
       </div>
 
-      {/* Bottom: 14-day forecast */}
+      {/* 14-day forecast dropdown — appears on hover */}
       {forecast.length > 0 && (
-        <div className="border-t border-gray-100">
+        <div className="absolute left-0 right-0 top-full mt-1 z-30 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden opacity-0 invisible group-hover/card:opacity-100 group-hover/card:visible transition-all duration-200">
           <p className="text-xs font-medium text-gray-400 uppercase tracking-wider px-5 pt-3 pb-2">
             Pronóstico — próximas 2 semanas
           </p>
