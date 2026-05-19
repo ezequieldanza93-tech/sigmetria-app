@@ -89,34 +89,27 @@ function CheckboxGrid({
           )}
         </div>
       )}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-col gap-1.5">
         {tipos.map(t => {
           const active = asignados.includes(t.id)
           return (
-            <div key={t.id} className="inline-flex items-center gap-0">
-              <label
-                className={`
-                  inline-flex items-center gap-1.5 px-3 py-1.5 rounded-l-lg border text-sm cursor-pointer select-none transition-colors
-                  ${active ? 'bg-blue-50 border-blue-400 text-blue-800' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'}
-                `}
-              >
+            <div key={t.id} className="flex items-center gap-3">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
                 <input type="checkbox" className="sr-only" checked={active} disabled={loading} onChange={() => onToggle(t.id, !active)} />
-                <span className={`w-3 h-3 rounded border flex items-center justify-center text-[8px] font-bold transition-colors ${active ? 'bg-blue-500 border-blue-500 text-white' : 'border-gray-300'}`}>
+                <span className={`w-4 h-4 rounded border flex items-center justify-center text-[10px] font-bold transition-colors ${active ? 'bg-blue-500 border-blue-500 text-white' : 'border-gray-300 bg-white'}`}>
                   {active && '✓'}
                 </span>
-                {t.nombre}
+                <span className={`text-sm ${active ? 'text-gray-800 font-medium' : 'text-gray-500'}`}>{t.nombre}</span>
               </label>
-              {active && (
-                <button
-                  type="button"
-                  onClick={() => onToggleIso(t.id, !isoMap[t.id])}
-                  disabled={loading}
-                  className={`px-2 py-1.5 text-[10px] font-bold border border-l-0 rounded-r-lg cursor-pointer transition-colors ${isoMap[t.id] ? 'bg-green-100 border-green-300 text-green-800' : 'bg-gray-100 border-gray-200 text-gray-400'}`}
-                  title={isoMap[t.id] ? 'Aplica ISO 45001' : 'No aplica ISO 45001'}
-                >
-                  ISO
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => active && onToggleIso(t.id, !isoMap[t.id])}
+                disabled={loading || !active}
+                className={`text-[10px] font-bold px-2 py-0.5 rounded transition-colors ${active ? (isoMap[t.id] ? 'bg-green-200 text-green-800 cursor-pointer hover:bg-green-300' : 'bg-gray-200 text-gray-500 cursor-pointer hover:bg-gray-300') : 'bg-gray-100 text-gray-300 cursor-not-allowed'}`}
+                title={active ? (isoMap[t.id] ? 'Aplica ISO 45001' : 'No aplica ISO 45001') : 'Primero asigná el elemento'}
+              >
+                ISO
+              </button>
             </div>
           )
         })}
