@@ -63,7 +63,8 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
   const [error, setError] = useState<string | null>(null)
   const [personas, setPersonas] = useState<{ id: string; nombre: string; apellido: string }[]>([])
   const [clasificaciones, setClasificaciones] = useState<{ id: string; nombre: string }[]>([])
-  const [observaciones, setObservaciones] = useState<ObsDraft[]>([])
+  const [comentariosSeccion, setComentariosSeccion] = useState<Map<string, string>>(new Map())
+  const [observacionesSeccion, setObservacionesSeccion] = useState<Map<string, ObsDraft[]>>(new Map())
   const [fechaEjecutada, setFechaEjecutada] = useState(registro.fecha_ejecutada ?? new Date().toISOString().split('T')[0])
   const [responsableId, setResponsableId] = useState(registro.responsable_id ?? '')
   const [notas, setNotas] = useState(registro.notas ?? '')
@@ -72,35 +73,22 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
 
   const inputCls = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sig-500'
 
-  // ── Item helpers ─────────────────────────────────────────────────────
   const allItems = secciones.flatMap(s => s.formulario_items ?? [])
 
   function setAnswer(itemId: string, answer: AnswerValue) {
     setRespuestas(prev => {
       const next = new Map(prev)
-      const existing = next.get(itemId)
-      next.set(itemId, { item_id: itemId, answer, comment: existing?.comment ?? '' })
+      next.set(itemId, { item_id: itemId, answer, comment: '' })
       return next
     })
   }
 
-  function setComment(itemId: string, comment: string) {
-    setRespuestas(prev => {
-      const next = new Map(prev)
-      const existing = next.get(itemId) ?? { item_id: itemId, answer: null, comment: '' }
-      next.set(itemId, { ...existing, comment })
-      return next
-    })
-  }
-
-  // ── Stats ──────────────────────────────────────────────────────────
   const totalItems = allItems.length
   const answeredCount = Array.from(respuestas.values()).filter(r => r.answer !== null).length
   const total = Array.from(respuestas.values()).filter(r => r.answer === 'cumple' || r.answer === 'no_cumple').length
   const noCumplen = Array.from(respuestas.values()).filter(r => r.answer === 'no_cumple').length
   const pct = total > 0 ? Math.round((1 - noCumplen / total) * 100) : 0
 
-  // ── Load data ──────────────────────────────────────────────────────
   useEffect(() => {
     const gid = registro.ge_gestion_id
     if (!gid) return
@@ -154,7 +142,6 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
       const formEl = view === 'review' ? reviewRef.current : null
       let pdfB64 = ''
 
-      // Generate PDF from review content
       if (formEl) {
         const { default: html2canvas } = await import('html2canvas')
         const { default: jsPDF } = await import('jspdf')
@@ -180,7 +167,6 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
         pdfB64 = pdf.output('datauristring')
       }
 
-      // Build FormData for the server action
       const fd = new FormData()
       fd.set('registro_id', registro.id)
       fd.set('gestion_id', registro.ge_gestion_id ?? '')
@@ -205,8 +191,11 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
       const result = await finalizarFormulario(null, fd)
       if (!result.success) { setError(result.error); setSaving(false); return }
 
-      // Save observaciones
-      const validObs = observaciones.filter(o => o.descripcion.trim())
+      const allObs: ObsDraft[] = []
+      for (const obsList of observacionesSeccion.values()) {
+        allObs.push(...obsList)
+      }
+      const validObs = allObs.filter(o => o.descripcion.trim())
       if (validObs.length > 0) {
         const obsResult = await crearObservaciones(registro.id, validObs)
         if (!obsResult.success) { setError(obsResult.error); setSaving(false); return }
@@ -233,7 +222,55 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
     }
   }
 
-  // ── Render items ───────────────────────────────────────────────────
+  // ── Observaciones helpers per seccion ─────────────────────────────
+  function getObs(secId: string): ObsDraft[] {
+    return observacionesSeccion.get(secId) ?? []
+  }
+
+  function addObs(secId: string) {
+    setObservacionesSeccion(prev => {
+      const next = new Map(prev)
+      const list = [...(next.get(secId) ?? [])]
+      list.push({
+        key: obsKeyRef.current++,
+        descripcion: '',
+        clasificacion_id: '',
+        responsable_id: '',
+        fecha_subsanacion: '',
+      })
+      next.set(secId, list)
+      return next
+    })
+  }
+
+  function updateObs(secId: string, obsKey: number, upd: Partial<ObsDraft>) {
+    setObservacionesSeccion(prev => {
+      const next = new Map(prev)
+      const list = (next.get(secId) ?? []).map(o => o.key === obsKey ? { ...o, ...upd } : o)
+      next.set(secId, list)
+      return next
+    })
+  }
+
+  function removeObs(secId: string, obsKey: number) {
+    setObservacionesSeccion(prev => {
+      const next = new Map(prev)
+      const list = (next.get(secId) ?? []).filter(o => o.key !== obsKey)
+      if (list.length === 0) next.delete(secId)
+      else next.set(secId, list)
+      return next
+    })
+  }
+
+  function setComentario(secId: string, val: string) {
+    setComentariosSeccion(prev => {
+      const next = new Map(prev)
+      next.set(secId, val)
+      return next
+    })
+  }
+
+  // ── Render ────────────────────────────────────────────────────────
   function renderItem(item: FormularioItem) {
     const r = respuestas.get(item.id)
     const currentAnswer = r?.answer ?? null
@@ -263,15 +300,102 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
             </button>
           ))}
         </div>
+      </div>
+    )
+  }
 
-        <div className="ml-9 mt-2">
-          <input
-            type="text"
-            placeholder="Comentario…"
-            value={r?.comment ?? ''}
-            onChange={e => setComment(item.id, e.target.value)}
-            className="w-full text-xs border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-sig-300"
-          />
+  function renderObservacionesBlock(secId: string, secTitle: string) {
+    const obsList = getObs(secId)
+    const comentario = comentariosSeccion.get(secId) ?? ''
+
+    return (
+      <div className="border-t border-gray-100 pt-3 mt-3 space-y-3">
+        <textarea
+          value={comentario}
+          onChange={e => setComentario(secId, e.target.value)}
+          placeholder="Comentario de la seccion…"
+          rows={2}
+          className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sig-500"
+        />
+
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-xs font-semibold text-gray-600">Observaciones</h4>
+            <button
+              type="button"
+              onClick={() => addObs(secId)}
+              className="text-xs text-sig-600 hover:text-sig-700 font-medium"
+            >
+              + Agregar
+            </button>
+          </div>
+
+          {obsList.length === 0 ? (
+            <p className="text-xs text-gray-400 text-center py-2 border border-dashed border-gray-200 rounded-lg">
+              Sin observaciones.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {obsList.map((obs, idx) => (
+                <div key={obs.key} className="border border-gray-200 rounded-lg p-3 space-y-2 bg-gray-50/50">
+                  <div className="flex items-start gap-2">
+                    <span className="text-xs text-gray-400 mt-2 w-4 shrink-0">{idx + 1}.</span>
+                    <textarea
+                      value={obs.descripcion}
+                      onChange={e => updateObs(secId, obs.key, { descripcion: e.target.value })}
+                      placeholder="Descripcion de la observacion…"
+                      rows={2}
+                      className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sig-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeObs(secId, obs.key)}
+                      className="text-gray-300 hover:text-red-400 mt-1 text-base leading-none shrink-0"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 pl-6">
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-0.5">Tipo de riesgo</label>
+                      <select
+                        value={obs.clasificacion_id}
+                        onChange={e => updateObs(secId, obs.key, { clasificacion_id: e.target.value })}
+                        className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-sig-500"
+                      >
+                        <option value="">Sin clasificar</option>
+                        {clasificaciones.map(c => (
+                          <option key={c.id} value={c.id}>{c.nombre}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-0.5">Responsable</label>
+                      <select
+                        value={obs.responsable_id}
+                        onChange={e => updateObs(secId, obs.key, { responsable_id: e.target.value })}
+                        className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-sig-500"
+                      >
+                        <option value="">Sin asignar</option>
+                        {personas.map(p => (
+                          <option key={p.id} value={p.id}>{p.apellido}, {p.nombre}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-0.5">Fecha Subsanacion</label>
+                      <input
+                        type="date"
+                        value={obs.fecha_subsanacion}
+                        onChange={e => updateObs(secId, obs.key, { fecha_subsanacion: e.target.value })}
+                        className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-sig-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     )
@@ -286,7 +410,6 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
             <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-3 py-2">{error}</div>
           )}
 
-          {/* Progress bar */}
           <div className="bg-gray-50 rounded-xl p-4">
             <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
               <span>Progreso: {answeredCount}/{totalItems} items respondidos</span>
@@ -304,7 +427,6 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
             </div>
           </div>
 
-          {/* Section: info adicional */}
           <div className="bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-700">
             <span className="font-medium">{registro.ge_gestion_nombre ?? '—'}</span>
             {registro.ge_categoria_nombre && (
@@ -314,7 +436,7 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-sm font-medium text-gray-700 block mb-1">Fecha de Ejecución *</label>
+              <label className="text-sm font-medium text-gray-700 block mb-1">Fecha de Ejecucion *</label>
               <input
                 type="date"
                 required
@@ -325,7 +447,7 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
             </div>
             <div className="flex items-end">
               <div className="w-full bg-gray-100 rounded-lg px-3 py-2 text-sm text-gray-500">
-                Índice: <strong className="text-gray-800">{pct}%</strong> (auto)
+                Indice: <strong className="text-gray-800">{pct}%</strong> (auto)
               </div>
             </div>
           </div>
@@ -351,114 +473,19 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
             </div>
           </div>
 
-          {/* Form items */}
           {secciones.map(sec => (
-            <div key={sec.id}>
+            <div key={sec.id} className="border border-gray-200 rounded-xl p-4">
               <h3 className="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                <span className="w-1.5 h-5 bg-sig-500 rounded-full" />
+                <span className="w-1.5 h-5 bg-sig-500 rounded-full shrink-0" />
                 {sec.title}
               </h3>
               <div className="space-y-2">
                 {(sec.formulario_items ?? []).map(renderItem)}
               </div>
+              {renderObservacionesBlock(sec.id, sec.title)}
             </div>
           ))}
 
-          {/* Observaciones (same as EjecucionModal) */}
-          <div className="border-t border-gray-100 pt-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-gray-700">
-                Observaciones
-                {observaciones.length > 0 && (
-                  <span className="ml-2 text-xs font-normal text-gray-400">({observaciones.length})</span>
-                )}
-              </h3>
-              <button
-                type="button"
-                onClick={() => {
-                  setObservaciones(prev => [...prev, {
-                    key: obsKeyRef.current++,
-                    descripcion: '',
-                    clasificacion_id: '',
-                    responsable_id: '',
-                    fecha_subsanacion: '',
-                  }])
-                }}
-                className="text-xs text-sig-600 hover:text-sig-700 font-medium flex items-center gap-1"
-              >
-                + Agregar
-              </button>
-            </div>
-            {observaciones.length === 0 ? (
-              <p className="text-xs text-gray-400 text-center py-3 border border-dashed border-gray-200 rounded-lg">
-                Sin observaciones. Hacé clic en &quot;+ Agregar&quot; para registrar una.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {observaciones.map((obs, idx) => (
-                  <div key={obs.key} className="border border-gray-200 rounded-lg p-3 space-y-2 bg-gray-50/50">
-                    <div className="flex items-start gap-2">
-                      <span className="text-xs text-gray-400 mt-2 w-4 shrink-0">{idx + 1}.</span>
-                      <textarea
-                        value={obs.descripcion}
-                        onChange={e => setObservaciones(prev => prev.map(o => o.key === obs.key ? { ...o, descripcion: e.target.value } : o))}
-                        placeholder="Descripción de la observación…"
-                        rows={2}
-                        className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sig-500"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setObservaciones(prev => prev.filter(o => o.key !== obs.key))}
-                        className="text-gray-300 hover:text-red-400 mt-1 text-base leading-none shrink-0"
-                        title="Eliminar observación"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2 pl-6">
-                      <div>
-                        <label className="text-xs text-gray-500 block mb-0.5">Tipo de riesgo</label>
-                        <select
-                          value={obs.clasificacion_id}
-                          onChange={e => setObservaciones(prev => prev.map(o => o.key === obs.key ? { ...o, clasificacion_id: e.target.value } : o))}
-                          className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-sig-500"
-                        >
-                          <option value="">Sin clasificar</option>
-                          {clasificaciones.map(c => (
-                            <option key={c.id} value={c.id}>{c.nombre}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-xs text-gray-500 block mb-0.5">Responsable</label>
-                        <select
-                          value={obs.responsable_id}
-                          onChange={e => setObservaciones(prev => prev.map(o => o.key === obs.key ? { ...o, responsable_id: e.target.value } : o))}
-                          className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-sig-500"
-                        >
-                          <option value="">Sin asignar</option>
-                          {personas.map(p => (
-                            <option key={p.id} value={p.id}>{p.apellido}, {p.nombre}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-xs text-gray-500 block mb-0.5">Fecha subsanación</label>
-                        <input
-                          type="date"
-                          value={obs.fecha_subsanacion}
-                          onChange={e => setObservaciones(prev => prev.map(o => o.key === obs.key ? { ...o, fecha_subsanacion: e.target.value } : o))}
-                          className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-sig-500"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Action buttons */}
           <div className="flex items-center justify-between pt-2 pb-4 sticky bottom-0 bg-white">
             <div className="flex gap-3">
               <Button
@@ -466,7 +493,7 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
                 onClick={() => setView('review')}
                 disabled={answeredCount === 0 || saving}
               >
-                Revisar Gestión
+                Revisar Gestion
               </Button>
               <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>
                 Cancelar
@@ -495,7 +522,6 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
         )}
 
         <div ref={reviewRef} className="bg-white space-y-4" style={{ padding: '8mm' }}>
-          {/* Header */}
           <div className="text-center border-b border-gray-300 pb-4 mb-4">
             <h1 className="text-xl font-bold text-gray-900">{registro.ge_gestion_nombre ?? 'Checklist'}</h1>
             <p className="text-sm text-gray-500 mt-1">
@@ -504,7 +530,6 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
             </p>
           </div>
 
-          {/* Stats summary */}
           <div className="grid grid-cols-3 gap-4 mb-6">
             <div className="bg-gray-50 rounded-xl p-4 text-center">
               <div className="text-2xl font-bold text-gray-900">{total}</div>
@@ -518,11 +543,10 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
               <div className={`text-2xl font-bold ${pct >= 80 ? 'text-green-600' : pct >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>
                 {pct}%
               </div>
-              <div className="text-xs text-gray-500 mt-1">Aprobación</div>
+              <div className="text-xs text-gray-500 mt-1">Aprobacion</div>
             </div>
           </div>
 
-          {/* Items */}
           {secciones.map(sec => (
             <div key={sec.id} className="mb-4">
               <h2 className="text-sm font-bold text-gray-800 mb-2 border-b border-gray-200 pb-1">{sec.title}</h2>
@@ -532,7 +556,6 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
                     <th className="text-left py-1 pr-2 w-10">N°</th>
                     <th className="text-left py-1 pr-2">Item</th>
                     <th className="text-center py-1 w-24">Respuesta</th>
-                    <th className="text-left py-1 w-40">Comentario</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -549,24 +572,36 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
                         <td className={`py-1.5 text-center text-xs font-medium rounded ${ansColor}`}>
                           {r?.answer ? ANSWER_LABELS[r.answer] : '—'}
                         </td>
-                        <td className="py-1.5 pl-2 text-xs text-gray-400">{r?.comment ?? ''}</td>
                       </tr>
                     )
                   })}
                 </tbody>
               </table>
+              {comentariosSeccion.get(sec.id) && (
+                <p className="text-xs text-gray-500 italic mt-2">
+                  {comentariosSeccion.get(sec.id)}
+                </p>
+              )}
+              {getObs(sec.id).length > 0 && (
+                <div className="mt-2 space-y-1">
+                  {getObs(sec.id).map((obs, idx) => (
+                    <p key={obs.key} className="text-xs text-gray-500">
+                      <strong>Obs {idx + 1}:</strong> {obs.descripcion}
+                    </p>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
 
-        {/* Action buttons */}
         <div className="flex items-center justify-between pt-2 pb-4 sticky bottom-0 bg-white">
           <div className="flex gap-3">
             <Button type="button" variant="secondary" onClick={() => setView('edit')} disabled={saving}>
               Seguir Editando
             </Button>
             <Button type="button" onClick={() => handleFinalizar(false)} disabled={saving}>
-              {saving ? 'Guardando…' : 'Finalizar y Guardar Gestión'}
+              {saving ? 'Guardando…' : 'Finalizar y Guardar Gestion'}
             </Button>
             <Button type="button" variant="secondary" onClick={() => handleFinalizar(true)} disabled={saving}>
               {saving ? 'Guardando…' : 'Guardar y Descargar'}

@@ -280,6 +280,35 @@ export interface TipoOrganizacion {
   created_at: string
 }
 
+export interface SubcontratistaRubro {
+  id: string
+  nombre: string
+  is_active: boolean
+  created_at: string
+}
+
+export interface Subcontratista {
+  id: string
+  organizacion_id: string
+  tipo_identidad_impositiva: 'CUIT' | 'CUIL' | 'CDI' | null
+  cuit: string | null
+  rubro_id: string | null
+  domicilio: string | null
+  localidad_id: string | null
+  codigo_postal: string | null
+  art_id: string | null
+  art_numero_contrato: string | null
+  tipo_establecimiento_id: string | null
+  actividad_principal: string | null
+  cantidad_trabajadores: number | null
+  informacion_general: string | null
+  created_at: string
+  updated_at: string
+  subcontratistas_rubros?: { nombre: string } | null
+  localidades?: { nombre: string; provincia: string } | null
+  tipos_establecimiento?: { nombre: string } | null
+}
+
 export interface Organizacion {
   id: string
   nombre: string

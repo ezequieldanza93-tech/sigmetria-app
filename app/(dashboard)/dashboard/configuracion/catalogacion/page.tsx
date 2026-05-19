@@ -1,0 +1,296 @@
+'use client'
+
+import { useEffect, useState, useCallback, useMemo, type Dispatch, type SetStateAction } from 'react'
+import {
+  getTiposEstablecimiento,
+  getGestionesConTipos,
+  toggleGestionTipo,
+  getAspectos,
+  getSeccionesConAspectos,
+  toggleSeccionAspecto,
+  getDocumentoTiposConTipos,
+  toggleDocumentoTipo,
+} from '@/lib/actions/catalogacion'
+import type { ActionResult } from '@/lib/types'
+
+type TabName = 'gestiones' | 'secciones' | 'documentacion'
+
+interface TipoItem {
+  id: string
+  nombre: string
+  codigo?: string | null
+}
+
+interface GestionRow {
+  id: string
+  nombre: string
+  tipos: string[]
+}
+
+interface SeccionRow {
+  id: string
+  gestion_id: string
+  title: string
+  aspectos: string[]
+}
+
+interface DocumentoRow {
+  id: string
+  nombre: string
+  tipos: string[]
+}
+
+function useAsync<T>(fn: () => Promise<T>): [T | null, boolean, string | null] {
+  const [data, setData] = useState<T | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    setLoading(true)
+    fn().then(setData).catch(e => setError(e.message)).finally(() => setLoading(false))
+  }, [])
+
+  return [data, loading, error]
+}
+
+function Buscador({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <input
+      type="text"
+      placeholder="Buscar..."
+      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mb-4"
+      value={value}
+      onChange={e => onChange(e.target.value)}
+    />
+  )
+}
+
+function CheckboxGrid({
+  tipos,
+  asignados,
+  onToggle,
+  loading,
+}: {
+  tipos: TipoItem[]
+  asignados: string[]
+  onToggle: (tipoId: string, active: boolean) => void
+  loading: boolean
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {tipos.map(t => {
+        const active = asignados.includes(t.id)
+        return (
+          <label
+            key={t.id}
+            className={`
+              inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm cursor-pointer select-none transition-colors
+              ${active ? 'bg-blue-50 border-blue-400 text-blue-800' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'}
+            `}
+          >
+            <input
+              type="checkbox"
+              className="sr-only"
+              checked={active}
+              disabled={loading}
+              onChange={() => onToggle(t.id, !active)}
+            />
+            <span className={`w-3 h-3 rounded border flex items-center justify-center text-[8px] font-bold transition-colors ${active ? 'bg-blue-500 border-blue-500 text-white' : 'border-gray-300'}`}>
+              {active && '✓'}
+            </span>
+            {t.nombre}
+          </label>
+        )
+      })}
+    </div>
+  )
+}
+
+function TabButton({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${active ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+    >
+      {label}
+    </button>
+  )
+}
+
+export default function CatalogacionPage() {
+  const [tab, setTab] = useState<TabName>('gestiones')
+  const [searchGestion, setSearchGestion] = useState('')
+  const [searchDoc, setSearchDoc] = useState('')
+  const [gestionFilter, setGestionFilter] = useState('')
+  const [saving, setSaving] = useState<Set<string>>(new Set())
+
+  const [tipos] = useAsync(getTiposEstablecimiento)
+  const [gestiones, loadingGes, errGes] = useAsync(getGestionesConTipos)
+  const [aspectos] = useAsync(getAspectos)
+  const [secciones, loadingSec, errSec] = useAsync(getSeccionesConAspectos)
+  const [documentos, loadingDoc, errDoc] = useAsync(getDocumentoTiposConTipos)
+
+  const [localGes, setLocalGes] = useState<GestionRow[]>([])
+  const [localSec, setLocalSec] = useState<SeccionRow[]>([])
+  const [localDoc, setLocalDoc] = useState<DocumentoRow[]>([])
+
+  useEffect(() => { if (gestiones) setLocalGes(gestiones) }, [gestiones])
+  useEffect(() => { if (secciones) setLocalSec(secciones) }, [secciones])
+  useEffect(() => { if (documentos) setLocalDoc(documentos) }, [documentos])
+
+  const handleToggle = useCallback(
+    async (
+      id: string,
+      tipoId: string,
+      active: boolean,
+      toggleFn: (id: string, tipoId: string, active: boolean) => Promise<ActionResult<null>>,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setLocal: Dispatch<SetStateAction<any[]>>,
+      field: string,
+    ) => {
+      const key = `${id}:${tipoId}`
+      setSaving(prev => new Set(prev).add(key))
+      const res = await toggleFn(id, tipoId, active)
+      setSaving(prev => { const next = new Set(prev); next.delete(key); return next })
+      if (res.success) {
+        setLocal(prev => prev.map(item =>
+          item.id === id
+            ? { ...item, [field]: active ? [...item[field], tipoId] : item[field].filter((x: string) => x !== tipoId) }
+            : item,
+        ))
+      }
+    },
+    [],
+  )
+
+  const filteredGestiones = useMemo(() => {
+    if (!searchGestion) return localGes
+    const q = searchGestion.toLowerCase()
+    return localGes.filter(g => g.nombre.toLowerCase().includes(q))
+  }, [localGes, searchGestion])
+
+  const gestionesUnicas = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const s of localSec) {
+      if (!map.has(s.gestion_id)) map.set(s.gestion_id, s.gestion_id)
+    }
+    // Get gestion names from localGes
+    const names = new Map(localGes.map(g => [g.id, g.nombre]))
+    return Array.from(map.keys()).sort((a, b) => (names.get(a) ?? '').localeCompare(names.get(b) ?? ''))
+  }, [localSec, localGes])
+
+  const filteredSecciones = useMemo(() => {
+    let items = localSec
+    if (gestionFilter) items = items.filter(s => s.gestion_id === gestionFilter)
+    return items
+  }, [localSec, gestionFilter])
+
+  const filteredDocumentos = useMemo(() => {
+    if (!searchDoc) return localDoc
+    const q = searchDoc.toLowerCase()
+    return localDoc.filter(d => d.nombre.toLowerCase().includes(q))
+  }, [localDoc, searchDoc])
+
+  return (
+    <div className="max-w-7xl mx-auto p-6">
+      <h1 className="text-2xl font-bold text-gray-900 mb-1">Catalogación</h1>
+      <p className="text-sm text-gray-500 mb-6">Asigná qué aplica a cada elemento</p>
+
+      <div className="flex gap-2 mb-6">
+        <TabButton active={tab === 'gestiones'} onClick={() => setTab('gestiones')} label="Gestión → Tipo Est." />
+        <TabButton active={tab === 'secciones'} onClick={() => setTab('secciones')} label="Secciones → Aspectos" />
+        <TabButton active={tab === 'documentacion'} onClick={() => setTab('documentacion')} label="Documentación → Tipo Est." />
+      </div>
+
+      {tab === 'gestiones' && (
+        <div>
+          {errGes && <p className="text-red-500 text-sm mb-2">{errGes}</p>}
+          <Buscador value={searchGestion} onChange={setSearchGestion} />
+          {loadingGes ? (
+            <p className="text-gray-400 text-sm">Cargando...</p>
+          ) : (
+            <div className="space-y-3">
+              {filteredGestiones.map(g => (
+                <div key={g.id} className="bg-white border border-gray-200 rounded-xl p-4">
+                  <p className="text-sm font-semibold text-gray-800 mb-3">{g.nombre}</p>
+                  <CheckboxGrid
+                    tipos={tipos ?? []}
+                    asignados={g.tipos}
+                    onToggle={(tipoId, active) => handleToggle(g.id, tipoId, active, toggleGestionTipo, setLocalGes, 'tipos')}
+                    loading={saving.size > 0}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab === 'secciones' && (
+        <div>
+          {errSec && <p className="text-red-500 text-sm mb-2">{errSec}</p>}
+          <div className="mb-4">
+            <label className="text-xs font-medium text-gray-500 block mb-1">Filtrar por gestión</label>
+            <select
+              className="w-full max-w-md px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              value={gestionFilter}
+              onChange={e => setGestionFilter(e.target.value)}
+            >
+              <option value="">Todas las gestiones</option>
+              {gestionesUnicas.map(gId => {
+                const g = localGes.find(x => x.id === gId)
+                return <option key={gId} value={gId}>{g?.nombre ?? gId}</option>
+              })}
+            </select>
+          </div>
+          {loadingSec ? (
+            <p className="text-gray-400 text-sm">Cargando...</p>
+          ) : (
+            <div className="space-y-3">
+              {filteredSecciones.map(s => (
+                <div key={s.id} className="bg-white border border-gray-200 rounded-xl p-4">
+                  <p className="text-sm font-semibold text-gray-800 mb-1">
+                    {s.title}
+                  </p>
+                  <p className="text-xs text-gray-400 mb-3">
+                    {localGes.find(g => g.id === s.gestion_id)?.nombre ?? '?'}
+                  </p>
+                  <CheckboxGrid
+                    tipos={aspectos ?? []}
+                    asignados={s.aspectos}
+                    onToggle={(aspectoId, active) => handleToggle(s.id, aspectoId, active, toggleSeccionAspecto, setLocalSec, 'aspectos')}
+                    loading={saving.size > 0}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab === 'documentacion' && (
+        <div>
+          {errDoc && <p className="text-red-500 text-sm mb-2">{errDoc}</p>}
+          <Buscador value={searchDoc} onChange={setSearchDoc} />
+          {loadingDoc ? (
+            <p className="text-gray-400 text-sm">Cargando...</p>
+          ) : (
+            <div className="space-y-3">
+              {filteredDocumentos.map(d => (
+                <div key={d.id} className="bg-white border border-gray-200 rounded-xl p-4">
+                  <p className="text-sm font-semibold text-gray-800 mb-3">{d.nombre}</p>
+                  <CheckboxGrid
+                    tipos={tipos ?? []}
+                    asignados={d.tipos}
+                    onToggle={(tipoId, active) => handleToggle(d.id, tipoId, active, toggleDocumentoTipo, setLocalDoc, 'tipos')}
+                    loading={saving.size > 0}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}

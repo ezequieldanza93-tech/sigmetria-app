@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { createClient } from '@/lib/supabase/client'
+import { createPrivateArt } from '@/lib/actions/empresa'
 import type { Empresa, Localidad, ActionResult } from '@/lib/types'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -21,6 +22,11 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
   const [artOrgs, setArtOrgs] = useState<{ id: string; nombre: string }[]>([])
   const [localidades, setLocalidades] = useState<Localidad[]>([])
   const [selectedProvincia, setSelectedProvincia] = useState(empresa?.localidades?.provincia ?? '')
+  const [selectedArtId, setSelectedArtId] = useState(empresa?.art_id ?? '')
+  const [showAddArt, setShowAddArt] = useState(false)
+  const [newArtName, setNewArtName] = useState('')
+  const [addArtPending, setAddArtPending] = useState(false)
+  const [addArtError, setAddArtError] = useState('')
 
   useEffect(() => {
     const supabase = createClient()
@@ -45,6 +51,23 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
 
   const provincias = [...new Set(localidades.map(l => l.provincia))].sort()
   const localidadesFiltradas = localidades.filter(l => l.provincia === selectedProvincia)
+
+  async function handleAddArt() {
+    if (!empresa?.id || !newArtName.trim()) return
+    setAddArtPending(true)
+    setAddArtError('')
+    const result = await createPrivateArt(empresa.id, newArtName)
+    setAddArtPending(false)
+    if (!result.success) {
+      setAddArtError(result.error ?? 'Error al crear la ART')
+      return
+    }
+    const newArt = result.data as { id: string; nombre: string }
+    setArtOrgs(prev => [...prev, newArt].sort((a, b) => a.nombre.localeCompare(b.nombre)))
+    setSelectedArtId(newArt.id)
+    setNewArtName('')
+    setShowAddArt(false)
+  }
 
   return (
     <form action={formAction} className="space-y-4">
@@ -122,13 +145,56 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
       />
 
       <div className="grid grid-cols-2 gap-4">
-        <Select
-          label="ART"
-          name="art_id"
-          defaultValue={empresa?.art_id ?? ''}
-          options={artOrgs.map(o => ({ value: o.id, label: o.nombre }))}
-          placeholder="Seleccionar ART..."
-        />
+        <div>
+          <Select
+            label="ART"
+            name="art_id"
+            value={selectedArtId}
+            onChange={e => setSelectedArtId(e.target.value)}
+            options={artOrgs.map(o => ({ value: o.id, label: o.nombre }))}
+            placeholder="Seleccionar ART..."
+          />
+          {empresa?.id && !showAddArt && (
+            <button
+              type="button"
+              onClick={() => setShowAddArt(true)}
+              className="mt-1 text-xs text-sig-500 hover:text-sig-700 hover:underline"
+            >
+              + No encontrás tu ART? Agregar nueva
+            </button>
+          )}
+          {showAddArt && (
+            <div className="mt-2 space-y-2">
+              <input
+                type="text"
+                value={newArtName}
+                onChange={e => setNewArtName(e.target.value)}
+                placeholder="Nombre de la ART..."
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500 focus:border-transparent"
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddArt() } }}
+                autoFocus
+              />
+              {addArtError && <p className="text-xs text-red-600">{addArtError}</p>}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleAddArt}
+                  disabled={addArtPending || !newArtName.trim()}
+                  className="text-xs bg-sig-500 hover:bg-sig-700 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg font-medium transition-colors"
+                >
+                  {addArtPending ? 'Creando...' : 'Crear'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowAddArt(false); setNewArtName(''); setAddArtError('') }}
+                  className="text-xs text-gray-500 hover:text-gray-700 px-3 py-1.5 rounded-lg border border-gray-200 transition-colors"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
         <Input
           label="Nº de contrato ART"
           name="art_numero_contrato"

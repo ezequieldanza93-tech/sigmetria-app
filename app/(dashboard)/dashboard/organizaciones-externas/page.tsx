@@ -1,71 +1,19 @@
 'use client'
 
-import { useState, useEffect, useActionState } from 'react'
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Modal } from '@/components/ui/modal'
 import { createClient } from '@/lib/supabase/client'
-import { createOrganizacion, deleteOrganizacion } from '@/lib/actions/organizacion'
-import type { Organizacion, TipoOrganizacion, ActionResult } from '@/lib/types'
-
-function OrganizacionForm({
-  tiposOrg,
-  onSuccess,
-}: {
-  tiposOrg: TipoOrganizacion[]
-  onSuccess: () => void
-}) {
-  const [state, formAction, pending] = useActionState(
-    createOrganizacion,
-    null as ActionResult<null> | null
-  )
-  useEffect(() => { if (state?.success) onSuccess() }, [state])
-
-  return (
-    <form action={formAction} className="space-y-4">
-      {state && !state.success && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{state.error}</div>
-      )}
-      <div>
-        <label className="text-sm font-medium text-gray-700 block mb-1">Nombre *</label>
-        <input name="nombre" required className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Nombre de la organización" />
-      </div>
-      <div>
-        <label className="text-sm font-medium text-gray-700 block mb-1">Tipo *</label>
-        <select name="tipo_id" required className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
-          <option value="">Seleccioná un tipo…</option>
-          {tiposOrg.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
-        </select>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="text-sm font-medium text-gray-700 block mb-1">Email</label>
-          <input name="email" type="email" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="correo@ejemplo.com" />
-        </div>
-        <div>
-          <label className="text-sm font-medium text-gray-700 block mb-1">Teléfono</label>
-          <input name="telefono" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="+54 11 0000-0000" />
-        </div>
-      </div>
-      <div>
-        <label className="text-sm font-medium text-gray-700 block mb-1">Notas</label>
-        <textarea name="notas" rows={2} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none" placeholder="Opcional…" />
-      </div>
-      <div className="flex justify-end">
-        <Button type="submit" disabled={pending}>{pending ? 'Guardando…' : 'Guardar'}</Button>
-      </div>
-    </form>
-  )
-}
+import { deleteOrganizacion } from '@/lib/actions/organizacion'
+import type { Organizacion, TipoOrganizacion } from '@/lib/types'
 
 export default function OrganizacionesExternasPage() {
   const [organizaciones, setOrganizaciones] = useState<Organizacion[] | null>(null)
   const [tiposOrg, setTiposOrg] = useState<TipoOrganizacion[]>([])
   const [activeTipo, setActiveTipo] = useState<string>('todos')
-  const [showModal, setShowModal] = useState(false)
 
   function load() {
-    const supabase = createClient()
-    supabase
+    createClient()
       .from('organizaciones_externas')
       .select('*, tipo_organizaciones(nombre)')
       .eq('is_active', true)
@@ -75,8 +23,7 @@ export default function OrganizacionesExternasPage() {
 
   useEffect(() => {
     load()
-    const supabase = createClient()
-    supabase.from('tipo_organizaciones').select('*').order('nombre')
+    createClient().from('tipo_organizaciones').select('*').order('nombre')
       .then(({ data }) => setTiposOrg(data ?? []))
   }, [])
 
@@ -99,7 +46,9 @@ export default function OrganizacionesExternasPage() {
           <h1 className="text-2xl font-bold text-gray-900">Organizaciones Externas</h1>
           <p className="text-sm text-gray-500 mt-1">Proveedores, subcontratistas, marcas y organismos externos</p>
         </div>
-        <Button onClick={() => setShowModal(true)}>+ Nueva Organización</Button>
+        <Link href="/dashboard/organizaciones-externas/nueva">
+          <Button>+ Nueva Organización</Button>
+        </Link>
       </div>
 
       {/* Filter tabs */}
@@ -167,13 +116,6 @@ export default function OrganizacionesExternasPage() {
           </table>
         </div>
       )}
-
-      <Modal open={showModal} onClose={() => setShowModal(false)} title="Nueva Organización Externa">
-        <OrganizacionForm
-          tiposOrg={tiposOrg}
-          onSuccess={() => { setShowModal(false); load() }}
-        />
-      </Modal>
     </div>
   )
 }

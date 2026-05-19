@@ -94,6 +94,36 @@ export async function updateEmpresa(id: string, _prev: ActionResult<null> | null
   redirect(`/dashboard/empresas/${id}`)
 }
 
+export async function createPrivateArt(
+  empresaId: string,
+  nombre: string,
+): Promise<ActionResult<{ id: string; nombre: string }>> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'No autenticado' }
+
+  const nombreTrimmed = nombre.trim()
+  if (!nombreTrimmed) return { success: false, error: 'El nombre es obligatorio' }
+
+  const { data: tipoArt } = await supabase
+    .from('tipo_organizaciones')
+    .select('id')
+    .eq('nombre', 'ART')
+    .single()
+
+  if (!tipoArt) return { success: false, error: 'Tipo ART no encontrado' }
+
+  const { data, error } = await supabase
+    .from('organizaciones_externas')
+    .insert({ nombre: nombreTrimmed, tipo_id: tipoArt.id, scope: 'empresa', empresa_id: empresaId, is_active: true })
+    .select('id, nombre')
+    .single()
+
+  if (error) return { success: false, error: error.message }
+
+  return { success: true, data: data as { id: string; nombre: string } }
+}
+
 export async function deleteEmpresa(id: string): Promise<ActionResult<null>> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { SystemRole, UserRole, ROLE_LABELS, ROLE_COLORS } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
+import { WeatherClock } from '@/components/weather-clock'
 
 interface AppHeaderProps {
   fullName: string
@@ -34,11 +35,16 @@ export function AppHeader({ fullName, email, consultoraNombre, userRole, systemR
   const pathname = usePathname()
   const router = useRouter()
   const [crumbs, setCrumbs] = useState<Crumb[]>([])
+  const [contextAddress, setContextAddress] = useState<string | null>(null)
+
+  // "home" = the empresas list (no empresa selected yet)
+  const isHome = pathname === '/dashboard' || pathname === '/dashboard/empresas'
 
   useEffect(() => {
     const match = pathname.match(ROUTE_PATTERN)
     if (!match) {
       setCrumbs([])
+      setContextAddress(null)
       return
     }
 
@@ -50,6 +56,7 @@ export function AppHeader({ fullName, email, consultoraNombre, userRole, systemR
 
       if (!empresaId || empresaId === 'nueva') {
         setCrumbs(items)
+        setContextAddress(null)
         return
       }
 
@@ -69,17 +76,25 @@ export function AppHeader({ fullName, email, consultoraNombre, userRole, systemR
 
       if (!estId || estId === 'nuevo') {
         setCrumbs(items)
+        setContextAddress(null)
         return
       }
 
       const { data: est } = await supabase
         .from('establecimientos')
-        .select('nombre')
+        .select('nombre, domicilio, codigo_postal, localidades!localidad_id(nombre, provincia)')
         .eq('id', estId)
         .single()
 
       if (est) {
         items.push({ label: est.nombre })
+        const parts: string[] = []
+        if (est.domicilio) parts.push(est.domicilio)
+        const loc = est.localidades as { nombre: string; provincia: string } | null
+        if (loc) parts.push(`${loc.nombre}, ${loc.provincia}`)
+        setContextAddress(parts.length ? parts.join(' · ') : null)
+      } else {
+        setContextAddress(null)
       }
 
       setCrumbs(items)
@@ -109,7 +124,7 @@ export function AppHeader({ fullName, email, consultoraNombre, userRole, systemR
 
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-      <div className="flex items-center h-16 px-6 gap-4">
+      <div className="flex items-center min-h-16 px-6 gap-4 py-2">
 
         {/* Left: Sigmetría brand */}
         <Link href="/dashboard" className="flex items-center gap-2.5 shrink-0 group">
@@ -124,45 +139,41 @@ export function AppHeader({ fullName, email, consultoraNombre, userRole, systemR
           </div>
         </Link>
 
-        {/* Productos nav */}
-        <nav className="hidden md:flex items-center ml-4">
-          <Link
-            href="/dashboard/productos"
-            className="px-3 py-1.5 rounded-md text-sm transition-colors text-gray-500 hover:text-gray-900 hover:bg-gray-50"
-            style={{ fontFamily: 'Poppins, system-ui' }}
-          >
-            Productos
-          </Link>
-        </nav>
-
-        {/* Breadcrumb */}
+        {/* Breadcrumb + address */}
         {crumbs.length > 0 && (
-          <nav className="hidden md:flex items-center gap-1.5 text-sm" aria-label="Breadcrumb">
-            {crumbs.map((crumb, i) => (
-              <div key={i} className="flex items-center gap-1.5">
-                {i > 0 && <span className="text-gray-300 select-none">›</span>}
-                {crumb.href ? (
-                  <Link
-                    href={crumb.href}
-                    className="text-gray-400 hover:text-gray-700 transition-colors"
-                    style={{ fontFamily: 'Poppins, system-ui' }}
-                  >
-                    {crumb.label}
-                  </Link>
-                ) : (
-                  <span
-                    className="text-gray-700 font-medium"
-                    style={{ fontFamily: 'Poppins, system-ui' }}
-                  >
-                    {crumb.label}
-                  </span>
-                )}
-              </div>
-            ))}
-          </nav>
+          <div className="hidden md:flex flex-col justify-center">
+            <nav className="flex items-center gap-1.5 text-sm" aria-label="Breadcrumb">
+              {crumbs.map((crumb, i) => (
+                <div key={i} className="flex items-center gap-1.5">
+                  {i > 0 && <span className="text-gray-300 select-none">›</span>}
+                  {crumb.href ? (
+                    <Link
+                      href={crumb.href}
+                      className="text-gray-400 hover:text-gray-700 transition-colors"
+                      style={{ fontFamily: 'Poppins, system-ui' }}
+                    >
+                      {crumb.label}
+                    </Link>
+                  ) : (
+                    <span
+                      className="text-gray-700 font-medium"
+                      style={{ fontFamily: 'Poppins, system-ui' }}
+                    >
+                      {crumb.label}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </nav>
+            {contextAddress && (
+              <p className="text-xs text-gray-400 mt-0.5" style={{ fontFamily: 'Poppins, system-ui' }}>
+                {contextAddress}
+              </p>
+            )}
+          </div>
         )}
 
-        {/* Center: user name */}
+        {/* Center: user name + role (always visible) */}
         <div className="flex-1 flex justify-center">
           <div className="text-center hidden sm:block">
             <p className="text-sm font-semibold text-gray-800" style={{ fontFamily: 'Montserrat, system-ui' }}>
@@ -176,8 +187,10 @@ export function AppHeader({ fullName, email, consultoraNombre, userRole, systemR
           </div>
         </div>
 
-        {/* Right: consultora + user menu */}
-        <div className="flex items-center gap-3 shrink-0">
+        {/* Right: weather + consultora + user menu */}
+        <div className="flex items-center gap-4 shrink-0">
+          {!isHome && <WeatherClock />}
+
           {consultoraNombre && (
             <div className="relative group hidden md:block">
               <button className="text-right cursor-pointer">
@@ -200,9 +213,15 @@ export function AppHeader({ fullName, email, consultoraNombre, userRole, systemR
                 </Link>
                 <Link
                   href="/dashboard/instrumentos"
-                  className="block px-4 py-2.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors rounded-b-xl"
+                  className="block px-4 py-2.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors"
                 >
                   Instrumentos Habilitados
+                </Link>
+                <Link
+                  href="/dashboard/configuracion/catalogacion"
+                  className="block px-4 py-2.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors rounded-b-xl"
+                >
+                  Catalogación
                 </Link>
               </div>
             </div>
