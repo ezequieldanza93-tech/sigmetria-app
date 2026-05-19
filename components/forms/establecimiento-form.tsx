@@ -18,20 +18,6 @@ interface EstablecimientoFormProps {
 
 type DiaConfig = { activo: boolean; inicio: string; fin: string }
 
-const TIPO_ENUM_TO_CODIGO: Record<string, string> = {
-  obra_construccion:    'CONSTRUCCION',
-  construccion:         'CONSTRUCCION',
-  industria:            'INDUSTRIA',
-  local_comercial:      'COMERCIO',
-  comercio:             'COMERCIO',
-  local_administrativo: 'OFICINA',
-  administrativo:       'OFICINA',
-  agro:                 'AGRO',
-  logistica:            'LOGISTICA',
-  centro_salud:         'CENTRO_SALUD',
-  otro:                 'OTRO',
-}
-
 const DIAS_SEMANA = [
   { dia: 1, label: 'Lunes' },
   { dia: 2, label: 'Martes' },
@@ -71,18 +57,6 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
     supabase.from('tipos_establecimiento').select('id, codigo, nombre, created_at').order('nombre')
       .then(({ data }) => { if (data) setTipos(data as TiposEstablecimiento[]) })
   }, [])
-
-  // Fallback: if tipo_id is null but the old enum tipo has a value, resolve it once tipos load
-  useEffect(() => {
-    if (selectedTipoId || !tipos.length) return
-    const oldTipo = establecimiento?.tipo as string | undefined
-    if (!oldTipo) return
-    const codigo = TIPO_ENUM_TO_CODIGO[oldTipo]
-    if (!codigo) return
-    const found = tipos.find(t => t.codigo === codigo)
-    if (found) setSelectedTipoId(found.id)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tipos])
 
   // Load horarios for existing establishment
   useEffect(() => {

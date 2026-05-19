@@ -208,7 +208,6 @@ export interface Establecimiento {
   id: string
   empresa_id: string
   nombre: string
-  tipo: TipoEstablecimiento | null
   tipo_id: string | null
   tipos_establecimiento?: { id: string; codigo: string; nombre: string } | null
   domicilio: string | null
