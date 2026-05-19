@@ -16,6 +16,9 @@ import type {
   DocumentType,
   Denuncia,
   FeedbackCliente,
+  EmpresaDocumento,
+  EmpleadoDocumentoLegajo,
+  LegajoGestion,
 } from '@/lib/types'
 
 type Section = 'informacion' | 'planificar' | 'hacer' | 'verificar' | 'actuar'
@@ -78,6 +81,9 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
   let documentTypes: DocumentType[] = []
   let denuncias: Denuncia[] = []
   let feedbackClientes: FeedbackCliente[] = []
+  let empresaDocumentos: EmpresaDocumento[] = []
+  let gestionesLegajo: LegajoGestion[] = []
+  let trabajadorDocumentos: EmpleadoDocumentoLegajo[] = []
 
   if (section === 'informacion') {
     const [s1, s2, s3, s4, s5] = await Promise.all([
@@ -116,12 +122,37 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
     documentos = (s4.data ?? []) as unknown as Documento[]
     documentTypes = (s5.data ?? []) as unknown as DocumentType[]
 
-    const [d1, d2] = await Promise.all([
+    const today = new Date().toISOString().split('T')[0]
+    const [d1, d2, d3, d4] = await Promise.all([
       supabase.from('establecimiento_denuncias').select('*').eq('establecimiento_id', estId).order('fecha', { ascending: false }),
       supabase.from('establecimiento_feedback_clientes').select('*').eq('establecimiento_id', estId).order('fecha', { ascending: false }),
+      supabase.from('empresa_documentos').select('*, documento_tipos(nombre)').eq('empresa_id', id).order('created_at', { ascending: false }),
+      supabase
+        .from('registro_gestiones')
+        .select('id, fecha_planificada, notas, gestion_establecimiento!inner(establecimiento_id, gestiones!inner(nombre, categoria_gestiones(nombre)))')
+        .eq('gestion_establecimiento.establecimiento_id', estId)
+        .is('fecha_ejecutada', null)
+        .gte('fecha_planificada', today)
+        .order('fecha_planificada'),
     ])
     denuncias = (d1.data ?? []) as unknown as Denuncia[]
     feedbackClientes = (d2.data ?? []) as unknown as FeedbackCliente[]
+    empresaDocumentos = (d3.data ?? []) as unknown as EmpresaDocumento[]
+    gestionesLegajo = (d4.data ?? []) as unknown as LegajoGestion[]
+
+    const { data: peData } = await supabase
+      .from('persona_establecimiento')
+      .select('persona_id')
+      .eq('establecimiento_id', estId)
+    const personaIds = ((peData ?? []) as { persona_id: string }[]).map(p => p.persona_id)
+    if (personaIds.length > 0) {
+      const { data: empDocs } = await supabase
+        .from('empleado_documentos')
+        .select('*, documento_tipos(nombre), directorio_personas(nombre, apellido, legajo)')
+        .in('persona_id', personaIds)
+        .order('created_at', { ascending: false })
+      trabajadorDocumentos = (empDocs ?? []) as unknown as EmpleadoDocumentoLegajo[]
+    }
   }
 
   if (section === 'planificar' || section === 'hacer') {
@@ -222,6 +253,9 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
               documentTypes={documentTypes}
               denuncias={denuncias}
               feedbackClientes={feedbackClientes}
+              empresaDocumentos={empresaDocumentos}
+              gestionesLegajo={gestionesLegajo}
+              trabajadorDocumentos={trabajadorDocumentos}
             />
           </>
         )}

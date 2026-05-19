@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useEffect, useActionState } from 'react'
+import React, { useState, useTransition, useEffect, useActionState } from 'react'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { SectorForm } from '@/components/forms/sector-form'
@@ -55,6 +55,9 @@ import type {
   Denuncia,
   FeedbackCliente,
   FeedbackTipo,
+  EmpresaDocumento,
+  EmpleadoDocumentoLegajo,
+  LegajoGestion,
 } from '@/lib/types'
 import { calcularEstadoGestion } from '@/lib/types'
 
@@ -72,6 +75,9 @@ interface EstablecimientoTabsProps {
   documentTypes: DocumentType[]
   denuncias: Denuncia[]
   feedbackClientes: FeedbackCliente[]
+  empresaDocumentos: EmpresaDocumento[]
+  gestionesLegajo: LegajoGestion[]
+  trabajadorDocumentos: EmpleadoDocumentoLegajo[]
   defaultTab?: Tab
 }
 
@@ -2397,6 +2403,156 @@ function FeedbackForm({
   )
 }
 
+// ---- Legajo Técnico ----
+function LegajoTab({
+  empresaDocumentos,
+  establecimientoDocumentos,
+  gestionesLegajo,
+  trabajadorDocumentos,
+}: {
+  empresaDocumentos: EmpresaDocumento[]
+  establecimientoDocumentos: Documento[]
+  gestionesLegajo: LegajoGestion[]
+  trabajadorDocumentos: EmpleadoDocumentoLegajo[]
+}) {
+  function vencimientoClass(fecha: string | null): string {
+    if (!fecha) return 'text-gray-400'
+    const days = Math.ceil((new Date(fecha).getTime() - Date.now()) / 86400000)
+    if (days < 0) return 'text-red-600 font-medium'
+    if (days <= 30) return 'text-yellow-600 font-medium'
+    return 'text-gray-500'
+  }
+
+  function vencimientoLabel(fecha: string | null): string {
+    if (!fecha) return '—'
+    const days = Math.ceil((new Date(fecha).getTime() - Date.now()) / 86400000)
+    const base = formatDate(fecha)
+    if (days < 0) return `${base} · vencido`
+    if (days === 0) return `${base} · hoy`
+    if (days <= 30) return `${base} · ${days}d`
+    return base
+  }
+
+  const DocTable = ({ rows }: { rows: { id: string; tipo: string; vencimiento: string | null; url: string | null }[] }) =>
+    rows.length === 0 ? (
+      <p className="text-xs text-gray-400 px-1 py-2">Sin documentos cargados.</p>
+    ) : (
+      <table className="w-full text-sm">
+        <thead className="border-b border-gray-100 bg-gray-50">
+          <tr className="text-left">
+            <th className="px-4 py-2.5 text-gray-500 font-medium text-xs">Tipo</th>
+            <th className="px-4 py-2.5 text-gray-500 font-medium text-xs">Vencimiento</th>
+            <th className="px-4 py-2.5 text-gray-500 font-medium text-xs">Archivo</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-50">
+          {rows.map(r => (
+            <tr key={r.id} className="hover:bg-gray-50">
+              <td className="px-4 py-3 font-medium text-gray-900 text-sm">{r.tipo}</td>
+              <td className={`px-4 py-3 text-xs ${vencimientoClass(r.vencimiento)}`}>{vencimientoLabel(r.vencimiento)}</td>
+              <td className="px-4 py-3">
+                {r.url ? (
+                  <a href={r.url} target="_blank" rel="noopener noreferrer" className="text-sig-500 hover:underline text-xs">
+                    Ver archivo ↗
+                  </a>
+                ) : <span className="text-gray-300 text-xs">—</span>}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    )
+
+  const seccion = (titulo: string, badge: number, children: React.ReactNode) => (
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="flex items-center gap-2 px-5 py-3.5 border-b border-gray-100 bg-gray-50">
+        <h4 className="text-sm font-semibold text-gray-800">{titulo}</h4>
+        <span className="text-xs text-gray-400 bg-gray-100 rounded-full px-2 py-0.5">{badge}</span>
+      </div>
+      {children}
+    </div>
+  )
+
+  const trabajadoresAgrupados = trabajadorDocumentos.reduce<Record<string, { persona: EmpleadoDocumentoLegajo['directorio_personas']; docs: EmpleadoDocumentoLegajo[] }>>((acc, d) => {
+    const key = d.persona_id
+    if (!acc[key]) acc[key] = { persona: d.directorio_personas, docs: [] }
+    acc[key].docs.push(d)
+    return acc
+  }, {})
+
+  return (
+    <div className="space-y-4">
+      {seccion('Documentos de la Empresa', empresaDocumentos.length, (
+        <DocTable rows={empresaDocumentos.map(d => ({
+          id: d.id,
+          tipo: d.documento_tipos?.nombre ?? '—',
+          vencimiento: d.fecha_vencimiento,
+          url: d.archivo_url,
+        }))} />
+      ))}
+
+      {seccion('Documentos del Establecimiento', establecimientoDocumentos.length, (
+        <DocTable rows={establecimientoDocumentos.map(d => ({
+          id: d.id,
+          tipo: d.documento_tipos?.nombre ?? '—',
+          vencimiento: d.fecha_vencimiento,
+          url: d.archivo_url,
+        }))} />
+      ))}
+
+      {seccion('Gestiones de Agenda — próximas sin vencer', gestionesLegajo.length, (
+        gestionesLegajo.length === 0 ? (
+          <p className="text-xs text-gray-400 px-5 py-3">Sin gestiones pendientes próximas.</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="border-b border-gray-100 bg-gray-50">
+              <tr className="text-left">
+                <th className="px-4 py-2.5 text-gray-500 font-medium text-xs">Categoría</th>
+                <th className="px-4 py-2.5 text-gray-500 font-medium text-xs">Gestión</th>
+                <th className="px-4 py-2.5 text-gray-500 font-medium text-xs">Fecha planificada</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {gestionesLegajo.map(g => {
+                const gestion = g.gestion_establecimiento?.gestiones
+                return (
+                  <tr key={g.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-xs text-gray-500">{gestion?.categoria_gestiones?.nombre ?? '—'}</td>
+                    <td className="px-4 py-3 font-medium text-gray-900 text-sm">{gestion?.nombre ?? '—'}</td>
+                    <td className="px-4 py-3 text-xs text-gray-500">{formatDate(g.fecha_planificada)}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        )
+      ))}
+
+      {seccion('Documentación de Trabajadores', trabajadorDocumentos.length, (
+        Object.keys(trabajadoresAgrupados).length === 0 ? (
+          <p className="text-xs text-gray-400 px-5 py-3">Sin documentación de trabajadores cargada.</p>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {Object.entries(trabajadoresAgrupados).map(([personaId, { persona, docs }]) => (
+              <div key={personaId}>
+                <p className="px-5 py-2.5 text-xs font-semibold text-gray-600 bg-gray-50 border-b border-gray-100">
+                  {persona ? `${persona.apellido}, ${persona.nombre}${persona.legajo ? ` · Leg. ${persona.legajo}` : ''}` : 'Trabajador'}
+                </p>
+                <DocTable rows={docs.map(d => ({
+                  id: d.id,
+                  tipo: d.documento_tipos?.nombre ?? '—',
+                  vencimiento: d.fecha_vencimiento,
+                  url: d.archivo_url,
+                }))} />
+              </div>
+            ))}
+          </div>
+        )
+      ))}
+    </div>
+  )
+}
+
 // ---- Main component ----
 const TABS: { id: Tab; label: string }[] = [
   { id: 'sectores', label: 'Sectores' },
@@ -2422,6 +2578,9 @@ export function EstablecimientoTabs({
   documentTypes,
   denuncias,
   feedbackClientes,
+  empresaDocumentos,
+  gestionesLegajo,
+  trabajadorDocumentos,
   defaultTab,
 }: EstablecimientoTabsProps) {
   const [active, setActive] = useState<Tab>(defaultTab ?? 'sectores')
@@ -2495,10 +2654,12 @@ export function EstablecimientoTabs({
         />
       )}
       {active === 'legajo' && (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400 text-sm">
-          <p className="font-medium text-gray-600 mb-1">Legajo Técnico</p>
-          <p>Próximamente — mostrará todos los documentos con check de legajo técnico.</p>
-        </div>
+        <LegajoTab
+          empresaDocumentos={empresaDocumentos}
+          establecimientoDocumentos={documentos}
+          gestionesLegajo={gestionesLegajo}
+          trabajadorDocumentos={trabajadorDocumentos}
+        />
       )}
       {active === 'denuncias' && (
         <DenunciasTab

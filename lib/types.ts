@@ -510,6 +510,41 @@ export interface Documento {
   created_at: string
 }
 
+export interface EmpresaDocumento {
+  id: string
+  empresa_id: string
+  tipo_id: string | null
+  documento_tipos: { nombre: string } | null
+  archivo_url: string | null
+  fecha_emision: string | null
+  fecha_vencimiento: string | null
+  created_at: string
+}
+
+export interface EmpleadoDocumentoLegajo {
+  id: string
+  persona_id: string
+  tipo_id: string | null
+  documento_tipos: { nombre: string } | null
+  archivo_url: string | null
+  fecha_emision: string | null
+  fecha_vencimiento: string | null
+  created_at: string
+  directorio_personas: { nombre: string; apellido: string; legajo: string | null } | null
+}
+
+export interface LegajoGestion {
+  id: string
+  fecha_planificada: string
+  notas: string | null
+  gestion_establecimiento: {
+    gestiones: {
+      nombre: string
+      categoria_gestiones: { nombre: string } | null
+    } | null
+  } | null
+}
+
 // ---- Labels & Colors ----
 
 export const ROLE_LABELS: Record<UserRole | SystemRole, string> = {
