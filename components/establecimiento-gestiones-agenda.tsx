@@ -865,7 +865,7 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
   }
 
   function loadCatalogo() {
-    getGestionesAplicables(establecimientoId).then(data => setTodasGestiones(data))
+    getGestionesAplicables(establecimientoId).then(data => setTodasGestiones(data)).catch(() => setTodasGestiones([]))
     const supabase = createClient()
     supabase.from('grupo_gestiones').select('*').order('nombre')
       .then(({ data }) => { if (data) setGrupos(data as unknown as GrupoGestion[]) })

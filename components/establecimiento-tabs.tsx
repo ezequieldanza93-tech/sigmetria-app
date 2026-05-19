@@ -1784,7 +1784,7 @@ function GestionesTab({ establecimientoId, canWrite }: { establecimientoId: stri
 
   useEffect(() => {
     loadData()
-    getGestionesAplicables(establecimientoId).then(data => setTodasGestiones(data))
+    getGestionesAplicables(establecimientoId).then(data => setTodasGestiones(data)).catch(() => setTodasGestiones([]))
   }, [establecimientoId])
 
   useEffect(() => {

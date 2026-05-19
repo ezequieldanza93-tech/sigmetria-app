@@ -35,16 +35,12 @@ export function PlanificarView({ establecimientoId }: PlanificarViewProps) {
   const [mode, setMode] = useState<'biblioteca' | 'nueva'>('biblioteca')
 
   useEffect(() => {
-    Promise.all([
-      getGestionesAplicables(establecimientoId),
-      supabase.from('grupo_gestiones').select('*').order('nombre'),
-      supabase.from('categoria_gestiones').select('*').order('nombre'),
-    ]).then(([ges, grp, cat]) => {
-      setTodasGestiones(ges)
-      setGrupos((grp.data ?? []) as unknown as GrupoGestion[])
-      setCategorias((cat.data ?? []) as unknown as CategoriaGestion[])
-      setLoading(false)
-    })
+    getGestionesAplicables(establecimientoId).then(setTodasGestiones).catch(() => setTodasGestiones([]))
+    supabase.from('grupo_gestiones').select('*').order('nombre')
+      .then(({ data }) => { if (data) setGrupos(data as unknown as GrupoGestion[]) })
+    supabase.from('categoria_gestiones').select('*').order('nombre')
+      .then(({ data }) => { if (data) setCategorias(data as unknown as CategoriaGestion[]) })
+      .finally(() => setLoading(false))
   }, [establecimientoId])
 
   function toggleMonth(m: number) {
