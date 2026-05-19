@@ -321,6 +321,19 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
         </p>
       </div>
 
+      <div className="flex items-center gap-2">
+        <input
+          id="aplica_iso_45001"
+          name="aplica_iso_45001"
+          type="checkbox"
+          defaultChecked={establecimiento?.aplica_iso_45001 === true}
+          className="w-4 h-4 rounded border-gray-300 text-sig-600 focus:ring-sig-500"
+        />
+        <label htmlFor="aplica_iso_45001" className="text-sm font-medium text-gray-700 cursor-pointer">
+          Aplica ISO 45001
+        </label>
+      </div>
+
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Foto del establecimiento</label>
         {establecimiento?.photo_site && (

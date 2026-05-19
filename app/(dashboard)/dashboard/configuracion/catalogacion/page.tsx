@@ -5,12 +5,16 @@ import {
   getTiposEstablecimiento,
   getGestionesConTipos,
   toggleGestionTipo,
+  toggleIsoGestionTipo,
   getAspectos,
   getSeccionesConAspectos,
   toggleSeccionAspecto,
+  toggleIsoSeccionAspecto,
   getDocumentoTiposConTipos,
   toggleDocumentoTipo,
+  toggleIsoDocumentoTipo,
 } from '@/lib/actions/catalogacion'
+import type { GestionRow, SeccionRow, DocumentoRow } from '@/lib/actions/catalogacion'
 import type { ActionResult } from '@/lib/types'
 
 type TabName = 'gestiones' | 'secciones' | 'documentacion'
@@ -19,25 +23,6 @@ interface TipoItem {
   id: string
   nombre: string
   codigo?: string | null
-}
-
-interface GestionRow {
-  id: string
-  nombre: string
-  tipos: string[]
-}
-
-interface SeccionRow {
-  id: string
-  gestion_id: string
-  title: string
-  aspectos: string[]
-}
-
-interface DocumentoRow {
-  id: string
-  nombre: string
-  tipos: string[]
 }
 
 function useAsync<T>(fn: () => Promise<T>): [T | null, boolean, string | null] {
@@ -68,13 +53,17 @@ function Buscador({ value, onChange }: { value: string; onChange: (v: string) =>
 function CheckboxGrid({
   tipos,
   asignados,
+  isoMap,
   onToggle,
+  onToggleIso,
   loading,
   onSelectAll,
 }: {
   tipos: TipoItem[]
   asignados: string[]
+  isoMap: Record<string, boolean>
   onToggle: (tipoId: string, active: boolean) => void
+  onToggleIso: (tipoId: string, aplicaIso: boolean) => void
   loading: boolean
   onSelectAll?: (asignar: boolean) => void
 }) {
@@ -85,20 +74,12 @@ function CheckboxGrid({
       {tipos.length > 0 && onSelectAll && (
         <div className="flex gap-2 mb-2">
           {!todosAsignados && (
-            <button
-              onClick={() => onSelectAll(true)}
-              disabled={loading}
-              className="text-xs text-blue-600 hover:text-blue-800 disabled:opacity-50"
-            >
+            <button onClick={() => onSelectAll(true)} disabled={loading} className="text-xs text-blue-600 hover:text-blue-800 disabled:opacity-50">
               + Seleccionar todos
             </button>
           )}
           {!ningunoAsignado && (
-            <button
-              onClick={() => onSelectAll(false)}
-              disabled={loading}
-              className="text-xs text-red-500 hover:text-red-700 disabled:opacity-50"
-            >
+            <button onClick={() => onSelectAll(false)} disabled={loading} className="text-xs text-red-500 hover:text-red-700 disabled:opacity-50">
               - Deseleccionar todos
             </button>
           )}
@@ -115,17 +96,20 @@ function CheckboxGrid({
                 ${active ? 'bg-blue-50 border-blue-400 text-blue-800' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'}
               `}
             >
-              <input
-                type="checkbox"
-                className="sr-only"
-                checked={active}
-                disabled={loading}
-                onChange={() => onToggle(t.id, !active)}
-              />
+              <input type="checkbox" className="sr-only" checked={active} disabled={loading} onChange={() => onToggle(t.id, !active)} />
               <span className={`w-3 h-3 rounded border flex items-center justify-center text-[8px] font-bold transition-colors ${active ? 'bg-blue-500 border-blue-500 text-white' : 'border-gray-300'}`}>
                 {active && '✓'}
               </span>
               {t.nombre}
+              {active && (
+                <span
+                  onClick={e => { e.preventDefault(); onToggleIso(t.id, !isoMap[t.id]) }}
+                  className={`ml-1 text-[10px] font-bold px-1.5 py-0.5 rounded cursor-pointer transition-colors ${isoMap[t.id] ? 'bg-green-200 text-green-800' : 'bg-gray-200 text-gray-400'}`}
+                  title={isoMap[t.id] ? 'Aplica ISO 45001' : 'No aplica ISO 45001'}
+                >
+                  ISO
+                </span>
+              )}
             </label>
           )
         })}
@@ -197,7 +181,6 @@ export default function CatalogacionPage() {
       tipoId: string,
       active: boolean,
       toggleFn: (id: string, tipoId: string, active: boolean) => Promise<ActionResult<null>>,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setLocal: Dispatch<SetStateAction<any[]>>,
       field: string,
     ) => {
@@ -206,9 +189,32 @@ export default function CatalogacionPage() {
       const res = await toggleFn(id, tipoId, active)
       setSaving(prev => { const next = new Set(prev); next.delete(key); return next })
       if (res.success) {
-        setLocal(prev => prev.map(item =>
+        setLocal(prev => prev.map((item: any) =>
           item.id === id
             ? { ...item, [field]: active ? [...item[field], tipoId] : item[field].filter((x: string) => x !== tipoId) }
+            : item,
+        ))
+      }
+    },
+    [],
+  )
+
+  const handleIsoToggle = useCallback(
+    async (
+      id: string,
+      tipoId: string,
+      aplicaIso: boolean,
+      toggleFn: (id: string, tipoId: string, aplicaIso: boolean) => Promise<ActionResult<null>>,
+      setLocal: Dispatch<SetStateAction<any[]>>,
+    ) => {
+      const key = `iso:${id}:${tipoId}`
+      setSaving(prev => new Set(prev).add(key))
+      const res = await toggleFn(id, tipoId, aplicaIso)
+      setSaving(prev => { const next = new Set(prev); next.delete(key); return next })
+      if (res.success) {
+        setLocal(prev => prev.map((item: any) =>
+          item.id === id
+            ? { ...item, isoMap: { ...item.isoMap, [tipoId]: aplicaIso } }
             : item,
         ))
       }
@@ -227,7 +233,6 @@ export default function CatalogacionPage() {
     for (const s of localSec) {
       if (!map.has(s.gestion_id)) map.set(s.gestion_id, s.gestion_id)
     }
-    // Get gestion names from localGes
     const names = new Map(localGes.map(g => [g.id, g.nombre]))
     return Array.from(map.keys()).sort((a, b) => (names.get(a) ?? '').localeCompare(names.get(b) ?? ''))
   }, [localSec, localGes])
@@ -269,7 +274,9 @@ export default function CatalogacionPage() {
                   <CheckboxGrid
                     tipos={tipos ?? []}
                     asignados={g.tipos}
+                    isoMap={g.isoMap}
                     onToggle={(tipoId, active) => handleToggle(g.id, tipoId, active, toggleGestionTipo, setLocalGes, 'tipos')}
+                    onToggleIso={(tipoId, aplicaIso) => handleIsoToggle(g.id, tipoId, aplicaIso, toggleIsoGestionTipo, setLocalGes)}
                     onSelectAll={(asignar) => handleSelectAll(g.id, asignar, tipos ?? [], g.tipos, toggleGestionTipo, setLocalGes, 'tipos')}
                     loading={saving.size > 0}
                   />
@@ -303,16 +310,14 @@ export default function CatalogacionPage() {
             <div className="space-y-3">
               {filteredSecciones.map(s => (
                 <div key={s.id} className="bg-white border border-gray-200 rounded-xl p-4">
-                  <p className="text-sm font-semibold text-gray-800 mb-1">
-                    {s.title}
-                  </p>
-                  <p className="text-xs text-gray-400 mb-3">
-                    {localGes.find(g => g.id === s.gestion_id)?.nombre ?? '?'}
-                  </p>
+                  <p className="text-sm font-semibold text-gray-800 mb-1">{s.title}</p>
+                  <p className="text-xs text-gray-400 mb-3">{localGes.find(g => g.id === s.gestion_id)?.nombre ?? '?'}</p>
                   <CheckboxGrid
                     tipos={aspectos ?? []}
                     asignados={s.aspectos}
+                    isoMap={s.isoMap}
                     onToggle={(aspectoId, active) => handleToggle(s.id, aspectoId, active, toggleSeccionAspecto, setLocalSec, 'aspectos')}
+                    onToggleIso={(aspectoId, aplicaIso) => handleIsoToggle(s.id, aspectoId, aplicaIso, toggleIsoSeccionAspecto, setLocalSec)}
                     onSelectAll={(asignar) => handleSelectAll(s.id, asignar, aspectos ?? [], s.aspectos, toggleSeccionAspecto, setLocalSec, 'aspectos')}
                     loading={saving.size > 0}
                   />
@@ -337,7 +342,9 @@ export default function CatalogacionPage() {
                   <CheckboxGrid
                     tipos={tipos ?? []}
                     asignados={d.tipos}
+                    isoMap={d.isoMap}
                     onToggle={(tipoId, active) => handleToggle(d.id, tipoId, active, toggleDocumentoTipo, setLocalDoc, 'tipos')}
+                    onToggleIso={(tipoId, aplicaIso) => handleIsoToggle(d.id, tipoId, aplicaIso, toggleIsoDocumentoTipo, setLocalDoc)}
                     onSelectAll={(asignar) => handleSelectAll(d.id, asignar, tipos ?? [], d.tipos, toggleDocumentoTipo, setLocalDoc, 'tipos')}
                     loading={saving.size > 0}
                   />

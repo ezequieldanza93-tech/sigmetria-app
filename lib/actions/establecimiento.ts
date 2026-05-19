@@ -110,6 +110,7 @@ export async function createEstablecimiento(
       description: (formData.get('description') as string) || null,
       latitude,
       longitude,
+      aplica_iso_45001: formData.get('aplica_iso_45001') === 'on',
     })
     .select('id')
     .single()
@@ -167,6 +168,7 @@ export async function updateEstablecimiento(
       description: (formData.get('description') as string) || null,
       latitude,
       longitude,
+      aplica_iso_45001: formData.get('aplica_iso_45001') === 'on',
       ...(photo_site !== undefined && { photo_site }),
     })
     .eq('id', id)

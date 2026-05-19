@@ -229,6 +229,7 @@ export interface Establecimiento {
   ac_area: number | null
   gross_area: number | null
   status: EstablecimientoStatus
+  aplica_iso_45001?: boolean
   created_at: string
   updated_at: string
   localidades?: { nombre: string; provincia: string } | null
