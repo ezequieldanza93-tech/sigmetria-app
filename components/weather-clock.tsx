@@ -14,7 +14,19 @@ const WMO: Record<number, string> = {
   95: 'Tormenta', 96: 'Tormenta con granizo', 99: 'Tormenta fuerte',
 }
 
-interface Weather { temp: number; condition: string; wind: number }
+function weatherEmoji(code: number): string {
+  if (code === 0) return '☀️'
+  if (code <= 2) return '🌤️'
+  if (code === 3) return '☁️'
+  if (code <= 48) return '🌫️'
+  if (code <= 55) return '🌦️'
+  if (code <= 65) return '🌧️'
+  if (code <= 77) return '❄️'
+  if (code <= 82) return '🌦️'
+  return '⛈️'
+}
+
+interface Weather { temp: number; condition: string; wind: number; code: number }
 
 const TZ = 'America/Argentina/Buenos_Aires'
 
@@ -40,6 +52,7 @@ export function WeatherClock() {
           temp: Math.round(c.temperature_2m * 10) / 10,
           condition: WMO[c.weather_code as number] ?? '—',
           wind: Math.round(c.wind_speed_10m * 10) / 10,
+          code: c.weather_code as number,
         })
       } catch { /* silently ignore */ }
     }
@@ -58,17 +71,31 @@ export function WeatherClock() {
   })
 
   return (
-    <div className="text-right hidden lg:block shrink-0">
-      {weather ? (
-        <p className="text-xs font-medium text-gray-700">
-          {weather.temp}°C · {weather.condition} · 💨 {weather.wind} km/h
-        </p>
-      ) : (
-        <p className="text-xs text-gray-300">Cargando clima…</p>
-      )}
-      <p className="text-xs text-gray-500 capitalize">{dateStr}</p>
-      <p className="text-xs font-mono text-gray-700">{timeStr}</p>
-      <p className="text-[10px] text-gray-400">America/Argentina/Buenos Aires</p>
+    <div className="hidden lg:flex items-center gap-3 shrink-0">
+      {/* Fecha y hora */}
+      <div className="text-right">
+        <p className="text-xs capitalize text-gray-500 leading-tight">{dateStr}</p>
+        <p className="text-xs font-mono text-gray-700 leading-tight tabular-nums">{timeStr}</p>
+      </div>
+
+      <div className="w-px h-7 bg-gray-200 shrink-0" />
+
+      {/* Clima */}
+      <div className="flex items-center gap-2">
+        <span className="text-2xl leading-none select-none" aria-hidden="true">
+          {weather ? weatherEmoji(weather.code) : '🌡️'}
+        </span>
+        <div>
+          {weather ? (
+            <p className="text-xs font-medium text-gray-700 leading-tight">
+              {weather.temp}°C · {weather.condition} · 💨 {weather.wind} km/h
+            </p>
+          ) : (
+            <p className="text-xs text-gray-300 leading-tight">Cargando…</p>
+          )}
+          <p className="text-[10px] text-gray-400 leading-tight">America/Argentina/Buenos Aires</p>
+        </div>
+      </div>
     </div>
   )
 }

@@ -70,38 +70,66 @@ function CheckboxGrid({
   asignados,
   onToggle,
   loading,
+  onSelectAll,
 }: {
   tipos: TipoItem[]
   asignados: string[]
   onToggle: (tipoId: string, active: boolean) => void
   loading: boolean
+  onSelectAll?: (asignar: boolean) => void
 }) {
+  const todosAsignados = tipos.length > 0 && asignados.length === tipos.length
+  const ningunoAsignado = asignados.length === 0
   return (
-    <div className="flex flex-wrap gap-2">
-      {tipos.map(t => {
-        const active = asignados.includes(t.id)
-        return (
-          <label
-            key={t.id}
-            className={`
-              inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm cursor-pointer select-none transition-colors
-              ${active ? 'bg-blue-50 border-blue-400 text-blue-800' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'}
-            `}
-          >
-            <input
-              type="checkbox"
-              className="sr-only"
-              checked={active}
+    <div>
+      {tipos.length > 0 && onSelectAll && (
+        <div className="flex gap-2 mb-2">
+          {!todosAsignados && (
+            <button
+              onClick={() => onSelectAll(true)}
               disabled={loading}
-              onChange={() => onToggle(t.id, !active)}
-            />
-            <span className={`w-3 h-3 rounded border flex items-center justify-center text-[8px] font-bold transition-colors ${active ? 'bg-blue-500 border-blue-500 text-white' : 'border-gray-300'}`}>
-              {active && '✓'}
-            </span>
-            {t.nombre}
-          </label>
-        )
-      })}
+              className="text-xs text-blue-600 hover:text-blue-800 disabled:opacity-50"
+            >
+              + Seleccionar todos
+            </button>
+          )}
+          {!ningunoAsignado && (
+            <button
+              onClick={() => onSelectAll(false)}
+              disabled={loading}
+              className="text-xs text-red-500 hover:text-red-700 disabled:opacity-50"
+            >
+              - Deseleccionar todos
+            </button>
+          )}
+        </div>
+      )}
+      <div className="flex flex-wrap gap-2">
+        {tipos.map(t => {
+          const active = asignados.includes(t.id)
+          return (
+            <label
+              key={t.id}
+              className={`
+                inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm cursor-pointer select-none transition-colors
+                ${active ? 'bg-blue-50 border-blue-400 text-blue-800' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'}
+              `}
+            >
+              <input
+                type="checkbox"
+                className="sr-only"
+                checked={active}
+                disabled={loading}
+                onChange={() => onToggle(t.id, !active)}
+              />
+              <span className={`w-3 h-3 rounded border flex items-center justify-center text-[8px] font-bold transition-colors ${active ? 'bg-blue-500 border-blue-500 text-white' : 'border-gray-300'}`}>
+                {active && '✓'}
+              </span>
+              {t.nombre}
+            </label>
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -137,6 +165,31 @@ export default function CatalogacionPage() {
   useEffect(() => { if (gestiones) setLocalGes(gestiones) }, [gestiones])
   useEffect(() => { if (secciones) setLocalSec(secciones) }, [secciones])
   useEffect(() => { if (documentos) setLocalDoc(documentos) }, [documentos])
+
+  const handleSelectAll = useCallback(
+    async (
+      id: string,
+      asignar: boolean,
+      items: TipoItem[],
+      asignadosActuales: string[],
+      toggleFn: (id: string, tipoId: string, active: boolean) => Promise<ActionResult<null>>,
+      setLocal: Dispatch<SetStateAction<any[]>>,
+      field: string,
+    ) => {
+      const targets = asignar
+        ? items.filter(t => !asignadosActuales.includes(t.id)).map(t => t.id)
+        : asignadosActuales
+      if (targets.length === 0) return
+      const keys = targets.map(t => `${id}:${t}`)
+      setSaving(prev => { const n = new Set(prev); keys.forEach(k => n.add(k)); return n })
+      setLocal(prev => prev.map(item =>
+        item.id === id ? { ...item, [field]: asignar ? [...item[field], ...targets] : [] } : item,
+      ))
+      await Promise.all(targets.map(t => toggleFn(id, t, asignar)))
+      setSaving(prev => { const n = new Set(prev); keys.forEach(k => n.delete(k)); return n })
+    },
+    [],
+  )
 
   const handleToggle = useCallback(
     async (
@@ -217,6 +270,7 @@ export default function CatalogacionPage() {
                     tipos={tipos ?? []}
                     asignados={g.tipos}
                     onToggle={(tipoId, active) => handleToggle(g.id, tipoId, active, toggleGestionTipo, setLocalGes, 'tipos')}
+                    onSelectAll={(asignar) => handleSelectAll(g.id, asignar, tipos ?? [], g.tipos, toggleGestionTipo, setLocalGes, 'tipos')}
                     loading={saving.size > 0}
                   />
                 </div>
@@ -259,6 +313,7 @@ export default function CatalogacionPage() {
                     tipos={aspectos ?? []}
                     asignados={s.aspectos}
                     onToggle={(aspectoId, active) => handleToggle(s.id, aspectoId, active, toggleSeccionAspecto, setLocalSec, 'aspectos')}
+                    onSelectAll={(asignar) => handleSelectAll(s.id, asignar, aspectos ?? [], s.aspectos, toggleSeccionAspecto, setLocalSec, 'aspectos')}
                     loading={saving.size > 0}
                   />
                 </div>
@@ -283,6 +338,7 @@ export default function CatalogacionPage() {
                     tipos={tipos ?? []}
                     asignados={d.tipos}
                     onToggle={(tipoId, active) => handleToggle(d.id, tipoId, active, toggleDocumentoTipo, setLocalDoc, 'tipos')}
+                    onSelectAll={(asignar) => handleSelectAll(d.id, asignar, tipos ?? [], d.tipos, toggleDocumentoTipo, setLocalDoc, 'tipos')}
                     loading={saving.size > 0}
                   />
                 </div>
