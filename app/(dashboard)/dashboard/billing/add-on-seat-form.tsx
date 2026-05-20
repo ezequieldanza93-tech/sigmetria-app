@@ -55,6 +55,7 @@ export function AddOnSeatForm({ precioUnitarioNeto, ivaPorcentaje, seatsMax, sea
         setSuccess(true)
         router.refresh()
       } catch {
+        console.error('[addOnSeatForm] Error de red')
         setError('Error de red')
       }
     })

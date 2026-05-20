@@ -71,6 +71,7 @@ export function ManualPaymentForm({ plans, formatARS }: ManualPaymentFormProps) 
         setSuccess(true)
         router.refresh()
       } catch {
+        console.error('[manualPaymentForm] Error de red')
         setError('Error de red')
       }
     })

@@ -52,6 +52,7 @@ export function ForceSubscriptionForm({ consultoraId, estadoActual }: ForceSubsc
         // Forzar recarga para reflejar el nuevo estado
         window.location.reload()
       } catch {
+        console.error('[forceSubscriptionForm] Error de red')
         setError('Error de red')
       }
     })

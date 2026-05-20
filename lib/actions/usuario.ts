@@ -101,6 +101,7 @@ export async function updateRol(memberId: string, role: UserRole): Promise<Actio
     .from('consultoras_members')
     .update({ role })
     .eq('id', memberId)
+    .eq('consultora_id', ctx.membership?.consultora_id ?? '')
 
   if (error) return { success: false, error: error.message }
 

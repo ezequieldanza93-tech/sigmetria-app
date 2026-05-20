@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect, useActionState, useCallback } from 'react'
+import { useState, useEffect, useActionState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
-import { createClient } from '@/lib/supabase/client'
 import { upsertPerfilProfesional, addMatriculaProfesional } from '@/lib/actions/perfil-profesional'
+import { usePerfil, useProvincias, useMatriculas } from '@/lib/queries/profesional'
 import { formatDate } from '@/lib/utils'
 import type { PerfilProfesional, MatriculaProfesional, ActionResult } from '@/lib/types'
 
@@ -66,7 +67,7 @@ function DatosForm({
           <select
             name="provincia_matricula_id"
             defaultValue={perfil?.provincia_matricula_id ?? ''}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
+            className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white"
           >
             <option value="">No estoy matriculado</option>
             {provincias.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
@@ -80,7 +81,7 @@ function DatosForm({
           <select
             name="tipo_identidad_impositiva"
             defaultValue={perfil?.tipo_identidad_impositiva ?? ''}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
+            className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white"
           >
             <option value="">—</option>
             <option value="CUIT">CUIT</option>
@@ -94,7 +95,7 @@ function DatosForm({
             name="cuit"
             defaultValue={perfil?.cuit ?? ''}
             placeholder="20-12345678-9"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+            className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
           />
         </div>
       </div>
@@ -105,7 +106,7 @@ function DatosForm({
           name="canal_captacion"
           defaultValue={perfil?.canal_captacion ?? ''}
           placeholder="Ej: Instagram, Google, recomendación de un colega…"
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+          className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
         />
       </div>
 
@@ -179,6 +180,32 @@ function MatriculaForm({
   )
 }
 
+function MatriculaCard({ m }: { m: MatriculaProfesional }) {
+  const days = m.fecha_vencimiento
+    ? Math.ceil((new Date(m.fecha_vencimiento).getTime() - Date.now()) / 86400000)
+    : null
+  const statusLabel = !m.activa ? 'Histórico' : days === null ? 'Sin vencimiento' : days < 0 ? 'Vencida' : days <= 30 ? 'Próx. a vencer' : 'Vigente'
+  const statusClass = !m.activa ? 'bg-gray-100 text-gray-500' : days === null ? 'bg-sig-50 text-sig-700' : days < 0 ? 'bg-red-100 text-red-700' : days <= 30 ? 'bg-yellow-100 text-yellow-700' : 'bg-sig-50 text-sig-700'
+
+  return (
+    <div className="bg-gray-50 rounded-lg px-3 py-2.5 text-sm flex items-start justify-between">
+      <div>
+        <div className="flex items-center gap-2">
+          <p className="font-medium text-gray-800">{m.emisor}</p>
+          <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${statusClass}`}>{statusLabel}</span>
+        </div>
+        <p className="text-xs text-gray-500 mt-0.5">Nº {m.numero}</p>
+        {m.fecha_emision && <p className="text-xs text-gray-400">Desde: {formatDate(m.fecha_emision)}</p>}
+        {m.fecha_vencimiento && <p className="text-xs text-gray-400">Vence: {formatDate(m.fecha_vencimiento)}</p>}
+      </div>
+      <div className="flex gap-2 shrink-0 ml-2">
+        {m.foto_frente_url && <a href={m.foto_frente_url} target="_blank" rel="noopener noreferrer" className="text-xs text-sig-500 hover:underline">Frente</a>}
+        {m.foto_dorso_url && <a href={m.foto_dorso_url} target="_blank" rel="noopener noreferrer" className="text-xs text-sig-500 hover:underline">Dorso</a>}
+      </div>
+    </div>
+  )
+}
+
 interface ProfesionalModalProps {
   userId: string
   fullName: string
@@ -188,43 +215,21 @@ interface ProfesionalModalProps {
 }
 
 export function ProfesionalModal({ userId, fullName, open, onClose, canEdit }: ProfesionalModalProps) {
+  const queryClient = useQueryClient()
   const [tab, setTab] = useState<'datos' | 'matriculas'>('datos')
-  const [perfil, setPerfil] = useState<PerfilProfesional | null | undefined>(undefined)
-  const [matriculas, setMatriculas] = useState<MatriculaProfesional[] | null>(null)
-  const [showMatriculaForm, setShowMatriculaForm] = useState(false)
   const [editingDatos, setEditingDatos] = useState(false)
-  const [provincias, setProvincias] = useState<Provincia[]>([])
+  const [showMatriculaForm, setShowMatriculaForm] = useState(false)
+
+  const { data: perfil, isLoading: perfilLoading } = usePerfil(open ? userId : undefined)
+  const { data: provincias = [] } = useProvincias()
+  const { data: matriculas = null } = useMatriculas(open && tab === 'matriculas' ? perfil?.id ?? null : null)
 
   useEffect(() => {
-    if (!open) { setTab('datos'); setPerfil(undefined); setMatriculas(null); setShowMatriculaForm(false); setEditingDatos(false) }
+    if (!open) { setTab('datos'); setEditingDatos(false); setShowMatriculaForm(false) }
   }, [open])
 
-  useEffect(() => {
-    if (!open) return
-    const supabase = createClient()
-    Promise.all([
-      supabase.from('perfiles_profesionales').select('id, user_id, telefono, fecha_nacimiento, provincia_residencia_id, provincia_matricula_id, tipo_identidad_impositiva, cuit, canal_captacion').eq('user_id', userId).maybeSingle(),
-      supabase.from('provincias').select('id, nombre').order('nombre'),
-    ]).then(([perfRes, provRes]) => {
-      setPerfil((perfRes.data as PerfilProfesional | null) ?? null)
-      if (provRes.data) setProvincias(provRes.data as Provincia[])
-    })
-  }, [open, userId])
-
-  useEffect(() => {
-    if (tab !== 'matriculas' || !open || perfil === undefined) return
-    if (perfil === null) { setMatriculas([]); return }
-    const supabase = createClient()
-    supabase
-      .from('matriculas_profesionales')
-      .select('id, perfil_id, activa, emisor, numero, fecha_emision, fecha_vencimiento, foto_frente_url, foto_dorso_url')
-      .eq('perfil_id', perfil.id)
-      .order('created_at', { ascending: false })
-      .then(({ data }) => setMatriculas((data as MatriculaProfesional[]) ?? []))
-  }, [tab, open, perfil])
-
-  const vigentes = matriculas?.filter(m => m.activa) ?? []
-  const historico = matriculas?.filter(m => !m.activa) ?? []
+  const vigentes = (matriculas ?? [])?.filter(m => m.activa) ?? []
+  const historico = (matriculas ?? [])?.filter(m => !m.activa) ?? []
 
   return (
     <Modal open={open} onClose={onClose} title={fullName}>
@@ -244,22 +249,20 @@ export function ProfesionalModal({ userId, fullName, open, onClose, canEdit }: P
 
       {tab === 'datos' && (
         <div>
-          {perfil === undefined ? (
+          {perfilLoading ? (
             <p className="text-sm text-gray-400 text-center py-4">Cargando…</p>
           ) : editingDatos ? (
             <DatosForm
-              perfil={perfil}
+              perfil={perfil ?? null}
               provincias={provincias}
               onSuccess={() => {
                 setEditingDatos(false)
-                const supabase = createClient()
-                supabase.from('perfiles_profesionales').select('id, user_id, telefono, fecha_nacimiento, provincia_residencia_id, provincia_matricula_id, tipo_identidad_impositiva, cuit, canal_captacion').eq('user_id', userId).maybeSingle()
-                  .then(({ data }) => setPerfil((data as PerfilProfesional | null) ?? null))
+                queryClient.invalidateQueries({ queryKey: ['perfil', userId] })
               }}
             />
           ) : (
             <div className="space-y-3 text-sm">
-              {perfil === null ? (
+              {!perfil ? (
                 <p className="text-gray-400 text-center py-2">Sin datos profesionales cargados.</p>
               ) : (
                 <div className="grid grid-cols-2 gap-3">
@@ -306,22 +309,19 @@ export function ProfesionalModal({ userId, fullName, open, onClose, canEdit }: P
                 </div>
               )}
 
-              {/* Sin vigente → mostrar la última vencida */}
               {vigentes.length === 0 && historico.length > 0 && (
                 <MatriculaCard m={historico[0]} />
               )}
 
-              {showMatriculaForm && perfil !== null && perfil !== undefined ? (
+              {showMatriculaForm && perfil ? (
                 <MatriculaForm
                   perfilId={perfil.id}
                   onSuccess={() => {
                     setShowMatriculaForm(false)
-                    const supabase = createClient()
-                    supabase.from('matriculas_profesionales').select('*').eq('perfil_id', perfil!.id).order('created_at', { ascending: false })
-                      .then(({ data }) => setMatriculas((data as MatriculaProfesional[]) ?? []))
+                    queryClient.invalidateQueries({ queryKey: ['matriculas', perfil.id] })
                   }}
                 />
-              ) : canEdit && perfil !== null && perfil !== undefined && (
+              ) : canEdit && perfil && (
                 <button
                   onClick={() => setShowMatriculaForm(true)}
                   className="mt-3 text-sm text-sig-500 hover:text-sig-700 font-medium"
@@ -345,31 +345,5 @@ export function ProfesionalModal({ userId, fullName, open, onClose, canEdit }: P
         </div>
       )}
     </Modal>
-  )
-}
-
-function MatriculaCard({ m }: { m: MatriculaProfesional }) {
-  const days = m.fecha_vencimiento
-    ? Math.ceil((new Date(m.fecha_vencimiento).getTime() - Date.now()) / 86400000)
-    : null
-  const statusLabel = !m.activa ? 'Histórico' : days === null ? 'Sin vencimiento' : days < 0 ? 'Vencida' : days <= 30 ? 'Próx. a vencer' : 'Vigente'
-  const statusClass = !m.activa ? 'bg-gray-100 text-gray-500' : days === null ? 'bg-sig-50 text-sig-700' : days < 0 ? 'bg-red-100 text-red-700' : days <= 30 ? 'bg-yellow-100 text-yellow-700' : 'bg-sig-50 text-sig-700'
-
-  return (
-    <div className="bg-gray-50 rounded-lg px-3 py-2.5 text-sm flex items-start justify-between">
-      <div>
-        <div className="flex items-center gap-2">
-          <p className="font-medium text-gray-800">{m.emisor}</p>
-          <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${statusClass}`}>{statusLabel}</span>
-        </div>
-        <p className="text-xs text-gray-500 mt-0.5">Nº {m.numero}</p>
-        {m.fecha_emision && <p className="text-xs text-gray-400">Desde: {formatDate(m.fecha_emision)}</p>}
-        {m.fecha_vencimiento && <p className="text-xs text-gray-400">Vence: {formatDate(m.fecha_vencimiento)}</p>}
-      </div>
-      <div className="flex gap-2 shrink-0 ml-2">
-        {m.foto_frente_url && <a href={m.foto_frente_url} target="_blank" rel="noopener noreferrer" className="text-xs text-sig-500 hover:underline">Frente</a>}
-        {m.foto_dorso_url && <a href={m.foto_dorso_url} target="_blank" rel="noopener noreferrer" className="text-xs text-sig-500 hover:underline">Dorso</a>}
-      </div>
-    </div>
   )
 }

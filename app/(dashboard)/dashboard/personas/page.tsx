@@ -138,6 +138,7 @@ export default function PersonasPage() {
       .from('personas_directorio')
       .select('*, personas_tipos(nombre)')
       .eq('is_active', true)
+      .range(0, 99)
       .order('apellido')
       .then(({ data }) => setPersonas((data as unknown as DirectorioPersona[]) ?? []))
   }

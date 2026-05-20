@@ -21,7 +21,7 @@ async function parseUbicacion(raw: string | null): Promise<{ latitude: number | 
     const res = await fetch(url, { headers: { 'User-Agent': 'sigmetria-hys-app/1.0' } })
     const data = await res.json()
     if (data?.[0]) return { latitude: parseFloat(data[0].lat), longitude: parseFloat(data[0].lon) }
-  } catch { /* fall through */ }
+  } catch { console.error('[parseUbicacion] Error al geocodificar dirección'); /* fall through */ }
 
   return { latitude: null, longitude: null }
 }
@@ -65,20 +65,17 @@ async function uploadFoto(file: File, establecimientoId: string): Promise<string
     if (!file || file.size === 0) return null
     const ext = file.name.split('.').pop() ?? 'jpg'
     const path = `fotos/${establecimientoId}/${Date.now()}.${ext}`
-    const buffer = await file.arrayBuffer()
-    const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/establecimientos/${path}`
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-        'Content-Type': file.type || 'image/jpeg',
-        'x-upsert': 'true',
-      },
-      body: buffer,
-    })
-    if (!res.ok) return null
-    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/establecimientos/${path}`
-  } catch {
+    const { createAdminClient } = await import('@/lib/supabase/admin')
+    const admin = createAdminClient()
+    const { error } = await admin.storage.from('establecimientos').upload(path, file, { upsert: true })
+    if (error) {
+      console.error('[uploadFoto] Storage error:', error)
+      return null
+    }
+    const { data: urlData } = admin.storage.from('establecimientos').getPublicUrl(path)
+    return urlData.publicUrl
+  } catch (err) {
+    console.error('[uploadFoto] Unexpected error:', err)
     return null
   }
 }

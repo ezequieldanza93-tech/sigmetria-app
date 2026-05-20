@@ -71,6 +71,7 @@ export default function InstrumentosPage() {
       .from('mediciones_instrumentos')
       .select('*, mediciones_instrumentos_tipos(nombre), organizaciones_externas(nombre)')
       .eq('is_active', true)
+      .range(0, 99)
       .order('modelo')
       .then(({ data }) => setInstrumentos((data as unknown as InstrumentoMedicion[]) ?? []))
   }
@@ -83,6 +84,7 @@ export default function InstrumentosPage() {
     supabase
       .from('organizaciones_externas')
       .select('id, nombre, tipo_id, organizaciones_tipos(nombre)')
+      .range(0, 99)
       .eq('is_active', true)
       .order('nombre')
       .then(({ data }) => {

@@ -21,6 +21,7 @@ export function RunCronButton() {
         }
         setResult(data.result)
       } catch {
+        console.error('[runCronButton] Error de red')
         setError('Error de red')
       }
     })

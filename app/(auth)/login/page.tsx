@@ -25,6 +25,8 @@ export default function LoginPage() {
       return
     }
 
+    await supabase.rpc('cache_user_permissions')
+
     router.push('/dashboard/empresas')
     router.refresh()
   }

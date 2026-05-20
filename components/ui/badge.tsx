@@ -1,3 +1,4 @@
+import React from 'react'
 import { cn } from '@/lib/utils'
 
 interface BadgeProps {
@@ -14,7 +15,7 @@ const variantClasses = {
   info: 'bg-[var(--info-bg)] text-[var(--info)]',
 }
 
-export function Badge({ children, className, variant = 'default' }: BadgeProps) {
+export const Badge = React.memo(function Badge({ children, className, variant = 'default' }: BadgeProps) {
   return (
     <span
       className={cn(
@@ -26,4 +27,4 @@ export function Badge({ children, className, variant = 'default' }: BadgeProps) 
       {children}
     </span>
   )
-}
+})

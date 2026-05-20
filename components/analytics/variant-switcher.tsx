@@ -1,4 +1,5 @@
 'use client'
+import React from 'react'
 import { cn } from '@/lib/utils'
 
 interface VariantSwitcherProps {
@@ -9,7 +10,7 @@ interface VariantSwitcherProps {
 
 const DEFAULT_LABELS: [string, string, string] = ['Vista 1', 'Vista 2', 'Vista 3']
 
-export function VariantSwitcher({ current, onChange, labels = DEFAULT_LABELS }: VariantSwitcherProps) {
+export const VariantSwitcher = React.memo(function VariantSwitcher({ current, onChange, labels = DEFAULT_LABELS }: VariantSwitcherProps) {
   return (
     <div className="inline-flex items-center rounded-lg border border-border-subtle bg-surface-sunken p-0.5 gap-0.5">
       {([1, 2, 3] as const).map((v, i) => (
@@ -28,4 +29,4 @@ export function VariantSwitcher({ current, onChange, labels = DEFAULT_LABELS }: 
       ))}
     </div>
   )
-}
+})

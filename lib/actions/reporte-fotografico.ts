@@ -81,7 +81,7 @@ export async function crearReporteFotografico(
         }))
         await supabase.from('gestiones_observaciones').insert(rows)
       }
-    } catch { }
+    } catch { console.error('[reporteFotografico] Error al insertar gestiones_observaciones') }
   }
 
   return { success: true, data: null }

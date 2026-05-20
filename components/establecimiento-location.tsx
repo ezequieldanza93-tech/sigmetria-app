@@ -1,5 +1,3 @@
-'use client'
-
 interface Props {
   lat: number
   lng: number

@@ -1,3 +1,4 @@
+import React from 'react'
 import { cn } from '@/lib/utils'
 
 interface CardProps {
@@ -13,7 +14,7 @@ const paddingClasses = {
   lg: 'p-8',
 }
 
-export function Card({ children, className, hover = false, padding = 'md' }: CardProps) {
+export const Card = React.memo(function Card({ children, className, hover = false, padding = 'md' }: CardProps) {
   return (
     <div
       className={cn(
@@ -26,4 +27,4 @@ export function Card({ children, className, hover = false, padding = 'md' }: Car
       {children}
     </div>
   )
-}
+})

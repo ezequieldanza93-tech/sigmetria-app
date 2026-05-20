@@ -12,16 +12,18 @@ import type {
   Denuncia, FeedbackCliente, EmpresaDocumento, EmpleadoDocumentoLegajo, LegajoGestion,
 } from '@/lib/types'
 import { cn } from '@/lib/utils'
-import { ClipboardList, FileText, BarChart3, Crosshair } from 'lucide-react'
+import { ClipboardList, FileText, BarChart3, Crosshair, BarChart2 } from 'lucide-react'
+import { AnalyticsDashboard } from '@/components/analytics/real/analytics-dashboard'
 
-type Section = 'agenda' | 'ficha' | 'dashboard' | 'seguimiento'
-const VALID_SECTIONS: Section[] = ['agenda', 'ficha', 'dashboard', 'seguimiento']
+type Section = 'agenda' | 'ficha' | 'dashboard' | 'seguimiento' | 'analytics'
+const VALID_SECTIONS: Section[] = ['agenda', 'ficha', 'dashboard', 'seguimiento', 'analytics']
 
 const SECTION_TABS = [
   { id: 'ficha' as Section, icon: FileText, label: 'Ficha' },
   { id: 'agenda' as Section, icon: ClipboardList, label: 'Agenda' },
   { id: 'seguimiento' as Section, icon: Crosshair, label: 'Seguimiento' },
   { id: 'dashboard' as Section, icon: BarChart3, label: 'Dashboard' },
+  { id: 'analytics' as Section, icon: BarChart2, label: 'Analytics' },
 ]
 
 interface Props {
@@ -231,6 +233,15 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
 
       {section === 'seguimiento' && (
         <ActuarView establecimientoId={estId} />
+      )}
+
+      {section === 'analytics' && (
+        <div className="px-6 py-6">
+          <AnalyticsDashboard
+            level="establecimiento"
+            establecimientoId={estId}
+          />
+        </div>
       )}
     </div>
   )

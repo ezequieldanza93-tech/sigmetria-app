@@ -19,6 +19,7 @@ export default async function EmpresasPage() {
     supabase
       .from('empresas')
       .select(`id, razon_social, cuit, empresas_rubros(nombre), localidades(nombre, provincia), is_active, establecimientos(count)`)
+      .range(0, 99)
       .order('razon_social'),
   ])
 

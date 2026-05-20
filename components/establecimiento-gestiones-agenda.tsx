@@ -858,7 +858,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
       const newW = Math.max(minW, r.startW + (ev.clientX - r.startX))
       setColWidths(prev => {
         const next = { ...prev, [r.col]: newW }
-        try { localStorage.setItem(COL_WIDTHS_KEY, JSON.stringify(next)) } catch {}
+        try { localStorage.setItem(COL_WIDTHS_KEY, JSON.stringify(next)) } catch { console.error('[columnWidths] Error al guardar en localStorage') }
         return next
       })
     }

@@ -165,6 +165,11 @@ export interface ConsultoraMember {
   profiles?: Profile & { perfiles_profesionales?: PerfilProfesional | null }
 }
 
+export interface Provincia {
+  id: string
+  nombre: string
+}
+
 export interface Localidad {
   id: string
   nombre: string

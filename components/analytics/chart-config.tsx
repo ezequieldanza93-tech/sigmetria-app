@@ -36,7 +36,7 @@ export const GRADIENT_IDS = {
   red:    'grad-red',
 }
 
-export function GradientDefs() {
+export const GradientDefs = React.memo(function GradientDefs() {
   return (
     <defs>
       {[
@@ -53,4 +53,4 @@ export function GradientDefs() {
       ))}
     </defs>
   )
-}
+})

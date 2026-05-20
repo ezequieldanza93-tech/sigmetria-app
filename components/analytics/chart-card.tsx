@@ -1,5 +1,3 @@
-'use client'
-
 import React from 'react'
 import { cn } from '@/lib/utils'
 
@@ -20,7 +18,7 @@ const BADGE_COLORS = {
   neutral: 'bg-surface-sunken text-text-secondary',
 }
 
-export function ChartCard({ title, subtitle, children, className, action, badge }: ChartCardProps) {
+export const ChartCard = React.memo(function ChartCard({ title, subtitle, children, className, action, badge }: ChartCardProps) {
   return (
     <div className={cn('rounded-xl border border-border-subtle bg-surface-elevated overflow-hidden', className)}>
       <div className="flex items-start justify-between gap-3 px-5 pt-4 pb-3 border-b border-border-subtle">
@@ -40,4 +38,4 @@ export function ChartCard({ title, subtitle, children, className, action, badge 
       <div className="p-4">{children}</div>
     </div>
   )
-}
+})

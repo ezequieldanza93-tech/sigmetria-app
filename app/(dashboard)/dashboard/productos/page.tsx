@@ -87,6 +87,7 @@ export default function ProductosPage() {
       .from('productos')
       .select('*, productos_categorias(nombre), organizaciones_externas(nombre), unidades(nombre, simbolo)')
       .eq('is_active', true)
+      .range(0, 99)
       .order('nombre')
       .then(({ data }) => setProductos((data as unknown as Producto[]) ?? []))
   }
@@ -97,6 +98,7 @@ export default function ProductosPage() {
     supabase.from('productos_categorias').select('*').order('nombre')
       .then(({ data }) => setCategorias(data ?? []))
     supabase.from('organizaciones_externas').select('id, nombre, tipo_id, organizaciones_tipos(nombre)')
+      .range(0, 99)
       .eq('is_active', true).order('nombre')
       .then(({ data }) => {
         const marcasOnly = ((data ?? []) as unknown as Organizacion[]).filter(o => o.organizaciones_tipos?.nombre === 'Marca')

@@ -6,6 +6,7 @@ import { formatCUIT } from '@/lib/utils'
 import { Building2, FileText, BarChart3 } from 'lucide-react'
 import { EmpresaDocumentosSection } from '@/components/empresa-documentos-section'
 import { EmpresaRightPanel } from '@/components/empresa-right-panel'
+import { AnalyticsDashboard } from '@/components/analytics/real/analytics-dashboard'
 import type { DocumentType, Documento } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -54,7 +55,7 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
   let personasLinks: any[] = []
   let orgsLinks: any[] = []
 
-  if (tab === 'establecimientos') {
+  if (tab === 'establecimientos' || tab === 'dashboard') {
     const { data } = await supabase
       .from('establecimientos')
       .select('id, nombre, establecimientos_tipos(nombre), localidades!localidad_id(nombre, provincia), cantidad_trabajadores')
@@ -62,20 +63,22 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
       .neq('status', 'cancelled')
       .order('nombre')
     establecimientos = data ?? []
-    const estIds = establecimientos.map(e => e.id)
-    if (estIds.length > 0) {
-      const [pe, oe] = await Promise.all([
-        supabase
-          .from('personas_establecimientos')
-          .select('persona_id, establecimiento_id, personas_directorio!persona_id(id, nombre, apellido, dni, fecha_ingreso, personas_tipos!tipo_id(nombre)), establecimientos!establecimiento_id(id, nombre)')
-          .in('establecimiento_id', estIds),
-        supabase
-          .from('organizaciones_establecimientos')
-          .select('organizacion_id, establecimiento_id, organizaciones!organizacion_id(id, nombre, email, telefono, organizaciones_tipos!tipo_id(nombre)), establecimientos!establecimiento_id(id, nombre)')
-          .in('establecimiento_id', estIds),
-      ])
-      personasLinks = (pe.data ?? []) as any[]
-      orgsLinks = (oe.data ?? []) as any[]
+    if (tab === 'establecimientos') {
+      const estIds = establecimientos.map(e => e.id)
+      if (estIds.length > 0) {
+        const [pe, oe] = await Promise.all([
+          supabase
+            .from('personas_establecimientos')
+            .select('persona_id, establecimiento_id, personas_directorio!persona_id(id, nombre, apellido, dni, fecha_ingreso, personas_tipos!tipo_id(nombre)), establecimientos!establecimiento_id(id, nombre)')
+            .in('establecimiento_id', estIds),
+          supabase
+            .from('organizaciones_establecimientos')
+            .select('organizacion_id, establecimiento_id, organizaciones!organizacion_id(id, nombre, email, telefono, organizaciones_tipos!tipo_id(nombre)), establecimientos!establecimiento_id(id, nombre)')
+            .in('establecimiento_id', estIds),
+        ])
+        personasLinks = (pe.data ?? []) as any[]
+        orgsLinks = (oe.data ?? []) as any[]
+      }
     }
   }
 
@@ -199,11 +202,11 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
       )}
 
       {tab === 'dashboard' && (
-        <div className="bg-surface-elevated rounded-xl border border-border-subtle p-12 text-center">
-          <BarChart3 size={32} strokeWidth={1.5} className="text-text-tertiary mx-auto mb-3" />
-          <p className="font-semibold text-text-primary">Dashboard de Empresa</p>
-          <p className="text-sm text-text-tertiary mt-1">Próximamente — gráficos agregados cross-establecimiento.</p>
-        </div>
+        <AnalyticsDashboard
+          level="empresa"
+          empresaId={id}
+          establecimientos={establecimientos.map(e => ({ id: e.id, nombre: e.nombre }))}
+        />
       )}
     </div>
   )

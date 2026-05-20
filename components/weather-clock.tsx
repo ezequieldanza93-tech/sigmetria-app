@@ -92,7 +92,7 @@ export function WeatherClock({ forecastLat, forecastLng }: WeatherClockProps = {
           wind: Math.round(c.wind_speed_10m * 10) / 10,
           code: c.weather_code as number,
         })
-      } catch { /* silently ignore */ }
+      } catch { console.error('[weather-clock] Error al obtener clima actual') }
     }
     load()
     const refresh = setInterval(load, 30 * 60 * 1000)
@@ -121,7 +121,7 @@ export function WeatherClock({ forecastLat, forecastLng }: WeatherClockProps = {
           rain: d.daily.precipitation_sum[i] ?? 0,
         })))
       })
-      .catch(() => {})
+      .catch(() => { console.error('[weather-clock] Error al obtener pronóstico') })
   }, [forecastLat, forecastLng])
 
   if (!now) return null

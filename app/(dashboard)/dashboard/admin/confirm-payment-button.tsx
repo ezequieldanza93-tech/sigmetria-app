@@ -29,6 +29,7 @@ export function ConfirmPaymentButton({ paymentId }: ConfirmPaymentButtonProps) {
         setConfirmed(true)
         window.location.reload()
       } catch {
+        console.error('[confirmPayment] Error de red')
         setError('Error de red')
       }
     })

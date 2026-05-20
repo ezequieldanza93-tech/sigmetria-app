@@ -14,7 +14,7 @@ export async function createClient() {
             cookiesToSet.forEach(({ name, value, options }) =>
               cookieStore.set(name, value, options)
             )
-          } catch {}
+          } catch { if (process.env.NODE_ENV !== 'production') console.error('[supabase-server] Error al setear cookies') }
         },
       },
     }

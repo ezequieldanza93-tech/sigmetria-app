@@ -17,6 +17,7 @@ export default function OrganizacionesExternasPage() {
       .from('organizaciones_externas')
       .select('*, organizaciones_tipos(nombre)')
       .eq('is_active', true)
+      .range(0, 99)
       .order('nombre')
       .then(({ data }) => setOrganizaciones((data as unknown as Organizacion[]) ?? []))
   }
