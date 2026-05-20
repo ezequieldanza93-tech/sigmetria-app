@@ -59,7 +59,6 @@ export async function crearReporteFotografico(
     fecha_ejecutada: today,
     evidencia_url: publicUrl,
     notas: comentario,
-    responsable_id: user.id,
   })
   if (registroError) return { success: false, error: registroError.message }
 
