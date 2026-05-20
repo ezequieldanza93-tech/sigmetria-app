@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useActionState, useTransition, useRef, Fragment, type FormEvent } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { calcularEstadoGestion } from '@/lib/types'
-import type { EstadoGestion, Gestion, CategoriaGestion, GrupoGestion, GestionEstablecimiento, RegistroGestion, Riesgo, RiesgoNivel } from '@/lib/types'
+import { calcularEstadoGestion, canWrite } from '@/lib/types'
+import type { EstadoGestion, Gestion, CategoriaGestion, GrupoGestion, GestionEstablecimiento, RegistroGestion, Riesgo, RiesgoNivel, UserRole, SystemRole } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { Plus, Camera } from 'lucide-react'
@@ -733,8 +733,32 @@ function EjecucionModal({
 }
 
 
+function useCanWrite(): boolean {
+  const [allowed, setAllowed] = useState(false)
+  useEffect(() => {
+    let cancelled = false
+    const supabase = createClient()
+    ;(async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user || cancelled) return
+      const [membership, profile] = await Promise.all([
+        supabase.from('consultoras_members').select('role').eq('user_id', user.id).eq('is_active', true).maybeSingle(),
+        supabase.from('profiles').select('system_role').eq('id', user.id).single(),
+      ])
+      if (cancelled) return
+      const role = membership.data?.role as UserRole | null ?? null
+      const systemRole = (profile.data?.system_role ?? 'user') as SystemRole
+      setAllowed(canWrite(role, systemRole))
+    })()
+    return () => { cancelled = true }
+  }, [])
+  return allowed
+}
+
 // ─── Main component ────────────────────────────────────────────────────────────
-export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: GestionesAgendaProps) {
+export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, riesgos }: GestionesAgendaProps) {
+  const clientCanWrite = useCanWrite()
+  const canWrite = canWriteProp || clientCanWrite
   const currentYear = new Date().getFullYear()
   const [year, setYear] = useState(currentYear)
 
@@ -1310,7 +1334,7 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
 
       {/* FAB — Floating Action Buttons */}
       {canWrite && (
-        <div className="fixed bottom-8 left-[calc(13rem+2rem)] z-50 flex flex-col gap-3">
+        <div className="fixed bottom-8 left-52 ml-8 z-50 flex flex-col gap-3">
           <div className="group relative">
             <button
               type="button"
