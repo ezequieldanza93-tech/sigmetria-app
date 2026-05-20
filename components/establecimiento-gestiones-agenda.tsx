@@ -7,6 +7,7 @@ import { calcularEstadoGestion, canWrite } from '@/lib/types'
 import type { EstadoGestion, Gestion, CategoriaGestion, GrupoGestion, GestionEstablecimiento, RegistroGestion, Riesgo, RiesgoNivel, UserRole, SystemRole } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
+import { MultiFilter } from '@/components/ui/multi-filter'
 import {
   Plus, Camera, BarChart3, FileCheck,
   ClipboardCheck, GraduationCap, Heart, FileText, AlertTriangle,
@@ -809,10 +810,10 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
   const [collapsedMonths, setCollapsedMonths] = useState<Set<number>>(new Set())
 
   const [searchText, setSearchText] = useState('')
-  const [filterEstado, setFilterEstado] = useState<'' | EstadoGestion>('')
-  const [filterCategoria, setFilterCategoria] = useState('')
-  const [filterGrupo, setFilterGrupo] = useState('')
-  const [filterResponsable, setFilterResponsable] = useState('')
+  const [filterEstado, setFilterEstado] = useState<Set<string> | null>(null)
+  const [filterCategoria, setFilterCategoria] = useState<Set<string> | null>(null)
+  const [filterGrupo, setFilterGrupo] = useState<Set<string> | null>(null)
+  const [filterResponsable, setFilterResponsable] = useState<Set<string> | null>(null)
   const [orderByCategoria, setOrderByCategoria] = useState(false)
   const [registros, setRegistros] = useState<FullRegistro[] | null>(null)
   const [todasGestiones, setTodasGestiones] = useState<Gestion[]>([])
@@ -956,10 +957,10 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
     const month = parseInt(r.fecha_planificada?.split('-')[1] ?? '0') - 1
     if (!selectedMonths.has(month)) return false
     const estado = calcularEstadoGestion(r.fecha_ejecutada ?? null, r.fecha_planificada)
-    if (filterEstado && estado !== filterEstado) return false
-    if (filterCategoria && r.ge_categoria_nombre !== filterCategoria) return false
-    if (filterGrupo && r.ge_grupo_nombre !== filterGrupo) return false
-    if (filterResponsable && r.responsable_nombre !== filterResponsable) return false
+    if (filterEstado && filterEstado.size > 0 && !filterEstado.has(estado)) return false
+    if (filterCategoria && filterCategoria.size > 0 && !filterCategoria.has(r.ge_categoria_nombre ?? '')) return false
+    if (filterGrupo && filterGrupo.size > 0 && !filterGrupo.has(r.ge_grupo_nombre ?? '')) return false
+    if (filterResponsable && filterResponsable.size > 0 && !filterResponsable.has(r.responsable_nombre ?? '')) return false
     if (q && !r.ge_gestion_nombre?.toLowerCase().includes(q) && !r.ge_categoria_nombre?.toLowerCase().includes(q)) return false
     return true
   })
@@ -1237,46 +1238,42 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
           placeholder="Buscar gestión..."
           className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-600 focus:outline-none w-[140px] shrink-0"
         />
-        <select
-          value={filterGrupo}
-          onChange={e => setFilterGrupo(e.target.value)}
-          className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-600 focus:outline-none shrink-0"
-        >
-          <option value="">Grupo</option>
-          {gruposFiltro.map(g => <option key={g} value={g}>{g}</option>)}
-        </select>
-
-        <select
-          value={filterCategoria}
-          onChange={e => setFilterCategoria(e.target.value)}
-          className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-600 focus:outline-none shrink-0"
-        >
-          <option value="">Categoría</option>
-          {categoriasFiltro.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
-
-        <select
-          value={filterResponsable}
-          onChange={e => setFilterResponsable(e.target.value)}
-          className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-600 focus:outline-none shrink-0"
-        >
-          <option value="">Responsable</option>
-          {responsablesFiltro.map(r => <option key={r} value={r}>{r}</option>)}
-        </select>
-
-        <select
-          value={filterEstado}
-          onChange={e => setFilterEstado(e.target.value as '' | EstadoGestion)}
-          className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-600 focus:outline-none shrink-0"
-        >
-          <option value="">Estado</option>
-          <option value="Planificado">Planificado</option>
-          <option value="Pendiente">Pendiente</option>
-          <option value="Realizado">Realizado</option>
-        </select>
-
+        {gruposFiltro.length > 0 && (
+          <MultiFilter
+            label="Grupo"
+            options={gruposFiltro.map(g => ({ value: g, label: g }))}
+            selected={filterGrupo ?? new Set(gruposFiltro)}
+            onChange={setFilterGrupo}
+          />
+        )}
+        {categoriasFiltro.length > 0 && (
+          <MultiFilter
+            label="Categoría"
+            options={categoriasFiltro.map(c => ({ value: c, label: c }))}
+            selected={filterCategoria ?? new Set(categoriasFiltro)}
+            onChange={setFilterCategoria}
+          />
+        )}
+        {responsablesFiltro.length > 0 && (
+          <MultiFilter
+            label="Responsable"
+            options={responsablesFiltro.map(r => ({ value: r, label: r }))}
+            selected={filterResponsable ?? new Set(responsablesFiltro)}
+            onChange={setFilterResponsable}
+          />
+        )}
+        <MultiFilter
+          label="Estado"
+          options={[
+            { value: 'Planificado', label: 'Planificado' },
+            { value: 'Pendiente', label: 'Pendiente' },
+            { value: 'Realizado', label: 'Realizado' },
+          ]}
+          selected={filterEstado ?? new Set(['Planificado', 'Pendiente', 'Realizado'])}
+          onChange={setFilterEstado}
+        />
         <button
-          onClick={() => { setFilterEstado(''); setFilterCategoria(''); setFilterGrupo(''); setFilterResponsable(''); setOrderByCategoria(false) }}
+          onClick={() => { setFilterEstado(null); setFilterCategoria(null); setFilterGrupo(null); setFilterResponsable(null); setOrderByCategoria(false) }}
           className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-gray-600 hover:bg-gray-50 shrink-0"
         >
           Rest.
