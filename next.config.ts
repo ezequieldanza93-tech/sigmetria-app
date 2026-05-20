@@ -45,6 +45,4 @@ const nextConfig: NextConfig = {
   },
 }
 
-export default process.env.ANALYZE === 'true'
-  ? (await import('@next/bundle-analyzer')).default({ enabled: true })(nextConfig)
-  : nextConfig
+export default nextConfig
