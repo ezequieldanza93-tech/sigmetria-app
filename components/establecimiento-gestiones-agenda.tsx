@@ -1107,6 +1107,37 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
         <span className="text-gray-400">client: {String(clientCanWrite)}</span>
       </div>
 
+      {/* TEST 1: inline button in normal flow */}
+      <div className="mb-4 p-3 bg-yellow-100 border-2 border-yellow-400 rounded-xl text-center">
+        <p className="text-xs text-yellow-700 mb-2">🔬 TEST: botones de depuración</p>
+        <div className="flex gap-2 justify-center">
+          <button
+            type="button"
+            onClick={() => setShowPlanificarModal(true)}
+            className="px-4 py-2 bg-sig-600 text-white text-sm font-medium rounded-lg"
+          >
+            ➕ TEST inline
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowReporteModal(true)}
+            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg"
+          >
+            📷 TEST inline
+          </button>
+        </div>
+      </div>
+
+      {/* TEST 2: fixed button at top-right (direct, no portal) */}
+      <button
+        type="button"
+        onClick={() => setShowPlanificarModal(true)}
+        className="fixed top-20 right-4 z-[9999] w-14 h-14 rounded-full bg-green-500 text-white shadow-2xl flex items-center justify-center text-2xl font-bold hover:bg-green-600"
+        style={{ position: 'fixed', top: '80px', right: '16px', zIndex: 9999 }}
+      >
+        T
+      </button>
+
       {/* Year navigation */}
       <div className="bg-gray-800 text-white rounded-xl px-6 py-4 mb-4 flex items-center justify-between">
         <button onClick={() => setYear(y => y - 1)} className="text-gray-400 hover:text-white text-sm font-medium w-12">
