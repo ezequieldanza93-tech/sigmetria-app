@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useActionState, useTransition, useRef, Fragment, type FormEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 import { calcularEstadoGestion, canWrite } from '@/lib/types'
 import type { EstadoGestion, Gestion, CategoriaGestion, GrupoGestion, GestionEstablecimiento, RegistroGestion, Riesgo, RiesgoNivel, UserRole, SystemRole } from '@/lib/types'
@@ -1096,6 +1097,16 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div>
+      {/* Debug: canWrite status */}
+      <div className="mb-2 flex items-center gap-2 text-xs">
+        <span className={`inline-block w-2 h-2 rounded-full ${canWrite ? 'bg-green-500' : 'bg-red-500'}`} />
+        <span className="text-gray-400">canWrite: {String(canWrite)}</span>
+        <span className="text-gray-300">|</span>
+        <span className="text-gray-400">server: {String(canWriteProp)}</span>
+        <span className="text-gray-300">|</span>
+        <span className="text-gray-400">client: {String(clientCanWrite)}</span>
+      </div>
+
       {/* Year navigation */}
       <div className="bg-gray-800 text-white rounded-xl px-6 py-4 mb-4 flex items-center justify-between">
         <button onClick={() => setYear(y => y - 1)} className="text-gray-400 hover:text-white text-sm font-medium w-12">
@@ -1332,9 +1343,9 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
         )}
       </div>
 
-      {/* FAB — Floating Action Buttons */}
-      {canWrite && (
-        <div className="fixed bottom-8 left-52 ml-8 z-50 flex flex-col gap-3">
+      {/* FAB — Floating Action Buttons (portal to body) */}
+      {canWrite && typeof document !== 'undefined' && createPortal(
+        <div style={{ position: 'fixed', bottom: '2rem', left: 'calc(13rem + 2rem)', zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           <div className="group relative">
             <button
               type="button"
@@ -1359,7 +1370,8 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
               Planificar nueva gestión
             </span>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Modals */}
