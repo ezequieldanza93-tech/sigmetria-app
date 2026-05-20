@@ -11,7 +11,6 @@ import type {
   Denuncia, FeedbackCliente, EmpresaDocumento, EmpleadoDocumentoLegajo, LegajoGestion,
 } from '@/lib/types'
 import { cn } from '@/lib/utils'
-import Link from 'next/link'
 import { ClipboardList, FileText, BarChart3, Crosshair } from 'lucide-react'
 
 type Section = 'agenda' | 'ficha' | 'dashboard' | 'seguimiento'
@@ -158,23 +157,10 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
   const tipoLabel = establecimiento.establecimientos_tipos?.nombre ?? null
 
   return (
-    <div className="p-6">
-      {/* Header + sub-nav */}
-      <div className="mb-6">
-        <div className="mb-1">
-          <Link
-            href={`/dashboard/empresas/${empresaId}`}
-            className="text-xs text-text-tertiary hover:text-text-secondary transition-colors font-medium"
-          >
-            {empresa.razon_social}
-          </Link>
-        </div>
-        <h1 className="text-xl font-bold text-text-primary mb-1">{establecimiento.nombre}</h1>
-        {tipoLabel && (
-          <p className="text-xs text-text-tertiary mb-3">{tipoLabel}</p>
-        )}
-
-        <nav className="flex gap-1 border-b border-border-subtle">
+    <div className="p-0">
+      {/* Sub-nav */}
+      <div>
+        <nav className="flex gap-1 border-b border-border-subtle px-6">
           {SECTION_TABS.map(({ id: tabId, icon: Icon, label }) => (
             <Link
               key={tabId}
