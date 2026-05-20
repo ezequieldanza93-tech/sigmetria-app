@@ -143,6 +143,7 @@ export const USER_ROLE_OPTIONS = [
   { value: 'colaborador', label: 'Colaborador' },
   { value: 'full_viewer', label: 'Viewer Global' },
   { value: 'colaborador_viewer', label: 'Viewer Limitado' },
+  { value: 'visualizador_comentarista', label: 'Visualizador Comentarista' },
 ] as const
 
 export const PROVINCIAS_AR = [

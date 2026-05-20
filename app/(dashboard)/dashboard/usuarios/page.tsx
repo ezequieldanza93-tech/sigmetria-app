@@ -52,13 +52,28 @@ export default async function UsuariosPage() {
         <div>
           <h1 className="text-2xl font-bold text-text-primary">Usuarios</h1>
           <p className="text-sm text-text-tertiary mt-1">
-            {members?.length ?? 0} miembro{members?.length !== 1 ? 's' : ''} en la consultora
+            {seatsUsed} de {seatsMax} seats · {members?.length ?? 0} miembro{members?.length !== 1 ? 's' : ''}
           </p>
         </div>
         {isMainAdmin && (
           <InviteModal seatsUsed={seatsUsed} seatsMax={seatsMax} />
         )}
       </div>
+
+      {/* Banner de límite de seats */}
+      {isMainAdmin && seatsUsed >= seatsMax && (
+        <div className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 flex items-center justify-between text-sm">
+          <p className="text-orange-700">
+            Alcanzaste el límite de {seatsMax} seats de tu plan.
+          </p>
+          <a
+            href="/dashboard/billing"
+            className="text-orange-700 font-semibold underline underline-offset-2 hover:text-orange-800 transition-colors whitespace-nowrap ml-4"
+          >
+            Agregar seats →
+          </a>
+        </div>
+      )}
 
       {/* Access table */}
       <div className="bg-surface-elevated rounded-xl border border-border-subtle overflow-hidden">

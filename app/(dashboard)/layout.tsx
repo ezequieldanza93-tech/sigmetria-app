@@ -13,7 +13,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (!user) redirect('/login')
 
   const [{ data: profile }, { data: membership }] = await Promise.all([
-    supabase.from('profiles').select('full_name, system_role').eq('id', user.id).single(),
+    supabase.from('profiles').select('full_name, system_role, is_super_admin').eq('id', user.id).single(),
     supabase
       .from('consultoras_members')
       .select('role, consultora_id, consultoras(nombre)')
@@ -26,6 +26,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <SidebarWrapper
+      isSuperAdmin={profile?.is_super_admin ?? false}
       header={
         <AppHeader
           fullName={profile?.full_name ?? user.email ?? 'Usuario'}
