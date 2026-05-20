@@ -22,7 +22,7 @@ export function Tabs({ tabs, defaultTab, className }: TabsProps) {
 
   return (
     <div className={className}>
-      <div className="border-b border-gray-200 mb-6">
+      <div className="border-b border-border-subtle mb-6">
         <div className="flex gap-1">
           {tabs.map(tab => (
             <button
@@ -31,8 +31,8 @@ export function Tabs({ tabs, defaultTab, className }: TabsProps) {
               className={cn(
                 'px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors -mb-px border-b-2',
                 tab.id === active
-                  ? 'border-sig-500 text-sig-500'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-brand-primary text-brand-primary'
+                  : 'border-transparent text-text-tertiary hover:text-text-primary hover:border-border-default',
               )}
             >
               {tab.label}
