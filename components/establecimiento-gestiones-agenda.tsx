@@ -13,16 +13,33 @@ import {
   ClipboardList, UserPlus, Dumbbell, Kanban, HelpCircle,
 } from 'lucide-react'
 
-const CATEGORIA_ICONS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
-  Checklists: ClipboardCheck,
-  Capacitaciones: GraduationCap,
-  'Campañas de Salud': Heart,
-  Formularios: FileText,
-  Simulacros: AlertTriangle,
-  Planes: ClipboardList,
-  Inducciones: UserPlus,
-  Entrenamientos: Dumbbell,
-  Programas: Kanban,
+const CATEGORIA_META: Record<string, { icon: React.ComponentType<{ size?: number; className?: string }>; abbr: string }> = {
+  Checklists: { icon: ClipboardCheck, abbr: 'CHK' },
+  Capacitaciones: { icon: GraduationCap, abbr: 'CAP' },
+  'Campañas de Salud': { icon: Heart, abbr: 'SAL' },
+  Formularios: { icon: FileText, abbr: 'FRM' },
+  Simulacros: { icon: AlertTriangle, abbr: 'SIM' },
+  Planes: { icon: ClipboardList, abbr: 'PLN' },
+  Inducciones: { icon: UserPlus, abbr: 'IND' },
+  Entrenamientos: { icon: Dumbbell, abbr: 'ENT' },
+  Programas: { icon: Kanban, abbr: 'PRG' },
+}
+
+function CategoriaIcon({ nombre, size = 14 }: { nombre?: string | null; size?: number }) {
+  const meta = nombre ? CATEGORIA_META[nombre] : undefined
+  const Icon = meta?.icon ?? HelpCircle
+  return <span title={nombre ?? ''}><Icon size={size} className="text-gray-500" /></span>
+}
+
+function CategoriaAbbr({ nombre }: { nombre?: string | null }) {
+  if (!nombre) return <span className="text-gray-300">—</span>
+  const meta = CATEGORIA_META[nombre]
+  const abbr = meta?.abbr ?? nombre.slice(0, 3).toUpperCase()
+  return (
+    <span title={nombre} className="text-[10px] font-semibold text-gray-500 tracking-wider">
+      {abbr}
+    </span>
+  )
 }
 
 import { ReporteFotograficoModal } from '@/components/reporte-fotografico-modal'
@@ -79,12 +96,6 @@ interface FullRegistro extends RegistroGestion {
   ge_mostrar_lt?: boolean
   responsable_nombre?: string
   aprobado_nombre?: string
-}
-
-function CategoriaIcon({ nombre, size = 14 }: { nombre?: string | null; size?: number }) {
-  if (!nombre) return <HelpCircle size={size} className="text-gray-300" />
-  const Icon = CATEGORIA_ICONS[nombre] ?? HelpCircle
-  return <span title={nombre}><Icon size={size} className="text-gray-500" /></span>
 }
 
 interface GestionConJoin extends Omit<GestionEstablecimiento, 'gestiones'> {
@@ -998,8 +1009,11 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
           if (r.ge_tiene_formulario && !r.fecha_ejecutada) setExecutingFormulario(r)
           else setEditingRegistro(r)
         }}>
-          <td className="px-4 py-1.5 text-center" style={{ maxWidth: colW('categoria'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            <CategoriaIcon nombre={r.ge_categoria_nombre} size={16} />
+          <td className="px-4 py-1.5" style={{ maxWidth: colW('categoria'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <span className="flex items-center gap-1.5">
+              <CategoriaIcon nombre={r.ge_categoria_nombre} size={14} />
+              <CategoriaAbbr nombre={r.ge_categoria_nombre} />
+            </span>
           </td>
           <td className="px-4 py-1.5 font-medium text-gray-900" style={{ maxWidth: colW('gestion'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {r.ge_gestion_nombre ?? '—'}
@@ -1068,10 +1082,8 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
   const tableHead = (
     <thead>
       <tr className="bg-gray-800 text-white text-left text-xs">
-        <th style={{ width: colW('categoria') }} className="px-4 py-1.5 font-medium relative select-none text-center">
-          <span className="sr-only">Categoría</span>
-          <Kanban size={14} className="inline-block" />
-          {rh('categoria')}
+        <th style={{ width: colW('categoria') }} className="px-4 py-1.5 font-medium relative select-none">
+          Categoría{rh('categoria')}
         </th>
         <th style={{ width: colW('gestion') }} className="px-4 py-1.5 font-medium relative select-none">
           Gestión{rh('gestion')}
