@@ -355,7 +355,7 @@ export function ActuarView({ establecimientoId }: { establecimientoId: string })
           const vencido = estado === 'Vencido'
 
           return (
-            <div key={obs.id} className="bg-white border border-border-default rounded-xl p-4 cursor-pointer hover:border-brand-muted transition-colors" onClick={() => setSelectedObs(obs)}>
+            <div key={obs.id} className="bg-white dark:bg-surface-elevated border border-border-default rounded-xl p-4 cursor-pointer hover:border-brand-muted transition-colors" onClick={() => setSelectedObs(obs)}>
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-text-primary">{obs.descripcion}</p>
