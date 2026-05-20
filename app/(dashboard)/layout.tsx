@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { AppHeader } from '@/components/app-header'
 import { SidebarWrapper } from '@/components/layout/sidebar-wrapper'
+import { DevicePreviewPanel } from '@/components/layout/device-preview-panel'
 import { UserRole } from '@/lib/types'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -37,7 +38,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         />
       }
     >
-      {children}
+      <DevicePreviewPanel>{children}</DevicePreviewPanel>
     </SidebarWrapper>
   )
 }

@@ -15,10 +15,13 @@ type MemberRow = ConsultoraMember & {
   }
 }
 
+type Provincia = { id: string; nombre: string }
+
 export function EquipoSection() {
   const [miembros, setMiembros] = useState<MemberRow[] | null>(null)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [selected, setSelected] = useState<MemberRow | null>(null)
+  const [provincias, setProvincias] = useState<Provincia[]>([])
 
   useEffect(() => {
     const supabase = createClient()
@@ -41,6 +44,11 @@ export function EquipoSection() {
             .order('created_at')
             .then(({ data }) => setMiembros((data as unknown as MemberRow[]) ?? []))
         })
+      supabase
+        .from('provincias')
+        .select('id, nombre')
+        .order('nombre')
+        .then(({ data }) => setProvincias((data as Provincia[]) ?? []))
     })
   }, [])
 
@@ -65,15 +73,17 @@ export function EquipoSection() {
                 <th className="px-5 py-3 text-text-tertiary font-medium">Nombre</th>
                 <th className="px-5 py-3 text-text-tertiary font-medium">Rol</th>
                 <th className="px-5 py-3 text-text-tertiary font-medium">Teléfono</th>
-                <th className="px-5 py-3 text-text-tertiary font-medium">Localidad</th>
-                <th className="px-5 py-3 text-text-tertiary font-medium">Matriculado en</th>
+                <th className="px-5 py-3 text-text-tertiary font-medium">Provincia</th>
                 <th className="px-5 py-3 text-text-tertiary font-medium">Perfil</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border-subtle">
               {miembros.map(m => {
                 const pp = m.profiles?.perfiles_profesionales ?? null
-                const isComplete = !!pp?.telefono && !!pp?.localidad
+                const provinciaNombre = pp?.provincia_residencia_id
+                  ? provincias.find(p => p.id === pp.provincia_residencia_id)?.nombre ?? '—'
+                  : '—'
+                const isComplete = !!pp?.telefono && !!pp?.provincia_residencia_id
                 return (
                   <tr
                     key={m.id}
@@ -94,8 +104,7 @@ export function EquipoSection() {
                       </span>
                     </td>
                     <td className="px-5 py-3.5 text-text-tertiary">{pp?.telefono ?? '—'}</td>
-                    <td className="px-5 py-3.5 text-text-tertiary">{pp?.localidad ?? '—'}</td>
-                    <td className="px-5 py-3.5 text-text-tertiary">{pp?.provincia_matricula ?? '—'}</td>
+                    <td className="px-5 py-3.5 text-text-tertiary">{provinciaNombre}</td>
                     <td className="px-5 py-3.5">
                       <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${isComplete ? 'bg-[var(--success-bg)] text-[var(--success)]' : 'bg-[var(--warning-bg)] text-[var(--warning)]'}`}>
                         {isComplete ? 'Completo' : 'Incompleto'}

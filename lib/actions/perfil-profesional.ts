@@ -12,13 +12,12 @@ export async function upsertPerfilProfesional(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
-  const payload = {
+  const payload: Record<string, string | null> = {
     user_id: user.id,
     telefono: formData.get('telefono') as string || null,
     fecha_nacimiento: formData.get('fecha_nacimiento') as string || null,
-    provincia_residencia: formData.get('provincia_residencia') as string || null,
-    localidad: formData.get('localidad') as string || null,
-    provincia_matricula: formData.get('provincia_matricula') as string || null,
+    provincia_residencia_id: formData.get('provincia_residencia_id') as string || null,
+    provincia_matricula_id: formData.get('provincia_matricula_id') as string || null,
     canal_captacion: formData.get('canal_captacion') as string || null,
     tipo_identidad_impositiva: formData.get('tipo_identidad_impositiva') as string || null,
     cuit: formData.get('cuit') as string || null,

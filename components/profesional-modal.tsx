@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useActionState } from 'react'
+import { useState, useEffect, useActionState, useCallback } from 'react'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
@@ -8,38 +8,15 @@ import { upsertPerfilProfesional, addMatriculaProfesional } from '@/lib/actions/
 import { formatDate } from '@/lib/utils'
 import type { PerfilProfesional, MatriculaProfesional, ActionResult } from '@/lib/types'
 
-const PROVINCIAS = [
-  'Ciudad Autónoma de Buenos Aires',
-  'Buenos Aires',
-  'Catamarca',
-  'Chaco',
-  'Chubut',
-  'Córdoba',
-  'Corrientes',
-  'Entre Ríos',
-  'Formosa',
-  'Jujuy',
-  'La Pampa',
-  'La Rioja',
-  'Mendoza',
-  'Misiones',
-  'Neuquén',
-  'Río Negro',
-  'Salta',
-  'San Juan',
-  'San Luis',
-  'Santa Cruz',
-  'Santa Fe',
-  'Santiago del Estero',
-  'Tierra del Fuego',
-  'Tucumán',
-]
+type Provincia = { id: string; nombre: string }
 
 function DatosForm({
   perfil,
+  provincias,
   onSuccess,
 }: {
   perfil: PerfilProfesional | null
+  provincias: Provincia[]
   onSuccess: () => void
 }) {
   const [state, formAction, pending] = useActionState(upsertPerfilProfesional, null)
@@ -76,35 +53,25 @@ function DatosForm({
         <div>
           <label className="text-xs font-medium text-gray-600 block mb-1">Provincia de residencia</label>
           <select
-            name="provincia_residencia"
-            defaultValue={perfil?.provincia_residencia ?? ''}
+            name="provincia_residencia_id"
+            defaultValue={perfil?.provincia_residencia_id ?? ''}
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
           >
             <option value="">Seleccioná una opción</option>
-            {PROVINCIAS.map(p => <option key={p} value={p}>{p}</option>)}
+            {provincias.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
           </select>
         </div>
         <div>
-          <label className="text-xs font-medium text-gray-600 block mb-1">Localidad</label>
-          <input
-            name="localidad"
-            defaultValue={perfil?.localidad ?? ''}
-            placeholder="Ej: Palermo, La Plata…"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-          />
+          <label className="text-xs font-medium text-gray-600 block mb-1">¿Dónde está matriculado?</label>
+          <select
+            name="provincia_matricula_id"
+            defaultValue={perfil?.provincia_matricula_id ?? ''}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
+          >
+            <option value="">No estoy matriculado</option>
+            {provincias.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+          </select>
         </div>
-      </div>
-
-      <div>
-        <label className="text-xs font-medium text-gray-600 block mb-1">¿Dónde está matriculado?</label>
-        <select
-          name="provincia_matricula"
-          defaultValue={perfil?.provincia_matricula ?? ''}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
-        >
-          <option value="">No estoy matriculado</option>
-          {PROVINCIAS.map(p => <option key={p} value={p}>{p}</option>)}
-        </select>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -226,6 +193,7 @@ export function ProfesionalModal({ userId, fullName, open, onClose, canEdit }: P
   const [matriculas, setMatriculas] = useState<MatriculaProfesional[] | null>(null)
   const [showMatriculaForm, setShowMatriculaForm] = useState(false)
   const [editingDatos, setEditingDatos] = useState(false)
+  const [provincias, setProvincias] = useState<Provincia[]>([])
 
   useEffect(() => {
     if (!open) { setTab('datos'); setPerfil(undefined); setMatriculas(null); setShowMatriculaForm(false); setEditingDatos(false) }
@@ -240,6 +208,11 @@ export function ProfesionalModal({ userId, fullName, open, onClose, canEdit }: P
       .eq('user_id', userId)
       .maybeSingle()
       .then(({ data }) => setPerfil((data as PerfilProfesional | null) ?? null))
+    supabase
+      .from('provincias')
+      .select('id, nombre')
+      .order('nombre')
+      .then(({ data }) => setProvincias((data as Provincia[]) ?? []))
   }, [open, userId])
 
   useEffect(() => {
@@ -280,6 +253,7 @@ export function ProfesionalModal({ userId, fullName, open, onClose, canEdit }: P
           ) : editingDatos ? (
             <DatosForm
               perfil={perfil}
+              provincias={provincias}
               onSuccess={() => {
                 setEditingDatos(false)
                 const supabase = createClient()
@@ -296,9 +270,8 @@ export function ProfesionalModal({ userId, fullName, open, onClose, canEdit }: P
                   {[
                     ['Teléfono', perfil.telefono],
                     ['Fecha de nac.', perfil.fecha_nacimiento ? formatDate(perfil.fecha_nacimiento) : null],
-                    ['Provincia', perfil.provincia_residencia],
-                    ['Localidad', perfil.localidad],
-                    ['Matriculado en', perfil.provincia_matricula ?? 'Sin matrícula'],
+                    ['Provincia', provincias.find(p => p.id === perfil.provincia_residencia_id)?.nombre ?? null],
+                    ['Matriculado en', provincias.find(p => p.id === perfil.provincia_matricula_id)?.nombre ?? 'Sin matrícula'],
                     ['Id. impositiva', perfil.tipo_identidad_impositiva ? `${perfil.tipo_identidad_impositiva} ${perfil.cuit ?? ''}`.trim() : null],
                     ['Canal captación', perfil.canal_captacion],
                   ].map(([label, value]) => value && (
