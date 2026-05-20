@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Modal } from '@/components/ui/modal'
+import { CierreObservacionModal } from '@/components/cierre-observacion-modal'
 import type { ObservacionGestion, RegistroGestion } from '@/lib/types'
 
 interface ObsRow extends ObservacionGestion {
@@ -91,6 +91,7 @@ function MultiFilter({
 export function ActuarView({ establecimientoId }: { establecimientoId: string }) {
   const [observaciones, setObservaciones] = useState<ObsRow[] | null>(null)
   const [selectedObs, setSelectedObs] = useState<ObsRow | null>(null)
+  const [refreshKey, setRefreshKey] = useState(0)
 
   const [searchText, setSearchText] = useState('')
   const [quickFilter, setQuickFilter] = useState<'all' | 'week' | 'month'>('all')
@@ -188,7 +189,7 @@ export function ActuarView({ establecimientoId }: { establecimientoId: string })
             setFilterGestion(gestiones)
           })
       })
-  }, [establecimientoId])
+  }, [establecimientoId, refreshKey])
 
   const sorted = (observaciones ?? []).slice().sort(
     (a, b) => new Date(a.fecha_planificada).getTime() - new Date(b.fecha_planificada).getTime()
@@ -354,7 +355,7 @@ export function ActuarView({ establecimientoId }: { establecimientoId: string })
           const vencido = estado === 'Vencido'
 
           return (
-            <div key={obs.id} className="bg-white border border-border-default rounded-xl p-4">
+            <div key={obs.id} className="bg-white border border-border-default rounded-xl p-4 cursor-pointer hover:border-brand-muted transition-colors" onClick={() => setSelectedObs(obs)}>
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-text-primary">{obs.descripcion}</p>
@@ -370,7 +371,8 @@ export function ActuarView({ establecimientoId }: { establecimientoId: string })
 
                     {obs.gestion_nombre && (
                       <button
-                        onClick={() => setSelectedObs(obs)}
+                        type="button"
+                        onClick={e => { e.stopPropagation(); setSelectedObs(obs) }}
                         className="text-xs font-medium text-sig-600 hover:text-sig-800 hover:underline text-left"
                       >
                         {obs.gestion_nombre}
@@ -415,92 +417,11 @@ export function ActuarView({ establecimientoId }: { establecimientoId: string })
         )}
       </div>
 
-      <Modal
-        open={selectedObs !== null}
+      <CierreObservacionModal
+        observacion={selectedObs}
         onClose={() => setSelectedObs(null)}
-        title={selectedObs?.gestion_nombre ?? 'Detalle de Gestión'}
-        className="max-w-2xl"
-      >
-        {selectedObs && (
-          <div className="space-y-5 text-sm">
-            <div className="grid grid-cols-2 gap-4">
-              {selectedObs.gestion_grupo && (
-                <div>
-                  <p className="text-xs text-text-tertiary mb-0.5">Grupo</p>
-                  <p className="text-text-primary font-medium">{selectedObs.gestion_grupo}</p>
-                </div>
-              )}
-              {selectedObs.gestion_categoria && (
-                <div>
-                  <p className="text-xs text-text-tertiary mb-0.5">Categoría</p>
-                  <p className="text-text-primary font-medium">{selectedObs.gestion_categoria}</p>
-                </div>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              {selectedObs.registro_fecha_planificada && (
-                <div>
-                  <p className="text-xs text-text-tertiary mb-0.5">Fecha planificada</p>
-                  <p className="text-text-primary">{selectedObs.registro_fecha_planificada}</p>
-                </div>
-              )}
-              {selectedObs.fecha_ejecutada && (
-                <div>
-                  <p className="text-xs text-text-tertiary mb-0.5">Fecha ejecutada</p>
-                  <p className="text-text-primary">{selectedObs.fecha_ejecutada}</p>
-                </div>
-              )}
-            </div>
-
-            {selectedObs.personas_directorio && (
-              <div>
-                <p className="text-xs text-text-tertiary mb-0.5">Responsable</p>
-                <p className="text-text-primary">
-                  {selectedObs.personas_directorio.apellido}, {selectedObs.personas_directorio.nombre}
-                </p>
-              </div>
-            )}
-
-            {selectedObs.registro_observaciones && (
-              <div>
-                <p className="text-xs text-text-tertiary mb-0.5">Observaciones de la gestión</p>
-                <p className="text-text-secondary bg-surface-sunken rounded-lg px-3 py-2">{selectedObs.registro_observaciones}</p>
-              </div>
-            )}
-
-            {selectedObs.registro_notas && (
-              <div>
-                <p className="text-xs text-text-tertiary mb-0.5">Notas</p>
-                <p className="text-text-secondary bg-surface-sunken rounded-lg px-3 py-2">{selectedObs.registro_notas}</p>
-              </div>
-            )}
-
-            <div className="border-t border-border-subtle pt-4">
-              <p className="text-xs text-text-tertiary mb-0.5">Observación de seguimiento</p>
-              {selectedObs.observaciones_categorias && (
-                <span className="inline-flex items-center gap-1.5 text-xs text-text-tertiary mb-2">
-                  <span className={`w-2 h-2 rounded-full ${
-                    selectedObs.observaciones_categorias.nivel === 4 ? 'bg-red-700' :
-                    selectedObs.observaciones_categorias.nivel === 3 ? 'bg-red-500' :
-                    selectedObs.observaciones_categorias.nivel === 2 ? 'bg-orange-500' :
-                    selectedObs.observaciones_categorias.nivel === 1 ? 'bg-yellow-400' :
-                    'bg-gray-300'
-                  }`} />
-                  {selectedObs.observaciones_categorias.nombre}
-                </span>
-              )}
-              <p className="text-text-primary font-medium">{selectedObs.descripcion}</p>
-              {selectedObs.fecha_planificada && (
-                <p className="text-xs text-text-tertiary mt-1">
-                  Fecha límite: {selectedObs.fecha_planificada}
-                  {selectedObs.fecha_cierre && ` — Cerrado: ${selectedObs.fecha_cierre}`}
-                </p>
-              )}
-            </div>
-          </div>
-        )}
-      </Modal>
+        onSuccess={() => setRefreshKey(k => k + 1)}
+      />
     </div>
   )
 }

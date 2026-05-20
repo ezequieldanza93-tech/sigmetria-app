@@ -33,7 +33,8 @@ export async function createObservacionGestion(
 export async function cerrarObservacion(
   id: string,
   fechaCierre: string,
-  responsableCierreId: string | null
+  responsableCierreId: string | null,
+  evidenciaCierreUrl: string | null = null
 ): Promise<ActionResult<null>> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -41,7 +42,11 @@ export async function cerrarObservacion(
 
   const { error } = await supabase
     .from('gestiones_observaciones')
-    .update({ fecha_cierre: fechaCierre, responsable_cierre_id: responsableCierreId })
+    .update({
+      fecha_cierre: fechaCierre,
+      responsable_cierre_id: responsableCierreId,
+      evidencia_cierre_url: evidenciaCierreUrl,
+    })
     .eq('id', id)
 
   if (error) return { success: false, error: error.message }
