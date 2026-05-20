@@ -173,6 +173,13 @@ export interface Localidad {
   created_at: string
 }
 
+export interface Rubro {
+  id: string
+  nombre: string
+  descripcion: string | null
+  is_active: boolean
+}
+
 export interface Empresa {
   id: string
   consultora_id: string
@@ -180,6 +187,8 @@ export interface Empresa {
   tipo_identidad_impositiva: string | null
   cuit: string | null
   rubro: string | null
+  rubro_id: string | null
+  empresas_rubros?: { nombre: string } | null
   domicilio: string | null
   codigo_postal: string | null
   localidad_id: string | null

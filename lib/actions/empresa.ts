@@ -15,7 +15,7 @@ interface EmpresaFormState {
 
 function extractFields(formData: FormData): Record<string, string> {
   const fieldNames = [
-    'razon_social', 'tipo_identidad_impositiva', 'cuit', 'rubro',
+    'razon_social', 'tipo_identidad_impositiva', 'cuit', 'rubro_id',
     'domicilio', 'localidad_id', 'codigo_postal',
     'art_id', 'art_numero_contrato',
     'logo_small_url', 'logo_destacado_url', 'informacion_general',
@@ -67,7 +67,8 @@ export async function createEmpresa(_prev: EmpresaFormState | null, formData: Fo
       razon_social: fields.razon_social.trim(),
       tipo_identidad_impositiva: fields.tipo_identidad_impositiva || null,
       cuit: fields.cuit || null,
-      rubro: fields.rubro || null,
+      rubro_id: fields.rubro_id || null,
+      rubro: fields.rubro_id || null,
       domicilio: fields.domicilio || null,
       localidad_id: fields.localidad_id || null,
       codigo_postal: fields.codigo_postal || null,
@@ -105,7 +106,8 @@ export async function updateEmpresa(id: string, _prev: EmpresaFormState | null, 
       razon_social: fields.razon_social.trim(),
       tipo_identidad_impositiva: fields.tipo_identidad_impositiva || null,
       cuit: fields.cuit || null,
-      rubro: fields.rubro || null,
+      rubro_id: fields.rubro_id || null,
+      rubro: fields.rubro_id || null,
       domicilio: fields.domicilio || null,
       localidad_id: fields.localidad_id || null,
       codigo_postal: fields.codigo_postal || null,

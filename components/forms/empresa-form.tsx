@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { createClient } from '@/lib/supabase/client'
 import { createPrivateArt } from '@/lib/actions/empresa'
-import type { Empresa, Localidad } from '@/lib/types'
+import type { Empresa, Localidad, Rubro } from '@/lib/types'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type EmpresaFormAction = (prevState: any, formData: FormData) => Promise<any>
@@ -28,8 +28,10 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
   const [state, formAction, isPending] = useActionState(action, null)
   const [artOrgs, setArtOrgs] = useState<{ id: string; nombre: string }[]>([])
   const [localidades, setLocalidades] = useState<Localidad[]>([])
+  const [rubros, setRubros] = useState<Rubro[]>([])
   const [selectedProvincia, setSelectedProvincia] = useState(empresa?.localidades?.provincia ?? '')
   const [selectedArtId, setSelectedArtId] = useState(empresa?.art_id ?? '')
+  const [selectedRubroId, setSelectedRubroId] = useState(empresa?.rubro_id ?? '')
   const [showAddArt, setShowAddArt] = useState(false)
   const [newArtName, setNewArtName] = useState('')
   const [addArtPending, setAddArtPending] = useState(false)
@@ -38,6 +40,11 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
   const formRef = useRef<HTMLFormElement>(null)
   const fieldErrors = (state as FormState | null)?.fieldErrors ?? {}
   const values = (state as FormState | null)?.fields ?? {}
+
+  useEffect(() => {
+    const stateRubroId = (state as FormState | null)?.fields?.rubro_id
+    if (stateRubroId) setSelectedRubroId(stateRubroId)
+  }, [state])
 
   useEffect(() => {
     if (Object.keys(fieldErrors).length > 0 && formRef.current) {
@@ -64,9 +71,15 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
         .select('id, nombre, provincia, is_active, created_at')
         .eq('is_active', true)
         .order('nombre'),
-    ]).then(([{ data: arts }, { data: locs }]) => {
+      supabase
+        .from('empresas_rubros')
+        .select('*')
+        .eq('is_active', true)
+        .order('nombre'),
+    ]).then(([{ data: arts }, { data: locs }, { data: rubrosData }]) => {
       if (arts) setArtOrgs(arts as { id: string; nombre: string }[])
       if (locs) setLocalidades(locs as Localidad[])
+      if (rubrosData) setRubros(rubrosData as Rubro[])
     })
   }, [])
 
@@ -74,6 +87,9 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
   const localidadesFiltradas = localidades.filter(l => l.provincia === selectedProvincia)
 
   function fieldValue(name: string): string {
+    if (name === 'rubro_id' && (values.rubro_id || empresa?.rubro_id)) {
+      return values.rubro_id ?? empresa?.rubro_id ?? ''
+    }
     return values[name] ?? (empresa as Record<string, string | undefined>)?.[name] ?? ''
   }
 
@@ -129,11 +145,13 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
           defaultValue={fieldValue('cuit')}
           placeholder="20-12345678-9"
         />
-        <Input
+        <Select
           label="Rubro"
-          name="rubro"
-          defaultValue={fieldValue('rubro')}
-          placeholder="Construcción"
+          name="rubro_id"
+          value={selectedRubroId}
+          onChange={e => setSelectedRubroId(e.target.value)}
+          options={rubros.map(r => ({ value: r.id, label: r.nombre }))}
+          placeholder="Seleccionar rubro..."
         />
       </div>
 
