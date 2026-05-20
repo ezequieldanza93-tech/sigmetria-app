@@ -18,10 +18,10 @@ type Section = 'agenda' | 'ficha' | 'dashboard' | 'seguimiento'
 const VALID_SECTIONS: Section[] = ['agenda', 'ficha', 'dashboard', 'seguimiento']
 
 const SECTION_TABS = [
-  { id: 'agenda' as Section, icon: ClipboardList, label: 'Agenda' },
   { id: 'ficha' as Section, icon: FileText, label: 'Ficha' },
-  { id: 'dashboard' as Section, icon: BarChart3, label: 'Dashboard' },
+  { id: 'agenda' as Section, icon: ClipboardList, label: 'Agenda' },
   { id: 'seguimiento' as Section, icon: Crosshair, label: 'Seguimiento' },
+  { id: 'dashboard' as Section, icon: BarChart3, label: 'Dashboard' },
 ]
 
 interface Props {

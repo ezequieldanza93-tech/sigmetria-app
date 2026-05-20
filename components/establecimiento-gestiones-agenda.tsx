@@ -780,7 +780,6 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
   const [todasGestiones, setTodasGestiones] = useState<Gestion[]>([])
   const [grupos, setGrupos] = useState<GrupoGestion[]>([])
   const [categorias, setCategorias] = useState<CategoriaGestion[]>([])
-  const [showRiesgos, setShowRiesgos] = useState(false)
   const [editingRegistro, setEditingRegistro] = useState<FullRegistro | null>(null)
   const [executingFormulario, setExecutingFormulario] = useState<FullRegistro | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
@@ -959,7 +958,6 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
     : selectedMonths.size === 1 ? MONTHS[Array.from(selectedMonths)[0]]
     : `${selectedMonths.size} meses`
 
-  const activeRiesgos = riesgos.filter(r => !r.resuelto)
   const today = todayYMD()
 
   const totalCols = canWrite ? 8 : 7
@@ -1291,54 +1289,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
         </div>
       )}
 
-      {/* Riesgos section */}
-      <div className="border-t border-gray-200 pt-6">
-        <button
-          onClick={() => setShowRiesgos(v => !v)}
-          className="flex items-center justify-between w-full text-left mb-3"
-        >
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-gray-700">Riesgos</span>
-            {activeRiesgos.length > 0 && (
-              <span className="text-xs bg-red-100 text-red-700 font-medium px-2 py-0.5 rounded-full">
-                {activeRiesgos.length} activos
-              </span>
-            )}
-          </div>
-          <span className="text-gray-400 text-sm">{showRiesgos ? '▲' : '▼'}</span>
-        </button>
 
-        {showRiesgos && (
-          riesgos.length === 0 ? (
-            <p className="text-sm text-gray-400">No hay riesgos registrados.</p>
-          ) : (
-            <div className="space-y-2">
-              {riesgos.map(r => (
-                <div
-                  key={r.id}
-                  className={`bg-white border rounded-xl px-4 py-3 flex items-start justify-between gap-4 ${
-                    r.resuelto ? 'opacity-60 border-gray-100' : 'border-gray-200'
-                  }`}
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${RIESGO_NIVEL_COLORS[r.nivel as RiesgoNivel]}`}>
-                        {RIESGO_NIVEL_LABELS[r.nivel as RiesgoNivel]}
-                      </span>
-                      {r.resuelto && <span className="text-xs text-gray-400">Resuelto</span>}
-                    </div>
-                    <p className="text-sm text-gray-900 font-medium">{r.descripcion}</p>
-                    {r.medida_correctiva && (
-                      <p className="text-xs text-gray-500 mt-0.5">{r.medida_correctiva}</p>
-                    )}
-                  </div>
-                  <div className="text-xs text-gray-400 shrink-0">{r.fecha_identificacion}</div>
-                </div>
-              ))}
-            </div>
-          )
-        )}
-      </div>
 
       {/* FAB — Floating Action Buttons */}
       {canWrite && (
