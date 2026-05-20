@@ -1189,47 +1189,47 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
       </div>
 
       {/* Filter row */}
-      <div className="flex items-center gap-2 mb-4 flex-wrap">
+      <div className="flex items-center gap-1.5 mb-4 overflow-x-auto pb-0.5 shrink-0">
         <input
           type="text"
           value={searchText}
           onChange={e => setSearchText(e.target.value)}
           placeholder="Buscar gestión..."
-          className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-600 focus:outline-none flex-1 min-w-[200px]"
+          className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-600 focus:outline-none w-[140px] shrink-0"
         />
         <select
           value={filterGrupo}
           onChange={e => setFilterGrupo(e.target.value)}
-          className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-600 focus:outline-none"
+          className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-600 focus:outline-none shrink-0"
         >
-          <option value="">Seleccione Grupo</option>
+          <option value="">Grupo</option>
           {gruposFiltro.map(g => <option key={g} value={g}>{g}</option>)}
         </select>
 
         <select
           value={filterCategoria}
           onChange={e => setFilterCategoria(e.target.value)}
-          className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-600 focus:outline-none"
+          className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-600 focus:outline-none shrink-0"
         >
-          <option value="">Seleccione Categoría</option>
+          <option value="">Categoría</option>
           {categoriasFiltro.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
 
         <select
           value={filterResponsable}
           onChange={e => setFilterResponsable(e.target.value)}
-          className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-600 focus:outline-none"
+          className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-600 focus:outline-none shrink-0"
         >
-          <option value="">Seleccione Responsable</option>
+          <option value="">Responsable</option>
           {responsablesFiltro.map(r => <option key={r} value={r}>{r}</option>)}
         </select>
 
         <select
           value={filterEstado}
           onChange={e => setFilterEstado(e.target.value as '' | EstadoGestion)}
-          className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-600 focus:outline-none"
+          className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-600 focus:outline-none shrink-0"
         >
-          <option value="">Seleccione Estado</option>
+          <option value="">Estado</option>
           <option value="Planificado">Planificado</option>
           <option value="Pendiente">Pendiente</option>
           <option value="Realizado">Realizado</option>
@@ -1237,20 +1237,20 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
 
         <button
           onClick={() => { setFilterEstado(''); setFilterCategoria(''); setFilterGrupo(''); setFilterResponsable(''); setOrderByCategoria(false) }}
-          className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-50"
+          className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-gray-600 hover:bg-gray-50 shrink-0"
         >
-          Restablecer filtros
+          Rest.
         </button>
 
         <button
           onClick={() => setOrderByCategoria(v => !v)}
-          className={`text-xs border rounded-lg px-3 py-1.5 transition-colors ${
+          className={`text-xs border rounded-lg px-2 py-1.5 transition-colors shrink-0 ${
             orderByCategoria
               ? 'border-sig-300 bg-sig-50 text-sig-700'
               : 'border-gray-200 text-gray-600 hover:bg-gray-50'
           }`}
         >
-          Ordenar por Categoría
+          Ordenar Categoría
         </button>
 
         <div className="flex items-center gap-2 ml-auto">
