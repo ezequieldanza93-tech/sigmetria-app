@@ -6,7 +6,6 @@ import { useEffect, useState } from 'react'
 import {
   Building2,
   Users,
-  UsersRound,
   Network,
   Shield,
   Gauge,
@@ -21,7 +20,6 @@ import { cn } from '@/lib/utils'
 const NAV_ITEMS = [
   { href: '/dashboard/empresas', label: 'Empresas', icon: Building2 },
   { href: '/dashboard/personas', label: 'Personas', icon: Users },
-  { href: '/dashboard/equipo', label: 'Equipo', icon: UsersRound },
   { href: '/dashboard/organizaciones-externas', label: 'Organizaciones', icon: Network },
   { href: '/dashboard/productos', label: 'Productos EPP', icon: Shield },
   { href: '/dashboard/instrumentos', label: 'Instrumentos', icon: Gauge },

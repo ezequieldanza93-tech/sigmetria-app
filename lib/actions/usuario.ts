@@ -33,6 +33,32 @@ export async function inviteUsuario(_prevState: ActionResult<null> | null, formD
   if (!role) return { success: false, error: 'El rol es obligatorio' }
   if (!consultoraId) return { success: false, error: 'No se encontró consultora' }
 
+  // Check if full_access_main role (only they can invite)
+  if (ctx.membership?.role !== 'full_access_main' && ctx.profile?.system_role !== 'developer') {
+    return { success: false, error: 'Solo el Admin Principal puede agregar miembros' }
+  }
+
+  // Check seat availability
+  const supabaseCheck = await createServerClient()
+  const [{ count: activeCount }, { data: consultora }] = await Promise.all([
+    supabaseCheck
+      .from('consultoras_members')
+      .select('*', { count: 'exact', head: true })
+      .eq('consultora_id', consultoraId)
+      .eq('is_active', true),
+    supabaseCheck
+      .from('consultoras')
+      .select('seats_max')
+      .eq('id', consultoraId)
+      .single(),
+  ])
+
+  const seatsMax = consultora?.seats_max ?? 3
+  const seatsUsed = activeCount ?? 0
+  if (seatsUsed >= seatsMax) {
+    return { success: false, error: `SEATS_LIMIT:${seatsUsed}:${seatsMax}` }
+  }
+
   const adminClient = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
