@@ -1310,7 +1310,7 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
 
       {/* FAB — Floating Action Buttons */}
       {canWrite && (
-        <div className="fixed bottom-8 left-8 z-50 flex flex-col gap-3">
+        <div className="fixed bottom-8 left-[calc(13rem+2rem)] z-50 flex flex-col gap-3">
           <div className="group relative">
             <button
               type="button"
