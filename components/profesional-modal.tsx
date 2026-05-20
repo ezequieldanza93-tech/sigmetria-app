@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { upsertPerfilProfesional, addMatriculaProfesional } from '@/lib/actions/perfil-profesional'
 import { usePerfil, useProvincias, useMatriculas } from '@/lib/queries/profesional'
 import { formatDate } from '@/lib/utils'
-import type { PerfilProfesional, MatriculaProfesional, ActionResult } from '@/lib/types'
+import type { PerfilProfesional, MatriculaProfesional } from '@/lib/types'
 
 type Provincia = { id: string; nombre: string }
 

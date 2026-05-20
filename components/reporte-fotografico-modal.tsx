@@ -129,7 +129,7 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
       }))))
     }
 
-    const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null
+    const _submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null
     formAction(fd)
   }
 
@@ -215,7 +215,7 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
           </div>
           {observaciones.length === 0 ? (
             <p className="text-xs text-gray-400 text-center py-3 border border-dashed border-gray-200 rounded-lg">
-              Sin observaciones. Hacé clic en "+ Agregar" para registrar una.
+              Sin observaciones. Hacé clic en &quot;+ Agregar&quot; para registrar una.
             </p>
           ) : (
             <div className="space-y-2">

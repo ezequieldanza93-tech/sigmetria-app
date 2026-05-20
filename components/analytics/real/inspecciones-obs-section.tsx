@@ -15,7 +15,6 @@ interface InspeccionesObsSectionProps {
   oMetrics: ObservacionMetrics
 }
 
-const PIE_COLORS = ['#3B82F6', '#F59E0B', '#4CAF50', '#8B5CF6']
 
 export function InspeccionesObsSection({ iMetrics, oMetrics }: InspeccionesObsSectionProps) {
   const obsData = [

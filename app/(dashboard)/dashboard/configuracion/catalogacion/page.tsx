@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback, useMemo, type Dispatch, type SetStateAction } from 'react'
 import {
-  getTiposEstablecimiento,
   getGestionesConTipos,
   getAspectos,
   getSeccionesConAspectos,
@@ -104,7 +103,7 @@ export default function CatalogacionPage() {
   const [gestionFilter, setGestionFilter] = useState('')
   const [saving, setSaving] = useState<Set<string>>(new Set())
 
-  const [gestiones, loadingGes, errGes] = useAsync(getGestionesConTipos)
+  const [gestiones, _loadingGes, _errGes] = useAsync(getGestionesConTipos)
   const [aspectos] = useAsync(getAspectos)
   const [secciones, loadingSec, errSec] = useAsync(getSeccionesConAspectos)
 

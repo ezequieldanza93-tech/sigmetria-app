@@ -34,29 +34,12 @@ interface AnalyticsDashboardProps {
   initialYear?: number
 }
 
-const EMPTY_GESTION: GestionMetrics = {
-  total: 0, ejecutadas: 0, pendientesVencidas: 0, planificadas: 0, cumplimientoPct: 0,
-  porCategoria: [], tendenciaMensual: [], porEstablecimiento: [],
-}
-const EMPTY_SINIESTRO: SiniestroMetrics = {
-  total: 0, diasPerdidos: 0, diasSinAccidente: 999,
-  porTipo: [], porEstado: [], mensual: [],
-}
-const EMPTY_INSPECCION: InspeccionMetrics = {
-  total: 0, realizadas: 0, conObservaciones: 0, sinObservaciones: 0, promPuntaje: 0, tendencia: [],
-}
-const EMPTY_FEEDBACK: FeedbackMetrics = {
-  positivo: 0, negativo: 0, sugerencia: 0, total: 0, positivoPct: 0,
-}
-const EMPTY_OBS: ObservacionMetrics = {
-  total: 0, abiertas: 0, cerradas: 0, promDiasResolucion: 0,
-}
 
 export function AnalyticsDashboard({
   level,
   establecimientoId,
-  empresaId,
-  consultoraId,
+  empresaId: _empresaId,
+  consultoraId: _consultoraId,
   establecimientos = [],
   initialYear,
 }: AnalyticsDashboardProps) {

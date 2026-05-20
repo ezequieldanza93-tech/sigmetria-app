@@ -8,7 +8,6 @@ import { SystemRole, UserRole, ROLE_LABELS, ROLE_COLORS } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 import { useMobileMenu } from '@/components/layout/mobile-menu-context'
 import { WeatherClock } from '@/components/weather-clock'
-import { cn } from '@/lib/utils'
 
 interface AppHeaderProps {
   fullName: string
@@ -41,7 +40,7 @@ export function AppHeader({
   const [forecastCoords, setForecastCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [isDark, setIsDark] = useState(false)
 
-  const isHome = pathname === '/dashboard' || pathname === '/dashboard/empresas'
+  const _isHome = pathname === '/dashboard' || pathname === '/dashboard/empresas'
 
   useEffect(() => {
     setIsDark(document.documentElement.getAttribute('data-theme') === 'dark')

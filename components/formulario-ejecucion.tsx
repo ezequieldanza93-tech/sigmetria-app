@@ -304,7 +304,7 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
     )
   }
 
-  function renderObservacionesBlock(secId: string, secTitle: string) {
+  function renderObservacionesBlock(secId: string, _secTitle: string) {
     const obsList = getObs(secId)
     const comentario = comentariosSeccion.get(secId) ?? ''
 

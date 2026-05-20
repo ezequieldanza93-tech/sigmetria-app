@@ -55,7 +55,7 @@ export async function createEmpresa(_prev: EmpresaFormState | null, formData: Fo
     return { success: false, error: 'Corregí los campos marcados en rojo', fieldErrors, fields }
   }
 
-  const { data, error } = await supabase
+  const { data: _data, error } = await supabase
     .from('empresas')
     .insert({
       consultora_id: membership!.consultora_id,

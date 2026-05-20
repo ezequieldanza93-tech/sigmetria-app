@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import type { ActionResult, AnswerValue } from '@/lib/types'
+import type { ActionResult } from '@/lib/types'
 
 export async function finalizarFormulario(
   _prev: ActionResult<{ evidencia_url: string }> | null,

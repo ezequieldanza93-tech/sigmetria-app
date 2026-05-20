@@ -30,7 +30,7 @@ interface AnalyticsPageClientProps {
 export function AnalyticsPageClient({ consultoraId, establecimientos }: AnalyticsPageClientProps) {
   const [mainTab, setMainTab] = useState<MainTab>('realtime')
   const [prototypeTab, setPrototypeTab] = useState<PrototypeTabId>('accidentes')
-  const activeProto = PROTOTYPE_TABS.find(t => t.id === prototypeTab)!
+  const _activeProto = PROTOTYPE_TABS.find(t => t.id === prototypeTab)!
 
   return (
     <div className="min-h-screen bg-surface-base">

@@ -20,7 +20,6 @@ import { KpiCard } from './kpi-card'
 import { ChartCard } from './chart-card'
 import { VariantSwitcher } from './variant-switcher'
 import { TOOLTIP_STYLE, AXIS_STYLE, GradientDefs } from './chart-config'
-import { cn } from '@/lib/utils'
 
 const DATA = generateMockData()
 const { estrategia: EST } = DATA

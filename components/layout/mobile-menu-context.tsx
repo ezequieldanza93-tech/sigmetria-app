@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useCallback, useState } from 'react'
+import { createContext, useContext } from 'react'
 
 interface MobileMenuContextValue {
   openMobileMenu: () => void

@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect, useActionState, useTransition, useRef, Fragment, memo, useMemo, type FormEvent } from 'react'
+import { useState, useEffect, useActionState, useTransition, useRef, Fragment, memo, type FormEvent } from 'react'
 
 import { createClient } from '@/lib/supabase/client'
 import { calcularEstadoGestion, canWrite } from '@/lib/types'
-import type { EstadoGestion, Gestion, CategoriaGestion, GrupoGestion, GestionEstablecimiento, RegistroGestion, Riesgo, RiesgoNivel, UserRole, SystemRole } from '@/lib/types'
+import type { EstadoGestion, Gestion, CategoriaGestion, GrupoGestion, GestionEstablecimiento, RegistroGestion, Riesgo, UserRole, SystemRole } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { MultiFilter } from '@/components/ui/multi-filter'
@@ -21,8 +21,6 @@ import {
   createCategoriaGestion,
 } from '@/lib/actions/gestion-establecimiento'
 import { ejecutarGestion, crearObservaciones } from '@/lib/actions/registro-gestion'
-import { RIESGO_NIVEL_LABELS } from '@/lib/constants'
-import { RIESGO_NIVEL_COLORS } from '@/lib/types'
 
 const CATEGORIA_META: Record<string, { icon: React.ComponentType<{ size?: number; className?: string }>; abbr: string }> = {
   Checklists: { icon: ClipboardCheck, abbr: 'CHK' },
@@ -84,7 +82,7 @@ const ROW_BG_COLORS: Record<EstadoGestion, string> = {
   Planificado: 'bg-sky-100 hover:bg-sky-200',
 }
 
-function diffDays(a: string, b: string): number {
+function _diffDays(a: string, b: string): number {
   const [ay, am, ad] = a.split('-').map(Number)
   const [by, bm, bd] = b.split('-').map(Number)
   return Math.round(
@@ -702,7 +700,7 @@ function EjecucionModal({
               </button>
             </div>
           {observaciones.length === 0 ? (<p className="text-xs text-gray-400 text-center py-3 border border-dashed border-gray-200 rounded-lg">
-              Sin observaciones. Hacé clic en "+ Agregar" para registrar una.
+              Sin observaciones. Hacé clic en &quot;+ Agregar&quot; para registrar una.
             </p>
           ) : (
             <div className="space-y-2">
@@ -802,7 +800,7 @@ function useCanWrite(): boolean {
 }
 
 // ─── Main component ────────────────────────────────────────────────────────────
-export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, riesgos }: GestionesAgendaProps) {
+export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, riesgos: _riesgos }: GestionesAgendaProps) {
   const clientCanWrite = useCanWrite()
   const canWrite = canWriteProp || clientCanWrite
   const currentYear = new Date().getFullYear()
@@ -1007,18 +1005,18 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
       })).filter(g => g.regs.length > 0)
     : []
 
-  const activeMonthLabel =
+  const _activeMonthLabel =
     selectedMonths.size === 12 ? null
     : selectedMonths.size === 1 ? MONTHS[Array.from(selectedMonths)[0]]
     : `${selectedMonths.size} meses`
 
-  const today = todayYMD()
+  const _today = todayYMD()
 
   const totalCols = canWrite ? 8 : 7
 
   // ── Row renderer ────────────────────────────────────────────────────────────
   function renderRows(regs: FullRegistro[]) {
-    return regs.map((r, idx) => {
+    return regs.map((r, _idx) => {
       const estado = calcularEstadoGestion(r.fecha_ejecutada ?? null, r.fecha_planificada)
 
       return (

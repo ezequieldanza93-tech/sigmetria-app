@@ -38,7 +38,7 @@ export function PhotoCanvasEditor({ imageUrl, onImageChange }: PhotoCanvasEditor
   const [color, setColor] = useState('#000000')
   const [brushSize, setBrushSize] = useState(4)
   const [fontSize, setFontSize] = useState(24)
-  const [textElements, setTextElements] = useState<TextElement[]>([])
+  const [_textElements, setTextElements] = useState<TextElement[]>([])
   const [placingText, setPlacingText] = useState(false)
   const [textInput, setTextInput] = useState('')
   const [textInputPos, setTextInputPos] = useState({ x: 0, y: 0 })
@@ -154,7 +154,7 @@ export function PhotoCanvasEditor({ imageUrl, onImageChange }: PhotoCanvasEditor
     ctx.moveTo(pos.x, pos.y)
   }
 
-  function endDraw(e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) {
+  function endDraw(_e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) {
     if (isDrawing) {
       setIsDrawing(false)
       lastPoint.current = null

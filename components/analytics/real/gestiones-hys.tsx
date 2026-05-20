@@ -3,9 +3,8 @@
 import React, { useState } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
-  LineChart, Line, ComposedChart,
+  Line, ComposedChart,
 } from 'recharts'
-import { cn } from '@/lib/utils'
 import { ChartCard } from '@/components/analytics/chart-card'
 import { VariantSwitcher } from '@/components/analytics/variant-switcher'
 import { CHART_COLORS, TOOLTIP_STYLE, AXIS_STYLE } from '@/components/analytics/chart-config'

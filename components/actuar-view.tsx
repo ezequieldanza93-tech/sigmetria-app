@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { CierreObservacionModal } from '@/components/cierre-observacion-modal'
 import { MultiFilter } from '@/components/ui/multi-filter'
-import type { ObservacionGestion, RegistroGestion } from '@/lib/types'
+import type { ObservacionGestion } from '@/lib/types'
 
 interface ObsRow extends ObservacionGestion {
   fecha_ejecutada?: string | null
