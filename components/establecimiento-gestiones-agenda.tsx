@@ -6,6 +6,8 @@ import { calcularEstadoGestion } from '@/lib/types'
 import type { EstadoGestion, Gestion, CategoriaGestion, GrupoGestion, GestionEstablecimiento, RegistroGestion, Riesgo, RiesgoNivel } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
+import { Plus, Camera } from 'lucide-react'
+import { ReporteFotograficoModal } from '@/components/reporte-fotografico-modal'
 import {
   planificarGestion,
   planificarGestionNueva,
@@ -757,6 +759,8 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
   const [editingRegistro, setEditingRegistro] = useState<FullRegistro | null>(null)
   const [executingFormulario, setExecutingFormulario] = useState<FullRegistro | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
+  const [showPlanificarModal, setShowPlanificarModal] = useState(false)
+  const [showReporteModal, setShowReporteModal] = useState(false)
 
   // Task 4: resizable columns with localStorage
   const [colWidths, setColWidths] = useState<Record<string, number>>(() => {
@@ -1304,6 +1308,36 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
         )}
       </div>
 
+      {/* FAB — Floating Action Buttons */}
+      {canWrite && (
+        <div className="fixed bottom-8 left-8 z-50 flex flex-col gap-3">
+          <div className="group relative">
+            <button
+              type="button"
+              onClick={() => setShowReporteModal(true)}
+              className="w-12 h-12 rounded-full bg-sig-600 hover:bg-sig-700 text-white shadow-lg flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+            >
+              <Camera size={20} strokeWidth={2} />
+            </button>
+            <span className="absolute left-14 top-1/2 -translate-y-1/2 bg-gray-900 text-white text-xs rounded-lg px-2.5 py-1.5 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg">
+              Generar reporte fotográfico
+            </span>
+          </div>
+          <div className="group relative">
+            <button
+              type="button"
+              onClick={() => setShowPlanificarModal(true)}
+              className="w-12 h-12 rounded-full bg-sig-600 hover:bg-sig-700 text-white shadow-lg flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+            >
+              <Plus size={22} strokeWidth={2.5} />
+            </button>
+            <span className="absolute left-14 top-1/2 -translate-y-1/2 bg-gray-900 text-white text-xs rounded-lg px-2.5 py-1.5 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg">
+              Planificar nueva gestión
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Modals */}
       {executingFormulario && (
         <FormularioEjecucion
@@ -1321,6 +1355,58 @@ export function GestionesAgenda({ establecimientoId, canWrite, riesgos }: Gestio
           onSuccess={() => { setEditingRegistro(null); setRefreshKey(k => k + 1) }}
         />
       )}
+
+      {showPlanificarModal && (
+        <Modal open title="Planificar nueva gestión" onClose={() => setShowPlanificarModal(false)}>
+          <PlanificarFlow
+            establecimientoId={establecimientoId}
+            grupos={grupos}
+            categorias={categorias}
+            todasGestiones={todasGestiones}
+            onClose={() => setShowPlanificarModal(false)}
+            onSuccess={() => { setShowPlanificarModal(false); setRefreshKey(k => k + 1) }}
+          />
+        </Modal>
+      )}
+
+      {showReporteModal && (
+        <ReporteFotograficoModal
+          establecimientoId={establecimientoId}
+          onClose={() => setShowReporteModal(false)}
+          onSuccess={() => { setShowReporteModal(false); setRefreshKey(k => k + 1) }}
+        />
+      )}
     </div>
+  )
+}
+
+// ─── PlanificarFlow ─────────────────────────────────────────────────────────
+function PlanificarFlow({
+  establecimientoId, grupos, categorias, todasGestiones, onClose, onSuccess,
+}: {
+  establecimientoId: string
+  grupos: GrupoGestion[]
+  categorias: CategoriaGestion[]
+  todasGestiones: Gestion[]
+  onClose: () => void
+  onSuccess: (month?: number) => void
+}) {
+  const [mode, setMode] = useState<'biblioteca' | 'nueva'>('nueva')
+  return mode === 'nueva' ? (
+    <NuevaGestionForm
+      establecimientoId={establecimientoId}
+      grupos={grupos}
+      categorias={categorias}
+      onClose={() => {}}
+      onSuccess={onSuccess}
+    />
+  ) : (
+    <BibliotecaForm
+      establecimientoId={establecimientoId}
+      todasGestiones={todasGestiones}
+      onClose={onClose}
+      onSuccess={onSuccess}
+      onSwitchToNueva={() => setMode('nueva')}
+    />
   )
 }
