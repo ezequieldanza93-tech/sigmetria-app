@@ -771,6 +771,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
   // Task 2: collapsed months for group view
   const [collapsedMonths, setCollapsedMonths] = useState<Set<number>>(new Set())
 
+  const [searchText, setSearchText] = useState('')
   const [filterEstado, setFilterEstado] = useState<'' | EstadoGestion>('')
   const [filterCategoria, setFilterCategoria] = useState('')
   const [filterGrupo, setFilterGrupo] = useState('')
@@ -913,6 +914,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
     return registros.filter(r => r.fecha_planificada?.startsWith(`${year}-${m}`)).length
   })
 
+  const q = searchText.toLowerCase().trim()
   const filteredRegistros = (registros ?? []).filter(r => {
     const month = parseInt(r.fecha_planificada?.split('-')[1] ?? '0') - 1
     if (!selectedMonths.has(month)) return false
@@ -921,6 +923,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
     if (filterCategoria && r.ge_categoria_nombre !== filterCategoria) return false
     if (filterGrupo && r.ge_grupo_nombre !== filterGrupo) return false
     if (filterResponsable && r.responsable_nombre !== filterResponsable) return false
+    if (q && !r.ge_gestion_nombre?.toLowerCase().includes(q) && !r.ge_categoria_nombre?.toLowerCase().includes(q)) return false
     return true
   })
 
@@ -1187,6 +1190,13 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
 
       {/* Filter row */}
       <div className="flex items-center gap-2 mb-4 flex-wrap">
+        <input
+          type="text"
+          value={searchText}
+          onChange={e => setSearchText(e.target.value)}
+          placeholder="Buscar gestión..."
+          className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-600 focus:outline-none flex-1 min-w-[200px]"
+        />
         <select
           value={filterGrupo}
           onChange={e => setFilterGrupo(e.target.value)}
