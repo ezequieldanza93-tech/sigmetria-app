@@ -26,7 +26,7 @@ export function DevicePreviewPanel({ children }: { children: React.ReactNode }) 
     function handleKeyDown(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'M') {
         e.preventDefault()
-        setIsOpen(prev => !prev)
+        setIsOpen((prev: boolean) => !prev)
       }
     }
 
