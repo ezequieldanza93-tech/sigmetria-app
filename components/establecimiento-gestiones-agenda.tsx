@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useActionState, useTransition, useRef, Fragment, type FormEvent } from 'react'
-import { createPortal } from 'react-dom'
+
 import { createClient } from '@/lib/supabase/client'
 import { calcularEstadoGestion, canWrite } from '@/lib/types'
 import type { EstadoGestion, Gestion, CategoriaGestion, GrupoGestion, GestionEstablecimiento, RegistroGestion, Riesgo, RiesgoNivel, UserRole, SystemRole } from '@/lib/types'
@@ -1097,46 +1097,8 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div>
-      {/* Debug: canWrite status */}
-      <div className="mb-2 flex items-center gap-2 text-xs">
-        <span className={`inline-block w-2 h-2 rounded-full ${canWrite ? 'bg-green-500' : 'bg-red-500'}`} />
-        <span className="text-gray-400">canWrite: {String(canWrite)}</span>
-        <span className="text-gray-300">|</span>
-        <span className="text-gray-400">server: {String(canWriteProp)}</span>
-        <span className="text-gray-300">|</span>
-        <span className="text-gray-400">client: {String(clientCanWrite)}</span>
-      </div>
 
-      {/* TEST 1: inline button in normal flow */}
-      <div className="mb-4 p-3 bg-yellow-100 border-2 border-yellow-400 rounded-xl text-center">
-        <p className="text-xs text-yellow-700 mb-2">🔬 TEST: botones de depuración</p>
-        <div className="flex gap-2 justify-center">
-          <button
-            type="button"
-            onClick={() => setShowPlanificarModal(true)}
-            className="px-4 py-2 bg-sig-600 text-white text-sm font-medium rounded-lg"
-          >
-            ➕ TEST inline
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowReporteModal(true)}
-            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg"
-          >
-            📷 TEST inline
-          </button>
-        </div>
-      </div>
 
-      {/* TEST 2: fixed button at top-right (direct, no portal) */}
-      <button
-        type="button"
-        onClick={() => setShowPlanificarModal(true)}
-        className="fixed top-20 right-4 z-[9999] w-14 h-14 rounded-full bg-green-500 text-white shadow-2xl flex items-center justify-center text-2xl font-bold hover:bg-green-600"
-        style={{ position: 'fixed', top: '80px', right: '16px', zIndex: 9999 }}
-      >
-        T
-      </button>
 
       {/* Year navigation */}
       <div className="bg-gray-800 text-white rounded-xl px-6 py-4 mb-4 flex items-center justify-between">
@@ -1374,35 +1336,46 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
         )}
       </div>
 
-      {/* FAB — Floating Action Buttons (portal to body) */}
-      {canWrite && typeof document !== 'undefined' && createPortal(
+      {/* FAB — Floating Action Buttons */}
+      {canWrite && (
         <div style={{ position: 'fixed', bottom: '2rem', left: 'calc(13rem + 2rem)', zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          <div className="group relative">
+          <div
+            style={{ position: 'relative' }}
+            onMouseEnter={e => { const t = e.currentTarget.querySelector('.fab-tooltip') as HTMLElement; if (t) t.style.opacity = '1' }}
+            onMouseLeave={e => { const t = e.currentTarget.querySelector('.fab-tooltip') as HTMLElement; if (t) t.style.opacity = '0' }}
+          >
             <button
               type="button"
               onClick={() => setShowReporteModal(true)}
-              className="w-12 h-12 rounded-full bg-sig-600 hover:bg-sig-700 text-white shadow-lg flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+              style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: '#4f46e5', color: 'white', boxShadow: '0 10px 25px rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer', transition: 'transform 0.15s, background-color 0.15s' }}
+              onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#4338ca'; e.currentTarget.style.transform = 'scale(1.1)' }}
+              onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#4f46e5'; e.currentTarget.style.transform = 'scale(1)' }}
             >
               <Camera size={20} strokeWidth={2} />
             </button>
-            <span className="absolute left-14 top-1/2 -translate-y-1/2 bg-gray-900 text-white text-xs rounded-lg px-2.5 py-1.5 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg">
+            <span className="fab-tooltip" style={{ position: 'absolute', left: '56px', top: '50%', transform: 'translateY(-50%)', backgroundColor: '#111827', color: 'white', fontSize: '12px', borderRadius: '8px', padding: '6px 10px', whiteSpace: 'nowrap', opacity: 0, transition: 'opacity 0.2s', pointerEvents: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
               Generar reporte fotográfico
             </span>
           </div>
-          <div className="group relative">
+          <div
+            style={{ position: 'relative' }}
+            onMouseEnter={e => { const t = e.currentTarget.querySelector('.fab-tooltip') as HTMLElement; if (t) t.style.opacity = '1' }}
+            onMouseLeave={e => { const t = e.currentTarget.querySelector('.fab-tooltip') as HTMLElement; if (t) t.style.opacity = '0' }}
+          >
             <button
               type="button"
               onClick={() => setShowPlanificarModal(true)}
-              className="w-12 h-12 rounded-full bg-sig-600 hover:bg-sig-700 text-white shadow-lg flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+              style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: '#4f46e5', color: 'white', boxShadow: '0 10px 25px rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer', transition: 'transform 0.15s, background-color 0.15s' }}
+              onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#4338ca'; e.currentTarget.style.transform = 'scale(1.1)' }}
+              onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#4f46e5'; e.currentTarget.style.transform = 'scale(1)' }}
             >
               <Plus size={22} strokeWidth={2.5} />
             </button>
-            <span className="absolute left-14 top-1/2 -translate-y-1/2 bg-gray-900 text-white text-xs rounded-lg px-2.5 py-1.5 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg">
+            <span className="fab-tooltip" style={{ position: 'absolute', left: '56px', top: '50%', transform: 'translateY(-50%)', backgroundColor: '#111827', color: 'white', fontSize: '12px', borderRadius: '8px', padding: '6px 10px', whiteSpace: 'nowrap', opacity: 0, transition: 'opacity 0.2s', pointerEvents: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
               Planificar nueva gestión
             </span>
           </div>
-        </div>,
-        document.body
+        </div>
       )}
 
       {/* Modals */}
@@ -1458,7 +1431,7 @@ function PlanificarFlow({
   onClose: () => void
   onSuccess: (month?: number) => void
 }) {
-  const [mode, setMode] = useState<'biblioteca' | 'nueva'>('nueva')
+  const [mode, setMode] = useState<'biblioteca' | 'nueva'>('biblioteca')
   return mode === 'nueva' ? (
     <NuevaGestionForm
       establecimientoId={establecimientoId}
