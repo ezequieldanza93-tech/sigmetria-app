@@ -18,7 +18,7 @@ export default async function EmpresasPage() {
     supabase.from('consultoras_members').select('role').eq('user_id', user.id).eq('is_active', true).maybeSingle(),
     supabase
       .from('empresas')
-      .select(`id, razon_social, cuit, rubro, localidades(nombre, provincia), is_active, establecimientos(count)`)
+      .select(`id, razon_social, cuit, empresas_rubros(nombre), localidades(nombre, provincia), is_active, establecimientos(count)`)
       .order('razon_social'),
   ])
 
@@ -83,7 +83,7 @@ export default async function EmpresasPage() {
                       </Link>
                     </td>
                     <td className="px-5 py-4 text-gray-500 font-mono text-xs">{formatCUIT(e.cuit)}</td>
-                    <td className="px-5 py-4 text-gray-500">{e.rubro ?? '—'}</td>
+                    <td className="px-5 py-4 text-gray-500">{(e.empresas_rubros as any)?.nombre ?? '—'}</td>
                     <td className="px-5 py-4 text-gray-500">
                       {e.localidades ? [(e.localidades as any).nombre, (e.localidades as any).provincia].join(', ') : '—'}
                     </td>

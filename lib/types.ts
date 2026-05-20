@@ -186,7 +186,6 @@ export interface Empresa {
   razon_social: string
   tipo_identidad_impositiva: string | null
   cuit: string | null
-  rubro: string | null
   rubro_id: string | null
   empresas_rubros?: { nombre: string } | null
   domicilio: string | null

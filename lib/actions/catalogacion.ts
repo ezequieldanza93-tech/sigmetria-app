@@ -135,7 +135,7 @@ export async function getDocumentoTiposConTipos(): Promise<DocumentoRow[]> {
   const { supabase } = await getUser()
   const [docRes, relRes] = await Promise.all([
     supabase.from('documentos_tipos').select('id, nombre, aplica_por_iso').order('nombre'),
-    supabase.from('establecimientos_tipos_documentos').select('documento_tipo_id, tipo_establecimiento_id'),
+    supabase.from('documentos_tipos_reglas').select('documento_tipo_id, tipo_establecimiento_id').not('tipo_establecimiento_id', 'is', null),
   ])
   const idx = new Map<string, string[]>()
   for (const r of relRes.data ?? []) {
@@ -153,13 +153,13 @@ export async function getDocumentoTiposConTipos(): Promise<DocumentoRow[]> {
 export async function toggleDocumentoTipo(documentoTipoId: string, tipoId: string, active: boolean): Promise<ActionResult<null>> {
   const { supabase } = await getUser()
   if (active) {
-    const { error } = await supabase.from('establecimientos_tipos_documentos').upsert(
+    const { error } = await supabase.from('documentos_tipos_reglas').upsert(
       { documento_tipo_id: documentoTipoId, tipo_establecimiento_id: tipoId },
-      { onConflict: 'documento_tipo_id,tipo_establecimiento_id', ignoreDuplicates: true },
+      { ignoreDuplicates: true },
     )
     if (error) return { success: false, error: error.message }
   } else {
-    const { error } = await supabase.from('establecimientos_tipos_documentos').delete()
+    const { error } = await supabase.from('documentos_tipos_reglas').delete()
       .eq('documento_tipo_id', documentoTipoId).eq('tipo_establecimiento_id', tipoId)
     if (error) return { success: false, error: error.message }
   }
@@ -191,7 +191,7 @@ export async function getDocTiposConRubros(): Promise<DocumentoRubroRow[]> {
   const { supabase } = await getUser()
   const [docRes, relRes] = await Promise.all([
     supabase.from('documentos_tipos').select('id, nombre, aplica_por_iso').order('nombre'),
-    supabase.from('empresas_rubros_documentos').select('documento_tipo_id, rubro_empresa_id'),
+    supabase.from('documentos_tipos_reglas').select('documento_tipo_id, rubro_empresa_id').not('rubro_empresa_id', 'is', null),
   ])
   const idx = new Map<string, string[]>()
   for (const r of relRes.data ?? []) {
@@ -209,13 +209,13 @@ export async function getDocTiposConRubros(): Promise<DocumentoRubroRow[]> {
 export async function toggleDocumentoRubro(documentoTipoId: string, rubroId: string, active: boolean): Promise<ActionResult<null>> {
   const { supabase } = await getUser()
   if (active) {
-    const { error } = await supabase.from('empresas_rubros_documentos').upsert(
+    const { error } = await supabase.from('documentos_tipos_reglas').upsert(
       { documento_tipo_id: documentoTipoId, rubro_empresa_id: rubroId },
-      { onConflict: 'documento_tipo_id,rubro_empresa_id', ignoreDuplicates: true },
+      { ignoreDuplicates: true },
     )
     if (error) return { success: false, error: error.message }
   } else {
-    const { error } = await supabase.from('empresas_rubros_documentos').delete()
+    const { error } = await supabase.from('documentos_tipos_reglas').delete()
       .eq('documento_tipo_id', documentoTipoId).eq('rubro_empresa_id', rubroId)
     if (error) return { success: false, error: error.message }
   }

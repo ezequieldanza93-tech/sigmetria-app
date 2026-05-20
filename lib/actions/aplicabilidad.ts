@@ -51,7 +51,7 @@ export async function getDocTiposAplicables(establecimientoId: string): Promise<
   const aplicaIso = establecimiento.aplica_iso_45001
 
   const { data: porTipo } = await supabase
-    .from('establecimientos_tipos_documentos')
+    .from('documentos_tipos_reglas')
     .select('documento_tipo_id')
     .eq('tipo_establecimiento_id', tipoId)
 

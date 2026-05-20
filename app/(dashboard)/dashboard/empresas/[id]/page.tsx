@@ -21,7 +21,7 @@ export default async function EmpresaDetailPage({ params }: Props) {
   const [{ data: profile }, { data: membership }, { data: empresa }] = await Promise.all([
     supabase.from('profiles').select('system_role').eq('id', user.id).single(),
     supabase.from('consultoras_members').select('role').eq('user_id', user.id).eq('is_active', true).maybeSingle(),
-    supabase.from('empresas').select('*, localidades(nombre, provincia), organizaciones_externas!art_id(nombre)').eq('id', id).single(),
+    supabase.from('empresas').select('*, empresas_rubros(nombre), localidades(nombre, provincia), organizaciones_externas!art_id(nombre)').eq('id', id).single(),
   ])
 
   if (!empresa) notFound()
@@ -81,8 +81,8 @@ export default async function EmpresaDetailPage({ params }: Props) {
             {empresa.cuit && (
               <p className="text-xs text-gray-400 font-mono">{formatCUIT(empresa.cuit)}</p>
             )}
-            {empresa.rubro && (
-              <p className="text-xs text-gray-400 mt-0.5">{empresa.rubro}</p>
+            {(empresa.empresas_rubros as any)?.nombre && (
+              <p className="text-xs text-gray-400 mt-0.5">{(empresa.empresas_rubros as any).nombre}</p>
             )}
           </div>
 
