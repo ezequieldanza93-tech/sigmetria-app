@@ -287,13 +287,15 @@ export function AppHeader({
   )
 }
 
-function DropdownItem({ href, icon: Icon, label }: { href: string; icon: React.ComponentType<{ size?: number; strokeWidth?: number }>; label: string }) {
+function DropdownItem({ href, icon: Icon, label }: { href: string; icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>; label: string }) {
   return (
     <Link
       href={href}
       className="flex items-center gap-2.5 px-4 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-surface-sunken transition-colors"
     >
-      <Icon size={16} strokeWidth={1.75} className="text-text-tertiary" />
+      <span className="text-text-tertiary">
+        <Icon size={16} strokeWidth={1.75} />
+      </span>
       {label}
     </Link>
   )
