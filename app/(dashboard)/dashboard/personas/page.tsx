@@ -183,13 +183,14 @@ export default function PersonasPage() {
         </button>
         {tiposPersona.map(t => {
           const count = personas?.filter(p => p.tipo_id === t.id).length ?? 0
+          if (personas !== null && count === 0) return null
           return (
             <button
               key={t.id}
               onClick={() => setActiveTipo(t.id)}
               className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${activeTipo === t.id ? 'bg-sig-500 text-white border-sig-500' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
             >
-              {t.nombre} ({count})
+              {t.nombre} <span className="opacity-60">({count})</span>
             </button>
           )
         })}

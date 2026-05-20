@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
+import { Info, ClipboardList, Hammer, ShieldCheck, Zap, Pencil } from 'lucide-react'
 import { canWrite, canDelete, UserRole } from '@/lib/types'
 import { EstablecimientoTabs } from '@/components/establecimiento-tabs'
 import { EstablecimientoLocation } from '@/components/establecimiento-location'
@@ -25,12 +26,12 @@ import type {
 type Section = 'informacion' | 'planificar' | 'hacer' | 'verificar' | 'actuar'
 const VALID_SECTIONS: Section[] = ['informacion', 'planificar', 'hacer', 'verificar', 'actuar']
 
-const SIDEBAR_ITEMS: { id: Section; icon: string; label: string }[] = [
-  { id: 'informacion', icon: 'I', label: 'Información' },
-  { id: 'planificar', icon: 'P', label: 'Planificar' },
-  { id: 'hacer', icon: 'H', label: 'Hacer' },
-  { id: 'verificar', icon: 'V', label: 'Verificar' },
-  { id: 'actuar', icon: 'A', label: 'Actuar' },
+const SIDEBAR_ITEMS = [
+  { id: 'informacion' as Section, icon: Info,          label: 'Información' },
+  { id: 'planificar'  as Section, icon: ClipboardList, label: 'Planificar' },
+  { id: 'hacer'       as Section, icon: Hammer,        label: 'Hacer' },
+  { id: 'verificar'   as Section, icon: ShieldCheck,   label: 'Verificar' },
+  { id: 'actuar'      as Section, icon: Zap,           label: 'Actuar' },
 ]
 
 interface Props {
@@ -163,61 +164,76 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
   const tipoLabel = establecimiento.establecimientos_tipos?.nombre ?? null
 
   return (
-    <div className="flex">
-      {/* Left sidebar */}
-      <aside className="w-52 shrink-0 border-r border-gray-200 bg-white flex flex-col pt-8 px-3 sticky top-0 h-screen overflow-y-auto">
-        <div className="px-2 mb-6">
-          <p className="text-xs text-gray-400 font-medium truncate mb-0.5">{empresa.razon_social}</p>
-          <p className="text-sm font-bold text-gray-900 truncate">{establecimiento.nombre}</p>
-          {tipoLabel && <p className="text-xs text-gray-400 mt-0.5 truncate">{tipoLabel}</p>}
+    <div className="flex min-h-[calc(100vh-56px)]">
+      {/* PHVA sidebar */}
+      <aside className="w-52 shrink-0 border-r border-border-subtle bg-surface-sidebar flex flex-col pt-6 px-3 sticky top-14 h-[calc(100vh-56px)] overflow-y-auto">
+        {/* Establecimiento header */}
+        <div className="px-2 mb-5">
+          <Link
+            href={`/dashboard/empresas/${id}`}
+            className="text-xs text-text-tertiary hover:text-text-secondary transition-colors font-medium truncate block mb-0.5"
+          >
+            {empresa.razon_social}
+          </Link>
+          <p className="text-sm font-bold text-text-primary truncate">{establecimiento.nombre}</p>
+          {tipoLabel && (
+            <p className="text-xs text-text-tertiary mt-0.5 truncate">{tipoLabel}</p>
+          )}
         </div>
 
-        <nav className="flex flex-col gap-1">
-          {SIDEBAR_ITEMS.map(item => {
-            const isActive = section === item.id
-            const isDisabled = item.id === 'verificar'
+        <div className="h-px bg-border-subtle mx-2 mb-3" />
+
+        {/* PHVA nav */}
+        <nav className="flex flex-col gap-0.5">
+          {SIDEBAR_ITEMS.map(({ id: itemId, icon: Icon, label }) => {
+            const isActive = section === itemId
+            const isDisabled = itemId === 'verificar'
+
             if (isDisabled) {
               return (
                 <span
-                  key={item.id}
-                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-300 cursor-not-allowed"
+                  key={itemId}
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-text-tertiary opacity-40 cursor-not-allowed select-none"
                 >
-                  <span className="w-7 h-7 rounded-full bg-gray-100 text-gray-300 flex items-center justify-center text-xs font-bold shrink-0">
-                    {item.icon}
-                  </span>
-                  {item.label}
+                  <Icon size={16} strokeWidth={1.75} className="shrink-0" />
+                  {label}
                 </span>
               )
             }
+
             return (
               <Link
-                key={item.id}
-                href={`/dashboard/empresas/${id}/establecimientos/${estId}?section=${item.id}`}
-                className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                key={itemId}
+                href={`/dashboard/empresas/${id}/establecimientos/${estId}?section=${itemId}`}
+                className={[
+                  'relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
                   isActive
-                    ? 'bg-sig-50 text-sig-700'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                }`}
+                    ? 'bg-brand-muted text-brand-primary'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated',
+                ].join(' ')}
               >
-                <span
-                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                    isActive ? 'bg-sig-500 text-white' : 'bg-gray-200 text-gray-500'
-                  }`}
-                >
-                  {item.icon}
-                </span>
-                {item.label}
+                {isActive && (
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-brand-primary rounded-r-full" />
+                )}
+                <Icon
+                  size={16}
+                  strokeWidth={1.75}
+                  className={isActive ? 'text-brand-primary shrink-0' : 'text-text-tertiary shrink-0'}
+                />
+                {label}
               </Link>
             )
           })}
         </nav>
 
+        {/* Editar link */}
         {userCanWrite && section === 'informacion' && (
-          <div className="mt-auto px-2 pb-6 pt-4">
+          <div className="mt-auto px-2 pb-5 pt-4">
             <Link
               href={`/dashboard/empresas/${id}/establecimientos/${estId}/editar`}
-              className="flex items-center justify-center gap-1.5 w-full border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-800 text-xs font-medium px-3 py-2 rounded-lg transition-colors"
+              className="flex items-center justify-center gap-1.5 w-full border border-border-default text-text-tertiary hover:bg-surface-elevated hover:text-text-primary text-xs font-medium px-3 py-2 rounded-lg transition-colors"
             >
+              <Pencil size={13} strokeWidth={1.75} />
               Editar
             </Link>
           </div>
@@ -226,7 +242,6 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
 
       {/* Main content */}
       <div className="flex-1 min-w-0 p-8">
-        {/* ── Información ── */}
         {section === 'informacion' && (
           <>
             {establecimiento.latitude != null && establecimiento.longitude != null && (
@@ -256,15 +271,10 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
           </>
         )}
 
-        {/* ── Planificar ── */}
         {section === 'planificar' && (
-          <PlanificarView
-            establecimientoId={estId}
-            empresaId={id}
-          />
+          <PlanificarView establecimientoId={estId} empresaId={id} />
         )}
 
-        {/* ── Hacer ── */}
         {section === 'hacer' && (
           <GestionesAgenda
             establecimientoId={estId}
@@ -274,18 +284,16 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
           />
         )}
 
-        {/* ── Verificar (placeholder) ── */}
         {section === 'verificar' && (
-          <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-            <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center text-xl font-bold text-gray-400 mx-auto mb-4">
-              V
+          <div className="bg-surface-elevated rounded-xl border border-border-subtle p-12 text-center">
+            <div className="w-12 h-12 bg-surface-sunken rounded-full flex items-center justify-center mx-auto mb-4">
+              <ShieldCheck size={22} strokeWidth={1.5} className="text-text-tertiary" />
             </div>
-            <p className="font-semibold text-gray-700">Verificar</p>
-            <p className="text-sm text-gray-400 mt-1">Próximamente disponible.</p>
+            <p className="font-semibold text-text-primary">Verificar</p>
+            <p className="text-sm text-text-tertiary mt-1">Próximamente disponible.</p>
           </div>
         )}
 
-        {/* ── Actuar ── */}
         {section === 'actuar' && (
           <ActuarView establecimientoId={estId} />
         )}
