@@ -7,11 +7,11 @@ interface BadgeProps {
 }
 
 const variantClasses = {
-  default: 'bg-gray-100 text-gray-700',
-  success: 'bg-green-100 text-green-800',
-  warning: 'bg-yellow-100 text-yellow-800',
-  danger: 'bg-red-100 text-red-800',
-  info: 'bg-sig-50 text-sig-700',
+  default: 'bg-surface-elevated text-text-secondary',
+  success: 'bg-[var(--success-bg)] text-[var(--success)]',
+  warning: 'bg-[var(--warning-bg)] text-[var(--warning)]',
+  danger: 'bg-[var(--danger-bg)] text-[var(--danger)]',
+  info: 'bg-[var(--info-bg)] text-[var(--info)]',
 }
 
 export function Badge({ children, className, variant = 'default' }: BadgeProps) {
@@ -20,7 +20,7 @@ export function Badge({ children, className, variant = 'default' }: BadgeProps) 
       className={cn(
         'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
         variantClasses[variant],
-        className
+        className,
       )}
     >
       {children}

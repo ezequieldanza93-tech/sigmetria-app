@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { DevErrorBoundary } from '@/components/dev-error-boundary'
+import { ThemeProvider } from '@/components/theme-provider'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es-AR">
+    <html lang="es-AR" data-theme="light">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
@@ -18,8 +19,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
         />
       </head>
-      <body className="bg-gray-50 text-gray-900 antialiased">
-        <DevErrorBoundary>{children}</DevErrorBoundary>
+      <body
+        className="bg-surface-base text-text-primary antialiased"
+        style={{ fontFamily: 'Poppins, system-ui, sans-serif' }}
+      >
+        <ThemeProvider>
+          <DevErrorBoundary>{children}</DevErrorBoundary>
+        </ThemeProvider>
       </body>
     </html>
   )

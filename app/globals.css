@@ -3,3 +3,103 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ─── Design Tokens ─────────────────────────────────── */
+:root,
+[data-theme="light"] {
+  /* Surface */
+  --bg-base: #FFFFFF;
+  --bg-elevated: #FAFAFA;
+  --bg-sunken: #F4F4F5;
+  --bg-sidebar: #FAFAFA;
+  /* Text */
+  --text-primary: #333333;
+  --text-secondary: #6B6B6B;
+  --text-tertiary: #888888;
+  /* Border */
+  --border-subtle: #E4E4E7;
+  --border-default: #D4D4D8;
+  /* Brand */
+  --brand-primary: #4CAF50;
+  --brand-primary-hover: #43A047;
+  --brand-muted: #E8F5E9;
+  /* Semantic */
+  --success: #4CAF50;
+  --success-bg: #E8F5E9;
+  --warning: #F59E0B;
+  --warning-bg: #FEF3C7;
+  --danger: #DC2626;
+  --danger-bg: #FEE2E2;
+  --info: #4CAF50;
+  --info-bg: #E8F5E9;
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+  /* Sidebar */
+  --sidebar-width: 260px;
+  --sidebar-collapsed-width: 64px;
+  --sidebar-current-width: var(--sidebar-width);
+}
+
+[data-theme="dark"] {
+  --bg-base: #0F1115;
+  --bg-elevated: #1A1D23;
+  --bg-sunken: #0A0C10;
+  --bg-sidebar: #1A1D23;
+  --text-primary: #E4E6EB;
+  --text-secondary: #A0A4AB;
+  --text-tertiary: #6B6F76;
+  --border-subtle: #22262E;
+  --border-default: #2D323B;
+  --brand-primary: #4CAF50;
+  --brand-primary-hover: #5BBF5F;
+  --brand-muted: rgba(76,175,80,0.12);
+  --success: #4CAF50;
+  --success-bg: rgba(76,175,80,0.12);
+  --warning: #FBBF24;
+  --warning-bg: rgba(251,191,36,0.12);
+  --danger: #EF4444;
+  --danger-bg: rgba(239,68,68,0.12);
+  --info: #4CAF50;
+  --info-bg: rgba(76,175,80,0.12);
+  --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.4);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.5), 0 2px 4px -1px rgba(0,0,0,0.4);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.6), 0 4px 6px -2px rgba(0,0,0,0.4);
+  --sidebar-width: 260px;
+  --sidebar-collapsed-width: 64px;
+  --sidebar-current-width: var(--sidebar-width);
+}
+
+/* ─── Theme transitions ──────────────────────────────── */
+*, *::before, *::after {
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+/* ─── Base overrides ─────────────────────────────────── */
+body {
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+}
+
+/* ─── Sidebar transitions ────────────────────────────── */
+.sidebar-transition {
+  transition: width 200ms ease-out, transform 200ms ease-out;
+}
+.sidebar-label-transition {
+  transition: opacity 150ms ease-out, width 150ms ease-out;
+}
+
+/* ─── Desktop sidebar offset ─────────────────────────── */
+@media (min-width: 1024px) {
+  .sidebar-content-area {
+    padding-left: var(--sidebar-current-width, var(--sidebar-width));
+    transition: padding-left 200ms ease-out;
+  }
+}
+
+/* ─── Scrollbar styling ──────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
