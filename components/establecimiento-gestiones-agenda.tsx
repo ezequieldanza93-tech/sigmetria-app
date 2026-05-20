@@ -8,7 +8,7 @@ import type { EstadoGestion, Gestion, CategoriaGestion, GrupoGestion, GestionEst
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import {
-  Plus, Camera,
+  Plus, Camera, BarChart3, FileCheck,
   ClipboardCheck, GraduationCap, Heart, FileText, AlertTriangle,
   ClipboardList, UserPlus, Dumbbell, Kanban, HelpCircle,
 } from 'lucide-react'
@@ -23,6 +23,9 @@ const CATEGORIA_META: Record<string, { icon: React.ComponentType<{ size?: number
   Inducciones: { icon: UserPlus, abbr: 'IND' },
   Entrenamientos: { icon: Dumbbell, abbr: 'ENT' },
   Programas: { icon: Kanban, abbr: 'PRG' },
+  'Reporte Fotográfico': { icon: Camera, abbr: 'FOT' },
+  'Revisión por la dirección': { icon: BarChart3, abbr: 'REV' },
+  Auditoría: { icon: FileCheck, abbr: 'AUD' },
 }
 
 function CategoriaIcon({ nombre, size = 14 }: { nombre?: string | null; size?: number }) {
