@@ -26,13 +26,13 @@ export function DevicePreviewPanel({ children }: { children: React.ReactNode }) 
     function handleKeyDown(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'M') {
         e.preventDefault()
-        setIsOpen((prev: boolean) => !prev)
+        setIsOpen(!isOpen)
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
+  }, [isOpen, setIsOpen])
 
   const measureContent = useCallback(() => {
     const el = measureRef.current
