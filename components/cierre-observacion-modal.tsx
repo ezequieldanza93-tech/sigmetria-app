@@ -28,6 +28,7 @@ function todayStr(): string {
 export function CierreObservacionModal({ observacion, onClose, onSuccess }: Props) {
   const [fechaCierre, setFechaCierre] = useState(todayStr())
   const [responsableCierreId, setResponsableCierreId] = useState<string | ''>('')
+  const [responsableLabel, setResponsableLabel] = useState('')
   const [uploading, setUploading] = useState(false)
   const [evidenciaUrl, setEvidenciaUrl] = useState<string | null>(null)
   const [evidenciaName, setEvidenciaName] = useState<string | null>(null)
@@ -35,46 +36,88 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess }: Prop
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
 
-  // Persona search
-  const [personas, setPersonas] = useState<Persona[]>([])
+  // Persona combobox
   const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<Persona[]>([])
+  const [searching, setSearching] = useState(false)
+  const [dropOpen, setDropOpen] = useState(false)
   const [showNewPersona, setShowNewPersona] = useState(false)
   const [newNombre, setNewNombre] = useState('')
   const [newApellido, setNewApellido] = useState('')
   const [newDni, setNewDni] = useState('')
+  const searchRef = useRef<HTMLDivElement>(null)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   useEffect(() => {
     if (observacion) {
       setFechaCierre(observacion.fecha_cierre ?? todayStr())
-      setResponsableCierreId(observacion.responsable_cierre_id ?? '')
+      const defaultRespId = observacion.responsable_cierre_id ?? observacion.responsable_id ?? ''
+      setResponsableCierreId(defaultRespId)
+      setResponsableLabel(defaultRespId && observacion.personas_directorio
+        ? `${observacion.personas_directorio.apellido}, ${observacion.personas_directorio.nombre}`
+        : '')
       setEvidenciaUrl(null)
       setEvidenciaName(null)
       setError(null)
       setSuccess(false)
       setSearchQuery('')
+      setDropOpen(false)
       setShowNewPersona(false)
+      setSearchResults([])
     }
   }, [observacion])
 
+  // Close dropdown on outside click
   useEffect(() => {
-    const supabase = createClient()
-    supabase
-      .from('personas_directorio')
-      .select('id, nombre, apellido, dni')
-      .eq('is_active', true)
-      .order('apellido')
-      .then(({ data }) => setPersonas((data ?? []) as Persona[]))
+    function handleClick(e: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setDropOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  const filteredPersonas = personas.filter(p => {
-    if (!searchQuery) return true
-    const q = searchQuery.toLowerCase()
-    return (
-      p.apellido?.toLowerCase().includes(q) ||
-      p.nombre?.toLowerCase().includes(q) ||
-      p.dni?.includes(q)
-    )
-  })
+  function searchPersonas(q: string) {
+    setSearchQuery(q)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+
+    if (!q.trim()) {
+      setSearchResults([])
+      setDropOpen(false)
+      return
+    }
+
+    debounceRef.current = setTimeout(async () => {
+      setSearching(true)
+      const supabase = createClient()
+      const pattern = `%${q.trim()}%`
+      const { data } = await supabase
+        .from('personas_directorio')
+        .select('id, nombre, apellido, dni')
+        .eq('is_active', true)
+        .or(`apellido.ilike.${pattern},nombre.ilike.${pattern},dni.ilike.${pattern}`)
+        .order('apellido')
+        .limit(20)
+
+      setSearchResults((data ?? []) as Persona[])
+      setSearching(false)
+      setDropOpen(true)
+    }, 300)
+  }
+
+  function selectPersona(p: Persona) {
+    setResponsableCierreId(p.id)
+    setResponsableLabel(`${p.apellido}, ${p.nombre}`)
+    setSearchQuery('')
+    setSearchResults([])
+    setDropOpen(false)
+  }
+
+  function clearResponsable() {
+    setResponsableCierreId('')
+    setResponsableLabel('')
+  }
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -114,14 +157,8 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess }: Prop
 
     const result = await createPersonaDirectorio(null, fd)
     if (result.success && result.data) {
-      const newPersona: Persona = {
-        id: result.data.id,
-        nombre: newNombre.trim(),
-        apellido: newApellido.trim(),
-        dni: newDni.trim() || null,
-      }
-      setPersonas(prev => [...prev, newPersona].sort((a, b) => a.apellido.localeCompare(b.apellido)))
       setResponsableCierreId(result.data.id)
+      setResponsableLabel(`${newApellido.trim()}, ${newNombre.trim()}`)
       setShowNewPersona(false)
       setNewNombre('')
       setNewApellido('')
@@ -208,13 +245,29 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess }: Prop
           />
         </div>
 
-        {/* Responsable de cierre */}
+        {/* Responsable de cierre — combobox con búsqueda */}
         <div>
           <label className="text-sm font-medium text-text-primary block mb-1">
             Responsable de cierre
           </label>
 
-          {showNewPersona ? (
+          {responsableCierreId && !showNewPersona ? (
+            <div className="flex items-center gap-2">
+              <span className="flex-1 text-sm text-text-primary bg-surface-sunken rounded-lg px-3 py-2 border border-border-subtle">
+                {responsableLabel}
+              </span>
+              <button type="button" onClick={clearResponsable} className="text-xs text-text-tertiary hover:text-text-primary shrink-0">
+                Cambiar
+              </button>
+              <button
+                type="button"
+                onClick={() => { clearResponsable(); setShowNewPersona(true) }}
+                className="text-xs text-brand-primary hover:text-brand-primary/80 font-medium shrink-0"
+              >
+                + Nueva
+              </button>
+            </div>
+          ) : showNewPersona ? (
             <div className="space-y-2 bg-surface-sunken rounded-lg p-3 border border-border-subtle">
               <input
                 value={newNombre}
@@ -240,7 +293,7 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess }: Prop
                 </Button>
                 <button
                   type="button"
-                  onClick={() => setShowNewPersona(false)}
+                  onClick={() => { setShowNewPersona(false); if (responsableCierreId) setSearchQuery('') }}
                   className="text-xs text-text-tertiary hover:text-text-primary"
                 >
                   Cancelar
@@ -248,14 +301,15 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess }: Prop
               </div>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="relative" ref={searchRef}>
               <div className="flex gap-2">
                 <input
                   type="search"
                   value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  placeholder="Buscar persona por apellido, nombre o DNI…"
-                  className="flex-1 border border-border-default rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
+                  onChange={e => searchPersonas(e.target.value)}
+                  onFocus={() => { if (searchResults.length > 0) setDropOpen(true) }}
+                  placeholder="Buscá por apellido, nombre o DNI…"
+                  className="flex-1 border border-border-default rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
                 />
                 <button
                   type="button"
@@ -266,30 +320,32 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess }: Prop
                 </button>
               </div>
 
-              {filteredPersonas.length > 0 && (
-                <div className="max-h-48 overflow-y-auto border border-border-default rounded-lg divide-y divide-border-subtle">
-                  {filteredPersonas.map(p => (
-                    <label
+              {searching && (
+                <p className="text-xs text-text-tertiary mt-1">Buscando...</p>
+              )}
+
+              {dropOpen && searchResults.length === 0 && searchQuery.trim() && !searching && (
+                <div className="absolute top-full mt-1 left-0 right-0 z-50 bg-white border border-border-default rounded-xl shadow-xl overflow-hidden">
+                  <div className="px-3 py-3 text-xs text-text-tertiary text-center">
+                    Sin resultados.
+                  </div>
+                </div>
+              )}
+
+              {dropOpen && searchResults.length > 0 && (
+                <div className="absolute top-full mt-1 left-0 right-0 z-50 bg-white border border-border-default rounded-xl shadow-xl overflow-hidden">
+                  {searchResults.map(p => (
+                    <button
                       key={p.id}
-                      className={`flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-surface-sunken transition-colors ${
-                        responsableCierreId === p.id ? 'bg-brand-muted/30' : ''
-                      }`}
+                      type="button"
+                      onClick={() => selectPersona(p)}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left text-text-primary hover:bg-surface-sunken transition-colors"
                     >
-                      <input
-                        type="radio"
-                        name="responsable_cierre"
-                        value={p.id}
-                        checked={responsableCierreId === p.id}
-                        onChange={() => setResponsableCierreId(p.id)}
-                        className="text-brand-primary focus:ring-brand-primary/30"
-                      />
-                      <span className="text-text-primary">
-                        {p.apellido}, {p.nombre}
-                      </span>
+                      <span>{p.apellido}, {p.nombre}</span>
                       {p.dni && (
                         <span className="text-text-tertiary text-xs ml-auto">DNI: {p.dni}</span>
                       )}
-                    </label>
+                    </button>
                   ))}
                 </div>
               )}
