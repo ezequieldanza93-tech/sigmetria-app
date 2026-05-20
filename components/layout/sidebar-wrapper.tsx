@@ -19,7 +19,6 @@ export function SidebarWrapper({ header, children, isSuperAdmin }: SidebarWrappe
     if (stored !== null) setCollapsed(stored === 'true')
   }, [])
 
-  // Update CSS var so .sidebar-content-area picks up the right offset
   useEffect(() => {
     document.documentElement.style.setProperty(
       '--sidebar-current-width',
@@ -37,10 +36,6 @@ export function SidebarWrapper({ header, children, isSuperAdmin }: SidebarWrappe
           isSuperAdmin={isSuperAdmin}
         />
 
-        {/*
-          On mobile: sidebar is an off-canvas drawer — no padding needed.
-          On desktop (lg+): .sidebar-content-area adds padding-left = --sidebar-current-width
-        */}
         <div className="flex-1 flex flex-col min-w-0 sidebar-content-area">
           {header}
           <main className="flex-1">{children}</main>

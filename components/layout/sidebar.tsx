@@ -11,8 +11,6 @@ import {
   PanelLeftOpen,
   X,
   Factory,
-  CreditCard,
-  ShieldCheck,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
@@ -27,10 +25,9 @@ interface SidebarProps {
   mobileOpen: boolean
   onMobileClose: () => void
   onCollapsedChange?: (collapsed: boolean) => void
-  isSuperAdmin?: boolean
 }
 
-export function Sidebar({ mobileOpen, onMobileClose, onCollapsedChange, isSuperAdmin }: SidebarProps) {
+export function Sidebar({ mobileOpen, onMobileClose, onCollapsedChange }: SidebarProps) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
   const [empresas, setEmpresas] = useState<EmpresaTree[]>([])
@@ -243,26 +240,8 @@ export function Sidebar({ mobileOpen, onMobileClose, onCollapsedChange, isSuperA
           </ul>
         </nav>
 
-        {/* Bottom section — billing, admin, collapse */}
-        <div className="border-t border-border-subtle py-3 px-2 space-y-0.5">
-          <SidebarBottomLink
-            href="/dashboard/billing"
-            label="Suscripción"
-            icon={<CreditCard size={18} strokeWidth={1.75} />}
-            active={pathname.startsWith('/dashboard/billing')}
-            collapsed={collapsed}
-            onClick={onMobileClose}
-          />
-          {isSuperAdmin && (
-            <SidebarBottomLink
-              href="/dashboard/admin"
-              label="Super Admin"
-              icon={<ShieldCheck size={18} strokeWidth={1.75} />}
-              active={pathname.startsWith('/dashboard/admin')}
-              collapsed={collapsed}
-              onClick={onMobileClose}
-            />
-          )}
+        {/* Bottom section — collapse toggle */}
+        <div className="border-t border-border-subtle py-3 px-2">
           <button
             onClick={toggleCollapsed}
             className={cn(
@@ -284,45 +263,6 @@ export function Sidebar({ mobileOpen, onMobileClose, onCollapsedChange, isSuperA
         </div>
       </aside>
     </>
-  )
-}
-
-interface SidebarBottomLinkProps {
-  href: string
-  label: string
-  icon: React.ReactNode
-  active: boolean
-  collapsed: boolean
-  onClick?: () => void
-}
-
-function SidebarBottomLink({ href, label, icon, active, collapsed, onClick }: SidebarBottomLinkProps) {
-  return (
-    <Link
-      href={href}
-      onClick={onClick}
-      className={cn(
-        'group relative flex items-center gap-2 w-full rounded-lg px-2 py-2 text-sm font-medium transition-colors',
-        active
-          ? 'bg-brand-muted text-brand-primary'
-          : 'text-text-tertiary hover:text-text-primary hover:bg-surface-elevated',
-        collapsed && 'justify-center',
-      )}
-      title={collapsed ? label : undefined}
-    >
-      {active && (
-        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-brand-primary rounded-r-full" />
-      )}
-      <span className={cn('shrink-0', active ? 'text-brand-primary' : 'text-text-tertiary group-hover:text-text-primary')}>
-        {icon}
-      </span>
-      {!collapsed && <span className="sidebar-label-transition truncate text-xs">{label}</span>}
-      {collapsed && (
-        <span className="absolute left-full ml-2 px-2 py-1 bg-surface-elevated border border-border-subtle rounded-md text-xs text-text-primary whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none shadow-md z-50 transition-opacity">
-          {label}
-        </span>
-      )}
-    </Link>
   )
 }
 
