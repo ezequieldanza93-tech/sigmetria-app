@@ -5,10 +5,33 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import type { ActionResult } from '@/lib/types'
 
-export async function createEmpresa(_prev: ActionResult<{ id: string }> | null, formData: FormData): Promise<ActionResult<{ id: string }>> {
+interface EmpresaFormState {
+  success: boolean
+  error?: string
+  fieldErrors?: Record<string, string>
+  fields?: Record<string, string>
+  data?: { id: string }
+}
+
+function extractFields(formData: FormData): Record<string, string> {
+  const fieldNames = [
+    'razon_social', 'tipo_identidad_impositiva', 'cuit', 'rubro',
+    'domicilio', 'localidad_id', 'codigo_postal',
+    'art_id', 'art_numero_contrato',
+    'logo_small_url', 'logo_destacado_url', 'informacion_general',
+  ]
+  const fields: Record<string, string> = {}
+  for (const name of fieldNames) {
+    fields[name] = (formData.get(name) as string) ?? ''
+  }
+  return fields
+}
+
+export async function createEmpresa(_prev: EmpresaFormState | null, formData: FormData): Promise<EmpresaFormState> {
+  const fields = extractFields(formData)
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'No autenticado' }
+  if (!user) return { success: false, error: 'No autenticado', fields }
 
   const { data: membership } = await supabase
     .from('consultoras_members')
@@ -26,69 +49,75 @@ export async function createEmpresa(_prev: ActionResult<{ id: string }> | null, 
   const isDev = profile?.system_role === 'developer'
   const canWrite = isDev || membership?.role === 'full_access_main' || membership?.role === 'full_access_branch'
 
-  if (!canWrite) return { success: false, error: 'Sin permisos para crear empresas' }
-  if (!isDev && !membership?.consultora_id) return { success: false, error: 'No pertenecés a ninguna consultora' }
+  if (!canWrite) return { success: false, error: 'Sin permisos para crear empresas', fields }
+  if (!isDev && !membership?.consultora_id) return { success: false, error: 'No pertenecés a ninguna consultora', fields }
 
-  const razonSocial = formData.get('razon_social') as string
-  if (!razonSocial?.trim()) return { success: false, error: 'La razón social es obligatoria' }
+  const fieldErrors: Record<string, string> = {}
 
-  const consultoraId = membership?.consultora_id
+  if (!fields.razon_social?.trim()) fieldErrors.razon_social = 'La razón social es obligatoria'
 
-  if (!consultoraId) return { success: false, error: 'No se encontró consultora' }
+  if (Object.keys(fieldErrors).length > 0) {
+    return { success: false, error: 'Corregí los campos marcados en rojo', fieldErrors, fields }
+  }
 
   const { data, error } = await supabase
     .from('empresas')
     .insert({
-      consultora_id: consultoraId,
-      razon_social: razonSocial.trim(),
-      tipo_identidad_impositiva: (formData.get('tipo_identidad_impositiva') as string) || null,
-      cuit: (formData.get('cuit') as string) || null,
-      rubro: (formData.get('rubro') as string) || null,
-      domicilio: (formData.get('domicilio') as string) || null,
-      localidad_id: (formData.get('localidad_id') as string) || null,
-      codigo_postal: (formData.get('codigo_postal') as string) || null,
-      art_id: (formData.get('art_id') as string) || null,
-      art_numero_contrato: (formData.get('art_numero_contrato') as string) || null,
-      logo_small_url: (formData.get('logo_small_url') as string) || null,
-      logo_destacado_url: (formData.get('logo_destacado_url') as string) || null,
-      informacion_general: (formData.get('informacion_general') as string) || null,
+      consultora_id: membership!.consultora_id,
+      razon_social: fields.razon_social.trim(),
+      tipo_identidad_impositiva: fields.tipo_identidad_impositiva || null,
+      cuit: fields.cuit || null,
+      rubro: fields.rubro || null,
+      domicilio: fields.domicilio || null,
+      localidad_id: fields.localidad_id || null,
+      codigo_postal: fields.codigo_postal || null,
+      art_id: fields.art_id || null,
+      art_numero_contrato: fields.art_numero_contrato || null,
+      logo_small_url: fields.logo_small_url || null,
+      logo_destacado_url: fields.logo_destacado_url || null,
+      informacion_general: fields.informacion_general || null,
     })
     .select('id')
     .single()
 
-  if (error) return { success: false, error: error.message }
+  if (error) return { success: false, error: error.message, fields }
 
   revalidatePath('/dashboard/empresas')
   redirect('/dashboard/empresas')
 }
 
-export async function updateEmpresa(id: string, _prev: ActionResult<null> | null, formData: FormData): Promise<ActionResult<null>> {
+export async function updateEmpresa(id: string, _prev: EmpresaFormState | null, formData: FormData): Promise<EmpresaFormState> {
+  const fields = extractFields(formData)
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'No autenticado' }
+  if (!user) return { success: false, error: 'No autenticado', fields }
 
-  const razonSocial = formData.get('razon_social') as string
-  if (!razonSocial?.trim()) return { success: false, error: 'La razón social es obligatoria' }
+  const fieldErrors: Record<string, string> = {}
+  if (!fields.razon_social?.trim()) fieldErrors.razon_social = 'La razón social es obligatoria'
+
+  if (Object.keys(fieldErrors).length > 0) {
+    return { success: false, error: 'Corregí los campos marcados en rojo', fieldErrors, fields }
+  }
 
   const { error } = await supabase
     .from('empresas')
     .update({
-      razon_social: razonSocial.trim(),
-      tipo_identidad_impositiva: (formData.get('tipo_identidad_impositiva') as string) || null,
-      cuit: (formData.get('cuit') as string) || null,
-      rubro: (formData.get('rubro') as string) || null,
-      domicilio: (formData.get('domicilio') as string) || null,
-      localidad_id: (formData.get('localidad_id') as string) || null,
-      codigo_postal: (formData.get('codigo_postal') as string) || null,
-      art_id: (formData.get('art_id') as string) || null,
-      art_numero_contrato: (formData.get('art_numero_contrato') as string) || null,
-      logo_small_url: (formData.get('logo_small_url') as string) || null,
-      logo_destacado_url: (formData.get('logo_destacado_url') as string) || null,
-      informacion_general: (formData.get('informacion_general') as string) || null,
+      razon_social: fields.razon_social.trim(),
+      tipo_identidad_impositiva: fields.tipo_identidad_impositiva || null,
+      cuit: fields.cuit || null,
+      rubro: fields.rubro || null,
+      domicilio: fields.domicilio || null,
+      localidad_id: fields.localidad_id || null,
+      codigo_postal: fields.codigo_postal || null,
+      art_id: fields.art_id || null,
+      art_numero_contrato: fields.art_numero_contrato || null,
+      logo_small_url: fields.logo_small_url || null,
+      logo_destacado_url: fields.logo_destacado_url || null,
+      informacion_general: fields.informacion_general || null,
     })
     .eq('id', id)
 
-  if (error) return { success: false, error: error.message }
+  if (error) return { success: false, error: error.message, fields }
 
   revalidatePath(`/dashboard/empresas/${id}`)
   redirect(`/dashboard/empresas/${id}`)
