@@ -47,36 +47,24 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
     profile?.system_role ?? 'user'
   )
 
-  // Fetch data for establecimientos tab
-  const { data: establecimientos } = tab === 'establecimientos'
-    ? await supabase
-        .from('establecimientos')
-        .select('id, nombre, establecimientos_tipos(nombre), localidades!localidad_id(nombre, provincia), cantidad_trabajadores')
-        .eq('empresa_id', id)
-        .neq('status', 'cancelled')
-        .order('nombre')
-    : { data: [] }
+  // Fetch data by tab
+  let establecimientos: any[] = []
+  let documentos: any[] = []
+  let documentTypes: any[] = []
+  let personasLinks: any[] = []
+  let orgsLinks: any[] = []
 
-  const { data: documentos, data: documentTypes } = tab === 'ficha'
-    ? await Promise.all([
-        supabase
-          .from('empresas_documentos')
-          .select('*, documentos_tipos(nombre)')
-          .eq('empresa_id', id)
-          .order('created_at', { ascending: false }),
-        supabase
-          .from('documentos_tipos')
-          .select('id, nombre, aplica_empresa, aplica_establecimiento, aplica_empleado, is_active')
-          .eq('is_active', true)
-          .eq('aplica_empresa', true)
-          .order('nombre'),
-      ])
-    : { data: [], data: [] }
-
-  // Personas/orgs for establecimientos tab
-  const estIds = (establecimientos ?? []).map(e => e.id)
-  const [{ data: personasLinks }, { data: orgsLinks }] = tab === 'establecimientos' && estIds.length > 0
-    ? await Promise.all([
+  if (tab === 'establecimientos') {
+    const { data } = await supabase
+      .from('establecimientos')
+      .select('id, nombre, establecimientos_tipos(nombre), localidades!localidad_id(nombre, provincia), cantidad_trabajadores')
+      .eq('empresa_id', id)
+      .neq('status', 'cancelled')
+      .order('nombre')
+    establecimientos = data ?? []
+    const estIds = establecimientos.map(e => e.id)
+    if (estIds.length > 0) {
+      const [pe, oe] = await Promise.all([
         supabase
           .from('personas_establecimientos')
           .select('persona_id, establecimiento_id, personas_directorio!persona_id(id, nombre, apellido, dni, fecha_ingreso, personas_tipos!tipo_id(nombre)), establecimientos!establecimiento_id(id, nombre)')
@@ -86,7 +74,28 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
           .select('organizacion_id, establecimiento_id, organizaciones!organizacion_id(id, nombre, email, telefono, organizaciones_tipos!tipo_id(nombre)), establecimientos!establecimiento_id(id, nombre)')
           .in('establecimiento_id', estIds),
       ])
-    : [{ data: [] }, { data: [] }]
+      personasLinks = (pe.data ?? []) as any[]
+      orgsLinks = (oe.data ?? []) as any[]
+    }
+  }
+
+  if (tab === 'ficha') {
+    const [d1, d2] = await Promise.all([
+      supabase
+        .from('empresas_documentos')
+        .select('*, documentos_tipos(nombre)')
+        .eq('empresa_id', id)
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('documentos_tipos')
+        .select('id, nombre, aplica_empresa, aplica_establecimiento, aplica_empleado, is_active')
+        .eq('is_active', true)
+        .eq('aplica_empresa', true)
+        .order('nombre'),
+    ])
+    documentos = (d1.data ?? []) as any[]
+    documentTypes = (d2.data ?? []) as any[]
+  }
 
   return (
     <div className="p-6">
