@@ -32,15 +32,18 @@ interface SidebarProps {
 
 export function Sidebar({ mobileOpen, onMobileClose, onCollapsedChange, isSuperAdmin }: SidebarProps) {
   const pathname = usePathname()
-  const [collapsed, setCollapsed] = useState(false)
+  const [collapsed, setCollapsed] = useState(true)
+  const [sidebarHovered, setSidebarHovered] = useState(false)
   const [empresas, setEmpresas] = useState<EmpresaTree[]>([])
   const [expandedEmpresa, setExpandedEmpresa] = useState<string | null>(null)
   const [empresasHovered, setEmpresasHovered] = useState(false)
 
   useEffect(() => {
     const stored = localStorage.getItem('sigmetria.sidebar.collapsed')
-    if (stored !== null) setCollapsed(stored === 'true')
+    setCollapsed(stored !== null ? stored === 'true' : true)
   }, [])
+
+  const isCollapsed = collapsed && !sidebarHovered
 
   useEffect(() => {
     const supabase = createClient()
@@ -108,20 +111,22 @@ export function Sidebar({ mobileOpen, onMobileClose, onCollapsedChange, isSuperA
         className={cn(
           'fixed top-0 left-0 h-full z-50 flex flex-col sidebar-transition',
           'bg-surface-sidebar border-r border-border-subtle',
-          collapsed ? 'lg:w-16' : 'lg:w-[260px]',
+          isCollapsed ? 'lg:w-16' : 'lg:w-[260px]',
           'w-[260px]',
           'lg:translate-x-0',
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
         )}
+        onMouseEnter={() => setSidebarHovered(true)}
+        onMouseLeave={() => setSidebarHovered(false)}
       >
         {/* Logo area */}
         <div
           className={cn(
             'flex items-center h-14 px-4 border-b border-border-subtle shrink-0',
-            collapsed ? 'justify-center' : 'justify-between',
+            isCollapsed ? 'justify-center' : 'justify-between',
           )}
         >
-          {!collapsed && (
+          {!isCollapsed && (
             <div className="flex items-center gap-2.5">
               <SigmetriaIsotipo />
               <div className="leading-tight">
@@ -140,7 +145,7 @@ export function Sidebar({ mobileOpen, onMobileClose, onCollapsedChange, isSuperA
               </div>
             </div>
           )}
-          {collapsed && <SigmetriaIsotipo />}
+          {isCollapsed && <SigmetriaIsotipo />}
 
           <button
             className="lg:hidden text-text-tertiary hover:text-text-primary transition-colors"
@@ -159,7 +164,7 @@ export function Sidebar({ mobileOpen, onMobileClose, onCollapsedChange, isSuperA
               onMouseEnter={() => setEmpresasHovered(true)}
               onMouseLeave={() => setEmpresasHovered(false)}
             >
-              {collapsed ? (
+              {isCollapsed ? (
                 <Link
                   href="/dashboard/empresas"
                   className="group relative flex items-center justify-center rounded-lg px-2 py-2 text-sm font-medium transition-colors text-text-secondary hover:text-text-primary hover:bg-surface-elevated"
@@ -258,7 +263,7 @@ export function Sidebar({ mobileOpen, onMobileClose, onCollapsedChange, isSuperA
             label="Suscripción"
             icon={<CreditCard size={18} strokeWidth={1.75} />}
             active={pathname.startsWith('/dashboard/billing')}
-            collapsed={collapsed}
+            collapsed={isCollapsed}
             onClick={onMobileClose}
           />
           {isSuperAdmin && (
@@ -267,7 +272,7 @@ export function Sidebar({ mobileOpen, onMobileClose, onCollapsedChange, isSuperA
               label="Super Admin"
               icon={<ShieldCheck size={18} strokeWidth={1.75} />}
               active={pathname.startsWith('/dashboard/admin')}
-              collapsed={collapsed}
+              collapsed={isCollapsed}
               onClick={onMobileClose}
             />
           )}
@@ -275,10 +280,10 @@ export function Sidebar({ mobileOpen, onMobileClose, onCollapsedChange, isSuperA
             onClick={toggleCollapsed}
             className={cn(
               'hidden lg:flex items-center gap-2 w-full rounded-lg px-2 py-2 text-text-tertiary hover:text-text-primary hover:bg-surface-elevated transition-colors',
-              collapsed && 'justify-center',
+              isCollapsed && 'justify-center',
             )}
             aria-label={collapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
-            title={collapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
+            title={collapsed ? 'Fijar expandido' : 'Volver a colapsar'}
           >
             {collapsed ? (
               <PanelLeftOpen size={18} strokeWidth={1.75} />
