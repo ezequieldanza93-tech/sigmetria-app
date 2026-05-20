@@ -7,9 +7,10 @@ import { MobileMenuProvider } from './mobile-menu-context'
 interface SidebarWrapperProps {
   header: React.ReactNode
   children: React.ReactNode
+  isSuperAdmin?: boolean
 }
 
-export function SidebarWrapper({ header, children }: SidebarWrapperProps) {
+export function SidebarWrapper({ header, children, isSuperAdmin }: SidebarWrapperProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
 
@@ -33,6 +34,7 @@ export function SidebarWrapper({ header, children }: SidebarWrapperProps) {
           mobileOpen={mobileOpen}
           onMobileClose={() => setMobileOpen(false)}
           onCollapsedChange={setCollapsed}
+          isSuperAdmin={isSuperAdmin}
         />
 
         {/*

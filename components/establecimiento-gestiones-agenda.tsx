@@ -25,11 +25,11 @@ const MONTHS_FULL = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Jul
 
 const COL_WIDTHS_KEY = 'gestiones_col_widths'
 const DEFAULT_COL_WIDTHS: Record<string, number> = {
-  gestion: 180, fecha_plan: 100, fecha_ejec: 100,
+  categoria: 140, gestion: 180, fecha_plan: 100, fecha_ejec: 100,
   responsable: 130, indice: 70, lt: 50, evidencia: 120,
 }
 const COL_MIN_WIDTHS: Record<string, number> = {
-  gestion: 80, fecha_plan: 80, fecha_ejec: 80,
+  categoria: 80, gestion: 80, fecha_plan: 80, fecha_ejec: 80,
   responsable: 80, indice: 50, lt: 40, evidencia: 80,
 }
 
@@ -974,7 +974,9 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
           if (r.ge_tiene_formulario && !r.fecha_ejecutada) setExecutingFormulario(r)
           else setEditingRegistro(r)
         }}>
-          <td className="px-4 py-1.5 text-gray-400 text-xs text-center">{idx + 1}</td>
+          <td className="px-4 py-1.5 text-gray-500 text-xs" style={{ maxWidth: colW('categoria'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {r.ge_categoria_nombre ?? '—'}
+          </td>
           <td className="px-4 py-1.5 font-medium text-gray-900" style={{ maxWidth: colW('gestion'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {r.ge_gestion_nombre ?? '—'}
           </td>
@@ -1042,7 +1044,9 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
   const tableHead = (
     <thead>
       <tr className="bg-gray-800 text-white text-left text-xs">
-        <th className="px-4 py-1.5 font-medium w-9 shrink-0">#</th>
+        <th style={{ width: colW('categoria') }} className="px-4 py-1.5 font-medium relative select-none">
+          Categoría{rh('categoria')}
+        </th>
         <th style={{ width: colW('gestion') }} className="px-4 py-1.5 font-medium relative select-none">
           Gestión{rh('gestion')}
         </th>

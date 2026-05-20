@@ -3,16 +3,32 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { canWrite, UserRole } from '@/lib/types'
 import { formatCUIT } from '@/lib/utils'
+import { Building2, FileText, BarChart3 } from 'lucide-react'
 import { EmpresaDocumentosSection } from '@/components/empresa-documentos-section'
 import { EmpresaRightPanel } from '@/components/empresa-right-panel'
 import type { DocumentType, Documento } from '@/lib/types'
+import { cn } from '@/lib/utils'
 
 interface Props {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ tab?: string }>
 }
 
-export default async function EmpresaDetailPage({ params }: Props) {
+const TABS = [
+  { id: 'establecimientos', label: 'Establecimientos', icon: Building2 },
+  { id: 'ficha', label: 'Ficha', icon: FileText },
+  { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+] as const
+
+type Tab = (typeof TABS)[number]['id']
+
+export default async function EmpresaDetailPage({ params, searchParams }: Props) {
   const { id } = await params
+  const { tab: rawTab } = await searchParams
+  const tab: Tab = (['establecimientos', 'ficha', 'dashboard'] satisfies Tab[]).includes(rawTab as Tab)
+    ? (rawTab as Tab)
+    : 'establecimientos'
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -26,28 +42,40 @@ export default async function EmpresaDetailPage({ params }: Props) {
 
   if (!empresa) notFound()
 
-  const [{ data: establecimientos }, { data: documentos }, { data: documentTypes }] = await Promise.all([
-    supabase
-      .from('establecimientos')
-      .select('id, nombre, establecimientos_tipos(nombre), localidades!localidad_id(nombre, provincia), cantidad_trabajadores')
-      .eq('empresa_id', id)
-      .neq('status', 'cancelled')
-      .order('nombre'),
-    supabase
-      .from('empresas_documentos')
-      .select('*, documentos_tipos(nombre)')
-      .eq('empresa_id', id)
-      .order('created_at', { ascending: false }),
-    supabase
-      .from('documentos_tipos')
-      .select('id, nombre, aplica_empresa, aplica_establecimiento, aplica_empleado, is_active')
-      .eq('is_active', true)
-      .eq('aplica_empresa', true)
-      .order('nombre'),
-  ])
+  const puedeEditar = canWrite(
+    membership?.role as UserRole ?? null,
+    profile?.system_role ?? 'user'
+  )
 
+  // Fetch data for establecimientos tab
+  const { data: establecimientos } = tab === 'establecimientos'
+    ? await supabase
+        .from('establecimientos')
+        .select('id, nombre, establecimientos_tipos(nombre), localidades!localidad_id(nombre, provincia), cantidad_trabajadores')
+        .eq('empresa_id', id)
+        .neq('status', 'cancelled')
+        .order('nombre')
+    : { data: [] }
+
+  const { data: documentos, data: documentTypes } = tab === 'ficha'
+    ? await Promise.all([
+        supabase
+          .from('empresas_documentos')
+          .select('*, documentos_tipos(nombre)')
+          .eq('empresa_id', id)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('documentos_tipos')
+          .select('id, nombre, aplica_empresa, aplica_establecimiento, aplica_empleado, is_active')
+          .eq('is_active', true)
+          .eq('aplica_empresa', true)
+          .order('nombre'),
+      ])
+    : { data: [], data: [] }
+
+  // Personas/orgs for establecimientos tab
   const estIds = (establecimientos ?? []).map(e => e.id)
-  const [{ data: personasLinks }, { data: orgsLinks }] = estIds.length > 0
+  const [{ data: personasLinks }, { data: orgsLinks }] = tab === 'establecimientos' && estIds.length > 0
     ? await Promise.all([
         supabase
           .from('personas_establecimientos')
@@ -60,89 +88,114 @@ export default async function EmpresaDetailPage({ params }: Props) {
       ])
     : [{ data: [] }, { data: [] }]
 
-  const puedeEditar = canWrite(
-    membership?.role as UserRole ?? null,
-    profile?.system_role ?? 'user'
-  )
-
   return (
-    <div className="flex min-h-screen">
-      {/* Left panel — 30% */}
-      <aside className="w-80 shrink-0 border-r border-gray-200 bg-white flex flex-col sticky top-0 h-screen overflow-y-auto">
-        <div className="p-6 flex-1">
-          {/* Company identity */}
-          <div className="mb-6">
-            <div className="flex items-start justify-between gap-2 mb-1">
-              <h1 className="text-base font-bold text-gray-900 leading-tight">{empresa.razon_social}</h1>
+    <div className="p-6">
+      {/* Header + sub-nav */}
+      <div className="mb-6">
+        <h1 className="text-xl font-bold text-text-primary mb-3">{empresa.razon_social}</h1>
+        <nav className="flex gap-1 border-b border-border-subtle">
+          {TABS.map(({ id: tabId, label, icon: Icon }) => (
+            <Link
+              key={tabId}
+              href={`/dashboard/empresas/${id}${tabId === 'establecimientos' ? '' : `?tab=${tabId}`}`}
+              className={cn(
+                'flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px',
+                tab === tabId
+                  ? 'border-brand-primary text-brand-primary'
+                  : 'border-transparent text-text-tertiary hover:text-text-secondary hover:border-border-default',
+              )}
+            >
+              <Icon size={16} strokeWidth={1.75} />
+              {label}
+            </Link>
+          ))}
+        </nav>
+      </div>
+
+      {/* Tab content */}
+      {tab === 'establecimientos' && (
+        <EmpresaRightPanel
+          empresaId={id}
+          establecimientos={(establecimientos ?? []) as any}
+          personasLinks={(personasLinks ?? []) as any}
+          orgsLinks={(orgsLinks ?? []) as any}
+          puedeEditar={puedeEditar}
+        />
+      )}
+
+      {tab === 'ficha' && (
+        <div className="max-w-3xl">
+          <div className="bg-surface-elevated rounded-xl border border-border-subtle p-6 space-y-6">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <h2 className="text-lg font-semibold text-text-primary">{empresa.razon_social}</h2>
+                {empresa.cuit && (
+                  <p className="text-sm text-text-tertiary font-mono">{formatCUIT(empresa.cuit)}</p>
+                )}
+                {(empresa.empresas_rubros as any)?.nombre && (
+                  <p className="text-sm text-text-tertiary mt-0.5">{(empresa.empresas_rubros as any).nombre}</p>
+                )}
+              </div>
               <span className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${empresa.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                 {empresa.is_active ? 'Activa' : 'Inactiva'}
               </span>
             </div>
-            {empresa.cuit && (
-              <p className="text-xs text-gray-400 font-mono">{formatCUIT(empresa.cuit)}</p>
-            )}
-            {(empresa.empresas_rubros as any)?.nombre && (
-              <p className="text-xs text-gray-400 mt-0.5">{(empresa.empresas_rubros as any).nombre}</p>
-            )}
-          </div>
 
-          {/* Info fields */}
-          <div className="space-y-3 text-sm border-t border-gray-100 pt-4 mb-6">
-            {empresa.domicilio && (
-              <div>
-                <p className="text-gray-400 text-xs font-medium mb-0.5">Domicilio</p>
-                <p className="text-gray-800">{empresa.domicilio}</p>
-              </div>
-            )}
-            {empresa.localidades && (
-              <div>
-                <p className="text-gray-400 text-xs font-medium mb-0.5">Ubicación</p>
-                <p className="text-gray-800">{empresa.localidades.nombre}, {empresa.localidades.provincia}</p>
-              </div>
-            )}
-            {empresa.codigo_postal && (
-              <div>
-                <p className="text-gray-400 text-xs font-medium mb-0.5">CP</p>
-                <p className="text-gray-800">{empresa.codigo_postal}</p>
-              </div>
-            )}
-            {empresa.organizaciones_externas && (
-              <div>
-                <p className="text-gray-400 text-xs font-medium mb-0.5">ART</p>
-                <p className="text-gray-800">{empresa.organizaciones_externas.nombre}</p>
-              </div>
-            )}
-          </div>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              {empresa.domicilio && (
+                <div>
+                  <p className="text-text-tertiary text-xs font-medium mb-0.5">Domicilio</p>
+                  <p className="text-text-primary">{empresa.domicilio}</p>
+                </div>
+              )}
+              {empresa.localidades && (
+                <div>
+                  <p className="text-text-tertiary text-xs font-medium mb-0.5">Ubicación</p>
+                  <p className="text-text-primary">{empresa.localidades.nombre}, {empresa.localidades.provincia}</p>
+                </div>
+              )}
+              {empresa.codigo_postal && (
+                <div>
+                  <p className="text-text-tertiary text-xs font-medium mb-0.5">CP</p>
+                  <p className="text-text-primary">{empresa.codigo_postal}</p>
+                </div>
+              )}
+              {empresa.organizaciones_externas && (
+                <div>
+                  <p className="text-text-tertiary text-xs font-medium mb-0.5">ART</p>
+                  <p className="text-text-primary">{empresa.organizaciones_externas.nombre}</p>
+                </div>
+              )}
+            </div>
 
-          {/* Edit button */}
-          {puedeEditar && (
-            <Link
-              href={`/dashboard/empresas/${id}/editar`}
-              className="flex items-center justify-center w-full border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-800 text-xs font-medium px-3 py-2 rounded-lg transition-colors mb-6"
-            >
-              Editar información
-            </Link>
-          )}
+            {puedeEditar && (
+              <Link
+                href={`/dashboard/empresas/${id}/editar`}
+                className="inline-flex items-center gap-1.5 border border-border-default text-text-tertiary hover:bg-surface-elevated hover:text-text-primary text-xs font-medium px-3 py-2 rounded-lg transition-colors"
+              >
+                Editar información
+              </Link>
+            )}
 
-          {/* Documentación */}
-          <div className="border-t border-gray-100 pt-4">
-            <EmpresaDocumentosSection
-              empresaId={id}
-              documentos={(documentos ?? []) as Documento[]}
-              documentTypes={(documentTypes ?? []) as DocumentType[]}
-              canWrite={puedeEditar}
-            />
+            <div className="border-t border-border-subtle pt-4">
+              <EmpresaDocumentosSection
+                empresaId={id}
+                documentos={(documentos ?? []) as Documento[]}
+                documentTypes={(documentTypes ?? []) as DocumentType[]}
+                canWrite={puedeEditar}
+              />
+            </div>
           </div>
         </div>
-      </aside>
+      )}
 
-      <EmpresaRightPanel
-        empresaId={id}
-        establecimientos={(establecimientos ?? []) as any}
-        personasLinks={(personasLinks ?? []) as any}
-        orgsLinks={(orgsLinks ?? []) as any}
-        puedeEditar={puedeEditar}
-      />
+      {tab === 'dashboard' && (
+        <div className="bg-surface-elevated rounded-xl border border-border-subtle p-12 text-center">
+          <BarChart3 size={32} strokeWidth={1.5} className="text-text-tertiary mx-auto mb-3" />
+          <p className="font-semibold text-text-primary">Dashboard de Empresa</p>
+          <p className="text-sm text-text-tertiary mt-1">Próximamente — gráficos agregados cross-establecimiento.</p>
+        </div>
+      )}
     </div>
   )
 }
