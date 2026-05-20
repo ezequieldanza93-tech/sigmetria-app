@@ -126,9 +126,9 @@ export interface PerfilProfesional {
   user_id: string
   telefono: string | null
   fecha_nacimiento: string | null
-  provincia_residencia: string | null
-  localidad: string | null
-  provincia_matricula: string | null
+  localidad_id: string | null
+  provincia_residencia_id: string | null
+  provincia_matricula_id: string | null
   canal_captacion: string | null
   tipo_identidad_impositiva: string | null
   cuit: string | null
@@ -568,7 +568,7 @@ export const ROLE_LABELS: Record<UserRole | SystemRole, string> = {
 export const ROLE_COLORS: Record<UserRole | 'developer', string> = {
   developer: 'bg-purple-100 text-purple-800',
   full_access_main: 'bg-red-100 text-red-800',
-  full_access_branch: 'bg-orange-100 text-orange-800',
+  full_access_branch: 'bg-orange-100 text-gray-900',
   colaborador: 'bg-blue-100 text-blue-800',
   full_viewer: 'bg-green-100 text-green-800',
   colaborador_viewer: 'bg-gray-100 text-gray-800',
