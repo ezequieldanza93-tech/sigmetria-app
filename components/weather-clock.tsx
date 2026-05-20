@@ -109,7 +109,7 @@ export function WeatherClock({ forecastLat, forecastLng }: WeatherClockProps = {
     fetch(
       `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}` +
       `&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum` +
-      `&timezone=auto&forecast_days=14`
+      `&timezone=auto&forecast_days=10`
     )
       .then(r => r.json())
       .then(d => {
@@ -162,7 +162,7 @@ export function WeatherClock({ forecastLat, forecastLng }: WeatherClockProps = {
       {forecast.length > 0 && (
         <div className="fixed top-12 left-1/2 -translate-x-1/2 z-50 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden opacity-0 invisible group-hover/wx:opacity-100 group-hover/wx:visible transition-all duration-200 max-w-[90vw]">
           <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider px-3.5 pt-2 pb-1.5 whitespace-nowrap">
-            Pronóstico — próximas 2 semanas
+            Pronóstico — próximos 10 días
           </p>
           <div className="overflow-x-auto pb-1">
             <div className="flex gap-1.5 px-3 pb-3" style={{ minWidth: 'max-content' }}>
