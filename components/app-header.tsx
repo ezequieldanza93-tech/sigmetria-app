@@ -7,6 +7,7 @@ import { Menu, Sun, Moon, Users, UserCog, Network, Gauge, Shield, Settings2, Log
 import { SystemRole, UserRole, ROLE_LABELS, ROLE_COLORS } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 import { useMobileMenu } from '@/components/layout/mobile-menu-context'
+import { WeatherClock } from '@/components/weather-clock'
 import { cn } from '@/lib/utils'
 
 interface AppHeaderProps {
@@ -36,6 +37,8 @@ export function AppHeader({
   const router = useRouter()
   const [crumbs, setCrumbs] = useState<Crumb[]>([])
   const [contextAddress, setContextAddress] = useState<string | null>(null)
+  const [tipoLabel, setTipoLabel] = useState<string | null>(null)
+  const [forecastCoords, setForecastCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [isDark, setIsDark] = useState(false)
 
   const isHome = pathname === '/dashboard' || pathname === '/dashboard/empresas'
@@ -57,6 +60,8 @@ export function AppHeader({
     if (!match) {
       setCrumbs([])
       setContextAddress(null)
+      setTipoLabel(null)
+      setForecastCoords(null)
       return
     }
 
@@ -69,6 +74,8 @@ export function AppHeader({
       if (!empresaId || empresaId === 'nueva') {
         setCrumbs(items)
         setContextAddress(null)
+        setTipoLabel(null)
+        setForecastCoords(null)
         return
       }
 
@@ -89,12 +96,14 @@ export function AppHeader({
       if (!estId || estId === 'nuevo') {
         setCrumbs(items)
         setContextAddress(null)
+        setTipoLabel(null)
+        setForecastCoords(null)
         return
       }
 
       const { data: est } = await supabase
         .from('establecimientos')
-        .select('nombre, domicilio, codigo_postal, localidades!localidad_id(nombre, provincia)')
+        .select('nombre, domicilio, codigo_postal, localidades!localidad_id(nombre, provincia), establecimientos_tipos(id, codigo, nombre), latitude, longitude')
         .eq('id', estId)
         .single()
 
@@ -106,8 +115,17 @@ export function AppHeader({
         const loc = locs?.[0]
         if (loc) parts.push(`${loc.nombre}, ${loc.provincia}`)
         setContextAddress(parts.length ? parts.join(' · ') : null)
+
+        setTipoLabel(
+          (est.establecimientos_tipos as { nombre: string }[] | null)?.[0]?.nombre ?? null
+        )
+        const lat = est.latitude as number | null
+        const lng = est.longitude as number | null
+        setForecastCoords(lat != null && lng != null ? { lat, lng } : null)
       } else {
         setContextAddress(null)
+        setTipoLabel(null)
+        setForecastCoords(null)
       }
 
       setCrumbs(items)
@@ -188,6 +206,11 @@ export function AppHeader({
                   )}
                 </div>
               ))}
+              {tipoLabel && (
+                <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium rounded bg-brand-muted text-brand-primary ml-0.5">
+                  {tipoLabel}
+                </span>
+              )}
             </nav>
             {contextAddress && (
               <p
@@ -217,8 +240,13 @@ export function AppHeader({
           </div>
         </div>
 
-        {/* Right: consultora + dark mode + avatar */}
+        {/* Right: weather + consultora + dark mode + avatar */}
         <div className="flex items-center gap-3 shrink-0">
+
+          <WeatherClock
+            forecastLat={forecastCoords?.lat}
+            forecastLng={forecastCoords?.lng}
+          />
 
           {consultoraNombre && (
             <div className="hidden md:block text-right">
