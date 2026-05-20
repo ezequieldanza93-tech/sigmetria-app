@@ -66,7 +66,7 @@ function MultiFilter({
             return (
               <label
                 key={opt.value}
-                className="flex items-center gap-2 px-3 py-2 text-xs text-text-primary hover:bg-surface-sunken cursor-pointer transition-colors"
+                className="flex items-center gap-2 px-3 py-2 text-xs text-gray-900 hover:bg-gray-50 cursor-pointer transition-colors"
               >
                 <input
                   type="checkbox"
