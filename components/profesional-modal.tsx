@@ -202,17 +202,13 @@ export function ProfesionalModal({ userId, fullName, open, onClose, canEdit }: P
   useEffect(() => {
     if (!open) return
     const supabase = createClient()
-    supabase
-      .from('perfiles_profesionales')
-      .select('*')
-      .eq('user_id', userId)
-      .maybeSingle()
-      .then(({ data }) => setPerfil((data as PerfilProfesional | null) ?? null))
-    supabase
-      .from('provincias')
-      .select('id, nombre')
-      .order('nombre')
-      .then(({ data }) => setProvincias((data as Provincia[]) ?? []))
+    Promise.all([
+      supabase.from('perfiles_profesionales').select('id, user_id, telefono, fecha_nacimiento, provincia_residencia_id, provincia_matricula_id, tipo_identidad_impositiva, cuit, canal_captacion').eq('user_id', userId).maybeSingle(),
+      supabase.from('provincias').select('id, nombre').order('nombre'),
+    ]).then(([perfRes, provRes]) => {
+      setPerfil((perfRes.data as PerfilProfesional | null) ?? null)
+      if (provRes.data) setProvincias(provRes.data as Provincia[])
+    })
   }, [open, userId])
 
   useEffect(() => {
@@ -221,7 +217,7 @@ export function ProfesionalModal({ userId, fullName, open, onClose, canEdit }: P
     const supabase = createClient()
     supabase
       .from('matriculas_profesionales')
-      .select('*')
+      .select('id, perfil_id, activa, emisor, numero, fecha_emision, fecha_vencimiento, foto_frente_url, foto_dorso_url')
       .eq('perfil_id', perfil.id)
       .order('created_at', { ascending: false })
       .then(({ data }) => setMatriculas((data as MatriculaProfesional[]) ?? []))
@@ -257,7 +253,7 @@ export function ProfesionalModal({ userId, fullName, open, onClose, canEdit }: P
               onSuccess={() => {
                 setEditingDatos(false)
                 const supabase = createClient()
-                supabase.from('perfiles_profesionales').select('*').eq('user_id', userId).maybeSingle()
+                supabase.from('perfiles_profesionales').select('id, user_id, telefono, fecha_nacimiento, provincia_residencia_id, provincia_matricula_id, tipo_identidad_impositiva, cuit, canal_captacion').eq('user_id', userId).maybeSingle()
                   .then(({ data }) => setPerfil((data as PerfilProfesional | null) ?? null))
               }}
             />

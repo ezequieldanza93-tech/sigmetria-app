@@ -36,23 +36,17 @@ export async function POST(req: NextRequest) {
 
   const admin = createAdminClient()
 
-  const { data: plan } = await admin
-    .from('plans')
-    .select('id, precio_mensual_neto, precio_anual_neto, iva_porcentaje')
-    .eq('id', plan_id)
-    .eq('is_active', true)
-    .single()
+  const [planResult, subResult] = await Promise.all([
+    admin.from('plans').select('id, precio_mensual_neto, precio_anual_neto, iva_porcentaje').eq('id', plan_id).eq('is_active', true).single(),
+    admin.from('subscriptions').select('id').eq('consultora_id', membership.consultora_id).single(),
+  ])
 
+  const plan = planResult.data
   if (!plan) {
     return NextResponse.json({ error: 'Plan no encontrado' }, { status: 404 })
   }
 
-  const { data: sub } = await admin
-    .from('subscriptions')
-    .select('id')
-    .eq('consultora_id', membership.consultora_id)
-    .single()
-
+  const sub = subResult.data
   if (!sub) {
     return NextResponse.json({ error: 'Suscripción no encontrada' }, { status: 404 })
   }

@@ -88,7 +88,7 @@ export function ActuarView({ establecimientoId }: { establecimientoId: string })
 
         supabase
           .from('gestiones_observaciones')
-          .select('*, personas_directorio!responsable_id(nombre, apellido), observaciones_clasificaciones(nombre), observaciones_categorias(nombre, nivel)')
+          .select('id, registro_gestion_id, descripcion, fecha_planificada, fecha_cierre, clasificacion_id, categoria_id, responsable_id, responsable_cierre_id, evidencia_cierre_url, personas_directorio!responsable_id(nombre, apellido), observaciones_clasificaciones(nombre), observaciones_categorias(nombre, nivel)')
           .in('registro_gestion_id', rgIds)
           .order('fecha_planificada', { ascending: true })
           .then(({ data: obsData }) => {

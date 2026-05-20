@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { DevErrorBoundary } from '@/components/dev-error-boundary'
 import { ThemeProvider } from '@/components/theme-provider'
+import { QueryProvider } from '@/components/query-provider'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -23,9 +24,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         className="bg-surface-base text-text-primary antialiased"
         style={{ fontFamily: 'Poppins, system-ui, sans-serif' }}
       >
-        <ThemeProvider>
-          <DevErrorBoundary>{children}</DevErrorBoundary>
-        </ThemeProvider>
+        <QueryProvider>
+          <ThemeProvider>
+            <DevErrorBoundary>{children}</DevErrorBoundary>
+          </ThemeProvider>
+        </QueryProvider>
       </body>
     </html>
   )

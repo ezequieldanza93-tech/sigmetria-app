@@ -546,6 +546,8 @@ export interface LegajoGestion {
   fecha_planificada: string
   notas: string | null
   gestiones_establecimientos: {
+    mostrar_lt: boolean
+    establecimiento_id: string
     gestiones: {
       nombre: string
       gestiones_categorias: { nombre: string } | null
@@ -691,6 +693,7 @@ export interface GestionEstablecimiento {
   id: string
   gestion_id: string
   establecimiento_id: string
+  mostrar_lt: boolean
   created_at: string
   gestiones?: Gestion | null
 }

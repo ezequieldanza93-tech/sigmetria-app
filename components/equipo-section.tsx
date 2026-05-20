@@ -25,30 +25,27 @@ export function EquipoSection() {
 
   useEffect(() => {
     const supabase = createClient()
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) return
       setCurrentUserId(user.id)
-      supabase
+
+      const [membershipResult, provinciasResult] = await Promise.all([
+        supabase.from('consultoras_members').select('consultora_id').eq('user_id', user.id).eq('is_active', true).maybeSingle(),
+        supabase.from('provincias').select('id, nombre').order('nombre'),
+      ])
+
+      if (provinciasResult.data) setProvincias(provinciasResult.data as Provincia[])
+
+      const membership = membershipResult.data
+      if (!membership) return
+
+      const { data: miembrosData } = await supabase
         .from('consultoras_members')
-        .select('consultora_id')
-        .eq('user_id', user.id)
+        .select('*, profiles(id, full_name, avatar_url, perfiles_profesionales(id, user_id, telefono, celular, profesion, matricula_nacional, matricula_provincial, provincia_residencia_id, provincia_matricula_id, created_at))')
+        .eq('consultora_id', membership.consultora_id)
         .eq('is_active', true)
-        .maybeSingle()
-        .then(({ data: membership }) => {
-          if (!membership) return
-          supabase
-            .from('consultoras_members')
-            .select('*, profiles(id, full_name, avatar_url, perfiles_profesionales(*))')
-            .eq('consultora_id', membership.consultora_id)
-            .eq('is_active', true)
-            .order('created_at')
-            .then(({ data }) => setMiembros((data as unknown as MemberRow[]) ?? []))
-        })
-      supabase
-        .from('provincias')
-        .select('id, nombre')
-        .order('nombre')
-        .then(({ data }) => setProvincias((data as Provincia[]) ?? []))
+        .order('created_at')
+      setMiembros((miembrosData as unknown as MemberRow[]) ?? [])
     })
   }, [])
 

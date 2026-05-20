@@ -1,10 +1,10 @@
 'use client'
 
-import { createContext, useContext, useState, type ReactNode } from 'react'
+import { createContext, useContext, useState, type ReactNode, type Dispatch, type SetStateAction } from 'react'
 
 interface PreviewContextValue {
   isOpen: boolean
-  setIsOpen: (v: boolean) => void
+  setIsOpen: Dispatch<SetStateAction<boolean>>
 }
 
 const PreviewContext = createContext<PreviewContextValue | null>(null)

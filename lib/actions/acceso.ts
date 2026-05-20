@@ -17,18 +17,13 @@ export async function setUserAccess(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
-  const { data: membership } = await supabase
-    .from('consultoras_members')
-    .select('consultora_id, role')
-    .eq('user_id', user.id)
-    .eq('is_active', true)
-    .maybeSingle()
+  const [membershipResult, profileResult] = await Promise.all([
+    supabase.from('consultoras_members').select('consultora_id, role').eq('user_id', user.id).eq('is_active', true).maybeSingle(),
+    supabase.from('profiles').select('system_role').eq('id', user.id).single(),
+  ])
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('system_role')
-    .eq('id', user.id)
-    .single()
+  const membership = membershipResult.data
+  const profile = profileResult.data
 
   const isDev = profile?.system_role === 'developer'
   const isAdmin = isDev || membership?.role === 'full_access_main'

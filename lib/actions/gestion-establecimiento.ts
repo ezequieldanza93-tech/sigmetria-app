@@ -19,27 +19,30 @@ export async function planificarGestion(
   if (!gestionId) return { success: false, error: 'Gestión requerida' }
   if (!fechaPlanificada) return { success: false, error: 'Fecha planificada requerida' }
 
-  // Upsert the gestion_establecimiento link
-  const { error: upsertError } = await supabase
-    .from('gestiones_establecimientos')
-    .upsert(
-      { gestion_id: gestionId, establecimiento_id: establecimientoId },
-      { onConflict: 'gestion_id,establecimiento_id', ignoreDuplicates: true }
-    )
-  if (upsertError) return { success: false, error: upsertError.message }
-
-  // Get the GE record ID
-  const { data: ge, error: geError } = await supabase
+  // Get or create gestion_establecimiento (single query)
+  let geId: string
+  const { data: existing } = await supabase
     .from('gestiones_establecimientos')
     .select('id')
     .eq('gestion_id', gestionId)
     .eq('establecimiento_id', establecimientoId)
-    .single()
-  if (geError || !ge) return { success: false, error: 'No se pudo obtener la gestión del establecimiento' }
+    .maybeSingle()
+
+  if (existing) {
+    geId = existing.id
+  } else {
+    const { data: created, error: insertError } = await supabase
+      .from('gestiones_establecimientos')
+      .insert({ gestion_id: gestionId, establecimiento_id: establecimientoId })
+      .select('id')
+      .single()
+    if (insertError) return { success: false, error: insertError.message }
+    geId = created.id
+  }
 
   // Create the registro
   const { error: registroError } = await supabase.from('gestiones_registros').insert({
-    gestion_establecimiento_id: ge.id,
+    gestion_establecimiento_id: geId,
     fecha_planificada: fechaPlanificada,
     responsable_id: responsableId || null,
     notas: notas || null,
@@ -78,21 +81,16 @@ export async function planificarGestionNueva(
     return { success: false, error: gestionError.message }
   }
 
-  const { error: upsertError } = await supabase
+  const { data: ge, error: upsertError } = await supabase
     .from('gestiones_establecimientos')
     .upsert(
       { gestion_id: nuevaGestion.id, establecimiento_id: establecimientoId },
       { onConflict: 'gestion_id,establecimiento_id', ignoreDuplicates: true }
     )
-  if (upsertError) return { success: false, error: upsertError.message }
-
-  const { data: ge, error: geError } = await supabase
-    .from('gestiones_establecimientos')
     .select('id')
-    .eq('gestion_id', nuevaGestion.id)
-    .eq('establecimiento_id', establecimientoId)
     .single()
-  if (geError || !ge) return { success: false, error: 'No se pudo vincular la gestión al establecimiento' }
+  if (upsertError) return { success: false, error: upsertError.message }
+  if (!ge) return { success: false, error: 'No se pudo vincular la gestión al establecimiento' }
 
   const { error: registroError } = await supabase.from('gestiones_registros').insert({
     gestion_establecimiento_id: ge.id,
@@ -218,25 +216,30 @@ export async function planificarGestionMulti(
   if (!gestionId) return { success: false, error: 'Gestión requerida' }
   if (!months.length) return { success: false, error: 'Seleccioná al menos un mes' }
 
-  const { error: upsertError } = await supabase
-    .from('gestiones_establecimientos')
-    .upsert(
-      { gestion_id: gestionId, establecimiento_id: establecimientoId },
-      { onConflict: 'gestion_id,establecimiento_id', ignoreDuplicates: true }
-    )
-  if (upsertError) return { success: false, error: upsertError.message }
-
-  const { data: ge, error: geError } = await supabase
+  // Get or create gestion_establecimiento (single query)
+  let geId: string
+  const { data: existing } = await supabase
     .from('gestiones_establecimientos')
     .select('id')
     .eq('gestion_id', gestionId)
     .eq('establecimiento_id', establecimientoId)
-    .single()
-  if (geError || !ge) return { success: false, error: 'No se pudo obtener la gestión del establecimiento' }
+    .maybeSingle()
+
+  if (existing) {
+    geId = existing.id
+  } else {
+    const { data: created, error: insertError } = await supabase
+      .from('gestiones_establecimientos')
+      .insert({ gestion_id: gestionId, establecimiento_id: establecimientoId })
+      .select('id')
+      .single()
+    if (insertError) return { success: false, error: insertError.message }
+    geId = created.id
+  }
 
   const registros = months.flatMap(m =>
     Array.from({ length: cantidad }, () => ({
-      gestion_establecimiento_id: ge.id,
+      gestion_establecimiento_id: geId,
       fecha_planificada: lastDayOfMonth(year, m),
       responsable_id: responsableId,
       notas: notas,

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useActionState, useTransition, useRef, Fragment, type FormEvent } from 'react'
+import { useState, useEffect, useActionState, useTransition, useRef, Fragment, memo, useMemo, type FormEvent } from 'react'
 
 import { createClient } from '@/lib/supabase/client'
 import { calcularEstadoGestion, canWrite } from '@/lib/types'
@@ -29,13 +29,13 @@ const CATEGORIA_META: Record<string, { icon: React.ComponentType<{ size?: number
   Auditoría: { icon: FileCheck, abbr: 'AUD' },
 }
 
-function CategoriaIcon({ nombre, size = 14 }: { nombre?: string | null; size?: number }) {
+const CategoriaIcon = memo(function CategoriaIcon({ nombre, size = 14 }: { nombre?: string | null; size?: number }) {
   const meta = nombre ? CATEGORIA_META[nombre] : undefined
   const Icon = meta?.icon ?? HelpCircle
   return <span title={nombre ?? ''}><Icon size={size} className="text-gray-500" /></span>
-}
+})
 
-function CategoriaAbbr({ nombre }: { nombre?: string | null }) {
+const CategoriaAbbr = memo(function CategoriaAbbr({ nombre }: { nombre?: string | null }) {
   if (!nombre) return <span className="text-gray-300">—</span>
   const meta = CATEGORIA_META[nombre]
   const abbr = meta?.abbr ?? nombre.slice(0, 3).toUpperCase()
@@ -46,7 +46,7 @@ function CategoriaAbbr({ nombre }: { nombre?: string | null }) {
   )
 }
 
-import { ReporteFotograficoModal } from '@/components/reporte-fotografico-modal'
+import dynamic from 'next/dynamic'
 import {
   planificarGestion,
   planificarGestionNueva,
@@ -54,7 +54,9 @@ import {
   createCategoriaGestion,
 } from '@/lib/actions/gestion-establecimiento'
 import { ejecutarGestion, crearObservaciones } from '@/lib/actions/registro-gestion'
-import { FormularioEjecucion } from '@/components/formulario-ejecucion'
+
+const ReporteFotograficoModal = dynamic(() => import('@/components/reporte-fotografico-modal'), { ssr: false })
+const FormularioEjecucion = dynamic(() => import('@/components/formulario-ejecucion'), { ssr: false })
 import { RIESGO_NIVEL_LABELS } from '@/lib/constants'
 import { RIESGO_NIVEL_COLORS } from '@/lib/types'
 
@@ -874,7 +876,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
       .from('gestiones_establecimientos')
       .select('id, mostrar_lt, gestiones!inner(id, nombre, gestiones_categorias(nombre, gestiones_grupos(nombre)))')
       .eq('establecimiento_id', establecimientoId)
-      .then(({ data: geData, error: geError }) => {
+      .then(async ({ data: geData, error: geError }) => {
         if (geError) console.error('[GestionesAgenda] gestion_establecimiento:', geError.message)
         const ges = (geData ?? []) as unknown as GestionConJoin[]
         const geIds = ges.map(ge => ge.id)
@@ -884,66 +886,72 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
 
         const gestionIds = ges.map(ge => ge.gestiones?.id).filter(Boolean) as string[]
 
-        supabase
-          .from('gestiones_registros')
-          .select('*, responsable:personas_directorio!responsable_id(nombre, apellido), aprobado_por:personas_directorio!aprobado_por_id(nombre, apellido)')
-          .in('gestion_establecimiento_id', geIds)
-          .gte('fecha_planificada', `${year}-01-01`)
-          .lte('fecha_planificada', `${year}-12-31`)
-          .order('fecha_planificada')
-          .then(({ data: regData, error }) => {
-            if (error) console.error('[GestionesAgenda] registros:', error.message)
-            type RegRaw = RegistroGestion & {
-              responsable: { nombre: string; apellido: string } | null
-              aprobado_por: { nombre: string; apellido: string } | null
-            }
+        const [regResult, seccionesResult] = await Promise.all([
+          supabase
+            .from('gestiones_registros')
+            .select('id, gestion_establecimiento_id, fecha_planificada, fecha_ejecutada, responsable_id, index, evidencia_url, created_at, responsable:personas_directorio!responsable_id(nombre, apellido), aprobado_por:personas_directorio!aprobado_por_id(nombre, apellido)')
+            .in('gestion_establecimiento_id', geIds)
+            .gte('fecha_planificada', `${year}-01-01`)
+            .lte('fecha_planificada', `${year}-12-31`)
+            .order('fecha_planificada'),
+          supabase
+            .from('formularios_secciones')
+            .select('gestion_id')
+            .in('gestion_id', gestionIds),
+        ])
 
-            supabase
-              .from('formularios_secciones')
-              .select('gestion_id')
-              .in('gestion_id', gestionIds)
-              .then(({ data: seccionesData }) => {
-                const gestionesConForm = new Set((seccionesData ?? []).map(s => s.gestion_id))
+        const { data: regData, error } = regResult
+        if (error) console.error('[GestionesAgenda] registros:', error.message)
+        type RegRaw = RegistroGestion & {
+          responsable: { nombre: string; apellido: string } | null
+          aprobado_por: { nombre: string; apellido: string } | null
+        }
 
-                const full: FullRegistro[] = ((regData ?? []) as unknown as RegRaw[]).map(r => {
-                  const ge = geMap.get(r.gestion_establecimiento_id)
-                  return {
-                    ...r,
-                    ge_id: ge?.id,
-                    ge_gestion_id: ge?.gestiones?.id,
-                    ge_tiene_formulario: ge?.gestiones?.id ? gestionesConForm.has(ge.gestiones.id) : false,
-                    ge_mostrar_lt: ge?.mostrar_lt ?? false,
-                    ge_gestion_nombre: ge?.gestiones?.nombre,
-                    ge_categoria_nombre: ge?.gestiones?.gestiones_categorias?.nombre,
-                    ge_grupo_nombre: ge?.gestiones?.gestiones_categorias?.gestiones_grupos?.nombre,
-                    responsable_nombre: r.responsable
-                      ? `${r.responsable.nombre} ${r.responsable.apellido}`
-                      : undefined,
-                    aprobado_nombre: r.aprobado_por
-                      ? `${r.aprobado_por.nombre} ${r.aprobado_por.apellido}`
-                      : undefined,
-                  }
-                })
-                setRegistros(full)
-              })
-          })
+        const gestionesConForm = new Set((seccionesResult.data ?? []).map(s => s.gestion_id))
+
+        const full: FullRegistro[] = ((regData ?? []) as unknown as RegRaw[]).map(r => {
+          const ge = geMap.get(r.gestion_establecimiento_id)
+          return {
+            ...r,
+            ge_id: ge?.id,
+            ge_gestion_id: ge?.gestiones?.id,
+            ge_tiene_formulario: ge?.gestiones?.id ? gestionesConForm.has(ge.gestiones.id) : false,
+            ge_mostrar_lt: ge?.mostrar_lt ?? false,
+            ge_gestion_nombre: ge?.gestiones?.nombre,
+            ge_categoria_nombre: ge?.gestiones?.gestiones_categorias?.nombre,
+            ge_grupo_nombre: ge?.gestiones?.gestiones_categorias?.gestiones_grupos?.nombre,
+            responsable_nombre: r.responsable
+              ? `${r.responsable.nombre} ${r.responsable.apellido}`
+              : undefined,
+            aprobado_nombre: r.aprobado_por
+              ? `${r.aprobado_por.nombre} ${r.aprobado_por.apellido}`
+              : undefined,
+          }
+        })
+        setRegistros(full)
       })
   }
 
   function loadCatalogo() {
     const supabase = createClient()
-    supabase.from('gestiones').select('*, gestiones_categorias(id, nombre, gestiones_grupos(nombre))').order('nombre')
-      .then(({ data }) => { if (data) setTodasGestiones(data as unknown as Gestion[]) })
-    supabase.from('gestiones_grupos').select('*').order('nombre')
-      .then(({ data }) => { if (data) setGrupos(data as unknown as GrupoGestion[]) })
-    supabase.from('gestiones_categorias').select('*').order('nombre')
-      .then(({ data }) => { if (data) setCategorias(data as unknown as CategoriaGestion[]) })
+    Promise.all([
+      supabase.from('gestiones').select('id, nombre, categoria_id, aplica_por_iso, gestiones_categorias(id, nombre, gestiones_grupos(nombre))').order('nombre'),
+      supabase.from('gestiones_grupos').select('id, nombre').order('nombre'),
+      supabase.from('gestiones_categorias').select('id, nombre, grupo_id').order('nombre'),
+    ]).then(([gesRes, grpRes, catRes]) => {
+      if (gesRes.data) setTodasGestiones(gesRes.data as unknown as Gestion[])
+      if (grpRes.data) setGrupos(grpRes.data as unknown as GrupoGestion[])
+      if (catRes.data) setCategorias(catRes.data as unknown as CategoriaGestion[])
+    })
   }
 
   useEffect(() => {
     loadRegistros()
-    loadCatalogo()
   }, [establecimientoId, year, refreshKey])
+
+  useEffect(() => {
+    if (establecimientoId) loadCatalogo()
+  }, [establecimientoId])
 
   // ── Filtering & sorting ─────────────────────────────────────────────────────
   const monthCounts = MONTHS.map((_, i) => {
@@ -1013,7 +1021,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
           if (r.ge_tiene_formulario && !r.fecha_ejecutada) setExecutingFormulario(r)
           else setEditingRegistro(r)
         }}>
-          <td className="px-4 py-1.5" style={{ maxWidth: colW('categoria'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <td className="hidden md:table-cell px-4 py-1.5" style={{ maxWidth: colW('categoria'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             <span className="flex items-center gap-1.5">
               <CategoriaIcon nombre={r.ge_categoria_nombre} size={14} />
               <CategoriaAbbr nombre={r.ge_categoria_nombre} />
@@ -1023,10 +1031,10 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
             {r.ge_gestion_nombre ?? '—'}
           </td>
           <td className="px-4 py-1.5 text-gray-500 tabular-nums text-xs">{r.fecha_planificada}</td>
-          <td className="px-4 py-1.5 text-gray-500 tabular-nums text-xs">
+          <td className="hidden md:table-cell px-4 py-1.5 text-gray-500 tabular-nums text-xs">
             {r.fecha_ejecutada ?? <span className="text-gray-300">—</span>}
           </td>
-          <td className="px-4 py-1.5 text-gray-500 text-xs" style={{ maxWidth: colW('responsable'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <td className="hidden md:table-cell px-4 py-1.5 text-gray-500 text-xs" style={{ maxWidth: colW('responsable'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {r.responsable_nombre ?? <span className="text-gray-300">—</span>}
           </td>
           <td className="px-4 py-1.5 text-center text-sm tabular-nums text-gray-700">
@@ -1086,7 +1094,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
   const tableHead = (
     <thead>
       <tr className="bg-gray-800 text-white text-left text-xs">
-        <th style={{ width: colW('categoria') }} className="px-4 py-1.5 font-medium relative select-none">
+        <th style={{ width: colW('categoria') }} className="hidden md:table-cell px-4 py-1.5 font-medium relative select-none">
           Categoría{rh('categoria')}
         </th>
         <th style={{ width: colW('gestion') }} className="px-4 py-1.5 font-medium relative select-none">
@@ -1095,10 +1103,10 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
         <th style={{ width: colW('fecha_plan') }} className="px-4 py-1.5 font-medium relative select-none">
           Fecha Plan.{rh('fecha_plan')}
         </th>
-        <th style={{ width: colW('fecha_ejec') }} className="px-4 py-1.5 font-medium relative select-none">
+        <th style={{ width: colW('fecha_ejec') }} className="hidden md:table-cell px-4 py-1.5 font-medium relative select-none">
           Fecha Ejec.{rh('fecha_ejec')}
         </th>
-        <th style={{ width: colW('responsable') }} className="px-4 py-1.5 font-medium relative select-none">
+        <th style={{ width: colW('responsable') }} className="hidden md:table-cell px-4 py-1.5 font-medium relative select-none">
           Responsable{rh('responsable')}
         </th>
         <th style={{ width: colW('indice') }} className="px-4 py-1.5 font-medium text-center relative select-none">
@@ -1309,7 +1317,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden mb-8">
           <div className="overflow-x-auto">
-            <table className="text-sm" style={{ tableLayout: 'fixed', width: '100%', minWidth: 700 }}>
+            <table className="text-sm" style={{ tableLayout: 'fixed', width: '100%', minWidth: 500 }}>
               {tableHead}
 
               {/* Task 2: grouped view when multiple months, flat otherwise */}

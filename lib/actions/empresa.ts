@@ -33,18 +33,13 @@ export async function createEmpresa(_prev: EmpresaFormState | null, formData: Fo
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado', fields }
 
-  const { data: membership } = await supabase
-    .from('consultoras_members')
-    .select('consultora_id, role')
-    .eq('user_id', user.id)
-    .eq('is_active', true)
-    .maybeSingle()
+  const [membershipResult, profileResult] = await Promise.all([
+    supabase.from('consultoras_members').select('consultora_id, role').eq('user_id', user.id).eq('is_active', true).maybeSingle(),
+    supabase.from('profiles').select('system_role').eq('id', user.id).single(),
+  ])
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('system_role')
-    .eq('id', user.id)
-    .single()
+  const membership = membershipResult.data
+  const profile = profileResult.data
 
   const isDev = profile?.system_role === 'developer'
   const canWrite = isDev || membership?.role === 'full_access_main' || membership?.role === 'full_access_branch'

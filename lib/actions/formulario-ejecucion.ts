@@ -119,7 +119,7 @@ export async function getFormularioData(gestionId: string) {
 
   const { data: secciones, error } = await supabase
     .from('formularios_secciones')
-    .select('*, formularios_items(*)')
+    .select('id, title, order_index, formularios_items(id, gestion_id, numero_item, question, tipo, opciones, order_index, is_active, created_at)')
     .eq('gestion_id', gestionId)
     .order('order_index')
 

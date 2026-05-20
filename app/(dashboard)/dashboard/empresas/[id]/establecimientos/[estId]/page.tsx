@@ -48,7 +48,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
   ] = await Promise.all([
     supabase.from('profiles').select('system_role').eq('id', user.id).single(),
     supabase.from('consultoras_members').select('role').eq('user_id', user.id).eq('is_active', true).maybeSingle(),
-    supabase.from('establecimientos').select('*, establecimientos_tipos(id, codigo, nombre), localidades!localidad_id(nombre, provincia)').eq('id', estId).single(),
+    supabase.from('establecimientos').select('id, nombre, latitude, longitude, photo_site, direccion, created_at, establecimientos_tipos(id, codigo, nombre), localidades!localidad_id(nombre, provincia)').eq('id', estId).single(),
     supabase.from('empresas').select('id, razon_social').eq('id', empresaId).single(),
   ])
 
@@ -111,8 +111,9 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
       supabase.from('empresas_documentos').select('*, documentos_tipos(nombre)').eq('empresa_id', empresaId).order('created_at', { ascending: false }),
       supabase
         .from('gestiones_registros')
-        .select('id, fecha_planificada, notas, gestiones_establecimientos!inner(establecimiento_id, gestiones!inner(nombre, gestiones_categorias(nombre)))')
+        .select('id, fecha_planificada, notas, gestiones_establecimientos!inner(mostrar_lt, establecimiento_id, gestiones!inner(nombre, gestiones_categorias(nombre)))')
         .eq('gestiones_establecimientos.establecimiento_id', estId)
+        .eq('gestiones_establecimientos.mostrar_lt', true)
         .is('fecha_ejecutada', null)
         .gte('fecha_planificada', today)
         .order('fecha_planificada'),

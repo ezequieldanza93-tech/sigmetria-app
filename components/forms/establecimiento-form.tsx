@@ -51,11 +51,13 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
   // Load localidades and tipos on mount
   useEffect(() => {
     const supabase = createClient()
-    supabase.from('localidades').select('id, nombre, provincia, is_active, created_at')
-      .eq('is_active', true).order('nombre')
-      .then(({ data }) => { if (data) setLocalidades(data as Localidad[]) })
-    supabase.from('establecimientos_tipos').select('id, codigo, nombre, created_at').order('nombre')
-      .then(({ data }) => { if (data) setTipos(data as TiposEstablecimiento[]) })
+    Promise.all([
+      supabase.from('localidades').select('id, nombre, provincia, is_active, created_at').eq('is_active', true).order('nombre'),
+      supabase.from('establecimientos_tipos').select('id, codigo, nombre, created_at').order('nombre'),
+    ]).then(([locRes, tipRes]) => {
+      if (locRes.data) setLocalidades(locRes.data as Localidad[])
+      if (tipRes.data) setTipos(tipRes.data as TiposEstablecimiento[])
+    })
   }, [])
 
   // Load horarios for existing establishment

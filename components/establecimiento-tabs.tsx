@@ -104,36 +104,28 @@ function TrabajadorSearchPicker({
   useEffect(() => {
     const supabase = createClient()
     async function load() {
-      const { data: sectors } = await supabase
-        .from('establecimientos_sectores')
-        .select('id')
-        .eq('establecimiento_id', establecimientoId)
+      // Run personas_establecimientos in parallel with nested sectors→puestos→personas query
+      const [personasResult, sectorsResult] = await Promise.all([
+        supabase
+          .from('personas_establecimientos')
+          .select('persona_id')
+          .eq('establecimiento_id', establecimientoId),
+        supabase
+          .from('establecimientos_sectores')
+          .select('id, puestos_de_trabajo(id, puestos_personas(persona_id))')
+          .eq('establecimiento_id', establecimientoId),
+      ])
 
-      const sectorIds = sectors?.map(s => s.id) ?? []
       const assignedIds = new Set<string>()
-
-      if (sectorIds.length > 0) {
-        const { data: puestos } = await supabase
-          .from('puestos_de_trabajo')
-          .select('id')
-          .in('sector_id', sectorIds)
-
-        const puestoIds = puestos?.map(p => p.id) ?? []
-        if (puestoIds.length > 0) {
-          const { data: eps } = await supabase
-            .from('puestos_personas')
-            .select('persona_id')
-            .in('puesto_id', puestoIds)
-          eps?.forEach(ep => assignedIds.add(ep.persona_id))
+      for (const sector of (sectorsResult.data ?? [])) {
+        for (const puesto of ((sector as any).puestos_de_trabajo ?? [])) {
+          for (const ep of (puesto.puestos_personas ?? [])) {
+            assignedIds.add(ep.persona_id)
+          }
         }
       }
 
-      const { data: links } = await supabase
-        .from('personas_establecimientos')
-        .select('persona_id')
-        .eq('establecimiento_id', establecimientoId)
-
-      const availableIds = (links?.map(l => l.persona_id) ?? []).filter(id => !assignedIds.has(id))
+      const availableIds = (personasResult.data?.map(l => l.persona_id) ?? []).filter(id => !assignedIds.has(id))
 
       if (availableIds.length === 0) {
         setAvailable([])
@@ -559,12 +551,12 @@ function SectorRow({
     const supabase = createClient()
     supabase
       .from('puestos_de_trabajo')
-      .select('*')
+      .select('id, nombre, tipo')
       .eq('sector_id', sector.id)
       .eq('is_active', true)
       .order('nombre')
       .then(({ data }) => setPuestos((data as PuestoDeTrabajo[]) ?? []))
-  }, [open, puestos, sector.id])
+  }, [open, sector.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function saveWorkers(sectorId: string) {
     const val = parseInt(editingVal, 10)
@@ -706,27 +698,20 @@ function SectoresTab({
     const supabase = createClient()
     supabase
       .from('establecimientos_sectores')
-      .select('id')
+      .select('id, puestos_de_trabajo(tipo, puestos_personas(persona_id))')
       .eq('establecimiento_id', establecimientoId)
-      .then(({ data: secs }) => {
-        const ids = (secs ?? []).map(s => s.id)
-        if (ids.length === 0) { setWorkerCounts({ operativo: 0, administrativo: 0 }); return }
-        supabase
-          .from('puestos_de_trabajo')
-          .select('tipo, puestos_personas(persona_id)')
-          .in('sector_id', ids)
-          .not('tipo', 'is', null)
-          .then(({ data: puestos }) => {
-            const ops = new Set<string>()
-            const adm = new Set<string>()
-            ;(puestos ?? []).forEach((p: any) => {
-              ;(p.puestos_personas ?? []).forEach((ep: any) => {
-                if (p.tipo === 'operativo') ops.add(ep.persona_id)
-                else adm.add(ep.persona_id)
-              })
+      .then(({ data }) => {
+        const ops = new Set<string>()
+        const adm = new Set<string>()
+        ;(data ?? []).forEach((s: any) => {
+          ;(s.puestos_de_trabajo ?? []).filter((p: any) => p.tipo !== null).forEach((p: any) => {
+            ;(p.puestos_personas ?? []).forEach((ep: any) => {
+              if (p.tipo === 'operativo') ops.add(ep.persona_id)
+              else adm.add(ep.persona_id)
             })
-            setWorkerCounts({ operativo: ops.size, administrativo: adm.size })
           })
+        })
+        setWorkerCounts({ operativo: ops.size, administrativo: adm.size })
       })
   }, [establecimientoId])
 
@@ -876,9 +861,9 @@ function StakeholdersTab({
   const [showAddOrg, setShowAddOrg] = useState(false)
 
   const loadPersonas = () => {
-    createClient()
+    return createClient()
       .from('personas_establecimientos')
-      .select('personas_directorio(id, nombre, apellido, dni, fecha_nacimiento, fecha_ingreso, legajo, telefono, email, tipo_id, personas_tipos(nombre), organizacion_id, notas, is_active, created_at, updated_at)')
+      .select('personas_directorio(id, nombre, apellido, dni, fecha_nacimiento, fecha_ingreso, legajo, telefono, email, tipo_id, personas_tipos(nombre), organizacion_id, notas, is_active)')
       .eq('establecimiento_id', establecimientoId)
       .then(({ data }) => {
         const list = ((data ?? []) as unknown as { personas_directorio: DirectorioPersona }[]).map(r => r.personas_directorio).filter(Boolean)
@@ -887,7 +872,7 @@ function StakeholdersTab({
   }
 
   const loadOrgs = () => {
-    createClient()
+    return createClient()
       .from('organizaciones_establecimientos')
       .select('organizaciones(id, nombre, email, telefono, notas, is_active, organizaciones_tipos(nombre))')
       .eq('establecimiento_id', establecimientoId)
@@ -903,10 +888,12 @@ function StakeholdersTab({
 
   useEffect(() => {
     const supabase = createClient()
-    loadPersonas()
-    supabase.from('personas_tipos').select('id, nombre').order('nombre').then(({ data }) => setTiposPersona(data ?? []))
-    loadOrgs()
-    supabase.from('organizaciones_tipos').select('id, nombre').order('nombre').then(({ data }) => setTiposOrg(data ?? []))
+    Promise.all([
+      loadPersonas(),
+      supabase.from('personas_tipos').select('id, nombre').order('nombre').then(({ data }) => setTiposPersona(data ?? [])),
+      loadOrgs(),
+      supabase.from('organizaciones_tipos').select('id, nombre').order('nombre').then(({ data }) => setTiposOrg(data ?? [])),
+    ])
   }, [establecimientoId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const filtered = personas === null
@@ -1745,59 +1732,56 @@ function GestionesTab({ establecimientoId, canWrite }: { establecimientoId: stri
   const [showRegistroForm, setShowRegistroForm] = useState<string | null>(null)
   const [showObsForm, setShowObsForm] = useState<string | null>(null)
 
-  function loadData() {
+  async function loadRegistros(geIds: string[]) {
+    if (geIds.length === 0) { setRegistros([]); return [] }
     const supabase = createClient()
-    supabase
-      .from('gestiones_establecimientos')
-      .select('*, gestiones(nombre, categoria_id, gestiones_categorias(nombre, gestiones_grupos(nombre)))')
-      .eq('establecimiento_id', establecimientoId)
-      .then(({ data }) => setGestionesEstablecimiento((data as unknown as GestionEstablecimiento[]) ?? []))
-    supabase
-      .from('personas_directorio')
-      .select('id, nombre, apellido')
-      .eq('is_active', true)
-      .order('apellido')
-      .then(({ data }) => setPersonas((data ?? []) as { id: string; nombre: string; apellido: string }[]))
-  }
-
-  function loadRegistros(geIds: string[]) {
-    if (geIds.length === 0) { setRegistros([]); return }
-    const supabase = createClient()
-    supabase
+    const { data } = await supabase
       .from('gestiones_registros')
-      .select('*, personas_directorio(nombre, apellido)')
+      .select('id, gestion_establecimiento_id, fecha_planificada, fecha_ejecutada, notas, personas_directorio(nombre, apellido)')
       .in('gestion_establecimiento_id', geIds)
       .order('fecha_planificada')
-      .then(({ data }) => setRegistros((data as unknown as RegistroGestion[]) ?? []))
+    const regData = (data as unknown as RegistroGestion[]) ?? []
+    setRegistros(regData)
+    return regData
   }
 
-  function loadObservaciones(registroIds: string[]) {
-    if (registroIds.length === 0) { setObservaciones([]); return }
+  async function loadObservaciones(registroIds: string[]) {
+    if (registroIds.length === 0) { setObservaciones([]); return [] }
     const supabase = createClient()
-    supabase
+    const { data } = await supabase
       .from('gestiones_observaciones')
-      .select('*, personas_directorio!responsable_id(nombre, apellido)')
+      .select('id, registro_gestion_id, descripcion, fecha_planificada, fecha_cierre, personas_directorio!responsable_id(nombre, apellido)')
       .in('registro_gestion_id', registroIds)
       .order('fecha_planificada')
-      .then(({ data }) => setObservaciones((data as unknown as ObservacionGestion[]) ?? []))
+    const obsData = (data as unknown as ObservacionGestion[]) ?? []
+    setObservaciones(obsData)
+    return obsData
   }
 
   useEffect(() => {
-    loadData()
+    async function init() {
+      const supabase = createClient()
+      const [geResult, personasResult] = await Promise.all([
+        supabase
+          .from('gestiones_establecimientos')
+          .select('id, gestion_id, gestiones(nombre, categoria_id, gestiones_categorias(nombre, gestiones_grupos(nombre)))')
+          .eq('establecimiento_id', establecimientoId),
+        supabase
+          .from('personas_directorio')
+          .select('id, nombre, apellido')
+          .eq('is_active', true)
+          .order('apellido'),
+      ])
+      const geData = (geResult.data as unknown as GestionEstablecimiento[]) ?? []
+      setPersonas((personasResult.data ?? []) as { id: string; nombre: string; apellido: string }[])
+      setGestionesEstablecimiento(geData)
+
+      const regData = await loadRegistros(geData.map(ge => ge.id))
+      await loadObservaciones(regData.map(r => r.id))
+    }
+    init()
     getGestionesAplicables(establecimientoId).then(data => setTodasGestiones(data)).catch(() => setTodasGestiones([]))
   }, [establecimientoId])
-
-  useEffect(() => {
-    if (gestionesEstablecimiento === null) return
-    const ids = gestionesEstablecimiento.map(ge => ge.id)
-    loadRegistros(ids)
-  }, [gestionesEstablecimiento])
-
-  useEffect(() => {
-    if (registros === null) return
-    const ids = registros.map(r => r.id)
-    loadObservaciones(ids)
-  }, [registros])
 
   const PHVA_ITEMS: { id: PHVASection; label: string; icon: string }[] = [
     { id: 'planificar', label: 'Planificar', icon: 'P' },
@@ -1860,7 +1844,7 @@ function GestionesTab({ establecimientoId, canWrite }: { establecimientoId: stri
                   const supabase = createClient()
                   supabase
                     .from('gestiones_establecimientos')
-                    .select('*, gestiones(nombre, categoria_id, gestiones_categorias(nombre, gestiones_grupos(nombre)))')
+                    .select('id, gestion_id, gestiones(nombre, categoria_id, gestiones_categorias(nombre, gestiones_grupos(nombre)))')
                     .eq('establecimiento_id', establecimientoId)
                     .then(({ data }) => setGestionesEstablecimiento((data as unknown as GestionEstablecimiento[]) ?? []))
                 }}
@@ -1913,7 +1897,7 @@ function GestionesTab({ establecimientoId, canWrite }: { establecimientoId: stri
                                   personas={personas}
                                   onSuccess={() => {
                                     setShowRegistroForm(null)
-                                    loadRegistros(gestionesEstablecimiento.map(x => x.id))
+                                    loadRegistros(gestionesEstablecimiento.map(x => x.id)).then(setRegistros)
                                   }}
                                 />
                               )}
@@ -1978,7 +1962,7 @@ function GestionesTab({ establecimientoId, canWrite }: { establecimientoId: stri
                                   fd.set('fecha_ejecutada', hoy)
                                   if (r.notas) fd.set('notas', r.notas)
                                   await ejecutarGestion(null, fd)
-                                  loadRegistros(gestionesEstablecimiento?.map(ge => ge.id) ?? [])
+                                  loadRegistros(gestionesEstablecimiento?.map(ge => ge.id) ?? []).then(setRegistros)
                                 }}
                                 className="text-xs bg-sig-500 hover:bg-sig-700 text-white px-3 py-1 rounded-lg font-medium transition-colors"
                               >
@@ -2001,7 +1985,7 @@ function GestionesTab({ establecimientoId, canWrite }: { establecimientoId: stri
                                 personas={personas}
                                 onSuccess={() => {
                                   setShowObsForm(null)
-                                  loadObservaciones(registros.map(x => x.id))
+                                  loadObservaciones(registros.map(x => x.id)).then(setObservaciones)
                                 }}
                               />
                             )}
@@ -2059,7 +2043,7 @@ function GestionesTab({ establecimientoId, canWrite }: { establecimientoId: stri
                               onClick={async () => {
                                 const hoyStr = new Date().toISOString().split('T')[0]
                                 await cerrarObservacion(obs.id, hoyStr, null)
-                                loadObservaciones(registros?.map(r => r.id) ?? [])
+                                 loadObservaciones(registros?.map(r => r.id) ?? []).then(setObservaciones)
                               }}
                               className="text-xs bg-sig-500 hover:bg-sig-700 text-white px-3 py-1 rounded-lg font-medium transition-colors"
                             >
@@ -2499,7 +2483,7 @@ function LegajoTab({
         }))} />
       ))}
 
-      {seccion('Gestiones de Agenda — próximas sin vencer', gestionesLegajo.length, (
+      {seccion('Gestiones de Agenda', gestionesLegajo.length, (
         gestionesLegajo.length === 0 ? (
           <p className="text-xs text-gray-400 px-5 py-3">Sin gestiones pendientes próximas.</p>
         ) : (

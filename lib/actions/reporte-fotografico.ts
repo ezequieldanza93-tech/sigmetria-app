@@ -28,21 +28,26 @@ export async function crearReporteFotografico(
 
   if (!gestion) return { success: false, error: 'No se encontró la gestión "Reportes Fotográficos del Sitio" en el catálogo' }
 
-  const { error: upsertError } = await supabase
-    .from('gestiones_establecimientos')
-    .upsert(
-      { gestion_id: gestion.id, establecimiento_id: establecimientoId },
-      { onConflict: 'gestion_id,establecimiento_id', ignoreDuplicates: true }
-    )
-  if (upsertError) return { success: false, error: upsertError.message }
-
-  const { data: ge, error: geError } = await supabase
+  // Get or create gestion_establecimiento (single query)
+  let geId: string
+  const { data: existing } = await supabase
     .from('gestiones_establecimientos')
     .select('id')
     .eq('gestion_id', gestion.id)
     .eq('establecimiento_id', establecimientoId)
-    .single()
-  if (geError || !ge) return { success: false, error: 'No se pudo vincular al establecimiento' }
+    .maybeSingle()
+
+  if (existing) {
+    geId = existing.id
+  } else {
+    const { data: created, error: insertError } = await supabase
+      .from('gestiones_establecimientos')
+      .insert({ gestion_id: gestion.id, establecimiento_id: establecimientoId })
+      .select('id')
+      .single()
+    if (insertError) return { success: false, error: insertError.message }
+    geId = created.id
+  }
 
   const ext = file.name.split('.').pop() ?? 'png'
   const path = `reportes-fotograficos/${establecimientoId}/${Date.now()}.${ext}`
@@ -53,13 +58,13 @@ export async function crearReporteFotografico(
 
   const { data: { publicUrl } } = supabase.storage.from('documentos').getPublicUrl(upload.path)
 
-  const { error: registroError } = await supabase.from('gestiones_registros').insert({
-    gestion_establecimiento_id: ge.id,
+  const { data: reg, error: registroError } = await supabase.from('gestiones_registros').insert({
+    gestion_establecimiento_id: geId,
     fecha_planificada: today,
     fecha_ejecutada: today,
     evidencia_url: publicUrl,
     notas: comentario,
-  })
+  }).select('id').single()
   if (registroError) return { success: false, error: registroError.message }
 
   if (observacionesRaw) {
@@ -67,25 +72,14 @@ export async function crearReporteFotografico(
       const observaciones: Array<{ descripcion: string; clasificacion_id: string; responsable_id: string; fecha_subsanacion: string }> = JSON.parse(observacionesRaw)
       const validas = observaciones.filter(o => o.descripcion?.trim())
       if (validas.length > 0) {
-        const { data: reg } = await supabase
-          .from('gestiones_registros')
-          .select('id')
-          .eq('gestion_establecimiento_id', ge.id)
-          .eq('fecha_planificada', today)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single()
-
-        if (reg) {
-          const rows = validas.map(o => ({
-            registro_gestion_id: reg.id,
-            descripcion: o.descripcion.trim(),
-            clasificacion_id: o.clasificacion_id || null,
-            responsable_id: o.responsable_id || null,
-            fecha_planificada: o.fecha_subsanacion || null,
-          }))
-          await supabase.from('gestiones_observaciones').insert(rows)
-        }
+        const rows = validas.map(o => ({
+          registro_gestion_id: reg.id,
+          descripcion: o.descripcion.trim(),
+          clasificacion_id: o.clasificacion_id || null,
+          responsable_id: o.responsable_id || null,
+          fecha_planificada: o.fecha_subsanacion || null,
+        }))
+        await supabase.from('gestiones_observaciones').insert(rows)
       }
     } catch { }
   }

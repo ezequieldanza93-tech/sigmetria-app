@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import {
+  BarChart2,
   Building2,
   ChevronRight,
   ChevronDown,
@@ -49,33 +50,20 @@ export function Sidebar({ mobileOpen, onMobileClose, onCollapsedChange, isSuperA
   useEffect(() => {
     const supabase = createClient()
     supabase
-      .from('empresas')
-      .select('id, razon_social')
-      .eq('is_active', true)
-      .order('razon_social')
-      .then(({ data: empData }) => {
-        const empresasList = (empData ?? []) as { id: string; razon_social: string }[]
-        if (empresasList.length === 0) { setEmpresas([]); return }
-
-        const empresaIds = empresasList.map(e => e.id)
-
-        supabase
-          .from('establecimientos')
-          .select('id, nombre, empresa_id')
-          .in('empresa_id', empresaIds)
-          .eq('status', 'active')
-          .order('nombre')
-          .then(({ data: estData }) => {
-            const estMap = new Map<string, { id: string; nombre: string }[]>()
-            for (const est of (estData ?? []) as { id: string; nombre: string; empresa_id: string }[]) {
-              if (!estMap.has(est.empresa_id)) estMap.set(est.empresa_id, [])
-              estMap.get(est.empresa_id)!.push({ id: est.id, nombre: est.nombre })
-            }
-            setEmpresas(empresasList.map(e => ({
-              ...e,
-              establecimientos: estMap.get(e.id) ?? [],
-            })))
-          })
+      .from('establecimientos')
+      .select('id, nombre, empresa_id, empresas!inner(id, razon_social)')
+      .eq('status', 'active')
+      .eq('empresas.is_active', true)
+      .order('nombre')
+      .then(({ data: estData }) => {
+        const empMap = new Map<string, { id: string; razon_social: string; establecimientos: { id: string; nombre: string }[] }>()
+        for (const est of (estData ?? []) as unknown as { id: string; nombre: string; empresa_id: string; empresas: { id: string; razon_social: string } }[]) {
+          if (!empMap.has(est.empresa_id)) {
+            empMap.set(est.empresa_id, { id: est.empresas.id, razon_social: est.empresas.razon_social, establecimientos: [] })
+          }
+          empMap.get(est.empresa_id)!.establecimientos.push({ id: est.id, nombre: est.nombre })
+        }
+        setEmpresas(Array.from(empMap.values()).sort((a, b) => a.razon_social.localeCompare(b.razon_social)))
       })
   }, [])
 
@@ -250,8 +238,16 @@ export function Sidebar({ mobileOpen, onMobileClose, onCollapsedChange, isSuperA
           </ul>
         </nav>
 
-        {/* Bottom section — billing, admin, collapse */}
+        {/* Bottom section — analytics, billing, admin, collapse */}
         <div className="border-t border-border-subtle py-3 px-2 space-y-0.5">
+          <SidebarBottomLink
+            href="/dashboard/analytics"
+            label="Analytics"
+            icon={<BarChart2 size={18} strokeWidth={1.75} />}
+            active={pathname.startsWith('/dashboard/analytics')}
+            collapsed={isCollapsed}
+            onClick={onMobileClose}
+          />
           <SidebarBottomLink
             href="/dashboard/billing"
             label="Suscripción"
