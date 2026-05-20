@@ -3,7 +3,7 @@
 -- ============================================================
 
 ALTER TABLE public.empresas
-  ADD COLUMN rubro_id uuid REFERENCES public.empresas_rubros(id) ON DELETE SET NULL;
+  ADD COLUMN IF NOT EXISTS rubro_id uuid REFERENCES public.empresas_rubros(id) ON DELETE SET NULL;
 
 -- Auto-link existing text rubros that match seeded names (case-insensitive)
 UPDATE public.empresas e
