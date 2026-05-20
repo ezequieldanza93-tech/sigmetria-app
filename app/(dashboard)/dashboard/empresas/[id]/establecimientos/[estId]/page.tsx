@@ -156,7 +156,8 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
     riesgos = (data ?? []) as unknown as Riesgo[]
   }
 
-  const tipoLabel = establecimiento.establecimientos_tipos?.nombre ?? null
+  const _tipos = establecimiento.establecimientos_tipos as unknown as { nombre: string } | null | undefined
+  const tipoLabel = _tipos?.nombre ?? null
 
   return (
     <div className="p-0">

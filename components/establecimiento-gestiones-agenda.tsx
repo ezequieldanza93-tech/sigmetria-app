@@ -13,6 +13,16 @@ import {
   ClipboardCheck, GraduationCap, Heart, FileText, AlertTriangle,
   ClipboardList, UserPlus, Dumbbell, Kanban, HelpCircle,
 } from 'lucide-react'
+import dynamic from 'next/dynamic'
+import {
+  planificarGestion,
+  planificarGestionNueva,
+  createGrupoGestion,
+  createCategoriaGestion,
+} from '@/lib/actions/gestion-establecimiento'
+import { ejecutarGestion, crearObservaciones } from '@/lib/actions/registro-gestion'
+import { RIESGO_NIVEL_LABELS } from '@/lib/constants'
+import { RIESGO_NIVEL_COLORS } from '@/lib/types'
 
 const CATEGORIA_META: Record<string, { icon: React.ComponentType<{ size?: number; className?: string }>; abbr: string }> = {
   Checklists: { icon: ClipboardCheck, abbr: 'CHK' },
@@ -44,21 +54,16 @@ const CategoriaAbbr = memo(function CategoriaAbbr({ nombre }: { nombre?: string 
       {abbr}
     </span>
   )
-}
+})
 
-import dynamic from 'next/dynamic'
-import {
-  planificarGestion,
-  planificarGestionNueva,
-  createGrupoGestion,
-  createCategoriaGestion,
-} from '@/lib/actions/gestion-establecimiento'
-import { ejecutarGestion, crearObservaciones } from '@/lib/actions/registro-gestion'
-
-const ReporteFotograficoModal = dynamic(() => import('@/components/reporte-fotografico-modal'), { ssr: false })
-const FormularioEjecucion = dynamic(() => import('@/components/formulario-ejecucion'), { ssr: false })
-import { RIESGO_NIVEL_LABELS } from '@/lib/constants'
-import { RIESGO_NIVEL_COLORS } from '@/lib/types'
+const ReporteFotograficoModal = dynamic(
+  () => import('@/components/reporte-fotografico-modal').then(m => m.ReporteFotograficoModal),
+  { ssr: false }
+)
+const FormularioEjecucion = dynamic(
+  () => import('@/components/formulario-ejecucion').then(m => m.FormularioEjecucion),
+  { ssr: false }
+)
 
 const MONTHS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 const MONTHS_FULL = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
@@ -104,7 +109,7 @@ interface FullRegistro extends RegistroGestion {
   aprobado_nombre?: string
 }
 
-interface GestionConJoin extends Omit<GestionEstablecimiento, 'gestiones'> {
+interface GestionConJoin extends Omit<GestionEstablecimiento, 'gestiones' | 'mostrar_lt'> {
   mostrar_lt?: boolean
   gestiones?: {
     id: string
