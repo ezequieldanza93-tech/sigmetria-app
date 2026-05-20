@@ -206,18 +206,13 @@ export function AppHeader({
                   )}
                 </div>
               ))}
-              {tipoLabel && (
-                <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium rounded bg-brand-muted text-brand-primary ml-0.5">
-                  {tipoLabel}
-                </span>
-              )}
             </nav>
             {contextAddress && (
               <p
                 className="text-xs text-text-tertiary mt-0.5"
                 style={{ fontFamily: 'Poppins, system-ui' }}
               >
-                {contextAddress}
+                {contextAddress}{tipoLabel ? ` — ${tipoLabel}` : ''}
               </p>
             )}
           </div>
