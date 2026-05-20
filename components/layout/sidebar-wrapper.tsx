@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Sidebar } from './sidebar'
 import { MobileMenuProvider } from './mobile-menu-context'
+import { PreviewProvider } from '@/lib/contexts/preview-context'
 
 interface SidebarWrapperProps {
   header: React.ReactNode
@@ -28,6 +29,7 @@ export function SidebarWrapper({ header, children, isSuperAdmin }: SidebarWrappe
 
   return (
     <MobileMenuProvider onOpen={() => setMobileOpen(true)}>
+    <PreviewProvider>
       <div className="flex min-h-screen bg-surface-base">
         <Sidebar
           mobileOpen={mobileOpen}
@@ -41,6 +43,7 @@ export function SidebarWrapper({ header, children, isSuperAdmin }: SidebarWrappe
           <main className="flex-1">{children}</main>
         </div>
       </div>
+    </PreviewProvider>
     </MobileMenuProvider>
   )
 }
