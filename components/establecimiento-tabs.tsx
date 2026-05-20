@@ -200,7 +200,7 @@ function TrabajadorSearchPicker({
                 onClick={() => assign(p.id)}
                 className="w-full text-left px-3 py-2 text-sm hover:bg-sig-50 transition-colors disabled:opacity-50"
               >
-                <span className="font-medium text-gray-800">{p.apellido}, {p.nombre}</span>
+                <span className="font-medium text-gray-800 dark:text-slate-100">{p.apellido}, {p.nombre}</span>
                 {p.dni && <span className="text-gray-400 text-xs ml-2">DNI {p.dni}</span>}
               </button>
             </li>
@@ -384,7 +384,7 @@ function PuestoRow({
       <div className="flex items-center gap-2 px-4 py-2.5">
         <button
           onClick={() => setOpen(v => !v)}
-          className="flex items-center gap-2 flex-1 text-left text-sm font-medium text-gray-800 hover:text-gray-900"
+          className="flex items-center gap-2 flex-1 text-left text-sm font-medium text-gray-800 dark:text-slate-100 hover:text-gray-900"
         >
           <svg className={`w-3.5 h-3.5 text-gray-400 transition-transform shrink-0 ${open ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
@@ -427,7 +427,7 @@ function PuestoRow({
             ) : personas.length === 0 && !showAddPersona ? (
               <p className="text-xs text-gray-400 py-1">Sin trabajadores en este puesto.</p>
             ) : (
-              <ul className="divide-y divide-gray-50">
+              <ul className="divide-y divide-gray-50 dark:divide-border-subtle">
                 {personas.map(ep => (
                   <li key={ep.id} className="flex items-center justify-between py-1.5 text-sm">
                     <button
@@ -477,7 +477,7 @@ function PuestoRow({
             ) : epp.length === 0 && !showAddEpp ? (
               <p className="text-xs text-gray-400 py-1">Sin EPP definido.</p>
             ) : (
-              <ul className="divide-y divide-gray-50">
+              <ul className="divide-y divide-gray-50 dark:divide-border-subtle">
                 {epp.map(e => (
                   <li key={e.id} className="flex items-center justify-between py-1.5 text-sm">
                     <span className="text-gray-800">
@@ -585,7 +585,7 @@ function SectorRow({
   const puestoAction = createPuesto.bind(null, sector.id, establecimientoId, empresaId)
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200">
+    <div className="bg-white dark:bg-surface-elevated rounded-xl border border-gray-200 dark:border-border-subtle">
       {/* Sector header */}
       <div className="flex items-center gap-3 px-5 py-3.5">
         <button
@@ -734,7 +734,7 @@ function SectoresTab({
     <div>
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="font-semibold text-gray-900">Sectores del Establecimiento</h3>
+          <h3 className="font-semibold text-gray-900 dark:text-slate-100">Sectores del Establecimiento</h3>
           {workerCounts !== null && (workerCounts.operativo > 0 || workerCounts.administrativo > 0) && (
             <p className="text-xs text-gray-500 mt-0.5">
               <span className="text-blue-600 font-medium">{workerCounts.operativo} operativo{workerCounts.operativo !== 1 ? 's' : ''}</span>
@@ -751,7 +751,7 @@ function SectoresTab({
       </div>
 
       {localSectores.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400 text-sm">
+        <div className="bg-white dark:bg-surface-elevated rounded-xl border border-gray-200 dark:border-border-subtle p-8 text-center text-gray-400 text-sm">
           No hay sectores registrados
         </div>
       ) : (
@@ -796,7 +796,7 @@ function AgregarPersonaStakeholderForm({
   useEffect(() => { if (state?.success) onSuccess() }, [state])
   return (
     <form action={formAction} className="bg-gray-50 rounded-lg p-4 space-y-3 border border-gray-200">
-      <p className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Nueva persona</p>
+      <p className="text-xs font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider">Nueva persona</p>
       <input type="hidden" name="establecimiento_id" value={establecimientoId} />
       <div className="grid grid-cols-2 gap-2">
         <input name="nombre" placeholder="Nombre *" required className="border border-gray-300 rounded px-2 py-1.5 text-sm" />
@@ -835,7 +835,7 @@ function AgregarOrgStakeholderForm({
   useEffect(() => { if (state?.success) onSuccess() }, [state])
   return (
     <form action={formAction} className="bg-gray-50 rounded-lg p-4 space-y-3 border border-gray-200">
-      <p className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Nueva organización externa</p>
+      <p className="text-xs font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider">Nueva organización externa</p>
       <input name="nombre" placeholder="Nombre *" required className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
       <select name="tipo_id" required className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm bg-white">
         <option value="">Tipo *</option>
@@ -918,13 +918,13 @@ function StakeholdersTab({
   return (
     <div className="space-y-4">
       {/* ── Personas ── */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white dark:bg-surface-elevated rounded-xl border border-gray-200 dark:border-border-subtle overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4">
           <button
             onClick={() => setPersonasOpen(o => !o)}
             className="flex items-center gap-3 hover:opacity-75 transition-opacity"
           >
-            <span className="font-semibold text-gray-900">Personas</span>
+            <span className="font-semibold text-gray-900 dark:text-slate-100">Personas</span>
             {personas !== null && (
               <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
                 {personas.length}
@@ -978,7 +978,7 @@ function StakeholdersTab({
               </div>
             ) : (
               <table className="w-full text-sm">
-                <thead className="border-b border-gray-100 bg-gray-50">
+                <thead className="border-b border-gray-100 dark:border-border-subtle bg-gray-50 dark:bg-surface-sunken">
                   <tr className="text-left">
                     <th className="px-5 py-3 text-gray-500 font-medium">Nombre</th>
                     <th className="px-5 py-3 text-gray-500 font-medium">DNI</th>
@@ -986,7 +986,7 @@ function StakeholdersTab({
                     <th className="px-5 py-3 text-gray-500 font-medium">Ingreso</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
+                <tbody className="divide-y divide-gray-50 dark:divide-border-subtle">
                   {filtered.map(p => (
                     <tr key={p.id} className="hover:bg-gray-50">
                       <td className="px-5 py-3.5">
@@ -1035,13 +1035,13 @@ function StakeholdersTab({
       </div>
 
       {/* ── Organizaciones Externas ── */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white dark:bg-surface-elevated rounded-xl border border-gray-200 dark:border-border-subtle overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4">
           <button
             onClick={() => setOrgsOpen(o => !o)}
             className="flex items-center gap-3 hover:opacity-75 transition-opacity"
           >
-            <span className="font-semibold text-gray-900">Organizaciones Externas</span>
+            <span className="font-semibold text-gray-900 dark:text-slate-100">Organizaciones Externas</span>
             {orgExternas !== null && (
               <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
                 {orgExternas.length}
@@ -1074,7 +1074,7 @@ function StakeholdersTab({
               </div>
             ) : (
               <table className="w-full text-sm">
-                <thead className="border-b border-gray-100 bg-gray-50">
+                <thead className="border-b border-gray-100 dark:border-border-subtle bg-gray-50 dark:bg-surface-sunken">
                   <tr className="text-left">
                     <th className="px-5 py-3 text-gray-500 font-medium">Nombre</th>
                     <th className="px-5 py-3 text-gray-500 font-medium">Tipo</th>
@@ -1082,10 +1082,10 @@ function StakeholdersTab({
                     <th className="px-5 py-3 text-gray-500 font-medium">Teléfono</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
+                <tbody className="divide-y divide-gray-50 dark:divide-border-subtle">
                   {orgExternas.map(o => (
                     <tr key={o.id} className="hover:bg-gray-50">
-                      <td className="px-5 py-3.5 font-medium text-gray-900">{o.nombre}</td>
+                      <td className="px-5 py-3.5 font-medium text-gray-900 dark:text-slate-100">{o.nombre}</td>
                       <td className="px-5 py-3.5">
                         <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
                           {o.organizaciones_tipos?.nombre ?? '—'}
@@ -1182,7 +1182,7 @@ function AsistenciaTab({
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-900">Asistencia del día</h3>
+        <h3 className="font-semibold text-gray-900 dark:text-slate-100">Asistencia del día</h3>
         {canWrite && !showForm && (
           <Button size="sm" onClick={() => setShowForm(true)}>+ Registrar</Button>
         )}
@@ -1191,7 +1191,7 @@ function AsistenciaTab({
       {showForm && (
         <form action={formAction} className="bg-gray-50 rounded-xl border border-gray-200 p-4 mb-4 space-y-3">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-gray-700">Nuevo registro de asistencia</p>
+            <p className="text-sm font-medium text-gray-700 dark:text-slate-200">Nuevo registro de asistencia</p>
             {horarioHoy && (
               <span className="text-xs text-gray-400">
                 Horario del establecimiento: {horarioHoy.inicio} – {horarioHoy.fin}
@@ -1240,15 +1240,15 @@ function AsistenciaTab({
       )}
 
       {registros === null ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400 text-sm">Cargando…</div>
+        <div className="bg-white dark:bg-surface-elevated rounded-xl border border-gray-200 dark:border-border-subtle p-8 text-center text-gray-400 text-sm">Cargando…</div>
       ) : registros.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400 text-sm">
+        <div className="bg-white dark:bg-surface-elevated rounded-xl border border-gray-200 dark:border-border-subtle p-8 text-center text-gray-400 text-sm">
           Sin registros para hoy.
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="bg-white dark:bg-surface-elevated rounded-xl border border-gray-200 dark:border-border-subtle overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="border-b border-gray-100 bg-gray-50">
+            <thead className="border-b border-gray-100 dark:border-border-subtle bg-gray-50 dark:bg-surface-sunken">
               <tr className="text-left">
                 <th className="px-5 py-3 text-gray-500 font-medium">Persona</th>
                 <th className="px-5 py-3 text-gray-500 font-medium">Fecha</th>
@@ -1256,10 +1256,10 @@ function AsistenciaTab({
                 <th className="px-5 py-3 text-gray-500 font-medium">Salida</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-gray-50 dark:divide-border-subtle">
               {registros.map(r => (
                 <tr key={r.id} className="hover:bg-gray-50">
-                  <td className="px-5 py-3.5 font-medium text-gray-900">
+                  <td className="px-5 py-3.5 font-medium text-gray-900 dark:text-slate-100">
                     {r.personas_directorio ? `${r.personas_directorio.apellido}, ${r.personas_directorio.nombre}` : '—'}
                   </td>
                   <td className="px-5 py-3.5 text-gray-500">{formatDate(r.fecha)}</td>
@@ -1293,20 +1293,20 @@ function SiniestrosTab({
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-900">Siniestros Registrados</h3>
+        <h3 className="font-semibold text-gray-900 dark:text-slate-100">Siniestros Registrados</h3>
         {canWrite && (
           <Button size="sm" onClick={() => setShowModal(true)}>+ Nuevo Siniestro</Button>
         )}
       </div>
 
       {!siniestros.length ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400">
+        <div className="bg-white dark:bg-surface-elevated rounded-xl border border-gray-200 dark:border-border-subtle p-8 text-center text-gray-400">
           No hay siniestros registrados
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="bg-white dark:bg-surface-elevated rounded-xl border border-gray-200 dark:border-border-subtle overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="border-b border-gray-100 bg-gray-50">
+            <thead className="border-b border-gray-100 dark:border-border-subtle bg-gray-50 dark:bg-surface-sunken">
               <tr className="text-left">
                 <th className="px-5 py-3 text-gray-500 font-medium">Tipo</th>
                 <th className="px-5 py-3 text-gray-500 font-medium">Fecha</th>
@@ -1315,10 +1315,10 @@ function SiniestrosTab({
                 <th className="px-5 py-3 text-gray-500 font-medium">Derivación</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-gray-50 dark:divide-border-subtle">
               {siniestros.map(s => (
                 <tr key={s.id} className="hover:bg-gray-50">
-                  <td className="px-5 py-3.5 font-medium text-gray-900">
+                  <td className="px-5 py-3.5 font-medium text-gray-900 dark:text-slate-100">
                     {SINIESTRO_TIPO_LABELS[s.tipo]}
                   </td>
                   <td className="px-5 py-3.5 text-gray-500">{formatDate(s.fecha_ocurrencia)}</td>
@@ -1369,20 +1369,20 @@ function InspeccionesTab({
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-900">Inspecciones</h3>
+        <h3 className="font-semibold text-gray-900 dark:text-slate-100">Inspecciones</h3>
         {canWrite && (
           <Button size="sm" onClick={() => setShowModal(true)}>+ Nueva Inspección</Button>
         )}
       </div>
 
       {!inspecciones.length ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400">
+        <div className="bg-white dark:bg-surface-elevated rounded-xl border border-gray-200 dark:border-border-subtle p-8 text-center text-gray-400">
           No hay inspecciones registradas
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="bg-white dark:bg-surface-elevated rounded-xl border border-gray-200 dark:border-border-subtle overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="border-b border-gray-100 bg-gray-50">
+            <thead className="border-b border-gray-100 dark:border-border-subtle bg-gray-50 dark:bg-surface-sunken">
               <tr className="text-left">
                 <th className="px-5 py-3 text-gray-500 font-medium">F. Programada</th>
                 <th className="px-5 py-3 text-gray-500 font-medium">F. Realizada</th>
@@ -1391,10 +1391,10 @@ function InspeccionesTab({
                 <th className="px-5 py-3 text-gray-500 font-medium">Observaciones</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-gray-50 dark:divide-border-subtle">
               {inspecciones.map(i => (
                 <tr key={i.id} className="hover:bg-gray-50">
-                  <td className="px-5 py-3.5 text-gray-900">{formatDate(i.fecha_programada)}</td>
+                  <td className="px-5 py-3.5 text-gray-900 dark:text-slate-100">{formatDate(i.fecha_programada)}</td>
                   <td className="px-5 py-3.5 text-gray-500">{formatDate(i.fecha_realizada)}</td>
                   <td className="px-5 py-3.5">
                     <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${INSPECCION_ESTADO_COLORS[i.estado as InspeccionEstado]}`}>
@@ -1458,14 +1458,14 @@ function RiesgosTab({
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-900">Riesgos Identificados</h3>
+        <h3 className="font-semibold text-gray-900 dark:text-slate-100">Riesgos Identificados</h3>
         {canWrite && (
           <Button size="sm" onClick={() => setShowModal(true)}>+ Nuevo Riesgo</Button>
         )}
       </div>
 
       {!riesgos.length ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400">
+        <div className="bg-white dark:bg-surface-elevated rounded-xl border border-gray-200 dark:border-border-subtle p-8 text-center text-gray-400">
           No hay riesgos registrados
         </div>
       ) : (
@@ -1478,9 +1478,9 @@ function RiesgosTab({
                 <h4 className="text-sm font-semibold text-gray-600 mb-2 uppercase tracking-wider">
                   {RIESGO_NIVEL_LABELS[nivel]}
                 </h4>
-                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <div className="bg-white dark:bg-surface-elevated rounded-xl border border-gray-200 dark:border-border-subtle overflow-hidden">
                   <table className="w-full text-sm">
-                    <tbody className="divide-y divide-gray-50">
+                    <tbody className="divide-y divide-gray-50 dark:divide-border-subtle">
                       {items.map(r => (
                         <tr key={r.id} className="hover:bg-gray-50">
                           <td className="px-5 py-3.5">
@@ -1489,7 +1489,7 @@ function RiesgosTab({
                                 {RIESGO_NIVEL_LABELS[r.nivel as RiesgoNivel]}
                               </span>
                               <div>
-                                <p className="text-gray-900 font-medium">{r.descripcion}</p>
+                                <p className="text-gray-900 dark:text-slate-100 font-medium">{r.descripcion}</p>
                                 {r.medida_correctiva && (
                                   <p className="text-gray-500 text-xs mt-0.5">Correctiva: {r.medida_correctiva}</p>
                                 )}
@@ -1525,9 +1525,9 @@ function RiesgosTab({
               <summary className="text-sm text-gray-500 cursor-pointer hover:text-gray-700">
                 Ver resueltos ({riesgos.filter(r => r.resuelto).length})
               </summary>
-              <div className="mt-2 bg-white rounded-xl border border-gray-200 overflow-hidden opacity-60">
+              <div className="mt-2 bg-white dark:bg-surface-elevated rounded-xl border border-gray-200 dark:border-border-subtle overflow-hidden opacity-60">
                 <table className="w-full text-sm">
-                  <tbody className="divide-y divide-gray-50">
+                  <tbody className="divide-y divide-gray-50 dark:divide-border-subtle">
                     {riesgos.filter(r => r.resuelto).map(r => (
                       <tr key={r.id}>
                         <td className="px-5 py-3.5 text-gray-500 line-through">{r.descripcion}</td>
@@ -1580,32 +1580,32 @@ function DocumentosTab({
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-900">Documentación</h3>
+        <h3 className="font-semibold text-gray-900 dark:text-slate-100 dark:text-slate-100">Documentación</h3>
         {canWrite && (
           <Button size="sm" onClick={() => setShowModal(true)}>+ Agregar Documento</Button>
         )}
       </div>
 
       {!documentos.length ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400">
+        <div className="bg-white dark:bg-surface-elevated rounded-xl border border-gray-200 dark:border-border-subtle p-8 text-center text-gray-400 dark:text-slate-400">
           No hay documentos cargados
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="bg-white dark:bg-surface-elevated rounded-xl border border-gray-200 dark:border-border-subtle overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="border-b border-gray-100 bg-gray-50">
+            <thead className="border-b border-gray-100 dark:border-border-subtle bg-gray-50 dark:bg-surface-sunken">
               <tr className="text-left">
-                <th className="px-5 py-3 text-gray-500 font-medium">Tipo</th>
-                <th className="px-5 py-3 text-gray-500 font-medium">Vencimiento</th>
-                <th className="px-5 py-3 text-gray-500 font-medium">Archivo</th>
+                <th className="px-5 py-3 text-gray-500 dark:text-slate-300 font-medium">Tipo</th>
+                <th className="px-5 py-3 text-gray-500 dark:text-slate-300 font-medium">Vencimiento</th>
+                <th className="px-5 py-3 text-gray-500 dark:text-slate-300 font-medium">Archivo</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-gray-50 dark:divide-border-subtle dark:divide-border-subtle">
               {documentos.map(d => {
                 const typeName = d.documentos_tipos?.nombre ?? '—'
                 return (
                   <tr key={d.id} className="hover:bg-gray-50">
-                    <td className="px-5 py-3.5 font-medium text-gray-900">{typeName}</td>
+                    <td className="px-5 py-3.5 font-medium text-gray-900 dark:text-slate-100">{typeName}</td>
                     <td className={`px-5 py-3.5 ${vencimientoClass(d.fecha_vencimiento)}`}>
                       {d.fecha_vencimiento ? formatDate(d.fecha_vencimiento) : '—'}
                     </td>
@@ -1685,7 +1685,7 @@ function AddGestionTree({
             <div key={grupoNombre}>
               <button
                 onClick={() => toggleGrupo(grupoNombre)}
-                className="flex items-center gap-2 w-full text-left px-2 py-1.5 text-xs font-semibold text-gray-700 hover:bg-white rounded-lg transition-colors"
+                className="flex items-center gap-2 w-full text-left px-2 py-1.5 text-xs font-semibold text-gray-700 dark:text-slate-200 hover:bg-white rounded-lg transition-colors"
               >
                 <svg className={`w-3 h-3 text-gray-400 transition-transform shrink-0 ${isOpen ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
@@ -1844,7 +1844,7 @@ function GestionesTab({ establecimientoId, canWrite }: { establecimientoId: stri
         {activeSection === 'planificar' && (
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-gray-700">Gestiones del Establecimiento</h3>
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-slate-200">Gestiones del Establecimiento</h3>
               {canWrite && (
                 <button onClick={() => setShowAddGestion(v => !v)} className="text-xs text-sig-500 hover:text-sig-700 font-medium">
                   {showAddGestion ? 'Cancelar' : '+ Agregar gestión'}
@@ -1947,7 +1947,7 @@ function GestionesTab({ establecimientoId, canWrite }: { establecimientoId: stri
 
         {activeSection === 'hacer' && (
           <div>
-            <h3 className="text-sm font-semibold text-gray-700 mb-4">Ejecución de Gestiones</h3>
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-slate-200 mb-4">Ejecución de Gestiones</h3>
             {registros === null ? (
               <p className="text-sm text-gray-400">Cargando…</p>
             ) : (
@@ -2027,7 +2027,7 @@ function GestionesTab({ establecimientoId, canWrite }: { establecimientoId: stri
 
         {activeSection === 'actuar' && (
           <div>
-            <h3 className="text-sm font-semibold text-gray-700 mb-4">Observaciones — Seguimiento y Cierre</h3>
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-slate-200 mb-4">Observaciones — Seguimiento y Cierre</h3>
             {observaciones === null ? (
               <p className="text-sm text-gray-400">Cargando…</p>
             ) : observaciones.length === 0 ? (
@@ -2043,7 +2043,7 @@ function GestionesTab({ establecimientoId, canWrite }: { establecimientoId: stri
                     <div key={obs.id} className="bg-white border border-gray-200 rounded-xl p-4">
                       <div className="flex items-start justify-between">
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm text-gray-900">{obs.descripcion}</p>
+                          <p className="text-sm text-gray-900 dark:text-slate-100">{obs.descripcion}</p>
                           <p className="text-xs text-gray-400 mt-0.5">Planificado: {obs.fecha_planificada}</p>
                           {obs.personas_directorio && (
                             <p className="text-xs text-gray-400">Responsable: {obs.personas_directorio.apellido}</p>
@@ -2206,30 +2206,30 @@ function DenunciasTab({
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-900">Denuncias</h3>
+        <h3 className="font-semibold text-gray-900 dark:text-slate-100">Denuncias</h3>
         {canWrite && (
           <Button size="sm" onClick={() => setShowModal(true)}>+ Nueva Denuncia</Button>
         )}
       </div>
 
       {!denuncias.length ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400">
+        <div className="bg-white dark:bg-surface-elevated rounded-xl border border-gray-200 dark:border-border-subtle p-8 text-center text-gray-400">
           No hay denuncias registradas
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="bg-white dark:bg-surface-elevated rounded-xl border border-gray-200 dark:border-border-subtle overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="border-b border-gray-100 bg-gray-50">
+            <thead className="border-b border-gray-100 dark:border-border-subtle bg-gray-50 dark:bg-surface-sunken">
               <tr className="text-left">
                 <th className="px-5 py-3 text-gray-500 font-medium">Fecha</th>
                 <th className="px-5 py-3 text-gray-500 font-medium">Descripción</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-gray-50 dark:divide-border-subtle">
               {denuncias.map(d => (
                 <tr key={d.id} className="hover:bg-gray-50">
                   <td className="px-5 py-3.5 text-gray-500 whitespace-nowrap">{formatDate(d.fecha)}</td>
-                  <td className="px-5 py-3.5 text-gray-900">{d.descripcion}</td>
+                  <td className="px-5 py-3.5 text-gray-900 dark:text-slate-100">{d.descripcion}</td>
                 </tr>
               ))}
             </tbody>
@@ -2269,12 +2269,12 @@ function DenunciaForm({
       )}
 
       <div>
-        <label className="text-sm font-medium text-gray-700 block mb-1">Fecha *</label>
+        <label className="text-sm font-medium text-gray-700 dark:text-slate-200 block mb-1">Fecha *</label>
         <input type="date" name="fecha" required defaultValue={new Date().toISOString().split('T')[0]} className={inputCls} />
       </div>
 
       <div>
-        <label className="text-sm font-medium text-gray-700 block mb-1">Descripción *</label>
+        <label className="text-sm font-medium text-gray-700 dark:text-slate-200 block mb-1">Descripción *</label>
         <textarea name="descripcion" required rows={3} className={`${inputCls} resize-none`} />
       </div>
 
@@ -2301,20 +2301,20 @@ function FeedbackTab({
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-900">Feedback de Clientes</h3>
+        <h3 className="font-semibold text-gray-900 dark:text-slate-100">Feedback de Clientes</h3>
         {canWrite && (
           <Button size="sm" onClick={() => setShowModal(true)}>+ Nuevo Feedback</Button>
         )}
       </div>
 
       {!feedbackClientes.length ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400">
+        <div className="bg-white dark:bg-surface-elevated rounded-xl border border-gray-200 dark:border-border-subtle p-8 text-center text-gray-400">
           No hay feedback registrado
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="bg-white dark:bg-surface-elevated rounded-xl border border-gray-200 dark:border-border-subtle overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="border-b border-gray-100 bg-gray-50">
+            <thead className="border-b border-gray-100 dark:border-border-subtle bg-gray-50 dark:bg-surface-sunken">
               <tr className="text-left">
                 <th className="px-5 py-3 text-gray-500 font-medium">Fecha</th>
                 <th className="px-5 py-3 text-gray-500 font-medium">Cliente</th>
@@ -2322,17 +2322,17 @@ function FeedbackTab({
                 <th className="px-5 py-3 text-gray-500 font-medium">Descripción</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-gray-50 dark:divide-border-subtle">
               {feedbackClientes.map(f => (
                 <tr key={f.id} className="hover:bg-gray-50">
                   <td className="px-5 py-3.5 text-gray-500 whitespace-nowrap">{formatDate(f.fecha)}</td>
-                  <td className="px-5 py-3.5 font-medium text-gray-900">{f.cliente}</td>
+                  <td className="px-5 py-3.5 font-medium text-gray-900 dark:text-slate-100">{f.cliente}</td>
                   <td className="px-5 py-3.5">
                     <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${FEEDBACK_TIPO_COLORS[f.tipo]}`}>
                       {FEEDBACK_TIPO_LABELS[f.tipo]}
                     </span>
                   </td>
-                  <td className="px-5 py-3.5 text-gray-900">{f.descripcion}</td>
+                  <td className="px-5 py-3.5 text-gray-900 dark:text-slate-100">{f.descripcion}</td>
                 </tr>
               ))}
             </tbody>
@@ -2372,17 +2372,17 @@ function FeedbackForm({
       )}
 
       <div>
-        <label className="text-sm font-medium text-gray-700 block mb-1">Fecha *</label>
+        <label className="text-sm font-medium text-gray-700 dark:text-slate-200 block mb-1">Fecha *</label>
         <input type="date" name="fecha" required defaultValue={new Date().toISOString().split('T')[0]} className={inputCls} />
       </div>
 
       <div>
-        <label className="text-sm font-medium text-gray-700 block mb-1">Cliente *</label>
+        <label className="text-sm font-medium text-gray-700 dark:text-slate-200 block mb-1">Cliente *</label>
         <input type="text" name="cliente" required placeholder="Nombre del cliente" className={inputCls} />
       </div>
 
       <div>
-        <label className="text-sm font-medium text-gray-700 block mb-1">Tipo *</label>
+        <label className="text-sm font-medium text-gray-700 dark:text-slate-200 block mb-1">Tipo *</label>
         <select name="tipo" required className={inputCls}>
           <option value="positivo">Positivo</option>
           <option value="negativo">Negativo</option>
@@ -2391,7 +2391,7 @@ function FeedbackForm({
       </div>
 
       <div>
-        <label className="text-sm font-medium text-gray-700 block mb-1">Descripción *</label>
+        <label className="text-sm font-medium text-gray-700 dark:text-slate-200 block mb-1">Descripción *</label>
         <textarea name="descripcion" required rows={3} className={`${inputCls} resize-none`} />
       </div>
 
@@ -2437,17 +2437,17 @@ function LegajoTab({
       <p className="text-xs text-gray-400 px-1 py-2">Sin documentos cargados.</p>
     ) : (
       <table className="w-full text-sm">
-        <thead className="border-b border-gray-100 bg-gray-50">
+        <thead className="border-b border-gray-100 dark:border-border-subtle bg-gray-50 dark:bg-surface-sunken">
           <tr className="text-left">
             <th className="px-4 py-2.5 text-gray-500 font-medium text-xs">Tipo</th>
             <th className="px-4 py-2.5 text-gray-500 font-medium text-xs">Vencimiento</th>
             <th className="px-4 py-2.5 text-gray-500 font-medium text-xs">Archivo</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-50">
+        <tbody className="divide-y divide-gray-50 dark:divide-border-subtle">
           {rows.map(r => (
             <tr key={r.id} className="hover:bg-gray-50">
-              <td className="px-4 py-3 font-medium text-gray-900 text-sm">{r.tipo}</td>
+              <td className="px-4 py-3 font-medium text-gray-900 dark:text-slate-100 text-sm">{r.tipo}</td>
               <td className={`px-4 py-3 text-xs ${vencimientoClass(r.vencimiento)}`}>{vencimientoLabel(r.vencimiento)}</td>
               <td className="px-4 py-3">
                 {r.url ? (
@@ -2463,10 +2463,10 @@ function LegajoTab({
     )
 
   const seccion = (titulo: string, badge: number, children: React.ReactNode) => (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      <div className="flex items-center gap-2 px-5 py-3.5 border-b border-gray-100 bg-gray-50">
-        <h4 className="text-sm font-semibold text-gray-800">{titulo}</h4>
-        <span className="text-xs text-gray-400 bg-gray-100 rounded-full px-2 py-0.5">{badge}</span>
+    <div className="bg-white dark:bg-surface-elevated rounded-xl border border-gray-200 dark:border-border-subtle overflow-hidden">
+      <div className="flex items-center gap-2 px-5 py-3.5 border-b border-gray-100 dark:border-border-subtle bg-gray-50 dark:bg-surface-sunken">
+        <h4 className="text-sm font-semibold text-gray-800 dark:text-slate-100">{titulo}</h4>
+        <span className="text-xs text-gray-400 dark:text-slate-300 bg-gray-100 dark:bg-surface-base rounded-full px-2 py-0.5">{badge}</span>
       </div>
       {children}
     </div>
@@ -2504,20 +2504,20 @@ function LegajoTab({
           <p className="text-xs text-gray-400 px-5 py-3">Sin gestiones pendientes próximas.</p>
         ) : (
           <table className="w-full text-sm">
-            <thead className="border-b border-gray-100 bg-gray-50">
+            <thead className="border-b border-gray-100 dark:border-border-subtle bg-gray-50 dark:bg-surface-sunken">
               <tr className="text-left">
                 <th className="px-4 py-2.5 text-gray-500 font-medium text-xs">Categoría</th>
                 <th className="px-4 py-2.5 text-gray-500 font-medium text-xs">Gestión</th>
                 <th className="px-4 py-2.5 text-gray-500 font-medium text-xs">Fecha planificada</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-gray-50 dark:divide-border-subtle">
               {gestionesLegajo.map(g => {
                 const gestion = g.gestiones_establecimientos?.gestiones
                 return (
                   <tr key={g.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 text-xs text-gray-500">{gestion?.gestiones_categorias?.nombre ?? '—'}</td>
-                    <td className="px-4 py-3 font-medium text-gray-900 text-sm">{gestion?.nombre ?? '—'}</td>
+                    <td className="px-4 py-3 font-medium text-gray-900 dark:text-slate-100 text-sm">{gestion?.nombre ?? '—'}</td>
                     <td className="px-4 py-3 text-xs text-gray-500">{formatDate(g.fecha_planificada)}</td>
                   </tr>
                 )
@@ -2586,7 +2586,7 @@ export function EstablecimientoTabs({
 
   return (
     <div>
-      <div className="border-b border-gray-200 mb-6">
+      <div className="border-b border-gray-200 dark:border-border-subtle mb-6">
         <div className="flex gap-1 overflow-x-auto">
           {TABS.map(tab => (
             <button
@@ -2595,7 +2595,7 @@ export function EstablecimientoTabs({
               className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap rounded-t-lg transition-colors -mb-px border-b-2 ${
                 tab.id === active
                   ? 'border-sig-500 text-sig-500'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  : 'border-transparent text-gray-500 dark:text-slate-300 hover:text-gray-700 dark:hover:text-slate-100 hover:border-gray-300 dark:hover:border-slate-500'
               }`}
             >
               {tab.label}
