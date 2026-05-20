@@ -35,6 +35,7 @@ export function Sidebar({ mobileOpen, onMobileClose, onCollapsedChange, isSuperA
   const [collapsed, setCollapsed] = useState(false)
   const [empresas, setEmpresas] = useState<EmpresaTree[]>([])
   const [expandedEmpresa, setExpandedEmpresa] = useState<string | null>(null)
+  const [empresasHovered, setEmpresasHovered] = useState(false)
 
   useEffect(() => {
     const stored = localStorage.getItem('sigmetria.sidebar.collapsed')
@@ -91,6 +92,7 @@ export function Sidebar({ mobileOpen, onMobileClose, onCollapsedChange, isSuperA
 
   const activeEmpresaId = pathname.match(/\/dashboard\/empresas\/([^/]+)/)?.[1]
   const activeEstId = pathname.match(/\/dashboard\/empresas\/[^/]+\/establecimientos\/([^/]+)/)?.[1]
+  const showEmpresasTree = !activeEstId || empresasHovered
 
   return (
     <>
@@ -153,7 +155,10 @@ export function Sidebar({ mobileOpen, onMobileClose, onCollapsedChange, isSuperA
         <nav className="flex-1 overflow-y-auto overflow-x-hidden py-3 px-2">
           <ul className="space-y-0.5">
             {/* Empresas tree */}
-            <li>
+            <li
+              onMouseEnter={() => setEmpresasHovered(true)}
+              onMouseLeave={() => setEmpresasHovered(false)}
+            >
               {collapsed ? (
                 <Link
                   href="/dashboard/empresas"
@@ -180,9 +185,12 @@ export function Sidebar({ mobileOpen, onMobileClose, onCollapsedChange, isSuperA
                   >
                     <Building2 size={18} strokeWidth={1.75} className="text-text-tertiary shrink-0" />
                     <span className="sidebar-label-transition truncate">Empresas</span>
+                    {activeEstId && !empresasHovered && (
+                      <ChevronRight size={13} strokeWidth={2} className="ml-auto text-text-tertiary shrink-0" />
+                    )}
                   </Link>
 
-                  {empresas.map(emp => (
+                  {showEmpresasTree && empresas.map(emp => (
                     <div key={emp.id}>
                       <button
                         onClick={() => setExpandedEmpresa(expandedEmpresa === emp.id ? null : emp.id)}
