@@ -3,6 +3,7 @@ import { Poppins, Montserrat } from 'next/font/google'
 import { DevErrorBoundary } from '@/components/dev-error-boundary'
 import { ThemeProvider } from '@/components/theme-provider'
 import { QueryProvider } from '@/components/query-provider'
+import { ErrorCapture } from '@/components/error-capture'
 import './globals.css'
 
 const poppins = Poppins({
@@ -33,6 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <DevErrorBoundary>{children}</DevErrorBoundary>
           </ThemeProvider>
         </QueryProvider>
+        <ErrorCapture />
       </body>
     </html>
   )
