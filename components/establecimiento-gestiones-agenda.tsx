@@ -1,10 +1,12 @@
 'use client'
 
-import { useState, useEffect, useActionState, useTransition, useRef, Fragment, memo, type FormEvent } from 'react'
+import { useState, useEffect, useActionState, useTransition, useRef, Fragment, memo, useMemo, type FormEvent } from 'react'
+import { useQueryClient, useQuery } from '@tanstack/react-query'
 
 import { createClient } from '@/lib/supabase/client'
-import { calcularEstadoGestion, canWrite } from '@/lib/types'
-import type { EstadoGestion, Gestion, CategoriaGestion, GrupoGestion, GestionEstablecimiento, RegistroGestion, Riesgo, UserRole, SystemRole } from '@/lib/types'
+import { useCanWrite, useGestionesEstablecimiento, useRegistrosGestion, useCatalogo } from '@/lib/queries/agenda'
+import { calcularEstadoGestion } from '@/lib/types'
+import type { EstadoGestion, Gestion, CategoriaGestion, GrupoGestion, GestionEstablecimiento, RegistroGestion, Riesgo } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { MultiFilter } from '@/components/ui/multi-filter'
@@ -82,18 +84,6 @@ const ROW_BG_COLORS: Record<EstadoGestion, string> = {
   Planificado: 'bg-sky-100 hover:bg-sky-200',
 }
 
-function _diffDays(a: string, b: string): number {
-  const [ay, am, ad] = a.split('-').map(Number)
-  const [by, bm, bd] = b.split('-').map(Number)
-  return Math.round(
-    (new Date(ay, am - 1, ad).getTime() - new Date(by, bm - 1, bd).getTime()) / 86400000
-  )
-}
-
-function todayYMD() {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
 
 interface FullRegistro extends RegistroGestion {
   ge_gestion_nombre?: string
@@ -777,32 +767,13 @@ function EjecucionModal({
 }
 
 
-function useCanWrite(): boolean {
-  const [allowed, setAllowed] = useState(false)
-  useEffect(() => {
-    let cancelled = false
-    const supabase = createClient()
-    ;(async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user || cancelled) return
-      const [membership, profile] = await Promise.all([
-        supabase.from('consultoras_members').select('role').eq('user_id', user.id).eq('is_active', true).maybeSingle(),
-        supabase.from('profiles').select('system_role').eq('id', user.id).single(),
-      ])
-      if (cancelled) return
-      const role = membership.data?.role as UserRole | null ?? null
-      const systemRole = (profile.data?.system_role ?? 'user') as SystemRole
-      setAllowed(canWrite(role, systemRole))
-    })()
-    return () => { cancelled = true }
-  }, [])
-  return allowed
-}
+
 
 // ─── Main component ────────────────────────────────────────────────────────────
 export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, riesgos: _riesgos }: GestionesAgendaProps) {
-  const clientCanWrite = useCanWrite()
-  const canWrite = canWriteProp || clientCanWrite
+  const queryClient = useQueryClient()
+  const { data: canWriteData } = useCanWrite(establecimientoId)
+  const canWrite = canWriteProp || canWriteData ?? false
   const currentYear = new Date().getFullYear()
   const [year, setYear] = useState(currentYear)
 
@@ -820,13 +791,8 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
   const [filterGrupo, setFilterGrupo] = useState<Set<string> | null>(null)
   const [filterResponsable, setFilterResponsable] = useState<Set<string> | null>(null)
   const [orderByCategoria, setOrderByCategoria] = useState(false)
-  const [registros, setRegistros] = useState<FullRegistro[] | null>(null)
-  const [todasGestiones, setTodasGestiones] = useState<Gestion[]>([])
-  const [grupos, setGrupos] = useState<GrupoGestion[]>([])
-  const [categorias, setCategorias] = useState<CategoriaGestion[]>([])
   const [editingRegistro, setEditingRegistro] = useState<FullRegistro | null>(null)
   const [executingFormulario, setExecutingFormulario] = useState<FullRegistro | null>(null)
-  const [refreshKey, setRefreshKey] = useState(0)
   const [showPlanificarModal, setShowPlanificarModal] = useState(false)
   const [showReporteModal, setShowReporteModal] = useState(false)
 
@@ -873,88 +839,69 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
     document.addEventListener('mouseup', onUp)
   }
 
-  function loadRegistros() {
-    const supabase = createClient()
-    supabase
-      .from('gestiones_establecimientos')
-      .select('id, mostrar_lt, gestiones!inner(id, nombre, gestiones_categorias(nombre, gestiones_grupos(nombre)))')
-      .eq('establecimiento_id', establecimientoId)
-      .then(async ({ data: geData, error: geError }) => {
-        if (geError) console.error('[GestionesAgenda] gestion_establecimiento:', geError.message)
-        const ges = (geData ?? []) as unknown as GestionConJoin[]
-        const geIds = ges.map(ge => ge.id)
-        if (geIds.length === 0) { setRegistros([]); return }
-        const geMap = new Map<string, GestionConJoin>()
-        for (const ge of ges) geMap.set(ge.id, ge)
+  const { data: gestionesEst = [] } = useGestionesEstablecimiento(establecimientoId, year)
+  const geIds = gestionesEst?.map(g => g.id) ?? []
+  const { data: rawRegistros } = useRegistrosGestion(geIds.length > 0 ? geIds : undefined, year)
+  const { data: catalogo } = useCatalogo()
 
-        const gestionIds = ges.map(ge => ge.gestiones?.id).filter(Boolean) as string[]
+  const todasGestiones = (catalogo?.gestiones ?? []) as Gestion[]
+  const grupos = (catalogo?.grupos ?? []) as GrupoGestion[]
+  const categorias = (catalogo?.categorias ?? []) as CategoriaGestion[]
 
-        const [regResult, seccionesResult] = await Promise.all([
-          supabase
-            .from('gestiones_registros')
-            .select('id, gestion_establecimiento_id, fecha_planificada, fecha_ejecutada, responsable_id, index, evidencia_url, created_at, responsable:personas_directorio!responsable_id(nombre, apellido), aprobado_por:personas_directorio!aprobado_por_id(nombre, apellido)')
-            .in('gestion_establecimiento_id', geIds)
-            .gte('fecha_planificada', `${year}-01-01`)
-            .lte('fecha_planificada', `${year}-12-31`)
-            .order('fecha_planificada'),
-          supabase
-            .from('formularios_secciones')
-            .select('gestion_id')
-            .in('gestion_id', gestionIds),
-        ])
+  const { data: gestionesConForm } = useQuery({
+    queryKey: ['formularios-secciones', geIds],
+    queryFn: async () => {
+      const supabase = createClient()
+      const gestionIds = gestionesEst
+        .map(ge => (ge as any).gestiones?.id)
+        .filter(Boolean) as string[]
+      if (gestionIds.length === 0) return new Set<string>()
+      const { data } = await supabase
+        .from('formularios_secciones')
+        .select('gestion_id')
+        .in('gestion_id', gestionIds)
+      return new Set((data ?? []).map(s => s.gestion_id))
+    },
+    enabled: geIds.length > 0,
+  })
 
-        const { data: regData, error } = regResult
-        if (error) console.error('[GestionesAgenda] registros:', error.message)
-        type RegRaw = RegistroGestion & {
-          responsable: { nombre: string; apellido: string } | null
-          aprobado_por: { nombre: string; apellido: string } | null
-        }
+  const geMap = useMemo(() => {
+    const map = new Map<string, any>()
+    for (const ge of gestionesEst) map.set(ge.id, ge)
+    return map
+  }, [gestionesEst])
 
-        const gestionesConForm = new Set((seccionesResult.data ?? []).map(s => s.gestion_id))
+  const registros: FullRegistro[] | null = useMemo(() => {
+    if (rawRegistros === undefined) return null
+    if (rawRegistros.length === 0) return []
 
-        const full: FullRegistro[] = ((regData ?? []) as unknown as RegRaw[]).map(r => {
-          const ge = geMap.get(r.gestion_establecimiento_id)
-          return {
-            ...r,
-            ge_id: ge?.id,
-            ge_gestion_id: ge?.gestiones?.id,
-            ge_tiene_formulario: ge?.gestiones?.id ? gestionesConForm.has(ge.gestiones.id) : false,
-            ge_mostrar_lt: ge?.mostrar_lt ?? false,
-            ge_gestion_nombre: ge?.gestiones?.nombre,
-            ge_categoria_nombre: ge?.gestiones?.gestiones_categorias?.nombre,
-            ge_grupo_nombre: ge?.gestiones?.gestiones_categorias?.gestiones_grupos?.nombre,
-            responsable_nombre: r.responsable
-              ? `${r.responsable.nombre} ${r.responsable.apellido}`
-              : undefined,
-            aprobado_nombre: r.aprobado_por
-              ? `${r.aprobado_por.nombre} ${r.aprobado_por.apellido}`
-              : undefined,
-          }
-        })
-        setRegistros(full)
-      })
-  }
+    type RegRaw = RegistroGestion & {
+      responsable: { nombre: string; apellido: string } | null
+      aprobado_por: { nombre: string; apellido: string } | null
+    }
 
-  function loadCatalogo() {
-    const supabase = createClient()
-    Promise.all([
-      supabase.from('gestiones').select('id, nombre, categoria_id, aplica_por_iso, gestiones_categorias(id, nombre, gestiones_grupos(nombre))').order('nombre'),
-      supabase.from('gestiones_grupos').select('id, nombre').order('nombre'),
-      supabase.from('gestiones_categorias').select('id, nombre, grupo_id').order('nombre'),
-    ]).then(([gesRes, grpRes, catRes]) => {
-      if (gesRes.data) setTodasGestiones(gesRes.data as unknown as Gestion[])
-      if (grpRes.data) setGrupos(grpRes.data as unknown as GrupoGestion[])
-      if (catRes.data) setCategorias(catRes.data as unknown as CategoriaGestion[])
+    const formSet = gestionesConForm ?? new Set<string>()
+
+    return (rawRegistros as unknown as RegRaw[]).map(r => {
+      const ge = geMap.get(r.gestion_establecimiento_id)
+      return {
+        ...r,
+        ge_id: ge?.id,
+        ge_gestion_id: ge?.gestiones?.id,
+        ge_tiene_formulario: ge?.gestiones?.id ? formSet.has(ge.gestiones.id) : false,
+        ge_mostrar_lt: ge?.mostrar_lt ?? false,
+        ge_gestion_nombre: ge?.gestiones?.nombre,
+        ge_categoria_nombre: ge?.gestiones?.gestiones_categorias?.nombre,
+        ge_grupo_nombre: ge?.gestiones?.gestiones_categorias?.gestiones_grupos?.nombre,
+        responsable_nombre: r.responsable
+          ? `${r.responsable.nombre} ${r.responsable.apellido}`
+          : undefined,
+        aprobado_nombre: r.aprobado_por
+          ? `${r.aprobado_por.nombre} ${r.aprobado_por.apellido}`
+          : undefined,
+      } as FullRegistro
     })
-  }
-
-  useEffect(() => {
-    loadRegistros()
-  }, [establecimientoId, year, refreshKey])
-
-  useEffect(() => {
-    if (establecimientoId) loadCatalogo()
-  }, [establecimientoId])
+  }, [rawRegistros, geMap, gestionesConForm])
 
   // ── Filtering & sorting ─────────────────────────────────────────────────────
   const monthCounts = MONTHS.map((_, i) => {
@@ -1005,13 +952,6 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
       })).filter(g => g.regs.length > 0)
     : []
 
-  const _activeMonthLabel =
-    selectedMonths.size === 12 ? null
-    : selectedMonths.size === 1 ? MONTHS[Array.from(selectedMonths)[0]]
-    : `${selectedMonths.size} meses`
-
-  const _today = todayYMD()
-
   const totalCols = canWrite ? 8 : 7
 
   // ── Row renderer ────────────────────────────────────────────────────────────
@@ -1051,7 +991,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
                 e.stopPropagation()
                 const supabase = createClient()
                 supabase.from('gestiones_establecimientos').update({ mostrar_lt: e.target.checked }).eq('id', r.ge_id)
-                setRegistros(prev => prev?.map(rr => rr.id === r.id ? { ...rr, ge_mostrar_lt: e.target.checked } : rr) ?? null)
+                queryClient.invalidateQueries({ queryKey: ['gestiones-establecimiento', establecimientoId, year] })
               }}
               className="accent-sig-600 cursor-pointer"
             />
@@ -1397,7 +1337,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
           registro={executingFormulario}
           establecimientoId={establecimientoId}
           onClose={() => setExecutingFormulario(null)}
-          onSuccess={() => { setExecutingFormulario(null); setRefreshKey(k => k + 1) }}
+          onSuccess={() => { setExecutingFormulario(null); queryClient.invalidateQueries({ queryKey: ['gestiones-establecimiento', establecimientoId, year] }); queryClient.invalidateQueries({ queryKey: ['registros-gestion'] }) }}
         />
       )}
       {editingRegistro && (
@@ -1405,7 +1345,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
           registro={editingRegistro}
           establecimientoId={establecimientoId}
           onClose={() => setEditingRegistro(null)}
-          onSuccess={() => { setEditingRegistro(null); setRefreshKey(k => k + 1) }}
+          onSuccess={() => { setEditingRegistro(null); queryClient.invalidateQueries({ queryKey: ['gestiones-establecimiento', establecimientoId, year] }); queryClient.invalidateQueries({ queryKey: ['registros-gestion'] }) }}
         />
       )}
 
@@ -1417,7 +1357,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
             categorias={categorias}
             todasGestiones={todasGestiones}
             onClose={() => setShowPlanificarModal(false)}
-            onSuccess={() => { setShowPlanificarModal(false); setRefreshKey(k => k + 1) }}
+            onSuccess={() => { setShowPlanificarModal(false); queryClient.invalidateQueries({ queryKey: ['gestiones-establecimiento', establecimientoId, year] }); queryClient.invalidateQueries({ queryKey: ['registros-gestion'] }); queryClient.invalidateQueries({ queryKey: ['catalogo-gestiones'] }) }}
           />
         </Modal>
       )}
@@ -1426,7 +1366,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
         <ReporteFotograficoModal
           establecimientoId={establecimientoId}
           onClose={() => setShowReporteModal(false)}
-          onSuccess={() => { setShowReporteModal(false); setRefreshKey(k => k + 1) }}
+          onSuccess={() => { setShowReporteModal(false); queryClient.invalidateQueries({ queryKey: ['gestiones-establecimiento', establecimientoId, year] }); queryClient.invalidateQueries({ queryKey: ['registros-gestion'] }) }}
         />
       )}
     </div>

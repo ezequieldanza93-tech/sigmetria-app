@@ -23,7 +23,6 @@ import {
   computeFeedbackMetrics,
   computeObservacionMetrics,
 } from '@/lib/analytics-compute'
-import type { GestionMetrics, SiniestroMetrics, InspeccionMetrics, FeedbackMetrics, ObservacionMetrics } from '@/lib/analytics-compute'
 
 interface AnalyticsDashboardProps {
   level: 'establecimiento' | 'empresa' | 'consultora'

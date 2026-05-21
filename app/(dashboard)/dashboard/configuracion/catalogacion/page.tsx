@@ -103,7 +103,7 @@ export default function CatalogacionPage() {
   const [gestionFilter, setGestionFilter] = useState('')
   const [saving, setSaving] = useState<Set<string>>(new Set())
 
-  const [gestiones, _loadingGes, _errGes] = useAsync(getGestionesConTipos)
+  const [gestiones] = useAsync(getGestionesConTipos)
   const [aspectos] = useAsync(getAspectos)
   const [secciones, loadingSec, errSec] = useAsync(getSeccionesConAspectos)
 

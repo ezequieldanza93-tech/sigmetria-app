@@ -129,7 +129,6 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
       }))))
     }
 
-    const _submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null
     formAction(fd)
   }
 

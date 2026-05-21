@@ -40,8 +40,6 @@ export function AppHeader({
   const [forecastCoords, setForecastCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [isDark, setIsDark] = useState(false)
 
-  const _isHome = pathname === '/dashboard' || pathname === '/dashboard/empresas'
-
   useEffect(() => {
     setIsDark(document.documentElement.getAttribute('data-theme') === 'dark')
   }, [])
