@@ -91,7 +91,7 @@ export function usePersonasEstablecimiento(establecimientoId: string | undefined
         .from('personas_establecimientos')
         .select('personas_directorio!persona_id(id, nombre, apellido)')
         .eq('establecimiento_id', establecimientoId)
-      return ((data ?? []) as { personas_directorio: { id: string; nombre: string; apellido: string } | null }[])
+      return ((data ?? []) as unknown as { personas_directorio: { id: string; nombre: string; apellido: string } | null }[])
         .map(pe => pe.personas_directorio)
         .filter(Boolean)
         .sort((a, b) => a!.apellido.localeCompare(b!.apellido)) as { id: string; nombre: string; apellido: string }[]
