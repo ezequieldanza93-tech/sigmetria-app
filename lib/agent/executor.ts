@@ -5,7 +5,7 @@ import { tools } from './tools'
 import { searchKnowledge } from './knowledge'
 
 const HAS_ANTHROPIC = !!process.env.ANTHROPIC_API_KEY
-const HAS_GEMINI = !!process.env.GOOGLE_API_KEY
+const HAS_GEMINI = !!process.env.GOOGLE_API_KEY_A
 
 const STRICT_SYSTEM_PROMPT = `Eres Sigía, la asistente virtual de Sigmetría HyS, una plataforma de gestión de Higiene y Seguridad laboral.
 
@@ -103,7 +103,7 @@ async function processWithLLM(
     model = new ChatGoogleGenerativeAI({
       model: 'gemini-2.0-flash',
       temperature: 0.3,
-      apiKey: process.env.GOOGLE_API_KEY,
+      apiKey: process.env.GOOGLE_API_KEY_A,
     })
   }
 
