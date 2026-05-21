@@ -21,7 +21,7 @@ const VALID_SECTIONS: Section[] = ['agenda', 'ficha', 'dashboard', 'seguimiento'
 
 const SECTION_TABS = [
   { id: 'ficha' as Section, icon: FileText, label: 'Ficha' },
-  { id: 'agenda' as Section, icon: ClipboardList, label: 'Agenda' },
+  { id: 'agenda' as Section, icon: ClipboardList, label: 'Gestiones' },
   { id: 'seguimiento' as Section, icon: Crosshair, label: 'Seguimiento' },
   { id: 'dashboard' as Section, icon: BarChart3, label: 'Dashboard' },
   { id: 'analytics' as Section, icon: BarChart2, label: 'Analytics' },
