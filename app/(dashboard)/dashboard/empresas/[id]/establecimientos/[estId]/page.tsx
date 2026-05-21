@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
+import { redirect, notFound } from 'next/navigation'
 import { canWrite, UserRole } from '@/lib/types'
 import { GestionesAgenda } from '@/components/establecimiento-gestiones-agenda'
 import { EstablecimientoTabs } from '@/components/establecimiento-tabs'
@@ -43,49 +43,18 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
   if (!user) redirect('/login')
 
   const [
-    { data: profile, error: profileErr },
-    { data: membership, error: membershipErr },
-    { data: establecimiento, error: estErr },
-    { data: empresa, error: empErr },
+    { data: profile },
+    { data: membership },
+    { data: establecimiento },
+    { data: empresa },
   ] = await Promise.all([
     supabase.from('profiles').select('system_role').eq('id', user.id).single(),
     supabase.from('consultoras_members').select('role').eq('user_id', user.id).eq('is_active', true).maybeSingle(),
-    supabase.from('establecimientos').select('id, nombre, latitude, longitude, photo_site, direccion, created_at, establecimientos_tipos(id, codigo, nombre), localidades!localidad_id(nombre, provincia)').eq('id', estId).single(),
+    supabase.from('establecimientos').select('id, nombre, latitude, longitude, photo_site, domicilio, created_at, establecimientos_tipos(id, codigo, nombre), localidades!localidad_id(nombre, provincia)').eq('id', estId).single(),
     supabase.from('empresas').select('id, razon_social').eq('id', empresaId).single(),
   ])
 
-  if (!establecimiento || !empresa) {
-    return (
-      <div className="p-6 max-w-3xl">
-        <h1 className="text-lg font-bold text-red-600 mb-3">Debug: Establecimiento no encontrado</h1>
-        <pre className="bg-gray-900 text-green-300 p-4 rounded-lg text-xs overflow-auto whitespace-pre-wrap break-all">
-{`userId: ${user.id}
-empresaId param: ${empresaId}
-estId param: ${estId}
-
-establecimiento: ${establecimiento ? 'OK' : 'NULL'}
-  error message: ${estErr?.message ?? 'none'}
-  error code: ${estErr?.code ?? 'none'}
-  error details: ${estErr?.details ?? 'none'}
-  error hint: ${estErr?.hint ?? 'none'}
-
-empresa: ${empresa ? 'OK' : 'NULL'}
-  error message: ${empErr?.message ?? 'none'}
-  error code: ${empErr?.code ?? 'none'}
-  error details: ${empErr?.details ?? 'none'}
-  error hint: ${empErr?.hint ?? 'none'}
-
-profile: ${profile ? 'OK' : 'NULL'}
-  error: ${profileErr?.message ?? 'none'}
-  system_role: ${profile?.system_role ?? 'n/a'}
-
-membership: ${membership ? 'OK' : 'NULL'}
-  error: ${membershipErr?.message ?? 'none'}
-  role: ${membership?.role ?? 'n/a'}`}
-        </pre>
-      </div>
-    )
-  }
+  if (!establecimiento || !empresa) notFound()
 
   const userCanWrite = canWrite(
     membership?.role as UserRole ?? null,
