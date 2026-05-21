@@ -3,7 +3,7 @@
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import type { ActionResult, SiniestroEstado } from '@/lib/types'
+import type { ActionResult, SiniestroEstado, SiniestroTipo } from '@/lib/types'
 import { validateFormData, formatZodErrors } from '@/lib/validation/helpers'
 import { siniestroTipo } from '@/lib/validation/schemas'
 
