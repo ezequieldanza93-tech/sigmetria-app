@@ -5,12 +5,15 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { createClient } from '@/lib/supabase/client'
+import {
+  useOrganizacionTipos,
+  useSubcontratistaRubros,
+  useArtOrgs,
+  useLocalidades,
+  useEstablecimientoTipos,
+} from '@/lib/queries/organizacion'
 import type {
   ActionResult,
-  TipoOrganizacion,
-  SubcontratistaRubro,
-  Localidad,
-  TiposEstablecimiento,
   PreguntaRiesgo,
 } from '@/lib/types'
 
@@ -32,52 +35,23 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 export function OrganizacionExternaForm({ action }: Props) {
   const [state, formAction, isPending] = useActionState(action, null)
 
-  // Tipo selection
-  const [tiposOrg, setTiposOrg] = useState<TipoOrganizacion[]>([])
   const [selectedTipoId, setSelectedTipoId] = useState('')
   const [selectedTipoNombre, setSelectedTipoNombre] = useState('')
 
-  // Subcontratista-specific data
-  const [rubros, setRubros] = useState<SubcontratistaRubro[]>([])
-  const [localidades, setLocalidades] = useState<Localidad[]>([])
-  const [tiposEst, setTiposEst] = useState<TiposEstablecimiento[]>([])
-  const [artOrgs, setArtOrgs] = useState<{ id: string; nombre: string }[]>([])
+  const isSubcontratista = selectedTipoNombre === 'Subcontratista'
+
+  const { data: tiposOrg = [] } = useOrganizacionTipos()
+  const { data: rubros = [] } = useSubcontratistaRubros(isSubcontratista)
+  const { data: localidades = [] } = useLocalidades(isSubcontratista)
+  const { data: tiposEst = [] } = useEstablecimientoTipos(isSubcontratista)
+  const { data: artOrgs = [] } = useArtOrgs(isSubcontratista)
+
   const [preguntas, setPreguntas] = useState<PreguntaRiesgo[]>([])
   const [respuestas, setRespuestas] = useState<Record<string, boolean>>({})
   const [selectedProvincia, setSelectedProvincia] = useState('')
   const [selectedLocalidadId, setSelectedLocalidadId] = useState('')
   const [selectedArtId, setSelectedArtId] = useState('')
   const [selectedTipoEstId, setSelectedTipoEstId] = useState('')
-
-  const isSubcontratista = selectedTipoNombre === 'Subcontratista'
-
-  // Load tipos on mount
-  useEffect(() => {
-    createClient().from('organizaciones_tipos').select('*').order('nombre')
-      .then(({ data }) => { if (data) setTiposOrg(data as TipoOrganizacion[]) })
-  }, [])
-
-  // Load subcontratista-specific data when tipo = Subcontratista
-  useEffect(() => {
-    if (!isSubcontratista) return
-    const supabase = createClient()
-    Promise.all([
-      supabase.from('subcontratistas_rubros').select('*').eq('is_active', true).order('nombre'),
-      supabase.from('localidades').select('id, nombre, provincia, is_active, created_at').eq('is_active', true).order('nombre'),
-      supabase.from('establecimientos_tipos').select('id, codigo, nombre, created_at').order('nombre'),
-      supabase.from('organizaciones_externas')
-        .select('id, nombre, organizaciones_tipos!inner(nombre)')
-        .eq('organizaciones_tipos.nombre', 'ART')
-        .eq('is_active', true)
-        .eq('scope', 'global')
-        .order('nombre'),
-    ]).then(([{ data: rubs }, { data: locs }, { data: tipos }, { data: arts }]) => {
-      if (rubs) setRubros(rubs as SubcontratistaRubro[])
-      if (locs) setLocalidades(locs as Localidad[])
-      if (tipos) setTiposEst(tipos as TiposEstablecimiento[])
-      if (arts) setArtOrgs(arts as { id: string; nombre: string }[])
-    })
-  }, [isSubcontratista])
 
   // Load preguntas when tipo_establecimiento changes
   useEffect(() => {

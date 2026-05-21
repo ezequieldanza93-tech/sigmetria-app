@@ -1,8 +1,18 @@
 'use server'
 
+import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import type { ActionResult } from '@/lib/types'
+import { validateFormData, formatZodErrors } from '@/lib/validation/helpers'
+
+const createAsistenciaSchema = z.object({
+  persona_id: z.string().min(1, { error: 'Seleccioná una persona' }),
+  fecha: z.string().min(1, { error: 'La fecha es obligatoria' }),
+  hora_entrada: z.string().min(1, { error: 'La hora de entrada es obligatoria' }),
+  hora_salida: z.string().nullable().optional(),
+  observaciones: z.string().nullable().optional(),
+})
 
 export async function createAsistencia(
   establecimientoId: string,
@@ -14,16 +24,13 @@ export async function createAsistencia(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
-  const personaId = formData.get('persona_id') as string
-  const fecha = formData.get('fecha') as string
-  const horaEntrada = formData.get('hora_entrada') as string
-
-  if (!personaId) return { success: false, error: 'Seleccioná una persona' }
-  if (!fecha) return { success: false, error: 'La fecha es obligatoria' }
-  if (!horaEntrada) return { success: false, error: 'La hora de entrada es obligatoria' }
+  const parsed = validateFormData(createAsistenciaSchema, formData)
+  if (!parsed.success) {
+    return { success: false, error: formatZodErrors(parsed.error) }
+  }
+  const { persona_id: personaId, fecha, hora_entrada: horaEntrada, hora_salida: horaSalidaRaw, observaciones } = parsed.data
 
   const horaEntradaFull = `${fecha}T${horaEntrada}:00`
-  const horaSalidaRaw = formData.get('hora_salida') as string
   const horaSalidaFull = horaSalidaRaw ? `${fecha}T${horaSalidaRaw}:00` : null
 
   const { error } = await supabase.from('asistencia_diaria').insert({
@@ -32,7 +39,7 @@ export async function createAsistencia(
     fecha,
     hora_entrada: horaEntradaFull,
     hora_salida: horaSalidaFull,
-    observaciones: (formData.get('observaciones') as string) || null,
+    observaciones: observaciones ?? null,
     registrado_por: user.id,
   })
 

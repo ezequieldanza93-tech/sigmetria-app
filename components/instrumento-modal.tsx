@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useEffect, useActionState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
-import { createClient } from '@/lib/supabase/client'
 import { createCertificadoCalibracion } from '@/lib/actions/certificado'
+import { useCertificados } from '@/lib/queries/instrumento'
 import { formatDate } from '@/lib/utils'
-import type { InstrumentoMedicion, CertificadoCalibracion } from '@/lib/types'
+import type { InstrumentoMedicion } from '@/lib/types'
 
 interface InstrumentoModalProps {
   instrumento: InstrumentoMedicion
@@ -40,25 +41,14 @@ function CertificadoForm({ instrumentoId, onSuccess }: { instrumentoId: string; 
 }
 
 export function InstrumentoModal({ instrumento, open, onClose, canWrite }: InstrumentoModalProps) {
+  const queryClient = useQueryClient()
   const [tab, setTab] = useState<'datos' | 'calibraciones'>('datos')
-  const [certs, setCerts] = useState<CertificadoCalibracion[] | null>(null)
   const [showForm, setShowForm] = useState(false)
+  const { data: certs = null } = useCertificados(tab === 'calibraciones' ? instrumento.id : undefined)
 
   useEffect(() => {
-    if (!open) { setTab('datos'); setCerts(null); setShowForm(false) }
+    if (!open) { setTab('datos'); setShowForm(false) }
   }, [open])
-
-  useEffect(() => {
-    if (tab === 'calibraciones' && open) {
-      const supabase = createClient()
-      supabase
-        .from('certificados_calibracion')
-        .select('*')
-        .eq('instrumento_id', instrumento.id)
-        .order('fecha_emision', { ascending: false })
-        .then(({ data }) => setCerts((data as unknown as CertificadoCalibracion[]) ?? []))
-    }
-  }, [tab, open, instrumento.id])
 
   return (
     <Modal open={open} onClose={onClose} title={instrumento.modelo}>
@@ -136,9 +126,7 @@ export function InstrumentoModal({ instrumento, open, onClose, canWrite }: Instr
                   instrumentoId={instrumento.id}
                   onSuccess={() => {
                     setShowForm(false)
-                    const supabase = createClient()
-                    supabase.from('certificados_calibracion').select('*').eq('instrumento_id', instrumento.id).order('fecha_emision', { ascending: false })
-                      .then(({ data }) => setCerts((data as unknown as CertificadoCalibracion[]) ?? []))
+                    queryClient.invalidateQueries({ queryKey: ['certificados', instrumento.id] })
                   }}
                 />
               ) : canWrite && (

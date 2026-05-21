@@ -1,8 +1,21 @@
 'use server'
 
+import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import type { ActionResult, SiniestroTipo, SiniestroEstado } from '@/lib/types'
+import type { ActionResult, SiniestroEstado } from '@/lib/types'
+import { validateFormData, formatZodErrors } from '@/lib/validation/helpers'
+import { siniestroTipo } from '@/lib/validation/schemas'
+
+const createSiniestroSchema = z.object({
+  tipo: siniestroTipo,
+  fecha_ocurrencia: z.string().min(1, { error: 'La fecha es obligatoria' }),
+  persona_id: z.string().nullable().optional(),
+  descripcion: z.string().nullable().optional(),
+  dias_perdidos: z.coerce.number().int().nullable().optional(),
+  requiere_derivacion: z.literal('true').optional(),
+  acciones_correctivas: z.string().nullable().optional(),
+})
 
 export async function createSiniestro(
   establecimientoId: string,
@@ -14,27 +27,24 @@ export async function createSiniestro(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
-  const tipo = formData.get('tipo') as SiniestroTipo
-  const fechaOcurrencia = formData.get('fecha_ocurrencia') as string
-
-  if (!tipo) return { success: false, error: 'El tipo es obligatorio' }
-  if (!fechaOcurrencia) return { success: false, error: 'La fecha es obligatoria' }
-
-  const diasPerdidosStr = formData.get('dias_perdidos') as string
-  const diasPerdidos = diasPerdidosStr ? parseInt(diasPerdidosStr, 10) : null
+  const parsed = validateFormData(createSiniestroSchema, formData)
+  if (!parsed.success) {
+    return { success: false, error: formatZodErrors(parsed.error) }
+  }
+  const { tipo, fecha_ocurrencia: fechaOcurrencia, persona_id, descripcion, dias_perdidos, requiere_derivacion, acciones_correctivas } = parsed.data
 
   const { error } = await supabase
     .from('siniestros')
     .insert({
       establecimiento_id: establecimientoId,
-      persona_id: (formData.get('persona_id') as string) || null,
+      persona_id: persona_id ?? null,
       tipo,
       estado: 'pendiente' as SiniestroEstado,
       fecha_ocurrencia: fechaOcurrencia,
-      descripcion: (formData.get('descripcion') as string) || null,
-      dias_perdidos: isNaN(diasPerdidos as number) ? null : diasPerdidos,
-      requiere_derivacion: formData.get('requiere_derivacion') === 'true',
-      acciones_correctivas: (formData.get('acciones_correctivas') as string) || null,
+      descripcion: descripcion ?? null,
+      dias_perdidos: dias_perdidos ?? null,
+      requiere_derivacion: requiere_derivacion === 'true',
+      acciones_correctivas: acciones_correctivas ?? null,
       reportado_por: user.id,
     })
 

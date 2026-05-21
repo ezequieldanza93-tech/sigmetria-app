@@ -1,6 +1,20 @@
 'use server'
+import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import type { ActionResult } from '@/lib/types'
+import { validateFormData, formatZodErrors } from '@/lib/validation/helpers'
+
+const createDenunciaSchema = z.object({
+  fecha: z.string().min(1, { error: 'Fecha requerida' }),
+  descripcion: z.string().min(1, { error: 'Descripción requerida' }).transform(s => s.trim()),
+})
+
+const createFeedbackClienteSchema = z.object({
+  fecha: z.string().min(1, { error: 'Fecha requerida' }),
+  cliente: z.string().min(1, { error: 'Cliente requerido' }).transform(s => s.trim()),
+  tipo: z.enum(['positivo', 'negativo', 'sugerencia'], { error: 'Tipo requerido' }),
+  descripcion: z.string().min(1, { error: 'Descripción requerida' }).transform(s => s.trim()),
+})
 
 export async function createDenuncia(
   establecimientoId: string,
@@ -11,16 +25,16 @@ export async function createDenuncia(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
-  const fecha = formData.get('fecha') as string
-  const descripcion = formData.get('descripcion') as string
-
-  if (!fecha) return { success: false, error: 'Fecha requerida' }
-  if (!descripcion?.trim()) return { success: false, error: 'Descripción requerida' }
+  const parsed = validateFormData(createDenunciaSchema, formData)
+  if (!parsed.success) {
+    return { success: false, error: formatZodErrors(parsed.error) }
+  }
+  const { fecha, descripcion } = parsed.data
 
   const { error } = await supabase.from('establecimientos_denuncias').insert({
     establecimiento_id: establecimientoId,
     fecha,
-    descripcion: descripcion.trim(),
+    descripcion,
   })
 
   if (error) return { success: false, error: error.message }
@@ -36,26 +50,20 @@ export async function createFeedbackCliente(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
-  const fecha = formData.get('fecha') as string
-  const cliente = formData.get('cliente') as string
-  const tipo = formData.get('tipo') as FeedbackTipo
-  const descripcion = formData.get('descripcion') as string
-
-  if (!fecha) return { success: false, error: 'Fecha requerida' }
-  if (!cliente?.trim()) return { success: false, error: 'Cliente requerido' }
-  if (!tipo) return { success: false, error: 'Tipo requerido' }
-  if (!descripcion?.trim()) return { success: false, error: 'Descripción requerida' }
+  const parsed = validateFormData(createFeedbackClienteSchema, formData)
+  if (!parsed.success) {
+    return { success: false, error: formatZodErrors(parsed.error) }
+  }
+  const { fecha, cliente, tipo, descripcion } = parsed.data
 
   const { error } = await supabase.from('establecimientos_feedback_clientes').insert({
     establecimiento_id: establecimientoId,
     fecha,
-    cliente: cliente.trim(),
+    cliente,
     tipo,
-    descripcion: descripcion.trim(),
+    descripcion,
   })
 
   if (error) return { success: false, error: error.message }
   return { success: true, data: null }
 }
-
-type FeedbackTipo = 'positivo' | 'negativo' | 'sugerencia'

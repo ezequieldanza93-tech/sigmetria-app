@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { createClient } from '@/lib/supabase/client'
-import type { Establecimiento, Localidad, ActionResult, TiposEstablecimiento, PreguntaRiesgo, EstablecimientoRespuesta } from '@/lib/types'
+import { useLocalidades, useEstablecimientoTipos } from '@/lib/queries/establecimiento-form'
+import type { Establecimiento, ActionResult, PreguntaRiesgo, EstablecimientoRespuesta } from '@/lib/types'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type EstablecimientoFormAction = (prevState: any, formData: FormData) => Promise<ActionResult<unknown>>
@@ -40,25 +41,13 @@ const HORARIO_DEFAULT: Record<number, DiaConfig> = {
 
 export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Guardar' }: EstablecimientoFormProps) {
   const [state, formAction, isPending] = useActionState(action, null)
-  const [localidades, setLocalidades] = useState<Localidad[]>([])
-  const [tipos, setTipos] = useState<TiposEstablecimiento[]>([])
+  const { data: localidades = [] } = useLocalidades()
+  const { data: tipos = [] } = useEstablecimientoTipos()
   const [preguntas, setPreguntas] = useState<PreguntaRiesgo[]>([])
   const [respuestas, setRespuestas] = useState<Record<string, boolean>>({})
   const [selectedProvincia, setSelectedProvincia] = useState(establecimiento?.localidades?.provincia ?? '')
   const [selectedTipoId, setSelectedTipoId] = useState(establecimiento?.tipo_id ?? '')
   const [semana, setSemana] = useState<Record<number, DiaConfig>>(HORARIO_DEFAULT)
-
-  // Load localidades and tipos on mount
-  useEffect(() => {
-    const supabase = createClient()
-    Promise.all([
-      supabase.from('localidades').select('id, nombre, provincia, is_active, created_at').eq('is_active', true).order('nombre'),
-      supabase.from('establecimientos_tipos').select('id, codigo, nombre, created_at').order('nombre'),
-    ]).then(([locRes, tipRes]) => {
-      if (locRes.data) setLocalidades(locRes.data as Localidad[])
-      if (tipRes.data) setTipos(tipRes.data as TiposEstablecimiento[])
-    })
-  }, [])
 
   // Load horarios for existing establishment
   useEffect(() => {

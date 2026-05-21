@@ -1,6 +1,24 @@
 'use server'
+import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import type { ActionResult, GrupoGestion, CategoriaGestion } from '@/lib/types'
+import { validateFormData, formatZodErrors } from '@/lib/validation/helpers'
+
+const planificarGestionSchema = z.object({
+  gestion_id: z.string().min(1, { error: 'Gestión requerida' }),
+  establecimiento_id: z.string().optional(),
+  fecha_planificada: z.string().min(1, { error: 'Fecha planificada requerida' }),
+  responsable_id: z.string().nullable().optional(),
+  notas: z.string().nullable().optional(),
+})
+
+const planificarGestionNuevaSchema = z.object({
+  gestion_nombre: z.string().min(1, { error: 'Nombre de gestión requerido' }).transform(s => s.trim()),
+  categoria_id: z.string().min(1, { error: 'Categoría requerida' }),
+  establecimiento_id: z.string().min(1),
+  fecha_planificada: z.string().min(1, { error: 'Fecha planificada requerida' }),
+  notas: z.string().nullable().optional(),
+})
 
 export async function planificarGestion(
   _prev: ActionResult<null> | null,
@@ -10,14 +28,11 @@ export async function planificarGestion(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
-  const gestionId = formData.get('gestion_id') as string
-  const establecimientoId = formData.get('establecimiento_id') as string
-  const fechaPlanificada = formData.get('fecha_planificada') as string
-  const responsableId = formData.get('responsable_id') as string
-  const notas = formData.get('notas') as string
-
-  if (!gestionId) return { success: false, error: 'Gestión requerida' }
-  if (!fechaPlanificada) return { success: false, error: 'Fecha planificada requerida' }
+  const parsed = validateFormData(planificarGestionSchema, formData)
+  if (!parsed.success) {
+    return { success: false, error: formatZodErrors(parsed.error) }
+  }
+  const { gestion_id: gestionId, establecimiento_id: establecimientoId, fecha_planificada: fechaPlanificada, responsable_id: responsableId, notas } = parsed.data
 
   // Get or create gestion_establecimiento (single query)
   let geId: string
@@ -60,15 +75,11 @@ export async function planificarGestionNueva(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
-  const nombre = (formData.get('gestion_nombre') as string)?.trim()
-  const categoriaId = formData.get('categoria_id') as string
-  const establecimientoId = formData.get('establecimiento_id') as string
-  const fechaPlanificada = formData.get('fecha_planificada') as string
-  const notas = formData.get('notas') as string
-
-  if (!nombre) return { success: false, error: 'Nombre de gestión requerido' }
-  if (!categoriaId) return { success: false, error: 'Categoría requerida' }
-  if (!fechaPlanificada) return { success: false, error: 'Fecha planificada requerida' }
+  const parsed = validateFormData(planificarGestionNuevaSchema, formData)
+  if (!parsed.success) {
+    return { success: false, error: formatZodErrors(parsed.error) }
+  }
+  const { gestion_nombre: nombre, categoria_id: categoriaId, establecimiento_id: establecimientoId, fecha_planificada: fechaPlanificada, notas } = parsed.data
 
   const { data: nuevaGestion, error: gestionError } = await supabase
     .from('gestiones')

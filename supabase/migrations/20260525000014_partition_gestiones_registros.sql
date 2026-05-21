@@ -23,6 +23,14 @@
 BEGIN;
 
 -- ============================================================
+-- STEP 0: Drop MVs que dependen de gestiones_registros
+-- (se recrean al final apuntando a la nueva tabla particionada)
+-- ============================================================
+DROP MATERIALIZED VIEW IF EXISTS public.mv_gestiones_pendientes;
+DROP MATERIALIZED VIEW IF EXISTS public.mv_observaciones_vencidas;
+DROP MATERIALIZED VIEW IF EXISTS public.mv_cumplimiento_establecimiento;
+
+-- ============================================================
 -- STEP 1: Preparar gestiones_observaciones
 -- ============================================================
 -- 1a. Agregar columna para la FK compuesta
@@ -141,7 +149,7 @@ CREATE TABLE public.gestiones_registros_2031
 -- Default partition (catch-all for future years)
 CREATE TABLE public.gestiones_registros_future
   PARTITION OF public.gestiones_registros
-  FOR VALUES FROM ('2032-01-01') TO ('MAXVALUE');
+  FOR VALUES FROM ('2032-01-01') TO ('9999-12-31');
 
 
 -- ============================================================
@@ -170,12 +178,12 @@ ALTER TABLE public.gestiones_registros
 ALTER TABLE public.gestiones_registros
   ADD CONSTRAINT gestiones_registros_responsable_id_fkey
   FOREIGN KEY (responsable_id)
-  REFERENCES public.directorio_personas(id) ON DELETE SET NULL;
+  REFERENCES public.personas_directorio(id) ON DELETE SET NULL;
 
 ALTER TABLE public.gestiones_registros
   ADD CONSTRAINT gestiones_registros_aprobado_por_id_fkey
   FOREIGN KEY (aprobado_por_id)
-  REFERENCES public.directorio_personas(id) ON DELETE SET NULL;
+  REFERENCES public.personas_directorio(id) ON DELETE SET NULL;
 
 
 -- ============================================================
@@ -399,5 +407,51 @@ CREATE POLICY "gestiones_observaciones: delete"
 -- STEP 12: Eliminar tabla vieja
 -- ============================================================
 DROP TABLE IF EXISTS public.gestiones_registros_old;
+
+-- ============================================================
+-- STEP 13: Recrear Materialized Views (apuntan a nueva tabla)
+-- ============================================================
+CREATE MATERIALIZED VIEW IF NOT EXISTS public.mv_gestiones_pendientes AS
+SELECT ge.establecimiento_id, rg.responsable_id,
+  count(*) AS total_pendientes,
+  count(*) FILTER (WHERE rg.fecha_planificada < CURRENT_DATE) AS vencidas,
+  min(rg.fecha_planificada) AS mas_antigua,
+  max(rg.fecha_planificada) AS mas_reciente
+FROM public.gestiones_registros rg
+JOIN public.gestiones_establecimientos ge ON ge.id = rg.gestion_establecimiento_id
+WHERE rg.fecha_ejecutada IS NULL AND rg.fecha_planificada <= CURRENT_DATE
+GROUP BY ge.establecimiento_id, rg.responsable_id
+WITH NO DATA;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_gestiones_pendientes_uniq
+  ON public.mv_gestiones_pendientes (establecimiento_id, responsable_id);
+
+CREATE MATERIALIZED VIEW IF NOT EXISTS public.mv_observaciones_vencidas AS
+SELECT ge.establecimiento_id, og.responsable_cierre_id,
+  count(*) AS total_vencidas,
+  min(og.fecha_planificada) AS mas_antigua
+FROM public.gestiones_observaciones og
+JOIN public.gestiones_registros rg ON rg.id = og.registro_gestion_id
+JOIN public.gestiones_establecimientos ge ON ge.id = rg.gestion_establecimiento_id
+WHERE og.fecha_cierre IS NULL AND og.fecha_planificada <= CURRENT_DATE
+GROUP BY ge.establecimiento_id, og.responsable_cierre_id
+WITH NO DATA;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_obs_vencidas_uniq
+  ON public.mv_observaciones_vencidas (establecimiento_id, responsable_cierre_id);
+
+CREATE MATERIALIZED VIEW IF NOT EXISTS public.mv_cumplimiento_establecimiento AS
+SELECT ge.establecimiento_id,
+  date_trunc('month', rg.fecha_planificada)::date AS mes,
+  count(*) AS total,
+  count(rg.fecha_ejecutada) AS ejecutadas,
+  CASE WHEN count(*) > 0 THEN round(count(rg.fecha_ejecutada)::numeric / count(*) * 100, 1) ELSE 0 END AS cumplimiento_pct
+FROM public.gestiones_registros rg
+JOIN public.gestiones_establecimientos ge ON ge.id = rg.gestion_establecimiento_id
+GROUP BY ge.establecimiento_id, date_trunc('month', rg.fecha_planificada)
+WITH NO DATA;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_cumplimiento_uniq
+  ON public.mv_cumplimiento_establecimiento (establecimiento_id, mes);
 
 COMMIT;

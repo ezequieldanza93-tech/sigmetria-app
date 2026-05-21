@@ -1,5 +1,9 @@
 import type { NextConfig } from 'next'
 
+const withBundleAnalyzer = process.env.ANALYZE === 'true'
+  ? (await import('@next/bundle-analyzer')).default({ enabled: true })
+  : (config: NextConfig) => config
+
 const csp = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
@@ -45,4 +49,4 @@ const nextConfig: NextConfig = {
   },
 }
 
-export default nextConfig
+export default withBundleAnalyzer(nextConfig)

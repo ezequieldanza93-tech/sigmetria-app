@@ -1,6 +1,14 @@
 'use server'
+import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import type { ActionResult } from '@/lib/types'
+import { validateFormData, formatZodErrors } from '@/lib/validation/helpers'
+
+const createPersonaDirectorioSchema = z.object({
+  nombre: z.string().min(1, { error: 'Nombre requerido' }).transform(s => s.trim()),
+  apellido: z.string().min(1, { error: 'Apellido requerido' }).transform(s => s.trim()),
+  dni: z.string().nullable().optional().transform(s => s?.trim() ?? null),
+})
 
 export async function createPersonaDirectorio(
   _prev: ActionResult<{ id: string }> | null,
@@ -10,12 +18,11 @@ export async function createPersonaDirectorio(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
-  const nombre = (formData.get('nombre') as string)?.trim()
-  const apellido = (formData.get('apellido') as string)?.trim()
-  const dni = (formData.get('dni') as string)?.trim() || null
-
-  if (!nombre) return { success: false, error: 'Nombre requerido' }
-  if (!apellido) return { success: false, error: 'Apellido requerido' }
+  const parsed = validateFormData(createPersonaDirectorioSchema, formData)
+  if (!parsed.success) {
+    return { success: false, error: formatZodErrors(parsed.error) }
+  }
+  const { nombre, apellido, dni } = parsed.data
 
   const { data, error } = await supabase
     .from('personas_directorio')

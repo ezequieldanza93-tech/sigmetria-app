@@ -1,10 +1,19 @@
 'use server'
 
+import { z } from 'zod'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { createClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
 import type { ActionResult, UserRole } from '@/lib/types'
 import { canManageUsers } from '@/lib/types'
+import { validateFormData, formatZodErrors } from '@/lib/validation/helpers'
+import { userRole } from '@/lib/validation/schemas'
+
+const inviteUsuarioSchema = z.object({
+  email: z.email({ error: 'Email inválido' }),
+  full_name: z.string().min(1, { error: 'El nombre es obligatorio' }),
+  role: userRole,
+})
 
 async function assertCanManage() {
   const supabase = await createServerClient()
@@ -24,13 +33,13 @@ export async function inviteUsuario(_prevState: ActionResult<null> | null, formD
   const ctx = await assertCanManage()
   if (!ctx) return { success: false, error: 'Sin permisos para invitar usuarios' }
 
-  const email = formData.get('email') as string
-  const fullName = formData.get('full_name') as string
-  const role = formData.get('role') as UserRole
+  const parsed = validateFormData(inviteUsuarioSchema, formData)
+  if (!parsed.success) {
+    return { success: false, error: formatZodErrors(parsed.error) }
+  }
+  const { email, full_name: fullName, role } = parsed.data
   const consultoraId = ctx.membership?.consultora_id
 
-  if (!email?.trim()) return { success: false, error: 'El email es obligatorio' }
-  if (!role) return { success: false, error: 'El rol es obligatorio' }
   if (!consultoraId) return { success: false, error: 'No se encontró consultora' }
 
   // Check if full_access_main role (only they can invite)
@@ -65,7 +74,7 @@ export async function inviteUsuario(_prevState: ActionResult<null> | null, formD
   )
 
   const { data: invited, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(
-    email.trim(),
+    email,
     { data: { full_name: fullName } }
   )
 
@@ -74,7 +83,7 @@ export async function inviteUsuario(_prevState: ActionResult<null> | null, formD
   if (invited.user) {
     await adminClient.from('profiles').upsert({
       id: invited.user.id,
-      full_name: fullName?.trim() || email,
+      full_name: fullName || email,
       system_role: 'user',
     }, { onConflict: 'id' })
 
@@ -118,6 +127,7 @@ export async function revokeAcceso(memberId: string): Promise<ActionResult<null>
     .from('consultoras_members')
     .update({ is_active: false })
     .eq('id', memberId)
+    .eq('consultora_id', ctx.membership?.consultora_id ?? '')
 
   if (error) return { success: false, error: error.message }
 

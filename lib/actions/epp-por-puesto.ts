@@ -1,8 +1,15 @@
 'use server'
 
+import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import type { ActionResult } from '@/lib/types'
+import { validateFormData, formatZodErrors } from '@/lib/validation/helpers'
+
+const addEppToPuestoSchema = z.object({
+  producto_id: z.string().min(1, { error: 'Seleccioná un producto' }),
+  horas_vida_util: z.coerce.number().nullable().optional(),
+})
 
 export async function addEppToPuesto(
   puestoId: string,
@@ -15,16 +22,16 @@ export async function addEppToPuesto(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
-  const productoId = formData.get('producto_id') as string
-  if (!productoId) return { success: false, error: 'Seleccioná un producto' }
-
-  const horasStr = formData.get('horas_vida_util') as string
-  const horas = horasStr ? parseFloat(horasStr) : null
+  const parsed = validateFormData(addEppToPuestoSchema, formData)
+  if (!parsed.success) {
+    return { success: false, error: formatZodErrors(parsed.error) }
+  }
+  const { producto_id: productoId, horas_vida_util: horas } = parsed.data
 
   const { error } = await supabase.from('puestos_epp').insert({
     puesto_id: puestoId,
     producto_id: productoId,
-    horas_vida_util: horas && !isNaN(horas) ? horas : null,
+    horas_vida_util: horas ?? null,
   })
 
   if (error) return { success: false, error: error.message }

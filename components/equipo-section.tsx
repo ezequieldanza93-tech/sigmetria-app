@@ -1,55 +1,19 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useState } from 'react'
+import { useEquipoMembers, useProvincias, type MemberRow } from '@/lib/queries/equipo'
 import { ProfesionalModal } from '@/components/profesional-modal'
-import type { ConsultoraMember, PerfilProfesional, UserRole } from '@/lib/types'
+import type { UserRole } from '@/lib/types'
 import { ROLE_LABELS, ROLE_COLORS } from '@/lib/types'
 
-type MemberRow = ConsultoraMember & {
-  profiles: {
-    id: string
-    full_name: string
-    avatar_url: string | null
-    perfiles_profesionales: PerfilProfesional | null
-  }
-}
-
-type Provincia = { id: string; nombre: string }
-
 export function EquipoSection() {
-  const [miembros, setMiembros] = useState<MemberRow[] | null>(null)
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const { data, isLoading } = useEquipoMembers()
+  const { data: provincias = [] } = useProvincias()
   const [selected, setSelected] = useState<MemberRow | null>(null)
-  const [provincias, setProvincias] = useState<Provincia[]>([])
 
-  useEffect(() => {
-    const supabase = createClient()
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) return
-      setCurrentUserId(user.id)
+  if (isLoading || !data) return null
 
-      const [membershipResult, provinciasResult] = await Promise.all([
-        supabase.from('consultoras_members').select('consultora_id').eq('user_id', user.id).eq('is_active', true).maybeSingle(),
-        supabase.from('provincias').select('id, nombre').order('nombre'),
-      ])
-
-      if (provinciasResult.data) setProvincias(provinciasResult.data as Provincia[])
-
-      const membership = membershipResult.data
-      if (!membership) return
-
-      const { data: miembrosData } = await supabase
-        .from('consultoras_members')
-        .select('*, profiles(id, full_name, avatar_url, perfiles_profesionales(id, user_id, telefono, celular, profesion, matricula_nacional, matricula_provincial, provincia_residencia_id, provincia_matricula_id, created_at))')
-        .eq('consultora_id', membership.consultora_id)
-        .eq('is_active', true)
-        .order('created_at')
-      setMiembros((miembrosData as unknown as MemberRow[]) ?? [])
-    })
-  }, [])
-
-  if (miembros === null) return null
+  const { miembros, currentUserId } = data
 
   return (
     <>

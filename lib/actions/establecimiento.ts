@@ -1,10 +1,24 @@
 'use server'
 
+import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { SECTORES_PREDEFINIDOS } from '@/lib/constants'
 import type { ActionResult } from '@/lib/types'
+import { validateFormData, formatZodErrors } from '@/lib/validation/helpers'
+
+const establecimientoActionSchema = z.object({
+  nombre: z.string().min(1, { error: 'El nombre es obligatorio' }).transform(s => s.trim()),
+  tipo_id: z.string().nullable().optional(),
+  domicilio: z.string().nullable().optional(),
+  localidad_id: z.string().nullable().optional(),
+  codigo_postal: z.string().nullable().optional(),
+  actividad_principal: z.string().nullable().optional(),
+  description: z.string().nullable().optional(),
+  ubicacion_gmaps: z.string().nullable().optional(),
+  aplica_iso_45001: z.literal('on').optional(),
+})
 
 async function parseUbicacion(raw: string | null): Promise<{ latitude: number | null; longitude: number | null }> {
   if (!raw?.trim()) return { latitude: null, longitude: null }
@@ -89,25 +103,28 @@ export async function createEstablecimiento(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
-  const nombre = formData.get('nombre') as string
-  if (!nombre?.trim()) return { success: false, error: 'El nombre es obligatorio' }
+  const parsed = validateFormData(establecimientoActionSchema, formData)
+  if (!parsed.success) {
+    return { success: false, error: formatZodErrors(parsed.error) }
+  }
+  const { nombre, tipo_id, domicilio, localidad_id, codigo_postal, actividad_principal, description, ubicacion_gmaps, aplica_iso_45001 } = parsed.data
 
-  const { latitude, longitude } = await parseUbicacion(formData.get('ubicacion_gmaps') as string)
+  const { latitude, longitude } = await parseUbicacion(ubicacion_gmaps ?? null)
 
   const { data, error } = await supabase
     .from('establecimientos')
     .insert({
       empresa_id: empresaId,
-      nombre: nombre.trim(),
-      tipo_id: (formData.get('tipo_id') as string) || null,
-      domicilio: (formData.get('domicilio') as string) || null,
-      localidad_id: (formData.get('localidad_id') as string) || null,
-      codigo_postal: (formData.get('codigo_postal') as string) || null,
-      actividad_principal: (formData.get('actividad_principal') as string) || null,
-      description: (formData.get('description') as string) || null,
+      nombre,
+      tipo_id: tipo_id ?? null,
+      domicilio: domicilio ?? null,
+      localidad_id: localidad_id ?? null,
+      codigo_postal: codigo_postal ?? null,
+      actividad_principal: actividad_principal ?? null,
+      description: description ?? null,
       latitude,
       longitude,
-      aplica_iso_45001: formData.get('aplica_iso_45001') === 'on',
+      aplica_iso_45001: aplica_iso_45001 === 'on',
     })
     .select('id')
     .single()
@@ -145,10 +162,13 @@ export async function updateEstablecimiento(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
-  const nombre = formData.get('nombre') as string
-  if (!nombre?.trim()) return { success: false, error: 'El nombre es obligatorio' }
+  const parsed = validateFormData(establecimientoActionSchema, formData)
+  if (!parsed.success) {
+    return { success: false, error: formatZodErrors(parsed.error) }
+  }
+  const { nombre, tipo_id, domicilio, localidad_id, codigo_postal, actividad_principal, description, ubicacion_gmaps, aplica_iso_45001 } = parsed.data
 
-  const { latitude, longitude } = await parseUbicacion(formData.get('ubicacion_gmaps') as string)
+  const { latitude, longitude } = await parseUbicacion(ubicacion_gmaps ?? null)
 
   const foto = formData.get('foto') as File | null
   const photo_site = foto?.size ? await uploadFoto(foto, id) : undefined
@@ -156,16 +176,16 @@ export async function updateEstablecimiento(
   const { error } = await supabase
     .from('establecimientos')
     .update({
-      nombre: nombre.trim(),
-      tipo_id: (formData.get('tipo_id') as string) || null,
-      domicilio: (formData.get('domicilio') as string) || null,
-      localidad_id: (formData.get('localidad_id') as string) || null,
-      codigo_postal: (formData.get('codigo_postal') as string) || null,
-      actividad_principal: (formData.get('actividad_principal') as string) || null,
-      description: (formData.get('description') as string) || null,
+      nombre,
+      tipo_id: tipo_id ?? null,
+      domicilio: domicilio ?? null,
+      localidad_id: localidad_id ?? null,
+      codigo_postal: codigo_postal ?? null,
+      actividad_principal: actividad_principal ?? null,
+      description: description ?? null,
       latitude,
       longitude,
-      aplica_iso_45001: formData.get('aplica_iso_45001') === 'on',
+      aplica_iso_45001: aplica_iso_45001 === 'on',
       ...(photo_site !== undefined && { photo_site }),
     })
     .eq('id', id)

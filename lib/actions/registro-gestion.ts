@@ -1,6 +1,23 @@
 'use server'
+import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import type { ActionResult } from '@/lib/types'
+import { validateFormData, formatZodErrors } from '@/lib/validation/helpers'
+
+const createRegistroGestionSchema = z.object({
+  gestion_establecimiento_id: z.string().min(1, { error: 'Gestión requerida' }),
+  fecha_planificada: z.string().min(1, { error: 'Fecha planificada requerida' }),
+  responsable_id: z.string().nullable().optional(),
+  notas: z.string().nullable().optional(),
+})
+
+const ejecutarGestionSchema = z.object({
+  registro_id: z.string().min(1, { error: 'Registro requerido' }),
+  fecha_ejecutada: z.string().min(1, { error: 'Fecha de ejecución requerida' }),
+  index: z.coerce.number().optional(),
+  notas: z.string().nullable().optional(),
+  responsable_id: z.string().nullable().optional(),
+})
 
 export async function createRegistroGestion(
   _prev: ActionResult<null> | null,
@@ -10,18 +27,17 @@ export async function createRegistroGestion(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
-  const gestionEstablecimientoId = formData.get('gestion_establecimiento_id') as string
-  const fechaPlanificada = formData.get('fecha_planificada') as string
-  const responsableId = formData.get('responsable_id') as string
-
-  if (!gestionEstablecimientoId) return { success: false, error: 'Gestión requerida' }
-  if (!fechaPlanificada) return { success: false, error: 'Fecha planificada requerida' }
+  const parsed = validateFormData(createRegistroGestionSchema, formData)
+  if (!parsed.success) {
+    return { success: false, error: formatZodErrors(parsed.error) }
+  }
+  const { gestion_establecimiento_id: gestionEstablecimientoId, fecha_planificada: fechaPlanificada, responsable_id: responsableId, notas } = parsed.data
 
   const { error } = await supabase.from('gestiones_registros').insert({
     gestion_establecimiento_id: gestionEstablecimientoId,
     fecha_planificada: fechaPlanificada,
     responsable_id: responsableId || null,
-    notas: (formData.get('notas') as string) || null,
+    notas: notas || null,
   })
 
   if (error) return { success: false, error: error.message }
@@ -36,23 +52,20 @@ export async function ejecutarGestion(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
-  const registroId = formData.get('registro_id') as string
-  const fechaEjecutada = formData.get('fecha_ejecutada') as string
-  const indexStr = formData.get('index') as string
-  const notas = (formData.get('notas') as string) || null
-  const responsableId = (formData.get('responsable_id') as string) || null
+  const parsed = validateFormData(ejecutarGestionSchema, formData)
+  if (!parsed.success) {
+    return { success: false, error: formatZodErrors(parsed.error) }
+  }
+  const { registro_id: registroId, fecha_ejecutada: fechaEjecutada, index: indexParsed, notas, responsable_id: responsableId } = parsed.data
   const file = formData.get('evidencia') as File | null
-
-  if (!registroId) return { success: false, error: 'Registro requerido' }
-  if (!fechaEjecutada) return { success: false, error: 'Fecha de ejecución requerida' }
 
   const updates: Record<string, unknown> = {
     fecha_ejecutada: fechaEjecutada,
-    notas,
-    responsable_id: responsableId,
+    notas: notas || null,
+    responsable_id: responsableId || null,
   }
-  if (indexStr && !isNaN(Number(indexStr))) {
-    updates.index = Number(indexStr)
+  if (indexParsed !== undefined && !isNaN(indexParsed)) {
+    updates.index = indexParsed
   }
 
   if (file && file.size > 0) {
