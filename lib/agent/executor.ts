@@ -1,22 +1,26 @@
 import { ChatAnthropic } from '@langchain/anthropic'
+import { ChatGoogleGenerativeAI } from '@langchain/google-genai'
 import { HumanMessage, SystemMessage } from '@langchain/core/messages'
 import { tools } from './tools'
 import { searchKnowledge } from './knowledge'
 
-const MOCK_MODE = !process.env.ANTHROPIC_API_KEY
+const HAS_ANTHROPIC = !!process.env.ANTHROPIC_API_KEY
+const HAS_GEMINI = !!process.env.GOOGLE_API_KEY
+const LLM_ACTIVE = HAS_ANTHROPIC || HAS_GEMINI
 
-const SYSTEM_PROMPT = `Eres Sig, el asistente virtual de Sigmetría HyS, una plataforma de gestión de Higiene y Seguridad laboral.
+const STRICT_SYSTEM_PROMPT = `Eres Sig, el asistente virtual de Sigmetría HyS, una plataforma de gestión de Higiene y Seguridad laboral.
 
-Tu objetivo es ayudar a los usuarios a gestionar sus empresas, establecimientos, empleados, siniestros, inspecciones, riesgos y más.
-
-REGLAS:
-1. Respondé SIEMPRE en español argentino, de forma clara y profesional.
-2. Si no sabés la respuesta, usá buscar_en_knowledge_base para consultar la base de conocimiento.
-3. Para acciones que modifican datos (crear empresa, registrar siniestro, etc.), usá las herramientas disponibles.
-4. Para acciones destructivas o que requieren aprobación explícita (registrar gestión, actualizar riesgo, enviar notificación), usá las herramientas que requieren aprobación — estas crearán una solicitud pendiente que el usuario debe aprobar.
-5. Si el usuario pregunta "qué podés hacer" o similar, listá tus capacidades principales.
-6. Cuando menciones datos concretos del usuario, referite a su empresa o establecimiento según el contexto de la conversación.
-7. Mantené un tono amable pero profesional. Usá "vos" para dirigirte al usuario.`
+REGLAS ESTRICTAS:
+1. Respondé SOLO con información de los datos que recuperes de la base de datos mediante las herramientas disponibles.
+2. Si no encontrás la información solicitada, decí "No tengo esa información" sin inventar nada.
+3. NO delires, NO inventes datos, NO especules, NO hagas suposiciones.
+4. Respondé en español argentino, claro y conciso. Dá solo la información pedida, ni más ni menos.
+5. Optimizá el uso de tokens: respuestas cortas, sin rodeos ni introducciones.
+6. Usá las herramientas disponibles para consultar datos reales antes de responder. No asumas nada.
+7. Si el usuario pregunta algo fuera del alcance de la plataforma o que no podés responder con datos reales, decí que no podés responder.
+8. Cuando menciones datos concretos del usuario, referite a su empresa o establecimiento según el contexto de la conversación.
+9. Mantené un tono amable pero profesional. Usá "vos" para dirigirte al usuario.
+10. Ante cualquier duda, priorizá decir "No tengo esa información" antes que improvisar.`
 
 export type Message = {
   id: string
@@ -39,10 +43,22 @@ export async function processMessage(
   userId: string,
   context?: { establecimientoId?: string; empresaId?: string; establecimientoNombre?: string; empresaNombre?: string },
 ): Promise<{ reply: string; conversationId: string; pendingActions: PendingAction[] }> {
-  if (MOCK_MODE) {
-    return mockResponse(message, conversationId, userId, context)
+  if (HAS_ANTHROPIC) {
+    return processWithLLM(message, conversationId, userId, context, 'anthropic')
   }
+  if (HAS_GEMINI) {
+    return processWithLLM(message, conversationId, userId, context, 'google')
+  }
+  return mockResponse(message, conversationId, userId, context)
+}
 
+async function processWithLLM(
+  message: string,
+  conversationId: string | null,
+  userId: string,
+  context?: { establecimientoId?: string; empresaId?: string; establecimientoNombre?: string; empresaNombre?: string },
+  provider: 'anthropic' | 'google' = 'google',
+): Promise<{ reply: string; conversationId: string; pendingActions: PendingAction[] }> {
   const { createClient } = await import('@/lib/supabase/server')
   const supabase = await createClient()
 
@@ -69,16 +85,29 @@ export async function processMessage(
     content: message,
   })
 
-  const model = new ChatAnthropic({
-    model: 'claude-sonnet-4-20250514',
-    temperature: 0.7,
-    apiKey: process.env.ANTHROPIC_API_KEY,
-  })
+  let model
+  if (provider === 'anthropic') {
+    model = new ChatAnthropic({
+      model: 'claude-sonnet-4-20250514',
+      temperature: 0.3,
+      apiKey: process.env.ANTHROPIC_API_KEY,
+    })
+  } else {
+    model = new ChatGoogleGenerativeAI({
+      model: 'gemini-2.0-flash',
+      temperature: 0.3,
+      apiKey: process.env.GOOGLE_API_KEY,
+    })
+  }
 
   const modelWithTools = model.bindTools(tools)
 
+  const contextNote = context?.establecimientoNombre
+    ? `\n\nContexto actual: el usuario está en el establecimiento "${context.establecimientoNombre}" (ID: ${context.establecimientoId}). Usá este contexto para filtrar consultas a menos que el usuario mencione explícitamente otro establecimiento.`
+    : ''
+
   const messages = [
-    new SystemMessage(SYSTEM_PROMPT),
+    new SystemMessage(STRICT_SYSTEM_PROMPT + contextNote),
     ...(prevMessages ?? []).map(m =>
       m.role === 'user' ? new HumanMessage(m.content) : new HumanMessage({ content: m.content, name: 'assistant' })
     ),
@@ -118,7 +147,6 @@ async function mockResponse(
   const supabase = await createClient()
 
   const lower = message.toLowerCase()
-  const establecimientoId = context?.establecimientoId
 
   // Saludos
   if (lower.includes('hola') || lower.includes('buen') || lower.includes('qué tal')) {
@@ -148,7 +176,7 @@ async function mockResponse(
     }
   }
 
-  // Helpers para obtener consultora
+  // Helpers Supabase
   async function getConsultoraId(): Promise<string | null> {
     const { data: membership } = await supabase
       .from('consultoras_members')
@@ -169,15 +197,15 @@ async function mockResponse(
     }
   }
 
-  // --- GESTIONES: consultas con filtros ---
+  // --- GESTIONES ---
   if (lower.includes('gestión') || lower.includes('gestion') || lower.includes('gestione') || lower.includes('programada') || lower.includes('planificada') || lower.includes('checklist') || lower.includes('check list') || lower.includes('extintor') || lower.includes('extintores')) {
-    const targetEstId = await detectEstablecimiento(lower, consultoraId) ?? establecimientoId
+    const targetEstId = await detectEstablecimiento(lower, consultoraId) ?? context?.establecimientoId
 
     if (!targetEstId) {
       const establecimientos = await listEstablecimientos(consultoraId)
       if (!establecimientos || establecimientos.length === 0) {
         return {
-          reply: 'No encontré establecimientos activos en tu consultora. Primero necesitás tener empresas y establecimientos cargados.',
+          reply: 'No encontré establecimientos activos en tu consultora.',
           conversationId: conversationId ?? 'mock-conversation',
           pendingActions: [],
         }
@@ -192,13 +220,15 @@ async function mockResponse(
       }
     }
 
-    const estNombre = context?.establecimientoNombre || (await getEstNombre(targetEstId))
-    return queryGestiones(targetEstId, estNombre ?? 'el establecimiento', lower, supabase)
+    const estNombre = context?.establecimientoNombre && targetEstId === context?.establecimientoId
+      ? context.establecimientoNombre
+      : (await getEstNombre(targetEstId)) ?? 'el establecimiento'
+    return queryGestiones(targetEstId, estNombre, lower, supabase)
   }
 
-  // --- PLANIFICAR: crear checklist, gestión, etc ---
+  // --- PLANIFICAR ---
   if (lower.includes('planificar') || lower.includes('programar') || lower.includes('agendar') || lower.includes('crear una gestión') || lower.includes('nueva gestión') || lower.includes('nuevo checklist') || lower.includes('nuevo check list')) {
-    const targetEstId = await detectEstablecimiento(lower, consultoraId) ?? establecimientoId
+    const targetEstId = await detectEstablecimiento(lower, consultoraId) ?? context?.establecimientoId
 
     if (!targetEstId) {
       const establecimientos = await listEstablecimientos(consultoraId)
@@ -216,7 +246,6 @@ async function mockResponse(
       }
     }
 
-    // Extract description and date from message
     const descMatch = message.match(/(?:checklist|check list|gestión|gestion|tarea|inspección|inspeccion|revisión|revision)\s+(?:de\s+|para\s+)?([^.\n]+)/i)
     const dateMatch = message.match(/(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?/i) || message.match(/(?:para\s+)?(?:el\s+)?(\d{1,2})\s+de\s+([a-záéíóú]+)(?:\s+del?\s+(\d{4}))?/i)
 
@@ -258,10 +287,12 @@ async function mockResponse(
       }
     }
 
-    const estNombre = context?.establecimientoNombre || (await getEstNombre(targetEstId))
+    const estNombre = context?.establecimientoNombre && targetEstId === context?.establecimientoId
+      ? context.establecimientoNombre
+      : (await getEstNombre(targetEstId)) ?? '?'
 
     return {
-      reply: `📋 Te propongo planificar esta gestión:\n\n**Tipo:** ${tipo}\n**Descripción:** ${descripcion}\n**Fecha:** ${fecha}\n**Establecimiento:** ${estNombre ?? '?'}\n\n¿Aprobás la solicitud?`,
+      reply: `📋 Te propongo planificar esta gestión:\n\n**Tipo:** ${tipo}\n**Descripción:** ${descripcion}\n**Fecha:** ${fecha}\n**Establecimiento:** ${estNombre}\n\n¿Aprobás la solicitud?`,
       conversationId: conversationId ?? 'mock-conversation',
       pendingActions: [],
     }
@@ -305,7 +336,7 @@ async function mockResponse(
 
   // --- SINIESTROS ---
   if (lower.includes('siniestro')) {
-    const targetEstId = await detectEstablecimiento(lower, consultoraId) ?? establecimientoId
+    const targetEstId = await detectEstablecimiento(lower, consultoraId) ?? context?.establecimientoId
     const ids = targetEstId ? [targetEstId] : await listEstIds(consultoraId)
     if (!ids.length) {
       return { reply: 'No hay establecimientos activos.', conversationId: conversationId ?? 'mock-conversation', pendingActions: [] }
@@ -330,7 +361,7 @@ async function mockResponse(
 
   // --- INSPECCIONES ---
   if (lower.includes('inspeccion') || lower.includes('inspección')) {
-    const targetEstId = await detectEstablecimiento(lower, consultoraId) ?? establecimientoId
+    const targetEstId = await detectEstablecimiento(lower, consultoraId) ?? context?.establecimientoId
     const ids = targetEstId ? [targetEstId] : await listEstIds(consultoraId)
     if (!ids.length) {
       return { reply: 'No hay establecimientos activos.', conversationId: conversationId ?? 'mock-conversation', pendingActions: [] }
@@ -359,7 +390,7 @@ async function mockResponse(
 
   // --- RIESGOS ---
   if (lower.includes('riesgo') || lower.includes('matriz')) {
-    const targetEstId = await detectEstablecimiento(lower, consultoraId) ?? establecimientoId
+    const targetEstId = await detectEstablecimiento(lower, consultoraId) ?? context?.establecimientoId
     const ids = targetEstId ? [targetEstId] : await listEstIds(consultoraId)
     if (!ids.length) {
       return { reply: 'No hay establecimientos activos.', conversationId: conversationId ?? 'mock-conversation', pendingActions: [] }
@@ -388,16 +419,18 @@ async function mockResponse(
 
   // --- EMPLEADOS ---
   if (lower.includes('empleado') || lower.includes('trabajador') || lower.includes('persona')) {
-    const targetEstId = await detectEstablecimiento(lower, consultoraId) ?? establecimientoId ?? (await listEstablecimientos(consultoraId))?.[0]?.id
+    const targetEstId = await detectEstablecimiento(lower, consultoraId) ?? context?.establecimientoId ?? (await listEstablecimientos(consultoraId))?.[0]?.id
     if (!targetEstId) {
       return { reply: 'No hay establecimientos activos.', conversationId: conversationId ?? 'mock-conversation', pendingActions: [] }
     }
     const { count } = await supabase.from('personas_establecimientos')
       .select('*', { count: 'exact', head: true })
       .eq('establecimiento_id', targetEstId)
-    const estNombre = context?.establecimientoNombre || (await getEstNombre(targetEstId))
+    const estNombre = context?.establecimientoNombre && targetEstId === context?.establecimientoId
+      ? context.establecimientoNombre
+      : (await getEstNombre(targetEstId)) ?? 'el establecimiento'
     return {
-      reply: `En **${estNombre ?? 'el establecimiento'}** hay **${count ?? 0} personas** registradas.`,
+      reply: `En **${estNombre}** hay **${count ?? 0} personas** registradas.`,
       conversationId: conversationId ?? 'mock-conversation',
       pendingActions: [],
     }
@@ -437,17 +470,25 @@ async function mockResponse(
 
   // --- HELPERS ---
   async function detectEstablecimiento(msg: string, cId: string): Promise<string | null> {
-    for (const word of msg.split(/\s+/)) {
-      if (word.length < 4) continue
-      const { data: est } = await supabase
-        .from('establecimientos')
-        .select('id')
-        .ilike('nombre', `%${word}%`)
-        .in('empresa_id', (await supabase.from('empresas').select('id').eq('consultora_id', cId)).data?.map(e => e.id) ?? [])
-        .limit(1)
-        .maybeSingle()
-      if (est) return est.id
+    const establecimientos = await listEstablecimientos(cId)
+    if (!establecimientos) return null
+
+    const words = msg.split(/\s+/)
+    const longWords = words.filter(w => w.length >= 4)
+
+    // 1) Try full phrase match: "planta norte" as a whole
+    for (const est of establecimientos) {
+      const estLower = est.nombre.toLowerCase()
+      if (msg.includes(estLower)) return est.id
     }
+
+    // 2) Try word-by-word (skip if context matches first)
+    for (const word of longWords) {
+      for (const est of establecimientos) {
+        if (est.nombre.toLowerCase().includes(word)) return est.id
+      }
+    }
+
     return null
   }
 
@@ -478,7 +519,6 @@ async function mockResponse(
     const thisMonth = new Date().toISOString().slice(0, 7)
     const now = new Date().toISOString().slice(0, 10)
 
-    // Próxima gestión
     if (msg.includes('próxima') || msg.includes('proxima') || msg.includes('próximo') || msg.includes('proximo') || msg.includes('siguiente')) {
       const { data: next } = await sb
         .from('registro_gestiones')
@@ -494,7 +534,6 @@ async function mockResponse(
       return { reply: `📅 Próxima gestión en **${estNombre}**: **${(g.gestiones as unknown as { nombre: string }).nombre}** — planificada para el ${g.fecha_planificada}.`, conversationId: conversationId ?? 'mock-conversation', pendingActions: [] }
     }
 
-    // Por mes / periodo
     let monthFilter = thisMonth
     const mesMatch = msg.match(/(?:este\s+)?mes\s+(?:de\s+)?([a-záéíóú]+)/i) || msg.match(/(?:en\s+)?([a-záéíóú]+)\s*(?:del?\s+(\d{4}))?/i)
     if (mesMatch) {
@@ -528,5 +567,4 @@ async function mockResponse(
       pendingActions: [],
     }
   }
-
 }

@@ -245,6 +245,7 @@ export const registroGestionSchema = z.object({
   index: z.number().int().nonnegative().nullable(),
   fecha_planificada: z.string().min(1),
   fecha_ejecutada: z.string().nullable(),
+  fecha_vencimiento: z.string().nullable(),
   responsable_id: z.string().uuid().nullable(),
   aprobado_por_id: z.string().uuid().nullable(),
   evidencia_url: z.string().url().nullable(),

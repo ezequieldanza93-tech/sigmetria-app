@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Menu, Sun, Moon, Users, UserCog, Network, Gauge, Shield, Settings2, LogOut, Building2 } from 'lucide-react'
+import { Menu, Sun, Moon, Users, UserCog, Network, Gauge, Shield, Settings2, LogOut, Building2, Bell } from 'lucide-react'
+import { contarNotificacionesNoLeidas } from '@/lib/actions/notificacion'
 import { SystemRole, UserRole, ROLE_LABELS, ROLE_COLORS } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 import { useMobileMenu } from '@/components/layout/mobile-menu-context'
@@ -40,10 +41,19 @@ export function AppHeader({
   const [forecastCoords, setForecastCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [isDark, setIsDark] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [notifCount, setNotifCount] = useState(0)
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     setIsDark(document.documentElement.getAttribute('data-theme') === 'dark')
+  }, [])
+
+  useEffect(() => {
+    contarNotificacionesNoLeidas().then(setNotifCount)
+    const interval = setInterval(() => {
+      contarNotificacionesNoLeidas().then(setNotifCount)
+    }, 60000)
+    return () => clearInterval(interval)
   }, [])
 
   useEffect(() => {

@@ -17,6 +17,7 @@ const ejecutarGestionSchema = z.object({
   index: z.coerce.number().optional(),
   notas: z.string().nullable().optional(),
   responsable_id: z.string().nullable().optional(),
+  fecha_vencimiento: z.string().nullable().optional(),
 })
 
 export async function createRegistroGestion(
@@ -56,13 +57,14 @@ export async function ejecutarGestion(
   if (!parsed.success) {
     return { success: false, error: formatZodErrors(parsed.error) }
   }
-  const { registro_id: registroId, fecha_ejecutada: fechaEjecutada, index: indexParsed, notas, responsable_id: responsableId } = parsed.data
+  const { registro_id: registroId, fecha_ejecutada: fechaEjecutada, index: indexParsed, notas, responsable_id: responsableId, fecha_vencimiento: fechaVencimiento } = parsed.data
   const file = formData.get('evidencia') as File | null
 
   const updates: Record<string, unknown> = {
     fecha_ejecutada: fechaEjecutada,
     notas: notas || null,
     responsable_id: responsableId || null,
+    fecha_vencimiento: fechaVencimiento || null,
   }
   if (indexParsed !== undefined && !isNaN(indexParsed)) {
     updates.index = indexParsed

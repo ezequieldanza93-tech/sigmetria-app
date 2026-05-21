@@ -36,7 +36,7 @@ export function useGestionesEstablecimiento(establecimientoId: string | undefine
 
       const { data } = await supabase
         .from('gestiones_establecimientos')
-        .select('id, mostrar_lt, gestiones!inner(id, nombre, gestiones_categorias(nombre, gestiones_grupos(nombre)))')
+        .select('id, mostrar_lt, gestiones!inner(id, nombre, tiene_entregable, gestiones_categorias(nombre, gestiones_grupos(nombre)))')
         .eq('establecimiento_id', establecimientoId)
         .gte('created_at', yearStart)
         .lt('created_at', yearEnd)
@@ -68,7 +68,7 @@ export function useRegistrosGestion(geIds: string[] | undefined, year: number) {
 
       const registrosRes = await supabase
         .from('gestiones_registros')
-        .select('id, gestion_establecimiento_id, fecha_planificada, fecha_ejecutada, responsable_id, index, evidencia_url, created_at, responsable:personas_directorio!responsable_id(nombre, apellido), aprobado_por:personas_directorio!aprobado_por_id(nombre, apellido)')
+        .select('id, gestion_establecimiento_id, fecha_planificada, fecha_ejecutada, fecha_vencimiento, responsable_id, index, evidencia_url, created_at, responsable:personas_directorio!responsable_id(nombre, apellido), aprobado_por:personas_directorio!aprobado_por_id(nombre, apellido)')
         .in('gestion_establecimiento_id', geIds)
         .gte('fecha_planificada', yearStart)
         .lt('fecha_planificada', yearEnd)
@@ -153,7 +153,7 @@ export function useCatalogo() {
     queryFn: async () => {
       const supabase = createClient()
       const [gesRes, gruRes, catRes] = await Promise.all([
-        supabase.from('gestiones').select('id, nombre, categoria_id, aplica_por_iso, gestiones_categorias(id, nombre, gestiones_grupos(nombre))').order('nombre'),
+        supabase.from('gestiones').select('id, nombre, categoria_id, aplica_por_iso, tiene_entregable, gestiones_categorias(id, nombre, gestiones_grupos(nombre))').order('nombre'),
         supabase.from('gestiones_grupos').select('id, nombre').order('nombre'),
         supabase.from('gestiones_categorias').select('id, nombre, grupo_id').order('nombre'),
       ])

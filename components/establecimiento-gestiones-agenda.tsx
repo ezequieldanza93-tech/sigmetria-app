@@ -92,6 +92,7 @@ interface FullRegistro extends RegistroGestion {
   ge_id?: string
   ge_gestion_id?: string
   ge_tiene_formulario?: boolean
+  ge_tiene_entregable?: boolean
   ge_mostrar_lt?: boolean
   responsable_nombre?: string
   aprobado_nombre?: string
@@ -607,6 +608,22 @@ function EjecucionModal({
           />
         </div>
 
+        {registro.ge_tiene_entregable && (
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-1">
+              Fecha de Vencimiento del Entregable
+              <span className="text-xs text-gray-400 font-normal ml-1">(opcional)</span>
+            </label>
+            <input
+              type="date"
+              name="fecha_vencimiento"
+              defaultValue={registro.fecha_vencimiento ?? ''}
+              className={inputCls}
+            />
+            <p className="text-xs text-gray-400 mt-1">Fecha en que vence el protocolo, certificado o permiso generado.</p>
+          </div>
+        )}
+
         <div>
           <label className="text-sm font-medium text-gray-700 block mb-1">Índice *</label>
           <input
@@ -879,6 +896,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
         ge_id: ge?.id,
         ge_gestion_id: ge?.gestiones?.id,
         ge_tiene_formulario: ge?.gestiones?.id ? formSet.has(ge.gestiones.id) : false,
+        ge_tiene_entregable: ge?.gestiones?.tiene_entregable ?? false,
         ge_mostrar_lt: ge?.mostrar_lt ?? false,
         ge_gestion_nombre: ge?.gestiones?.nombre,
         ge_categoria_nombre: ge?.gestiones?.gestiones_categorias?.nombre,

@@ -2,10 +2,8 @@ import { DynamicStructuredTool } from '@langchain/core/tools'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 
-const MOCK_MODE = !process.env.ANTHROPIC_API_KEY
-
-async function getSupabase() {
-  return await createClient()
+function getSupabase() {
+  return createClient()
 }
 
 export const tools: DynamicStructuredTool[] = [
@@ -14,7 +12,6 @@ export const tools: DynamicStructuredTool[] = [
     description: 'Crea una nueva empresa con los datos proporcionados.',
     schema: z.object({ razon_social: z.string(), cuit: z.string().optional(), domicilio: z.string().optional(), email: z.string().optional(), telefono: z.string().optional() }),
     func: async ({ razon_social, cuit, domicilio, email, telefono }) => {
-      if (MOCK_MODE) return JSON.stringify({ success: true, id: 'mock-id', message: `Empresa "${razon_social}" creada (mock)` })
       const supabase = await getSupabase()
       const { data, error } = await supabase.from('empresas').insert({ razon_social, cuit, domicilio, email, telefono }).select('id').single()
       if (error) return JSON.stringify({ success: false, error: error.message })
@@ -26,7 +23,6 @@ export const tools: DynamicStructuredTool[] = [
     description: 'Registra un siniestro laboral.',
     schema: z.object({ establecimiento_id: z.string(), fecha_ocurrencia: z.string(), descripcion: z.string(), gravedad: z.enum(['leve', 'moderado', 'grave']), tipo: z.string().optional() }),
     func: async ({ establecimiento_id, fecha_ocurrencia, descripcion, gravedad, tipo }) => {
-      if (MOCK_MODE) return JSON.stringify({ success: true, id: 'mock-id' })
       const supabase = await getSupabase()
       const { data, error } = await supabase.from('siniestros').insert({ establecimiento_id, fecha_ocurrencia, descripcion, gravedad, tipo: tipo ?? 'accidente' }).select('id').single()
       if (error) return JSON.stringify({ success: false, error: error.message })
@@ -38,7 +34,6 @@ export const tools: DynamicStructuredTool[] = [
     description: 'Lista siniestros de un establecimiento.',
     schema: z.object({ establecimiento_id: z.string(), limit: z.number().optional() }),
     func: async ({ establecimiento_id, limit }) => {
-      if (MOCK_MODE) return JSON.stringify([{ id: 'mock-1', fecha_ocurrencia: '2026-01-15', descripcion: 'Siniestro de prueba (mock)', gravedad: 'leve' }])
       const supabase = await getSupabase()
       const { data, error } = await supabase.from('siniestros').select('*').eq('establecimiento_id', establecimiento_id).order('fecha_ocurrencia', { ascending: false }).limit(limit ?? 10)
       if (error) return JSON.stringify({ success: false, error: error.message })
@@ -50,7 +45,6 @@ export const tools: DynamicStructuredTool[] = [
     description: 'Lista inspecciones programadas de un establecimiento.',
     schema: z.object({ establecimiento_id: z.string(), limit: z.number().optional() }),
     func: async ({ establecimiento_id, limit }) => {
-      if (MOCK_MODE) return JSON.stringify([{ id: 'mock-1', fecha_programada: '2026-06-01', tipo: 'rutina', estado: 'pendiente' }])
       const supabase = await getSupabase()
       const { data, error } = await supabase.from('inspecciones').select('*').eq('establecimiento_id', establecimiento_id).order('fecha_programada', { ascending: false }).limit(limit ?? 10)
       if (error) return JSON.stringify({ success: false, error: error.message })
@@ -62,7 +56,6 @@ export const tools: DynamicStructuredTool[] = [
     description: 'Lista riesgos identificados en un establecimiento.',
     schema: z.object({ establecimiento_id: z.string(), limit: z.number().optional() }),
     func: async ({ establecimiento_id, limit }) => {
-      if (MOCK_MODE) return JSON.stringify([{ id: 'mock-1', nombre: 'Riesgo eléctrico (mock)', nivel: 'medio', estado: 'abierto' }])
       const supabase = await getSupabase()
       const { data, error } = await supabase.from('riesgos').select('*').eq('establecimiento_id', establecimiento_id).order('fecha_identificacion', { ascending: false }).limit(limit ?? 10)
       if (error) return JSON.stringify({ success: false, error: error.message })
@@ -83,7 +76,6 @@ export const tools: DynamicStructuredTool[] = [
     description: 'Consulta vencimientos próximos de documentación de un establecimiento.',
     schema: z.object({ establecimiento_id: z.string() }),
     func: async ({ establecimiento_id }) => {
-      if (MOCK_MODE) return JSON.stringify([{ documento: 'Certificado ART (mock)', vencimiento: '2026-07-15', dias_restantes: 45 }])
       const supabase = await getSupabase()
       const { data, error } = await supabase.from('establecimientos_documentos').select('*, documentos_tipos(nombre)').eq('establecimiento_id', establecimiento_id).not('vencimiento', 'is', null).order('vencimiento', { ascending: true })
       if (error) return JSON.stringify({ success: false, error: error.message })
@@ -95,7 +87,6 @@ export const tools: DynamicStructuredTool[] = [
     description: 'Consulta empleados/trabajadores de un establecimiento.',
     schema: z.object({ establecimiento_id: z.string() }),
     func: async ({ establecimiento_id }) => {
-      if (MOCK_MODE) return JSON.stringify([{ nombre: 'Juan Pérez (mock)', dni: '12345678', puesto: 'Operario' }])
       const supabase = await getSupabase()
       const { data, error } = await supabase.from('personas_establecimientos').select('persona_id, personas_directorio!persona_id(id, nombre, apellido, dni)').eq('establecimiento_id', establecimiento_id)
       if (error) return JSON.stringify({ success: false, error: error.message })
