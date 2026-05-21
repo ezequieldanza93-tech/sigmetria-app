@@ -79,7 +79,6 @@ export function AppHeader({
       setCrumbs([])
       setContextAddress(null)
       setTipoLabel(null)
-      setForecastCoords(null)
       return
     }
 
