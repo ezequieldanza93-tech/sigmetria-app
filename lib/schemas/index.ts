@@ -127,7 +127,11 @@ export const consultoraSchema = z.object({
   telefono: z.string().nullable(),
   email: z.string().email().nullable(),
   logo_url: z.string().url().nullable(),
+  website: z.string().nullable(),
+  social_links: z.record(z.string(), z.string()).nullable(),
   is_active: z.boolean(),
+  seats_max: z.number().int(),
+  trial_used_at: z.string().datetime().nullable(),
   created_at: z.string().datetime(),
   updated_at: z.string().datetime(),
 })

@@ -116,7 +116,11 @@ export interface Consultora {
   telefono: string | null
   email: string | null
   logo_url: string | null
+  website: string | null
+  social_links: Record<string, string> | null
   is_active: boolean
+  seats_max: number
+  trial_used_at: string | null
   created_at: string
   updated_at: string
 }
