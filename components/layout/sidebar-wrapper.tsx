@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Sidebar } from './sidebar'
 import { MobileMenuProvider } from './mobile-menu-context'
 import { PreviewProvider } from '@/lib/contexts/preview-context'
+import { ChatWidget } from '@/components/agent/chat-widget'
 
 interface SidebarWrapperProps {
   header: React.ReactNode
@@ -43,6 +44,8 @@ export function SidebarWrapper({ header, children, isSuperAdmin }: SidebarWrappe
           <main className="flex-1">{children}</main>
         </div>
       </div>
+
+      <ChatWidget />
     </PreviewProvider>
     </MobileMenuProvider>
   )

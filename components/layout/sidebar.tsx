@@ -17,7 +17,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
-import { Smartphone } from 'lucide-react'
+import { Smartphone, MessageCircle } from 'lucide-react'
 import { usePreview } from '@/lib/contexts/preview-context'
 
 interface EmpresaTree {
@@ -240,6 +240,14 @@ export function Sidebar({ mobileOpen, onMobileClose, onCollapsedChange, isSuperA
 
         {/* Bottom section — analytics, billing, admin, collapse */}
         <div className="border-t border-border-subtle py-3 px-2 space-y-0.5">
+          <SidebarBottomLink
+            href="/dashboard/asistencia"
+            label="Asistente HyS"
+            icon={<MessageCircle size={18} strokeWidth={1.75} />}
+            active={pathname.startsWith('/dashboard/asistencia')}
+            collapsed={isCollapsed}
+            onClick={onMobileClose}
+          />
           <SidebarBottomLink
             href="/dashboard/analytics"
             label="Analytics"
