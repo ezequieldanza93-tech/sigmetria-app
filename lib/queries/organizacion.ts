@@ -13,7 +13,7 @@ export function useOrganizacionTipos(enabled = true) {
         .from('organizaciones_tipos')
         .select('*')
         .order('nombre')
-      return (data ?? []) as TipoOrganizacion[]
+      return (data ?? []) as unknown as TipoOrganizacion[]
     },
     staleTime: 1000 * 60 * 5,
     enabled,
@@ -30,7 +30,7 @@ export function useSubcontratistaRubros(enabled = true) {
         .select('*')
         .eq('is_active', true)
         .order('nombre')
-      return (data ?? []) as SubcontratistaRubro[]
+      return (data ?? []) as unknown as SubcontratistaRubro[]
     },
     staleTime: 1000 * 60 * 30,
     enabled,
@@ -49,7 +49,7 @@ export function useArtOrgs(enabled = true) {
         .eq('is_active', true)
         .eq('scope', 'global')
         .order('nombre')
-      return (data ?? []) as { id: string; nombre: string }[]
+      return (data ?? []) as unknown as { id: string; nombre: string }[]
     },
     staleTime: 1000 * 30,
     enabled,

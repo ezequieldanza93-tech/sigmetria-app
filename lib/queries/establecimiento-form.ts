@@ -12,7 +12,7 @@ export function useLocalidades(enabled = true) {
         .select('id, nombre, provincia, is_active, created_at')
         .eq('is_active', true)
         .order('nombre')
-      return (data ?? []) as Localidad[]
+      return (data ?? []) as unknown as Localidad[]
     },
     staleTime: 1000 * 60 * 5,
     enabled,
@@ -28,7 +28,7 @@ export function useEstablecimientoTipos(enabled = true) {
         .from('establecimientos_tipos')
         .select('id, codigo, nombre, created_at')
         .order('nombre')
-      return (data ?? []) as TiposEstablecimiento[]
+      return (data ?? []) as unknown as TiposEstablecimiento[]
     },
     staleTime: 1000 * 60 * 30,
     enabled,

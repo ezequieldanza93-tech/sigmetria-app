@@ -13,7 +13,7 @@ export function useCertificados(instrumentoId: string | undefined) {
         .select('id, instrumento_id, fecha_emision, fecha_vencimiento, certificado_url, resultado, laboratorio, created_at')
         .eq('instrumento_id', instrumentoId)
         .order('fecha_emision', { ascending: false })
-      return (data ?? []) as CertificadoCalibracion[]
+      return (data ?? []) as unknown as CertificadoCalibracion[]
     },
     enabled: !!instrumentoId,
     staleTime: 1000 * 60 * 5,

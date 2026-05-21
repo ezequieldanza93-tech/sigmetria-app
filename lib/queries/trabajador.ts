@@ -9,16 +9,17 @@ export function useMatriculasPersona(personaId: string | undefined) {
       const supabase = createClient()
       const { data } = await supabase
         .from('matriculas')
-        .select('id, persona_id, emisor, numero, fecha_emision, fecha_vencimiento, activa, organizaciones_externas(nombre)')
+        .select('id, persona_id, emisor, numero, fecha_emision, fecha_vencimiento, certificado_url, activa, organizaciones_externas(nombre)')
         .eq('persona_id', personaId)
         .order('fecha_emision', { ascending: false })
-      return (data ?? []) as {
+      return (data ?? []) as unknown as {
         id: string
         persona_id: string
         emisor: string
         numero: string
         fecha_emision: string | null
         fecha_vencimiento: string | null
+        certificado_url: string | null
         activa: boolean
         organizaciones_externas: { nombre: string } | null
       }[]
