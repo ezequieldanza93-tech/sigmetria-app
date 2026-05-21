@@ -9,6 +9,6 @@
 UPDATE public.gestiones
 SET tiene_entregable = true
 WHERE categoria_id IN (
-  SELECT id FROM public.categoria_gestiones
-  WHERE nombre IN ('Mediciones y Cálculos', 'Permisos de Trabajo')
+  SELECT id FROM public.gestiones_categorias
+  WHERE nombre IN ('Protocolos Mediciones y Cálculos', 'Permisos de Trabajo')
 );
