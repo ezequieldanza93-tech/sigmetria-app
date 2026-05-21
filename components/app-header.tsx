@@ -4,7 +4,6 @@ import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { Menu, Sun, Moon, Users, UserCog, Network, Gauge, Shield, Settings2, LogOut, Building2, Bell } from 'lucide-react'
-import { contarNotificacionesNoLeidas } from '@/lib/actions/notificacion'
 import { SystemRole, UserRole, ROLE_LABELS, ROLE_COLORS } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 import { useMobileMenu } from '@/components/layout/mobile-menu-context'
@@ -48,10 +47,15 @@ export function AppHeader({
   }, [])
 
   useEffect(() => {
-    contarNotificacionesNoLeidas().then(setNotifCount)
-    const interval = setInterval(() => {
-      contarNotificacionesNoLeidas().then(setNotifCount)
-    }, 60000)
+    // GET API route (stable across deploys, unlike Server Action IDs)
+    const fetchCount = () =>
+      fetch('/api/notifications/count')
+        .then(r => r.json())
+        .then(d => setNotifCount(d.count ?? 0))
+        .catch(() => {})
+
+    fetchCount()
+    const interval = setInterval(fetchCount, 60000)
     return () => clearInterval(interval)
   }, [])
 
