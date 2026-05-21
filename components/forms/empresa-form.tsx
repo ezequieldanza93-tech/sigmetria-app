@@ -4,6 +4,7 @@ import { useActionState, useRef, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
+import { FileUploadInput } from '@/components/ui/file-upload-input'
 import { createClient } from '@/lib/supabase/client'
 import { createPrivateArt } from '@/lib/actions/empresa'
 import type { Empresa, Localidad, Rubro } from '@/lib/types'
@@ -248,17 +249,23 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <Input
-          label="Logo pequeño (URL)"
-          name="logo_small_url"
-          defaultValue={fieldValue('logo_small_url')}
-          placeholder="https://…"
+        <FileUploadInput
+          name="logo_small"
+          label="Logo pequeño"
+          accept="image/png,image/jpeg,image/webp,image/svg+xml"
+          maxSizeMB={2}
+          currentUrl={empresa?.logo_small_url}
+          helpText="PNG, JPG, WEBP o SVG. Máx 2 MB."
+          kind="image"
         />
-        <Input
-          label="Logo destacado (URL)"
-          name="logo_destacado_url"
-          defaultValue={fieldValue('logo_destacado_url')}
-          placeholder="https://…"
+        <FileUploadInput
+          name="logo_destacado"
+          label="Logo destacado"
+          accept="image/png,image/jpeg,image/webp,image/svg+xml"
+          maxSizeMB={2}
+          currentUrl={empresa?.logo_destacado_url}
+          helpText="PNG, JPG, WEBP o SVG. Máx 2 MB."
+          kind="image"
         />
       </div>
 

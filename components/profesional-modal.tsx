@@ -4,6 +4,7 @@ import { useState, useEffect, useActionState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
+import { FileUploadInput } from '@/components/ui/file-upload-input'
 import { upsertPerfilProfesional, addMatriculaProfesional } from '@/lib/actions/perfil-profesional'
 import { usePerfil, useProvincias, useMatriculas } from '@/lib/queries/profesional'
 import { formatDate } from '@/lib/utils'
@@ -162,15 +163,23 @@ function MatriculaForm({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <label className="text-xs font-medium text-gray-600 block mb-1">Foto frente (URL)</label>
-          <input name="foto_frente_url" type="url" placeholder="https://…" className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
-        </div>
-        <div>
-          <label className="text-xs font-medium text-gray-600 block mb-1">Foto dorso (URL)</label>
-          <input name="foto_dorso_url" type="url" placeholder="https://…" className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
-        </div>
+      <div className="grid grid-cols-2 gap-3">
+        <FileUploadInput
+          name="foto_frente"
+          label="Foto frente"
+          accept="image/jpeg,image/png,application/pdf"
+          maxSizeMB={5}
+          helpText="JPG, PNG o PDF. Máx 5 MB."
+          kind="image"
+        />
+        <FileUploadInput
+          name="foto_dorso"
+          label="Foto dorso"
+          accept="image/jpeg,image/png,application/pdf"
+          maxSizeMB={5}
+          helpText="JPG, PNG o PDF. Máx 5 MB."
+          kind="image"
+        />
       </div>
 
       <div className="flex justify-end">

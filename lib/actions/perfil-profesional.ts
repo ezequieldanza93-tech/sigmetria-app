@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { uploadAsset } from '@/lib/storage/upload'
 import type { ActionResult } from '@/lib/types'
 
 export async function upsertPerfilProfesional(
@@ -49,7 +50,17 @@ export async function addMatriculaProfesional(
   const numero = formData.get('numero') as string
   if (!emisor || !numero) return { success: false, error: 'Emisor y número son requeridos' }
 
-  // Deactivate previous active matrícula from the same emisor (renewal pattern)
+  const { data: membership } = await supabase
+    .from('consultoras_members')
+    .select('consultora_id')
+    .eq('user_id', user.id)
+    .eq('is_active', true)
+    .maybeSingle()
+
+  if (!membership?.consultora_id) {
+    return { success: false, error: 'No pertenecés a ninguna consultora activa' }
+  }
+
   await supabase
     .from('matriculas_profesionales')
     .update({ activa: false })
@@ -57,18 +68,58 @@ export async function addMatriculaProfesional(
     .eq('emisor', emisor)
     .eq('activa', true)
 
-  const { error } = await supabase.from('matriculas_profesionales').insert({
-    perfil_id: perfilId,
-    emisor,
-    numero,
-    fecha_emision: formData.get('fecha_emision') as string || null,
-    fecha_vencimiento: formData.get('fecha_vencimiento') as string || null,
-    foto_frente_url: formData.get('foto_frente_url') as string || null,
-    foto_dorso_url: formData.get('foto_dorso_url') as string || null,
-    activa: true,
-  })
+  const { data: inserted, error } = await supabase
+    .from('matriculas_profesionales')
+    .insert({
+      perfil_id: perfilId,
+      emisor,
+      numero,
+      fecha_emision: formData.get('fecha_emision') as string || null,
+      fecha_vencimiento: formData.get('fecha_vencimiento') as string || null,
+      activa: true,
+    })
+    .select('id')
+    .single()
 
-  if (error) return { success: false, error: error.message }
+  if (error || !inserted) return { success: false, error: error?.message ?? 'Error al insertar' }
+
+  const matriculaId = inserted.id
+  const updates: { foto_frente_url?: string; foto_dorso_url?: string } = {}
+
+  const frenteFile = formData.get('foto_frente') as File | null
+  if (frenteFile && frenteFile.size > 0) {
+    const up = await uploadAsset({
+      bucket: 'matriculas',
+      consultoraId: membership.consultora_id,
+      entityType: 'matricula_prof',
+      entityId: matriculaId,
+      kind: 'frente',
+      file: frenteFile,
+    })
+    if (!up.ok) return { success: false, error: `Foto frente: ${up.error}` }
+    updates.foto_frente_url = up.url
+  }
+
+  const dorsoFile = formData.get('foto_dorso') as File | null
+  if (dorsoFile && dorsoFile.size > 0) {
+    const up = await uploadAsset({
+      bucket: 'matriculas',
+      consultoraId: membership.consultora_id,
+      entityType: 'matricula_prof',
+      entityId: matriculaId,
+      kind: 'dorso',
+      file: dorsoFile,
+    })
+    if (!up.ok) return { success: false, error: `Foto dorso: ${up.error}` }
+    updates.foto_dorso_url = up.url
+  }
+
+  if (Object.keys(updates).length > 0) {
+    await supabase
+      .from('matriculas_profesionales')
+      .update(updates)
+      .eq('id', matriculaId)
+  }
 
   revalidatePath('/dashboard/equipo')
   return { success: true, data: null }

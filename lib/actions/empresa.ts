@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import type { ActionResult } from '@/lib/types'
+import { uploadAsset, deleteAsset, pathFromUrl } from '@/lib/storage/upload'
 
 interface EmpresaFormState {
   success: boolean
@@ -18,13 +19,62 @@ function extractFields(formData: FormData): Record<string, string> {
     'razon_social', 'tipo_identidad_impositiva', 'cuit', 'rubro_id',
     'domicilio', 'localidad_id', 'codigo_postal',
     'art_id', 'art_numero_contrato',
-    'logo_small_url', 'logo_destacado_url', 'informacion_general',
+    'informacion_general',
   ]
   const fields: Record<string, string> = {}
   for (const name of fieldNames) {
     fields[name] = (formData.get(name) as string) ?? ''
   }
   return fields
+}
+
+async function processLogoUploads(
+  consultoraId: string,
+  empresaId: string,
+  formData: FormData,
+  current: { logo_small_url: string | null; logo_destacado_url: string | null },
+): Promise<{ logo_small_url?: string | null; logo_destacado_url?: string | null; error?: string }> {
+  const result: { logo_small_url?: string | null; logo_destacado_url?: string | null; error?: string } = {}
+
+  const smallFile = formData.get('logo_small') as File | null
+  const smallRemove = formData.get('logo_small__remove') === '1'
+  if (smallFile && smallFile.size > 0) {
+    const up = await uploadAsset({
+      bucket: 'logos',
+      consultoraId,
+      entityType: 'empresa',
+      entityId: empresaId,
+      kind: 'small',
+      file: smallFile,
+    })
+    if (!up.ok) return { error: `Logo pequeño: ${up.error}` }
+    result.logo_small_url = up.url
+  } else if (smallRemove && current.logo_small_url) {
+    const path = pathFromUrl(current.logo_small_url, 'logos')
+    if (path) await deleteAsset('logos', path)
+    result.logo_small_url = null
+  }
+
+  const destFile = formData.get('logo_destacado') as File | null
+  const destRemove = formData.get('logo_destacado__remove') === '1'
+  if (destFile && destFile.size > 0) {
+    const up = await uploadAsset({
+      bucket: 'logos',
+      consultoraId,
+      entityType: 'empresa',
+      entityId: empresaId,
+      kind: 'destacado',
+      file: destFile,
+    })
+    if (!up.ok) return { error: `Logo destacado: ${up.error}` }
+    result.logo_destacado_url = up.url
+  } else if (destRemove && current.logo_destacado_url) {
+    const path = pathFromUrl(current.logo_destacado_url, 'logos')
+    if (path) await deleteAsset('logos', path)
+    result.logo_destacado_url = null
+  }
+
+  return result
 }
 
 export async function createEmpresa(_prev: EmpresaFormState | null, formData: FormData): Promise<EmpresaFormState> {
@@ -55,7 +105,7 @@ export async function createEmpresa(_prev: EmpresaFormState | null, formData: Fo
     return { success: false, error: 'Corregí los campos marcados en rojo', fieldErrors, fields }
   }
 
-  const { error } = await supabase
+  const { data: inserted, error } = await supabase
     .from('empresas')
     .insert({
       consultora_id: membership!.consultora_id,
@@ -68,14 +118,29 @@ export async function createEmpresa(_prev: EmpresaFormState | null, formData: Fo
       codigo_postal: fields.codigo_postal || null,
       art_id: fields.art_id || null,
       art_numero_contrato: fields.art_numero_contrato || null,
-      logo_small_url: fields.logo_small_url || null,
-      logo_destacado_url: fields.logo_destacado_url || null,
       informacion_general: fields.informacion_general || null,
     })
     .select('id')
     .single()
 
   if (error) return { success: false, error: error.message, fields }
+
+  const logos = await processLogoUploads(
+    membership!.consultora_id,
+    inserted.id,
+    formData,
+    { logo_small_url: null, logo_destacado_url: null },
+  )
+  if (logos.error) return { success: false, error: logos.error, fields }
+  if (logos.logo_small_url !== undefined || logos.logo_destacado_url !== undefined) {
+    await supabase
+      .from('empresas')
+      .update({
+        ...(logos.logo_small_url !== undefined && { logo_small_url: logos.logo_small_url }),
+        ...(logos.logo_destacado_url !== undefined && { logo_destacado_url: logos.logo_destacado_url }),
+      })
+      .eq('id', inserted.id)
+  }
 
   revalidatePath('/dashboard/empresas')
   redirect('/dashboard/empresas')
@@ -87,12 +152,28 @@ export async function updateEmpresa(id: string, _prev: EmpresaFormState | null, 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado', fields }
 
+  const { data: existing } = await supabase
+    .from('empresas')
+    .select('consultora_id, logo_small_url, logo_destacado_url')
+    .eq('id', id)
+    .single()
+
+  if (!existing) return { success: false, error: 'Empresa no encontrada', fields }
+
   const fieldErrors: Record<string, string> = {}
   if (!fields.razon_social?.trim()) fieldErrors.razon_social = 'La razón social es obligatoria'
 
   if (Object.keys(fieldErrors).length > 0) {
     return { success: false, error: 'Corregí los campos marcados en rojo', fieldErrors, fields }
   }
+
+  const logos = await processLogoUploads(
+    existing.consultora_id,
+    id,
+    formData,
+    { logo_small_url: existing.logo_small_url, logo_destacado_url: existing.logo_destacado_url },
+  )
+  if (logos.error) return { success: false, error: logos.error, fields }
 
   const { error } = await supabase
     .from('empresas')
@@ -106,9 +187,9 @@ export async function updateEmpresa(id: string, _prev: EmpresaFormState | null, 
       codigo_postal: fields.codigo_postal || null,
       art_id: fields.art_id || null,
       art_numero_contrato: fields.art_numero_contrato || null,
-      logo_small_url: fields.logo_small_url || null,
-      logo_destacado_url: fields.logo_destacado_url || null,
       informacion_general: fields.informacion_general || null,
+      ...(logos.logo_small_url !== undefined && { logo_small_url: logos.logo_small_url }),
+      ...(logos.logo_destacado_url !== undefined && { logo_destacado_url: logos.logo_destacado_url }),
     })
     .eq('id', id)
 
