@@ -171,7 +171,7 @@ async function mockResponse(
 
   // --- GESTIONES: consultas con filtros ---
   if (lower.includes('gestión') || lower.includes('gestion') || lower.includes('gestione') || lower.includes('programada') || lower.includes('planificada') || lower.includes('checklist') || lower.includes('check list') || lower.includes('extintor') || lower.includes('extintores')) {
-    const targetEstId = establecimientoId || await detectEstablecimiento(lower, consultoraId)
+    const targetEstId = await detectEstablecimiento(lower, consultoraId) ?? establecimientoId
 
     if (!targetEstId) {
       const establecimientos = await listEstablecimientos(consultoraId)
@@ -198,7 +198,7 @@ async function mockResponse(
 
   // --- PLANIFICAR: crear checklist, gestión, etc ---
   if (lower.includes('planificar') || lower.includes('programar') || lower.includes('agendar') || lower.includes('crear una gestión') || lower.includes('nueva gestión') || lower.includes('nuevo checklist') || lower.includes('nuevo check list')) {
-    const targetEstId = establecimientoId || await detectEstablecimiento(lower, consultoraId)
+    const targetEstId = await detectEstablecimiento(lower, consultoraId) ?? establecimientoId
 
     if (!targetEstId) {
       const establecimientos = await listEstablecimientos(consultoraId)
@@ -305,7 +305,7 @@ async function mockResponse(
 
   // --- SINIESTROS ---
   if (lower.includes('siniestro')) {
-    const targetEstId = establecimientoId || await detectEstablecimiento(lower, consultoraId)
+    const targetEstId = await detectEstablecimiento(lower, consultoraId) ?? establecimientoId
     const ids = targetEstId ? [targetEstId] : await listEstIds(consultoraId)
     if (!ids.length) {
       return { reply: 'No hay establecimientos activos.', conversationId: conversationId ?? 'mock-conversation', pendingActions: [] }
@@ -330,7 +330,7 @@ async function mockResponse(
 
   // --- INSPECCIONES ---
   if (lower.includes('inspeccion') || lower.includes('inspección')) {
-    const targetEstId = establecimientoId || await detectEstablecimiento(lower, consultoraId)
+    const targetEstId = await detectEstablecimiento(lower, consultoraId) ?? establecimientoId
     const ids = targetEstId ? [targetEstId] : await listEstIds(consultoraId)
     if (!ids.length) {
       return { reply: 'No hay establecimientos activos.', conversationId: conversationId ?? 'mock-conversation', pendingActions: [] }
@@ -359,7 +359,7 @@ async function mockResponse(
 
   // --- RIESGOS ---
   if (lower.includes('riesgo') || lower.includes('matriz')) {
-    const targetEstId = establecimientoId || await detectEstablecimiento(lower, consultoraId)
+    const targetEstId = await detectEstablecimiento(lower, consultoraId) ?? establecimientoId
     const ids = targetEstId ? [targetEstId] : await listEstIds(consultoraId)
     if (!ids.length) {
       return { reply: 'No hay establecimientos activos.', conversationId: conversationId ?? 'mock-conversation', pendingActions: [] }
@@ -388,7 +388,7 @@ async function mockResponse(
 
   // --- EMPLEADOS ---
   if (lower.includes('empleado') || lower.includes('trabajador') || lower.includes('persona')) {
-    const targetEstId = establecimientoId || (await listEstablecimientos(consultoraId))?.[0]?.id
+    const targetEstId = await detectEstablecimiento(lower, consultoraId) ?? establecimientoId ?? (await listEstablecimientos(consultoraId))?.[0]?.id
     if (!targetEstId) {
       return { reply: 'No hay establecimientos activos.', conversationId: conversationId ?? 'mock-conversation', pendingActions: [] }
     }
@@ -448,7 +448,7 @@ async function mockResponse(
         .maybeSingle()
       if (est) return est.id
     }
-    return establecimientoId ?? null
+    return null
   }
 
   async function listEstablecimientos(cId: string) {
