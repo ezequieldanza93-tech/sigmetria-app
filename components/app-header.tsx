@@ -3,10 +3,11 @@
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Menu, Sun, Moon, Users, UserCog, Network, Gauge, Shield, Settings2, LogOut, Building2, Bell } from 'lucide-react'
+import { Menu, Sun, Moon, Users, UserCog, Network, Gauge, Shield, Settings2, LogOut, Building2, Bell, BarChart2, CreditCard, Smartphone } from 'lucide-react'
 import { SystemRole, UserRole, ROLE_LABELS, ROLE_COLORS } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 import { useMobileMenu } from '@/components/layout/mobile-menu-context'
+import { usePreview } from '@/lib/contexts/preview-context'
 import { WeatherClock } from '@/components/weather-clock'
 
 interface AppHeaderProps {
@@ -32,6 +33,7 @@ export function AppHeader({
   systemRole,
 }: AppHeaderProps) {
   const { openMobileMenu } = useMobileMenu()
+  const { isOpen: isPreviewOpen, setIsOpen: setPreviewOpen } = usePreview()
   const pathname = usePathname()
   const router = useRouter()
   const [crumbs, setCrumbs] = useState<Crumb[]>([])
@@ -330,6 +332,28 @@ export function AppHeader({
                   <DropdownItem href="/dashboard/instrumentos" icon={Gauge} label="Instrumentos" />
                   <DropdownItem href="/dashboard/productos" icon={Shield} label="Productos" />
                   <DropdownItem href="/dashboard/configuracion/catalogacion" icon={Settings2} label="Catalogación" />
+                </div>
+
+                {/* Herramientas */}
+                <div className="py-1 border-b border-border-subtle">
+                  <div className="px-4 py-1.5">
+                    <p className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold">Herramientas</p>
+                  </div>
+                  <DropdownItem href="/dashboard/analytics" icon={BarChart2} label="Analytics" />
+                  <DropdownItem href="/dashboard/billing" icon={CreditCard} label="Suscripción" />
+                  <button
+                    onClick={() => {
+                      setPreviewOpen(!isPreviewOpen)
+                      setMenuOpen(false)
+                    }}
+                    className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-surface-sunken transition-colors"
+                  >
+                    <span className="text-text-tertiary">
+                      <Smartphone size={16} strokeWidth={1.75} />
+                    </span>
+                    Preview Mobile
+                    {isPreviewOpen && <span className="ml-auto text-[10px] text-brand-primary font-semibold">ON</span>}
+                  </button>
                 </div>
 
                 <button

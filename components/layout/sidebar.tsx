@@ -4,21 +4,17 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import {
-  BarChart2,
   Building2,
   ChevronRight,
   ChevronDown,
-  CreditCard,
   Factory,
   PanelLeftClose,
   PanelLeftOpen,
   ShieldCheck,
-  Smartphone,
   X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
-import { usePreview } from '@/lib/contexts/preview-context'
 
 interface EmpresaTree {
   id: string
@@ -238,24 +234,8 @@ export function Sidebar({ mobileOpen, onMobileClose, onCollapsedChange, isSuperA
           </ul>
         </nav>
 
-        {/* Bottom section — analytics, billing, admin, collapse */}
+        {/* Bottom section — admin (conditional), collapse */}
         <div className="border-t border-border-subtle py-3 px-2 space-y-0.5">
-          <SidebarBottomLink
-            href="/dashboard/analytics"
-            label="Analytics"
-            icon={<BarChart2 size={18} strokeWidth={1.75} />}
-            active={pathname.startsWith('/dashboard/analytics')}
-            collapsed={isCollapsed}
-            onClick={onMobileClose}
-          />
-          <SidebarBottomLink
-            href="/dashboard/billing"
-            label="Suscripción"
-            icon={<CreditCard size={18} strokeWidth={1.75} />}
-            active={pathname.startsWith('/dashboard/billing')}
-            collapsed={isCollapsed}
-            onClick={onMobileClose}
-          />
           {isSuperAdmin && (
             <SidebarBottomLink
               href="/dashboard/admin"
@@ -266,7 +246,6 @@ export function Sidebar({ mobileOpen, onMobileClose, onCollapsedChange, isSuperA
               onClick={onMobileClose}
             />
           )}
-          <SidebarPreviewButton collapsed={isCollapsed} />
           <button
             onClick={toggleCollapsed}
             className={cn(
@@ -327,37 +306,6 @@ function SidebarBottomLink({ href, label, icon, active, collapsed, onClick }: Si
         </span>
       )}
     </Link>
-  )
-}
-
-function SidebarPreviewButton({ collapsed }: { collapsed: boolean }) {
-  const { isOpen, setIsOpen } = usePreview()
-
-  return (
-    <button
-      onClick={() => setIsOpen(!isOpen)}
-      className={cn(
-        'group relative flex items-center gap-2 w-full rounded-lg px-2 py-2 text-sm font-medium transition-colors',
-        isOpen
-          ? 'bg-brand-muted text-brand-primary'
-          : 'text-text-tertiary hover:text-text-primary hover:bg-surface-elevated',
-        collapsed && 'justify-center',
-      )}
-      title={collapsed ? 'Preview Mobile' : undefined}
-    >
-      {isOpen && (
-        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-brand-primary rounded-r-full" />
-      )}
-      <span className={cn('shrink-0', isOpen ? 'text-brand-primary' : 'text-text-tertiary group-hover:text-text-primary')}>
-        <Smartphone size={18} strokeWidth={1.75} />
-      </span>
-      {!collapsed && <span className="sidebar-label-transition truncate text-xs">Preview Mobile</span>}
-      {collapsed && (
-        <span className="absolute left-full ml-2 px-2 py-1 bg-surface-elevated border border-border-subtle rounded-md text-xs text-text-primary whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none shadow-md z-50 transition-opacity">
-          Preview Mobile
-        </span>
-      )}
-    </button>
   )
 }
 
