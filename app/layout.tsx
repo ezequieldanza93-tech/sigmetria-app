@@ -4,6 +4,7 @@ import { DevErrorBoundary } from '@/components/dev-error-boundary'
 import { ThemeProvider } from '@/components/theme-provider'
 import { QueryProvider } from '@/components/query-provider'
 import { ErrorCapture } from '@/components/error-capture'
+import { PWARegister } from '@/components/pwa-register'
 import './globals.css'
 
 const poppins = Poppins({
@@ -22,7 +23,23 @@ const montserrat = Montserrat({
 
 export const metadata: Metadata = {
   title: 'Sigmetría HyS',
-  description: 'Plataforma de Higiene y Seguridad',
+  description: 'Plataforma de Higiene y Seguridad laboral',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    title: 'Sigmetría HyS',
+    statusBarStyle: 'default',
+  },
+  icons: {
+    apple: '/icons/icon-192.png',
+  },
+}
+
+export const viewport = {
+  themeColor: '#059669',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -34,6 +51,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <DevErrorBoundary>{children}</DevErrorBoundary>
           </ThemeProvider>
         </QueryProvider>
+        <PWARegister />
         <ErrorCapture />
       </body>
     </html>
