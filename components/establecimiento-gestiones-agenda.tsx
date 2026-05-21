@@ -1297,9 +1297,9 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
 
 
 
-      {/* FAB — Floating Action Buttons */}
+      {/* FAB — Floating Action Buttons (apilados arriba del chat widget) */}
       {canWrite && (
-        <div style={{ position: 'fixed', bottom: '2rem', right: '2rem', zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        <div style={{ position: 'fixed', bottom: '6rem', right: '1rem', zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           <div
             style={{ position: 'relative' }}
             onMouseEnter={e => { const t = e.currentTarget.querySelector('.fab-tooltip') as HTMLElement; if (t) t.style.opacity = '1' }}

@@ -1,11 +1,30 @@
 'use client'
 
 import { useState, useEffect, lazy, Suspense } from 'react'
+import { usePathname } from 'next/navigation'
 import { MessageCircle, X, Loader2 } from 'lucide-react'
 
 const ChatPanel = lazy(() => import('./chat-panel').then(m => ({ default: m.ChatPanel })))
 
+function parseRouteContext(pathname: string): { empresaId?: string; establecimientoId?: string } {
+  const match = pathname.match(/^\/dashboard\/empresas\/([^/]+)(?:\/establecimientos\/([^/]+))?/)
+  if (!match) return {}
+
+  const rawEmpresa = match[1]
+  const rawEstablecimiento = match[2]
+
+  // Skip non-id segments like /empresas/nueva or /establecimientos/nuevo
+  const empresaId = rawEmpresa && rawEmpresa !== 'nueva' ? rawEmpresa : undefined
+  if (!empresaId) return {}
+
+  const establecimientoId =
+    rawEstablecimiento && rawEstablecimiento !== 'nuevo' ? rawEstablecimiento : undefined
+
+  return { empresaId, establecimientoId }
+}
+
 export function ChatWidget() {
+  const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
 
@@ -14,6 +33,8 @@ export function ChatWidget() {
   }, [])
 
   if (!mounted) return null
+
+  const { empresaId, establecimientoId } = parseRouteContext(pathname ?? '')
 
   return (
     <>
@@ -36,7 +57,12 @@ export function ChatWidget() {
               </div>
             }
           >
-            <ChatPanel variant="popover" onClose={() => setIsOpen(false)} />
+            <ChatPanel
+              variant="popover"
+              onClose={() => setIsOpen(false)}
+              empresaId={empresaId}
+              establecimientoId={establecimientoId}
+            />
           </Suspense>
         </div>
       )}
