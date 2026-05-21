@@ -73,6 +73,15 @@ export const consultoraCreateSchema = z.object({
   logo_url: z.string().nullable().optional(),
 })
 
+export const consultoraUpdateSchema = z.object({
+  nombre: z.string().min(1, { error: 'El nombre es obligatorio' }).max(200),
+  telefono: z.string().nullable().optional(),
+  email: z.email().nullable().optional(),
+  website: z.string().nullable().optional(),
+  logo_url: z.string().nullable().optional(),
+  social_links: z.record(z.string(), z.string()).nullable().optional(),
+})
+
 export const siniestroCreateSchema = z.object({
   establecimiento_id: z.string().min(1),
   tipo: siniestroTipo,

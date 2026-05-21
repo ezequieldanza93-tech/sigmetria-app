@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Menu, Sun, Moon, Users, UserCog, Network, Gauge, Shield, Settings2, LogOut } from 'lucide-react'
+import { Menu, Sun, Moon, Users, UserCog, Network, Gauge, Shield, Settings2, LogOut, Building2, Bell } from 'lucide-react'
+import { contarNotificacionesNoLeidas } from '@/lib/actions/notificacion'
 import { SystemRole, UserRole, ROLE_LABELS, ROLE_COLORS } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 import { useMobileMenu } from '@/components/layout/mobile-menu-context'
@@ -39,10 +40,31 @@ export function AppHeader({
   const [tipoLabel, setTipoLabel] = useState<string | null>(null)
   const [forecastCoords, setForecastCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [isDark, setIsDark] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [notifCount, setNotifCount] = useState(0)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     setIsDark(document.documentElement.getAttribute('data-theme') === 'dark')
   }, [])
+
+  useEffect(() => {
+    contarNotificacionesNoLeidas().then(setNotifCount)
+    const interval = setInterval(() => {
+      contarNotificacionesNoLeidas().then(setNotifCount)
+    }, 60000)
+    return () => clearInterval(interval)
+  }, [])
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false)
+      }
+    }
+    if (menuOpen) document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [menuOpen])
 
   function toggleTheme() {
     const next = isDark ? 'light' : 'dark'
@@ -232,8 +254,23 @@ export function AppHeader({
           </div>
         </div>
 
-        {/* Right: weather + consultora + dark mode + avatar */}
+        {/* Right: notifications + weather + consultora + dark mode + avatar */}
         <div className="flex items-center gap-3 shrink-0">
+
+          {/* Notification bell */}
+          <Link
+            href="/dashboard/notificaciones"
+            className="relative p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors"
+            aria-label="Notificaciones"
+            title="Notificaciones"
+          >
+            <Bell size={18} strokeWidth={1.75} />
+            {notifCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                {notifCount > 9 ? '9+' : notifCount}
+              </span>
+            )}
+          </Link>
 
           <WeatherClock
             forecastLat={forecastCoords?.lat}
@@ -268,38 +305,49 @@ export function AppHeader({
           </button>
 
           {/* Avatar + admin menu dropdown */}
-          <div className="relative group">
+          <div className="relative" ref={menuRef}>
             <button
+              onClick={() => setMenuOpen(prev => !prev)}
               className="w-8 h-8 bg-surface-elevated rounded-full flex items-center justify-center text-xs font-bold text-text-secondary hover:bg-brand-muted hover:text-brand-primary transition-colors"
               aria-label="Menú de usuario"
             >
               {initials || '?'}
             </button>
 
-            <div className="absolute right-0 top-full mt-2 w-52 bg-surface-elevated border border-border-subtle rounded-xl shadow-[var(--shadow-lg)] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
-              <div className="px-4 py-3 border-b border-border-subtle">
-                <p className="text-sm font-medium text-text-primary truncate">{fullName}</p>
-                <p className="text-xs text-text-tertiary truncate">{email}</p>
-              </div>
+            {menuOpen && (
+              <div className="absolute right-0 top-full mt-2 w-56 bg-surface-elevated border border-border-subtle rounded-xl shadow-[var(--shadow-lg)] z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="px-4 py-3 border-b border-border-subtle">
+                  <p className="text-sm font-medium text-text-primary truncate">{fullName}</p>
+                  <p className="text-xs text-text-tertiary truncate">{email}</p>
+                </div>
 
-              {/* Admin items */}
-              <div className="py-1 border-b border-border-subtle">
-                <DropdownItem href="/dashboard/personas" icon={Users} label="Personas" />
-                <DropdownItem href="/dashboard/usuarios" icon={UserCog} label="Usuarios" />
-                <DropdownItem href="/dashboard/organizaciones-externas" icon={Network} label="Organizaciones" />
-                <DropdownItem href="/dashboard/instrumentos" icon={Gauge} label="Instrumentos" />
-                <DropdownItem href="/dashboard/productos" icon={Shield} label="Productos" />
-                <DropdownItem href="/dashboard/configuracion/catalogacion" icon={Settings2} label="Catalogación" />
-              </div>
+                {/* Consultora info link */}
+                <div className="py-1 border-b border-border-subtle">
+                  <div className="px-4 py-1.5">
+                    <p className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold">Consultora</p>
+                  </div>
+                  <DropdownItem href="/dashboard/configuracion/consultora" icon={Building2} label="Información" />
+                </div>
 
-              <button
-                onClick={handleLogout}
-                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-secondary hover:text-text-primary hover:bg-surface-sunken transition-colors rounded-b-xl"
-              >
-                <LogOut size={16} strokeWidth={1.75} className="text-text-tertiary" />
-                Cerrar sesión
-              </button>
-            </div>
+                {/* Admin items */}
+                <div className="py-1 border-b border-border-subtle">
+                  <DropdownItem href="/dashboard/personas" icon={Users} label="Personas" />
+                  <DropdownItem href="/dashboard/usuarios" icon={UserCog} label="Usuarios" />
+                  <DropdownItem href="/dashboard/organizaciones-externas" icon={Network} label="Organizaciones" />
+                  <DropdownItem href="/dashboard/instrumentos" icon={Gauge} label="Instrumentos" />
+                  <DropdownItem href="/dashboard/productos" icon={Shield} label="Productos" />
+                  <DropdownItem href="/dashboard/configuracion/catalogacion" icon={Settings2} label="Catalogación" />
+                </div>
+
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-secondary hover:text-text-primary hover:bg-surface-sunken transition-colors rounded-b-xl"
+                >
+                  <LogOut size={16} strokeWidth={1.75} className="text-text-tertiary" />
+                  Cerrar sesión
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

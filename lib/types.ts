@@ -116,7 +116,11 @@ export interface Consultora {
   telefono: string | null
   email: string | null
   logo_url: string | null
+  website: string | null
+  social_links: Record<string, string> | null
   is_active: boolean
+  seats_max: number
+  trial_used_at: string | null
   created_at: string
   updated_at: string
 }
@@ -691,6 +695,7 @@ export interface Gestion {
   descripcion: string | null
   created_at: string
   aplica_por_iso: boolean
+  tiene_entregable: boolean
   gestiones_categorias?: { nombre: string; gestiones_grupos?: { nombre: string } | null } | null
 }
 
@@ -709,6 +714,7 @@ export interface RegistroGestion {
   index: number | null
   fecha_planificada: string
   fecha_ejecutada: string | null
+  fecha_vencimiento: string | null
   responsable_id: string | null
   aprobado_por_id: string | null
   evidencia_url: string | null
@@ -822,6 +828,32 @@ export interface RespuestaDraft {
   item_id: string
   answer: AnswerValue | null
   comment: string
+}
+
+// ---- Notificaciones ----
+export type NotificacionEntidadTipo =
+  | 'gestion'
+  | 'documento_empresa'
+  | 'documento_establecimiento'
+  | 'documento_persona'
+  | 'matricula'
+  | 'certificado'
+
+export interface Notificacion {
+  id: string
+  consultora_id: string
+  tipo: string
+  entidad_tipo: NotificacionEntidadTipo
+  entidad_id: string
+  titulo: string
+  mensaje: string
+  entidad_nombre: string
+  contexto_nombre: string | null
+  fecha_vencimiento: string
+  dias_restantes: number
+  created_at: string
+  updated_at: string
+  leida?: boolean
 }
 
 // ---- Action result ----

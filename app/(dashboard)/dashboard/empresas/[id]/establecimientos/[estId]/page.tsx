@@ -12,18 +12,20 @@ import type {
   Denuncia, FeedbackCliente, EmpresaDocumento, EmpleadoDocumentoLegajo, LegajoGestion,
 } from '@/lib/types'
 import { cn } from '@/lib/utils'
-import { ClipboardList, FileText, BarChart3, Crosshair, BarChart2 } from 'lucide-react'
+import { ClipboardList, FileText, BarChart3, Crosshair, BarChart2, MessageCircle } from 'lucide-react'
 import { AnalyticsDashboard } from '@/components/analytics/real/analytics-dashboard'
+import { AsistenteTabContent } from '@/components/agent/asistente-tab-content'
 
-type Section = 'agenda' | 'ficha' | 'dashboard' | 'seguimiento' | 'analytics'
-const VALID_SECTIONS: Section[] = ['agenda', 'ficha', 'dashboard', 'seguimiento', 'analytics']
+type Section = 'agenda' | 'ficha' | 'dashboard' | 'seguimiento' | 'analytics' | 'asistente'
+const VALID_SECTIONS: Section[] = ['agenda', 'ficha', 'dashboard', 'seguimiento', 'analytics', 'asistente']
 
 const SECTION_TABS = [
   { id: 'ficha' as Section, icon: FileText, label: 'Ficha' },
-  { id: 'agenda' as Section, icon: ClipboardList, label: 'Agenda' },
+  { id: 'agenda' as Section, icon: ClipboardList, label: 'Gestiones' },
   { id: 'seguimiento' as Section, icon: Crosshair, label: 'Seguimiento' },
   { id: 'dashboard' as Section, icon: BarChart3, label: 'Dashboard' },
   { id: 'analytics' as Section, icon: BarChart2, label: 'Analytics' },
+  { id: 'asistente' as Section, icon: MessageCircle, label: 'Asistente HyS' },
 ]
 
 interface Props {
@@ -238,6 +240,12 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
             level="establecimiento"
             establecimientoId={estId}
           />
+        </div>
+      )}
+
+      {section === 'asistente' && (
+        <div className="h-[600px]">
+          <AsistenteTabContent establecimientoId={estId} empresaId={empresaId} />
         </div>
       )}
     </div>

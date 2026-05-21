@@ -3,7 +3,8 @@
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { createClient } from '@supabase/supabase-js'
 import { redirect } from 'next/navigation'
-import type { ActionResult } from '@/lib/types'
+import type { ActionResult, Consultora } from '@/lib/types'
+import { revalidatePath } from 'next/cache'
 
 export async function createConsultora(formData: FormData): Promise<ActionResult<{ id: string }>> {
   const supabase = await createServerClient()
@@ -88,4 +89,46 @@ export async function inviteConsultoraAdmin(formData: FormData): Promise<ActionR
   }
 
   redirect('/dashboard')
+}
+
+export async function updateConsultora(data: {
+  nombre: string
+  telefono: string | null
+  email: string | null
+  website: string | null
+  logo_url: string | null
+  social_links: Record<string, string> | null
+}): Promise<ActionResult<Consultora>> {
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'No autenticado' }
+
+  const { data: membership } = await supabase
+    .from('consultoras_members')
+    .select('consultora_id')
+    .eq('user_id', user.id)
+    .eq('is_active', true)
+    .maybeSingle()
+
+  if (!membership) return { success: false, error: 'No pertenecés a ninguna consultora' }
+
+  const { data: updated, error } = await supabase
+    .from('consultoras')
+    .update({
+      nombre: data.nombre,
+      telefono: data.telefono,
+      email: data.email,
+      website: data.website,
+      logo_url: data.logo_url,
+      social_links: data.social_links,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', membership.consultora_id)
+    .select()
+    .single()
+
+  if (error) return { success: false, error: error.message }
+
+  revalidatePath('/dashboard/configuracion/consultora')
+  return { success: true, data: updated as unknown as Consultora }
 }

@@ -1,5 +1,5 @@
-import { redirect } from 'next/navigation'
+import { EmpresasList } from '@/components/empresas-list'
 
 export default function DashboardPage() {
-  redirect('/dashboard/empresas')
+  return <EmpresasList />
 }
