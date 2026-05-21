@@ -3,7 +3,7 @@ import { z } from 'zod'
 export function validateFormData<T extends z.ZodType>(
   schema: T,
   formData: FormData,
-): z.SafeParseReturnType<z.input<T>, z.output<T>> {
+) {
   const entries: Record<string, unknown> = {}
 
   for (const key of new Set(formData.keys())) {
