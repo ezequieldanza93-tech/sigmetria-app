@@ -19,7 +19,7 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: '10mb',
     },
-    optimizePackageImports: ['lucide-react', 'recharts', '@supabase/supabase-js', '@tanstack/react-query'],
+    optimizePackageImports: ['lucide-react', '@supabase/supabase-js', '@tanstack/react-query'],
   },
   images: {
     remotePatterns: [
