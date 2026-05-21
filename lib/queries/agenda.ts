@@ -18,7 +18,7 @@ export function useCanWrite(establecimientoId: string | undefined) {
 
       if (profile?.system_role === 'developer') return true
       const role = membership?.role as UserRole | undefined
-      return role === 'full_access_main' || role === 'branch_admin'
+      return role === 'full_access_main' || role === 'full_access_branch'
     },
     enabled: !!establecimientoId,
     staleTime: 1000 * 30,
