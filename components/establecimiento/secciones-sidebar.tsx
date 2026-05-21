@@ -28,7 +28,7 @@ export function SeccionesSidebar({ empresaId, establecimientoId }: Props) {
 
   return (
     <aside
-      className="hidden lg:flex group fixed top-14 left-0 bottom-0 z-20 border-r border-border-subtle bg-surface-base flex-col w-14 hover:w-52 transition-all duration-200 overflow-hidden"
+      className="hidden lg:flex peer/sidebar group fixed top-14 left-0 bottom-0 z-20 border-r border-border-subtle bg-surface-base flex-col w-14 hover:w-32 transition-[width] duration-200 overflow-hidden"
       aria-label="Secciones del establecimiento"
     >
       <nav className="flex flex-col py-3 px-2 gap-0.5">
@@ -40,7 +40,7 @@ export function SeccionesSidebar({ empresaId, establecimientoId }: Props) {
               key={id}
               href={href}
               className={cn(
-                'relative flex items-center gap-3 rounded-lg px-2.5 py-2.5 transition-colors',
+                'relative flex items-center gap-2 rounded-lg px-2 py-2.5 transition-colors',
                 isActive
                   ? 'bg-brand-muted text-brand-primary'
                   : 'text-text-tertiary hover:text-text-primary hover:bg-surface-elevated',
@@ -53,7 +53,7 @@ export function SeccionesSidebar({ empresaId, establecimientoId }: Props) {
               <span className="shrink-0">
                 <Icon size={18} strokeWidth={1.75} />
               </span>
-              <span className="text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
+              <span className="text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity truncate">
                 {label}
               </span>
             </Link>
