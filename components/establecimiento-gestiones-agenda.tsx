@@ -832,9 +832,9 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
   const { data: rawRegistros } = useRegistrosGestion(geIds.length > 0 ? geIds : undefined, year)
   const { data: catalogo } = useCatalogo()
 
-  const todasGestiones = (catalogo?.gestiones ?? []) as Gestion[]
-  const grupos = (catalogo?.grupos ?? []) as GrupoGestion[]
-  const categorias = (catalogo?.categorias ?? []) as CategoriaGestion[]
+  const todasGestiones = (catalogo?.gestiones ?? []) as unknown as Gestion[]
+  const grupos = (catalogo?.grupos ?? []) as unknown as GrupoGestion[]
+  const categorias = (catalogo?.categorias ?? []) as unknown as CategoriaGestion[]
 
   const { data: gestionesConForm } = useQuery({
     queryKey: ['formularios-secciones', geIds],
