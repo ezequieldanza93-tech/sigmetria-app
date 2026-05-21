@@ -55,15 +55,35 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
   ])
 
   if (!establecimiento || !empresa) {
-    throw new Error(
-      `Debug establecimiento detail page:\n` +
-      `userId: ${user.id}\n` +
-      `empresaId param: ${empresaId}\n` +
-      `estId param: ${estId}\n` +
-      `establecimiento: ${establecimiento ? 'OK' : 'NULL'} | error: ${estErr?.message ?? 'none'} | code: ${estErr?.code ?? 'none'}\n` +
-      `empresa: ${empresa ? 'OK' : 'NULL'} | error: ${empErr?.message ?? 'none'} | code: ${empErr?.code ?? 'none'}\n` +
-      `profile: ${profile ? 'OK' : 'NULL'} | error: ${profileErr?.message ?? 'none'} | system_role: ${profile?.system_role ?? 'n/a'}\n` +
-      `membership: ${membership ? 'OK' : 'NULL'} | error: ${membershipErr?.message ?? 'none'} | role: ${membership?.role ?? 'n/a'}`
+    return (
+      <div className="p-6 max-w-3xl">
+        <h1 className="text-lg font-bold text-red-600 mb-3">Debug: Establecimiento no encontrado</h1>
+        <pre className="bg-gray-900 text-green-300 p-4 rounded-lg text-xs overflow-auto whitespace-pre-wrap break-all">
+{`userId: ${user.id}
+empresaId param: ${empresaId}
+estId param: ${estId}
+
+establecimiento: ${establecimiento ? 'OK' : 'NULL'}
+  error message: ${estErr?.message ?? 'none'}
+  error code: ${estErr?.code ?? 'none'}
+  error details: ${estErr?.details ?? 'none'}
+  error hint: ${estErr?.hint ?? 'none'}
+
+empresa: ${empresa ? 'OK' : 'NULL'}
+  error message: ${empErr?.message ?? 'none'}
+  error code: ${empErr?.code ?? 'none'}
+  error details: ${empErr?.details ?? 'none'}
+  error hint: ${empErr?.hint ?? 'none'}
+
+profile: ${profile ? 'OK' : 'NULL'}
+  error: ${profileErr?.message ?? 'none'}
+  system_role: ${profile?.system_role ?? 'n/a'}
+
+membership: ${membership ? 'OK' : 'NULL'}
+  error: ${membershipErr?.message ?? 'none'}
+  role: ${membership?.role ?? 'n/a'}`}
+        </pre>
+      </div>
     )
   }
 
