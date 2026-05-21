@@ -3,10 +3,9 @@
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Menu, Sun, Moon, Users, UserCog, Network, Gauge, Shield, Settings2, LogOut, Building2, Bell, BarChart2, CreditCard, Smartphone } from 'lucide-react'
+import { Sun, Moon, Users, UserCog, Network, Gauge, Shield, Settings2, LogOut, Building2, Bell, BarChart2, CreditCard, Smartphone, ShieldCheck } from 'lucide-react'
 import { SystemRole, UserRole, ROLE_LABELS, ROLE_COLORS } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
-import { useMobileMenu } from '@/components/layout/mobile-menu-context'
 import { usePreview } from '@/lib/contexts/preview-context'
 import { WeatherClock } from '@/components/weather-clock'
 
@@ -16,6 +15,7 @@ interface AppHeaderProps {
   consultoraNombre: string | null
   userRole: UserRole | null
   systemRole: SystemRole
+  isSuperAdmin?: boolean
 }
 
 interface Crumb {
@@ -31,8 +31,8 @@ export function AppHeader({
   consultoraNombre,
   userRole,
   systemRole,
+  isSuperAdmin = false,
 }: AppHeaderProps) {
-  const { openMobileMenu } = useMobileMenu()
   const { isOpen: isPreviewOpen, setIsOpen: setPreviewOpen } = usePreview()
   const pathname = usePathname()
   const router = useRouter()
@@ -174,17 +174,12 @@ export function AppHeader({
     <header className="sticky top-0 z-30 border-b border-border-subtle bg-surface-base">
       <div className="flex items-center h-14 px-4 gap-3">
 
-        {/* Mobile hamburger */}
-        <button
-          onClick={openMobileMenu}
-          className="lg:hidden p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors shrink-0"
-          aria-label="Abrir menú"
+        {/* Brand: isotipo + wordmark — links home to Empresas list */}
+        <Link
+          href="/dashboard"
+          className="flex items-center gap-2 shrink-0 group"
+          aria-label="Ir a Empresas"
         >
-          <Menu size={20} />
-        </button>
-
-        {/* Mobile logo */}
-        <Link href="/dashboard" className="lg:hidden flex items-center gap-2 shrink-0">
           <svg viewBox="0 0 24 26" height="24" aria-hidden="true">
             <polygon points="12,1 1,25 12,25" fill="#4CAF50" />
             <polygon
@@ -194,6 +189,12 @@ export function AppHeader({
               strokeWidth="1.5"
             />
           </svg>
+          <span
+            className="hidden sm:inline text-sm font-semibold text-text-primary group-hover:text-brand-primary transition-colors"
+            style={{ fontFamily: 'Montserrat, system-ui' }}
+          >
+            SIGMETRÍA <span className="text-text-tertiary font-normal">HyS</span>
+          </span>
         </Link>
 
         {/* Breadcrumb + address */}
@@ -316,22 +317,25 @@ export function AppHeader({
                   <p className="text-xs text-text-tertiary truncate">{email}</p>
                 </div>
 
-                {/* Consultora info link */}
+                {/* Consultora */}
                 <div className="py-1 border-b border-border-subtle">
                   <div className="px-4 py-1.5">
                     <p className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold">Consultora</p>
                   </div>
                   <DropdownItem href="/dashboard/configuracion/consultora" icon={Building2} label="Información" />
+                  <DropdownItem href="/dashboard/instrumentos" icon={Gauge} label="Instrumentos" />
+                  <DropdownItem href="/dashboard/usuarios" icon={UserCog} label="Usuarios" />
+                  <DropdownItem href="/dashboard/billing" icon={CreditCard} label="Suscripción" />
                 </div>
 
-                {/* Admin items */}
+                {/* Directorio */}
                 <div className="py-1 border-b border-border-subtle">
+                  <div className="px-4 py-1.5">
+                    <p className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold">Directorio</p>
+                  </div>
                   <DropdownItem href="/dashboard/personas" icon={Users} label="Personas" />
-                  <DropdownItem href="/dashboard/usuarios" icon={UserCog} label="Usuarios" />
                   <DropdownItem href="/dashboard/organizaciones-externas" icon={Network} label="Organizaciones" />
-                  <DropdownItem href="/dashboard/instrumentos" icon={Gauge} label="Instrumentos" />
                   <DropdownItem href="/dashboard/productos" icon={Shield} label="Productos" />
-                  <DropdownItem href="/dashboard/configuracion/catalogacion" icon={Settings2} label="Catalogación" />
                 </div>
 
                 {/* Herramientas */}
@@ -340,7 +344,7 @@ export function AppHeader({
                     <p className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold">Herramientas</p>
                   </div>
                   <DropdownItem href="/dashboard/analytics" icon={BarChart2} label="Analytics" />
-                  <DropdownItem href="/dashboard/billing" icon={CreditCard} label="Suscripción" />
+                  <DropdownItem href="/dashboard/configuracion/catalogacion" icon={Settings2} label="Catalogación" />
                   <button
                     onClick={() => {
                       setPreviewOpen(!isPreviewOpen)
@@ -354,6 +358,9 @@ export function AppHeader({
                     Preview Mobile
                     {isPreviewOpen && <span className="ml-auto text-[10px] text-brand-primary font-semibold">ON</span>}
                   </button>
+                  {isSuperAdmin && (
+                    <DropdownItem href="/dashboard/admin" icon={ShieldCheck} label="Super Admin" />
+                  )}
                 </div>
 
                 <button

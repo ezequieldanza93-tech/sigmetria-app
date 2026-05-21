@@ -34,10 +34,6 @@
   --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.05);
   --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
   --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
-  /* Sidebar */
-  --sidebar-width: 260px;
-  --sidebar-collapsed-width: 64px;
-  --sidebar-current-width: var(--sidebar-width);
 }
 
 [data-theme="dark"] {
@@ -64,9 +60,6 @@
   --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.4);
   --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.5), 0 2px 4px -1px rgba(0,0,0,0.4);
   --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.6), 0 4px 6px -2px rgba(0,0,0,0.4);
-  --sidebar-width: 260px;
-  --sidebar-collapsed-width: 64px;
-  --sidebar-current-width: var(--sidebar-width);
 }
 
 /* ─── Theme transitions ──────────────────────────────── */
@@ -82,22 +75,6 @@ a, button, input, select, textarea, [tabindex]:not([tabindex="-1"]) {
 body {
   background-color: var(--bg-base);
   color: var(--text-primary);
-}
-
-/* ─── Sidebar transitions ────────────────────────────── */
-.sidebar-transition {
-  transition: width 200ms ease-out, transform 200ms ease-out;
-}
-.sidebar-label-transition {
-  transition: opacity 150ms ease-out, width 150ms ease-out;
-}
-
-/* ─── Desktop sidebar offset ─────────────────────────── */
-@media (min-width: 1024px) {
-  .sidebar-content-area {
-    padding-left: var(--sidebar-current-width, var(--sidebar-width));
-    transition: padding-left 200ms ease-out;
-  }
 }
 
 /* ─── Scrollbar styling ──────────────────────────────── */

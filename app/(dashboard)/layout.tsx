@@ -27,7 +27,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <SidebarWrapper
-      isSuperAdmin={profile?.is_super_admin ?? false}
       header={
         <AppHeader
           fullName={profile?.full_name ?? user.email ?? 'Usuario'}
@@ -35,6 +34,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           userRole={(membership?.role as UserRole) ?? null}
           systemRole={profile?.system_role ?? 'user'}
           consultoraNombre={consultoraNombre}
+          isSuperAdmin={profile?.is_super_admin ?? false}
         />
       }
     >

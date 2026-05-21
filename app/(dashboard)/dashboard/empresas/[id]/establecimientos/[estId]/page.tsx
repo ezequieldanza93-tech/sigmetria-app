@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import { canWrite, UserRole } from '@/lib/types'
@@ -11,20 +10,11 @@ import type {
   SectorEstablecimiento, Siniestro, Inspeccion, Riesgo, Documento, DocumentType,
   Denuncia, FeedbackCliente, EmpresaDocumento, EmpleadoDocumentoLegajo, LegajoGestion,
 } from '@/lib/types'
-import { cn } from '@/lib/utils'
-import { ClipboardList, FileText, BarChart3, Crosshair, BarChart2 } from 'lucide-react'
+import { BarChart3 } from 'lucide-react'
 import { AnalyticsDashboard } from '@/components/analytics/real/analytics-dashboard'
 
 type Section = 'agenda' | 'ficha' | 'dashboard' | 'seguimiento' | 'analytics'
 const VALID_SECTIONS: Section[] = ['agenda', 'ficha', 'dashboard', 'seguimiento', 'analytics']
-
-const SECTION_TABS = [
-  { id: 'ficha' as Section, icon: FileText, label: 'Ficha' },
-  { id: 'agenda' as Section, icon: ClipboardList, label: 'Gestiones' },
-  { id: 'seguimiento' as Section, icon: Crosshair, label: 'Seguimiento' },
-  { id: 'dashboard' as Section, icon: BarChart3, label: 'Dashboard' },
-  { id: 'analytics' as Section, icon: BarChart2, label: 'Analytics' },
-]
 
 interface Props {
   params: Promise<{ id: string; estId: string }>
@@ -160,27 +150,6 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
 
   return (
     <div className="p-0">
-      {/* Sub-nav */}
-      <div>
-        <nav className="flex gap-1 border-b border-border-subtle px-6">
-          {SECTION_TABS.map(({ id: tabId, icon: Icon, label }) => (
-            <Link
-              key={tabId}
-              href={`/dashboard/empresas/${empresaId}/establecimientos/${estId}${tabId === 'agenda' ? '' : `?section=${tabId}`}`}
-              className={cn(
-                'flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px',
-                section === tabId
-                  ? 'border-brand-primary text-brand-primary'
-                  : 'border-transparent text-text-tertiary hover:text-text-secondary hover:border-border-default',
-              )}
-            >
-              <Icon size={16} strokeWidth={1.75} />
-              {label}
-            </Link>
-          ))}
-        </nav>
-      </div>
-
       {/* Content */}
       {section === 'agenda' && (
         <GestionesAgenda
