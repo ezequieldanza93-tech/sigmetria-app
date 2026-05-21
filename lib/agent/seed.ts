@@ -76,11 +76,11 @@ const KNOWLEDGE_CHUNKS = [
   },
   {
     category: 'general',
-    content: 'El asistente Sig está integrado en la plataforma para ayudar a los usuarios mediante lenguaje natural. Puede consultar datos, responder preguntas sobre el sistema, y ejecutar acciones previa aprobación del usuario.',
+    content: 'La asistente Sigía está integrada en la plataforma para ayudar a los usuarios mediante lenguaje natural. Puede consultar datos, responder preguntas sobre el sistema, y ejecutar acciones previa aprobación del usuario.',
   },
   {
     category: 'general',
-    content: 'Para usar Sig, los usuarios pueden hacer clic en el botón flotante en la esquina inferior derecha del dashboard, o ir a la sección "Asistente HyS" en el menú de cada establecimiento.',
+    content: 'Para usar Sigía, los usuarios pueden hacer clic en el botón flotante en la esquina inferior derecha del dashboard, o ir a la sección "Asistente HyS" en el menú de cada establecimiento.',
   },
 ]
 

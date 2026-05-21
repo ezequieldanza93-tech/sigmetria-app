@@ -20,7 +20,7 @@ export function ChatPanel({ onClose, variant = 'popover', establecimientoId, emp
     {
       id: 'welcome',
       role: 'assistant',
-      content: '¡Hola! Soy **Sig**, el asistente virtual de Sigmetría HyS. ¿En qué puedo ayudarte hoy?\n\nPodés preguntarme sobre:\n• Empresas y establecimientos\n• Siniestros e inspecciones\n• Riesgos y documentación\n• Vencimientos\n• Y más...',
+      content: '¡Hola! Soy **Sigía**, la asistente virtual de Sigmetría HyS. ¿En qué puedo ayudarte hoy?\n\nPodés preguntarme sobre:\n• Empresas y establecimientos\n• Siniestros e inspecciones\n• Riesgos y documentación\n• Vencimientos\n• Y más...',
       createdAt: new Date().toISOString(),
     },
   ])
@@ -147,7 +147,7 @@ export function ChatPanel({ onClose, variant = 'popover', establecimientoId, emp
             <span className="text-sm font-bold text-brand-primary">S</span>
           </div>
           <div>
-            <p className="text-sm font-semibold text-text-primary">Sig - Asistente HyS</p>
+            <p className="text-sm font-semibold text-text-primary">Sigía - Asistente HyS</p>
             <p className="text-xs text-text-tertiary">{isLoading ? 'Escribiendo...' : 'En línea'}</p>
           </div>
         </div>

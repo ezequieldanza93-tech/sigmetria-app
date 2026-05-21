@@ -7,7 +7,7 @@ import { searchKnowledge } from './knowledge'
 const HAS_ANTHROPIC = !!process.env.ANTHROPIC_API_KEY
 const HAS_GEMINI = !!process.env.GOOGLE_API_KEY
 
-const STRICT_SYSTEM_PROMPT = `Eres Sig, el asistente virtual de Sigmetría HyS, una plataforma de gestión de Higiene y Seguridad laboral.
+const STRICT_SYSTEM_PROMPT = `Eres Sigía, la asistente virtual de Sigmetría HyS, una plataforma de gestión de Higiene y Seguridad laboral.
 
 REGLAS ESTRICTAS:
 1. Respondé SOLO con información de los datos que recuperes de la base de datos mediante las herramientas disponibles.
@@ -43,10 +43,18 @@ export async function processMessage(
   context?: { establecimientoId?: string; empresaId?: string; establecimientoNombre?: string; empresaNombre?: string },
 ): Promise<{ reply: string; conversationId: string; pendingActions: PendingAction[] }> {
   if (HAS_ANTHROPIC) {
-    return processWithLLM(message, conversationId, userId, context, 'anthropic')
+    try {
+      return await processWithLLM(message, conversationId, userId, context, 'anthropic')
+    } catch {
+      return mockResponse(message, conversationId, userId, context)
+    }
   }
   if (HAS_GEMINI) {
-    return processWithLLM(message, conversationId, userId, context, 'google')
+    try {
+      return await processWithLLM(message, conversationId, userId, context, 'google')
+    } catch {
+      return mockResponse(message, conversationId, userId, context)
+    }
   }
   return mockResponse(message, conversationId, userId, context)
 }
@@ -113,8 +121,17 @@ async function processWithLLM(
     new HumanMessage(message),
   ]
 
-  const response = await modelWithTools.invoke(messages)
-  const reply = response.content as string
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 15000)
+  let reply: string
+  try {
+    const response = await modelWithTools.invoke(messages, { signal: controller.signal })
+    reply = response.content as string
+    clearTimeout(timeout)
+  } catch {
+    clearTimeout(timeout)
+    throw new Error('LLM invocation failed')
+  }
 
   await supabase.from('agent_messages').insert({
     conversation_id: convId,
@@ -149,7 +166,7 @@ async function mockResponse(
 
   // Saludos
   if (lower.includes('hola') || lower.includes('buen') || lower.includes('qué tal')) {
-    let greeting = '¡Hola! Soy Sig, el asistente virtual de Sigmetría HyS.'
+    let greeting = '¡Hola! Soy Sigía, la asistente virtual de Sigmetría HyS.'
     if (context?.establecimientoNombre) {
       greeting += ` Estás consultando desde **${context.establecimientoNombre}**.`
     }
@@ -166,7 +183,7 @@ async function mockResponse(
     if (context?.establecimientoNombre) {
       caps += `\n\n📍 Estás viendo **${context.establecimientoNombre}** — todas las consultas se filtran automáticamente a este establecimiento.`
     } else {
-      caps += '\n\n💡 También podés usar Sig desde la pestaña "Asistente HyS" dentro de un establecimiento para consultas con contexto automático.'
+      caps += '\n\n💡 También podés usar Sigía desde la pestaña "Asistente HyS" dentro de un establecimiento para consultas con contexto automático.'
     }
     return {
       reply: caps,
@@ -462,7 +479,7 @@ async function mockResponse(
   }
 
   return {
-    reply: 'No entendí bien tu consulta. Estas son algunas cosas que podés preguntar:\n\n• "cuántas empresas tengo"\n• "listame los establecimientos"\n• "cuántas gestiones tengo este mes"\n• "cuándo es la próxima gestión"\n• "mostrame los siniestros"\n• "planificar un checklist de extintores para el 15/06"\n• "cuáles son mis riesgos"\n\nTambién podés usar Sig desde la pestaña **Asistente HyS** dentro de un establecimiento para consultas con contexto automático.',
+    reply: 'No entendí bien tu consulta. Estas son algunas cosas que podés preguntar:\n\n• "cuántas empresas tengo"\n• "listame los establecimientos"\n• "cuántas gestiones tengo este mes"\n• "cuándo es la próxima gestión"\n• "mostrame los siniestros"\n• "planificar un checklist de extintores para el 15/06"\n• "cuáles son mis riesgos"\n\nTambién podés usar Sigía desde la pestaña **Asistente HyS** dentro de un establecimiento para consultas con contexto automático.',
     conversationId: conversationId ?? 'mock-conversation',
     pendingActions: [],
   }
