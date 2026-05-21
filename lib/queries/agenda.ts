@@ -141,6 +141,9 @@ export function useToggleMostrarLT() {
       const supabase = createClient()
       await supabase.from('gestiones_establecimientos').update({ mostrar_lt }).eq('id', id)
     },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['gestiones-establecimiento'] })
+    },
   })
 }
 
