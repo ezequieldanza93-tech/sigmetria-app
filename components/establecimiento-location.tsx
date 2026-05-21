@@ -1,3 +1,5 @@
+import { WeatherPanel } from './weather-panel'
+
 interface Props {
   lat: number
   lng: number
@@ -11,10 +13,11 @@ export function EstablecimientoLocation({ lat, lng, nombre, fotoUrl }: Props) {
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden mb-6">
-      <div className="grid grid-cols-2" style={{ minHeight: '182px' }}>
-
-        {/* Left: foto */}
-        <div className="relative border-r border-gray-100 bg-gray-50">
+      <div
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1fr_1fr_280px]"
+        style={{ minHeight: '230px' }}
+      >
+        <div className="relative border-r border-gray-100 bg-gray-50 min-h-[180px]">
           {fotoUrl ? (
             <img
               src={fotoUrl}
@@ -29,8 +32,7 @@ export function EstablecimientoLocation({ lat, lng, nombre, fotoUrl }: Props) {
           )}
         </div>
 
-        {/* Right: Map */}
-        <div className="relative">
+        <div className="relative border-r border-gray-100 min-h-[180px]">
           <iframe
             src={mapsEmbedUrl}
             width="100%"
@@ -50,6 +52,8 @@ export function EstablecimientoLocation({ lat, lng, nombre, fotoUrl }: Props) {
             Abrir en Google Maps ↗
           </a>
         </div>
+
+        <WeatherPanel lat={lat} lng={lng} />
       </div>
     </div>
   )

@@ -38,7 +38,6 @@ export function AppHeader({
   const [crumbs, setCrumbs] = useState<Crumb[]>([])
   const [contextAddress, setContextAddress] = useState<string | null>(null)
   const [tipoLabel, setTipoLabel] = useState<string | null>(null)
-  const [forecastCoords, setForecastCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [isDark, setIsDark] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [notifCount, setNotifCount] = useState(0)
@@ -94,7 +93,6 @@ export function AppHeader({
         setCrumbs(items)
         setContextAddress(null)
         setTipoLabel(null)
-        setForecastCoords(null)
         return
       }
 
@@ -116,13 +114,12 @@ export function AppHeader({
         setCrumbs(items)
         setContextAddress(null)
         setTipoLabel(null)
-        setForecastCoords(null)
         return
       }
 
       const { data: est } = await supabase
         .from('establecimientos')
-        .select('nombre, domicilio, codigo_postal, localidades!localidad_id(nombre, provincia), establecimientos_tipos(id, codigo, nombre), latitude, longitude')
+        .select('nombre, domicilio, codigo_postal, localidades!localidad_id(nombre, provincia), establecimientos_tipos(id, codigo, nombre)')
         .eq('id', estId)
         .single()
 
@@ -138,13 +135,9 @@ export function AppHeader({
         setTipoLabel(
           (est.establecimientos_tipos as { nombre: string }[] | null)?.[0]?.nombre ?? null
         )
-        const lat = est.latitude as number | null
-        const lng = est.longitude as number | null
-        setForecastCoords(lat != null && lng != null ? { lat, lng } : null)
       } else {
         setContextAddress(null)
         setTipoLabel(null)
-        setForecastCoords(null)
       }
 
       setCrumbs(items)
@@ -272,10 +265,7 @@ export function AppHeader({
             )}
           </Link>
 
-          <WeatherClock
-            forecastLat={forecastCoords?.lat}
-            forecastLng={forecastCoords?.lng}
-          />
+          <WeatherClock />
 
           {consultoraNombre && (
             <div className="hidden md:block text-right">
