@@ -7,13 +7,18 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
-  const { message, conversationId } = await req.json()
+  const { message, conversationId, establecimientoId, empresaId, establecimientoNombre, empresaNombre } = await req.json()
   if (!message || typeof message !== 'string') {
     return NextResponse.json({ error: 'Mensaje requerido' }, { status: 400 })
   }
 
   try {
-    const result = await processMessage(message, conversationId ?? null, user.id)
+    const result = await processMessage(message, conversationId ?? null, user.id, {
+      establecimientoId,
+      empresaId,
+      establecimientoNombre,
+      empresaNombre,
+    })
     return NextResponse.json(result)
   } catch (error) {
     console.error('[Agent Chat]', error)

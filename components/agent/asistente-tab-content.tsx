@@ -7,6 +7,6 @@ interface AsistenteTabContentProps {
   empresaId: string
 }
 
-export function AsistenteTabContent({ establecimientoId: _establecimientoId, empresaId: _empresaId }: AsistenteTabContentProps) {
-  return <ChatPanel variant="full" />
+export function AsistenteTabContent({ establecimientoId, empresaId }: AsistenteTabContentProps) {
+  return <ChatPanel variant="full" establecimientoId={establecimientoId} empresaId={empresaId} />
 }

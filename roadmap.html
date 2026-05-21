@@ -31,7 +31,6 @@
   }
   .container { max-width: 900px; margin: 0 auto; }
 
-  /* Header */
   header {
     text-align: center;
     margin-bottom: 2.5rem;
@@ -50,8 +49,17 @@
     margin-top: .5rem;
     font-size: .95rem;
   }
+  header .legend {
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+    margin-top: 1rem;
+    font-size: .75rem;
+    color: var(--text-muted);
+    flex-wrap: wrap;
+  }
+  header .legend span { display: flex; align-items: center; gap: .35rem; }
 
-  /* Overall Progress */
   .overall-progress {
     background: var(--surface);
     border-radius: 1rem;
@@ -65,10 +73,7 @@
     align-items: center;
     margin-bottom: .75rem;
   }
-  .overall-progress .header h2 {
-    font-size: 1.1rem;
-    font-weight: 600;
-  }
+  .overall-progress .header h2 { font-size: 1.1rem; font-weight: 600; }
   .overall-progress .header .pct {
     font-size: 1.5rem;
     font-weight: 800;
@@ -95,7 +100,6 @@
     color: var(--text-muted);
   }
 
-  /* Stats row */
   .stats {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(160px,1fr));
@@ -109,21 +113,12 @@
     text-align: center;
     border: 1px solid var(--border);
   }
-  .stat-card .num {
-    font-size: 1.4rem;
-    font-weight: 800;
-    display: block;
-  }
-  .stat-card .lbl {
-    font-size: .75rem;
-    color: var(--text-muted);
-    margin-top: .25rem;
-  }
+  .stat-card .num { font-size: 1.4rem; font-weight: 800; display: block; }
+  .stat-card .lbl { font-size: .75rem; color: var(--text-muted); margin-top: .25rem; }
   .stat-card.done .num { color: var(--green); }
   .stat-card.pending .num { color: var(--text-muted); }
   .stat-card.active .num { color: var(--accent); }
 
-  /* Phase */
   .phase {
     background: var(--surface);
     border-radius: 1rem;
@@ -142,24 +137,15 @@
   }
   .phase-header:hover { background: rgba(255,255,255,.03); }
   .phase-header .icon {
-    width: 32px;
-    height: 32px;
+    width: 32px; height: 32px;
     border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: flex; align-items: center; justify-content: center;
     font-size: 1rem;
     flex-shrink: 0;
   }
   .phase-header .info { flex: 1; min-width: 0; }
-  .phase-header .info h3 {
-    font-size: 1rem;
-    font-weight: 600;
-  }
-  .phase-header .info .sub {
-    font-size: .8rem;
-    color: var(--text-muted);
-  }
+  .phase-header .info h3 { font-size: 1rem; font-weight: 600; }
+  .phase-header .info .sub { font-size: .8rem; color: var(--text-muted); }
   .phase-header .phase-progress {
     font-size: .85rem;
     font-weight: 700;
@@ -172,11 +158,9 @@
     flex-shrink: 0;
   }
   .phase.collapsed .arrow { transform: rotate(-90deg); }
-
   .phase-body { padding: 0 1.25rem 1rem; }
   .phase.collapsed .phase-body { display: none; }
 
-  /* Milestone */
   .milestone {
     display: flex;
     align-items: center;
@@ -188,19 +172,28 @@
     border: 1px solid transparent;
     transition: all .2s;
   }
-  .milestone.done {
-    border-color: var(--green);
-    opacity: .7;
-  }
+  .milestone.done { border-color: var(--green); opacity: .7; }
   .milestone.done .task-text { text-decoration: line-through; }
   .milestone input[type="checkbox"] {
-    width: 18px;
-    height: 18px;
+    width: 18px; height: 18px;
     accent-color: var(--accent);
     cursor: pointer;
     flex-shrink: 0;
   }
   .milestone .task-text { flex: 1; font-size: .9rem; }
+  .milestone .effort {
+    font-size: .6rem;
+    padding: .15rem .4rem;
+    border-radius: 99px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    flex-shrink: 0;
+  }
+  .effort.alta { background: #7f1d1d; color: #fca5a5; }
+  .effort.baja { background: #713f12; color: #fde68a; }
+  .effort.nula { background: #1e293b; color: #94a3b8; border: 1px solid #475569; }
+
   .milestone .tag {
     font-size: .65rem;
     padding: .15rem .5rem;
@@ -220,7 +213,6 @@
   .tag.data { background: #164e63; color: #67e8f9; }
   .tag.ai { background: #0f766e; color: #5eead4; }
 
-  /* Reset button */
   .reset-btn {
     display: block;
     margin: 2rem auto 0;
@@ -233,10 +225,7 @@
     font-size: .8rem;
     transition: all .2s;
   }
-  .reset-btn:hover {
-    border-color: var(--red);
-    color: var(--red);
-  }
+  .reset-btn:hover { border-color: var(--red); color: var(--red); }
 
   footer {
     text-align: center;
@@ -250,8 +239,11 @@
   @media (max-width: 600px) {
     body { padding: 1rem .75rem; }
     header h1 { font-size: 1.5rem; }
+    header .legend { gap: .75rem; font-size: .65rem; }
     .stats { grid-template-columns: repeat(2, 1fr); }
     .phase-header .phase-progress { font-size: .75rem; }
+    .milestone { flex-wrap: wrap; gap: .4rem; }
+    .milestone .effort { order: 10; }
   }
 </style>
 </head>
@@ -261,9 +253,13 @@
 <header>
   <h1>Sigmetría HyS — Roadmap 10.000</h1>
   <p>Plan de desarrollo y lanzamiento · Argentina → LATAM → Global</p>
+  <div class="legend">
+    <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#ef4444;"></span> Alta — requerís ponerte vos</span>
+    <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#eab308;"></span> Baja — arrancás y delegás</span>
+    <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#475569;"></span> Nula — lo hace otro por sí solo</span>
+  </div>
 </header>
 
-<!-- Overall Progress -->
 <div class="overall-progress">
   <div class="header">
     <h2>Progreso General</h2>
@@ -278,7 +274,6 @@
   </div>
 </div>
 
-<!-- Stats -->
 <div class="stats">
   <div class="stat-card active">
     <span class="num" id="webPct">0%</span>
@@ -297,8 +292,6 @@
     <span class="lbl">Negocio & Marketing</span>
   </div>
 </div>
-
-<!-- ===== PHASES ===== -->
 
 <!-- PHASE 0 -->
 <div class="phase" data-phase="0">
@@ -355,9 +348,7 @@
     <span class="phase-progress" id="phase1Pct">0%</span>
     <span class="arrow">&#9660;</span>
   </div>
-  <div class="phase-body" id="phase1Body">
-    <!-- Will be populated by JS -->
-  </div>
+  <div class="phase-body" id="phase1Body"></div>
 </div>
 
 <!-- PHASE 2 -->
@@ -371,9 +362,7 @@
     <span class="phase-progress" id="phase2Pct">0%</span>
     <span class="arrow">&#9660;</span>
   </div>
-  <div class="phase-body" id="phase2Body">
-    <!-- Populated by JS -->
-  </div>
+  <div class="phase-body" id="phase2Body"></div>
 </div>
 
 <!-- PHASE 3 -->
@@ -387,9 +376,7 @@
     <span class="phase-progress" id="phase3Pct">0%</span>
     <span class="arrow">&#9660;</span>
   </div>
-  <div class="phase-body" id="phase3Body">
-    <!-- Populated by JS -->
-  </div>
+  <div class="phase-body" id="phase3Body"></div>
 </div>
 
 <!-- PHASE 4 -->
@@ -403,9 +390,7 @@
     <span class="phase-progress" id="phase4Pct">0%</span>
     <span class="arrow">&#9660;</span>
   </div>
-  <div class="phase-body" id="phase4Body">
-    <!-- Populated by JS -->
-  </div>
+  <div class="phase-body" id="phase4Body"></div>
 </div>
 
 <!-- PHASE 5 -->
@@ -419,160 +404,155 @@
     <span class="phase-progress" id="phase5Pct">0%</span>
     <span class="arrow">&#9660;</span>
   </div>
-  <div class="phase-body" id="phase5Body">
-    <!-- Populated by JS -->
-  </div>
+  <div class="phase-body" id="phase5Body"></div>
 </div>
 
 <button class="reset-btn" onclick="resetProgress()">Reiniciar todo el progreso</button>
 
-<footer>
-  Sigmetría HyS · Hecho con convicción · 2026
-</footer>
+<footer>Sigmetría HyS · Hecho con convicción · 2026</footer>
 
 </div>
 
 <script>
-// ===== DATA =====
+const EFFORT = { ALTA: 'alta', BAJA: 'baja', NULA: 'nula' };
+
 const PHASES = {
   1: {
     title: 'Fase 1 — Web App: Funcionalidades Restantes',
     tasks: [
-      { id: 'w1', text: 'Exportación masiva de reportes (PDF/Excel) en todos los módulos', tag: 'web' },
-      { id: 'w2', text: 'Panel de control ejecutivo con dashboards customizables por rol', tag: 'web' },
-      { id: 'w3', text: 'Notificaciones en tiempo real (alertas de vencimientos, eventos)', tag: 'web' },
-      { id: 'w4', text: 'Sistema de firmas digitales para documentos e informes', tag: 'web' },
-      { id: 'w5', text: 'Workflow de aprobaciones (informes, investigaciones, planes de acción)', tag: 'web' },
-      { id: 'w6', text: 'Módulo de Denuncias / Incidentes con seguimiento', tag: 'web' },
-      { id: 'w7', text: 'Integración con AFIP / ARCA para CUIT y datos fiscales', tag: 'web' },
-      { id: 'w8', text: 'Importación masiva de datos (empresas, empleados desde Excel/CSV)', tag: 'web' },
-      { id: 'w9', text: 'Planillas de cálculo incorporadas (carga de datos tipo Excel)', tag: 'web' },
-      { id: 'w10', text: 'Mapas de riesgo georreferenciados', tag: 'web' },
-      { id: 'w11', text: 'Módulo de Subcontratistas con gestión de documentación', tag: 'web' },
-      { id: 'w12', text: 'Múltiples planes de suscripción configurables desde admin', tag: 'web' },
-      { id: 'w13', text: 'Modo offline básico para zonas sin internet (PWA)', tag: 'web' },
-      { id: 'w14', text: 'Testing end-to-end (Playwright/Cypress)', tag: 'web' },
-      { id: 'w15', text: 'Auditoría completa de seguridad (OWASP)', tag: 'devops' },
-      { id: 'w16', text: 'Sistema de feedback / NPS dentro de la app', tag: 'web' },
-      { id: 'w17', text: 'Módulo de capacitación interactiva (cursos, quizzes, certificados)', tag: 'web' },
-      { id: 'w18', text: 'API pública / Webhooks para integración con sistemas externos', tag: 'devops' },
-      { id: 'w19', text: 'Mercado Pago — suscripciones recurrentes automáticas', tag: 'web' },
-      { id: 'w20', text: 'Modo claro/oscuro consistente en toda la app', tag: 'web' },
-      { id: 'w21', text: 'Optimización de performance (Lighthouse >90)', tag: 'devops' },
-      { id: 'w22', text: 'SEO para landing pages públicas', tag: 'marketing' },
-      { id: 'w23', text: 'Sistema de multi-idioma preparado (i18n)', tag: 'web' },
+      { id: 'w1',  text: 'Exportación masiva de reportes (PDF/Excel) en todos los módulos',            tag: 'web',    effort: EFFORT.BAJA },
+      { id: 'w2',  text: 'Panel de control ejecutivo con dashboards customizables por rol',           tag: 'web',    effort: EFFORT.ALTA },
+      { id: 'w3',  text: 'Notificaciones en tiempo real (alertas de vencimientos, eventos)',          tag: 'web',    effort: EFFORT.BAJA },
+      { id: 'w4',  text: 'Sistema de firmas digitales para documentos e informes',                   tag: 'web',    effort: EFFORT.BAJA },
+      { id: 'w5',  text: 'Workflow de aprobaciones (informes, investigaciones, planes de acción)',    tag: 'web',    effort: EFFORT.ALTA },
+      { id: 'w6',  text: 'Módulo de Denuncias / Incidentes con seguimiento',                         tag: 'web',    effort: EFFORT.BAJA },
+      { id: 'w7',  text: 'Integración con AFIP / ARCA para CUIT y datos fiscales',                   tag: 'web',    effort: EFFORT.ALTA },
+      { id: 'w8',  text: 'Importación masiva de datos (empresas, empleados desde Excel/CSV)',         tag: 'web',    effort: EFFORT.BAJA },
+      { id: 'w9',  text: 'Planillas de cálculo incorporadas (carga de datos tipo Excel)',            tag: 'web',    effort: EFFORT.BAJA },
+      { id: 'w10', text: 'Mapas de riesgo georreferenciados',                                        tag: 'web',    effort: EFFORT.BAJA },
+      { id: 'w11', text: 'Módulo de Subcontratistas con gestión de documentación',                   tag: 'web',    effort: EFFORT.BAJA },
+      { id: 'w12', text: 'Múltiples planes de suscripción configurables desde admin',                tag: 'web',    effort: EFFORT.BAJA },
+      { id: 'w13', text: 'Modo offline básico para zonas sin internet (PWA)',                        tag: 'web',    effort: EFFORT.BAJA },
+      { id: 'w14', text: 'Testing end-to-end (Playwright/Cypress)',                                  tag: 'web',    effort: EFFORT.NULA },
+      { id: 'w15', text: 'Auditoría completa de seguridad (OWASP)',                                  tag: 'devops', effort: EFFORT.NULA },
+      { id: 'w16', text: 'Sistema de feedback / NPS dentro de la app',                               tag: 'web',    effort: EFFORT.BAJA },
+      { id: 'w17', text: 'Módulo de capacitación interactiva (cursos, quizzes, certificados)',       tag: 'web',    effort: EFFORT.ALTA },
+      { id: 'w18', text: 'API pública / Webhooks para integración con sistemas externos',            tag: 'devops', effort: EFFORT.BAJA },
+      { id: 'w19', text: 'Mercado Pago — suscripciones recurrentes automáticas',                     tag: 'web',    effort: EFFORT.BAJA },
+      { id: 'w20', text: 'Modo claro/oscuro consistente en toda la app',                             tag: 'web',    effort: EFFORT.BAJA },
+      { id: 'w21', text: 'Optimización de performance (Lighthouse >90)',                             tag: 'devops', effort: EFFORT.NULA },
+      { id: 'w22', text: 'SEO para landing pages públicas',                                          tag: 'marketing', effort: EFFORT.BAJA },
+      { id: 'w23', text: 'Sistema de multi-idioma preparado (i18n)',                                 tag: 'web',    effort: EFFORT.NULA },
     ]
   },
   2: {
     title: 'Fase 2 — Mobile App (React Native + Expo)',
     tasks: [
-      { id: 'm1', text: 'Bootstrap: Expo SDK 53 + expo-router + NativeWind', tag: 'mobile' },
-      { id: 'm2', text: 'Packages compartidos: tipos, constantes, schemas Zod, utils', tag: 'mobile' },
-      { id: 'm3', text: 'Auth: Login/Registro con Supabase + SecureStore', tag: 'auth' },
-      { id: 'm4', text: 'Navegación principal (drawer/tabs) + onboarding', tag: 'mobile' },
-      { id: 'm5', text: 'Pantalla: Lista de Empresas + búsqueda/filtros', tag: 'mobile' },
-      { id: 'm6', text: 'Pantalla: Detalle de Empresa con tabs', tag: 'mobile' },
-      { id: 'm7', text: 'Pantalla: Formulario Empresa (crear/editar)', tag: 'mobile' },
-      { id: 'm8', text: 'Pantalla: Detalle de Establecimiento (9 tabs)', tag: 'mobile' },
-      { id: 'm9', text: 'Pantalla: Personas lista + detalle', tag: 'mobile' },
-      { id: 'm10', text: 'Pantalla: Siniestros lista + formulario + investigación', tag: 'mobile' },
-      { id: 'm11', text: 'Pantalla: Inspecciones con checklists', tag: 'mobile' },
-      { id: 'm12', text: 'Pantalla: Riesgos + matriz de riesgo', tag: 'mobile' },
-      { id: 'm13', text: 'Pantalla: Mediciones ambientales', tag: 'mobile' },
-      { id: 'm14', text: 'Pantalla: EPP por puesto de trabajo', tag: 'mobile' },
-      { id: 'm15', text: 'Pantalla: Capacitaciones + asistencia', tag: 'mobile' },
-      { id: 'm16', text: 'Pantalla: Documentos con vencimiento', tag: 'mobile' },
-      { id: 'm17', text: 'Pantalla: Dashboard analítico', tag: 'mobile' },
-      { id: 'm18', text: 'Pantalla: Asistente IA "Sig"', tag: 'ai' },
-      { id: 'm19', text: 'Pantalla: Equipo / Usuarios', tag: 'mobile' },
-      { id: 'm20', text: 'Pantalla: Perfil y configuración', tag: 'mobile' },
-      { id: 'm21', text: 'EAS Build + perfiles de desarrollo/preview/producción', tag: 'devops' },
-      { id: 'm22', text: 'Notificaciones push (expo-notifications)', tag: 'mobile' },
-      { id: 'm23', text: 'Cámara: fotos de inspecciones, documentos', tag: 'mobile' },
-      { id: 'm24', text: 'Geolocalización: mapas de establecimientos', tag: 'mobile' },
-      { id: 'm25', text: 'Biometría: login con huella / Face ID', tag: 'auth' },
-      { id: 'm26', text: 'Offline first: caché local con MMKV + sync', tag: 'mobile' },
-      { id: 'm27', text: 'Sign in with Apple', tag: 'auth' },
-      { id: 'm28', text: 'Auditoría de seguridad mobile', tag: 'mobile' },
-      { id: 'm29', text: 'Auditoría de rendimiento (Hermes, perfiles)', tag: 'mobile' },
-      { id: 'm30', text: 'Screenshots promocionales + App Store Connect', tag: 'marketing' },
-      { id: 'm31', text: 'Publicación en App Store + Google Play', tag: 'marketing' },
-      { id: 'm32', text: 'E2E tests con Maestro', tag: 'mobile' },
+      { id: 'm1',  text: 'Bootstrap: Expo SDK 53 + expo-router + NativeWind',                       tag: 'mobile',  effort: EFFORT.BAJA },
+      { id: 'm2',  text: 'Packages compartidos: tipos, constantes, schemas Zod, utils',             tag: 'mobile',  effort: EFFORT.BAJA },
+      { id: 'm3',  text: 'Auth: Login/Registro con Supabase + SecureStore',                          tag: 'auth',    effort: EFFORT.BAJA },
+      { id: 'm4',  text: 'Navegación principal (drawer/tabs) + onboarding',                          tag: 'mobile',  effort: EFFORT.BAJA },
+      { id: 'm5',  text: 'Pantalla: Lista de Empresas + búsqueda/filtros',                          tag: 'mobile',  effort: EFFORT.BAJA },
+      { id: 'm6',  text: 'Pantalla: Detalle de Empresa con tabs',                                    tag: 'mobile',  effort: EFFORT.BAJA },
+      { id: 'm7',  text: 'Pantalla: Formulario Empresa (crear/editar)',                              tag: 'mobile',  effort: EFFORT.BAJA },
+      { id: 'm8',  text: 'Pantalla: Detalle de Establecimiento (9 tabs)',                            tag: 'mobile',  effort: EFFORT.BAJA },
+      { id: 'm9',  text: 'Pantalla: Personas lista + detalle',                                       tag: 'mobile',  effort: EFFORT.BAJA },
+      { id: 'm10', text: 'Pantalla: Siniestros lista + formulario + investigación',                 tag: 'mobile',  effort: EFFORT.BAJA },
+      { id: 'm11', text: 'Pantalla: Inspecciones con checklists',                                    tag: 'mobile',  effort: EFFORT.BAJA },
+      { id: 'm12', text: 'Pantalla: Riesgos + matriz de riesgo',                                     tag: 'mobile',  effort: EFFORT.BAJA },
+      { id: 'm13', text: 'Pantalla: Mediciones ambientales',                                         tag: 'mobile',  effort: EFFORT.BAJA },
+      { id: 'm14', text: 'Pantalla: EPP por puesto de trabajo',                                      tag: 'mobile',  effort: EFFORT.BAJA },
+      { id: 'm15', text: 'Pantalla: Capacitaciones + asistencia',                                    tag: 'mobile',  effort: EFFORT.BAJA },
+      { id: 'm16', text: 'Pantalla: Documentos con vencimiento',                                     tag: 'mobile',  effort: EFFORT.BAJA },
+      { id: 'm17', text: 'Pantalla: Dashboard analítico',                                            tag: 'mobile',  effort: EFFORT.BAJA },
+      { id: 'm18', text: 'Pantalla: Asistente IA "Sig"',                                             tag: 'ai',      effort: EFFORT.BAJA },
+      { id: 'm19', text: 'Pantalla: Equipo / Usuarios',                                              tag: 'mobile',  effort: EFFORT.BAJA },
+      { id: 'm20', text: 'Pantalla: Perfil y configuración',                                         tag: 'mobile',  effort: EFFORT.BAJA },
+      { id: 'm21', text: 'EAS Build + perfiles de desarrollo/preview/producción',                    tag: 'devops',  effort: EFFORT.NULA },
+      { id: 'm22', text: 'Notificaciones push (expo-notifications)',                                 tag: 'mobile',  effort: EFFORT.BAJA },
+      { id: 'm23', text: 'Cámara: fotos de inspecciones, documentos',                                tag: 'mobile',  effort: EFFORT.BAJA },
+      { id: 'm24', text: 'Geolocalización: mapas de establecimientos',                               tag: 'mobile',  effort: EFFORT.BAJA },
+      { id: 'm25', text: 'Biometría: login con huella / Face ID',                                    tag: 'auth',    effort: EFFORT.BAJA },
+      { id: 'm26', text: 'Offline first: caché local con MMKV + sync',                               tag: 'mobile',  effort: EFFORT.BAJA },
+      { id: 'm27', text: 'Sign in with Apple',                                                       tag: 'auth',    effort: EFFORT.BAJA },
+      { id: 'm28', text: 'Auditoría de seguridad mobile',                                            tag: 'mobile',  effort: EFFORT.NULA },
+      { id: 'm29', text: 'Auditoría de rendimiento (Hermes, perfiles)',                              tag: 'mobile',  effort: EFFORT.NULA },
+      { id: 'm30', text: 'Screenshots promocionales + App Store Connect',                            tag: 'marketing', effort: EFFORT.ALTA },
+      { id: 'm31', text: 'Publicación en App Store + Google Play',                                   tag: 'marketing', effort: EFFORT.ALTA },
+      { id: 'm32', text: 'E2E tests con Maestro',                                                    tag: 'mobile',  effort: EFFORT.NULA },
     ]
   },
   3: {
     title: 'Fase 3 — Desktop App (Electron)',
     tasks: [
-      { id: 'd1', text: 'Bootstrap: Electron + Next.js como renderer', tag: 'desktop' },
-      { id: 'd2', text: 'Auto-actualización (electron-updater)', tag: 'desktop' },
-      { id: 'd3', text: 'Instalador para Windows (NSIS/MSI)', tag: 'desktop' },
-      { id: 'd4', text: 'Instalador para macOS (DMG)', tag: 'desktop' },
-      { id: 'd5', text: 'Menú de sistema + atajos de teclado nativos', tag: 'desktop' },
-      { id: 'd6', text: 'Notificaciones nativas del sistema', tag: 'desktop' },
-      { id: 'd7', text: 'Firma de documentos desde desktop', tag: 'desktop' },
-      { id: 'd8', text: 'Sincronización de archivos local (descarga de reportes)', tag: 'desktop' },
-      { id: 'd9', text: 'Impresión directa nativa', tag: 'desktop' },
-      { id: 'd10', text: 'Auto-lanzamiento al iniciar sesión (opcional)', tag: 'desktop' },
-      { id: 'd11', text: 'Modo offline con cola de sincronización', tag: 'desktop' },
-      { id: 'd12', text: 'Firma electrónica del instalador (code signing)', tag: 'devops' },
-      { id: 'd13', text: 'Testing cross-platform (Windows 10/11, macOS 14+)', tag: 'desktop' },
+      { id: 'd1',  text: 'Bootstrap: Electron + Next.js como renderer',                             tag: 'desktop', effort: EFFORT.BAJA },
+      { id: 'd2',  text: 'Auto-actualización (electron-updater)',                                    tag: 'desktop', effort: EFFORT.NULA },
+      { id: 'd3',  text: 'Instalador para Windows (NSIS/MSI)',                                       tag: 'desktop', effort: EFFORT.NULA },
+      { id: 'd4',  text: 'Instalador para macOS (DMG)',                                              tag: 'desktop', effort: EFFORT.NULA },
+      { id: 'd5',  text: 'Menú de sistema + atajos de teclado nativos',                              tag: 'desktop', effort: EFFORT.BAJA },
+      { id: 'd6',  text: 'Notificaciones nativas del sistema',                                       tag: 'desktop', effort: EFFORT.BAJA },
+      { id: 'd7',  text: 'Firma de documentos desde desktop',                                        tag: 'desktop', effort: EFFORT.BAJA },
+      { id: 'd8',  text: 'Sincronización de archivos local (descarga de reportes)',                 tag: 'desktop', effort: EFFORT.BAJA },
+      { id: 'd9',  text: 'Impresión directa nativa',                                                 tag: 'desktop', effort: EFFORT.BAJA },
+      { id: 'd10', text: 'Auto-lanzamiento al iniciar sesión (opcional)',                            tag: 'desktop', effort: EFFORT.BAJA },
+      { id: 'd11', text: 'Modo offline con cola de sincronización',                                  tag: 'desktop', effort: EFFORT.BAJA },
+      { id: 'd12', text: 'Firma electrónica del instalador (code signing)',                          tag: 'devops',  effort: EFFORT.ALTA },
+      { id: 'd13', text: 'Testing cross-platform (Windows 10/11, macOS 14+)',                        tag: 'desktop', effort: EFFORT.BAJA },
     ]
   },
   4: {
     title: 'Fase 4 — Lanzamiento & Crecimiento',
     tasks: [
-      { id: 'b1', text: 'Ejecutar campaña de marketing digital (Google Ads, LinkedIn, Meta)', tag: 'marketing' },
-      { id: 'b2', text: 'Landing page pública con SEO optimizado', tag: 'marketing' },
-      { id: 'b3', text: 'Content marketing: guías, whitepapers, casos de éxito', tag: 'marketing' },
-      { id: 'b4', text: 'Video tutoriales y onboarding interactivo', tag: 'marketing' },
-      { id: 'b5', text: 'Programa de referidos / descuento por recomendación', tag: 'marketing' },
-      { id: 'b6', text: 'Convenio con colegio profesional de Higiene y Seguridad', tag: 'business' },
-      { id: 'b7', text: 'Convenio con ART / SRT (Superintendencia de Riesgos del Trabajo)', tag: 'business' },
-      { id: 'b8', text: 'Alianzas con consultoras de HyS existentes', tag: 'business' },
-      { id: 'b9', text: 'Plan gratuito / freemium para profesionales independientes', tag: 'business' },
-      { id: 'b10', text: 'Webinars y demostraciones en vivo', tag: 'marketing' },
-      { id: 'b11', text: 'Caso de éxito con 3 clientes early adopters', tag: 'marketing' },
-      { id: 'b12', text: 'Sistema de tickets / soporte in-app', tag: 'business' },
-      { id: 'b13', text: 'Base de conocimiento / documentación pública', tag: 'business' },
-      { id: 'b14', text: 'Métricas de producto: DAU, MAU, conversión, churn', tag: 'business' },
-      { id: 'b15', text: 'Primeros 100 usuarios activos', tag: 'marketing' },
-      { id: 'b16', text: 'Primeros 1.000 usuarios activos', tag: 'marketing' },
-      { id: 'b17', text: 'Inversión en ads (presupuesto mensual dedicado)', tag: 'marketing' },
-      { id: 'b18', text: 'Posicionamiento orgánico: primeros resultados en Google', tag: 'marketing' },
+      { id: 'b1',  text: 'Ejecutar campaña de marketing digital (Google Ads, LinkedIn, Meta)',       tag: 'marketing', effort: EFFORT.ALTA },
+      { id: 'b2',  text: 'Landing page pública con SEO optimizado',                                  tag: 'marketing', effort: EFFORT.BAJA },
+      { id: 'b3',  text: 'Content marketing: guías, whitepapers, casos de éxito',                   tag: 'marketing', effort: EFFORT.ALTA },
+      { id: 'b4',  text: 'Video tutoriales y onboarding interactivo',                                tag: 'marketing', effort: EFFORT.ALTA },
+      { id: 'b5',  text: 'Programa de referidos / descuento por recomendación',                      tag: 'marketing', effort: EFFORT.BAJA },
+      { id: 'b6',  text: 'Convenio con colegio profesional de Higiene y Seguridad',                 tag: 'business',  effort: EFFORT.ALTA },
+      { id: 'b7',  text: 'Convenio con ART / SRT (Superintendencia de Riesgos del Trabajo)',         tag: 'business',  effort: EFFORT.ALTA },
+      { id: 'b8',  text: 'Alianzas con consultoras de HyS existentes',                               tag: 'business',  effort: EFFORT.ALTA },
+      { id: 'b9',  text: 'Plan gratuito / freemium para profesionales independientes',               tag: 'business',  effort: EFFORT.BAJA },
+      { id: 'b10', text: 'Webinars y demostraciones en vivo',                                        tag: 'marketing', effort: EFFORT.ALTA },
+      { id: 'b11', text: 'Caso de éxito con 3 clientes early adopters',                              tag: 'marketing', effort: EFFORT.BAJA },
+      { id: 'b12', text: 'Sistema de tickets / soporte in-app',                                      tag: 'business',  effort: EFFORT.BAJA },
+      { id: 'b13', text: 'Base de conocimiento / documentación pública',                             tag: 'business',  effort: EFFORT.BAJA },
+      { id: 'b14', text: 'Métricas de producto: DAU, MAU, conversión, churn',                        tag: 'business',  effort: EFFORT.BAJA },
+      { id: 'b15', text: 'Primeros 100 usuarios activos',                                            tag: 'marketing', effort: EFFORT.BAJA },
+      { id: 'b16', text: 'Primeros 1.000 usuarios activos',                                          tag: 'marketing', effort: EFFORT.BAJA },
+      { id: 'b17', text: 'Inversión en ads (presupuesto mensual dedicado)',                          tag: 'marketing', effort: EFFORT.ALTA },
+      { id: 'b18', text: 'Posicionamiento orgánico: primeros resultados en Google',                  tag: 'marketing', effort: EFFORT.BAJA },
     ]
   },
   5: {
     title: 'Fase 5 — Escala: LATAM → Global',
     tasks: [
-      { id: 's1', text: 'Multi-idioma implementado (portugués, inglés)', tag: 'scale' },
-      { id: 's2', text: 'Adaptación legal/regulatoria por país (LATAM)', tag: 'scale' },
-      { id: 's3', text: 'Medios de pago internacionales (Stripe, PayPal)', tag: 'scale' },
-      { id: 's4', text: 'Lanzamiento Brasil (portugués, regulación brasileña)', tag: 'scale' },
-      { id: 's5', text: 'Lanzamiento Chile / Uruguay / Perú', tag: 'scale' },
-      { id: 's6', text: 'Lanzamiento México / Colombia', tag: 'scale' },
-      { id: 's7', text: 'Infraestructura multi-región (CDN, bases de datos regionales)', tag: 'devops' },
-      { id: 's8', text: '5.000 usuarios activos', tag: 'scale' },
-      { id: 's9', text: 'Equipo de soporte regional', tag: 'scale' },
-      { id: 's10', text: 'Cumplimiento GDPR / LGPD', tag: 'scale' },
-      { id: 's11', text: 'Traducción al inglés — lanzamiento global', tag: 'scale' },
-      { id: 's12', text: '10.000 usuarios activos', tag: 'scale' },
-      { id: 's13', text: '50.000 empresas registradas', tag: 'scale' },
-      { id: 's14', text: '100.000 establecimientos registrados', tag: 'scale' },
-      { id: 's15', text: 'API pública versionada para integradores', tag: 'devops' },
-      { id: 's16', text: 'Marketplace de integraciones (conectores CRM, ERP)', tag: 'scale' },
+      { id: 's1',  text: 'Multi-idioma implementado (portugués, inglés)',                           tag: 'scale',  effort: EFFORT.BAJA },
+      { id: 's2',  text: 'Adaptación legal/regulatoria por país (LATAM)',                            tag: 'scale',  effort: EFFORT.ALTA },
+      { id: 's3',  text: 'Medios de pago internacionales (Stripe, PayPal)',                          tag: 'scale',  effort: EFFORT.BAJA },
+      { id: 's4',  text: 'Lanzamiento Brasil (portugués, regulación brasileña)',                     tag: 'scale',  effort: EFFORT.ALTA },
+      { id: 's5',  text: 'Lanzamiento Chile / Uruguay / Perú',                                       tag: 'scale',  effort: EFFORT.ALTA },
+      { id: 's6',  text: 'Lanzamiento México / Colombia',                                            tag: 'scale',  effort: EFFORT.ALTA },
+      { id: 's7',  text: 'Infraestructura multi-región (CDN, bases de datos regionales)',            tag: 'devops', effort: EFFORT.NULA },
+      { id: 's8',  text: '5.000 usuarios activos',                                                   tag: 'scale',  effort: EFFORT.BAJA },
+      { id: 's9',  text: 'Equipo de soporte regional',                                               tag: 'scale',  effort: EFFORT.ALTA },
+      { id: 's10', text: 'Cumplimiento GDPR / LGPD',                                                 tag: 'scale',  effort: EFFORT.BAJA },
+      { id: 's11', text: 'Traducción al inglés — lanzamiento global',                                tag: 'scale',  effort: EFFORT.BAJA },
+      { id: 's12', text: '10.000 usuarios activos',                                                  tag: 'scale',  effort: EFFORT.BAJA },
+      { id: 's13', text: '50.000 empresas registradas',                                              tag: 'scale',  effort: EFFORT.BAJA },
+      { id: 's14', text: '100.000 establecimientos registrados',                                     tag: 'scale',  effort: EFFORT.BAJA },
+      { id: 's15', text: 'API pública versionada para integradores',                                  tag: 'devops', effort: EFFORT.BAJA },
+      { id: 's16', text: 'Marketplace de integraciones (conectores CRM, ERP)',                       tag: 'scale',  effort: EFFORT.BAJA },
     ]
   }
 };
 
-// ===== STATE =====
-const STORAGE_KEY = 'sigmetria_roadmap_v1';
+const STORAGE_KEY = 'sigmetria_roadmap_v2';
 
 function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      // Merge with defaults: any missing task defaults to false
       const merged = {};
       for (const phaseId in PHASES) {
         for (const task of PHASES[phaseId].tasks) {
@@ -591,16 +571,18 @@ function saveState(state) {
 
 let state = loadState();
 
-// ===== RENDER =====
 function render() {
-  // Phase 1
   renderPhase(1, 'phase1Body', 'phase1Pct');
   renderPhase(2, 'phase2Body', 'phase2Pct');
   renderPhase(3, 'phase3Body', 'phase3Pct');
   renderPhase(4, 'phase4Body', 'phase4Pct');
   renderPhase(5, 'phase5Body', 'phase5Pct');
-
   updateOverall();
+}
+
+function formatEffort(e) {
+  const labels = { alta: 'Alta', baja: 'Baja', nula: 'Nula' };
+  return labels[e] || e;
 }
 
 function renderPhase(phaseId, bodyId, pctId) {
@@ -618,6 +600,7 @@ function renderPhase(phaseId, bodyId, pctId) {
     div.innerHTML = `
       <input type="checkbox" ${checked ? 'checked' : ''} data-id="${task.id}">
       <span class="task-text">${task.text}</span>
+      <span class="effort ${task.effort}">${formatEffort(task.effort)}</span>
       <span class="tag ${task.tag}">${task.tag}</span>
     `;
     const cb = div.querySelector('input');
@@ -636,8 +619,6 @@ function renderPhase(phaseId, bodyId, pctId) {
 function updateOverall() {
   let totalTasks = 0;
   let totalDone = 0;
-
-  // Phase 0: all done, 29 tasks
   const phase0 = document.querySelectorAll('[data-phase="0"] .milestone').length;
   totalTasks += phase0;
   totalDone += phase0;
@@ -655,7 +636,6 @@ function updateOverall() {
   document.getElementById('overallBar').style.width = overall + '%';
   document.getElementById('milestoneCount').textContent = totalDone + '/' + totalTasks + ' tareas';
 
-  // Per-category stats
   let webDone = 0, webTotal = 0;
   let mobileDone = 0, mobileTotal = 0;
   let desktopDone = 0, desktopTotal = 0;
@@ -681,7 +661,6 @@ function updateOverall() {
     }
   });
 
-  // Add phase 0 tasks to web stats (all done)
   webDone += phase0;
   webTotal += phase0;
 
@@ -691,7 +670,6 @@ function updateOverall() {
   document.getElementById('businessPct').textContent = bizTotal > 0 ? Math.round((bizDone / bizTotal) * 100) + '%' : '0%';
 }
 
-// ===== UI HELPERS =====
 function togglePhase(header) {
   header.closest('.phase').classList.toggle('collapsed');
 }
@@ -703,7 +681,6 @@ function resetProgress() {
   render();
 }
 
-// ===== INIT =====
 render();
 </script>
 </body>

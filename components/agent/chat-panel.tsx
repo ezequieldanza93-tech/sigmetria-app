@@ -9,9 +9,13 @@ import type { Message, PendingAction } from '@/lib/agent/executor'
 interface ChatPanelProps {
   onClose?: () => void
   variant?: 'popover' | 'full'
+  establecimientoId?: string
+  empresaId?: string
+  establecimientoNombre?: string
+  empresaNombre?: string
 }
 
-export function ChatPanel({ onClose, variant = 'popover' }: ChatPanelProps) {
+export function ChatPanel({ onClose, variant = 'popover', establecimientoId, empresaId, establecimientoNombre, empresaNombre }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'welcome',
@@ -47,7 +51,14 @@ export function ChatPanel({ onClose, variant = 'popover' }: ChatPanelProps) {
       const res = await fetch('/api/agent/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMessage.content, conversationId: null }),
+        body: JSON.stringify({
+          message: userMessage.content,
+          conversationId: null,
+          establecimientoId,
+          empresaId,
+          establecimientoNombre,
+          empresaNombre,
+        }),
       })
 
       if (!res.ok) {
