@@ -64,9 +64,21 @@ export function ErrorCapture() {
 
     const onRejection = (ev: PromiseRejectionEvent) => {
       const reason = ev.reason
+      const message = reason?.message ?? String(reason ?? 'Unknown rejection')
+
+      // Stale-bundle Server Action after a deploy: silently reload once per session
+      // so the tab picks up the new bundle. Don't log this error.
+      if (message.includes('Server Action') && message.includes('was not found on the server')) {
+        if (!sessionStorage.getItem('__sig_stale_bundle_reloaded__')) {
+          sessionStorage.setItem('__sig_stale_bundle_reloaded__', '1')
+          window.location.reload()
+        }
+        return
+      }
+
       saveError({
         type: 'unhandledrejection',
-        message: reason?.message ?? String(reason ?? 'Unknown rejection'),
+        message,
         stack: reason?.stack ?? undefined,
         url: window.location.href,
         userAgent: navigator.userAgent,
