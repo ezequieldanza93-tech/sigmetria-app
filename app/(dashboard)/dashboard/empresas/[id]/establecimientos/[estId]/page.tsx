@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { redirect, notFound } from 'next/navigation'
+import { redirect } from 'next/navigation'
 import { canWrite, UserRole } from '@/lib/types'
 import { GestionesAgenda } from '@/components/establecimiento-gestiones-agenda'
 import { EstablecimientoTabs } from '@/components/establecimiento-tabs'
@@ -43,10 +43,10 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
   if (!user) redirect('/login')
 
   const [
-    { data: profile },
-    { data: membership },
-    { data: establecimiento },
-    { data: empresa },
+    { data: profile, error: profileErr },
+    { data: membership, error: membershipErr },
+    { data: establecimiento, error: estErr },
+    { data: empresa, error: empErr },
   ] = await Promise.all([
     supabase.from('profiles').select('system_role').eq('id', user.id).single(),
     supabase.from('consultoras_members').select('role').eq('user_id', user.id).eq('is_active', true).maybeSingle(),
@@ -54,7 +54,18 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
     supabase.from('empresas').select('id, razon_social').eq('id', empresaId).single(),
   ])
 
-  if (!establecimiento || !empresa) notFound()
+  if (!establecimiento || !empresa) {
+    throw new Error(
+      `Debug establecimiento detail page:\n` +
+      `userId: ${user.id}\n` +
+      `empresaId param: ${empresaId}\n` +
+      `estId param: ${estId}\n` +
+      `establecimiento: ${establecimiento ? 'OK' : 'NULL'} | error: ${estErr?.message ?? 'none'} | code: ${estErr?.code ?? 'none'}\n` +
+      `empresa: ${empresa ? 'OK' : 'NULL'} | error: ${empErr?.message ?? 'none'} | code: ${empErr?.code ?? 'none'}\n` +
+      `profile: ${profile ? 'OK' : 'NULL'} | error: ${profileErr?.message ?? 'none'} | system_role: ${profile?.system_role ?? 'n/a'}\n` +
+      `membership: ${membership ? 'OK' : 'NULL'} | error: ${membershipErr?.message ?? 'none'} | role: ${membership?.role ?? 'n/a'}`
+    )
+  }
 
   const userCanWrite = canWrite(
     membership?.role as UserRole ?? null,
