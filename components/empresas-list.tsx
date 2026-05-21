@@ -57,8 +57,8 @@ export async function EmpresasList() {
     razon_social: e.razon_social as string,
     cuit: (e.cuit ?? null) as string | null,
     is_active: Boolean(e.is_active),
-    empresas_rubros: (e.empresas_rubros ?? null) as { nombre: string } | null,
-    localidades: (e.localidades ?? null) as { nombre: string; provincia: string } | null,
+    empresas_rubros: (e.empresas_rubros ?? null) as unknown as { nombre: string } | null,
+    localidades: (e.localidades ?? null) as unknown as { nombre: string; provincia: string } | null,
     establecimientos: establecimientosByEmpresa[e.id as string] ?? [],
   }))
 
