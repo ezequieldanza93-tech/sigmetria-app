@@ -2,17 +2,16 @@
 
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { ClipboardList, FileText, BarChart3, Crosshair, BarChart2 } from 'lucide-react'
+import { ClipboardList, FileText, BarChart3, Crosshair } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-type Section = 'agenda' | 'ficha' | 'dashboard' | 'seguimiento' | 'analytics'
+type Section = 'agenda' | 'ficha' | 'dashboard' | 'seguimiento'
 
 const ITEMS: { id: Section; label: string; icon: typeof FileText }[] = [
   { id: 'ficha', label: 'Ficha', icon: FileText },
   { id: 'agenda', label: 'Gestiones', icon: ClipboardList },
   { id: 'seguimiento', label: 'Seguimiento', icon: Crosshair },
   { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
-  { id: 'analytics', label: 'Analytics', icon: BarChart2 },
 ]
 
 interface Props {

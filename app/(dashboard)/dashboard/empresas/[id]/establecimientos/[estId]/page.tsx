@@ -10,11 +10,10 @@ import type {
   SectorEstablecimiento, Siniestro, Inspeccion, Riesgo, Documento, DocumentType,
   Denuncia, FeedbackCliente, EmpresaDocumento, EmpleadoDocumentoLegajo, LegajoGestion,
 } from '@/lib/types'
-import { BarChart3 } from 'lucide-react'
 import { AnalyticsDashboard } from '@/components/analytics/real/analytics-dashboard'
 
-type Section = 'agenda' | 'ficha' | 'dashboard' | 'seguimiento' | 'analytics'
-const VALID_SECTIONS: Section[] = ['agenda', 'ficha', 'dashboard', 'seguimiento', 'analytics']
+type Section = 'agenda' | 'ficha' | 'dashboard' | 'seguimiento'
+const VALID_SECTIONS: Section[] = ['agenda', 'ficha', 'dashboard', 'seguimiento']
 
 interface Props {
   params: Promise<{ id: string; estId: string }>
@@ -190,24 +189,16 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
       )}
 
       {section === 'dashboard' && (
-        <div className="bg-surface-elevated rounded-xl border border-border-subtle p-12 text-center">
-          <BarChart3 size={32} strokeWidth={1.5} className="text-text-tertiary mx-auto mb-3" />
-          <p className="font-semibold text-text-primary">Dashboard del Establecimiento</p>
-          <p className="text-sm text-text-tertiary mt-1">Próximamente — cards de estado, charts y métricas operativas.</p>
-        </div>
-      )}
-
-      {section === 'seguimiento' && (
-        <ActuarView establecimientoId={estId} />
-      )}
-
-      {section === 'analytics' && (
         <div className="px-6 py-6">
           <AnalyticsDashboard
             level="establecimiento"
             establecimientoId={estId}
           />
         </div>
+      )}
+
+      {section === 'seguimiento' && (
+        <ActuarView establecimientoId={estId} />
       )}
     </div>
   )
