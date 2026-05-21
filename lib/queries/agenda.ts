@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import type { UserRole } from '@/lib/types'
 
@@ -42,7 +42,7 @@ export function useGestionesEstablecimiento(establecimientoId: string | undefine
         .lt('created_at', yearEnd)
         .order('created_at', { ascending: true })
 
-      return (data ?? []) as {
+      return (data ?? []) as unknown as {
         id: string
         mostrar_lt: boolean
         gestiones: {
@@ -78,6 +78,69 @@ export function useRegistrosGestion(geIds: string[] | undefined, year: number) {
     },
     enabled: !!geIds && geIds.length > 0,
     staleTime: 1000 * 30,
+  })
+}
+
+export function usePersonasEstablecimiento(establecimientoId: string | undefined) {
+  return useQuery({
+    queryKey: ['personas-establecimiento', establecimientoId],
+    queryFn: async () => {
+      if (!establecimientoId) return []
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('personas_establecimientos')
+        .select('personas_directorio!persona_id(id, nombre, apellido)')
+        .eq('establecimiento_id', establecimientoId)
+      return ((data ?? []) as { personas_directorio: { id: string; nombre: string; apellido: string } | null }[])
+        .map(pe => pe.personas_directorio)
+        .filter(Boolean)
+        .sort((a, b) => a!.apellido.localeCompare(b!.apellido)) as { id: string; nombre: string; apellido: string }[]
+    },
+    enabled: !!establecimientoId,
+    staleTime: 1000 * 60 * 5,
+  })
+}
+
+export function useObservacionesClasificaciones() {
+  return useQuery({
+    queryKey: ['observaciones-clasificaciones'],
+    queryFn: async () => {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('observaciones_clasificaciones')
+        .select('id, nombre')
+        .eq('is_active', true)
+        .order('nombre')
+      return (data ?? []) as { id: string; nombre: string }[]
+    },
+    staleTime: 1000 * 60 * 30,
+  })
+}
+
+export function useFormulariosSecciones(geIds: string[]) {
+  return useQuery({
+    queryKey: ['formularios-secciones', geIds],
+    queryFn: async () => {
+      const gestionIds = geIds
+      if (gestionIds.length === 0) return new Set<string>()
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('formularios_secciones')
+        .select('gestion_id')
+        .in('gestion_id', gestionIds)
+      return new Set((data ?? []).map(s => s.gestion_id))
+    },
+    enabled: geIds.length > 0,
+  })
+}
+
+export function useToggleMostrarLT() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, mostrar_lt }: { id: string; mostrar_lt: boolean }) => {
+      const supabase = createClient()
+      await supabase.from('gestiones_establecimientos').update({ mostrar_lt }).eq('id', id)
+    },
   })
 }
 
