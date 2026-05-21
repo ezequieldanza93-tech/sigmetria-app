@@ -1,11 +1,9 @@
-import { ChatAnthropic } from '@langchain/anthropic'
-import { ChatGoogleGenerativeAI } from '@langchain/google-genai'
-import { HumanMessage, SystemMessage } from '@langchain/core/messages'
 import { tools } from './tools'
 import { searchKnowledge } from './knowledge'
+import { matchIntent, extractEstablishment, listEstablecimientos, HANDLERS, type SigiaIntent } from './intent-engine'
 
 const HAS_ANTHROPIC = !!process.env.ANTHROPIC_API_KEY
-const HAS_GEMINI = !!process.env.GOOGLE_API_KEY_A
+const HAS_GEMINI = !!process.env.GOOGLE_API_KEY
 
 const STRICT_SYSTEM_PROMPT = `Eres Sigía, asistente de Sigmetría HyS (gestión HyS laboral).
 
@@ -69,6 +67,78 @@ export async function processMessage(
     })
   }
 
+  const lastAssistantMsg = [...prevMessages].reverse().find(m => m.role === 'assistant')?.content ?? ''
+
+  // --- Check for pending establishment selection ---
+  const pendingEstSelection = lastAssistantMsg.includes('decime cuál te interesa')
+    || lastAssistantMsg.includes('¿para cuál establecimiento')
+
+  // --- Get consultora & establecimientos ---
+  const { data: membership } = await supabase
+    .from('consultoras_members')
+    .select('consultora_id')
+    .eq('user_id', userId)
+    .eq('is_active', true)
+    .maybeSingle()
+  const consultoraId = membership?.consultora_id ?? null
+
+  if (!consultoraId) {
+    return saveAndReturn(supabase, convId!, 'No encontré tu consultora asociada. Si pensás que es un error, contactá al administrador.')
+  }
+
+  const establecimientos = await listEstablecimientos(supabase, consultoraId)
+
+  // --- If pending establishment selection, treat message as answer ---
+  if (pendingEstSelection && establecimientos) {
+    const matchedEst = extractEstablishment(message, establecimientos)
+    if (matchedEst) {
+      const handlerKey = lastAssistantMsg.includes('¿para cuál establecimiento querés') ? 'handlePlanificarGestion' : 'handleGestionesList'
+      const handler = HANDLERS[handlerKey]
+      if (handler) {
+        const result = await handler(supabase, userId, consultoraId, message, establecimientos, matchedEst, '', convId!)
+        return saveAndReturn(supabase, convId!, result.reply, result.pendingActions)
+      }
+    }
+    return saveAndReturn(supabase, convId!,
+      `No encontré "${message.trim()}" entre los establecimientos disponibles. Elegí uno de estos:\n\n${
+        establecimientos.map(e => `• **${e.empresa_razon}** — ${e.nombre}`).join('\n')
+      }`
+    )
+  }
+
+  // --- Load intents & match ---
+  const { data: dbIntents } = await supabase
+    .from('sigia_intents')
+    .select('*')
+    .eq('is_active', true)
+  const intents = (dbIntents ?? []) as SigiaIntent[]
+
+  const match = matchIntent(message, intents)
+  if (match && consultoraId) {
+    const handler = HANDLERS[match.intent.handler]
+    if (handler) {
+      const establecimientoMatch = context?.establecimientoId && establecimientos
+        ? establecimientos.find(e => e.id === context.establecimientoId) ?? null
+        : null
+
+      const result = await handler(
+        supabase, userId, consultoraId, message, establecimientos, establecimientoMatch, lastAssistantMsg, convId!,
+      )
+
+      if (result.reply) {
+        return saveAndReturn(supabase, convId!, result.reply, result.pendingActions)
+      }
+
+      if (!establecimientoMatch && establecimientos && establecimientos.length > 1) {
+        return saveAndReturn(supabase, convId!,
+          `Tenés varios establecimientos. Decime cuál te interesa:\n\n${
+            establecimientos.map(e => `• **${e.empresa_razon}** — ${e.nombre}`).join('\n')
+          }`
+        )
+      }
+    }
+  }
+
   // --- Try LLM ---
   if (HAS_ANTHROPIC || HAS_GEMINI) {
     try {
@@ -109,6 +179,10 @@ async function processWithLLM(
   context?: { establecimientoId?: string; empresaId?: string; establecimientoNombre?: string; empresaNombre?: string },
   provider: 'anthropic' | 'google' = 'google',
 ): Promise<{ reply: string; conversationId: string; pendingActions: PendingAction[] }> {
+  const { ChatAnthropic } = await import('@langchain/anthropic')
+  const { ChatGoogleGenerativeAI } = await import('@langchain/google-genai')
+  const { HumanMessage, SystemMessage } = await import('@langchain/core/messages')
+
   let model
   if (provider === 'anthropic') {
     model = new ChatAnthropic({
@@ -121,7 +195,7 @@ async function processWithLLM(
       model: 'gemini-2.0-flash',
       temperature: 0.2,
       maxOutputTokens: 512,
-      apiKey: process.env.GOOGLE_API_KEY_A,
+      apiKey: process.env.GOOGLE_API_KEY,
     })
   }
 
