@@ -111,6 +111,39 @@ function DatosForm({
         />
       </div>
 
+      <div className="border-t border-gray-200 pt-4 space-y-3">
+        <p className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Imagen profesional</p>
+        <FileUploadInput
+          name="firma"
+          label="Firma digital"
+          accept="image/png,image/jpeg,image/svg+xml"
+          maxSizeMB={1}
+          currentUrl={perfil?.firma_url}
+          helpText="PNG, JPG o SVG. Máx 1 MB. Se usa en certificados e informes firmados."
+          kind="image"
+        />
+        <div className="grid grid-cols-2 gap-3">
+          <FileUploadInput
+            name="logo_small_prof"
+            label="Logo pequeño"
+            accept="image/png,image/jpeg,image/webp,image/svg+xml"
+            maxSizeMB={2}
+            currentUrl={perfil?.logo_small_url}
+            helpText="Máx 2 MB."
+            kind="image"
+          />
+          <FileUploadInput
+            name="logo_destacado_prof"
+            label="Logo destacado"
+            accept="image/png,image/jpeg,image/webp,image/svg+xml"
+            maxSizeMB={2}
+            currentUrl={perfil?.logo_destacado_url}
+            helpText="Máx 2 MB."
+            kind="image"
+          />
+        </div>
+      </div>
+
       <div className="flex justify-end pt-1">
         <Button type="submit" disabled={pending}>{pending ? 'Guardando…' : 'Guardar'}</Button>
       </div>

@@ -355,7 +355,7 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
                       ✕
                     </button>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 pl-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pl-0 sm:pl-6">
                     <div>
                       <label className="text-xs text-gray-500 block mb-0.5">Tipo de riesgo</label>
                       <select
@@ -434,7 +434,7 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <label className="text-sm font-medium text-gray-700 block mb-1">Fecha de Ejecucion *</label>
               <input
@@ -452,7 +452,7 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <label className="text-sm font-medium text-gray-700 block mb-1">Responsable</label>
               <select value={responsableId} onChange={e => setResponsableId(e.target.value)} className={inputCls}>
@@ -486,8 +486,8 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
             </div>
           ))}
 
-          <div className="flex items-center justify-between pt-2 pb-4 sticky bottom-0 bg-white">
-            <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 pb-4 sticky bottom-0 bg-white">
+            <div className="flex flex-wrap gap-2 sm:gap-3">
               <Button
                 type="button"
                 onClick={() => setView('review')}
@@ -502,7 +502,7 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
 
             {answeredCount > 0 && (
               <div className="flex items-center gap-3">
-                <span className="text-sm text-gray-600">
+                <span className="text-xs sm:text-sm text-gray-600">
                   <strong className={noCumplen > 0 ? 'text-red-600' : 'text-green-600'}>{pct}%</strong> · {total} auditados · {noCumplen} no cumplen
                 </span>
               </div>
@@ -530,20 +530,20 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
             </p>
           </div>
 
-          <div className="grid grid-cols-3 gap-4 mb-6">
-            <div className="bg-gray-50 rounded-xl p-4 text-center">
-              <div className="text-2xl font-bold text-gray-900">{total}</div>
-              <div className="text-xs text-gray-500 mt-1">Items Auditados</div>
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6">
+            <div className="bg-gray-50 rounded-xl p-2 sm:p-4 text-center">
+              <div className="text-xl sm:text-2xl font-bold text-gray-900">{total}</div>
+              <div className="text-[10px] sm:text-xs text-gray-500 mt-1 leading-tight">Items Auditados</div>
             </div>
-            <div className="bg-gray-50 rounded-xl p-4 text-center">
-              <div className={`text-2xl font-bold ${noCumplen > 0 ? 'text-red-600' : 'text-green-600'}`}>{noCumplen}</div>
-              <div className="text-xs text-gray-500 mt-1">No Cumplen</div>
+            <div className="bg-gray-50 rounded-xl p-2 sm:p-4 text-center">
+              <div className={`text-xl sm:text-2xl font-bold ${noCumplen > 0 ? 'text-red-600' : 'text-green-600'}`}>{noCumplen}</div>
+              <div className="text-[10px] sm:text-xs text-gray-500 mt-1 leading-tight">No Cumplen</div>
             </div>
-            <div className="bg-gray-50 rounded-xl p-4 text-center">
-              <div className={`text-2xl font-bold ${pct >= 80 ? 'text-green-600' : pct >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>
+            <div className="bg-gray-50 rounded-xl p-2 sm:p-4 text-center">
+              <div className={`text-xl sm:text-2xl font-bold ${pct >= 80 ? 'text-green-600' : pct >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>
                 {pct}%
               </div>
-              <div className="text-xs text-gray-500 mt-1">Aprobacion</div>
+              <div className="text-[10px] sm:text-xs text-gray-500 mt-1 leading-tight">Aprobacion</div>
             </div>
           </div>
 
@@ -595,8 +595,8 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
           ))}
         </div>
 
-        <div className="flex items-center justify-between pt-2 pb-4 sticky bottom-0 bg-white">
-          <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 pb-4 sticky bottom-0 bg-white">
+          <div className="flex flex-wrap gap-2 sm:gap-3">
             <Button type="button" variant="secondary" onClick={() => setView('edit')} disabled={saving}>
               Seguir Editando
             </Button>

@@ -124,7 +124,7 @@ function RegistroGestionForm({
     <form action={formAction} className="bg-white border border-gray-200 rounded-lg p-3 mt-2 space-y-2">
       <input type="hidden" name="gestion_establecimiento_id" value={gestionEstablecimientoId} />
       {state && !state.success && <p className="text-xs text-red-600">{state.error}</p>}
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <div>
           <label className="text-xs font-medium text-gray-600 block mb-1">Fecha planificada *</label>
           <input name="fecha_planificada" type="date" required className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs" />
@@ -180,7 +180,7 @@ function ObservacionForm({
         <label className="text-xs font-medium text-gray-600 block mb-1">Descripción *</label>
         <textarea name="descripcion" required rows={2} className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs resize-none" />
       </div>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <div>
           <label className="text-xs font-medium text-gray-600 block mb-1">Fecha límite *</label>
           <input name="fecha_planificada" type="date" required className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs" />

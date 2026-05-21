@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import { createTrabajadorDocumento } from '@/lib/actions/trabajador-documento'
 import { createMatricula } from '@/lib/actions/matricula'
+import { FileUploadInput } from '@/components/ui/file-upload-input'
 import { formatDate } from '@/lib/utils'
 import type { DirectorioPersona, ActionResult, Matricula } from '@/lib/types'
 
@@ -112,6 +113,14 @@ function MatriculaForm({ personaId, onSuccess }: { personaId: string; onSuccess:
           <input name="fecha_vencimiento" type="date" required className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
         </div>
       </div>
+      <FileUploadInput
+        name="certificado"
+        label="Certificado / constancia"
+        accept="application/pdf,image/png,image/jpeg"
+        maxSizeMB={5}
+        helpText="PDF, PNG o JPG. Máx 5 MB. Opcional."
+        kind="document"
+      />
       <div className="flex gap-2 justify-end">
         <Button type="submit" size="sm" disabled={pending}>{pending ? 'Guardando…' : 'Guardar'}</Button>
       </div>

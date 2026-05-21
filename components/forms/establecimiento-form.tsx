@@ -4,6 +4,7 @@ import { useActionState, useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
+import { FileUploadInput } from '@/components/ui/file-upload-input'
 import { createClient } from '@/lib/supabase/client'
 import { useLocalidades, useEstablecimientoTipos } from '@/lib/queries/establecimiento-form'
 import type { Establecimiento, ActionResult, PreguntaRiesgo, EstablecimientoRespuesta } from '@/lib/types'
@@ -315,6 +316,30 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
           className="w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-sig-50 file:text-sig-700 hover:file:bg-sig-100 cursor-pointer"
         />
         <p className="text-xs text-gray-400 mt-1">JPG, PNG o WebP. Se reemplaza la existente al guardar.</p>
+      </div>
+
+      <div className="border-t border-gray-200 pt-4 space-y-3">
+        <p className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Planos del establecimiento</p>
+        <div className="grid grid-cols-2 gap-3">
+          <FileUploadInput
+            name="floor_plan_pdf"
+            label="Plano (PDF)"
+            accept="application/pdf,image/png,image/jpeg"
+            maxSizeMB={20}
+            currentUrl={establecimiento?.floor_plan_pdf_url}
+            helpText="PDF (preferido) o imagen. Máx 20 MB."
+            kind="document"
+          />
+          <FileUploadInput
+            name="floor_plan_cad"
+            label="Plano (CAD)"
+            accept="application/pdf,image/png,image/jpeg"
+            maxSizeMB={20}
+            currentUrl={establecimiento?.floor_plan_cad_url}
+            helpText="Si tenés versión editable. Máx 20 MB."
+            kind="document"
+          />
+        </div>
       </div>
 
       <div className="flex gap-3 pt-2">

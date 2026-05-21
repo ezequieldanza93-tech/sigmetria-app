@@ -2,8 +2,44 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { uploadAsset } from '@/lib/storage/upload'
+import { uploadAsset, deleteAsset, pathFromUrl } from '@/lib/storage/upload'
 import type { ActionResult } from '@/lib/types'
+import type { AssetBucket, EntityType } from '@/lib/storage/upload'
+
+async function processProfesionalAsset(
+  consultoraId: string,
+  perfilId: string,
+  fieldName: string,
+  bucket: AssetBucket,
+  entityType: EntityType,
+  kind: string,
+  formData: FormData,
+  currentUrl: string | null,
+): Promise<{ url?: string | null; error?: string }> {
+  const file = formData.get(fieldName) as File | null
+  const remove = formData.get(`${fieldName}__remove`) === '1'
+
+  if (file && file.size > 0) {
+    const up = await uploadAsset({
+      bucket,
+      consultoraId,
+      entityType,
+      entityId: perfilId,
+      kind,
+      file,
+    })
+    if (!up.ok) return { error: up.error }
+    return { url: up.url }
+  }
+
+  if (remove && currentUrl) {
+    const path = pathFromUrl(currentUrl, bucket)
+    if (path) await deleteAsset(bucket, path)
+    return { url: null }
+  }
+
+  return {}
+}
 
 export async function upsertPerfilProfesional(
   _prev: ActionResult<null> | null,
@@ -13,7 +49,20 @@ export async function upsertPerfilProfesional(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
-  const payload: Record<string, string | null> = {
+  const { data: membership } = await supabase
+    .from('consultoras_members')
+    .select('consultora_id')
+    .eq('user_id', user.id)
+    .eq('is_active', true)
+    .maybeSingle()
+
+  const { data: existing } = await supabase
+    .from('perfiles_profesionales')
+    .select('id, firma_url, logo_small_url, logo_destacado_url')
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  const basePayload: Record<string, string | null> = {
     user_id: user.id,
     telefono: formData.get('telefono') as string || null,
     fecha_nacimiento: formData.get('fecha_nacimiento') as string || null,
@@ -25,11 +74,44 @@ export async function upsertPerfilProfesional(
     updated_at: new Date().toISOString(),
   }
 
-  const { error } = await supabase
+  const { data: upserted, error } = await supabase
     .from('perfiles_profesionales')
-    .upsert(payload, { onConflict: 'user_id' })
+    .upsert(basePayload, { onConflict: 'user_id' })
+    .select('id')
+    .single()
 
-  if (error) return { success: false, error: error.message }
+  if (error || !upserted) return { success: false, error: error?.message ?? 'Error al guardar' }
+
+  const perfilId = upserted.id
+
+  if (membership?.consultora_id) {
+    const firma = await processProfesionalAsset(
+      membership.consultora_id, perfilId, 'firma', 'firmas', 'profesional', 'firma',
+      formData, existing?.firma_url ?? null,
+    )
+    if (firma.error) return { success: false, error: `Firma: ${firma.error}` }
+
+    const logoSmall = await processProfesionalAsset(
+      membership.consultora_id, perfilId, 'logo_small_prof', 'logos', 'profesional', 'small',
+      formData, existing?.logo_small_url ?? null,
+    )
+    if (logoSmall.error) return { success: false, error: `Logo pequeño: ${logoSmall.error}` }
+
+    const logoDest = await processProfesionalAsset(
+      membership.consultora_id, perfilId, 'logo_destacado_prof', 'logos', 'profesional', 'destacado',
+      formData, existing?.logo_destacado_url ?? null,
+    )
+    if (logoDest.error) return { success: false, error: `Logo destacado: ${logoDest.error}` }
+
+    const updates: Record<string, string | null> = {}
+    if (firma.url !== undefined) updates.firma_url = firma.url
+    if (logoSmall.url !== undefined) updates.logo_small_url = logoSmall.url
+    if (logoDest.url !== undefined) updates.logo_destacado_url = logoDest.url
+
+    if (Object.keys(updates).length > 0) {
+      await supabase.from('perfiles_profesionales').update(updates).eq('id', perfilId)
+    }
+  }
 
   revalidatePath('/dashboard/equipo')
   return { success: true, data: null }

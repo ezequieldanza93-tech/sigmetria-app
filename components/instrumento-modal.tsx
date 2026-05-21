@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { createCertificadoCalibracion } from '@/lib/actions/certificado'
+import { FileUploadInput } from '@/components/ui/file-upload-input'
 import { useCertificados } from '@/lib/queries/instrumento'
 import { formatDate } from '@/lib/utils'
 import type { InstrumentoMedicion } from '@/lib/types'
@@ -33,6 +34,14 @@ function CertificadoForm({ instrumentoId, onSuccess }: { instrumentoId: string; 
           <input name="fecha_vencimiento" type="date" required className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
         </div>
       </div>
+      <FileUploadInput
+        name="certificado"
+        label="Certificado de calibración"
+        accept="application/pdf,image/png,image/jpeg"
+        maxSizeMB={5}
+        helpText="PDF, PNG o JPG. Máx 5 MB. Opcional."
+        kind="document"
+      />
       <div className="flex justify-end">
         <Button type="submit" size="sm" disabled={pending}>{pending ? 'Guardando…' : 'Guardar'}</Button>
       </div>

@@ -5,6 +5,7 @@ import { createClient } from '@supabase/supabase-js'
 import { redirect } from 'next/navigation'
 import type { ActionResult, Consultora } from '@/lib/types'
 import { revalidatePath } from 'next/cache'
+import { uploadAsset, deleteAsset, pathFromUrl } from '@/lib/storage/upload'
 
 export async function createConsultora(formData: FormData): Promise<ActionResult<{ id: string }>> {
   const supabase = await createServerClient()
@@ -131,4 +132,54 @@ export async function updateConsultora(data: {
 
   revalidatePath('/dashboard/configuracion/consultora')
   return { success: true, data: updated as unknown as Consultora }
+}
+
+export async function uploadConsultoraLogo(
+  formData: FormData,
+): Promise<ActionResult<{ url: string }>> {
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'No autenticado' }
+
+  const { data: membership } = await supabase
+    .from('consultoras_members')
+    .select('consultora_id, role')
+    .eq('user_id', user.id)
+    .eq('is_active', true)
+    .maybeSingle()
+
+  if (!membership) return { success: false, error: 'No pertenecés a ninguna consultora' }
+
+  const file = formData.get('logo') as File | null
+  if (!file || file.size === 0) return { success: false, error: 'Archivo vacío' }
+
+  const { data: current } = await supabase
+    .from('consultoras')
+    .select('logo_url')
+    .eq('id', membership.consultora_id)
+    .single()
+
+  const result = await uploadAsset({
+    bucket: 'consultora',
+    consultoraId: membership.consultora_id,
+    entityType: 'consultora',
+    entityId: membership.consultora_id,
+    kind: 'logo',
+    file,
+  })
+
+  if (!result.ok) return { success: false, error: result.error }
+
+  if (current?.logo_url && current.logo_url !== result.url) {
+    const oldPath = pathFromUrl(current.logo_url, 'consultora')
+    if (oldPath) await deleteAsset('consultora', oldPath)
+  }
+
+  await supabase
+    .from('consultoras')
+    .update({ logo_url: result.url, updated_at: new Date().toISOString() })
+    .eq('id', membership.consultora_id)
+
+  revalidatePath('/dashboard/configuracion/consultora')
+  return { success: true, data: { url: result.url } }
 }

@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { updateConsultora } from '@/lib/actions/consultora'
-import { Save, Loader2, Building2, Globe, Mail, Phone, Image, Link as LinkIcon, Check } from 'lucide-react'
+import { updateConsultora, uploadConsultoraLogo } from '@/lib/actions/consultora'
+import { Save, Loader2, Building2, Globe, Mail, Phone, Image, Link as LinkIcon, Check, Upload, X } from 'lucide-react'
 import type { Consultora } from '@/lib/types'
 
 const SOCIAL_LABELS: Record<string, string> = {
@@ -31,6 +31,9 @@ export default function ConsultoraInfoPage() {
   const [email, setEmail] = useState('')
   const [website, setWebsite] = useState('')
   const [logoUrl, setLogoUrl] = useState('')
+  const [uploadingLogo, setUploadingLogo] = useState(false)
+  const [logoError, setLogoError] = useState<string | null>(null)
+  const logoInputRef = useRef<HTMLInputElement>(null)
   const [socialLinks, setSocialLinks] = useState<Record<string, string>>({})
 
   useEffect(() => {
@@ -92,6 +95,32 @@ export default function ConsultoraInfoPage() {
       setTimeout(() => setSaved(false), 3000)
     }
     setSaving(false)
+  }
+
+  async function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    setLogoError(null)
+    if (!file) return
+
+    if (file.size > 2 * 1024 * 1024) {
+      setLogoError('El archivo supera 2 MB.')
+      if (logoInputRef.current) logoInputRef.current.value = ''
+      return
+    }
+
+    setUploadingLogo(true)
+    const fd = new FormData()
+    fd.set('logo', file)
+    const result = await uploadConsultoraLogo(fd)
+    setUploadingLogo(false)
+
+    if (!result.success) {
+      setLogoError(result.error)
+      if (logoInputRef.current) logoInputRef.current.value = ''
+      return
+    }
+    setLogoUrl(result.data.url)
+    if (logoInputRef.current) logoInputRef.current.value = ''
   }
 
   function updateSocial(key: string, value: string) {
@@ -210,14 +239,38 @@ export default function ConsultoraInfoPage() {
               )}
             </div>
             <div className="flex-1">
-              <label className="block text-xs font-medium text-text-secondary mb-1">URL del logo</label>
-              <input
-                value={logoUrl}
-                onChange={e => setLogoUrl(e.target.value)}
-                placeholder="https://ejemplo.com/logo.png"
-                type="url"
-                className="w-full rounded-lg border border-border-subtle bg-surface-base px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition-colors"
-              />
+              <label className="block text-xs font-medium text-text-secondary mb-1">Archivo del logo</label>
+              <div className="flex items-center gap-2 flex-wrap">
+                <label
+                  htmlFor="consultora_logo_file"
+                  className={`inline-flex items-center gap-2 px-3 py-2 bg-surface-base border border-border-subtle rounded-lg text-sm text-text-primary hover:bg-surface-sunken cursor-pointer transition-colors ${uploadingLogo ? 'opacity-60 pointer-events-none' : ''}`}
+                >
+                  {uploadingLogo ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                  {uploadingLogo ? 'Subiendo…' : logoUrl ? 'Cambiar logo' : 'Subir logo'}
+                </label>
+                <input
+                  ref={logoInputRef}
+                  id="consultora_logo_file"
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                  onChange={handleLogoChange}
+                  disabled={uploadingLogo}
+                  className="sr-only"
+                />
+                {logoUrl && !uploadingLogo && (
+                  <button
+                    type="button"
+                    onClick={() => setLogoUrl('')}
+                    className="inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-700 px-2 py-1.5 rounded-lg hover:bg-red-50"
+                  >
+                    <X size={14} /> Quitar
+                  </button>
+                )}
+              </div>
+              {logoError && <p className="text-xs text-red-600 mt-1.5">{logoError}</p>}
+              {!logoError && (
+                <p className="text-xs text-text-tertiary mt-1.5">PNG, JPG, WEBP o SVG. Máx 2 MB. Se sube y guarda al seleccionarlo.</p>
+              )}
             </div>
           </div>
         </section>

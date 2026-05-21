@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache'
 import { SECTORES_PREDEFINIDOS } from '@/lib/constants'
 import type { ActionResult } from '@/lib/types'
 import { validateFormData, formatZodErrors } from '@/lib/validation/helpers'
+import { uploadAsset, deleteAsset, pathFromUrl } from '@/lib/storage/upload'
 
 const establecimientoActionSchema = z.object({
   nombre: z.string().min(1, { error: 'El nombre es obligatorio' }).transform(s => s.trim()),
@@ -74,6 +75,55 @@ async function saveRespuestas(
     .upsert(entries, { onConflict: 'establecimiento_id,pregunta_id' })
 }
 
+async function processFloorPlans(
+  consultoraId: string,
+  establecimientoId: string,
+  formData: FormData,
+  current: { floor_plan_pdf_url: string | null; floor_plan_cad_url: string | null },
+): Promise<{ floor_plan_pdf_url?: string | null; floor_plan_cad_url?: string | null; error?: string }> {
+  const result: { floor_plan_pdf_url?: string | null; floor_plan_cad_url?: string | null; error?: string } = {}
+
+  const pdfFile = formData.get('floor_plan_pdf') as File | null
+  const pdfRemove = formData.get('floor_plan_pdf__remove') === '1'
+  if (pdfFile && pdfFile.size > 0) {
+    const up = await uploadAsset({
+      bucket: 'planos',
+      consultoraId,
+      entityType: 'establecimiento',
+      entityId: establecimientoId,
+      kind: 'pdf',
+      file: pdfFile,
+    })
+    if (!up.ok) return { error: `Plano PDF: ${up.error}` }
+    result.floor_plan_pdf_url = up.url
+  } else if (pdfRemove && current.floor_plan_pdf_url) {
+    const path = pathFromUrl(current.floor_plan_pdf_url, 'planos')
+    if (path) await deleteAsset('planos', path)
+    result.floor_plan_pdf_url = null
+  }
+
+  const cadFile = formData.get('floor_plan_cad') as File | null
+  const cadRemove = formData.get('floor_plan_cad__remove') === '1'
+  if (cadFile && cadFile.size > 0) {
+    const up = await uploadAsset({
+      bucket: 'planos',
+      consultoraId,
+      entityType: 'establecimiento',
+      entityId: establecimientoId,
+      kind: 'cad',
+      file: cadFile,
+    })
+    if (!up.ok) return { error: `Plano CAD: ${up.error}` }
+    result.floor_plan_cad_url = up.url
+  } else if (cadRemove && current.floor_plan_cad_url) {
+    const path = pathFromUrl(current.floor_plan_cad_url, 'planos')
+    if (path) await deleteAsset('planos', path)
+    result.floor_plan_cad_url = null
+  }
+
+  return result
+}
+
 async function uploadFoto(file: File, establecimientoId: string): Promise<string | null> {
   try {
     if (!file || file.size === 0) return null
@@ -137,6 +187,31 @@ export async function createEstablecimiento(
     await supabase.from('establecimientos').update({ photo_site }).eq('id', data.id)
   }
 
+  const { data: empresaConsultora } = await supabase
+    .from('empresas')
+    .select('consultora_id')
+    .eq('id', empresaId)
+    .single()
+
+  if (empresaConsultora?.consultora_id) {
+    const plans = await processFloorPlans(
+      empresaConsultora.consultora_id,
+      data.id,
+      formData,
+      { floor_plan_pdf_url: null, floor_plan_cad_url: null },
+    )
+    if (plans.error) return { success: false, error: plans.error }
+    if (plans.floor_plan_pdf_url !== undefined || plans.floor_plan_cad_url !== undefined) {
+      await supabase
+        .from('establecimientos')
+        .update({
+          ...(plans.floor_plan_pdf_url !== undefined && { floor_plan_pdf_url: plans.floor_plan_pdf_url }),
+          ...(plans.floor_plan_cad_url !== undefined && { floor_plan_cad_url: plans.floor_plan_cad_url }),
+        })
+        .eq('id', data.id)
+    }
+  }
+
   await saveHorarios(supabase, data.id, formData)
   await saveRespuestas(supabase, data.id, formData)
 
@@ -173,6 +248,24 @@ export async function updateEstablecimiento(
   const foto = formData.get('foto') as File | null
   const photo_site = foto?.size ? await uploadFoto(foto, id) : undefined
 
+  const { data: existing } = await supabase
+    .from('establecimientos')
+    .select('floor_plan_pdf_url, floor_plan_cad_url, empresas!inner(consultora_id)')
+    .eq('id', id)
+    .single() as { data: { floor_plan_pdf_url: string | null; floor_plan_cad_url: string | null; empresas: { consultora_id: string } } | null }
+
+  let plansUpdate: { floor_plan_pdf_url?: string | null; floor_plan_cad_url?: string | null } = {}
+  if (existing?.empresas?.consultora_id) {
+    const plans = await processFloorPlans(
+      existing.empresas.consultora_id,
+      id,
+      formData,
+      { floor_plan_pdf_url: existing.floor_plan_pdf_url, floor_plan_cad_url: existing.floor_plan_cad_url },
+    )
+    if (plans.error) return { success: false, error: plans.error }
+    plansUpdate = plans
+  }
+
   const { error } = await supabase
     .from('establecimientos')
     .update({
@@ -187,6 +280,8 @@ export async function updateEstablecimiento(
       longitude,
       aplica_iso_45001: aplica_iso_45001 === 'on',
       ...(photo_site !== undefined && { photo_site }),
+      ...(plansUpdate.floor_plan_pdf_url !== undefined && { floor_plan_pdf_url: plansUpdate.floor_plan_pdf_url }),
+      ...(plansUpdate.floor_plan_cad_url !== undefined && { floor_plan_cad_url: plansUpdate.floor_plan_cad_url }),
     })
     .eq('id', id)
 
