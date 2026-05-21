@@ -119,7 +119,6 @@ async function mockResponse(
 
   const lower = message.toLowerCase()
   const establecimientoId = context?.establecimientoId
-  const empresaId = context?.empresaId
 
   // Saludos
   if (lower.includes('hola') || lower.includes('buen') || lower.includes('qué tal')) {
