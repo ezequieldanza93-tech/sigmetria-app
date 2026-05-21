@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import {
   BarChart2,
+  Bell,
   Building2,
   ChevronRight,
   ChevronDown,
@@ -245,6 +246,14 @@ export function Sidebar({ mobileOpen, onMobileClose, onCollapsedChange, isSuperA
             label="Asistente HyS"
             icon={<MessageCircle size={18} strokeWidth={1.75} />}
             active={pathname.startsWith('/dashboard/asistencia')}
+            collapsed={isCollapsed}
+            onClick={onMobileClose}
+          />
+          <SidebarBottomLink
+            href="/dashboard/notificaciones"
+            label="Notificaciones"
+            icon={<Bell size={18} strokeWidth={1.75} />}
+            active={pathname.startsWith('/dashboard/notificaciones')}
             collapsed={isCollapsed}
             onClick={onMobileClose}
           />

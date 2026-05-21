@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { Menu, Sun, Moon, Users, UserCog, Network, Gauge, Shield, Settings2, LogOut, Building2, Bell } from 'lucide-react'
@@ -254,8 +254,23 @@ export function AppHeader({
           </div>
         </div>
 
-        {/* Right: weather + consultora + dark mode + avatar */}
+        {/* Right: notifications + weather + consultora + dark mode + avatar */}
         <div className="flex items-center gap-3 shrink-0">
+
+          {/* Notification bell */}
+          <Link
+            href="/dashboard/notificaciones"
+            className="relative p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors"
+            aria-label="Notificaciones"
+            title="Notificaciones"
+          >
+            <Bell size={18} strokeWidth={1.75} />
+            {notifCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                {notifCount > 9 ? '9+' : notifCount}
+              </span>
+            )}
+          </Link>
 
           <WeatherClock
             forecastLat={forecastCoords?.lat}

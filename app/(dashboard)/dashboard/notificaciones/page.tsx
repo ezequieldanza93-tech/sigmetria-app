@@ -1,8 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
-import { Bell, RefreshCw, CheckCheck, AlertTriangle, FileText, GraduationCap, Gauge, Wrench, CalendarDays } from 'lucide-react'
+import { Bell, RefreshCw, CheckCheck, FileText, GraduationCap, Gauge, CalendarDays } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import type { Notificacion } from '@/lib/types'
 import { refrescarNotificaciones, marcarNotificacionLeida, marcarTodasLeidas, getNotificaciones } from '@/lib/actions/notificacion'
@@ -47,7 +46,6 @@ function getVencimientoBadge(dias: number): { label: string; cls: string } {
 }
 
 export default function NotificacionesPage() {
-  const router = useRouter()
   const [notificaciones, setNotificaciones] = useState<Notificacion[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)

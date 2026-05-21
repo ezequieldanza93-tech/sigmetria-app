@@ -6,7 +6,6 @@ import { searchKnowledge } from './knowledge'
 
 const HAS_ANTHROPIC = !!process.env.ANTHROPIC_API_KEY
 const HAS_GEMINI = !!process.env.GOOGLE_API_KEY
-const LLM_ACTIVE = HAS_ANTHROPIC || HAS_GEMINI
 
 const STRICT_SYSTEM_PROMPT = `Eres Sig, el asistente virtual de Sigmetría HyS, una plataforma de gestión de Higiene y Seguridad laboral.
 
