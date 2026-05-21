@@ -6,7 +6,7 @@ import { useQueryClient, useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { useCanWrite, useGestionesEstablecimiento, useRegistrosGestion, useCatalogo } from '@/lib/queries/agenda'
 import { calcularEstadoGestion } from '@/lib/types'
-import type { EstadoGestion, Gestion, CategoriaGestion, GrupoGestion, GestionEstablecimiento, RegistroGestion, Riesgo } from '@/lib/types'
+import type { EstadoGestion, Gestion, CategoriaGestion, GrupoGestion, RegistroGestion, Riesgo } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { MultiFilter } from '@/components/ui/multi-filter'
@@ -95,18 +95,6 @@ interface FullRegistro extends RegistroGestion {
   ge_mostrar_lt?: boolean
   responsable_nombre?: string
   aprobado_nombre?: string
-}
-
-interface GestionConJoin extends Omit<GestionEstablecimiento, 'gestiones' | 'mostrar_lt'> {
-  mostrar_lt?: boolean
-  gestiones?: {
-    id: string
-    nombre: string
-    gestiones_categorias?: {
-      nombre: string
-      gestiones_grupos?: { nombre: string } | null
-    } | null
-  } | null
 }
 
 interface GestionesAgendaProps {
@@ -773,7 +761,7 @@ function EjecucionModal({
 export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, riesgos: _riesgos }: GestionesAgendaProps) {
   const queryClient = useQueryClient()
   const { data: canWriteData } = useCanWrite(establecimientoId)
-  const canWrite = canWriteProp || canWriteData ?? false
+  const canWrite = canWriteProp || (canWriteData ?? false)
   const currentYear = new Date().getFullYear()
   const [year, setYear] = useState(currentYear)
 
@@ -839,7 +827,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
     document.addEventListener('mouseup', onUp)
   }
 
-  const { data: gestionesEst = [] } = useGestionesEstablecimiento(establecimientoId, year)
+  const { data: gestionesEst = [], isPending: isGestionesPending } = useGestionesEstablecimiento(establecimientoId, year)
   const geIds = gestionesEst?.map(g => g.id) ?? []
   const { data: rawRegistros } = useRegistrosGestion(geIds.length > 0 ? geIds : undefined, year)
   const { data: catalogo } = useCatalogo()
@@ -872,6 +860,8 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
   }, [gestionesEst])
 
   const registros: FullRegistro[] | null = useMemo(() => {
+    if (isGestionesPending) return null
+    if (gestionesEst.length === 0) return []
     if (rawRegistros === undefined) return null
     if (rawRegistros.length === 0) return []
 
@@ -901,7 +891,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
           : undefined,
       } as FullRegistro
     })
-  }, [rawRegistros, geMap, gestionesConForm])
+  }, [rawRegistros, geMap, gestionesConForm, isGestionesPending, gestionesEst])
 
   // ── Filtering & sorting ─────────────────────────────────────────────────────
   const monthCounts = MONTHS.map((_, i) => {
