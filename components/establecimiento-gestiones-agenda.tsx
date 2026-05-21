@@ -229,7 +229,7 @@ function BibliotecaForm({
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-sm font-medium text-gray-700 block mb-1">Grupo</label>
               <select value={filterGrupo} onChange={e => handleGrupoChange(e.target.value)} className={selectCls}>
@@ -719,7 +719,7 @@ function EjecucionModal({
                       ✕
                     </button>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 pl-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pl-0 sm:pl-6">
                     <div>
                       <label className="text-xs text-gray-500 block mb-0.5">Tipo de riesgo</label>
                       <select
@@ -1308,13 +1308,13 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
             <button
               type="button"
               onClick={() => setShowReporteModal(true)}
-              style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: '#4CAF50', color: 'white', boxShadow: '0 10px 25px rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer', transition: 'transform 0.15s, background-color 0.15s' }}
+              style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: '#4CAF50', color: 'white', boxShadow: '0 10px 25px rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer', transition: 'transform 0.15s, background-color 0.15s' }}
               onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#43A047'; e.currentTarget.style.transform = 'scale(1.1)' }}
               onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#4CAF50'; e.currentTarget.style.transform = 'scale(1)' }}
             >
               <Camera size={20} strokeWidth={2} />
             </button>
-            <span className="fab-tooltip" style={{ position: 'absolute', right: '56px', top: '50%', transform: 'translateY(-50%)', backgroundColor: '#111827', color: 'white', fontSize: '12px', borderRadius: '8px', padding: '6px 10px', whiteSpace: 'nowrap', opacity: 0, transition: 'opacity 0.2s', pointerEvents: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
+            <span className="fab-tooltip" style={{ position: 'absolute', right: '64px', top: '50%', transform: 'translateY(-50%)', backgroundColor: '#111827', color: 'white', fontSize: '12px', borderRadius: '8px', padding: '6px 10px', whiteSpace: 'nowrap', opacity: 0, transition: 'opacity 0.2s', pointerEvents: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
               Generar reporte fotográfico
             </span>
           </div>
@@ -1326,13 +1326,13 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
             <button
               type="button"
               onClick={() => setShowPlanificarModal(true)}
-              style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: '#4CAF50', color: 'white', boxShadow: '0 10px 25px rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer', transition: 'transform 0.15s, background-color 0.15s' }}
+              style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: '#4CAF50', color: 'white', boxShadow: '0 10px 25px rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer', transition: 'transform 0.15s, background-color 0.15s' }}
               onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#43A047'; e.currentTarget.style.transform = 'scale(1.1)' }}
               onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#4CAF50'; e.currentTarget.style.transform = 'scale(1)' }}
             >
               <Plus size={22} strokeWidth={2.5} />
             </button>
-            <span className="fab-tooltip" style={{ position: 'absolute', right: '56px', top: '50%', transform: 'translateY(-50%)', backgroundColor: '#111827', color: 'white', fontSize: '12px', borderRadius: '8px', padding: '6px 10px', whiteSpace: 'nowrap', opacity: 0, transition: 'opacity 0.2s', pointerEvents: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
+            <span className="fab-tooltip" style={{ position: 'absolute', right: '64px', top: '50%', transform: 'translateY(-50%)', backgroundColor: '#111827', color: 'white', fontSize: '12px', borderRadius: '8px', padding: '6px 10px', whiteSpace: 'nowrap', opacity: 0, transition: 'opacity 0.2s', pointerEvents: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
               Planificar nueva gestión
             </span>
           </div>
