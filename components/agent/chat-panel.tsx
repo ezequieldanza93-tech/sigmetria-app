@@ -25,6 +25,7 @@ export function ChatPanel({ onClose, variant = 'popover', establecimientoId, emp
     },
   ])
   const [input, setInput] = useState('')
+  const [conversationId, setConversationId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [pendingActions, setPendingActions] = useState<PendingAction[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -53,7 +54,7 @@ export function ChatPanel({ onClose, variant = 'popover', establecimientoId, emp
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: userMessage.content,
-          conversationId: null,
+          conversationId,
           establecimientoId,
           empresaId,
           establecimientoNombre,
@@ -67,6 +68,10 @@ export function ChatPanel({ onClose, variant = 'popover', establecimientoId, emp
       }
 
       const data = await res.json()
+
+      if (data.conversationId) {
+        setConversationId(data.conversationId)
+      }
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),

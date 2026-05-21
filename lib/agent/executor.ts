@@ -162,37 +162,42 @@ async function mockResponse(
   const { createClient } = await import('@/lib/supabase/server')
   const supabase = await createClient()
 
+  // --- Persist conversation & load history ---
+  let convId = conversationId
+  let prevMessages: { role: string; content: string }[] = []
+
+  if (!convId) {
+    const { data: conv } = await supabase
+      .from('agent_conversations')
+      .insert({ user_id: userId, title: message.slice(0, 100) })
+      .select('id')
+      .single()
+    if (conv) convId = conv.id
+  }
+
+  if (convId) {
+    const { data: history } = await supabase
+      .from('agent_messages')
+      .select('role, content')
+      .eq('conversation_id', convId)
+      .order('created_at', { ascending: true })
+    prevMessages = history ?? []
+
+    await supabase.from('agent_messages').insert({
+      conversation_id: convId,
+      role: 'user',
+      content: message,
+    })
+  }
+
+  const lastAssistantMsg = [...prevMessages].reverse().find(m => m.role === 'assistant')?.content ?? ''
+
   const lower = message.toLowerCase()
 
-  // Saludos
-  if (lower.includes('hola') || lower.includes('buen') || lower.includes('qué tal')) {
-    let greeting = '¡Hola! Soy Sigía, la asistente virtual de Sigmetría HyS.'
-    if (context?.establecimientoNombre) {
-      greeting += ` Estás consultando desde **${context.establecimientoNombre}**.`
-    }
-    greeting += ' ¿En qué puedo ayudarte hoy? Podés consultarme sobre empresas, establecimientos, siniestros, inspecciones, riesgos, gestiones y más.'
-    return {
-      reply: greeting,
-      conversationId: conversationId ?? 'mock-conversation',
-      pendingActions: [],
-    }
-  }
+  // --- Infer topic from last assistant message for follow-up understanding ---
+  const pendingEstSelection = lastAssistantMsg.includes('decime cuál te interesa') || lastAssistantMsg.includes('¿para cuál establecimiento')
+  const pendingPlanEstSelection = lastAssistantMsg.includes('¿para cuál establecimiento querés planificarlo')
 
-  if (lower.includes('qué podés hacer') || lower.includes('capacidades') || lower.includes('funcionalidades') || lower.includes('ayuda')) {
-    let caps = 'Estas son mis capacidades principales:\n\n📋 **Consultas:**\n- Empresas (cantidad, listado)\n- Establecimientos\n- Gestiones (cantidad, próximas, filtros)\n- Siniestros, inspecciones, riesgos\n- Empleados\n- Vencimientos de documentación\n\n✍️ **Acciones con aprobación:**\n- Planificar checklist o gestión\n- Registrar gestiones\n- Actualizar estado de riesgos\n- Enviar notificaciones\n\n🔍 **Filtros:** podés preguntar por mes, tipo, estado o establecimiento.'
-    if (context?.establecimientoNombre) {
-      caps += `\n\n📍 Estás viendo **${context.establecimientoNombre}** — todas las consultas se filtran automáticamente a este establecimiento.`
-    } else {
-      caps += '\n\n💡 También podés usar Sigía desde la pestaña "Asistente HyS" dentro de un establecimiento para consultas con contexto automático.'
-    }
-    return {
-      reply: caps,
-      conversationId: conversationId ?? 'mock-conversation',
-      pendingActions: [],
-    }
-  }
-
-  // Helpers Supabase
   async function getConsultoraId(): Promise<string | null> {
     const { data: membership } = await supabase
       .from('consultoras_members')
@@ -204,114 +209,85 @@ async function mockResponse(
   }
 
   const consultoraId = await getConsultoraId()
-
   if (!consultoraId) {
-    return {
-      reply: 'No encontré tu consultora asociada. Si pensás que es un error, contactá al administrador.',
-      conversationId: conversationId ?? 'mock-conversation',
-      pendingActions: [],
+    return saveAndReturn(convId!, 'No encontré tu consultora asociada. Si pensás que es un error, contactá al administrador.')
+  }
+
+  // --- If we were asking for an establishment, treat this message as an answer ---
+  if (pendingEstSelection || pendingPlanEstSelection) {
+    const ests = await listEstablecimientos(consultoraId)
+    if (ests) {
+      const matchedEst = matchEstablecimiento(message, ests)
+      if (matchedEst) {
+        if (pendingPlanEstSelection) {
+          return planificarGestion(message, matchedEst.id, matchedEst.nombre, supabase, userId, convId!)
+        }
+        return queryGestiones(matchedEst.id, matchedEst.nombre, lower, convId!, supabase)
+      }
+      if (ests.length > 0) {
+        return saveAndReturn(convId!,
+          `No encontré "${message.trim()}" entre los establecimientos disponibles. Elegí uno de estos:\n\n${ests.map(e => `• **${e.empresa_razon}** — ${e.nombre}`).join('\n')}`
+        )
+      }
     }
+  }
+
+  // Saludos
+  if (lower.includes('hola') || lower.includes('buen') || lower.includes('qué tal')) {
+    let greeting = '¡Hola! Soy Sigía, la asistente virtual de Sigmetría HyS.'
+    if (context?.establecimientoNombre) {
+      greeting += ` Estás consultando desde **${context.establecimientoNombre}**.`
+    }
+    greeting += ' ¿En qué puedo ayudarte hoy? Podés consultarme sobre empresas, establecimientos, siniestros, inspecciones, riesgos, gestiones y más.'
+    return saveAndReturn(convId!, greeting)
+  }
+
+  if (lower.includes('qué podés hacer') || lower.includes('capacidades') || lower.includes('funcionalidades') || lower.includes('ayuda')) {
+    let caps = 'Estas son mis capacidades principales:\n\n📋 **Consultas:**\n- Empresas (cantidad, listado)\n- Establecimientos\n- Gestiones (cantidad, próximas, filtros)\n- Siniestros, inspecciones, riesgos\n- Empleados\n- Vencimientos de documentación\n\n✍️ **Acciones con aprobación:**\n- Planificar checklist o gestión\n- Registrar gestiones\n- Actualizar estado de riesgos\n- Enviar notificaciones\n\n🔍 **Filtros:** podés preguntar por mes, tipo, estado o establecimiento.'
+    if (context?.establecimientoNombre) {
+      caps += `\n\n📍 Estás viendo **${context.establecimientoNombre}** — todas las consultas se filtran automáticamente a este establecimiento.`
+    } else {
+      caps += '\n\n💡 También podés usar Sigía desde la pestaña **Asistente HyS** dentro de un establecimiento para consultas con contexto automático.'
+    }
+    return saveAndReturn(convId!, caps)
   }
 
   // --- GESTIONES ---
   if (lower.includes('gestión') || lower.includes('gestion') || lower.includes('gestione') || lower.includes('programada') || lower.includes('planificada') || lower.includes('checklist') || lower.includes('check list') || lower.includes('extintor') || lower.includes('extintores')) {
-    const targetEstId = await detectEstablecimiento(lower, consultoraId) ?? context?.establecimientoId
+    const targetEstId = detectEstablecimiento(lower, await listEstablecimientos(consultoraId) ?? [])?.[0]?.id ?? context?.establecimientoId
 
     if (!targetEstId) {
       const establecimientos = await listEstablecimientos(consultoraId)
       if (!establecimientos || establecimientos.length === 0) {
-        return {
-          reply: 'No encontré establecimientos activos en tu consultora.',
-          conversationId: conversationId ?? 'mock-conversation',
-          pendingActions: [],
-        }
+        return saveAndReturn(convId!, 'No encontré establecimientos activos en tu consultora.')
       }
       if (establecimientos.length === 1) {
-        return queryGestiones(establecimientos[0].id, establecimientos[0].nombre, lower, supabase)
+        return queryGestiones(establecimientos[0].id, establecimientos[0].nombre, lower, convId!, supabase)
       }
-      return {
-        reply: `Tenés varios establecimientos. Decime cuál te interesa:\n\n${establecimientos.map(e => `• **${e.empresa_razon}** — ${e.nombre}`).join('\n')}`,
-        conversationId: conversationId ?? 'mock-conversation',
-        pendingActions: [],
-      }
+      return saveAndReturn(convId!, `Tenés varios establecimientos. Decime cuál te interesa:\n\n${establecimientos.map(e => `• **${e.empresa_razon}** — ${e.nombre}`).join('\n')}`)
     }
 
     const estNombre = context?.establecimientoNombre && targetEstId === context?.establecimientoId
       ? context.establecimientoNombre
       : (await getEstNombre(targetEstId)) ?? 'el establecimiento'
-    return queryGestiones(targetEstId, estNombre, lower, supabase)
+    return queryGestiones(targetEstId, estNombre, lower, convId!, supabase)
   }
 
   // --- PLANIFICAR ---
   if (lower.includes('planificar') || lower.includes('programar') || lower.includes('agendar') || lower.includes('crear una gestión') || lower.includes('nueva gestión') || lower.includes('nuevo checklist') || lower.includes('nuevo check list')) {
-    const targetEstId = await detectEstablecimiento(lower, consultoraId) ?? context?.establecimientoId
+    const targetEstId = detectEstablecimiento(lower, await listEstablecimientos(consultoraId) ?? [])?.[0]?.id ?? context?.establecimientoId
 
     if (!targetEstId) {
       const establecimientos = await listEstablecimientos(consultoraId)
       if (!establecimientos || establecimientos.length === 0) {
-        return {
-          reply: 'No hay establecimientos activos. Necesitás un establecimiento para planificar una gestión.',
-          conversationId: conversationId ?? 'mock-conversation',
-          pendingActions: [],
-        }
+        return saveAndReturn(convId!, 'No hay establecimientos activos. Necesitás un establecimiento para planificar una gestión.')
       }
-      return {
-        reply: `¿Para cuál establecimiento querés planificarlo?\n\n${establecimientos.map(e => `• **${e.empresa_razon}** — ${e.nombre}`).join('\n')}`,
-        conversationId: conversationId ?? 'mock-conversation',
-        pendingActions: [],
-      }
+      return saveAndReturn(convId!, `¿Para cuál establecimiento querés planificarlo?\n\n${establecimientos.map(e => `• **${e.empresa_razon}** — ${e.nombre}`).join('\n')}`)
     }
 
-    const descMatch = message.match(/(?:checklist|check list|gestión|gestion|tarea|inspección|inspeccion|revisión|revision)\s+(?:de\s+|para\s+)?([^.\n]+)/i)
-    const dateMatch = message.match(/(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?/i) || message.match(/(?:para\s+)?(?:el\s+)?(\d{1,2})\s+de\s+([a-záéíóú]+)(?:\s+del?\s+(\d{4}))?/i)
-
-    let tipo = 'checklist_general'
-    let descripcion = descMatch?.[1]?.trim() || message
-    let fecha = ''
-
-    if (dateMatch) {
-      if (dateMatch.length >= 4 && dateMatch[3]) {
-        fecha = `${dateMatch[3].padStart(4, '20')}-${dateMatch[2].padStart(2, '0')}-${dateMatch[1].padStart(2, '0')}`
-      } else {
-        fecha = `2026-${dateMatch[2].padStart(2, '0')}-${dateMatch[1].padStart(2, '0')}`
-      }
-    } else {
-      const tomorrow = new Date()
-      tomorrow.setDate(tomorrow.getDate() + 1)
-      fecha = tomorrow.toISOString().slice(0, 10)
-    }
-
-    if (lower.includes('extintor')) tipo = 'checklist_extintores'
-    else if (lower.includes('matricial') || lower.includes('matriz')) tipo = 'checklist_matriz_riesgos'
-    else if (lower.includes('epp') || lower.includes('equipo protección')) tipo = 'checklist_epp'
-    else if (lower.includes('orden') || lower.includes('limpieza')) tipo = 'checklist_orden_limpieza'
-
-    if (descripcion.length > 200) descripcion = descripcion.slice(0, 200)
-
-    const { error } = await supabase.from('agent_pending_actions').insert({
-      action_type: 'planificar_gestion',
-      payload: { establecimiento_id: targetEstId, tipo, descripcion, fecha_planificada: fecha },
-      status: 'pending',
-      requested_by: userId,
-    })
-
-    if (error) {
-      return {
-        reply: `Hubo un error al crear la solicitud: ${error.message}`,
-        conversationId: conversationId ?? 'mock-conversation',
-        pendingActions: [],
-      }
-    }
-
-    const estNombre = context?.establecimientoNombre && targetEstId === context?.establecimientoId
+    return planificarGestion(message, targetEstId, context?.establecimientoNombre && targetEstId === context?.establecimientoId
       ? context.establecimientoNombre
-      : (await getEstNombre(targetEstId)) ?? '?'
-
-    return {
-      reply: `📋 Te propongo planificar esta gestión:\n\n**Tipo:** ${tipo}\n**Descripción:** ${descripcion}\n**Fecha:** ${fecha}\n**Establecimiento:** ${estNombre}\n\n¿Aprobás la solicitud?`,
-      conversationId: conversationId ?? 'mock-conversation',
-      pendingActions: [],
-    }
+      : (await getEstNombre(targetEstId)) ?? '?', supabase, userId, convId!)
   }
 
   // --- EMPRESAS ---
@@ -321,11 +297,7 @@ async function mockResponse(
       .select('*', { count: 'exact', head: true })
       .eq('consultora_id', consultoraId)
       .eq('is_active', true)
-    return {
-      reply: `Tenés **${count ?? 0} empresas habilitadas** en tu consultora.`,
-      conversationId: conversationId ?? 'mock-conversation',
-      pendingActions: [],
-    }
+    return saveAndReturn(convId!, `Tenés **${count ?? 0} empresas habilitadas** en tu consultora.`)
   }
 
   if (lower.includes('empresa') && (lower.includes('lista') || lower.includes('listado') || lower.includes('todas') || lower.includes('mostrar') || lower.includes('cuales') || lower.includes('cuáles'))) {
@@ -335,177 +307,126 @@ async function mockResponse(
       .eq('consultora_id', consultoraId)
       .order('razon_social')
     if (!empresas || empresas.length === 0) {
-      return {
-        reply: 'No hay empresas cargadas en tu consultora.',
-        conversationId: conversationId ?? 'mock-conversation',
-        pendingActions: [],
-      }
+      return saveAndReturn(convId!, 'No hay empresas cargadas en tu consultora.')
     }
     const activas = empresas.filter(e => e.is_active)
     const lines = empresas.map(e => `• ${e.razon_social}${e.cuit ? ` (CUIT: ${e.cuit})` : ''} — ${e.is_active ? '✅ Activa' : '❌ Inactiva'}`)
-    return {
-      reply: `Tenés **${empresas.length} empresas** (${activas.length} activas):\n\n${lines.join('\n')}`,
-      conversationId: conversationId ?? 'mock-conversation',
-      pendingActions: [],
-    }
+    return saveAndReturn(convId!, `Tenés **${empresas.length} empresas** (${activas.length} activas):\n\n${lines.join('\n')}`)
   }
 
   // --- SINIESTROS ---
   if (lower.includes('siniestro')) {
-    const targetEstId = await detectEstablecimiento(lower, consultoraId) ?? context?.establecimientoId
+    const targetEstId = detectEstablecimiento(lower, await listEstablecimientos(consultoraId) ?? [])?.[0]?.id ?? context?.establecimientoId
     const ids = targetEstId ? [targetEstId] : await listEstIds(consultoraId)
-    if (!ids.length) {
-      return { reply: 'No hay establecimientos activos.', conversationId: conversationId ?? 'mock-conversation', pendingActions: [] }
-    }
+    if (!ids.length) { return saveAndReturn(convId!, 'No hay establecimientos activos.') }
     const { data: siniestros } = await supabase
       .from('siniestros')
       .select('id, fecha_ocurrencia, descripcion, gravedad, establecimiento_id')
       .in('establecimiento_id', ids)
       .order('fecha_ocurrencia', { ascending: false })
       .limit(10)
-
-    if (!siniestros?.length) {
-      return { reply: 'No hay siniestros registrados.', conversationId: conversationId ?? 'mock-conversation', pendingActions: [] }
-    }
+    if (!siniestros?.length) { return saveAndReturn(convId!, 'No hay siniestros registrados.') }
     const lines = siniestros.map(s => `• ${s.fecha_ocurrencia} | ${(s.descripcion ?? '').slice(0, 60) || '?'} | *${s.gravedad}*`)
-    return {
-      reply: `Últimos ${siniestros.length} siniestros:\n\n${lines.join('\n')}`,
-      conversationId: conversationId ?? 'mock-conversation',
-      pendingActions: [],
-    }
+    return saveAndReturn(convId!, `Últimos ${siniestros.length} siniestros:\n\n${lines.join('\n')}`)
   }
 
   // --- INSPECCIONES ---
   if (lower.includes('inspeccion') || lower.includes('inspección')) {
-    const targetEstId = await detectEstablecimiento(lower, consultoraId) ?? context?.establecimientoId
+    const targetEstId = detectEstablecimiento(lower, await listEstablecimientos(consultoraId) ?? [])?.[0]?.id ?? context?.establecimientoId
     const ids = targetEstId ? [targetEstId] : await listEstIds(consultoraId)
-    if (!ids.length) {
-      return { reply: 'No hay establecimientos activos.', conversationId: conversationId ?? 'mock-conversation', pendingActions: [] }
-    }
+    if (!ids.length) { return saveAndReturn(convId!, 'No hay establecimientos activos.') }
     const { data: inspecciones } = await supabase
       .from('inspecciones')
       .select('id, fecha_programada, tipo, estado')
       .in('establecimiento_id', ids)
       .order('fecha_programada', { ascending: false })
       .limit(10)
-
-    if (!inspecciones || inspecciones.length === 0) {
-      return {
-        reply: 'No hay inspecciones registradas.',
-        conversationId: conversationId ?? 'mock-conversation',
-        pendingActions: [],
-      }
-    }
+    if (!inspecciones || inspecciones.length === 0) { return saveAndReturn(convId!, 'No hay inspecciones registradas.') }
     const lines = inspecciones.map(i => `• ${i.fecha_programada} | ${i.tipo} | *${i.estado}*`)
-    return {
-      reply: `Últimas ${inspecciones.length} inspecciones:\n\n${lines.join('\n')}`,
-      conversationId: conversationId ?? 'mock-conversation',
-      pendingActions: [],
-    }
+    return saveAndReturn(convId!, `Últimas ${inspecciones.length} inspecciones:\n\n${lines.join('\n')}`)
   }
 
   // --- RIESGOS ---
   if (lower.includes('riesgo') || lower.includes('matriz')) {
-    const targetEstId = await detectEstablecimiento(lower, consultoraId) ?? context?.establecimientoId
+    const targetEstId = detectEstablecimiento(lower, await listEstablecimientos(consultoraId) ?? [])?.[0]?.id ?? context?.establecimientoId
     const ids = targetEstId ? [targetEstId] : await listEstIds(consultoraId)
-    if (!ids.length) {
-      return { reply: 'No hay establecimientos activos.', conversationId: conversationId ?? 'mock-conversation', pendingActions: [] }
-    }
+    if (!ids.length) { return saveAndReturn(convId!, 'No hay establecimientos activos.') }
     const { data: riesgos } = await supabase
       .from('riesgos')
       .select('id, nombre, nivel, estado')
       .in('establecimiento_id', ids)
       .order('nivel', { ascending: false })
       .limit(15)
-
-    if (!riesgos || riesgos.length === 0) {
-      return { reply: 'No hay riesgos identificados.', conversationId: conversationId ?? 'mock-conversation', pendingActions: [] }
-    }
+    if (!riesgos || riesgos.length === 0) { return saveAndReturn(convId!, 'No hay riesgos identificados.') }
     const criticos = riesgos.filter(r => r.nivel === 'crítico' || r.nivel === 'critico')
     const altos = riesgos.filter(r => r.nivel === 'alto')
     let summary = `Tenés **${riesgos.length} riesgos**.`
     if (criticos.length > 0) summary += ` ⚠️ **${criticos.length} críticos**`
     if (altos.length > 0) summary += ` 🔶 **${altos.length} altos**`
-    return {
-      reply: `${summary}\n\n${riesgos.map(r => `• ${r.nombre} | *${r.nivel}* | ${r.estado}`).join('\n')}`,
-      conversationId: conversationId ?? 'mock-conversation',
-      pendingActions: [],
-    }
+    return saveAndReturn(convId!, `${summary}\n\n${riesgos.map(r => `• ${r.nombre} | *${r.nivel}* | ${r.estado}`).join('\n')}`)
   }
 
   // --- EMPLEADOS ---
   if (lower.includes('empleado') || lower.includes('trabajador') || lower.includes('persona')) {
-    const targetEstId = await detectEstablecimiento(lower, consultoraId) ?? context?.establecimientoId ?? (await listEstablecimientos(consultoraId))?.[0]?.id
-    if (!targetEstId) {
-      return { reply: 'No hay establecimientos activos.', conversationId: conversationId ?? 'mock-conversation', pendingActions: [] }
-    }
+    const targetEstId = detectEstablecimiento(lower, await listEstablecimientos(consultoraId) ?? [])?.[0]?.id ?? context?.establecimientoId ?? (await listEstablecimientos(consultoraId))?.[0]?.id
+    if (!targetEstId) { return saveAndReturn(convId!, 'No hay establecimientos activos.') }
     const { count } = await supabase.from('personas_establecimientos')
       .select('*', { count: 'exact', head: true })
       .eq('establecimiento_id', targetEstId)
     const estNombre = context?.establecimientoNombre && targetEstId === context?.establecimientoId
       ? context.establecimientoNombre
       : (await getEstNombre(targetEstId)) ?? 'el establecimiento'
-    return {
-      reply: `En **${estNombre}** hay **${count ?? 0} personas** registradas.`,
-      conversationId: conversationId ?? 'mock-conversation',
-      pendingActions: [],
-    }
+    return saveAndReturn(convId!, `En **${estNombre}** hay **${count ?? 0} personas** registradas.`)
   }
 
   // --- ESTABLECIMIENTOS ---
   if (lower.includes('establecimiento') && (lower.includes('cuántos') || lower.includes('cuantos') || lower.includes('cuenta') || lower.includes('contar') || lower.includes('lista') || lower.includes('listado') || lower.includes('todos'))) {
     const establecimientos = await listEstablecimientos(consultoraId)
-    if (!establecimientos || establecimientos.length === 0) {
-      return { reply: 'No hay establecimientos cargados.', conversationId: conversationId ?? 'mock-conversation', pendingActions: [] }
-    }
+    if (!establecimientos || establecimientos.length === 0) { return saveAndReturn(convId!, 'No hay establecimientos cargados.') }
     const activos = establecimientos.filter(e => e.status === 'active')
-    return {
-      reply: `Tenés **${establecimientos.length} establecimientos** (${activos.length} activos):\n\n${establecimientos.map(e => `• **${e.empresa_razon}** — ${e.nombre} (${e.status === 'active' ? '✅' : '❌'})`).join('\n')}`,
-      conversationId: conversationId ?? 'mock-conversation',
-      pendingActions: [],
-    }
+    return saveAndReturn(convId!, `Tenés **${establecimientos.length} establecimientos** (${activos.length} activos):\n\n${establecimientos.map(e => `• **${e.empresa_razon}** — ${e.nombre} (${e.status === 'active' ? '✅' : '❌'})`).join('\n')}`)
   }
 
   // Fallback a knowledge base
   const knowledge = await searchKnowledge(message, 3)
   const contextStr = knowledge.map(k => k.content).join('\n')
-
   if (contextStr) {
-    return {
-      reply: `Según la base de conocimiento de Sigmetría HyS:\n\n${contextStr}`,
-      conversationId: conversationId ?? 'mock-conversation',
-      pendingActions: [],
-    }
+    return saveAndReturn(convId!, `Según la base de conocimiento de Sigmetría HyS:\n\n${contextStr}`)
   }
 
-  return {
-    reply: 'No entendí bien tu consulta. Estas son algunas cosas que podés preguntar:\n\n• "cuántas empresas tengo"\n• "listame los establecimientos"\n• "cuántas gestiones tengo este mes"\n• "cuándo es la próxima gestión"\n• "mostrame los siniestros"\n• "planificar un checklist de extintores para el 15/06"\n• "cuáles son mis riesgos"\n\nTambién podés usar Sigía desde la pestaña **Asistente HyS** dentro de un establecimiento para consultas con contexto automático.',
-    conversationId: conversationId ?? 'mock-conversation',
-    pendingActions: [],
-  }
+  return saveAndReturn(convId!, 'No entendí bien tu consulta. Estas son algunas cosas que podés preguntar:\n\n• "cuántas empresas tengo"\n• "listame los establecimientos"\n• "cuántas gestiones tengo este mes"\n• "cuándo es la próxima gestión"\n• "mostrame los siniestros"\n• "planificar un checklist de extintores para el 15/06"\n• "cuáles son mis riesgos"\n\nTambién podés usar Sigía desde la pestaña **Asistente HyS** dentro de un establecimiento para consultas con contexto automático.')
 
   // --- HELPERS ---
-  async function detectEstablecimiento(msg: string, cId: string): Promise<string | null> {
-    const establecimientos = await listEstablecimientos(cId)
-    if (!establecimientos) return null
-
-    const words = msg.split(/\s+/)
-    const longWords = words.filter(w => w.length >= 4)
-
-    // 1) Try full phrase match: "planta norte" as a whole
-    for (const est of establecimientos) {
-      const estLower = est.nombre.toLowerCase()
-      if (msg.includes(estLower)) return est.id
+  async function saveAndReturn(cId: string, reply: string) {
+    if (cId) {
+      await supabase.from('agent_messages').insert({
+        conversation_id: cId,
+        role: 'assistant',
+        content: reply,
+      })
     }
+    return { reply, conversationId: cId, pendingActions: [] as PendingAction[] }
+  }
 
-    // 2) Try word-by-word (skip if context matches first)
-    for (const word of longWords) {
-      for (const est of establecimientos) {
-        if (est.nombre.toLowerCase().includes(word)) return est.id
+  function matchEstablecimiento(msg: string, establecimientos: Awaited<ReturnType<typeof listEstablecimientos>>): NonNullable<typeof establecimientos>[number] | null {
+    if (!establecimientos) return null
+    const lowerMsg = msg.toLowerCase()
+    for (const est of establecimientos) {
+      if (lowerMsg.includes(est.nombre.toLowerCase())) return est
+    }
+    for (const est of establecimientos) {
+      const parts = est.nombre.toLowerCase().split(/\s+/)
+      for (const part of parts) {
+        if (part.length >= 4 && lowerMsg.includes(part)) return est
       }
     }
-
     return null
+  }
+
+  function detectEstablecimiento(msg: string, establecimientos: Awaited<ReturnType<typeof listEstablecimientos>>) {
+    if (!establecimientos) return null
+    const result = matchEstablecimiento(msg, establecimientos)
+    return result ? [result] : null
   }
 
   async function listEstablecimientos(cId: string) {
@@ -531,7 +452,48 @@ async function mockResponse(
     return (data as { nombre: string } | null)?.nombre ?? null
   }
 
-  async function queryGestiones(estId: string, estNombre: string, msg: string, sb: typeof supabase) {
+  async function planificarGestion(msg: string, estId: string, estNombre: string, sb: typeof supabase, uid: string, cId: string) {
+    const descMatch = msg.match(/(?:checklist|check list|gestión|gestion|tarea|inspección|inspeccion|revisión|revision)\s+(?:de\s+|para\s+)?([^.\n]+)/i)
+    const dateMatch = msg.match(/(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?/i) || msg.match(/(?:para\s+)?(?:el\s+)?(\d{1,2})\s+de\s+([a-záéíóú]+)(?:\s+del?\s+(\d{4}))?/i)
+
+    let tipo = 'checklist_general'
+    let descripcion = descMatch?.[1]?.trim() || msg
+    let fecha = ''
+
+    if (dateMatch) {
+      if (dateMatch.length >= 4 && dateMatch[3]) {
+        fecha = `${dateMatch[3].padStart(4, '20')}-${dateMatch[2].padStart(2, '0')}-${dateMatch[1].padStart(2, '0')}`
+      } else {
+        fecha = `2026-${dateMatch[2].padStart(2, '0')}-${dateMatch[1].padStart(2, '0')}`
+      }
+    } else {
+      const tomorrow = new Date()
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      fecha = tomorrow.toISOString().slice(0, 10)
+    }
+
+    if (msg.toLowerCase().includes('extintor')) tipo = 'checklist_extintores'
+    else if (msg.toLowerCase().includes('matricial') || msg.toLowerCase().includes('matriz')) tipo = 'checklist_matriz_riesgos'
+    else if (msg.toLowerCase().includes('epp') || msg.toLowerCase().includes('equipo protección')) tipo = 'checklist_epp'
+    else if (msg.toLowerCase().includes('orden') || msg.toLowerCase().includes('limpieza')) tipo = 'checklist_orden_limpieza'
+
+    if (descripcion.length > 200) descripcion = descripcion.slice(0, 200)
+
+    const { error } = await sb.from('agent_pending_actions').insert({
+      action_type: 'planificar_gestion',
+      payload: { establecimiento_id: estId, tipo, descripcion, fecha_planificada: fecha },
+      status: 'pending',
+      requested_by: uid,
+    })
+
+    if (error) {
+      return saveAndReturn(cId, `Hubo un error al crear la solicitud: ${error.message}`)
+    }
+
+    return saveAndReturn(cId, `📋 Te propongo planificar esta gestión:\n\n**Tipo:** ${tipo}\n**Descripción:** ${descripcion}\n**Fecha:** ${fecha}\n**Establecimiento:** ${estNombre}\n\n¿Aprobás la solicitud?`)
+  }
+
+  async function queryGestiones(estId: string, estNombre: string, msg: string, cId: string, sb: typeof supabase) {
     const thisMonth = new Date().toISOString().slice(0, 7)
     const now = new Date().toISOString().slice(0, 10)
 
@@ -544,10 +506,10 @@ async function mockResponse(
         .order('fecha_planificada', { ascending: true })
         .limit(1)
       if (!next?.length) {
-        return { reply: `No hay gestiones próximas planificadas en **${estNombre}**.`, conversationId: conversationId ?? 'mock-conversation', pendingActions: [] }
+        return saveAndReturn(cId, `No hay gestiones próximas planificadas en **${estNombre}**.`)
       }
       const g = next[0]
-      return { reply: `📅 Próxima gestión en **${estNombre}**: **${(g.gestiones as unknown as { nombre: string }).nombre}** — planificada para el ${g.fecha_planificada}.`, conversationId: conversationId ?? 'mock-conversation', pendingActions: [] }
+      return saveAndReturn(cId, `📅 Próxima gestión en **${estNombre}**: **${(g.gestiones as unknown as { nombre: string }).nombre}** — planificada para el ${g.fecha_planificada}.`)
     }
 
     let monthFilter = thisMonth
@@ -571,16 +533,12 @@ async function mockResponse(
       .limit(20)
 
     if (!gestiones?.length) {
-      return { reply: `No hay gestiones planificadas en **${estNombre}** para ${monthFilter}.`, conversationId: conversationId ?? 'mock-conversation', pendingActions: [] }
+      return saveAndReturn(cId, `No hay gestiones planificadas en **${estNombre}** para ${monthFilter}.`)
     }
 
     const lines = gestiones.map(g =>
       `• **${(g.gestiones as unknown as { nombre: string }).nombre}** — ${g.fecha_planificada}${g.estado ? ` | *${g.estado}*` : ''}`
     )
-    return {
-      reply: `📊 **${gestiones.length} gestiones** en **${estNombre}** para ${monthFilter}:\n\n${lines.join('\n')}`,
-      conversationId: conversationId ?? 'mock-conversation',
-      pendingActions: [],
-    }
+    return saveAndReturn(cId, `📊 **${gestiones.length} gestiones** en **${estNombre}** para ${monthFilter}:\n\n${lines.join('\n')}`)
   }
 }

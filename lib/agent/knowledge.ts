@@ -56,5 +56,15 @@ function mockSearch(query: string, limit = 5): KnowledgeChunk[] {
     { id: 'mock-10', content: 'El módulo de Analytics permite visualizar métricas y KPIs de siniestralidad, cumplimiento y gestión.', category: 'analytics' },
   ]
   const q = query.toLowerCase()
-  return allChunks.filter(c => c.content.toLowerCase().includes(q)).slice(0, limit)
+  const words = q.split(/\s+/).filter(w => w.length > 3)
+  const scored = allChunks.map(c => {
+    const lower = c.content.toLowerCase()
+    let score = 0
+    if (lower.includes(q)) score += 10
+    for (const w of words) {
+      if (lower.includes(w)) score += 1
+    }
+    return { ...c, score }
+  })
+  return scored.filter(c => c.score > 0).sort((a, b) => b.score - a.score).slice(0, limit)
 }
