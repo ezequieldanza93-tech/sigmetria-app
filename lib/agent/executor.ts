@@ -252,7 +252,7 @@ async function mockResponse(
     }
 
     const thisMonth = new Date().toISOString().slice(0, 7)
-    const { data: gestiones, count } = await supabase
+    const { count } = await supabase
       .from('registro_gestiones')
       .select('*', { count: 'exact', head: true })
       .eq('establecimiento_id', targetEstId)
