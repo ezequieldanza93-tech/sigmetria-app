@@ -27,7 +27,7 @@ export function SeccionesSidebar({ empresaId, establecimientoId }: Props) {
 
   return (
     <aside
-      className="hidden lg:flex peer/sidebar group fixed top-14 left-0 bottom-0 z-20 border-r border-border-subtle bg-surface-base flex-col w-14 hover:w-32 transition-[width] duration-200 overflow-hidden"
+      className="hidden lg:flex peer/sidebar group fixed top-14 left-0 bottom-0 z-20 border-r border-border-subtle bg-surface-base flex-col w-14 hover:w-40 transition-[width] duration-200 overflow-hidden"
       aria-label="Secciones del establecimiento"
     >
       <nav className="flex flex-col py-3 px-2 gap-0.5">
