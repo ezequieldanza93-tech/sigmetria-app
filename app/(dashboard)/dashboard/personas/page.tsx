@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useActionState } from 'react'
+import { useState, useEffect, useActionState, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { createClient } from '@/lib/supabase/client'
@@ -23,7 +23,9 @@ function PersonaForm({
   const [selectedEmpresaId, setSelectedEmpresaId] = useState<string>('')
   const [establecimientos, setEstablecimientos] = useState<Establecimiento[]>([])
 
-  useEffect(() => { if (state?.success) onSuccess() }, [state])
+  const onSuccessRef = useRef(onSuccess)
+  onSuccessRef.current = onSuccess
+  useEffect(() => { if (state?.success) onSuccessRef.current() }, [state])
 
   useEffect(() => {
     if (!selectedEmpresaId) {

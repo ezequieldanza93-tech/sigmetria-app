@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useActionState } from 'react'
+import { useState, useEffect, useActionState, useRef } from 'react'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
@@ -52,7 +52,9 @@ function DocumentoForm({
   onSuccess: () => void
 }) {
   const [state, formAction, pending] = useActionState(action, null)
-  useEffect(() => { if (state?.success) onSuccess() }, [state])
+  const onSuccessRef = useRef(onSuccess)
+  onSuccessRef.current = onSuccess
+  useEffect(() => { if (state?.success) onSuccessRef.current() }, [state])
 
   return (
     <form action={formAction} className="space-y-3 bg-gray-50 rounded-lg p-3 mt-3">
@@ -91,7 +93,9 @@ function DocumentoForm({
 
 function MatriculaForm({ personaId, onSuccess }: { personaId: string; onSuccess: () => void }) {
   const [state, formAction, pending] = useActionState(createMatricula, null)
-  useEffect(() => { if (state?.success) onSuccess() }, [state])
+  const onSuccessRef = useRef(onSuccess)
+  onSuccessRef.current = onSuccess
+  useEffect(() => { if (state?.success) onSuccessRef.current() }, [state])
 
   return (
     <form action={formAction} className="space-y-3 bg-gray-50 rounded-lg p-3 mt-3">

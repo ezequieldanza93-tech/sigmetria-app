@@ -245,6 +245,7 @@ async function processWithLLM(
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function saveAndReturn(supabase: any, convId: string, reply: string, pendingActions?: PendingAction[]) {
   if (convId) {
     try {

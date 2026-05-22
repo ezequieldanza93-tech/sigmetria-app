@@ -34,8 +34,10 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
   const obsKeyRef = useRef(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const onSuccessRef = useRef(onSuccess)
+  onSuccessRef.current = onSuccess
   useEffect(() => {
-    if (state?.success) onSuccess()
+    if (state?.success) onSuccessRef.current()
   }, [state])
 
   useEffect(() => {
@@ -45,9 +47,11 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
       .select('personas_directorio!persona_id(id, nombre, apellido)')
       .eq('establecimiento_id', establecimientoId)
       .then(({ data }) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const ps = ((data ?? []) as any[])
           .map(pe => pe.personas_directorio)
           .filter(Boolean)
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           .sort((a: any, b: any) => a.apellido.localeCompare(b.apellido))
         setPersonas(ps)
       })

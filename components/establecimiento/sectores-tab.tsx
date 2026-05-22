@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useTransition, useActionState } from 'react'
+import { useState, useEffect, useTransition, useActionState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
@@ -54,6 +54,7 @@ function TrabajadorSearchPicker({
 
       const assignedIds = new Set<string>()
       for (const sector of (sectorsResult.data ?? [])) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         for (const puesto of ((sector as any).puestos_de_trabajo ?? [])) {
           for (const ep of (puesto.puestos_personas ?? [])) {
             assignedIds.add(ep.persona_id)
@@ -154,7 +155,9 @@ function PuestoInlineForm({
   onCancel: () => void
 }) {
   const [state, formAction, pending] = useActionState(action, null)
-  useEffect(() => { if (state?.success) onSuccess() }, [state])
+  const onSuccessRef = useRef(onSuccess)
+  onSuccessRef.current = onSuccess
+  useEffect(() => { if (state?.success) onSuccessRef.current() }, [state])
   return (
     <form action={formAction} className="mt-2 space-y-2 bg-gray-50 rounded-lg p-3">
       <div className="flex gap-2">
@@ -196,7 +199,9 @@ function EppInlineForm({
   const [state, formAction, pending] = useActionState(action, null)
   const [productos, setProductos] = useState<Producto[] | null>(null)
 
-  useEffect(() => { if (state?.success) onSuccess() }, [state])
+  const onSuccessRef = useRef(onSuccess)
+  onSuccessRef.current = onSuccess
+  useEffect(() => { if (state?.success) onSuccessRef.current() }, [state])
 
   useEffect(() => {
     const supabase = createClient()
@@ -404,24 +409,28 @@ function PuestoRow({
               <p className="text-xs text-gray-400 py-1">Sin EPP definido.</p>
             ) : (
               <ul className="divide-y divide-gray-50 dark:divide-border-subtle">
-                {epp.map(e => (
-                  <li key={e.id} className="flex items-center justify-between py-1.5 text-sm">
-                    <span className="text-gray-800">
-                      {e.productos?.nombre}
-                      {e.productos?.tamano && <span className="text-gray-500 ml-1">{e.productos.tamano}{(e.productos as any).unidades?.simbolo ?? ''}</span>}
-                      {e.horas_vida_util && <span className="text-gray-400 text-xs ml-2">{e.horas_vida_util}hs vida útil</span>}
-                    </span>
-                    {canDelete && (
-                      <button
-                        onClick={() => handleRemoveEpp(e.id)}
-                        disabled={isPending}
-                        className="text-xs text-red-400 hover:text-red-600"
-                      >
-                        Quitar
-                      </button>
-                    )}
-                  </li>
-                ))}
+                 {epp.map(e => {
+                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                   const unidadSimbolo = (e.productos as any).unidades?.simbolo ?? ''
+                   return (
+                   <li key={e.id} className="flex items-center justify-between py-1.5 text-sm">
+                     <span className="text-gray-800">
+                       {e.productos?.nombre}
+                       {e.productos?.tamano && <span className="text-gray-500 ml-1">{e.productos.tamano}{unidadSimbolo}</span>}
+                       {e.horas_vida_util && <span className="text-gray-400 text-xs ml-2">{e.horas_vida_util}hs vida útil</span>}
+                     </span>
+                     {canDelete && (
+                       <button
+                         onClick={() => handleRemoveEpp(e.id)}
+                         disabled={isPending}
+                         className="text-xs text-red-400 hover:text-red-600"
+                       >
+                         Quitar
+                       </button>
+                     )}
+                   </li>
+                   )
+                 })}
               </ul>
             )}
             {canWrite && !showAddEpp && (
@@ -490,7 +499,7 @@ function SectorRow({
       .eq('is_active', true)
       .order('nombre')
       .then(({ data }) => setPuestos((data as PuestoDeTrabajo[]) ?? []))
-  }, [open, sector.id])
+  }, [open, puestos, sector.id])
 
   function saveWorkers(sectorId: string) {
     const val = parseInt(editingVal, 10)
@@ -631,6 +640,7 @@ export function SectoresTab({ sectores, establecimientoId, empresaId, canWrite, 
       .then(({ data }) => {
         const ops = new Set<string>()
         const adm = new Set<string>()
+        /* eslint-disable @typescript-eslint/no-explicit-any */
         ;(data ?? []).forEach((s: any) => {
           ;(s.puestos_de_trabajo ?? []).filter((p: any) => p.tipo !== null).forEach((p: any) => {
             ;(p.puestos_personas ?? []).forEach((ep: any) => {
@@ -639,6 +649,7 @@ export function SectoresTab({ sectores, establecimientoId, empresaId, canWrite, 
             })
           })
         })
+        /* eslint-enable @typescript-eslint/no-explicit-any */
         setWorkerCounts({ operativo: ops.size, administrativo: adm.size })
       })
   }, [establecimientoId])

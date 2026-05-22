@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useActionState } from 'react'
+import { useState, useEffect, useActionState, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { createClient } from '@/lib/supabase/client'
@@ -21,7 +21,9 @@ function InstrumentoForm({
     createInstrumento,
     null as ActionResult<null> | null
   )
-  useEffect(() => { if (state?.success) onSuccess() }, [state])
+  const onSuccessRef = useRef(onSuccess)
+  onSuccessRef.current = onSuccess
+  useEffect(() => { if (state?.success) onSuccessRef.current() }, [state])
 
   return (
     <form action={formAction} className="space-y-4">

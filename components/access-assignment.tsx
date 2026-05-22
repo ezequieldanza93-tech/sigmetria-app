@@ -161,6 +161,7 @@ export function AccessAssignment({ targetUserId, empresas, currentAccess }: Acce
                     >
                       {est.nombre}
                       {est.localidades && (
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         <span className="text-gray-400 ml-1">— {(est.localidades as any).nombre}</span>
                       )}
                     </label>

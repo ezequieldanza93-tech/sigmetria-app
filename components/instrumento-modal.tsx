@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useActionState } from 'react'
+import { useState, useEffect, useActionState, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
@@ -19,7 +19,9 @@ interface InstrumentoModalProps {
 
 function CertificadoForm({ instrumentoId, onSuccess }: { instrumentoId: string; onSuccess: () => void }) {
   const [state, formAction, pending] = useActionState(createCertificadoCalibracion, null)
-  useEffect(() => { if (state?.success) onSuccess() }, [state])
+  const onSuccessRef = useRef(onSuccess)
+  onSuccessRef.current = onSuccess
+  useEffect(() => { if (state?.success) onSuccessRef.current() }, [state])
   return (
     <form action={formAction} className="space-y-3 bg-gray-50 rounded-lg p-3 mt-3">
       <input type="hidden" name="instrumento_id" value={instrumentoId} />

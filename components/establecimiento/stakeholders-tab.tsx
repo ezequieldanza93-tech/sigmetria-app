@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useActionState } from 'react'
+import { useState, useEffect, useActionState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { formatDate } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -21,7 +21,9 @@ function AgregarPersonaStakeholderForm({
   onCancel: () => void
 }) {
   const [state, formAction, pending] = useActionState(createPersona, null)
-  useEffect(() => { if (state?.success) onSuccess() }, [state])
+  const onSuccessRef = useRef(onSuccess)
+  onSuccessRef.current = onSuccess
+  useEffect(() => { if (state?.success) onSuccessRef.current() }, [state])
   return (
     <form action={formAction} className="bg-gray-50 rounded-lg p-4 space-y-3 border border-gray-200">
       <p className="text-xs font-semibold text-gray-700 dark:text-white uppercase tracking-wider">Nueva persona</p>
@@ -59,7 +61,9 @@ function AgregarOrgStakeholderForm({
   onCancel: () => void
 }) {
   const [state, formAction, pending] = useActionState(action, null)
-  useEffect(() => { if (state?.success) onSuccess() }, [state])
+  const onSuccessRef = useRef(onSuccess)
+  onSuccessRef.current = onSuccess
+  useEffect(() => { if (state?.success) onSuccessRef.current() }, [state])
   return (
     <form action={formAction} className="bg-gray-50 rounded-lg p-4 space-y-3 border border-gray-200">
       <p className="text-xs font-semibold text-gray-700 dark:text-white uppercase tracking-wider">Nueva organización externa</p>
@@ -133,7 +137,7 @@ export function StakeholdersTab({ establecimientoId, empresaId, canWrite }: Stak
       loadOrgs(),
       supabase.from('organizaciones_tipos').select('id, nombre').order('nombre').then(({ data }) => setTiposOrg(data ?? [])),
     ])
-  }, [establecimientoId])
+  }, [establecimientoId, loadPersonas, loadOrgs])
 
   const filtered = personas === null
     ? null

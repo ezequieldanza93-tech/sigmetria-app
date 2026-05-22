@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useActionState } from 'react'
+import { useState, useEffect, useActionState, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
@@ -22,7 +22,9 @@ function DatosForm({
   onSuccess: () => void
 }) {
   const [state, formAction, pending] = useActionState(upsertPerfilProfesional, null)
-  useEffect(() => { if (state?.success) onSuccess() }, [state])
+  const onSuccessRef = useRef(onSuccess)
+  onSuccessRef.current = onSuccess
+  useEffect(() => { if (state?.success) onSuccessRef.current() }, [state])
 
   return (
     <form action={formAction} className="space-y-4">
@@ -159,7 +161,9 @@ function MatriculaForm({
   onSuccess: () => void
 }) {
   const [state, formAction, pending] = useActionState(addMatriculaProfesional, null)
-  useEffect(() => { if (state?.success) onSuccess() }, [state])
+  const onSuccessRef = useRef(onSuccess)
+  onSuccessRef.current = onSuccess
+  useEffect(() => { if (state?.success) onSuccessRef.current() }, [state])
 
   return (
     <form action={formAction} className="bg-gray-50 rounded-lg p-4 mt-3 space-y-3">

@@ -66,6 +66,7 @@ export async function refrescarNotificaciones(): Promise<ActionResult<{ creadas:
     .not('fecha_vencimiento', 'is', null)
     .eq('gestiones_establecimientos.establecimientos.empresas.consultora_id', consultoraId)
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const g of (gestiones ?? []) as any[]) {
     rows.push({
       entidad_tipo: 'gestion',
@@ -88,6 +89,7 @@ export async function refrescarNotificaciones(): Promise<ActionResult<{ creadas:
     .not('fecha_vencimiento', 'is', null)
     .eq('empresas.consultora_id', consultoraId)
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const d of (empDocs ?? []) as any[]) {
     rows.push({
       entidad_tipo: 'documento_empresa',
@@ -110,6 +112,7 @@ export async function refrescarNotificaciones(): Promise<ActionResult<{ creadas:
     .not('fecha_vencimiento', 'is', null)
     .eq('establecimientos.empresas.consultora_id', consultoraId)
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const d of (estDocs ?? []) as any[]) {
     rows.push({
       entidad_tipo: 'documento_establecimiento',
@@ -131,6 +134,7 @@ export async function refrescarNotificaciones(): Promise<ActionResult<{ creadas:
     `)
     .not('fecha_vencimiento', 'is', null)
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const d of (perDocs ?? []) as any[]) {
     rows.push({
       entidad_tipo: 'documento_persona',
@@ -152,6 +156,7 @@ export async function refrescarNotificaciones(): Promise<ActionResult<{ creadas:
       personas_directorio!inner(id, nombre, apellido)
     `)
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const m of (mats ?? []) as any[]) {
     rows.push({
       entidad_tipo: 'matricula',
@@ -173,6 +178,7 @@ export async function refrescarNotificaciones(): Promise<ActionResult<{ creadas:
       instrumentos!inner(id, nombre)
     `)
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const c of (certs ?? []) as any[]) {
     rows.push({
       entidad_tipo: 'certificado',
@@ -222,6 +228,7 @@ export async function refrescarNotificaciones(): Promise<ActionResult<{ creadas:
     .select('id, entidad_tipo, entidad_id, dias_restantes')
     .eq('consultora_id', consultoraId)
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const n of (existing ?? []) as any[]) {
     const row = rows.find(r => r.entidad_tipo === n.entidad_tipo && r.entidad_id === n.entidad_id)
     if (!row) {
@@ -321,6 +328,7 @@ export async function getNotificaciones(): Promise<Notificacion[]> {
     .order('dias_restantes', { ascending: true })
     .order('fecha_vencimiento', { ascending: true })
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return ((data ?? []) as any[]).map(n => ({
     ...n,
     leida: n.notificaciones_leidas && n.notificaciones_leidas.length > 0,

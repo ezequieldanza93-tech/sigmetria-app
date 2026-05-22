@@ -69,6 +69,7 @@ describe('roleLabel', () => {
   })
 
   it('returns raw role if not in labels', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect(roleLabel('unknown_role' as any)).toBe('unknown_role')
   })
 })

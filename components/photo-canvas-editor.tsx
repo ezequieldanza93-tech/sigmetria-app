@@ -98,7 +98,7 @@ export function PhotoCanvasEditor({ imageUrl, onImageChange }: PhotoCanvasEditor
       saveState()
     }
     img.src = imageUrl
-  }, [imageUrl])
+  }, [imageUrl, saveState])
 
   function getCanvasPos(e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>): { x: number; y: number } {
     const canvas = canvasRef.current!

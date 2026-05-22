@@ -107,9 +107,12 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
       .select('personas_directorio!persona_id(id, nombre, apellido)')
       .eq('establecimiento_id', establecimientoId)
       .then(({ data }) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const ps = ((data ?? []) as any[])
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           .map((pe: any) => pe.personas_directorio)
           .filter(Boolean)
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           .sort((a: any, b: any) => a.apellido.localeCompare(b.apellido))
         setPersonas(ps)
       })
@@ -215,6 +218,7 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
       }
 
       onSuccess()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(err?.message ?? 'Error inesperado')
     } finally {

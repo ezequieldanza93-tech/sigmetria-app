@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useActionState } from 'react'
+import { useState, useEffect, useActionState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { addGestionToEstablecimiento } from '@/lib/actions/gestion-establecimiento'
@@ -119,7 +119,9 @@ function RegistroGestionForm({
   onSuccess: () => void
 }) {
   const [state, formAction, pending] = useActionState(createRegistroGestion, null)
-  useEffect(() => { if (state?.success) onSuccess() }, [state])
+  const onSuccessRef = useRef(onSuccess)
+  onSuccessRef.current = onSuccess
+  useEffect(() => { if (state?.success) onSuccessRef.current() }, [state])
   return (
     <form action={formAction} className="bg-white border border-gray-200 rounded-lg p-3 mt-2 space-y-2">
       <input type="hidden" name="gestion_establecimiento_id" value={gestionEstablecimientoId} />
@@ -155,7 +157,9 @@ function ObservacionForm({
 }) {
   const [state, formAction, pending] = useActionState(createObservacionGestion, null)
   const [categorias, setCategorias] = useState<{ id: string; nombre: string; nivel: number }[]>([])
-  useEffect(() => { if (state?.success) onSuccess() }, [state])
+  const onSuccessRef = useRef(onSuccess)
+  onSuccessRef.current = onSuccess
+  useEffect(() => { if (state?.success) onSuccessRef.current() }, [state])
 
   useEffect(() => {
     createClient().from('observaciones_categorias').select('id, nombre, nivel').order('nivel').then(({ data }) => {

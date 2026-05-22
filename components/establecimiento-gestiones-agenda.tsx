@@ -180,17 +180,19 @@ function BibliotecaForm({
   const [filterCat, setFilterCat] = useState('')
   const [fechaValue, setFechaValue] = useState('')
 
+  const onSuccessRef = useRef(onSuccess)
+  onSuccessRef.current = onSuccess
   useEffect(() => {
     if (state?.success) {
       const month = fechaValue ? new Date(fechaValue + 'T00:00:00').getMonth() : undefined
-      onSuccess(month)
+      onSuccessRef.current(month)
     }
-  }, [state])
-
+    }, [state, fechaValue, onSuccess])
+  
   const grupos = Array.from(
     new Set(todasGestiones.map(g => g.gestiones_categorias?.gestiones_grupos?.nombre ?? '').filter(Boolean))
   ).sort()
-
+ 
   const cats = Array.from(
     new Set(
       todasGestiones
@@ -199,7 +201,7 @@ function BibliotecaForm({
         .filter(Boolean)
     )
   ).sort()
-
+ 
   const gestionesFiltradas = todasGestiones.filter(g => {
     if (filterGrupo && g.gestiones_categorias?.gestiones_grupos?.nombre !== filterGrupo) return false
     if (filterCat && g.gestiones_categorias?.nombre !== filterCat) return false
@@ -325,13 +327,15 @@ function NuevaGestionForm({
   const [creandoCat, setCreandoCat] = useState(false)
   const [errorCat, setErrorCat] = useState('')
 
+  const onSuccessRef = useRef(onSuccess)
+  onSuccessRef.current = onSuccess
   useEffect(() => {
     if (state?.success) {
       const month = fechaValue ? new Date(fechaValue + 'T00:00:00').getMonth() : undefined
-      onSuccess(month)
+      onSuccessRef.current(month)
     }
-  }, [state])
-
+    }, [state, fechaValue, onSuccess])
+ 
   const catsFiltradas = selectedGrupoId
     ? localCategorias.filter(c => c.grupo_id === selectedGrupoId)
     : []
@@ -529,9 +533,11 @@ function EjecucionModal({
       .select('personas_directorio!persona_id(id, nombre, apellido)')
       .eq('establecimiento_id', establecimientoId)
       .then(({ data }) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const ps = ((data ?? []) as any[])
           .map(pe => pe.personas_directorio)
           .filter(Boolean)
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           .sort((a: any, b: any) => a.apellido.localeCompare(b.apellido))
         setPersonas(ps)
       })
@@ -858,6 +864,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
     queryFn: async () => {
       const supabase = createClient()
       const gestionIds = gestionesEst
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .map(ge => (ge as any).gestiones?.id)
         .filter(Boolean) as string[]
       if (gestionIds.length === 0) return new Set<string>()
@@ -871,6 +878,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
   })
 
   const geMap = useMemo(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const map = new Map<string, any>()
     for (const ge of gestionesEst) map.set(ge.id, ge)
     return map

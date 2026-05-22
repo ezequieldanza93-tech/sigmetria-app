@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useRef, useEffect, useState } from 'react'
+import { useActionState, useRef, useEffect, useState, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
@@ -39,7 +39,7 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
   const [addArtError, setAddArtError] = useState('')
 
   const formRef = useRef<HTMLFormElement>(null)
-  const fieldErrors = (state as FormState | null)?.fieldErrors ?? {}
+  const fieldErrors = useMemo(() => (state as FormState | null)?.fieldErrors ?? {}, [state])
   const values = (state as FormState | null)?.fields ?? {}
 
   useEffect(() => {
@@ -82,7 +82,7 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
       if (locs) setLocalidades(locs as Localidad[])
       if (rubrosData) setRubros(rubrosData as Rubro[])
     })
-  }, [])
+  }, [empresa?.id])
 
   const provincias = [...new Set(localidades.map(l => l.provincia))].sort()
   const localidadesFiltradas = localidades.filter(l => l.provincia === selectedProvincia)

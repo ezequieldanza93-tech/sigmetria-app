@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useMemo, type Dispatch, type SetStateAction } from 'react'
+import { useEffect, useState, useCallback, useMemo, useRef, type Dispatch, type SetStateAction } from 'react'
 import {
   getGestionesConTipos,
   getAspectos,
@@ -21,10 +21,12 @@ function useAsync<T>(fn: () => Promise<T>): [T | null, boolean, string | null] {
   const [data, setData] = useState<T | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const fnRef = useRef(fn)
+  fnRef.current = fn
 
   useEffect(() => {
     setLoading(true)
-    fn().then(setData).catch(e => setError(e.message)).finally(() => setLoading(false))
+    fnRef.current().then(setData).catch(e => setError(e.message)).finally(() => setLoading(false))
   }, [])
 
   return [data, loading, error]

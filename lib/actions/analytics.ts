@@ -101,8 +101,11 @@ export async function getGestionRows(filters: AnalyticsFilters): Promise<Gestion
       id: r.id,
       gestion_establecimiento_id: r.gestion_establecimiento_id,
       establecimiento_id: (ge?.establecimiento_id as string) ?? '',
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       establecimiento_nombre: (ge?.establecimientos as any)?.nombre ?? '',
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       gestion_nombre: (ge?.gestiones as any)?.nombre ?? '',
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       categoria_nombre: (ge?.gestiones as any)?.gestiones_categorias?.nombre ?? '',
       index: r.index ?? null,
       fecha_planificada: r.fecha_planificada,

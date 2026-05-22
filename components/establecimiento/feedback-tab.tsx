@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useActionState } from 'react'
+import { useState, useEffect, useActionState, useRef } from 'react'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { formatDate } from '@/lib/utils'
@@ -34,8 +34,10 @@ function FeedbackForm({
 }) {
   const [state, formAction, pending] = useActionState(action, null)
 
+  const onSuccessRef = useRef(onSuccess)
+  onSuccessRef.current = onSuccess
   useEffect(() => {
-    if (state?.success) onSuccess()
+    if (state?.success) onSuccessRef.current()
   }, [state])
 
   const inputCls = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sig-500'
