@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useActionState, useRef } from 'react'
+import { useState, useEffect, useActionState, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { formatDate } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -103,7 +103,7 @@ export function StakeholdersTab({ establecimientoId, empresaId, canWrite }: Stak
   const [showAddPersona, setShowAddPersona] = useState(false)
   const [showAddOrg, setShowAddOrg] = useState(false)
 
-  const loadPersonas = () => {
+  const loadPersonas = useCallback(() => {
     return createClient()
       .from('personas_establecimientos')
       .select('personas_directorio(id, nombre, apellido, dni, fecha_nacimiento, fecha_ingreso, legajo, telefono, email, tipo_id, personas_tipos(nombre), organizacion_id, notas, is_active)')
@@ -112,9 +112,9 @@ export function StakeholdersTab({ establecimientoId, empresaId, canWrite }: Stak
         const list = ((data ?? []) as unknown as { personas_directorio: DirectorioPersona }[]).map(r => r.personas_directorio).filter(Boolean)
         setPersonas(list)
       })
-  }
+  }, [establecimientoId])
 
-  const loadOrgs = () => {
+  const loadOrgs = useCallback(() => {
     return createClient()
       .from('organizaciones_establecimientos')
       .select('organizaciones(id, nombre, email, telefono, notas, is_active, organizaciones_tipos(nombre))')
@@ -125,7 +125,7 @@ export function StakeholdersTab({ establecimientoId, empresaId, canWrite }: Stak
           .filter(o => o?.is_active)
         setOrgExternas(list as Organizacion[])
       })
-  }
+  }, [establecimientoId])
 
   const orgAction = addOrganizacionToEstablecimiento.bind(null, establecimientoId, empresaId)
 

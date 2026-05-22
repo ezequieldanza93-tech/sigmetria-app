@@ -122,6 +122,7 @@ export default function CatalogacionPage() {
       items: TipoItem[],
       asignadosActuales: string[],
       toggleFn: (id: string, tipoId: string, active: boolean) => Promise<ActionResult<null>>,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setLocal: Dispatch<SetStateAction<any[]>>,
       field: string,
     ) => {
@@ -146,6 +147,7 @@ export default function CatalogacionPage() {
       tipoId: string,
       active: boolean,
       toggleFn: (id: string, tipoId: string, active: boolean) => Promise<ActionResult<null>>,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setLocal: Dispatch<SetStateAction<any[]>>,
       field: string,
     ) => {
@@ -154,6 +156,7 @@ export default function CatalogacionPage() {
       const res = await toggleFn(id, tipoId, active)
       setSaving(prev => { const next = new Set(prev); next.delete(key); return next })
       if (res.success) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         setLocal(prev => prev.map((item: any) =>
           item.id === id
             ? { ...item, [field]: active ? [...item[field], tipoId] : item[field].filter((x: string) => x !== tipoId) }
@@ -169,6 +172,7 @@ export default function CatalogacionPage() {
       id: string,
       value: boolean,
       toggleFn: (id: string, value: boolean) => Promise<ActionResult<null>>,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setLocal: Dispatch<SetStateAction<any[]>>,
     ) => {
       const key = `iso:${id}`

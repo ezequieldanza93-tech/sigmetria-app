@@ -49,10 +49,15 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
   )
 
   // Fetch data by tab
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let establecimientos: any[] = []
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let documentos: any[] = []
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let documentTypes: any[] = []
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let personasLinks: any[] = []
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let orgsLinks: any[] = []
 
   if (tab === 'establecimientos' || tab === 'dashboard') {
@@ -76,7 +81,9 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
             .select('organizacion_id, establecimiento_id, organizaciones!organizacion_id(id, nombre, email, telefono, organizaciones_tipos!tipo_id(nombre)), establecimientos!establecimiento_id(id, nombre)')
             .in('establecimiento_id', estIds),
         ])
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         personasLinks = (pe.data ?? []) as any[]
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         orgsLinks = (oe.data ?? []) as any[]
       }
     }
@@ -96,7 +103,9 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
         .eq('aplica_empresa', true)
         .order('nombre'),
     ])
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     documentos = (d1.data ?? []) as any[]
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     documentTypes = (d2.data ?? []) as any[]
   }
 
@@ -128,8 +137,11 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
       {tab === 'establecimientos' && (
         <EmpresaRightPanel
           empresaId={id}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           establecimientos={(establecimientos ?? []) as any}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           personasLinks={(personasLinks ?? []) as any}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           orgsLinks={(orgsLinks ?? []) as any}
           puedeEditar={puedeEditar}
         />
@@ -144,8 +156,8 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
                 {empresa.cuit && (
                   <p className="text-sm text-text-tertiary font-mono">{formatCUIT(empresa.cuit)}</p>
                 )}
-                {(empresa.empresas_rubros as any)?.nombre && (
-                  <p className="text-sm text-text-tertiary mt-0.5">{(empresa.empresas_rubros as any).nombre}</p>
+                {(empresa.empresas_rubros as unknown as { nombre: string } | null)?.nombre && (
+                  <p className="text-sm text-text-tertiary mt-0.5">{(empresa.empresas_rubros as unknown as { nombre: string }).nombre}</p>
                 )}
               </div>
               <span className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${empresa.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
