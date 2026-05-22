@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState, useState, useEffect } from 'react'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
@@ -303,11 +304,15 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Foto del establecimiento</label>
         {establecimiento?.photo_site && (
-          <img
-            src={establecimiento.photo_site}
-            alt="Foto actual"
-            className="w-full h-40 object-cover rounded-lg mb-2 border border-gray-200"
-          />
+          <div className="relative w-full h-40 mb-2">
+            <Image
+              src={establecimiento.photo_site}
+              alt="Foto actual"
+              fill
+              className="object-cover rounded-lg border border-gray-200"
+              sizes="(max-width: 768px) 100vw, 50vw"
+            />
+          </div>
         )}
         <input
           name="foto"

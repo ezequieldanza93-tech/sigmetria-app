@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import { WeatherPanel } from './weather-panel'
 
 interface Props {
@@ -19,10 +20,12 @@ export function EstablecimientoLocation({ lat, lng, nombre, fotoUrl }: Props) {
       >
         <div className="relative border-r border-gray-100 bg-gray-50 min-h-[180px]">
           {fotoUrl ? (
-            <img
+            <Image
               src={fotoUrl}
               alt={`Foto de ${nombre}`}
-              className="absolute inset-0 w-full h-full object-cover"
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, 50vw"
             />
           ) : (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-300">

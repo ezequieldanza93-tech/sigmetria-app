@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { updateConsultora, uploadConsultoraLogo } from '@/lib/actions/consultora'
-import { Save, Loader2, Building2, Globe, Mail, Phone, Image, Link as LinkIcon, Check, Upload, X } from 'lucide-react'
+import NextImage from 'next/image'
+import { Save, Loader2, Building2, Globe, Mail, Phone, Image as LucideImage, Link as LinkIcon, Check, Upload, X } from 'lucide-react'
 import type { Consultora } from '@/lib/types'
 
 const SOCIAL_LABELS: Record<string, string> = {
@@ -231,11 +232,11 @@ export default function ConsultoraInfoPage() {
           <h2 className="text-sm font-semibold text-text-primary uppercase tracking-wider">Logo</h2>
 
           <div className="flex items-start gap-4">
-            <div className="w-20 h-20 rounded-xl bg-surface-base border border-border-subtle flex items-center justify-center overflow-hidden shrink-0">
+            <div className="relative w-20 h-20 rounded-xl bg-surface-base border border-border-subtle flex items-center justify-center overflow-hidden shrink-0">
               {logoUrl ? (
-                <img src={logoUrl} alt="Logo" className="w-full h-full object-contain" />
+                <NextImage src={logoUrl} alt="Logo" fill className="object-contain" />
               ) : (
-                <Image size={24} className="text-text-tertiary" />
+                <LucideImage size={24} className="text-text-tertiary" />
               )}
             </div>
             <div className="flex-1">

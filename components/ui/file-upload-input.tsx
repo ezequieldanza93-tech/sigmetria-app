@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import NextImage from 'next/image'
 import { Upload, X, FileText, Image as ImageIcon, ExternalLink } from 'lucide-react'
 
 interface Props {
@@ -74,9 +75,11 @@ export function FileUploadInput({
       {showCurrent && (
         <div className="mb-2 flex items-center gap-3 p-2.5 bg-gray-50 border border-gray-200 rounded-lg">
           {kind === 'image' ? (
-            <img
-              src={currentUrl}
+            <NextImage
+              src={currentUrl!}
               alt="Actual"
+              width={64}
+              height={64}
               className="w-16 h-16 object-cover rounded border border-gray-200 bg-white"
             />
           ) : (
@@ -108,9 +111,11 @@ export function FileUploadInput({
       {showNew && (
         <div className="mb-2 flex items-center gap-3 p-2.5 bg-sig-50 border border-sig-200 rounded-lg">
           {preview ? (
-            <img
+            <NextImage
               src={preview}
               alt="Nuevo"
+              width={64}
+              height={64}
               className="w-16 h-16 object-cover rounded border border-sig-200 bg-white"
             />
           ) : (
