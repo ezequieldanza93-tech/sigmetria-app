@@ -14,7 +14,7 @@ export function PWARegister() {
     })
 
     navigator.serviceWorker.register('/service-worker', { scope: '/' }).then((reg) => {
-      reg.update()
+      if (!reg) return
 
       reg.addEventListener('updatefound', () => {
         const newSW = reg.installing
@@ -25,15 +25,12 @@ export function PWARegister() {
           }
         })
       })
+
+      const interval = setInterval(() => { reg.update() }, 60_000)
+      return () => clearInterval(interval)
+    }).catch(() => {
+      /* service-worker file not present — no PWA offline support */
     })
-
-    const interval = setInterval(() => {
-      navigator.serviceWorker.getRegistration().then((reg) => {
-        if (reg) reg.update()
-      })
-    }, 60_000)
-
-    return () => clearInterval(interval)
   }, [])
 
   return null
