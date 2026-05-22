@@ -7,8 +7,8 @@ export function PWARegister() {
     if (!('serviceWorker' in navigator)) return
 
     navigator.serviceWorker.getRegistration().then((reg) => {
-      if (reg) reg.unregister()
-    })
+      if (reg) reg.unregister().catch(() => {})
+    }).catch(() => {})
   }, [])
 
   return null
