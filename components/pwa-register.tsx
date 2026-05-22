@@ -7,7 +7,14 @@ export function PWARegister() {
     if (!('serviceWorker' in navigator)) return
 
     navigator.serviceWorker.getRegistration().then((reg) => {
-      if (reg) reg.unregister().catch(() => {})
+      if (reg) {
+        const existingUrl = reg.active?.scriptURL ?? ''
+        if (existingUrl.includes('/service-worker')) {
+          return
+        }
+        reg.unregister().catch(() => {})
+      }
+      navigator.serviceWorker.register('/service-worker').catch(() => {})
     }).catch(() => {})
   }, [])
 

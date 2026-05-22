@@ -76,6 +76,11 @@ export function ErrorCapture() {
         return
       }
 
+      // ServiceWorker update failures: browser auto-polling, not actionable
+      if (message.includes('ServiceWorker') || message.includes('serviceWorker')) {
+        return
+      }
+
       saveError({
         type: 'unhandledrejection',
         message,
