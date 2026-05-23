@@ -13,6 +13,13 @@ import * as fs from 'fs'
 import * as path from 'path'
 import { parse } from 'csv-parse/sync'
 
+function readCSV(filePath: string): string {
+  const buffer = fs.readFileSync(filePath)
+  // Strip UTF-8 BOM if present (EF BB BF)
+  const start = buffer[0] === 0xEF && buffer[1] === 0xBB && buffer[2] === 0xBF ? 3 : 0
+  return buffer.toString('utf-8', start)
+}
+
 const CONSULTORA_ID = process.argv[2]
 if (!CONSULTORA_ID) {
   console.error('Usage: npx tsx scripts/seed-iperc.ts <consultora_id>')
@@ -79,8 +86,8 @@ async function main() {
   console.log(`Data dir: ${dataDir}`)
 
   // ---- Read CSVs ----
-  const libraryRaw = fs.readFileSync(path.join(dataDir, 'IPERC - Library-L3.csv'), 'latin1')
-  const matrixRaw = fs.readFileSync(path.join(dataDir, 'IPERC - Matrix-Grid view.csv'), 'latin1')
+  const libraryRaw = readCSV(path.join(dataDir, 'IPERC - Library-L3.csv'))
+  const matrixRaw = readCSV(path.join(dataDir, 'IPERC - Matrix-Grid view.csv'))
 
   const libraryRows = parse(libraryRaw, { columns: true, delimiter: ',', relax_column_count: true }) as LibraryRow[]
   const matrixRows = parse(matrixRaw, { columns: true, delimiter: ',', relax_column_count: true }) as MatrixRow[]
