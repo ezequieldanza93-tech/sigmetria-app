@@ -36,10 +36,37 @@ const config: Config = {
           hover: 'var(--brand-primary-hover)',
           muted: 'var(--brand-muted)',
         },
+        success: 'var(--success)',
+        'success-bg': 'var(--success-bg)',
+        warning: 'var(--warning)',
+        'warning-bg': 'var(--warning-bg)',
+        danger: 'var(--danger)',
+        'danger-bg': 'var(--danger-bg)',
+        info: 'var(--info)',
+        'info-bg': 'var(--info-bg)',
       },
       fontFamily: {
         heading: ['var(--font-heading)', 'system-ui', 'sans-serif'],
         body: ['var(--font-body)', 'system-ui', 'sans-serif'],
+      },
+      keyframes: {
+        'slide-in-from-right': {
+          '0%': { transform: 'translateX(100%)', opacity: '0' },
+          '100%': { transform: 'translateX(0)', opacity: '1' },
+        },
+        'fade-in': {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        'fade-out': {
+          '0%': { opacity: '1' },
+          '100%': { opacity: '0' },
+        },
+      },
+      animation: {
+        'slide-in-from-right-full': 'slide-in-from-right 0.3s ease-out',
+        'fade-in': 'fade-in 0.2s ease-out',
+        'fade-out': 'fade-out 0.2s ease-out',
       },
     },
   },

@@ -7,6 +7,10 @@ import type {
   MedicionTipo,
   DocumentoTipo,
   CapacitacionEstado,
+  IncidenteTipo,
+  DenunciaTipo,
+  SeguimientoEstado,
+  Severidad,
 } from './types'
 
 export const SECTORES_PREDEFINIDOS = [
@@ -145,6 +149,190 @@ export const USER_ROLE_OPTIONS = [
   { value: 'colaborador_viewer', label: 'Viewer Limitado' },
   { value: 'visualizador_comentarista', label: 'Visualizador Comentarista' },
 ] as const
+
+export type WidgetKey =
+  | 'empresas_activas'
+  | 'establecimientos'
+  | 'trabajadores'
+  | 'siniestros_mes'
+  | 'siniestros_acumulados'
+  | 'documentos_vencer_7d'
+  | 'documentos_vencer_15d'
+  | 'documentos_vencer_30d'
+  | 'inspecciones_pendientes'
+  | 'capacitaciones_vencidas'
+  | 'capacitaciones_proximas'
+  | 'mediciones_pendientes'
+  | 'epp_vencidos'
+  | 'tasa_siniestralidad'
+
+export interface WidgetDefinition {
+  key: WidgetKey
+  label: string
+  icon: string
+  description: string
+}
+
+export const ALL_WIDGETS: Record<WidgetKey, WidgetDefinition> = {
+  empresas_activas: { key: 'empresas_activas', label: 'Empresas Activas', icon: 'Building2', description: 'Empresas activas habilitadas' },
+  establecimientos: { key: 'establecimientos', label: 'Establecimientos', icon: 'MapPin', description: 'Total de establecimientos' },
+  trabajadores: { key: 'trabajadores', label: 'Trabajadores', icon: 'Users', description: 'Suma total de trabajadores registrados' },
+  siniestros_mes: { key: 'siniestros_mes', label: 'Siniestros del Mes', icon: 'AlertTriangle', description: 'Siniestros ocurridos en el mes actual' },
+  siniestros_acumulados: { key: 'siniestros_acumulados', label: 'Siniestros Acumulados', icon: 'AlertOctagon', description: 'Siniestros acumulados en el año' },
+  documentos_vencer_7d: { key: 'documentos_vencer_7d', label: 'Docs por Vencer (7d)', icon: 'FileText', description: 'Documentos que vencen en los próximos 7 días' },
+  documentos_vencer_15d: { key: 'documentos_vencer_15d', label: 'Docs por Vencer (15d)', icon: 'FileText', description: 'Documentos que vencen en los próximos 15 días' },
+  documentos_vencer_30d: { key: 'documentos_vencer_30d', label: 'Docs por Vencer (30d)', icon: 'FileText', description: 'Documentos que vencen en los próximos 30 días' },
+  inspecciones_pendientes: { key: 'inspecciones_pendientes', label: 'Inspecciones Pendientes', icon: 'ClipboardCheck', description: 'Inspecciones en estado programado' },
+  capacitaciones_vencidas: { key: 'capacitaciones_vencidas', label: 'Capacitaciones Vencidas', icon: 'CalendarX', description: 'Capacitaciones vencidas y no realizadas' },
+  capacitaciones_proximas: { key: 'capacitaciones_proximas', label: 'Capacitaciones Próximas', icon: 'CalendarCheck', description: 'Capacitaciones a vencer en 30 días' },
+  mediciones_pendientes: { key: 'mediciones_pendientes', label: 'Mediciones Pendientes', icon: 'Activity', description: 'Mediciones ambientales registradas en el año' },
+  epp_vencidos: { key: 'epp_vencidos', label: 'EPP por Puesto', icon: 'Shield', description: 'Elementos de protección personal por puesto' },
+  tasa_siniestralidad: { key: 'tasa_siniestralidad', label: 'Tasa de Siniestralidad', icon: 'Percent', description: 'Porcentaje de siniestros sobre trabajadores' },
+}
+
+export const WIDGET_KEYS = Object.keys(ALL_WIDGETS) as WidgetKey[]
+
+// ---- Incidentes ----
+export const INCIDENTE_TIPO_LABELS: Record<IncidenteTipo, string> = {
+  electrico: 'Eléctrico',
+  mecanico: 'Mecánico',
+  estructural: 'Estructural',
+  quimico: 'Químico',
+  ergonomico: 'Ergonómico',
+  ambiental: 'Ambiental',
+  incendio: 'Incendio',
+  caida: 'Caída',
+  herramienta: 'Herramienta',
+  vehiculo: 'Vehículo',
+  otro: 'Otro',
+}
+
+export const INCIDENTE_TIPO_OPTIONS: { value: IncidenteTipo; label: string }[] = [
+  { value: 'electrico', label: 'Eléctrico' },
+  { value: 'mecanico', label: 'Mecánico' },
+  { value: 'estructural', label: 'Estructural' },
+  { value: 'quimico', label: 'Químico' },
+  { value: 'ergonomico', label: 'Ergonómico' },
+  { value: 'ambiental', label: 'Ambiental' },
+  { value: 'incendio', label: 'Incendio' },
+  { value: 'caida', label: 'Caída' },
+  { value: 'herramienta', label: 'Herramienta' },
+  { value: 'vehiculo', label: 'Vehículo' },
+  { value: 'otro', label: 'Otro' },
+]
+
+// ---- Denuncias ----
+export const DENUNCIA_TIPO_LABELS: Record<DenunciaTipo, string> = {
+  laboral: 'Laboral',
+  acoso: 'Acoso',
+  condiciones_inseguras: 'Condiciones Inseguras',
+  incumplimiento_normativo: 'Incumplimiento Normativo',
+  conducta: 'Conducta',
+  otro: 'Otro',
+}
+
+export const DENUNCIA_TIPO_OPTIONS: { value: DenunciaTipo; label: string }[] = [
+  { value: 'laboral', label: 'Laboral' },
+  { value: 'acoso', label: 'Acoso' },
+  { value: 'condiciones_inseguras', label: 'Condiciones Inseguras' },
+  { value: 'incumplimiento_normativo', label: 'Incumplimiento Normativo' },
+  { value: 'conducta', label: 'Conducta' },
+  { value: 'otro', label: 'Otro' },
+]
+
+// ---- Seguimiento (estados compartidos) ----
+export const SEGUIMIENTO_ESTADO_LABELS: Record<SeguimientoEstado, string> = {
+  recibida: 'Recibida',
+  en_analisis: 'En Análisis',
+  accion_planificada: 'Acción Planificada',
+  implementada: 'Implementada',
+  cerrada: 'Cerrada',
+}
+
+export const SEGUIMIENTO_ESTADO_OPTIONS: { value: SeguimientoEstado; label: string }[] = [
+  { value: 'recibida', label: 'Recibida' },
+  { value: 'en_analisis', label: 'En Análisis' },
+  { value: 'accion_planificada', label: 'Acción Planificada' },
+  { value: 'implementada', label: 'Implementada' },
+  { value: 'cerrada', label: 'Cerrada' },
+]
+
+export const SEGUIMIENTO_ESTADO_BADGE: Record<SeguimientoEstado, string> = {
+  recibida: 'bg-red-100 text-red-800',
+  en_analisis: 'bg-yellow-100 text-yellow-800',
+  accion_planificada: 'bg-blue-100 text-blue-800',
+  implementada: 'bg-orange-100 text-orange-800',
+  cerrada: 'bg-green-100 text-green-800',
+}
+
+// ---- Severidad ----
+export const SEVERIDAD_LABELS: Record<Severidad, string> = {
+  baja: 'Baja',
+  media: 'Media',
+  alta: 'Alta',
+  critica: 'Crítica',
+}
+
+export const SEVERIDAD_OPTIONS: { value: Severidad; label: string }[] = [
+  { value: 'baja', label: 'Baja' },
+  { value: 'media', label: 'Media' },
+  { value: 'alta', label: 'Alta' },
+  { value: 'critica', label: 'Crítica' },
+]
+
+export const SEVERIDAD_BADGE: Record<Severidad, string> = {
+  baja: 'bg-gray-100 text-gray-700',
+  media: 'bg-blue-100 text-blue-800',
+  alta: 'bg-orange-100 text-orange-800',
+  critica: 'bg-red-100 text-red-800',
+}
+
+// ---- Denunciante tipo ----
+export const DENUNCIANTE_TIPO_LABELS: Record<string, string> = {
+  interno: 'Interno',
+  externo: 'Externo',
+  anonimo: 'Anónimo',
+}
+
+export const DENUNCIANTE_TIPO_OPTIONS = [
+  { value: 'interno', label: 'Interno' },
+  { value: 'externo', label: 'Externo' },
+  { value: 'anonimo', label: 'Anónimo' },
+]
+
+// ---- IPERC ----
+export const IPERC_FACTORES = [
+  'Ambiental', 'Biológico', 'Ergonómico', 'Físico',
+  'Locativo', 'Mecánico', 'Psicosocial', 'Químico',
+] as const
+
+export const IPERC_RIESGO_TIPOS = [
+  'Accidente', 'Enfermedad Profesional', 'Daños Materiales',
+] as const
+
+export const IPERC_PROBABILIDADES: { nivel: string; valor: number }[] = [
+  { nivel: 'Muy Improbable', valor: 1 },
+  { nivel: 'Improbable', valor: 2 },
+  { nivel: 'Moderada', valor: 3 },
+  { nivel: 'Probable', valor: 4 },
+  { nivel: 'Muy Probable', valor: 5 },
+]
+
+export const IPERC_CONSECUENCIAS: { nivel: string; valor: number }[] = [
+  { nivel: 'Daño Leve', valor: 1 },
+  { nivel: 'Daño Moderado', valor: 2 },
+  { nivel: 'Daño Grave', valor: 3 },
+  { nivel: 'Daño Muy Grave', valor: 4 },
+  { nivel: 'Daño Fatal', valor: 5 },
+]
+
+export const IPERC_NIVELES_RIESGO = [
+  { nombre: 'Riesgo Trivial', min: 1, max: 4, valor_ref: 5, color: '#22c55e', acciones: 'Concientización. No requiere implementar métodos de prevención y control sin perjuicio de que se realicen monitoreos.' },
+  { nombre: 'Riesgo Tolerable', min: 5, max: 9, valor_ref: 10, color: '#eab308', acciones: 'Monitoreo y control para mantener el riesgo o impacto por lo menos en este nivel, sin perjuicio de que se puedan implementar medidas para reducirlos al nivel inferior.' },
+  { nombre: 'Riesgo Moderado', min: 10, max: 14, valor_ref: 15, color: '#f97316', acciones: 'Monitoreo y control reforzado para garantizar que el riesgo o impacto no aumente. Se pueden requerir medidas adicionales de prevención, capacitación específica y, en ciertos casos, permisos de trabajo.' },
+  { nombre: 'Riesgo Importante', min: 15, max: 19, valor_ref: 20, color: '#ef4444', acciones: 'Restricción de Tareas. No se permite la operación en esta condición y se deben tomar en forma inmediata las medidas necesarias de prevención y control adicionales para reducir el riesgo o impacto a un Nivel de Riesgo por lo menos Moderado.' },
+  { nombre: 'Riesgo Intolerable', min: 20, max: 25, valor_ref: 25, color: '#7f1d1d', acciones: 'Prohibición de Tareas. Se encuentra prohibida en su totalidad la operación en esta condición y se deben realizar en forma inmediata acciones para reducir el riesgo o impacto a un Nivel de Riesgo por lo menos Moderado.' },
+]
 
 export const PROVINCIAS_AR = [
   'Buenos Aires',

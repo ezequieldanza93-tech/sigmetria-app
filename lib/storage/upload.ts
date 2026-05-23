@@ -7,6 +7,8 @@ export type AssetBucket =
   | 'matriculas'
   | 'planos'
   | 'certificados'
+  | 'incidentes'
+  | 'denuncias'
 
 export type EntityType =
   | 'empresa'
@@ -16,6 +18,8 @@ export type EntityType =
   | 'matricula_prof'
   | 'matricula'
   | 'certificado_calibracion'
+  | 'incidente'
+  | 'denuncia'
 
 interface BucketConfig {
   maxBytes: number
@@ -30,6 +34,8 @@ const BUCKETS: Record<AssetBucket, BucketConfig> = {
   matriculas:   { maxBytes: 5  * 1024 * 1024, mimes: ['image/jpeg','image/png','application/pdf'],            public: false },
   planos:       { maxBytes: 20 * 1024 * 1024, mimes: ['application/pdf','image/png','image/jpeg'],            public: false },
   certificados: { maxBytes: 5  * 1024 * 1024, mimes: ['application/pdf','image/png','image/jpeg'],            public: false },
+  incidentes:   { maxBytes: 10 * 1024 * 1024, mimes: ['image/jpeg','image/png','image/webp','image/heic'],    public: false },
+  denuncias:    { maxBytes: 10 * 1024 * 1024, mimes: ['image/jpeg','image/png','image/webp','image/heic'],    public: false },
 }
 
 const EXT_BY_MIME: Record<string, string> = {

@@ -39,7 +39,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
   ] = await Promise.all([
     supabase.from('profiles').select('system_role').eq('id', user.id).single(),
     supabase.from('consultoras_members').select('role').eq('user_id', user.id).eq('is_active', true).maybeSingle(),
-    supabase.from('establecimientos').select('id, nombre, latitude, longitude, photo_site, domicilio, created_at, establecimientos_tipos(id, codigo, nombre), localidades!localidad_id(nombre, provincia)').eq('id', estId).single(),
+    supabase.from('establecimientos').select('id, nombre, latitude, longitude, photo_site, plano_url, domicilio, created_at, establecimientos_tipos(id, codigo, nombre), localidades!localidad_id(nombre, provincia)').eq('id', estId).single(),
     supabase.from('empresas').select('id, razon_social').eq('id', empresaId).single(),
   ])
 
@@ -184,6 +184,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
             empresaDocumentos={empresaDocumentos}
             gestionesLegajo={gestionesLegajo}
             trabajadorDocumentos={trabajadorDocumentos}
+            planoUrl={establecimiento.plano_url}
           />
         </>
       )}

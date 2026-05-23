@@ -5,6 +5,7 @@ import { ThemeProvider } from '@/components/theme-provider'
 import { QueryProvider } from '@/components/query-provider'
 import { ErrorCapture } from '@/components/error-capture'
 import { PWARegister } from '@/components/pwa-register'
+import { Toaster } from '@/components/ui/toaster'
 import './globals.css'
 
 const poppins = Poppins({
@@ -53,6 +54,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </QueryProvider>
         <PWARegister />
         <ErrorCapture />
+        <Toaster />
       </body>
     </html>
   )

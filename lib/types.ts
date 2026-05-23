@@ -1033,6 +1033,215 @@ export function estadoAnterior(actual: SeguimientoEstado): SeguimientoEstado | n
   return SEGUIMIENTO_ESTADOS_ORDER[idx - 1]
 }
 
+// ---- IPERC ----
+export type IpercFactor =
+  | 'Ambiental' | 'Biológico' | 'Ergonómico' | 'Físico'
+  | 'Locativo' | 'Mecánico' | 'Psicosocial' | 'Químico'
+
+export type IpercRiesgoTipo = 'Accidente' | 'Enfermedad Profesional' | 'Daños Materiales'
+
+export type IpercProbabilidadNivel =
+  | 'Muy Improbable' | 'Improbable' | 'Moderada' | 'Probable' | 'Muy Probable'
+
+export type IpercConsecuenciaNivel =
+  | 'Daño Leve' | 'Daño Moderado' | 'Daño Grave' | 'Daño Muy Grave' | 'Daño Fatal'
+
+export type IpercNivelRiesgoNombre =
+  | 'Riesgo Trivial' | 'Riesgo Tolerable' | 'Riesgo Moderado' | 'Riesgo Importante' | 'Riesgo Intolerable'
+
+export interface IpercConsecuencia {
+  id: string
+  consultora_id: string
+  nivel: IpercConsecuenciaNivel
+  valor_numerico: number
+  orden: number
+  created_at: string
+}
+
+export interface IpercConsecuenciaItem {
+  id: string
+  consecuencia_id: string
+  nombre: string
+  descripcion: string | null
+  created_at: string
+}
+
+export interface IpercProbabilidad {
+  id: string
+  consultora_id: string
+  nivel: IpercProbabilidadNivel
+  valor_numerico: number
+  orden: number
+  created_at: string
+}
+
+export interface IpercNivelRiesgo {
+  id: string
+  consultora_id: string
+  nombre: IpercNivelRiesgoNombre
+  valor_ref: number
+  valor_min: number
+  valor_max: number
+  color: string
+  acciones_requeridas: string
+  created_at: string
+}
+
+export interface IpercPeligro {
+  id: string
+  consultora_id: string
+  nombre: string
+  factor: IpercFactor
+  created_at: string
+}
+
+export interface IpercRiesgo {
+  id: string
+  consultora_id: string
+  nombre: string
+  tipo: IpercRiesgoTipo
+  created_at: string
+}
+
+export interface MedidaControl {
+  id: string
+  consultora_id: string
+  texto: string
+  activo: boolean
+  veces_usada: number
+  created_at: string
+  updated_at: string
+}
+
+export interface IpercSector {
+  id: string
+  establecimiento_id: string
+  nombre: string
+  descripcion: string | null
+  poligono_coords: Record<string, number>[] | null
+  nivel_riesgo_maximo_id: string | null
+  nivel_riesgo_maximo?: IpercNivelRiesgo | null
+  created_at: string
+  updated_at: string
+}
+
+export interface IpercProceso {
+  id: string
+  sector_id: string
+  nombre: string
+  descripcion: string | null
+  created_at: string
+  tareas?: IpercTarea[]
+}
+
+export interface IpercTarea {
+  id: string
+  proceso_id: string
+  nombre: string
+  descripcion: string | null
+  task_number: number
+  created_at: string
+  peligros?: IpercMatrizPeligroWithRelations[]
+}
+
+export interface IpercMatrizPeligro {
+  id: string
+  tarea_id: string
+  peligro_id: string
+  created_at: string
+}
+
+export interface IpercMatrizPeligroWithRelations extends IpercMatrizPeligro {
+  peligro: IpercPeligro
+  riesgos?: IpercMatrizRiesgoWithRelations[]
+}
+
+export interface IpercMatrizRiesgo {
+  id: string
+  peligro_matriz_id: string
+  riesgo_id: string
+  probabilidad_id: string | null
+  consecuencia_id: string | null
+  nivel_riesgo_id: string | null
+  valor_calculado: number | null
+  created_at: string
+  updated_at: string
+}
+
+export interface IpercMatrizRiesgoWithRelations extends IpercMatrizRiesgo {
+  riesgo: IpercRiesgo
+  probabilidad?: IpercProbabilidad | null
+  consecuencia?: IpercConsecuencia | null
+  nivel_riesgo?: IpercNivelRiesgo | null
+  medidas?: IpercRiesgoMedidaWithRelations[]
+}
+
+export interface IpercRiesgoMedida {
+  id: string
+  riesgo_matriz_id: string
+  medida_id: string
+  created_at: string
+}
+
+export interface IpercRiesgoMedidaWithRelations extends IpercRiesgoMedida {
+  medida: MedidaControl
+}
+
+export interface IpercHistorialEstado {
+  id: string
+  riesgo_matriz_id: string
+  estado_anterior_id: string | null
+  estado_nuevo_id: string
+  observacion: string | null
+  usuario_id: string
+  created_at: string
+}
+
+export const FACTOR_LABELS: Record<IpercFactor, string> = {
+  Ambiental: 'Ambiental',
+  Biológico: 'Biológico',
+  Ergonómico: 'Ergonómico',
+  Físico: 'Físico',
+  Locativo: 'Locativo',
+  Mecánico: 'Mecánico',
+  Psicosocial: 'Psicosocial',
+  Químico: 'Químico',
+}
+
+export const RIESGO_TIPO_LABELS: Record<IpercRiesgoTipo, string> = {
+  Accidente: 'Accidente',
+  'Enfermedad Profesional': 'Enfermedad Profesional',
+  'Daños Materiales': 'Daños Materiales',
+}
+
+export const NIVEL_RIESGO_COLORS: Record<IpercNivelRiesgoNombre, string> = {
+  'Riesgo Trivial': '#22c55e',
+  'Riesgo Tolerable': '#eab308',
+  'Riesgo Moderado': '#f97316',
+  'Riesgo Importante': '#ef4444',
+  'Riesgo Intolerable': '#7f1d1d',
+}
+
+export const NIVEL_RIESGO_BADGE: Record<IpercNivelRiesgoNombre, string> = {
+  'Riesgo Trivial': 'bg-green-100 text-green-800',
+  'Riesgo Tolerable': 'bg-yellow-100 text-yellow-800',
+  'Riesgo Moderado': 'bg-orange-100 text-orange-800',
+  'Riesgo Importante': 'bg-red-100 text-red-800',
+  'Riesgo Intolerable': 'bg-red-900 text-white',
+}
+
+export function calcularNivelRiesgo(probabilidad: number, consecuencia: number): {
+  valor: number
+  nombre: IpercNivelRiesgoNombre
+} {
+  const valor = probabilidad * consecuencia
+  if (valor >= 20 && valor <= 25) return { valor, nombre: 'Riesgo Intolerable' }
+  if (valor >= 15 && valor < 20) return { valor, nombre: 'Riesgo Importante' }
+  if (valor >= 10 && valor < 15) return { valor, nombre: 'Riesgo Moderado' }
+  if (valor >= 5 && valor < 10) return { valor, nombre: 'Riesgo Tolerable' }
+  return { valor, nombre: 'Riesgo Trivial' }
+}
+
 // ---- Action result ----
 export type ActionResult<T = null> =
   | { success: true; data: T }

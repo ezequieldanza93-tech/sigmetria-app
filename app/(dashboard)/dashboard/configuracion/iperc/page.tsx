@@ -1,0 +1,266 @@
+'use client'
+
+import { useState } from 'react'
+import { usePeligrosLibrary, useRiesgosLibrary, useConsecuencias, useProbabilidades, useNivelesRiesgo, useCreatePeligro, useDeletePeligro, useCreateRiesgoLib, useDeleteRiesgoLib, useCreateMedidaControl, useDeleteMedidaControl, useMedidasControlTop } from '@/lib/queries/iperc'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Modal } from '@/components/ui/modal'
+import { Select } from '@/components/ui/select'
+import { Badge } from '@/components/ui/badge'
+import { IPERC_FACTORES, IPERC_RIESGO_TIPOS } from '@/lib/constants'
+import { NIVEL_RIESGO_BADGE } from '@/lib/types'
+
+type Tab = 'peligros' | 'riesgos' | 'medidas' | 'consecuencias' | 'probabilidades' | 'niveles'
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'peligros', label: 'Peligros' },
+  { id: 'riesgos', label: 'Riesgos' },
+  { id: 'medidas', label: 'Medidas de Control' },
+  { id: 'consecuencias', label: 'Consecuencias' },
+  { id: 'probabilidades', label: 'Probabilidades' },
+  { id: 'niveles', label: 'Niveles de Riesgo' },
+]
+
+export default function IpercConfigPage() {
+  const [tab, setTab] = useState<Tab>('peligros')
+
+  return (
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-6">Configuración IPERC</h1>
+      <div className="border-b border-gray-200 mb-6">
+        <div className="flex gap-1 overflow-x-auto">
+          {TABS.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap rounded-t-lg transition-colors -mb-px border-b-2 ${
+                t.id === tab
+                  ? 'border-sig-500 text-sig-500'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {tab === 'peligros' && <PeligrosTab />}
+      {tab === 'riesgos' && <RiesgosTab />}
+      {tab === 'medidas' && <MedidasTab />}
+      {tab === 'consecuencias' && <ConsecuenciasTab />}
+      {tab === 'probabilidades' && <ProbabilidadesTab />}
+      {tab === 'niveles' && <NivelesTab />}
+    </div>
+  )
+}
+
+function PeligrosTab() {
+  const { data: peligros, isLoading } = usePeligrosLibrary()
+  const createPeligro = useCreatePeligro()
+  const deletePeligro = useDeletePeligro()
+  const [modal, setModal] = useState(false)
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-4">
+        <p className="text-sm text-gray-500">{peligros?.length ?? 0} peligros</p>
+        <Button onClick={() => setModal(true)}>Nuevo Peligro</Button>
+      </div>
+      <Modal open={modal} onClose={() => setModal(false)} title="Nuevo Peligro">
+        <form onSubmit={async (e) => {
+          e.preventDefault()
+          await createPeligro.mutateAsync(new FormData(e.currentTarget))
+          e.currentTarget.reset()
+          setModal(false)
+        }} className="flex flex-col gap-4">
+          <Input name="nombre" label="Nombre" required />
+          <Select name="factor" label="Factor" required options={IPERC_FACTORES.map(f => ({ value: f, label: f }))} placeholder="Seleccionar factor" />
+          <div className="flex gap-2 justify-end">
+            <Button type="button" variant="secondary" onClick={() => setModal(false)}>Cancelar</Button>
+            <Button type="submit">Crear</Button>
+          </div>
+        </form>
+      </Modal>
+      {isLoading ? <p>Cargando...</p> : (
+        <div className="grid gap-2">
+          {(peligros ?? []).map((p: any) => (
+            <div key={p.id} className="flex items-center justify-between p-3 bg-white border rounded-lg">
+              <div>
+                <p className="font-medium">{p.nombre}</p>
+                <Badge>{p.factor}</Badge>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => deletePeligro.mutate(p.id)}>Eliminar</Button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function RiesgosTab() {
+  const { data: riesgos, isLoading } = useRiesgosLibrary()
+  const createRiesgo = useCreateRiesgoLib()
+  const deleteRiesgo = useDeleteRiesgoLib()
+  const [modal, setModal] = useState(false)
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const formData = new FormData(e.currentTarget)
+    await createRiesgo.mutateAsync(formData)
+    e.currentTarget.reset()
+    setModal(false)
+  }
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-4">
+        <p className="text-sm text-gray-500">{riesgos?.length ?? 0} riesgos</p>
+        <Button onClick={() => setModal(true)}>Nuevo Riesgo</Button>
+      </div>
+      <Modal open={modal} onClose={() => setModal(false)} title="Nuevo Riesgo">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <Input name="nombre" label="Nombre" required />
+          <Select name="tipo" label="Tipo" required options={IPERC_RIESGO_TIPOS.map(t => ({ value: t, label: t }))} placeholder="Seleccionar tipo" />
+          <div className="flex gap-2 justify-end">
+            <Button type="button" variant="secondary" onClick={() => setModal(false)}>Cancelar</Button>
+            <Button type="submit">Crear</Button>
+          </div>
+        </form>
+      </Modal>
+      {isLoading ? <p>Cargando...</p> : (
+        <div className="grid gap-2">
+          {(riesgos ?? []).map((r: any) => (
+            <div key={r.id} className="flex items-center justify-between p-3 bg-white border rounded-lg">
+              <div>
+                <p className="font-medium">{r.nombre}</p>
+                <Badge variant="info">{r.tipo}</Badge>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => deleteRiesgo.mutate(r.id)}>Eliminar</Button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function MedidasTab() {
+  const { data: medidas, isLoading } = useMedidasControlTop()
+  const createMedida = useCreateMedidaControl()
+  const deleteMedida = useDeleteMedidaControl()
+  const [modal, setModal] = useState(false)
+  const [texto, setTexto] = useState('')
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    if (!texto.trim()) return
+    await createMedida.mutateAsync(texto)
+    setTexto('')
+    setModal(false)
+  }
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-4">
+        <p className="text-sm text-gray-500">{medidas?.length ?? 0} medidas (más usadas)</p>
+        <Button onClick={() => setModal(true)}>Nueva Medida</Button>
+      </div>
+      <Modal open={modal} onClose={() => setModal(false)} title="Nueva Medida de Control">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <Input
+            name="texto"
+            label="Texto (máx 150 caracteres)"
+            required
+            maxLength={150}
+            value={texto}
+            onChange={e => setTexto(e.target.value)}
+          />
+          <p className="text-xs text-gray-400">{texto.length}/150</p>
+          <div className="flex gap-2 justify-end">
+            <Button type="button" variant="secondary" onClick={() => setModal(false)}>Cancelar</Button>
+            <Button type="submit">Crear</Button>
+          </div>
+        </form>
+      </Modal>
+      {isLoading ? <p>Cargando...</p> : (
+        <div className="grid gap-2">
+          {(medidas ?? []).map((m: any) => (
+            <div key={m.id} className="flex items-center justify-between p-3 bg-white border rounded-lg">
+              <div className="flex-1">
+                <p className="font-medium">{m.texto}</p>
+                <p className="text-xs text-gray-400">Usada {m.veces_usada} veces</p>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => deleteMedida.mutate(m.id)}>Eliminar</Button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ConsecuenciasTab() {
+  const { data: consecuencias, isLoading } = useConsecuencias()
+
+  if (isLoading) return <p>Cargando...</p>
+
+  return (
+    <div className="grid gap-4">
+      {(consecuencias ?? []).map((c: any) => (
+        <div key={c.id} className="p-4 bg-white border rounded-lg">
+          <div className="flex items-center gap-2 mb-2">
+            <h3 className="font-semibold">{c.nivel}</h3>
+            <Badge>Valor: {c.valor_numerico}</Badge>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {(c.iperc_consecuencia_items ?? []).map((item: any) => (
+              <span key={item.id} className="px-2 py-1 bg-gray-100 text-xs rounded">{item.nombre}</span>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function ProbabilidadesTab() {
+  const { data: probabilidades, isLoading } = useProbabilidades()
+
+  if (isLoading) return <p>Cargando...</p>
+
+  return (
+    <div className="grid gap-3">
+      {(probabilidades ?? []).map((p: any) => (
+        <div key={p.id} className="flex items-center justify-between p-4 bg-white border rounded-lg">
+          <span className="font-medium">{p.nivel}</span>
+          <Badge>Valor: {p.valor_numerico}</Badge>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function NivelesTab() {
+  const { data: niveles, isLoading } = useNivelesRiesgo()
+
+  if (isLoading) return <p>Cargando...</p>
+
+  return (
+    <div className="grid gap-4">
+      {(niveles ?? []).map((n: any) => (
+        <div key={n.id} className="p-4 bg-white border rounded-lg" style={{ borderLeftColor: n.color, borderLeftWidth: 4 }}>
+          <div className="flex items-center gap-2 mb-2">
+            <h3 className="font-semibold">{n.nombre}</h3>
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${NIVEL_RIESGO_BADGE[n.nombre as keyof typeof NIVEL_RIESGO_BADGE] || ''}`}>
+              {n.valor_ref}
+            </span>
+          </div>
+          <p className="text-xs text-gray-500 mb-1">Rango: {n.valor_min} - {n.valor_max} | Valor ref: {n.valor_ref}</p>
+          <p className="text-sm text-gray-600">{n.acciones_requeridas}</p>
+        </div>
+      ))}
+    </div>
+  )
+}

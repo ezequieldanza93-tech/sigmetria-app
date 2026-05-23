@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Sun, Moon, Users, UserCog, Network, Gauge, Shield, Settings2, LogOut, Building2, BarChart2, CreditCard, Smartphone, ShieldCheck, CalendarClock } from 'lucide-react'
+import { Sun, Moon, Users, UserCog, Network, Gauge, Shield, Settings2, LogOut, Building2, BarChart2, CreditCard, Smartphone, ShieldCheck, CalendarClock, AlertTriangle, Scale, Map, ClipboardList } from 'lucide-react'
 import { SystemRole, UserRole, ROLE_LABELS, ROLE_COLORS } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 import { usePreview } from '@/lib/contexts/preview-context'
@@ -279,14 +279,21 @@ export function AppHeader({
           <div className="relative" ref={menuRef}>
             <button
               onClick={() => setMenuOpen(prev => !prev)}
-              className="w-8 h-8 bg-surface-elevated rounded-full flex items-center justify-center text-xs font-bold text-text-secondary hover:bg-brand-muted hover:text-brand-primary transition-colors"
+              aria-expanded={menuOpen}
+              aria-haspopup="menu"
+              aria-controls="user-menu"
+              className="w-8 h-8 bg-surface-elevated rounded-full flex items-center justify-center text-xs font-bold text-text-secondary hover:bg-brand-muted hover:text-brand-primary transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2"
               aria-label="Menú de usuario"
             >
               {initials || '?'}
             </button>
 
             {menuOpen && (
-              <div className="absolute right-0 top-full mt-2 w-56 bg-surface-elevated border border-border-subtle rounded-xl shadow-[var(--shadow-lg)] z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+              <div 
+                id="user-menu"
+                role="menu"
+                aria-label="Menú de usuario"
+                className="absolute right-0 top-full mt-2 w-56 bg-surface-elevated border border-border-subtle rounded-xl shadow-[var(--shadow-lg)] z-50 animate-in fade-in slide-in-from-top-2 duration-150">
                 <div className="px-4 py-3 border-b border-border-subtle">
                   <p className="text-sm font-medium text-text-primary truncate">{fullName}</p>
                   <p className="text-xs text-text-tertiary truncate">{email}</p>
@@ -297,10 +304,10 @@ export function AppHeader({
                   <div className="px-4 py-1.5">
                     <p className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold">Consultora</p>
                   </div>
-                  <DropdownItem href="/dashboard/configuracion/consultora" icon={Building2} label="Información" />
-                  <DropdownItem href="/dashboard/instrumentos" icon={Gauge} label="Instrumentos" />
-                  <DropdownItem href="/dashboard/usuarios" icon={UserCog} label="Usuarios" />
-                  <DropdownItem href="/dashboard/billing" icon={CreditCard} label="Suscripción" />
+                  <DropdownItem href="/dashboard/configuracion/consultora" icon={Building2} label="Información" role="menuitem" />
+                  <DropdownItem href="/dashboard/instrumentos" icon={Gauge} label="Instrumentos" role="menuitem" />
+                  <DropdownItem href="/dashboard/usuarios" icon={UserCog} label="Usuarios" role="menuitem" />
+                  <DropdownItem href="/dashboard/billing" icon={CreditCard} label="Suscripción" role="menuitem" />
                 </div>
 
                 {/* Directorio */}
@@ -308,9 +315,18 @@ export function AppHeader({
                   <div className="px-4 py-1.5">
                     <p className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold">Directorio</p>
                   </div>
-                  <DropdownItem href="/dashboard/personas" icon={Users} label="Personas" />
-                  <DropdownItem href="/dashboard/organizaciones-externas" icon={Network} label="Organizaciones" />
-                  <DropdownItem href="/dashboard/productos" icon={Shield} label="Productos" />
+                  <DropdownItem href="/dashboard/personas" icon={Users} label="Personas" role="menuitem" />
+                  <DropdownItem href="/dashboard/organizaciones-externas" icon={Network} label="Organizaciones" role="menuitem" />
+                  <DropdownItem href="/dashboard/productos" icon={Shield} label="Productos" role="menuitem" />
+                </div>
+
+                {/* Incidentes y Denuncias */}
+                <div className="py-1 border-b border-border-subtle">
+                  <div className="px-4 py-1.5">
+                    <p className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold">Incidentes y Denuncias</p>
+                  </div>
+                  <DropdownItem href="/dashboard/incidentes" icon={AlertTriangle} label="Incidentes" role="menuitem" />
+                  <DropdownItem href="/dashboard/denuncias" icon={Scale} label="Denuncias" role="menuitem" />
                 </div>
 
                 {/* Herramientas */}
@@ -318,14 +334,17 @@ export function AppHeader({
                   <div className="px-4 py-1.5">
                     <p className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold">Herramientas</p>
                   </div>
-                  <DropdownItem href="/dashboard/analytics" icon={BarChart2} label="Analytics" />
-                  <DropdownItem href="/dashboard/configuracion/catalogacion" icon={Settings2} label="Catalogación" />
-                  <DropdownItem href="/dashboard/configuracion/vencimientos" icon={CalendarClock} label="Vencimientos" />
+                  <DropdownItem href="/dashboard/analytics" icon={BarChart2} label="Analytics" role="menuitem" />
+                  <DropdownItem href="/dashboard/configuracion/catalogacion" icon={Settings2} label="Catalogación" role="menuitem" />
+                  <DropdownItem href="/dashboard/configuracion/vencimientos" icon={CalendarClock} label="Vencimientos" role="menuitem" />
+                  <DropdownItem href="/dashboard/configuracion/iperc" icon={ClipboardList} label="Librería IPERC" role="menuitem" />
+                  <DropdownItem href="/dashboard/mapas" icon={Map} label="Mapa de Riesgos" role="menuitem" />
                   <button
                     onClick={() => {
                       setPreviewOpen(!isPreviewOpen)
                       setMenuOpen(false)
                     }}
+                    role="menuitem"
                     className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-surface-sunken transition-colors"
                   >
                     <span className="text-text-tertiary">
@@ -335,12 +354,13 @@ export function AppHeader({
                     {isPreviewOpen && <span className="ml-auto text-[10px] text-brand-primary font-semibold">ON</span>}
                   </button>
                   {isSuperAdmin && (
-                    <DropdownItem href="/dashboard/admin" icon={ShieldCheck} label="Super Admin" />
+                    <DropdownItem href="/dashboard/admin" icon={ShieldCheck} label="Super Admin" role="menuitem" />
                   )}
                 </div>
 
                 <button
                   onClick={handleLogout}
+                  role="menuitem"
                   className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-secondary hover:text-text-primary hover:bg-surface-sunken transition-colors rounded-b-xl"
                 >
                   <LogOut size={16} strokeWidth={1.75} className="text-text-tertiary" />
@@ -355,10 +375,11 @@ export function AppHeader({
   )
 }
 
-function DropdownItem({ href, icon: Icon, label }: { href: string; icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>; label: string }) {
+function DropdownItem({ href, icon: Icon, label, role }: { href: string; icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>; label: string; role?: string }) {
   return (
     <Link
       href={href}
+      role={role}
       className="flex items-center gap-2.5 px-4 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-surface-sunken transition-colors"
     >
       <span className="text-text-tertiary">

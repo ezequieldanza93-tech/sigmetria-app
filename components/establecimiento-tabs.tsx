@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useSearchParams, useRouter, usePathname } from 'next/navigation'
+import { useCallback } from 'react'
 import { SectoresTab } from '@/components/establecimiento/sectores-tab'
 import { StakeholdersTab } from '@/components/establecimiento/stakeholders-tab'
 import { AsistenciaTab } from '@/components/establecimiento/asistencia-tab'
@@ -10,6 +11,8 @@ import { DocumentosTab } from '@/components/establecimiento/documentos-tab'
 import { DenunciasTab } from '@/components/establecimiento/denuncias-tab'
 import { FeedbackTab } from '@/components/establecimiento/feedback-tab'
 import { LegajoTab } from '@/components/establecimiento/legajo-tab'
+import { IpercTab } from '@/components/iperc/iperc-tab'
+import { MapaRiesgoTab } from '@/components/iperc/mapa-riesgo-tab'
 import type {
   SectorEstablecimiento,
   Siniestro,
@@ -23,7 +26,7 @@ import type {
   LegajoGestion,
 } from '@/lib/types'
 
-type Tab = 'sectores' | 'stakeholders' | 'asistencia' | 'siniestros' | 'inspecciones' | 'documentos' | 'legajo' | 'denuncias' | 'feedback'
+type Tab = 'sectores' | 'stakeholders' | 'asistencia' | 'siniestros' | 'inspecciones' | 'documentos' | 'legajo' | 'denuncias' | 'feedback' | 'iperc' | 'mapa_riesgo'
 
 interface EstablecimientoTabsProps {
   establecimientoId: string
@@ -41,6 +44,7 @@ interface EstablecimientoTabsProps {
   gestionesLegajo: LegajoGestion[]
   trabajadorDocumentos: EmpleadoDocumentoLegajo[]
   defaultTab?: Tab
+  planoUrl?: string | null
 }
 
 const TABS: { id: Tab; label: string }[] = [
@@ -53,7 +57,11 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'legajo', label: 'Legajo Técnico' },
   { id: 'denuncias', label: 'Denuncias' },
   { id: 'feedback', label: 'Feedback Clientes' },
+  { id: 'iperc', label: 'IPERC' },
+  { id: 'mapa_riesgo', label: 'Mapa de Riesgo' },
 ]
+
+const VALID_TABS = new Set<string>(TABS.map(t => t.id))
 
 export function EstablecimientoTabs({
   establecimientoId,
@@ -69,30 +77,82 @@ export function EstablecimientoTabs({
   feedbackClientes,
   empresaDocumentos,
   gestionesLegajo,
-  trabajadorDocumentos,
-  defaultTab,
+   trabajadorDocumentos,
+  defaultTab = 'sectores',
+  planoUrl,
 }: EstablecimientoTabsProps) {
-  const [active, setActive] = useState<Tab>(defaultTab ?? 'sectores')
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  
+  const urlTab = searchParams.get('tab')
+  const active: Tab = (urlTab && VALID_TABS.has(urlTab) ? urlTab : defaultTab) as Tab
+
+  const setActive = useCallback((tabId: Tab) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('tab', tabId)
+    router.push(`${pathname}?${params.toString()}`, { scroll: false })
+  }, [router, pathname, searchParams])
+
+  const tabPanelId = `tabpanel-${active}`
+  const tabId = (id: Tab) => `tab-${id}`
 
   return (
     <div>
-      <div className="border-b border-gray-200 dark:border-border-subtle mb-6">
-        <div className="flex gap-1 overflow-x-auto">
-          {TABS.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActive(tab.id)}
-              className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap rounded-t-lg transition-colors -mb-px border-b-2 ${
-                tab.id === active
-                  ? 'border-sig-500 text-sig-500'
-                  : 'border-transparent text-gray-500 dark:text-white hover:text-gray-700 dark:hover:text-white hover:border-gray-300 dark:hover:border-slate-500'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+      <div 
+        role="tablist" 
+        aria-label="Secciones del establecimiento"
+        className="border-b border-border-subtle mb-6"
+      >
+        <div className="flex gap-1 overflow-x-auto scrollbar-hide">
+          {TABS.map(tab => {
+            const isActive = tab.id === active
+            return (
+              <button
+                key={tab.id}
+                id={tabId(tab.id)}
+                role="tab"
+                aria-selected={isActive}
+                aria-controls={tabPanelId}
+                tabIndex={isActive ? 0 : -1}
+                onClick={() => setActive(tab.id)}
+                onKeyDown={(e) => {
+                  const currentIndex = TABS.findIndex(t => t.id === active)
+                  if (e.key === 'ArrowRight') {
+                    e.preventDefault()
+                    const nextIndex = (currentIndex + 1) % TABS.length
+                    setActive(TABS[nextIndex].id)
+                  } else if (e.key === 'ArrowLeft') {
+                    e.preventDefault()
+                    const prevIndex = (currentIndex - 1 + TABS.length) % TABS.length
+                    setActive(TABS[prevIndex].id)
+                  } else if (e.key === 'Home') {
+                    e.preventDefault()
+                    setActive(TABS[0].id)
+                  } else if (e.key === 'End') {
+                    e.preventDefault()
+                    setActive(TABS[TABS.length - 1].id)
+                  }
+                }}
+                className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap rounded-t-lg transition-colors -mb-px border-b-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 ${
+                  isActive
+                    ? 'border-brand-primary text-brand-primary'
+                    : 'border-transparent text-text-secondary hover:text-text-primary hover:border-border-default'
+                }`}
+              >
+                {tab.label}
+              </button>
+            )
+          })}
         </div>
       </div>
+
+      <div
+        id={tabPanelId}
+        role="tabpanel"
+        aria-labelledby={tabId(active)}
+        tabIndex={0}
+      >
 
       {active === 'sectores' && (
         <SectoresTab
@@ -164,6 +224,20 @@ export function EstablecimientoTabs({
           canWrite={canWrite}
         />
       )}
+      {active === 'iperc' && (
+        <IpercTab
+          establecimientoId={establecimientoId}
+          canWrite={canWrite}
+        />
+      )}
+      {active === 'mapa_riesgo' && (
+        <MapaRiesgoTab
+          establecimientoId={establecimientoId}
+          canWrite={canWrite}
+          planoUrl={planoUrl ?? null}
+        />
+      )}
+      </div>
     </div>
   )
 }

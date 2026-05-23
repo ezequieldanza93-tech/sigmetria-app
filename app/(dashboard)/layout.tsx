@@ -3,7 +3,9 @@ import { createClient } from '@/lib/supabase/server'
 import { AppHeader } from '@/components/app-header'
 import { SidebarWrapper } from '@/components/layout/sidebar-wrapper'
 import { DevicePreviewPanel } from '@/components/layout/device-preview-panel'
+import { BottomNav } from '@/components/layout/bottom-nav'
 import { UserRole } from '@/lib/types'
+import 'leaflet/dist/leaflet.css'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -39,6 +41,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       }
     >
       <DevicePreviewPanel>{children}</DevicePreviewPanel>
+      <BottomNav />
     </SidebarWrapper>
   )
 }

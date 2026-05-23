@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { MultiFilter } from '@/components/ui/multi-filter'
 import {
-  Plus, Camera, BarChart3, FileCheck,
+  Plus, Camera, BarChart3, FileCheck, FileSignature,
   ClipboardCheck, GraduationCap, Heart, FileText, AlertTriangle,
   ClipboardList, UserPlus, Dumbbell, Kanban, HelpCircle,
 } from 'lucide-react'
@@ -23,6 +23,8 @@ import {
   createCategoriaGestion,
 } from '@/lib/actions/gestion-establecimiento'
 import { ejecutarGestion, crearObservaciones } from '@/lib/actions/registro-gestion'
+import { FirmaInternaModal } from '@/components/firmas/firma-interna-modal'
+import { FirmaBadge } from '@/components/firmas/firma-badge'
 
 const CATEGORIA_META: Record<string, { icon: React.ComponentType<{ size?: number; className?: string }>; abbr: string }> = {
   Checklists: { icon: ClipboardCheck, abbr: 'CHK' },
@@ -71,11 +73,11 @@ const MONTHS_FULL = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Jul
 const COL_WIDTHS_KEY = 'gestiones_col_widths'
 const DEFAULT_COL_WIDTHS: Record<string, number> = {
   categoria: 140, gestion: 180, fecha_plan: 100, fecha_ejec: 100,
-  responsable: 130, indice: 70, lt: 50, evidencia: 120,
+  responsable: 130, indice: 70, lt: 50, evidencia: 120, firma: 90,
 }
 const COL_MIN_WIDTHS: Record<string, number> = {
   categoria: 80, gestion: 80, fecha_plan: 80, fecha_ejec: 80,
-  responsable: 80, indice: 50, lt: 40, evidencia: 80,
+  responsable: 80, indice: 50, lt: 40, evidencia: 80, firma: 70,
 }
 
 const ROW_BG_COLORS: Record<EstadoGestion, string> = {
@@ -94,6 +96,7 @@ interface FullRegistro extends RegistroGestion {
   ge_tiene_formulario?: boolean
   ge_tiene_entregable?: boolean
   ge_mostrar_lt?: boolean
+  ge_firmada?: boolean
   responsable_nombre?: string
   aprobado_nombre?: string
 }
@@ -806,6 +809,8 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
   const [executingFormulario, setExecutingFormulario] = useState<FullRegistro | null>(null)
   const [showPlanificarModal, setShowPlanificarModal] = useState(false)
   const [showReporteModal, setShowReporteModal] = useState(false)
+  const [firmarGestionId, setFirmarGestionId] = useState<string | null>(null)
+  const [firmarGestionNombre, setFirmarGestionNombre] = useState<string>('')
 
   // Task 4: resizable columns with localStorage
   const [colWidths, setColWidths] = useState<Record<string, number>>(() => {
@@ -906,6 +911,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
         ge_tiene_formulario: ge?.gestiones?.id ? formSet.has(ge.gestiones.id) : false,
         ge_tiene_entregable: ge?.gestiones?.tiene_entregable ?? false,
         ge_mostrar_lt: ge?.mostrar_lt ?? false,
+        ge_firmada: ge?.firmada ?? false,
         ge_gestion_nombre: ge?.gestiones?.nombre,
         ge_categoria_nombre: ge?.gestiones?.gestiones_categorias?.nombre,
         ge_grupo_nombre: ge?.gestiones?.gestiones_categorias?.gestiones_grupos?.nombre,
@@ -968,7 +974,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
       })).filter(g => g.regs.length > 0)
     : []
 
-  const totalCols = canWrite ? 8 : 7
+  const totalCols = canWrite ? 9 : 8
 
   // ── Row renderer ────────────────────────────────────────────────────────────
   function renderRows(regs: FullRegistro[]) {
@@ -1034,6 +1040,25 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
               ) : null}
             </td>
           )}
+          <td className="px-4 py-1.5 text-center">
+            {r.ge_firmada ? (
+              <FirmaBadge entidadTipo="gestion" entidadId={r.ge_id ?? ''} />
+            ) : r.fecha_ejecutada ? (
+              <button
+                onClick={e => {
+                  e.stopPropagation()
+                  setFirmarGestionId(r.ge_id ?? null)
+                  setFirmarGestionNombre(r.ge_gestion_nombre ?? '')
+                }}
+                className="text-xs font-semibold text-white bg-sig-600 hover:bg-sig-700 rounded-lg px-3 py-1 whitespace-nowrap"
+              >
+                <FileSignature size={12} className="inline mr-1" />
+                Firmar
+              </button>
+            ) : (
+              <span className="text-xs text-gray-300">—</span>
+            )}
+          </td>
         </tr>
       )
     })
@@ -1079,6 +1104,9 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
             Evidencia{rh('evidencia')}
           </th>
         )}
+        <th style={{ width: colW('firma') }} className="px-4 py-1.5 font-medium text-center relative select-none">
+          Firma{rh('firma')}
+        </th>
       </tr>
     </thead>
   )
@@ -1383,6 +1411,22 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
           establecimientoId={establecimientoId}
           onClose={() => setShowReporteModal(false)}
           onSuccess={() => { setShowReporteModal(false); queryClient.invalidateQueries({ queryKey: ['gestiones-establecimiento', establecimientoId, year] }); queryClient.invalidateQueries({ queryKey: ['registros-gestion'] }) }}
+        />
+      )}
+
+      {firmarGestionId && (
+        <FirmaInternaModal
+          open
+          onClose={() => { setFirmarGestionId(null); setFirmarGestionNombre('') }}
+          gestionNombre={firmarGestionNombre}
+          gestionEstablecimientoId={firmarGestionId}
+          onSuccess={() => {
+            setFirmarGestionId(null)
+            setFirmarGestionNombre('')
+            queryClient.invalidateQueries({ queryKey: ['gestiones-establecimiento', establecimientoId, year] })
+            queryClient.invalidateQueries({ queryKey: ['registros-gestion'] })
+            queryClient.invalidateQueries({ queryKey: ['firmas'] })
+          }}
         />
       )}
     </div>

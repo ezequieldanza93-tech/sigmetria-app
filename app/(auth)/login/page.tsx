@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { AlertCircle, Loader2 } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -32,68 +33,195 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 bg-sig-500 rounded-2xl mb-4">
-            <span className="text-white text-2xl font-bold">S</span>
+    <div className="min-h-screen bg-surface-base flex">
+      {/* Left Panel - Branding */}
+      <div className="hidden lg:flex lg:w-1/2 bg-brand-primary relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-brand-primary to-brand-hover" />
+        <div className="relative z-10 flex flex-col justify-center px-12 xl:px-20">
+          <div className="mb-8">
+            <SigmetriaLogo className="h-16 w-16 text-white" />
           </div>
-          <h1 className="text-white text-2xl font-bold">Sigmetría HyS</h1>
-          <p className="text-slate-400 text-sm mt-1">Plataforma de Higiene y Seguridad</p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="bg-slate-800 rounded-2xl p-6 space-y-4">
-          {error && (
-            <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-lg px-4 py-3">
-              {error}
+          <h1 className="text-4xl xl:text-5xl font-heading font-bold text-white mb-4">
+            Sigmetría HyS
+          </h1>
+          <p className="text-lg text-white/90 max-w-md leading-relaxed">
+            Plataforma integral de gestión en Higiene y Seguridad laboral. 
+            Simplificá la administración de inspecciones, siniestros y documentación.
+          </p>
+          <div className="mt-12 flex items-center gap-8 text-white/80 text-sm">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-white/80" />
+              <span>Inspecciones</span>
             </div>
-          )}
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-white/80" />
+              <span>Siniestros</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-white/80" />
+              <span>Analytics</span>
+            </div>
+          </div>
+        </div>
+        {/* Decorative elements */}
+        <div className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full bg-white/10" />
+        <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full bg-white/5" />
+      </div>
 
-          <div>
-            <label className="block text-slate-300 text-sm font-medium mb-1.5">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              required
-              placeholder="usuario@sigmetria.app"
-              className="w-full bg-slate-700 border border-slate-600 text-white rounded-lg px-3 py-2.5 text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sig-500 focus:border-transparent"
-            />
+      {/* Right Panel - Login Form */}
+      <div className="flex-1 flex items-center justify-center p-6 sm:p-8">
+        <div className="w-full max-w-md">
+          {/* Mobile Logo */}
+          <div className="lg:hidden text-center mb-8">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-brand-primary rounded-2xl mb-4">
+              <SigmetriaLogo className="h-10 w-10 text-white" />
+            </div>
+            <h1 className="text-2xl font-heading font-bold text-text-primary">Sigmetría HyS</h1>
+            <p className="text-text-secondary text-sm mt-1">Plataforma de Higiene y Seguridad</p>
           </div>
 
-          <div>
-            <label className="block text-slate-300 text-sm font-medium mb-1.5">Contraseña</label>
-            <input
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              required
-              placeholder="••••••••"
-              className="w-full bg-slate-700 border border-slate-600 text-white rounded-lg px-3 py-2.5 text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sig-500 focus:border-transparent"
-            />
+          <div className="hidden lg:block mb-8">
+            <h2 className="text-2xl font-heading font-bold text-text-primary">
+              Bienvenido
+            </h2>
+            <p className="text-text-secondary mt-1">
+              Ingresá tus credenciales para acceder
+            </p>
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-sig-500 hover:bg-sig-700 disabled:opacity-50 text-white font-semibold rounded-lg py-2.5 text-sm transition-colors"
-          >
-            {loading ? 'Ingresando...' : 'Ingresar'}
-          </button>
-        </form>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {error && (
+              <div 
+                role="alert"
+                className="flex items-center gap-3 bg-danger-bg border border-danger/20 text-danger rounded-lg px-4 py-3"
+              >
+                <AlertCircle className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
+                <span className="text-sm font-medium">{error}</span>
+              </div>
+            )}
 
-        <div className="mt-6 bg-slate-800/50 rounded-xl p-4">
-          <p className="text-slate-400 text-xs font-medium mb-2">Usuarios de demo (contraseña: Demo1234!)</p>
-          <div className="space-y-1 text-xs text-slate-500">
-            <div>dev@sigmetria.app — Developer</div>
-            <div>admin.main@sigmetria.app — Admin Principal</div>
-            <div>admin.branch@sigmetria.app — Admin Branch</div>
-            <div>colaborador@sigmetria.app — Colaborador</div>
-            <div>viewer@sigmetria.app — Viewer Global</div>
-            <div>colaborador.viewer@sigmetria.app — Viewer Limitado</div>
+            <div>
+              <label 
+                htmlFor="email" 
+                className="block text-text-primary text-sm font-medium mb-2"
+              >
+                Email
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+                placeholder="usuario@empresa.com"
+                className="w-full bg-surface-base border border-border-default text-text-primary rounded-lg px-4 py-3 text-sm placeholder-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent transition-shadow"
+              />
+            </div>
+
+            <div>
+              <label 
+                htmlFor="password" 
+                className="block text-text-primary text-sm font-medium mb-2"
+              >
+                Contraseña
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                required
+                autoComplete="current-password"
+                placeholder="Ingresá tu contraseña"
+                className="w-full bg-surface-base border border-border-default text-text-primary rounded-lg px-4 py-3 text-sm placeholder-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent transition-shadow"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-brand-primary hover:bg-brand-hover disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg py-3 text-sm transition-colors flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                  <span>Ingresando...</span>
+                </>
+              ) : (
+                'Ingresar'
+              )}
+            </button>
+          </form>
+
+          {/* Demo Users Section */}
+          <div className="mt-8 pt-8 border-t border-border-subtle">
+            <p className="text-text-secondary text-xs font-medium mb-3">
+              Usuarios de demostración
+            </p>
+            <div className="bg-surface-sunken rounded-lg p-4">
+              <p className="text-text-tertiary text-xs mb-3">
+                Contraseña para todos: <code className="bg-surface-base px-1.5 py-0.5 rounded text-text-primary">Demo1234!</code>
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                <DemoUser email="dev@sigmetria.app" role="Developer" />
+                <DemoUser email="admin.main@sigmetria.app" role="Admin Principal" />
+                <DemoUser email="admin.branch@sigmetria.app" role="Admin Branch" />
+                <DemoUser email="colaborador@sigmetria.app" role="Colaborador" />
+                <DemoUser email="viewer@sigmetria.app" role="Viewer Global" />
+                <DemoUser email="colaborador.viewer@sigmetria.app" role="Viewer Limitado" />
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
+  )
+}
+
+function DemoUser({ email, role }: { email: string; role: string }) {
+  return (
+    <div className="flex flex-col">
+      <span className="text-text-primary font-medium truncate">{email}</span>
+      <span className="text-text-tertiary">{role}</span>
+    </div>
+  )
+}
+
+function SigmetriaLogo({ className }: { className?: string }) {
+  return (
+    <svg 
+      viewBox="0 0 48 48" 
+      fill="none" 
+      className={className}
+      aria-hidden="true"
+    >
+      <path
+        d="M24 4L44 40H4L24 4Z"
+        fill="currentColor"
+        fillOpacity="0.2"
+      />
+      <path
+        d="M24 4L34 24H14L24 4Z"
+        fill="currentColor"
+        fillOpacity="0.4"
+      />
+      <path
+        d="M24 12L29 22H19L24 12Z"
+        fill="currentColor"
+      />
+      <path
+        d="M10 32H38"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M14 38H34"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
   )
 }
