@@ -5,10 +5,10 @@ import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { formatDate } from '@/lib/utils'
 import { createDenuncia } from '@/lib/actions/establecimiento-info'
-import type { Denuncia, ActionResult } from '@/lib/types'
+import type { EstablecimientoDenuncia, ActionResult } from '@/lib/types'
 
 interface DenunciasTabProps {
-  denuncias: Denuncia[]
+  denuncias: EstablecimientoDenuncia[]
   establecimientoId: string
   canWrite: boolean
 }

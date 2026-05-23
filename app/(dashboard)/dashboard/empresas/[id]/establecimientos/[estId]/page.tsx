@@ -8,7 +8,7 @@ import { ActuarView } from '@/components/actuar-view'
 import { getDocTiposAplicables } from '@/lib/actions/aplicabilidad'
 import type {
   SectorEstablecimiento, Siniestro, Inspeccion, Riesgo, Documento, DocumentType,
-  Denuncia, FeedbackCliente, EmpresaDocumento, EmpleadoDocumentoLegajo, LegajoGestion,
+  EstablecimientoDenuncia, FeedbackCliente, EmpresaDocumento, EmpleadoDocumentoLegajo, LegajoGestion,
 } from '@/lib/types'
 import { AnalyticsDashboard } from '@/components/analytics/real/analytics-dashboard'
 
@@ -57,7 +57,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
   let riesgos: Riesgo[] = []
   let documentos: Documento[] = []
   let documentTypes: DocumentType[] = []
-  let denuncias: Denuncia[] = []
+  let denuncias: EstablecimientoDenuncia[] = []
   let feedbackClientes: FeedbackCliente[] = []
   let empresaDocumentos: EmpresaDocumento[] = []
   let gestionesLegajo: LegajoGestion[] = []
@@ -109,7 +109,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
         .gte('fecha_planificada', today)
         .order('fecha_planificada'),
     ])
-    denuncias = (d1.data ?? []) as unknown as Denuncia[]
+    denuncias = (d1.data ?? []) as unknown as EstablecimientoDenuncia[]
     feedbackClientes = (d2.data ?? []) as unknown as FeedbackCliente[]
     empresaDocumentos = (d3.data ?? []) as unknown as EmpresaDocumento[]
     gestionesLegajo = (d4.data ?? []) as unknown as LegajoGestion[]

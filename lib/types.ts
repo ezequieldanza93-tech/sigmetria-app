@@ -752,6 +752,14 @@ export interface ObservacionGestion {
   personas_directorio?: { nombre: string; apellido: string } | null
 }
 
+export interface EstablecimientoDenuncia {
+  id: string
+  establecimiento_id: string
+  fecha: string
+  descripcion: string
+  created_at: string
+}
+
 export type FeedbackTipo = 'positivo' | 'negativo' | 'sugerencia'
 
 export interface FeedbackCliente {

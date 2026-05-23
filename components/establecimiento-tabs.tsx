@@ -16,7 +16,7 @@ import type {
   Inspeccion,
   Documento,
   DocumentType,
-  Denuncia,
+  EstablecimientoDenuncia,
   FeedbackCliente,
   EmpresaDocumento,
   EmpleadoDocumentoLegajo,
@@ -35,7 +35,7 @@ interface EstablecimientoTabsProps {
   inspecciones: Inspeccion[]
   documentos: Documento[]
   documentTypes: DocumentType[]
-  denuncias: Denuncia[]
+  denuncias: EstablecimientoDenuncia[]
   feedbackClientes: FeedbackCliente[]
   empresaDocumentos: EmpresaDocumento[]
   gestionesLegajo: LegajoGestion[]
