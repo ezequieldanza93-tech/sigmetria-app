@@ -856,6 +856,32 @@ export interface Notificacion {
   leida?: boolean
 }
 
+// ---- Configuración de Vencimientos ----
+export type TipoEntidadVencimiento = 'empresa' | 'establecimiento' | 'persona' | 'gestion'
+
+export interface ConfiguracionVencimiento {
+  id: string
+  consultora_id: string
+  tipo_entidad: TipoEntidadVencimiento
+  nombre: string
+  tiene_vencimiento: boolean
+  dias_aviso: number
+  activo: boolean
+  created_at: string
+  updated_at: string
+}
+
+// ---- Dashboard ----
+export interface UserDashboardWidget {
+  id: string
+  user_id: string
+  widget_key: string
+  position: number
+  visible: boolean
+  created_at: string
+  updated_at: string
+}
+
 // ---- Action result ----
 export type ActionResult<T = null> =
   | { success: true; data: T }

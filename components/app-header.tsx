@@ -3,11 +3,12 @@
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Sun, Moon, Users, UserCog, Network, Gauge, Shield, Settings2, LogOut, Building2, Bell, BarChart2, CreditCard, Smartphone, ShieldCheck } from 'lucide-react'
+import { Sun, Moon, Users, UserCog, Network, Gauge, Shield, Settings2, LogOut, Building2, BarChart2, CreditCard, Smartphone, ShieldCheck, CalendarClock } from 'lucide-react'
 import { SystemRole, UserRole, ROLE_LABELS, ROLE_COLORS } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 import { usePreview } from '@/lib/contexts/preview-context'
 import { WeatherClock } from '@/components/weather-clock'
+import { NotificationDropdown } from '@/components/notification-dropdown'
 
 interface AppHeaderProps {
   fullName: string
@@ -41,24 +42,10 @@ export function AppHeader({
   const [tipoLabel, setTipoLabel] = useState<string | null>(null)
   const [isDark, setIsDark] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
-  const [notifCount, setNotifCount] = useState(0)
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     setIsDark(document.documentElement.getAttribute('data-theme') === 'dark')
-  }, [])
-
-  useEffect(() => {
-    // GET API route (stable across deploys, unlike Server Action IDs)
-    const fetchCount = () =>
-      fetch('/api/notifications/count')
-        .then(r => r.json())
-        .then(d => setNotifCount(d.count ?? 0))
-        .catch(() => {})
-
-    fetchCount()
-    const interval = setInterval(fetchCount, 60000)
-    return () => clearInterval(interval)
   }, [])
 
   useEffect(() => {
@@ -256,20 +243,8 @@ export function AppHeader({
         {/* Right: notifications + weather + consultora + dark mode + avatar */}
         <div className="flex items-center gap-3 shrink-0">
 
-          {/* Notification bell */}
-          <Link
-            href="/dashboard/notificaciones"
-            className="relative p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors"
-            aria-label="Notificaciones"
-            title="Notificaciones"
-          >
-            <Bell size={18} strokeWidth={1.75} />
-            {notifCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                {notifCount > 9 ? '9+' : notifCount}
-              </span>
-            )}
-          </Link>
+          {/* Notification bell with dropdown */}
+          <NotificationDropdown />
 
           <WeatherClock />
 
@@ -345,6 +320,7 @@ export function AppHeader({
                   </div>
                   <DropdownItem href="/dashboard/analytics" icon={BarChart2} label="Analytics" />
                   <DropdownItem href="/dashboard/configuracion/catalogacion" icon={Settings2} label="Catalogación" />
+                  <DropdownItem href="/dashboard/configuracion/vencimientos" icon={CalendarClock} label="Vencimientos" />
                   <button
                     onClick={() => {
                       setPreviewOpen(!isPreviewOpen)
