@@ -307,12 +307,7 @@ export interface SubcontratistaRubro {
 export interface Subcontratista {
   id: string
   organizacion_id: string
-  tipo_identidad_impositiva: 'CUIT' | 'CUIL' | 'CDI' | null
-  cuit: string | null
   rubro_id: string | null
-  domicilio: string | null
-  localidad_id: string | null
-  codigo_postal: string | null
   art_id: string | null
   art_numero_contrato: string | null
   tipo_establecimiento_id: string | null
@@ -322,8 +317,34 @@ export interface Subcontratista {
   created_at: string
   updated_at: string
   subcontratistas_rubros?: { nombre: string } | null
-  localidades?: { nombre: string; provincia: string } | null
   establecimientos_tipos?: { nombre: string } | null
+  organizaciones_externas?: {
+    nombre: string
+    cuit: string | null
+    domicilio: string | null
+    email: string | null
+    telefono: string | null
+    tipo_identidad_impositiva: string | null
+    localidades?: { nombre: string; provincia: string } | null
+  } | null
+}
+
+export interface SubcontratistaDocumento {
+  id: string
+  subcontratista_id: string
+  tipo_id: string
+  archivo_url: string | null
+  fecha_emision: string | null
+  fecha_vencimiento: string | null
+  observaciones: string | null
+  subido_por: string
+  created_at: string
+  updated_at: string
+  documentos_tipos?: { nombre: string } | null
+}
+
+export interface SubcontratistaWithOrg extends Subcontratista {
+  subcontratistas_documentos?: SubcontratistaDocumento[]
 }
 
 export interface Organizacion {
@@ -352,7 +373,18 @@ export interface DirectorioPersona {
   email: string | null
   organizacion_id: string | null
   notas: string | null
+  direccion: string | null
+  talle_calzado: string | null
+  talle_pantalon: string | null
+  talle_remera: string | null
+  talle_camisa: string | null
+  talle_buzo: string | null
+  talle_campera: string | null
+  beneficiario_seguro: string | null
+  contacto_emergencia_nombre: string | null
+  contacto_emergencia_telefono: string | null
   is_active: boolean
+  created_in_consultora_id: string | null
   created_at: string
   updated_at: string
   personas_tipos?: { nombre: string } | null
@@ -391,6 +423,15 @@ export interface EppPorPuesto {
   productos?: Producto | null
 }
 
+export interface TipoHora {
+  id: string
+  nombre: string
+  descripcion: string | null
+  color: string
+  is_active: boolean
+  created_at: string
+}
+
 export interface AsistenciaDiaria {
   id: string
   persona_id: string
@@ -398,10 +439,12 @@ export interface AsistenciaDiaria {
   fecha: string
   hora_entrada: string
   hora_salida: string | null
+  tipo_hora_id: string | null
   observaciones: string | null
   registrado_por: string | null
   created_at: string
   personas_directorio?: { nombre: string; apellido: string } | null
+  tipos_horas?: TipoHora | null
 }
 
 export interface PuestoDeTrabajo {
@@ -414,14 +457,22 @@ export interface PuestoDeTrabajo {
   updated_at: string
 }
 
+export type TipoRelacionLaboral = 'permanente' | 'temporal' | 'contratista' | 'pasante'
+
 export interface TrabajadorPuesto {
   id: string
   persona_id: string
   puesto_id: string
   fecha_desde: string | null
+  fecha_alta: string | null
+  fecha_baja: string | null
+  motivo_baja: string | null
+  tipo_relacion: TipoRelacionLaboral | null
   created_at: string
   personas_directorio?: DirectorioPersona
 }
+
+export type TipoPersonaSiniestro = 'trabajador_interno' | 'trabajador_externo'
 
 export interface Siniestro {
   id: string
@@ -430,8 +481,19 @@ export interface Siniestro {
   tipo: SiniestroTipo
   estado: SiniestroEstado
   fecha_ocurrencia: string
+  hora_ocurrencia: string | null
+  tipo_persona: TipoPersonaSiniestro | null
   descripcion: string | null
   dias_perdidos: number | null
+  dias_perdidos_calculados: number | null
+  fecha_baja_medica: string | null
+  fecha_alta_medica: string | null
+  tiene_denuncia_adjunta: boolean
+  tiene_evolucion_medica: boolean
+  ente_investigador: string | null
+  fecha_investigacion: string | null
+  causa_inmediata: string | null
+  causa_basica: string | null
   requiere_derivacion: boolean
   acciones_correctivas: string | null
   reportado_por: string | null
@@ -439,6 +501,18 @@ export interface Siniestro {
   updated_at: string
   persona?: DirectorioPersona
 }
+
+export interface InspeccionObservacion {
+  id: string
+  inspeccion_id: string
+  descripcion: string
+  resuelta: boolean
+  fecha_resolucion: string | null
+  resuelto_por: string | null
+  created_at: string
+}
+
+export type InspeccionEstadoVisual = 'verde' | 'amarillo' | 'rojo'
 
 export interface Inspeccion {
   id: string
@@ -449,9 +523,15 @@ export interface Inspeccion {
   inspector_id: string | null
   observaciones: string | null
   puntaje: number | null
+  ente_regulador_id: string | null
+  ente_especificar: string | null
+  adjuntos_urls: string[]
+  estado_visual: InspeccionEstadoVisual | null
   created_at: string
   updated_at: string
   inspector?: Profile
+  inspecciones_observaciones?: InspeccionObservacion[]
+  entes_reguladores?: { nombre: string; abreviatura: string } | null
 }
 
 export interface Capacitacion {
@@ -509,6 +589,7 @@ export interface DocumentType {
   aplica_empresa: boolean
   aplica_establecimiento: boolean
   aplica_empleado: boolean
+  aplica_subcontratista: boolean
   aplica_por_iso: boolean
   is_active: boolean
 }
@@ -757,10 +838,21 @@ export interface EstablecimientoDenuncia {
   establecimiento_id: string
   fecha: string
   descripcion: string
+  persona_id: string | null
+  adjuntos_urls: string[]
   created_at: string
+  personas_directorio?: { nombre: string; apellido: string } | null
 }
 
 export type FeedbackTipo = 'positivo' | 'negativo' | 'sugerencia'
+
+export interface EnteRegulador {
+  id: string
+  nombre: string
+  abreviatura: string | null
+  is_active: boolean
+  created_at: string
+}
 
 export interface FeedbackCliente {
   id: string
@@ -769,7 +861,10 @@ export interface FeedbackCliente {
   cliente: string
   tipo: FeedbackTipo
   descripcion: string
+  persona_id: string | null
+  adjuntos_urls: string[]
   created_at: string
+  personas_directorio?: { nombre: string; apellido: string } | null
 }
 
 export type EstadoGestion = 'Realizado' | 'Pendiente' | 'Planificado'
@@ -836,6 +931,7 @@ export type NotificacionEntidadTipo =
   | 'documento_empresa'
   | 'documento_establecimiento'
   | 'documento_persona'
+  | 'documento_subcontratista'
   | 'matricula'
   | 'certificado'
 
