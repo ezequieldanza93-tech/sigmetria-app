@@ -11,6 +11,9 @@ import type {
   DenunciaTipo,
   SeguimientoEstado,
   Severidad,
+  TipoRelacionLaboral,
+  TipoPersonaSiniestro,
+  InspeccionEstadoVisual,
 } from './types'
 
 export const SECTORES_PREDEFINIDOS = [
@@ -359,4 +362,40 @@ export const PROVINCIAS_AR = [
   'Santiago del Estero',
   'Tierra del Fuego',
   'Tucumán',
+] as const
+
+export const TIPO_RELACION_LABORAL_LABELS: Record<TipoRelacionLaboral, string> = {
+  permanente: 'Permanente',
+  temporal: 'Temporal',
+  contratista: 'Contratista',
+  pasante: 'Pasante',
+}
+
+export const TIPO_PERSONA_SINIESTRO_LABELS: Record<TipoPersonaSiniestro, string> = {
+  trabajador_interno: 'Trabajador interno',
+  trabajador_externo: 'Trabajador externo',
+}
+
+export const INSPECCION_ESTADO_VISUAL_LABELS: Record<InspeccionEstadoVisual, string> = {
+  verde: 'Sin observaciones',
+  amarillo: 'Observaciones parcialmente resueltas',
+  rojo: 'Observaciones abiertas',
+}
+
+export const INSPECCION_ESTADO_VISUAL_COLORS: Record<InspeccionEstadoVisual, string> = {
+  verde: 'text-green-600 bg-green-50',
+  amarillo: 'text-yellow-600 bg-yellow-50',
+  rojo: 'text-red-600 bg-red-50',
+}
+
+export const ENTES_REGULADORES_SUGERIDOS = [
+  'Ministerio de Trabajo',
+  'Superintendencia de Riesgos del Trabajo (SRT)',
+  'Gobierno de la Ciudad de Buenos Aires (GCBA)',
+  'Municipalidad',
+  'Instituto de Estadística y Registro de la Industria de la Construcción (IERIC)',
+  'Unión Obrajera de la República Argentina (UOCRA)',
+  'Administración Federal de Ingresos Públicos (AFIP)',
+  'Secretaría de Ambiente',
+  'RENATEA',
 ] as const

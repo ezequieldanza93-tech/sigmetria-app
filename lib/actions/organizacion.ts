@@ -5,6 +5,41 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import type { ActionResult } from '@/lib/types'
 
+async function detectarDuplicadoOrganizacion(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  nombre: string,
+  cuit: string | null
+): Promise<{ exacto: boolean; mismoNombre: boolean }> {
+  const result = { exacto: false, mismoNombre: false }
+
+  if (cuit) {
+    const { data: exacto } = await supabase
+      .from('organizaciones_externas')
+      .select('id')
+      .eq('cuit', cuit)
+      .eq('is_active', true)
+      .maybeSingle()
+
+    if (exacto) {
+      result.exacto = true
+      return result
+    }
+  }
+
+  const { data: mismoNom } = await supabase
+    .from('organizaciones_externas')
+    .select('id')
+    .eq('nombre', nombre)
+    .eq('is_active', true)
+    .maybeSingle()
+
+  if (mismoNom) {
+    result.mismoNombre = true
+  }
+
+  return result
+}
+
 export async function createOrganizacion(
   _prev: ActionResult<null> | null,
   formData: FormData
@@ -15,16 +50,28 @@ export async function createOrganizacion(
 
   const nombre = (formData.get('nombre') as string)?.trim()
   const tipoId = formData.get('tipo_id') as string
+  const cuit = (formData.get('cuit') as string)?.trim() || null
 
   if (!nombre) return { success: false, error: 'El nombre es obligatorio' }
   if (!tipoId) return { success: false, error: 'El tipo es obligatorio' }
 
+  const duplicado = await detectarDuplicadoOrganizacion(supabase, nombre, cuit)
+
+  if (duplicado.exacto) {
+    return { success: false, error: 'Ya existe una organización con el mismo CUIT.' }
+  }
+
+  if (duplicado.mismoNombre) {
+    return { success: false, error: 'Ya existe una organización con el mismo nombre. Verificá antes de duplicar.' }
+  }
+
   const { error } = await supabase.from('organizaciones_externas').insert({
     nombre,
     tipo_id: tipoId,
-    email: (formData.get('email') as string) || null,
-    telefono: (formData.get('telefono') as string) || null,
-    notas: (formData.get('notas') as string) || null,
+    cuit,
+    email: (formData.get('email') as string)?.trim() || null,
+    telefono: (formData.get('telefono') as string)?.trim() || null,
+    notas: (formData.get('notas') as string)?.trim() || null,
   })
 
   if (error) return { success: false, error: error.message }
@@ -44,18 +91,24 @@ export async function createOrganizacionExterna(
   const nombre = (formData.get('nombre') as string)?.trim()
   const tipoId = formData.get('tipo_id') as string
   const tipoNombre = formData.get('tipo_nombre') as string
+  const cuit = (formData.get('cuit') as string)?.trim() || null
 
   if (!nombre) return { success: false, error: 'El nombre es obligatorio' }
   if (!tipoId) return { success: false, error: 'El tipo es obligatorio' }
+
+  const duplicado = await detectarDuplicadoOrganizacion(supabase, nombre, cuit)
+  if (duplicado.exacto) return { success: false, error: 'Ya existe una organización con el mismo CUIT.' }
+  if (duplicado.mismoNombre) return { success: false, error: 'Ya existe una organización con el mismo nombre.' }
 
   const { data: org, error } = await supabase
     .from('organizaciones_externas')
     .insert({
       nombre,
       tipo_id: tipoId,
-      email: (formData.get('email') as string) || null,
-      telefono: (formData.get('telefono') as string) || null,
-      notas: (formData.get('notas') as string) || null,
+      cuit,
+      email: (formData.get('email') as string)?.trim() || null,
+      telefono: (formData.get('telefono') as string)?.trim() || null,
+      notas: (formData.get('notas') as string)?.trim() || null,
     })
     .select('id')
     .single()
@@ -69,7 +122,7 @@ export async function createOrganizacionExterna(
       .insert({
         organizacion_id: org.id,
         tipo_identidad_impositiva: (formData.get('tipo_identidad_impositiva') as string) || null,
-        cuit: (formData.get('cuit') as string) || null,
+        cuit: cuit,
         rubro_id: (formData.get('rubro_id') as string) || null,
         domicilio: (formData.get('domicilio') as string) || null,
         localidad_id: (formData.get('localidad_id') as string) || null,
@@ -120,13 +173,13 @@ export async function addOrganizacionToEstablecimiento(
   if (!tipoId) return { success: false, error: 'El tipo es obligatorio' }
 
   const { data: org, error: orgError } = await supabase
-    .from('organizaciones')
+    .from('organizaciones_externas')
     .insert({
       nombre,
       tipo_id: tipoId,
-      email: (formData.get('email') as string) || null,
-      telefono: (formData.get('telefono') as string) || null,
-      notas: (formData.get('notas') as string) || null,
+      email: (formData.get('email') as string)?.trim() || null,
+      telefono: (formData.get('telefono') as string)?.trim() || null,
+      notas: (formData.get('notas') as string)?.trim() || null,
     })
     .select('id')
     .single()

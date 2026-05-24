@@ -108,8 +108,14 @@ export function StakeholdersTab({ establecimientoId, empresaId, canWrite }: Stak
       .from('personas_establecimientos')
       .select('personas_directorio(id, nombre, apellido, dni, fecha_nacimiento, fecha_ingreso, legajo, telefono, email, tipo_id, personas_tipos(nombre), organizacion_id, notas, is_active)')
       .eq('establecimiento_id', establecimientoId)
+      .order('personas_directorio(apellido)', { ascending: true })
       .then(({ data }) => {
         const list = ((data ?? []) as unknown as { personas_directorio: DirectorioPersona }[]).map(r => r.personas_directorio).filter(Boolean)
+        list.sort((a, b) => {
+          const cmp = a.apellido.localeCompare(b.apellido, 'es')
+          if (cmp !== 0) return cmp
+          return a.nombre.localeCompare(b.nombre, 'es')
+        })
         setPersonas(list)
       })
   }, [establecimientoId])

@@ -97,8 +97,8 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
 
     const today = new Date().toISOString().split('T')[0]
     const [d1, d2, d3, d4] = await Promise.all([
-      supabase.from('establecimientos_denuncias').select('*').eq('establecimiento_id', estId).order('fecha', { ascending: false }),
-      supabase.from('establecimientos_feedback_clientes').select('*').eq('establecimiento_id', estId).order('fecha', { ascending: false }),
+      supabase.from('establecimientos_denuncias').select('*, personas_directorio(nombre, apellido)').eq('establecimiento_id', estId).order('fecha', { ascending: false }),
+      supabase.from('establecimientos_feedback_clientes').select('*, personas_directorio(nombre, apellido)').eq('establecimiento_id', estId).order('fecha', { ascending: false }),
       supabase.from('empresas_documentos').select('*, documentos_tipos(nombre)').eq('empresa_id', empresaId).order('created_at', { ascending: false }),
       supabase
         .from('gestiones_registros')

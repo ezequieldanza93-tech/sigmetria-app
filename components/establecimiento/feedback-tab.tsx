@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useEffect, useActionState, useRef } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { formatDate } from '@/lib/utils'
 import { createFeedbackCliente } from '@/lib/actions/establecimiento-info'
-import type { FeedbackCliente, FeedbackTipo, ActionResult } from '@/lib/types'
+import type { FeedbackCliente, FeedbackTipo, DirectorioPersona, ActionResult } from '@/lib/types'
 
 interface FeedbackTabProps {
   feedbackClientes: FeedbackCliente[]
@@ -25,6 +26,8 @@ const FEEDBACK_TIPO_COLORS: Record<FeedbackTipo, string> = {
   sugerencia: 'bg-blue-100 text-blue-700',
 }
 
+const MAX_ARCHIVOS = 5
+
 function FeedbackForm({
   action,
   onSuccess,
@@ -33,12 +36,25 @@ function FeedbackForm({
   onSuccess: () => void
 }) {
   const [state, formAction, pending] = useActionState(action, null)
+  const [personas, setPersonas] = useState<Pick<DirectorioPersona, 'id' | 'nombre' | 'apellido'>[]>([])
+  const [archivoCount, setArchivoCount] = useState(0)
 
   const onSuccessRef = useRef(onSuccess)
   onSuccessRef.current = onSuccess
   useEffect(() => {
     if (state?.success) onSuccessRef.current()
   }, [state])
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase
+      .from('personas_directorio')
+      .select('id, nombre, apellido')
+      .eq('is_active', true)
+      .order('apellido')
+      .order('nombre')
+      .then(({ data }) => setPersonas((data ?? []) as Pick<DirectorioPersona, 'id' | 'nombre' | 'apellido'>[]))
+  }, [])
 
   const inputCls = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sig-500'
 
@@ -68,8 +84,33 @@ function FeedbackForm({
       </div>
 
       <div>
+        <label className="text-sm font-medium text-gray-700 dark:text-white block mb-1">Persona responsable</label>
+        <select name="persona_id" className={inputCls}>
+          <option value="">Seleccioná una persona…</option>
+          {personas.map(p => (
+            <option key={p.id} value={p.id}>{p.apellido}, {p.nombre}</option>
+          ))}
+        </select>
+      </div>
+
+      <div>
         <label className="text-sm font-medium text-gray-700 dark:text-white block mb-1">Descripción *</label>
         <textarea name="descripcion" required rows={3} className={`${inputCls} resize-none`} />
+      </div>
+
+      <div>
+        <label className="text-sm font-medium text-gray-700 dark:text-white block mb-1">
+          Adjuntos {archivoCount > 0 && `(${archivoCount} archivo${archivoCount !== 1 ? 's' : ''} — máximo ${MAX_ARCHIVOS})`}
+        </label>
+        <input
+          type="file"
+          multiple
+          name="archivo"
+          accept="image/*,application/pdf"
+          className="w-full text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-sig-50 file:text-sig-700 hover:file:bg-sig-100"
+          onChange={e => setArchivoCount(e.target.files?.length ?? 0)}
+        />
+        <p className="text-xs text-gray-400 mt-1">Podés subir hasta {MAX_ARCHIVOS} archivos (imágenes o PDF)</p>
       </div>
 
       <div className="flex gap-3 pt-1">
@@ -104,7 +145,9 @@ export function FeedbackTab({ feedbackClientes, establecimientoId, canWrite }: F
                 <th className="px-5 py-3 text-gray-500 font-medium">Fecha</th>
                 <th className="px-5 py-3 text-gray-500 font-medium">Cliente</th>
                 <th className="px-5 py-3 text-gray-500 font-medium">Tipo</th>
+                <th className="px-5 py-3 text-gray-500 font-medium">Persona</th>
                 <th className="px-5 py-3 text-gray-500 font-medium">Descripción</th>
+                <th className="px-5 py-3 text-gray-500 font-medium">Adjuntos</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50 dark:divide-border-subtle">
@@ -117,7 +160,31 @@ export function FeedbackTab({ feedbackClientes, establecimientoId, canWrite }: F
                       {FEEDBACK_TIPO_LABELS[f.tipo]}
                     </span>
                   </td>
+                  <td className="px-5 py-3.5 text-gray-900 dark:text-white">
+                    {f.personas_directorio
+                      ? `${f.personas_directorio.apellido}, ${f.personas_directorio.nombre}`
+                      : <span className="text-gray-400">—</span>}
+                  </td>
                   <td className="px-5 py-3.5 text-gray-900 dark:text-white">{f.descripcion}</td>
+                  <td className="px-5 py-3.5">
+                    {f.adjuntos_urls && f.adjuntos_urls.length > 0 ? (
+                      <div className="flex gap-1 flex-wrap">
+                        {f.adjuntos_urls.map((url, i) => (
+                          <a
+                            key={i}
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-sig-600 hover:text-sig-800 underline"
+                          >
+                            Archivo {i + 1}
+                          </a>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-gray-400">—</span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

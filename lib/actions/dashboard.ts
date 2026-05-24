@@ -12,6 +12,18 @@ export async function getDashboardKpis(widgetKeys: WidgetKey[]): Promise<ActionR
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
+  // Obtener consultora_id del usuario para filtrar datos
+  const { data: membership } = await supabase
+    .from('consultoras_members')
+    .select('consultora_id')
+    .eq('user_id', user.id)
+    .eq('is_active', true)
+    .maybeSingle()
+
+  if (!membership) return { success: false, error: 'Sin membresía activa' }
+
+  const consultoraId = membership.consultora_id
+
   const result: Partial<DashboardKpiData> = {}
   const now = new Date()
   const year = now.getFullYear()
@@ -30,10 +42,40 @@ export async function getDashboardKpis(widgetKeys: WidgetKey[]): Promise<ActionR
 
   const promises: Promise<void>[] = []
 
+  // Helper para filtrar IDs de empresas del usuario
+  async function getEmpresaIds(): Promise<string[]> {
+    const { data } = await supabase
+      .from('empresas')
+      .select('id')
+      .eq('consultora_id', consultoraId)
+      .eq('is_active', true)
+    return (data ?? []).map(e => e.id)
+  }
+
+  async function getEstablecimientoIds(): Promise<string[]> {
+    const empresaIds = await getEmpresaIds()
+    if (empresaIds.length === 0) return []
+    const { data } = await supabase
+      .from('establecimientos')
+      .select('id')
+      .in('empresa_id', empresaIds)
+    return (data ?? []).map(e => e.id)
+  }
+
+  const empresaIds = widgetKeys.some(k => ['establecimientos', 'trabajadores', 'siniestros_mes', 'siniestros_acumulados', 'inspecciones_pendientes', 'tasa_siniestralidad'].includes(k))
+    ? await getEmpresaIds()
+    : []
+
+  const establecimientoIds = widgetKeys.some(k => ['siniestros_mes', 'siniestros_acumulados', 'inspecciones_pendientes', 'tasa_siniestralidad'].includes(k))
+    ? empresaIds.length > 0 ? await getEstablecimientoIds() : []
+    : []
+
   if (widgetKeys.includes('empresas_activas')) {
     promises.push(
       (async () => {
-        const { count } = await supabase.from('empresas').select('*', { count: 'exact', head: true }).eq('is_active', true)
+        const { count } = await supabase.from('empresas').select('*', { count: 'exact', head: true })
+          .eq('consultora_id', consultoraId)
+          .eq('is_active', true)
         result.empresas_activas = count ?? 0
       })(),
     )
@@ -42,7 +84,9 @@ export async function getDashboardKpis(widgetKeys: WidgetKey[]): Promise<ActionR
   if (widgetKeys.includes('establecimientos')) {
     promises.push(
       (async () => {
+        if (empresaIds.length === 0) { result.establecimientos = 0; return }
         const { count } = await supabase.from('establecimientos').select('*', { count: 'exact', head: true })
+          .in('empresa_id', empresaIds)
         result.establecimientos = count ?? 0
       })(),
     )
@@ -51,7 +95,9 @@ export async function getDashboardKpis(widgetKeys: WidgetKey[]): Promise<ActionR
   if (widgetKeys.includes('trabajadores')) {
     promises.push(
       (async () => {
+        if (empresaIds.length === 0) { result.trabajadores = 0; return }
         const { data } = await supabase.from('establecimientos').select('cantidad_trabajadores')
+          .in('empresa_id', empresaIds)
           .not('cantidad_trabajadores', 'is', null)
         result.trabajadores = (data ?? []).reduce((sum, e) => sum + ((e as { cantidad_trabajadores: number }).cantidad_trabajadores ?? 0), 0)
       })(),
@@ -61,7 +107,9 @@ export async function getDashboardKpis(widgetKeys: WidgetKey[]): Promise<ActionR
   if (widgetKeys.includes('siniestros_mes')) {
     promises.push(
       (async () => {
+        if (establecimientoIds.length === 0) { result.siniestros_mes = 0; return }
         const { count } = await supabase.from('siniestros').select('*', { count: 'exact', head: true })
+          .in('establecimiento_id', establecimientoIds)
           .gte('fecha_ocurrencia', monthStart)
           .lt('fecha_ocurrencia', monthEnd)
         result.siniestros_mes = count ?? 0
@@ -72,7 +120,9 @@ export async function getDashboardKpis(widgetKeys: WidgetKey[]): Promise<ActionR
   if (widgetKeys.includes('siniestros_acumulados')) {
     promises.push(
       (async () => {
+        if (establecimientoIds.length === 0) { result.siniestros_acumulados = 0; return }
         const { count } = await supabase.from('siniestros').select('*', { count: 'exact', head: true })
+          .in('establecimiento_id', establecimientoIds)
           .gte('fecha_ocurrencia', yearStart)
           .lt('fecha_ocurrencia', yearEnd)
         result.siniestros_acumulados = count ?? 0
@@ -83,7 +133,9 @@ export async function getDashboardKpis(widgetKeys: WidgetKey[]): Promise<ActionR
   if (widgetKeys.includes('documentos_vencer_7d')) {
     promises.push(
       (async () => {
-        const { count } = await supabase.from('documentos').select('*', { count: 'exact', head: true })
+        if (empresaIds.length === 0) { result.documentos_vencer_7d = 0; return }
+        const { count } = await supabase.from('empresas_documentos').select('*', { count: 'exact', head: true })
+          .in('empresa_id', empresaIds)
           .not('fecha_vencimiento', 'is', null)
           .gte('fecha_vencimiento', today)
           .lte('fecha_vencimiento', in7d)
@@ -95,7 +147,9 @@ export async function getDashboardKpis(widgetKeys: WidgetKey[]): Promise<ActionR
   if (widgetKeys.includes('documentos_vencer_15d')) {
     promises.push(
       (async () => {
-        const { count } = await supabase.from('documentos').select('*', { count: 'exact', head: true })
+        if (empresaIds.length === 0) { result.documentos_vencer_15d = 0; return }
+        const { count } = await supabase.from('empresas_documentos').select('*', { count: 'exact', head: true })
+          .in('empresa_id', empresaIds)
           .not('fecha_vencimiento', 'is', null)
           .gte('fecha_vencimiento', today)
           .lte('fecha_vencimiento', in15d)
@@ -107,7 +161,9 @@ export async function getDashboardKpis(widgetKeys: WidgetKey[]): Promise<ActionR
   if (widgetKeys.includes('documentos_vencer_30d')) {
     promises.push(
       (async () => {
-        const { count } = await supabase.from('documentos').select('*', { count: 'exact', head: true })
+        if (empresaIds.length === 0) { result.documentos_vencer_30d = 0; return }
+        const { count } = await supabase.from('empresas_documentos').select('*', { count: 'exact', head: true })
+          .in('empresa_id', empresaIds)
           .not('fecha_vencimiento', 'is', null)
           .gte('fecha_vencimiento', today)
           .lte('fecha_vencimiento', in30d)
@@ -119,8 +175,10 @@ export async function getDashboardKpis(widgetKeys: WidgetKey[]): Promise<ActionR
   if (widgetKeys.includes('inspecciones_pendientes')) {
     promises.push(
       (async () => {
+        if (establecimientoIds.length === 0) { result.inspecciones_pendientes = 0; return }
         const { count } = await supabase.from('inspecciones').select('*', { count: 'exact', head: true })
-          .eq('estado', 'programada')
+          .in('establecimiento_id', establecimientoIds)
+          .eq('estado', 'realizada')
         result.inspecciones_pendientes = count ?? 0
       })(),
     )
@@ -129,7 +187,9 @@ export async function getDashboardKpis(widgetKeys: WidgetKey[]): Promise<ActionR
   if (widgetKeys.includes('capacitaciones_vencidas')) {
     promises.push(
       (async () => {
+        if (empresaIds.length === 0) { result.capacitaciones_vencidas = 0; return }
         const { count } = await supabase.from('capacitaciones').select('*', { count: 'exact', head: true })
+          .in('empresa_id', empresaIds)
           .eq('estado', 'programada')
           .lt('fecha_programada', today)
         result.capacitaciones_vencidas = count ?? 0
@@ -140,7 +200,9 @@ export async function getDashboardKpis(widgetKeys: WidgetKey[]): Promise<ActionR
   if (widgetKeys.includes('capacitaciones_proximas')) {
     promises.push(
       (async () => {
+        if (empresaIds.length === 0) { result.capacitaciones_proximas = 0; return }
         const { count } = await supabase.from('capacitaciones').select('*', { count: 'exact', head: true })
+          .in('empresa_id', empresaIds)
           .eq('estado', 'programada')
           .gte('fecha_programada', today)
           .lte('fecha_programada', in30d)
@@ -152,7 +214,9 @@ export async function getDashboardKpis(widgetKeys: WidgetKey[]): Promise<ActionR
   if (widgetKeys.includes('mediciones_pendientes')) {
     promises.push(
       (async () => {
+        if (establecimientoIds.length === 0) { result.mediciones_pendientes = 0; return }
         const { count } = await supabase.from('mediciones').select('*', { count: 'exact', head: true })
+          .in('establecimiento_id', establecimientoIds)
           .gte('fecha', yearStart)
           .lt('fecha', yearEnd)
         result.mediciones_pendientes = count ?? 0
@@ -163,8 +227,7 @@ export async function getDashboardKpis(widgetKeys: WidgetKey[]): Promise<ActionR
   if (widgetKeys.includes('epp_vencidos')) {
     promises.push(
       (async () => {
-        const { count } = await supabase.from('epp_por_puesto').select('*', { count: 'exact', head: true })
-        result.epp_vencidos = count ?? 0
+        result.epp_vencidos = 0 // Deprecado — se calcula por sector
       })(),
     )
   }
@@ -172,10 +235,13 @@ export async function getDashboardKpis(widgetKeys: WidgetKey[]): Promise<ActionR
   if (widgetKeys.includes('tasa_siniestralidad')) {
     promises.push(
       (async () => {
+        if (establecimientoIds.length === 0) { result.tasa_siniestralidad = '0%'; return }
         const [{ data: estData }, { count }] = await Promise.all([
           supabase.from('establecimientos').select('cantidad_trabajadores')
+            .in('empresa_id', empresaIds)
             .not('cantidad_trabajadores', 'is', null),
           supabase.from('siniestros').select('*', { count: 'exact', head: true })
+            .in('establecimiento_id', establecimientoIds)
             .gte('fecha_ocurrencia', yearStart)
             .lt('fecha_ocurrencia', yearEnd),
         ])

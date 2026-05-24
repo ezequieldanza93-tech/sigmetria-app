@@ -117,6 +117,68 @@ function PersonaForm({
         </div>
       </div>
       <div>
+        <label className="text-sm font-medium text-gray-700 block mb-1">Dirección</label>
+        <input name="direccion" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Calle, número, localidad" />
+      </div>
+
+      <details className="group">
+        <summary className="text-sm font-medium text-gray-700 cursor-pointer hover:text-gray-900 select-none py-1">
+          Talles
+        </summary>
+        <div className="grid grid-cols-3 gap-2 mt-2">
+          <div>
+            <label className="text-xs text-gray-500 block mb-0.5">Calzado</label>
+            <input name="talle_calzado" className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm" placeholder="Ej: 42" />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 block mb-0.5">Pantalón</label>
+            <input name="talle_pantalon" className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm" placeholder="Ej: 44" />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 block mb-0.5">Remera</label>
+            <input name="talle_remera" className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm" placeholder="Ej: L" />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 block mb-0.5">Camisa</label>
+            <input name="talle_camisa" className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm" placeholder="Ej: M" />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 block mb-0.5">Buzo</label>
+            <input name="talle_buzo" className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm" placeholder="Ej: XL" />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 block mb-0.5">Campera</label>
+            <input name="talle_campera" className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm" placeholder="Ej: 48" />
+          </div>
+        </div>
+      </details>
+
+      <details className="group">
+        <summary className="text-sm font-medium text-gray-700 cursor-pointer hover:text-gray-900 select-none py-1">
+          Seguro
+        </summary>
+        <div className="mt-2">
+          <input name="beneficiario_seguro" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Nombre del beneficiario / obra social" />
+        </div>
+      </details>
+
+      <details className="group">
+        <summary className="text-sm font-medium text-gray-700 cursor-pointer hover:text-gray-900 select-none py-1">
+          Contacto de emergencia
+        </summary>
+        <div className="grid grid-cols-2 gap-2 mt-2">
+          <div>
+            <label className="text-xs text-gray-500 block mb-0.5">Nombre</label>
+            <input name="contacto_emergencia_nombre" className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm" placeholder="Nombre completo" />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 block mb-0.5">Teléfono</label>
+            <input name="contacto_emergencia_telefono" className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm" placeholder="+54 11 0000-0000" />
+          </div>
+        </div>
+      </details>
+
+      <div>
         <label className="text-sm font-medium text-gray-700 block mb-1">Notas</label>
         <textarea name="notas" rows={2} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none" placeholder="Opcional…" />
       </div>

@@ -8,7 +8,6 @@ import { createClient } from '@/lib/supabase/client'
 import { deleteOrganizacion } from '@/lib/actions/organizacion'
 import type { Organizacion, TipoOrganizacion } from '@/lib/types'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SubcontratistaInfo = Record<string, { rubro: string | null; hasVencidos: boolean }>
 
 export default function OrganizacionesExternasPage() {
@@ -85,7 +84,6 @@ export default function OrganizacionesExternasPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const subTipoNombre = tiposOrg.find(t => t.nombre === 'Subcontratista')
   const isSubTipo = (tipoId: string) => {
     const tipo = tiposOrg.find(t => t.id === tipoId)
     return tipo?.nombre === 'Subcontratista'

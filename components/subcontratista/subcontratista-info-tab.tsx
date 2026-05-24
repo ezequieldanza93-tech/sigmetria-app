@@ -1,7 +1,6 @@
 'use client'
 
 import { formatCUIT } from '@/lib/utils'
-import type { Subcontratista } from '@/lib/types'
 
 interface Props {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -11,7 +10,6 @@ interface Props {
   rubro: { nombre: string } | null
   tipoEst: { nombre: string } | null
   puedeEditar: boolean
-  subcontratistaId: string
 }
 
 function DataRow({ label, value }: { label: string; value: React.ReactNode }) {
@@ -31,7 +29,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   )
 }
 
-export function SubcontratistaInfoTab({ sub, org, rubro, tipoEst, subcontratistaId }: Props) {
+export function SubcontratistaInfoTab({ sub, org, rubro, tipoEst }: Props) {
   return (
     <div className="max-w-3xl">
       <div className="bg-surface-elevated rounded-xl border border-border-subtle p-6 space-y-6">

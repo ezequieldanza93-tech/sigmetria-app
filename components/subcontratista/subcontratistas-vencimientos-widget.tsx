@@ -2,8 +2,6 @@
 
 import Link from 'next/link'
 import { useSubcontratistasConVencimientos } from '@/lib/queries/subcontratista'
-import { formatDate } from '@/lib/utils'
-
 export function SubcontratistasVencimientosWidget() {
   const hoy = new Date()
   const fechaDesde = hoy.toISOString().split('T')[0]

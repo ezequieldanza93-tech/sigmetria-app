@@ -4,27 +4,6 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import type { ActionResult } from '@/lib/types'
 
-export async function updateSectorTrabajadores(
-  sectorId: string,
-  cantidad: number,
-  establecimientoId: string,
-  empresaId: string
-): Promise<ActionResult<null>> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'No autenticado' }
-
-  const { error } = await supabase
-    .from('establecimientos_sectores')
-    .update({ cantidad_trabajadores: cantidad })
-    .eq('id', sectorId)
-
-  if (error) return { success: false, error: error.message }
-
-  revalidatePath(`/dashboard/empresas/${empresaId}/establecimientos/${establecimientoId}`)
-  return { success: true, data: null }
-}
-
 export async function createSectorCustom(
   establecimientoId: string,
   empresaId: string,
@@ -35,20 +14,38 @@ export async function createSectorCustom(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
-  const nombre = formData.get('nombre') as string
-  if (!nombre?.trim()) return { success: false, error: 'El nombre es obligatorio' }
-
-  const cantidadStr = formData.get('cantidad_trabajadores') as string
-  const cantidad = cantidadStr ? parseInt(cantidadStr, 10) : 0
+  const nombre = (formData.get('nombre') as string)?.trim()
+  if (!nombre) return { success: false, error: 'El nombre es obligatorio' }
 
   const { error } = await supabase
     .from('establecimientos_sectores')
     .insert({
       establecimiento_id: establecimientoId,
-      nombre: nombre.trim(),
+      nombre,
       es_custom: true,
-      cantidad_trabajadores: isNaN(cantidad) ? 0 : cantidad,
+      cantidad_trabajadores: 0, // Se calcula automáticamente vía trigger
     })
+
+  if (error) return { success: false, error: error.message }
+
+  revalidatePath(`/dashboard/empresas/${empresaId}/establecimientos/${establecimientoId}`)
+  return { success: true, data: null }
+}
+
+export async function updateSectorTrabajadores(
+  sectorId: string,
+  cantidadTrabajadores: number,
+  establecimientoId: string,
+  empresaId: string
+): Promise<ActionResult<null>> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'No autenticado' }
+
+  const { error } = await supabase
+    .from('establecimientos_sectores')
+    .update({ cantidad_trabajadores: Math.max(0, cantidadTrabajadores) })
+    .eq('id', sectorId)
 
   if (error) return { success: false, error: error.message }
 
@@ -65,7 +62,6 @@ export async function deleteSector(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
-  // Solo se pueden borrar sectores custom
   const { data: sector } = await supabase
     .from('establecimientos_sectores')
     .select('es_custom')

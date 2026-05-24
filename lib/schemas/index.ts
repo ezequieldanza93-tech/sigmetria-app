@@ -367,7 +367,23 @@ export const createPersonaFormSchema = z.object({
   apellido: z.string().min(1, 'Apellido requerido'),
   tipo_id: z.string().uuid(),
   dni: z.string().nullable().optional(),
+  legajo: z.string().nullable().optional(),
+  fecha_nacimiento: z.string().nullable().optional(),
   fecha_ingreso: z.string().nullable().optional(),
+  telefono: z.string().nullable().optional(),
+  email: z.string().nullable().optional(),
+  direccion: z.string().nullable().optional(),
+  organizacion_id: z.string().uuid().nullable().optional(),
+  notas: z.string().nullable().optional(),
+  talle_calzado: z.string().nullable().optional(),
+  talle_pantalon: z.string().nullable().optional(),
+  talle_remera: z.string().nullable().optional(),
+  talle_camisa: z.string().nullable().optional(),
+  talle_buzo: z.string().nullable().optional(),
+  talle_campera: z.string().nullable().optional(),
+  beneficiario_seguro: z.string().nullable().optional(),
+  contacto_emergencia_nombre: z.string().nullable().optional(),
+  contacto_emergencia_telefono: z.string().nullable().optional(),
 })
 
 export const createAsistenciaFormSchema = z.object({
@@ -446,3 +462,77 @@ export const uuidParamSchema = z.string().uuid('ID inválido')
 export const dateStringSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha inválido (YYYY-MM-DD)')
 export const cuitSchema = z.string().regex(/^\d{11}$/, 'CUIT debe tener 11 dígitos')
 export const emailSchema = z.string().email('Email inválido').nullable().optional()
+
+// ---- New enums for refactored entities ----
+export const tipoRelacionLaboralSchema = z.enum(['permanente', 'temporal', 'contratista', 'pasante'])
+export type TipoRelacionLaboral = z.infer<typeof tipoRelacionLaboralSchema>
+
+export const tipoPersonaSiniestroSchema = z.enum(['trabajador_interno', 'trabajador_externo'])
+export type TipoPersonaSiniestro = z.infer<typeof tipoPersonaSiniestroSchema>
+
+export const inspeccionEstadoVisualSchema = z.enum(['verde', 'amarillo', 'rojo'])
+export type InspeccionEstadoVisual = z.infer<typeof inspeccionEstadoVisualSchema>
+
+// ---- Updated schemas ----
+
+export const directorioPersonaExtendedSchema = z.object({
+  id: z.string().uuid(),
+  tipo_id: z.string().uuid(),
+  nombre: z.string().min(1),
+  apellido: z.string().min(1),
+  dni: z.string().nullable(),
+  fecha_nacimiento: z.string().nullable(),
+  fecha_ingreso: z.string().nullable(),
+  legajo: z.string().nullable(),
+  telefono: z.string().nullable(),
+  email: z.string().nullable(),
+  organizacion_id: z.string().uuid().nullable(),
+  notas: z.string().nullable(),
+  direccion: z.string().nullable(),
+  talle_calzado: z.string().nullable(),
+  talle_pantalon: z.string().nullable(),
+  talle_remera: z.string().nullable(),
+  talle_camisa: z.string().nullable(),
+  talle_buzo: z.string().nullable(),
+  talle_campera: z.string().nullable(),
+  beneficiario_seguro: z.string().nullable(),
+  contacto_emergencia_nombre: z.string().nullable(),
+  contacto_emergencia_telefono: z.string().nullable(),
+  is_active: z.boolean(),
+  created_in_consultora_id: z.string().uuid().nullable(),
+  created_at: z.string().datetime(),
+  updated_at: z.string().datetime(),
+})
+
+export const puestosPersonasSchema = z.object({
+  id: z.string().uuid(),
+  persona_id: z.string().uuid(),
+  puesto_id: z.string().uuid(),
+  fecha_desde: z.string().nullable(),
+  fecha_alta: z.string().nullable(),
+  fecha_baja: z.string().nullable(),
+  motivo_baja: z.string().nullable(),
+  tipo_relacion: tipoRelacionLaboralSchema.nullable(),
+  created_at: z.string().datetime(),
+})
+
+export const siniestroExtendedSchema = siniestroSchema.extend({
+  hora_ocurrencia: z.string().nullable(),
+  tipo_persona: tipoPersonaSiniestroSchema.nullable(),
+  dias_perdidos_calculados: z.number().int().nullable(),
+  fecha_baja_medica: z.string().nullable(),
+  fecha_alta_medica: z.string().nullable(),
+  tiene_denuncia_adjunta: z.boolean(),
+  tiene_evolucion_medica: z.boolean(),
+  ente_investigador: z.string().nullable(),
+  fecha_investigacion: z.string().nullable(),
+  causa_inmediata: z.string().nullable(),
+  causa_basica: z.string().nullable(),
+})
+
+export const inspeccionExtendedSchema = inspeccionSchema.extend({
+  ente_regulador_id: z.string().uuid().nullable(),
+  ente_especificar: z.string().nullable(),
+  adjuntos_urls: z.array(z.string()),
+  estado_visual: inspeccionEstadoVisualSchema.nullable(),
+})

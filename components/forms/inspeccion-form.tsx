@@ -1,10 +1,11 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import type { ActionResult } from '@/lib/types'
+import { createClient } from '@/lib/supabase/client'
+import type { ActionResult, EnteRegulador } from '@/lib/types'
 
 type InspeccionFormAction = (
   prevState: ActionResult<null> | null,
@@ -17,6 +18,18 @@ interface InspeccionFormProps {
 }
 
 export function InspeccionForm({ action, onSuccess }: InspeccionFormProps) {
+  const [entes, setEntes] = useState<EnteRegulador[]>([])
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase
+      .from('entes_reguladores')
+      .select('id, nombre, abreviatura')
+      .eq('is_active', true)
+      .order('nombre')
+      .then(({ data }) => setEntes((data ?? []) as EnteRegulador[]))
+  }, [])
+
   const [state, formAction, isPending] = useActionState(
     async (prev: ActionResult<null> | null, fd: FormData) => {
       const result = await action(prev, fd)
@@ -35,7 +48,7 @@ export function InspeccionForm({ action, onSuccess }: InspeccionFormProps) {
       )}
 
       <Input
-        label="Fecha Programada"
+        label="Fecha *"
         name="fecha_programada"
         type="date"
         required
@@ -57,10 +70,26 @@ export function InspeccionForm({ action, onSuccess }: InspeccionFormProps) {
         placeholder="85"
       />
 
+      <div>
+        <label className="text-xs text-gray-600 block mb-1">Ente regulador</label>
+        <select name="ente_regulador_id" className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white">
+          <option value="">Seleccioná un ente…</option>
+          {entes.map(e => (
+            <option key={e.id} value={e.id}>{e.nombre}</option>
+          ))}
+        </select>
+      </div>
+
+      <Input
+        label="Otro ente (especificar)"
+        name="ente_especificar"
+        placeholder="Nombre del ente si no está en la lista"
+      />
+
       <Textarea
         label="Observaciones"
         name="observaciones"
-        placeholder="Detallar observaciones..."
+        placeholder="Detallar resultados de la inspección..."
         rows={3}
       />
 

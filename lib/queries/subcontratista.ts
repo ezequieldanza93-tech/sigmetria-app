@@ -4,7 +4,6 @@ import type {
   Subcontratista,
   SubcontratistaDocumento,
   DocumentType,
-  Organizacion,
 } from '@/lib/types'
 
 // ──────────────────────────────────────────────

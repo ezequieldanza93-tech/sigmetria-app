@@ -2,16 +2,15 @@
 
 import { useActionState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import type { ActionResult } from '@/lib/types'
 
-type SectorFormAction = (
-  prevState: ActionResult<null> | null,
-  formData: FormData
+type FormAction = (
+  prev: ActionResult<null> | null,
+  fd: FormData
 ) => Promise<ActionResult<null>>
 
 interface SectorFormProps {
-  action: SectorFormAction
+  action: FormAction
   onSuccess: () => void
 }
 
@@ -33,25 +32,24 @@ export function SectorForm({ action, onSuccess }: SectorFormProps) {
         </div>
       )}
 
-      <Input
-        label="Nombre del Sector"
-        name="nombre"
-        required
-        placeholder="Depósito"
-      />
+      <div>
+        <label className="text-xs text-gray-600 block mb-1">Nombre del sector *</label>
+        <input
+          name="nombre"
+          type="text"
+          required
+          placeholder="Ej: Producción, Mantenimiento…"
+          className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+        />
+      </div>
 
-      <Input
-        label="Cantidad de Trabajadores"
-        name="cantidad_trabajadores"
-        type="number"
-        min="0"
-        defaultValue="0"
-        placeholder="0"
-      />
+      <p className="text-xs text-gray-400">
+        Los trabajadores se asignan desde los puestos de trabajo. La cantidad se calcula automáticamente.
+      </p>
 
       <div className="flex gap-3 pt-1">
         <Button type="submit" disabled={isPending}>
-          {isPending ? 'Guardando...' : 'Agregar Sector'}
+          {isPending ? 'Guardando...' : 'Crear Sector'}
         </Button>
       </div>
     </form>
