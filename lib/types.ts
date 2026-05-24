@@ -5,6 +5,7 @@ export type UserRole =
   | 'colaborador'
   | 'full_viewer'
   | 'colaborador_viewer'
+  | 'visualizador_comentarista'
 
 export type TipoEstablecimiento =
   | 'industria'
@@ -655,6 +656,7 @@ export const ROLE_LABELS: Record<UserRole | SystemRole, string> = {
   colaborador: 'Colaborador',
   full_viewer: 'Viewer Global',
   colaborador_viewer: 'Viewer Limitado',
+  visualizador_comentarista: 'Visualizador Comentarista',
 }
 
 export const ROLE_COLORS: Record<UserRole | 'developer', string> = {
@@ -664,6 +666,7 @@ export const ROLE_COLORS: Record<UserRole | 'developer', string> = {
   colaborador: 'bg-blue-100 text-blue-800',
   full_viewer: 'bg-green-100 text-green-800',
   colaborador_viewer: 'bg-gray-100 text-gray-800',
+  visualizador_comentarista: 'bg-teal-100 text-teal-800',
 }
 
 export const RIESGO_NIVEL_COLORS: Record<RiesgoNivel, string> = {

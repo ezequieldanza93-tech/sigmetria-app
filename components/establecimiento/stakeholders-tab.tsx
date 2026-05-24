@@ -102,6 +102,8 @@ export function StakeholdersTab({ establecimientoId, empresaId, canWrite }: Stak
   const [orgsOpen, setOrgsOpen] = useState(true)
   const [showAddPersona, setShowAddPersona] = useState(false)
   const [showAddOrg, setShowAddOrg] = useState(false)
+  const [personaSearch, setPersonaSearch] = useState('')
+  const [orgSearch, setOrgSearch] = useState('')
 
   const loadPersonas = useCallback(() => {
     return createClient()
@@ -147,9 +149,12 @@ export function StakeholdersTab({ establecimientoId, empresaId, canWrite }: Stak
 
   const filtered = personas === null
     ? null
-    : activeTipo === 'todos'
-      ? personas
-      : personas.filter(p => p.tipo_id === activeTipo)
+    : (activeTipo === 'todos' ? personas : personas.filter(p => p.tipo_id === activeTipo))
+        .filter(p => {
+          if (!personaSearch) return true
+          const q = personaSearch.toLowerCase()
+          return p.apellido.toLowerCase().includes(q) || p.nombre.toLowerCase().includes(q) || (p.dni ?? '').includes(q)
+        })
 
   return (
     <div className="space-y-4">
@@ -203,6 +208,16 @@ export function StakeholdersTab({ establecimientoId, empresaId, canWrite }: Stak
                   </button>
                 )
               })}
+            </div>
+
+            <div className="px-5 py-2 border-b border-gray-100">
+              <input
+                type="text"
+                placeholder="Buscar por apellido, nombre o DNI…"
+                value={personaSearch}
+                onChange={e => setPersonaSearch(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
+              />
             </div>
 
             {filtered === null ? (
@@ -300,6 +315,16 @@ export function StakeholdersTab({ establecimientoId, empresaId, canWrite }: Stak
 
         {orgsOpen && (
           <div className="border-t border-gray-100">
+            <div className="px-5 py-2 border-b border-gray-100">
+              <input
+                type="text"
+                placeholder="Buscar organización…"
+                value={orgSearch}
+                onChange={e => setOrgSearch(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
+              />
+            </div>
+
             {orgExternas === null ? (
               <div className="p-8 text-center text-gray-400 text-sm">Cargando…</div>
             ) : orgExternas.length === 0 ? (
@@ -317,7 +342,10 @@ export function StakeholdersTab({ establecimientoId, empresaId, canWrite }: Stak
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50 dark:divide-border-subtle">
-                  {orgExternas.map(o => (
+                  {(orgExternas ?? []).filter(o => {
+                    if (!orgSearch) return true
+                    return o.nombre.toLowerCase().includes(orgSearch.toLowerCase())
+                  }).map(o => (
                     <tr key={o.id} className="hover:bg-gray-50">
                       <td className="px-5 py-3.5 font-medium text-gray-900 dark:text-white">{o.nombre}</td>
                       <td className="px-5 py-3.5">

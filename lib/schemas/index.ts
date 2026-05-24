@@ -9,6 +9,7 @@ export const userRoleSchema = z.enum([
   'colaborador',
   'full_viewer',
   'colaborador_viewer',
+  'visualizador_comentarista',
 ])
 export type UserRole = z.infer<typeof userRoleSchema>
 

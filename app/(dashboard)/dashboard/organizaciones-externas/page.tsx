@@ -14,6 +14,7 @@ export default function OrganizacionesExternasPage() {
   const [organizaciones, setOrganizaciones] = useState<Organizacion[] | null>(null)
   const [tiposOrg, setTiposOrg] = useState<TipoOrganizacion[]>([])
   const [activeTipo, setActiveTipo] = useState<string>('todos')
+  const [search, setSearch] = useState('')
   const router = useRouter()
   const [subcontratistaInfo, setSubcontratistaInfo] = useState<SubcontratistaInfo>({})
 
@@ -91,9 +92,12 @@ export default function OrganizacionesExternasPage() {
 
   const filtered = organizaciones === null
     ? null
-    : activeTipo === 'todos'
-      ? organizaciones
-      : organizaciones.filter(o => o.tipo_id === activeTipo)
+    : (activeTipo === 'todos' ? organizaciones : organizaciones.filter(o => o.tipo_id === activeTipo))
+        .filter(o => {
+          if (!search) return true
+          const q = search.toLowerCase()
+          return o.nombre.toLowerCase().includes(q) || (o.email ?? '').toLowerCase().includes(q)
+        })
 
   async function handleDelete(id: string) {
     if (!confirm('¿Eliminar esta organización?')) return
@@ -111,6 +115,17 @@ export default function OrganizacionesExternasPage() {
         <Link href="/dashboard/organizaciones-externas/nueva">
           <Button>+ Nueva Organización</Button>
         </Link>
+      </div>
+
+      {/* Search */}
+      <div className="mb-4">
+        <input
+          type="text"
+          placeholder="Buscar por nombre o email…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="w-full max-w-md border border-gray-300 rounded-lg px-3 py-2 text-sm"
+        />
       </div>
 
       {/* Filter tabs */}

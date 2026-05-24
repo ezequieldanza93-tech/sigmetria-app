@@ -1,8 +1,8 @@
 import { z } from 'zod'
 
-export const uuid = z.uuid()
-export const email = z.email()
-export const url = z.url().nullable().optional()
+export const uuid = z.string().uuid()
+export const email = z.string().email().nullable().optional()
+export const url = z.string().url().nullable().optional()
 
 export const tipoEstablecimiento = z.enum([
   'industria', 'agro', 'construccion', 'comercio', 'administrativo',
@@ -11,24 +11,19 @@ export const tipoEstablecimiento = z.enum([
 ])
 
 export const userRole = z.enum([
-  'full_access_main', 'branch_admin', 'collaborator', 'viewer_global', 'viewer_limited',
+  'full_access_main', 'full_access_branch', 'colaborador', 'full_viewer',
+  'colaborador_viewer', 'visualizador_comentarista',
 ])
 
-export const siniestroTipo = z.enum(['accidente', 'incidente', 'enfermedad', 'cuasi'])
+export const siniestroTipo = z.enum(['accidente', 'incidente', 'casi_accidente', 'enfermedad_profesional'])
 
-export const siniestroEstado = z.enum([
-  'pendiente', 'investigacion', 'cerrado', 'archivado',
-])
+export const siniestroEstado = z.enum(['pendiente', 'en_investigacion', 'cerrado'])
 
-export const inspeccionEstado = z.enum(['pendiente', 'aprobada', 'observada', 'rechazada'])
+export const inspeccionEstado = z.enum(['programada', 'realizada', 'con_observaciones', 'cancelada'])
 
 export const riesgoNivel = z.enum(['bajo', 'medio', 'alto', 'critico'])
 
-export const documentoTipo = z.enum(['reglamento', 'procedimiento', 'matriz', 'certificado', 'otro'])
-
-// ──────────────────────────────────────
-// Action-specific schemas
-// ──────────────────────────────────────
+export const documentoTipo = z.enum(['habilitacion', 'seguro', 'certificado', 'procedimiento', 'instructivo', 'otro'])
 
 export const establecimientoCreateSchema = z.object({
   nombre: z.string().min(1, { error: 'El nombre es obligatorio' }).max(200),
@@ -36,7 +31,7 @@ export const establecimientoCreateSchema = z.object({
   direccion: z.string().nullable().optional(),
   localidad_id: z.string().nullable().optional(),
   telefono: z.string().nullable().optional(),
-  email: email.nullable().optional(),
+  email: email,
   responsable: z.string().nullable().optional(),
   photo_site: z.string().nullable().optional(),
   ubicacion: z.string().nullable().optional(),
@@ -58,8 +53,8 @@ export const gestionPlanificarMultiSchema = z.object({
 })
 
 export const usuarioInviteSchema = z.object({
-  email: z.email(),
-  full_name: z.string().min(1).max(200),
+  email: z.string().email({ error: 'Email inválido' }),
+  full_name: z.string().min(1, { error: 'El nombre es obligatorio' }),
   role: userRole,
 })
 
@@ -68,7 +63,7 @@ export const consultoraCreateSchema = z.object({
   ruc: z.string().nullable().optional(),
   direccion: z.string().nullable().optional(),
   telefono: z.string().nullable().optional(),
-  email: email.nullable().optional(),
+  email: email,
   website: z.string().nullable().optional(),
   logo_url: z.string().nullable().optional(),
 })
@@ -76,7 +71,7 @@ export const consultoraCreateSchema = z.object({
 export const consultoraUpdateSchema = z.object({
   nombre: z.string().min(1, { error: 'El nombre es obligatorio' }).max(200),
   telefono: z.string().nullable().optional(),
-  email: z.email().nullable().optional(),
+  email: z.string().email().nullable().optional(),
   website: z.string().nullable().optional(),
   logo_url: z.string().nullable().optional(),
   social_links: z.record(z.string(), z.string()).nullable().optional(),
@@ -100,7 +95,7 @@ export const personaDirectorioCreateSchema = z.object({
   tipo_id: z.string().nullable().optional(),
   nombre: z.string().min(1).max(100),
   apellido: z.string().min(1).max(100),
-  email: email.nullable().optional(),
+  email: email,
   telefono: z.string().nullable().optional(),
   dni: z.string().nullable().optional(),
   fecha_ingreso: z.string().nullable().optional(),
@@ -110,7 +105,7 @@ export const personaDirectorioCreateSchema = z.object({
 
 export const feedbackCreateSchema = z.object({
   establecimiento_id: z.string().min(1),
-  tipo: z.enum(['positivo', 'negativo', 'mejora', 'sugerencia']),
+  tipo: z.enum(['positivo', 'negativo', 'sugerencia']),
   descripcion: z.string().min(1).max(2000),
   fecha: z.string().min(1),
 })

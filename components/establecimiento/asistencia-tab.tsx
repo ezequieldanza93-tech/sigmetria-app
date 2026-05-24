@@ -20,6 +20,7 @@ export function AsistenciaTab({ establecimientoId, empresaId, canWrite }: Asiste
   const [tiposHora, setTiposHora] = useState<TipoHora[]>([])
   const [showForm, setShowForm] = useState(false)
   const [horarioHoy, setHorarioHoy] = useState<{ inicio: string; fin: string } | null>(null)
+  const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => {
     const supabase = createClient()
@@ -28,7 +29,7 @@ export function AsistenciaTab({ establecimientoId, empresaId, canWrite }: Asiste
 
     supabase
       .from('asistencia_diaria')
-      .select('id, fecha, hora_entrada, hora_salida, tipo_hora_id, observaciones, personas_directorio(nombre, apellido)')
+      .select('id, fecha, hora_entrada, hora_salida, tipo_hora_id, observaciones, personas_directorio(nombre, apellido), tipos_horas(id, nombre, color)')
       .eq('establecimiento_id', establecimientoId)
       .eq('fecha', today)
       .order('hora_entrada', { ascending: true })
@@ -61,7 +62,7 @@ export function AsistenciaTab({ establecimientoId, empresaId, canWrite }: Asiste
       .eq('is_active', true)
       .order('nombre')
       .then(({ data }) => setTiposHora((data ?? []) as TipoHora[]))
-  }, [establecimientoId])
+  }, [establecimientoId, refreshKey])
 
   const [state, formAction, pending] = useActionState(
     createAsistencia.bind(null, establecimientoId, empresaId),
@@ -71,7 +72,7 @@ export function AsistenciaTab({ establecimientoId, empresaId, canWrite }: Asiste
   useEffect(() => {
     if (state?.success) {
       setShowForm(false)
-      setRegistros(null)
+      setRefreshKey(k => k + 1)
     }
   }, [state])
 

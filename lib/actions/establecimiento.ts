@@ -21,24 +21,24 @@ const establecimientoActionSchema = z.object({
   aplica_iso_45001: z.literal('on').optional(),
 })
 
-async function parseUbicacion(raw: string | null): Promise<{ latitude: number | null; longitude: number | null }> {
-  if (!raw?.trim()) return { latitude: null, longitude: null }
+async function parseUbicacion(raw: string | null): Promise<{ latitud: number | null; longitud: number | null }> {
+  if (!raw?.trim()) return { latitud: null, longitud: null }
   const s = raw.trim()
 
   const urlMatch = s.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/) ?? s.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/)
-  if (urlMatch) return { latitude: parseFloat(urlMatch[1]), longitude: parseFloat(urlMatch[2]) }
+  if (urlMatch) return { latitud: parseFloat(urlMatch[1]), longitud: parseFloat(urlMatch[2]) }
 
   const directMatch = s.match(/^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/)
-  if (directMatch) return { latitude: parseFloat(directMatch[1]), longitude: parseFloat(directMatch[2]) }
+  if (directMatch) return { latitud: parseFloat(directMatch[1]), longitud: parseFloat(directMatch[2]) }
 
   try {
     const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(s)}&format=json&limit=1`
     const res = await fetch(url, { headers: { 'User-Agent': 'sigmetria-hys-app/1.0' } })
     const data = await res.json()
-    if (data?.[0]) return { latitude: parseFloat(data[0].lat), longitude: parseFloat(data[0].lon) }
+    if (data?.[0]) return { latitud: parseFloat(data[0].lat), longitud: parseFloat(data[0].lon) }
   } catch { console.error('[parseUbicacion] Error al geocodificar dirección'); /* fall through */ }
 
-  return { latitude: null, longitude: null }
+  return { latitud: null, longitud: null }
 }
 
 async function saveHorarios(
@@ -159,7 +159,7 @@ export async function createEstablecimiento(
   }
   const { nombre, tipo_id, domicilio, localidad_id, codigo_postal, actividad_principal, description, ubicacion_gmaps, aplica_iso_45001 } = parsed.data
 
-  const { latitude, longitude } = await parseUbicacion(ubicacion_gmaps ?? null)
+  const { latitud, longitud } = await parseUbicacion(ubicacion_gmaps ?? null)
 
   const { data, error } = await supabase
     .from('establecimientos')
@@ -172,8 +172,8 @@ export async function createEstablecimiento(
       codigo_postal: codigo_postal ?? null,
       actividad_principal: actividad_principal ?? null,
       description: description ?? null,
-      latitude,
-      longitude,
+      latitud,
+      longitud,
       aplica_iso_45001: aplica_iso_45001 === 'on',
     })
     .select('id')
@@ -243,7 +243,7 @@ export async function updateEstablecimiento(
   }
   const { nombre, tipo_id, domicilio, localidad_id, codigo_postal, actividad_principal, description, ubicacion_gmaps, aplica_iso_45001 } = parsed.data
 
-  const { latitude, longitude } = await parseUbicacion(ubicacion_gmaps ?? null)
+  const { latitud, longitud } = await parseUbicacion(ubicacion_gmaps ?? null)
 
   const foto = formData.get('foto') as File | null
   const photo_site = foto?.size ? await uploadFoto(foto, id) : undefined
@@ -276,8 +276,8 @@ export async function updateEstablecimiento(
       codigo_postal: codigo_postal ?? null,
       actividad_principal: actividad_principal ?? null,
       description: description ?? null,
-      latitude,
-      longitude,
+      latitud,
+      longitud,
       aplica_iso_45001: aplica_iso_45001 === 'on',
       ...(photo_site !== undefined && { photo_site }),
       ...(plansUpdate.floor_plan_pdf_url !== undefined && { floor_plan_pdf_url: plansUpdate.floor_plan_pdf_url }),
