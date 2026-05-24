@@ -71,30 +71,31 @@ export default async function SubcontratistaDetailPage({ params, searchParams }:
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let establecimientosVinculados: any[] = []
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const fetchPromises: Promise<any>[] = []
+  const asyncFns: (() => Promise<void>)[] = []
 
   if (tab === 'documentos') {
-    fetchPromises.push(
-      supabase
+    asyncFns.push(async () => {
+      const { data: docs } = await supabase
         .from('subcontratistas_documentos')
         .select('*, documentos_tipos!tipo_id(nombre)')
         .eq('subcontratista_id', id)
         .order('created_at', { ascending: false })
-        .then(r => { documentos = r.data ?? [] }),
-      supabase
+      documentos = docs ?? []
+    })
+    asyncFns.push(async () => {
+      const { data: dt } = await supabase
         .from('documentos_tipos')
         .select('id, nombre, aplica_subcontratista, is_active')
         .eq('is_active', true)
         .eq('aplica_subcontratista', true)
         .order('nombre')
-        .then(r => { documentTypes = r.data ?? [] }),
-    )
+      documentTypes = dt ?? []
+    })
   }
 
   if (tab === 'establecimientos') {
-    fetchPromises.push(
-      supabase
+    asyncFns.push(async () => {
+      const { data: est } = await supabase
         .from('organizaciones_establecimientos')
         .select(`
           establecimiento_id,
@@ -105,14 +106,12 @@ export default async function SubcontratistaDetailPage({ params, searchParams }:
           )
         `)
         .eq('organizacion_id', sub.organizacion_id)
-        .then(r => {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          establecimientosVinculados = (r.data ?? []).map((d: any) => d.establecimientos).filter(Boolean)
-        }),
-    )
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      establecimientosVinculados = (est ?? []).map((d: any) => d.establecimientos).filter(Boolean)
+    })
   }
 
-  await Promise.all(fetchPromises)
+  await Promise.all(asyncFns.map(fn => fn()))
 
   return (
     <div className="p-6">
