@@ -56,7 +56,7 @@ export default async function BillingPage() {
 
   const admin = createAdminClient()
 
-  const [{ data: sub }, { data: plans }, { data: membersCount }, { data: consultora }] = await Promise.all([
+  const [{ data: sub }, { data: plans }, { data: planFeatures }, { data: membersCount }, { data: consultora }] = await Promise.all([
     admin
       .from('subscriptions')
       .select(`
@@ -67,10 +67,13 @@ export default async function BillingPage() {
       .single(),
     admin
       .from('plans')
-      .select('id, nombre, slug, tipo, precio_mensual_neto, precio_anual_neto, iva_porcentaje, max_colaboradores, max_empresas, max_establecimientos')
+      .select('id, nombre, slug, tipo, precio_mensual_neto, precio_anual_neto, iva_porcentaje, max_colaboradores, max_empresas, max_establecimientos, max_gestiones_registros, max_horarios_registros, descripcion_corta, destacado, sort_order, precio_extra_seat_neto')
       .eq('is_active', true)
-      .not('tipo', 'in', '("trial","empresa")')
-      .order('precio_mensual_neto', { ascending: true }),
+      .eq('is_visible', true)
+      .order('sort_order', { ascending: true }),
+    admin
+      .from('plan_features')
+      .select('plan_id, feature_key, habilitado'),
     admin
       .from('consultoras_members')
       .select('id', { count: 'exact', head: true })
@@ -82,6 +85,14 @@ export default async function BillingPage() {
       .eq('id', membership.consultora_id)
       .single(),
   ])
+
+  const featuresByPlan: Record<string, Record<string, boolean>> = {}
+  if (planFeatures) {
+    for (const pf of planFeatures) {
+      if (!featuresByPlan[pf.plan_id]) featuresByPlan[pf.plan_id] = {}
+      featuresByPlan[pf.plan_id][pf.feature_key] = pf.habilitado
+    }
+  }
 
   const estado = sub?.estado as SubscriptionEstado | undefined
   const currentPlan = sub?.plans as unknown as {
@@ -186,7 +197,12 @@ export default async function BillingPage() {
               max_colaboradores: p.max_colaboradores,
               max_empresas: p.max_empresas,
               max_establecimientos: p.max_establecimientos,
+              max_gestiones_registros: p.max_gestiones_registros,
+              max_horarios_registros: p.max_horarios_registros,
+              descripcion_corta: p.descripcion_corta,
+              destacado: p.destacado,
             }))}
+            planFeatures={featuresByPlan}
             formatARS={formatARS}
           />
         </div>
@@ -221,7 +237,12 @@ export default async function BillingPage() {
                 max_colaboradores: p.max_colaboradores,
                 max_empresas: p.max_empresas,
                 max_establecimientos: p.max_establecimientos,
+                max_gestiones_registros: p.max_gestiones_registros,
+                max_horarios_registros: p.max_horarios_registros,
+                descripcion_corta: p.descripcion_corta,
+                destacado: p.destacado,
               }))}
+              planFeatures={featuresByPlan}
               formatARS={formatARS}
             />
           )}

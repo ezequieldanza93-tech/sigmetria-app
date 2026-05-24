@@ -1341,6 +1341,44 @@ export function calcularNivelRiesgo(probabilidad: number, consecuencia: number):
   return { valor, nombre: 'Riesgo Trivial' }
 }
 
+// ---- Plan types (admin) ----
+export interface Plan {
+  id: string
+  nombre: string
+  slug: string
+  tipo: string
+  precio_mensual_neto: number | null
+  precio_anual_neto: number | null
+  iva_porcentaje: number
+  max_colaboradores: number | null
+  max_empresas: number | null
+  max_establecimientos: number | null
+  max_gestiones_registros: number | null
+  max_horarios_registros: number | null
+  precio_extra_seat_neto: number | null
+  is_active: boolean
+  sort_order: number
+  is_visible: boolean
+  descripcion_corta: string | null
+  destacado: boolean
+  created_at: string
+  updated_at: string
+  plan_features?: PlanFeature[]
+}
+
+export interface PlanFeature {
+  id: string
+  plan_id: string
+  feature_key: string
+  habilitado: boolean
+  created_at: string
+}
+
+export interface PlanWithSubscribers extends Plan {
+  subscriber_count?: number
+  active_subscriptions_count?: number
+}
+
 // ---- Action result ----
 export type ActionResult<T = null> =
   | { success: true; data: T }
