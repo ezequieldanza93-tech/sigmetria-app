@@ -3,8 +3,8 @@ import { Poppins, Montserrat } from 'next/font/google'
 import { DevErrorBoundary } from '@/components/dev-error-boundary'
 import { ThemeProvider } from '@/components/theme-provider'
 import { QueryProvider } from '@/components/query-provider'
+import { NetworkStatusBanner } from '@/components/network-status'
 import { ErrorCapture } from '@/components/error-capture'
-import { PWARegister } from '@/components/pwa-register'
 import { Toaster } from '@/components/ui/toaster'
 import './globals.css'
 
@@ -49,10 +49,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="bg-surface-base text-text-primary antialiased font-body">
         <QueryProvider>
           <ThemeProvider>
+            <NetworkStatusBanner />
             <DevErrorBoundary>{children}</DevErrorBoundary>
           </ThemeProvider>
         </QueryProvider>
-        <PWARegister />
         <ErrorCapture />
         <Toaster />
       </body>

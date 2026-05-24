@@ -188,7 +188,7 @@ function DestacadoToggle({ planId, destacado }: { planId: string; destacado: boo
   )
 }
 
-function DeleteButton({ planId, subscriberCount }: { planId: string; subscriberCount: number }) {
+function DeleteButton({ planId, subscriberCount }: { planId: string; subscriberCount: number | undefined }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [confirming, setConfirming] = useState(false)

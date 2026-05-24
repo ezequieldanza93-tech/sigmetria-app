@@ -3,12 +3,14 @@
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Sun, Moon, Users, UserCog, Network, Gauge, Shield, Settings2, LogOut, Building2, BarChart2, CreditCard, Smartphone, ShieldCheck, CalendarClock, AlertTriangle, Scale, Map, ClipboardList } from 'lucide-react'
+import { Sun, Moon, Users, UserCog, Network, Gauge, Shield, Settings2, LogOut, Building2, BarChart2, CreditCard, Smartphone, ShieldCheck, CalendarClock, AlertTriangle, Scale, Map, ClipboardList, Wifi, WifiOff, Download } from 'lucide-react'
 import { SystemRole, UserRole, ROLE_LABELS, ROLE_COLORS } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 import { usePreview } from '@/lib/contexts/preview-context'
 import { WeatherClock } from '@/components/weather-clock'
 import { NotificationDropdown } from '@/components/notification-dropdown'
+import { useNetworkStatus } from '@/lib/hooks/use-network-status'
+import { useInstallPrompt } from '@/components/install-pwa'
 
 interface AppHeaderProps {
   fullName: string
@@ -40,6 +42,8 @@ export function AppHeader({
   const [crumbs, setCrumbs] = useState<Crumb[]>([])
   const [contextAddress, setContextAddress] = useState<string | null>(null)
   const [tipoLabel, setTipoLabel] = useState<string | null>(null)
+  const { isOnline } = useNetworkStatus()
+  const { install, isInstalled, canInstall } = useInstallPrompt()
   const [isDark, setIsDark] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -240,8 +244,34 @@ export function AppHeader({
           </div>
         </div>
 
-        {/* Right: notifications + weather + consultora + dark mode + avatar */}
+        {/* Right: notifications + weather + network + install + consultora + dark mode + avatar */}
         <div className="flex items-center gap-3 shrink-0">
+
+          {/* Network status icon */}
+          <span
+            className="inline-flex items-center justify-center"
+            title={isOnline ? 'Conectado' : 'Sin conexión'}
+            aria-label={isOnline ? 'Conectado' : 'Sin conexión'}
+          >
+            {isOnline ? (
+              <Wifi size={16} className="text-emerald-600 dark:text-emerald-400" strokeWidth={1.75} />
+            ) : (
+              <WifiOff size={16} className="text-amber-600 dark:text-amber-400" strokeWidth={1.75} />
+            )}
+          </span>
+
+          {/* Install PWA button */}
+          {canInstall && !isInstalled && (
+            <button
+              onClick={install}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-brand-primary text-white hover:bg-brand-primary/90 transition-colors"
+              aria-label="Instalar aplicación"
+              title="Instalar aplicación"
+            >
+              <Download size={14} strokeWidth={2} />
+              <span className="hidden sm:inline">Instalar app</span>
+            </button>
+          )}
 
           {/* Notification bell with dropdown */}
           <NotificationDropdown />

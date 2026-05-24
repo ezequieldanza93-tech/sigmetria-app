@@ -1,4 +1,5 @@
 import type { NextConfig } from 'next'
+import withSerwistInit from '@serwist/next'
 
 const csp = [
   "default-src 'self'",
@@ -13,21 +14,20 @@ const csp = [
   "form-action 'self'",
 ].join('; ')
 
+const withSerwist = withSerwistInit({
+  swSrc: 'app/sw.ts',
+  swDest: 'public/sw.js',
+  reloadOnOnline: true,
+})
+
 const nextConfig: NextConfig = {
   transpilePackages: ['recharts'],
   experimental: {
-    serverActions: {
-      bodySizeLimit: '10mb',
-    },
+    serverActions: { bodySizeLimit: '10mb' },
     optimizePackageImports: ['lucide-react', '@supabase/supabase-js', '@tanstack/react-query'],
   },
   images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '*.supabase.co',
-      },
-    ],
+    remotePatterns: [{ protocol: 'https', hostname: '*.supabase.co' }],
   },
   productionBrowserSourceMaps: false,
   async headers() {
@@ -45,4 +45,4 @@ const nextConfig: NextConfig = {
   },
 }
 
-export default nextConfig
+export default withSerwist(nextConfig)

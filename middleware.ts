@@ -3,8 +3,8 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
-  const publicPaths = ['/manifest.json', '/service-worker', '/sw.js', '/robots.txt', '/favicon.svg', '/favicon.ico']
-  if (publicPaths.some(p => pathname === p) || pathname.startsWith('/icons/') || pathname.startsWith('/_next/')) {
+  const publicPaths = ['/manifest.json', '/service-worker', '/sw.js', '/robots.txt', '/favicon.svg', '/favicon.ico', '/offline']
+  if (publicPaths.some(p => pathname === p) || pathname.startsWith('/offline') || pathname.startsWith('/icons/') || pathname.startsWith('/_next/')) {
     return NextResponse.next()
   }
 
