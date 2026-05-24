@@ -176,7 +176,6 @@ export default async function SubcontratistaDetailPage({ params, searchParams }:
           rubro={rubro}
           tipoEst={tipoEst}
           puedeEditar={puedeEditar}
-          subcontratistaId={id}
         />
       )}
 
