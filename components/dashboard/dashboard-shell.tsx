@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { KpiCard } from '@/components/analytics/kpi-card'
 import { AnalyticsDashboard } from '@/components/analytics/real/analytics-dashboard'
 import { WidgetConfigModal } from '@/components/dashboard/widget-config-modal'
+import { SubcontratistasVencimientosWidget } from '@/components/subcontratista/subcontratistas-vencimientos-widget'
 import { useVisibleWidgetKeys, useDashboardKpis } from '@/lib/queries/dashboard'
 import { ALL_WIDGETS } from '@/lib/constants'
 import type { WidgetKey } from '@/lib/constants'
@@ -97,24 +98,31 @@ export function DashboardShell({ consultoraId, establecimientos, empresasContent
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {widgetKeys.map(key => {
-                const widget = ALL_WIDGETS[key]
-                const value = kpiData?.[key] ?? '—'
-                const IconComp = ICON_MAP[widget.icon]
-                return (
-                  <KpiCard
-                    key={key}
-                    title={widget.label}
-                    value={value}
-                    subtitle={getWidgetSubtitle(key)}
-                    icon={IconComp ? <IconComp size={16} /> : undefined}
-                    size="md"
-                    animate
-                  />
-                )
-              })}
-            </div>
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {widgetKeys.map(key => {
+                  const widget = ALL_WIDGETS[key]
+                  const value = kpiData?.[key] ?? '—'
+                  const IconComp = ICON_MAP[widget.icon]
+                  return (
+                    <KpiCard
+                      key={key}
+                      title={widget.label}
+                      value={value}
+                      subtitle={getWidgetSubtitle(key)}
+                      icon={IconComp ? <IconComp size={16} /> : undefined}
+                      size="md"
+                      animate
+                    />
+                  )
+                })}
+              </div>
+
+              {/* Subcontratistas — documentos próximos a vencer */}
+              <div className="mt-6">
+                <SubcontratistasVencimientosWidget />
+              </div>
+            </>
           )}
         </>
       )}
