@@ -227,7 +227,7 @@ function DeleteButton({ planId, subscriberCount }: { planId: string; subscriberC
       onClick={() => setConfirming(true)}
       className="px-2.5 py-1 rounded-md border border-border-subtle text-xs text-red-500 hover:bg-red-50 transition-colors"
     >
-      {subscriberCount > 0 ? 'Desactivar' : 'Eliminar'}
+      {(subscriberCount ?? 0) > 0 ? 'Desactivar' : 'Eliminar'}
     </button>
   )
 }
