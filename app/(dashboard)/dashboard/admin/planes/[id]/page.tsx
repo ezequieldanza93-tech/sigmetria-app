@@ -56,11 +56,11 @@ export default async function PlanDetailPage(props: { params: Promise<{ id: stri
 
   const averagePrice = plan.precio_mensual_neto ?? plan.precio_anual_neto ?? 0
 
-  const featuresByEnabled = planFeatures.reduce((acc, f) => {
+  const featuresByEnabled = planFeatures.reduce<{ enabled: typeof planFeatures; disabled: typeof planFeatures }>((acc, f) => {
     if (f.habilitado) acc.enabled.push(f)
     else acc.disabled.push(f)
     return acc
-  }, { enabled: [] as typeof planFeatures, disabled: [] as typeof planFeatures })
+  }, { enabled: [], disabled: [] })
 
   return (
     <div className="p-8 max-w-6xl mx-auto space-y-8">
