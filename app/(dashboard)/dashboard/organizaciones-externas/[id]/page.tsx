@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
-import { canWrite, UserRole } from '@/lib/types'
+import { canWrite, UserRole, SubcontratistaDocumento, DocumentType } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { SubcontratistaInfoTab } from '@/components/subcontratista/subcontratista-info-tab'
 import { SubcontratistaDocumentosTab } from '@/components/subcontratista/subcontratista-documentos-tab'
