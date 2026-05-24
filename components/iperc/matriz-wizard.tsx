@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useIpercSectores, usePeligrosLibrary, useRiesgosLibrary, useMedidasControlTop, useCreateIpercSector, useCreateIpercProceso, useCreateIpercTarea, useAddPeligroATarea, useAddRiesgoAPeligro, useAddMedidaARiesgo, useRemovePeligroDeTarea, useRemoveRiesgoDePeligro, useCalcularNivelRiesgo, useProbabilidades, useConsecuencias } from '@/lib/queries/iperc'
+import { usePeligrosLibrary, useRiesgosLibrary, useMedidasControlTop, useCreateIpercSector, useCreateIpercProceso, useCreateIpercTarea, useAddPeligroATarea, useAddRiesgoAPeligro, useAddMedidaARiesgo, useRemovePeligroDeTarea, useRemoveRiesgoDePeligro, useCalcularNivelRiesgo, useProbabilidades, useConsecuencias } from '@/lib/queries/iperc'
 import { useIpercCompleto } from '@/lib/queries/iperc'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,8 +16,7 @@ interface Props {
 }
 
 export function IpercMatrizWizard({ establecimientoId, canWrite }: Props) {
-  const { data: completo, isLoading, refetch } = useIpercCompleto(establecimientoId)
-  const { data: sectores } = useIpercSectores(establecimientoId)
+  const { data: completo, isLoading } = useIpercCompleto(establecimientoId)
   const { data: peligrosLib } = usePeligrosLibrary()
   const { data: riesgosLib } = useRiesgosLibrary()
   const { data: medidasTop } = useMedidasControlTop()
@@ -44,8 +43,6 @@ export function IpercMatrizWizard({ establecimientoId, canWrite }: Props) {
   const [selectedPeligroId, setSelectedPeligroId] = useState('')
   const [selectedRiesgoId, setSelectedRiesgoId] = useState('')
   const [selectedMedidaId, setSelectedMedidaId] = useState('')
-  const [selectedProbId, setSelectedProbId] = useState('')
-  const [selectedConsId, setSelectedConsId] = useState('')
   const [newMedidaTexto, setNewMedidaTexto] = useState('')
 
   const [expandedSector, setExpandedSector] = useState<string | null>(null)

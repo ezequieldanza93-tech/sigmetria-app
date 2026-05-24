@@ -4,7 +4,7 @@ import { useMemo } from 'react'
 import dynamic from 'next/dynamic'
 import L from 'leaflet'
 import { useEstablecimientosParaMapa } from '@/lib/queries/iperc'
-import { NIVEL_RIESGO_COLORS, type IpercNivelRiesgoNombre } from '@/lib/types'
+import { NIVEL_RIESGO_COLORS } from '@/lib/types'
 
 const MapContainer = dynamic(() => import('react-leaflet').then(m => m.MapContainer), { ssr: false })
 const TileLayer = dynamic(() => import('react-leaflet').then(m => m.TileLayer), { ssr: false })

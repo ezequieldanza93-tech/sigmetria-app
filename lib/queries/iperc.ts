@@ -1,5 +1,4 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import type { ActionResult } from '@/lib/types'
 import {
   getPeligrosLibrary,
   getRiesgosLibrary,
@@ -32,7 +31,6 @@ import {
   calcularNivelRiesgoAction,
   addMedidaARiesgo,
   removeMedidaDeRiesgo,
-  subirPlanoEstablecimiento,
 } from '@/lib/actions/iperc'
 
 // ---- Query keys ----
