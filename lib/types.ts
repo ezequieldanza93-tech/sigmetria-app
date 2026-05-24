@@ -1341,4 +1341,4 @@ export function calcularNivelRiesgo(probabilidad: number, consecuencia: number):
 // ---- Action result ----
 export type ActionResult<T = null> =
   | { success: true; data: T }
-  | { success: false; error: string }
+  | { success: false; error: string; data?: unknown }
