@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { updatePlan } from '@/lib/actions/admin/plan'
+import type { ActionResult } from '@/lib/types'
 import { PlanForm } from '../../plan-form'
 
 export default async function EditarPlanPage(props: { params: Promise<{ id: string }> }) {
@@ -32,7 +33,7 @@ export default async function EditarPlanPage(props: { params: Promise<{ id: stri
   const plan = planResult.data
   const planFeatures = featuresResult.data ?? []
 
-  async function editAction(prev: { success: boolean; error: string } | null, formData: FormData) {
+  async function editAction(prev: ActionResult<null> | null, formData: FormData) {
     'use server'
     return updatePlan(id, prev, formData)
   }

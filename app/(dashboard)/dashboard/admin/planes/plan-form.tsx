@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react'
 import { useActionState } from 'react'
 import { useRouter } from 'next/navigation'
-import type { Plan, PlanFeature } from '@/lib/types'
+import type { Plan, PlanFeature, ActionResult } from '@/lib/types'
 import { FEATURE_CATALOG, getFeaturesByCategory } from '@/lib/plan-features'
 
 function slugify(text: string): string {
@@ -18,7 +18,7 @@ interface PlanFormProps {
   mode: 'create' | 'edit'
   plan?: Plan
   planFeatures?: PlanFeature[]
-  action: (prev: { success: boolean; error: string } | null, formData: FormData) => Promise<{ success: boolean; error: string } | { success: boolean; data: null } | { success: false; error: string }>
+  action: (prev: ActionResult<null> | null, formData: FormData) => Promise<ActionResult<null>>
 }
 
 function formatInputValue(value: number | null | undefined): string {
