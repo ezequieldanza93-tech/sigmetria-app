@@ -18,7 +18,7 @@ function PersonaForm({
 }) {
   const [state, formAction, pending] = useActionState(
     createPersona,
-    null as ActionResult<null> | null
+    null as ActionResult<{ duplicado?: string }> | null
   )
   const [selectedEmpresaId, setSelectedEmpresaId] = useState<string>('')
   const [establecimientos, setEstablecimientos] = useState<Establecimiento[]>([])

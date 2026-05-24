@@ -70,7 +70,6 @@ export async function createPersona(
     return {
       success: false,
       error: 'Ya existe una persona con el mismo nombre, apellido y DNI.',
-      data: { duplicado: 'exacto' },
     }
   }
 
@@ -78,7 +77,6 @@ export async function createPersona(
     return {
       success: false,
       error: 'Ya existe una persona con el mismo nombre y apellido pero distinto DNI. Verificá antes de duplicar.',
-      data: { duplicado: 'mismo_nombre_apellido' },
     }
   }
 
@@ -184,7 +182,6 @@ export async function updatePersona(
       return {
         success: false,
         error: 'Ya existe otra persona con el mismo nombre, apellido y DNI.',
-        data: { duplicado: 'exacto' },
       }
     }
   }

@@ -73,7 +73,7 @@ export function SiniestroForm({ action, onSuccess, establecimientoId }: Props) {
         <label className="text-xs text-gray-600 block mb-1">Tipo *</label>
         <select name="tipo" required className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white">
           <option value="">Seleccioná…</option>
-          {SINIESTRO_TIPO_OPTIONS.filter(o => o.value !== '').map(o => (
+          {SINIESTRO_TIPO_OPTIONS.map(o => (
             <option key={o.value} value={o.value}>{o.label}</option>
           ))}
         </select>
