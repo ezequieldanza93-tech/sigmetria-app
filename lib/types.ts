@@ -1628,6 +1628,38 @@ export interface PlanWithSubscribers extends Plan {
   active_subscriptions_count?: number
 }
 
+// ---- Mercado Pago types ----
+export type SubscriptionEstadoMP = 'pending' | 'trialing' | 'active' | 'past_due' | 'cancelled' | 'expired'
+export type PlanTipo = 'profesional' | 'consultora'
+export type MPTopic = 'payment' | 'subscription_preapproval' | 'subscription_authorized_payment' | 'plan'
+
+export interface SubscriptionState {
+  id: string
+  consultora_id: string
+  plan_id: string
+  plan_nombre: string
+  plan_precio: number
+  plan_tipo: string
+  estado: SubscriptionEstadoMP
+  current_period_start?: string
+  current_period_end?: string
+  trial_end?: string
+  past_due_grace_until?: string
+  mp_preapproval_id?: string
+  card_last4?: string
+  card_brand?: string
+  cancelled_at?: string
+  plan_id_pendiente?: string
+  aplicar_cambio_en?: string
+}
+
+export interface ProrrataResult {
+  monto: number
+  dias_restantes: number
+  precio_actual: number
+  precio_nuevo: number
+}
+
 // ---- Action result ----
 export type ActionResult<T = null> =
   | { success: true; data: T }

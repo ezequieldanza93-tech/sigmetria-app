@@ -3,8 +3,11 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { updatePlan } from '@/lib/actions/admin/plan'
+import { sincronizarPlanMP } from '@/lib/actions/mercadopago'
+import { isMercadoPagoConfigured } from '@/lib/mercadopago/client'
 import type { ActionResult } from '@/lib/types'
 import { PlanForm } from '../../plan-form'
+import { MPSyncSection } from './mp-sync-section'
 
 export default async function EditarPlanPage(props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params
@@ -38,6 +41,8 @@ export default async function EditarPlanPage(props: { params: Promise<{ id: stri
     return updatePlan(id, prev, formData)
   }
 
+  const mpEnabled = isMercadoPagoConfigured()
+
   return (
     <div className="p-8 max-w-4xl mx-auto space-y-6">
       <div className="flex items-center gap-2 text-sm text-text-tertiary mb-1">
@@ -56,6 +61,15 @@ export default async function EditarPlanPage(props: { params: Promise<{ id: stri
         planFeatures={planFeatures}
         action={editAction}
       />
+
+      {mpEnabled && (
+        <MPSyncSection
+          planId={id}
+          mpPreapprovalPlanId={plan.mp_preapproval_plan_id}
+          planNombre={plan.nombre}
+          sincronizarAction={sincronizarPlanMP}
+        />
+      )}
     </div>
   )
 }

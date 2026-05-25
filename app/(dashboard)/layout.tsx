@@ -1,9 +1,11 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { AppHeader } from '@/components/app-header'
 import { SidebarWrapper } from '@/components/layout/sidebar-wrapper'
 import { DevicePreviewPanel } from '@/components/layout/device-preview-panel'
 import { BottomNav } from '@/components/layout/bottom-nav'
+import { BannerPastDueWrapper } from '@/components/billing/banner-past-due-wrapper'
 import { UserRole } from '@/lib/types'
 import 'leaflet/dist/leaflet.css'
 
@@ -27,6 +29,31 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   const consultoraNombre = (membership?.consultoras as { nombre?: string } | null)?.nombre ?? null
 
+  // Checkear si la suscripción está en past_due para mostrar banner
+  let isPastDue = false
+  let pastDueGraceUntil: string | null = null
+  if (membership) {
+    try {
+      const admin = createAdminClient()
+      const { data: sub } = await admin
+        .from('subscriptions')
+        .select('estado, past_due_grace_until')
+        .eq('consultora_id', membership.consultora_id)
+        .single()
+
+      if (sub?.estado === 'past_due') {
+        isPastDue = true
+        pastDueGraceUntil = sub.past_due_grace_until
+          ? typeof sub.past_due_grace_until === 'string'
+            ? sub.past_due_grace_until
+            : sub.past_due_grace_until.toISOString()
+          : null
+      }
+    } catch {
+      // Si no hay sub, ignorar
+    }
+  }
+
   return (
     <SidebarWrapper
       header={
@@ -40,6 +67,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
         />
       }
     >
+      {isPastDue && (
+        <BannerPastDueWrapper graceUntil={pastDueGraceUntil} />
+      )}
       <DevicePreviewPanel>{children}</DevicePreviewPanel>
       <BottomNav />
     </SidebarWrapper>

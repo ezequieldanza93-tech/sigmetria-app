@@ -8,6 +8,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
+  // Webhooks de Mercado Pago son públicos (protegidos por HMAC)
+  if (pathname === '/api/mercadopago/webhook') {
+    return NextResponse.next()
+  }
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
