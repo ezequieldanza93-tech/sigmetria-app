@@ -4,7 +4,10 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 
-export async function login(formData: FormData): Promise<{ error: string } | undefined> {
+export async function login(
+  _prevState: { error?: string } | undefined,
+  formData: FormData,
+): Promise<{ error?: string } | undefined> {
   const email = formData.get('email') as string
   const password = formData.get('password') as string
 

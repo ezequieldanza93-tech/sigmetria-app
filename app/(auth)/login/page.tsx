@@ -1,11 +1,9 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useActionState, useState, useEffect, useRef } from 'react'
 import { AlertCircle, Loader2, Bug } from 'lucide-react'
 import { DemoCredentials } from '@/components/demo-credentials'
 import { login } from '@/lib/actions/login'
-
-const LOGIN_TIMEOUT = 8_000
 
 interface LogEntry {
   t: string
@@ -13,67 +11,35 @@ interface LogEntry {
 }
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [logs, setLogs] = useState<LogEntry[]>([])
+  const [state, formAction, pending] = useActionState<
+    { error?: string } | undefined,
+    FormData
+  >(login, undefined)
   const [showDebug, setShowDebug] = useState(false)
+  const [logs, setLogs] = useState<LogEntry[]>([])
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
-  const addLog = useCallback((msg: string) => {
+  const addLog = (msg: string) => {
     const entry = { t: new Date().toISOString().slice(11, 23), msg }
-    console.warn('[LOGIN-DEBUG]', entry.t, msg)
-    setLogs(prev => [...prev.slice(-49), entry])
-  }, [])
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
-    setLogs([])
-    addLog('Submit clicked')
-
-    const form = e.currentTarget as HTMLFormElement
-    const formData = new FormData(form)
-
-    let timedOut = false
-    const timeout = setTimeout(() => {
-      timedOut = true
-      addLog('TIMEOUT fired after 8s')
-      setLoading(false)
-      setError('Tiempo de espera agotado. Verificá tu conexión.')
-      console.error('[LOGIN-DEBUG] Timeout reached — server action never completed')
-    }, LOGIN_TIMEOUT)
-
-    try {
-      addLog('Calling server action login...')
-      const result = await login(formData)
-      addLog(`Server action returned (not redirected)`)
-
-      if (timedOut) { addLog('Ignored — timed out'); return }
-      clearTimeout(timeout)
-
-      if (result?.error) {
-        addLog(`Error: ${result.error}`)
-        setError(result.error)
-        setLoading(false)
-        return
-      }
-
-      // If we get here, login succeeded but redirect() didn't fire
-      // This shouldn't happen — fallback redirect
-      addLog('Fallback: redirecting via window.location')
-      window.location.href = '/dashboard/empresas'
-    } catch (e) {
-      if (timedOut) { addLog('Ignored — timed out'); return }
-      clearTimeout(timeout)
-      const msg = e instanceof Error ? e.message : 'desconocido'
-      addLog(`Exception: ${msg}`)
-      console.error('[LOGIN-DEBUG] Unhandled exception:', e)
-      setError(`Error inesperado: ${msg}`)
-      setLoading(false)
-    }
+    setLogs((prev) => [...prev.slice(-49), entry])
   }
+
+  // Track pending state to log form submission lifecycle
+  const prevPending = useRef(false)
+  useEffect(() => {
+    if (!prevPending.current && pending) {
+      addLog('Form submitted, waiting for server action...')
+      timeoutRef.current = setTimeout(() => {
+        addLog('⚠ TIMEOUT: 8s elapsed without server response')
+      }, 8000)
+    } else if (prevPending.current && !pending) {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current)
+      if (state?.error) {
+        addLog(`Error from server: ${state.error}`)
+      }
+    }
+    prevPending.current = pending
+  }, [pending, state?.error])
 
   return (
     <div className="min-h-screen bg-surface-base flex">
@@ -132,14 +98,14 @@ export default function LoginPage() {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {error && (
+          <form action={formAction} className="space-y-5">
+            {state?.error && (
               <div 
                 role="alert"
                 className="flex items-center gap-3 bg-danger-bg border border-danger/20 text-danger rounded-lg px-4 py-3"
               >
                 <AlertCircle className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
-                <span className="text-sm font-medium">{error}</span>
+                <span className="text-sm font-medium">{state.error}</span>
               </div>
             )}
 
@@ -154,8 +120,6 @@ export default function LoginPage() {
                 id="email"
                 name="email"
                 type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
                 required
                 autoComplete="email"
                 placeholder="usuario@empresa.com"
@@ -174,8 +138,6 @@ export default function LoginPage() {
                 id="password"
                 name="password"
                 type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
                 required
                 autoComplete="current-password"
                 placeholder="Ingresá tu contraseña"
@@ -185,10 +147,10 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={pending}
               className="w-full bg-brand-primary hover:bg-brand-hover disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg py-3 text-sm transition-colors flex items-center justify-center gap-2"
             >
-              {loading ? (
+              {pending ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
                   <span>Ingresando...</span>
@@ -202,43 +164,45 @@ export default function LoginPage() {
           <DemoCredentials />
 
           {/* Debug button */}
-          <button
-            type="button"
-            onClick={() => setShowDebug(o => !o)}
-            className="mt-4 flex items-center gap-1.5 text-xs text-text-tertiary hover:text-text-secondary transition-colors mx-auto"
-          >
-            <Bug className="h-3 w-3" />
-            {showDebug ? 'Ocultar debug' : 'Debug login'}
-          </button>
+          <div className="mt-4 text-center">
+            <button
+              type="button"
+              onClick={() => setShowDebug((o) => !o)}
+              className="inline-flex items-center gap-1.5 text-xs text-text-tertiary hover:text-text-secondary transition-colors"
+            >
+              <Bug className="h-3 w-3" />
+              {showDebug ? 'Ocultar debug' : 'Debug login'}
+            </button>
 
-          {showDebug && (
-            <div className="mt-3 bg-gray-950 text-green-400 rounded-lg p-3 text-[11px] font-mono max-h-64 overflow-y-auto">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-gray-500 font-semibold uppercase tracking-wider text-[10px]">
-                  Debug logs ({logs.length})
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const text = logs.map(l => `[${l.t}] ${l.msg}`).join('\n')
-                    navigator.clipboard.writeText(text || '(sin logs)')
-                  }}
-                  className="text-gray-500 hover:text-white transition-colors text-[10px] uppercase tracking-wider"
-                >
-                  Copiar
-                </button>
-              </div>
-              {logs.length === 0 && (
-                <p className="text-gray-600 italic">Completá el formulario y presioná Ingresar</p>
-              )}
-              {logs.map((l, i) => (
-                <div key={i} className="leading-relaxed">
-                  <span className="text-gray-600">[{l.t}]</span>{' '}
-                  <span className="text-green-300">{l.msg}</span>
+            {showDebug && (
+              <div className="mt-3 bg-gray-950 text-green-400 rounded-lg p-3 text-[11px] font-mono max-h-64 overflow-y-auto text-left">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-gray-500 font-semibold uppercase tracking-wider text-[10px]">
+                    Logs ({logs.length})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const text = logs.map((l) => `[${l.t}] ${l.msg}`).join('\n')
+                      navigator.clipboard.writeText(text || '(sin logs)')
+                    }}
+                    className="text-gray-500 hover:text-white transition-colors text-[10px] uppercase tracking-wider"
+                  >
+                    Copiar
+                  </button>
                 </div>
-              ))}
-            </div>
-          )}
+                {logs.length === 0 && (
+                  <p className="text-gray-600 italic">Completá el formulario y presioná Ingresar</p>
+                )}
+                {logs.map((l, i) => (
+                  <div key={i} className="leading-relaxed">
+                    <span className="text-gray-600">[{l.t}]</span>{' '}
+                    <span className="text-green-300">{l.msg}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
