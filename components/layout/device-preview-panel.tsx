@@ -62,7 +62,7 @@ export function DevicePreviewPanel({ children }: { children: React.ReactNode }) 
 
   return (
     <>
-      <div className={isOpen ? 'hidden' : ''}>{children}</div>
+      <div className={isOpen ? 'hidden' : undefined}>{children}</div>
 
       {isOpen && (
         <div

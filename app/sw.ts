@@ -25,7 +25,7 @@ self.addEventListener('activate', (event) => {
       const allCaches = await caches.keys()
       await Promise.all(
         allCaches
-          .filter((name) => !name.startsWith('serwist:precache'))
+          .filter((name) => !name.startsWith('serwist-precache'))
           .map((name) => caches.delete(name)),
       )
     })(),
