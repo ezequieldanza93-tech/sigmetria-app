@@ -6,7 +6,7 @@ import { PhotoCanvasEditor } from '@/components/photo-canvas-editor'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
-import { Camera, CameraOff } from 'lucide-react'
+import { Camera } from 'lucide-react'
 
 interface ReporteFotograficoModalProps {
   establecimientoId: string
