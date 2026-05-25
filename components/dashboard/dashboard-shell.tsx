@@ -52,7 +52,7 @@ export function DashboardShell({ consultoraId, establecimientos, empresasContent
   const [tab, setTab] = useState<DashboardTab>('panel')
   const [configOpen, setConfigOpen] = useState(false)
   const { widgetKeys, isLoading: configLoading } = useVisibleWidgetKeys()
-  const { data: kpiData, isLoading: kpiLoading } = useDashboardKpis(widgetKeys)
+  const { data: kpiData, isLoading: kpiLoading, isError } = useDashboardKpis(widgetKeys)
 
   const TABS: { id: DashboardTab; label: string }[] = [
     { id: 'panel', label: 'Panel Ejecutivo' },
@@ -97,6 +97,36 @@ export function DashboardShell({ consultoraId, establecimientos, empresasContent
                 <div key={i} className="h-28 rounded-xl bg-surface-elevated border border-border-subtle" />
               ))}
             </div>
+          ) : isError ? (
+            <>
+              <div className="rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-6 text-center mb-6">
+                <p className="text-sm text-amber-800 dark:text-amber-200 font-medium">
+                  No se pudieron cargar los indicadores del dashboard
+                </p>
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                  Los datos pueden no estar disponibles temporalmente
+                </p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {widgetKeys.map(key => {
+                  const widget = ALL_WIDGETS[key]
+                  const IconComp = ICON_MAP[widget.icon]
+                  return (
+                    <KpiCard
+                      key={key}
+                      title={widget.label}
+                      value="—"
+                      subtitle="No disponible"
+                      icon={IconComp ? <IconComp size={16} /> : undefined}
+                      size="md"
+                    />
+                  )
+                })}
+              </div>
+              <div className="mt-6">
+                <SubcontratistasVencimientosWidget />
+              </div>
+            </>
           ) : (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

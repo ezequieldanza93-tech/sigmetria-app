@@ -251,7 +251,18 @@ export async function getDashboardKpis(widgetKeys: WidgetKey[]): Promise<ActionR
     )
   }
 
-  await Promise.all(promises)
+  const TIMEOUT = 10000 // 10s max
+  const timeoutPromise = new Promise<void>((_, reject) =>
+    setTimeout(() => reject(new Error('Dashboard KPIs timeout')), TIMEOUT)
+  )
+
+  await Promise.race([Promise.all(promises.map(p =>
+    p.catch(err => {
+      console.error('Dashboard KPI query error:', err)
+    })
+  )), timeoutPromise]).catch(err => {
+    console.error('Dashboard KPIs error:', err)
+  })
 
   return { success: true, data: result as DashboardKpiData }
 }

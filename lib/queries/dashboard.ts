@@ -13,6 +13,8 @@ export function useDashboardKpis(widgetKeys: WidgetKey[]) {
     },
     enabled: widgetKeys.length > 0,
     staleTime: 1000 * 60 * 2,
+    retry: 1,
+    retryDelay: 1000,
   })
 }
 
