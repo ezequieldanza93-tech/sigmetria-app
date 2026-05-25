@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { MultiFilter } from '@/components/ui/multi-filter'
 import {
-  Plus, Camera, BarChart3, FileCheck, FileSignature,
+  Plus, Camera, BarChart3, FileCheck,
   ClipboardCheck, GraduationCap, Heart, FileText, AlertTriangle,
   ClipboardList, UserPlus, Dumbbell, Kanban, HelpCircle,
   Play, Upload, Download, BookMarked,
@@ -24,8 +24,7 @@ import {
   createCategoriaGestion,
 } from '@/lib/actions/gestion-establecimiento'
 import { ejecutarGestion, crearObservaciones } from '@/lib/actions/registro-gestion'
-import { FirmaInternaModal } from '@/components/firmas/firma-interna-modal'
-import { FirmaBadge } from '@/components/firmas/firma-badge'
+
 
 const CATEGORIA_META: Record<string, { icon: React.ComponentType<{ size?: number; className?: string }>; abbr: string }> = {
   Checklists: { icon: ClipboardCheck, abbr: 'CHK' },
@@ -74,11 +73,11 @@ const MONTHS_FULL = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Jul
 const COL_WIDTHS_KEY = 'gestiones_col_widths'
 const DEFAULT_COL_WIDTHS: Record<string, number> = {
   categoria: 140, gestion: 180, fecha_plan: 100, fecha_ejec: 100,
-  responsable: 130, indice: 70, acciones: 130, firma: 90,
+  responsable: 130, indice: 70, acciones: 130,
 }
 const COL_MIN_WIDTHS: Record<string, number> = {
   categoria: 80, gestion: 80, fecha_plan: 80, fecha_ejec: 80,
-  responsable: 80, indice: 50, acciones: 100, firma: 70,
+  responsable: 80, indice: 50, acciones: 100,
 }
 
 const ROW_BG_COLORS: Record<EstadoGestion, string> = {
@@ -810,8 +809,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
   const [executingFormulario, setExecutingFormulario] = useState<FullRegistro | null>(null)
   const [showPlanificarModal, setShowPlanificarModal] = useState(false)
   const [showReporteModal, setShowReporteModal] = useState(false)
-  const [firmarGestionId, setFirmarGestionId] = useState<string | null>(null)
-  const [firmarGestionNombre, setFirmarGestionNombre] = useState<string>('')
+
 
   // Task 4: resizable columns with localStorage
   const [colWidths, setColWidths] = useState<Record<string, number>>(() => {
@@ -975,7 +973,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
       })).filter(g => g.regs.length > 0)
     : []
 
-  const totalCols = 8
+  const totalCols = 7
 
   // ── Row renderer ────────────────────────────────────────────────────────────
   function renderRows(regs: FullRegistro[]) {
@@ -1045,30 +1043,11 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
                   supabase.from('gestiones_establecimientos').update({ mostrar_lt: !r.ge_mostrar_lt }).eq('id', r.ge_id)
                   queryClient.invalidateQueries({ queryKey: ['gestiones-establecimiento', establecimientoId, year] })
                 }}
-                className={`p-1.5 rounded-lg transition-colors ${r.ge_mostrar_lt ? 'text-amber-500 hover:bg-amber-50' : 'text-gray-300 hover:bg-gray-100 hover:text-gray-600'}`}
+                className={`p-1.5 rounded-lg transition-colors ${r.ge_mostrar_lt ? 'bg-amber-100 text-amber-600 hover:bg-amber-200' : 'text-gray-300 hover:bg-gray-100 hover:text-gray-600'}`}
               >
                 <BookMarked size={14} />
               </button>
             </div>
-          </td>
-          <td className="px-4 py-1.5 text-center">
-            {r.ge_firmada ? (
-              <FirmaBadge entidadTipo="gestion" entidadId={r.ge_id ?? ''} />
-            ) : r.fecha_ejecutada ? (
-              <button
-                onClick={e => {
-                  e.stopPropagation()
-                  setFirmarGestionId(r.ge_id ?? null)
-                  setFirmarGestionNombre(r.ge_gestion_nombre ?? '')
-                }}
-                className="text-xs font-semibold text-white bg-sig-600 hover:bg-sig-700 rounded-lg px-3 py-1 whitespace-nowrap"
-              >
-                <FileSignature size={12} className="inline mr-1" />
-                Firmar
-              </button>
-            ) : (
-              <span className="text-xs text-gray-300">—</span>
-            )}
           </td>
         </tr>
       )
@@ -1109,9 +1088,6 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
         </th>
         <th style={{ width: colW('acciones') }} className="px-4 py-1.5 font-medium text-center relative select-none">
           Acciones{rh('acciones')}
-        </th>
-        <th style={{ width: colW('firma') }} className="px-4 py-1.5 font-medium text-center relative select-none">
-          Firma{rh('firma')}
         </th>
       </tr>
     </thead>
@@ -1154,7 +1130,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
         </button>
         <div className="flex items-center gap-3">
           <button onClick={() => setYear(y => y - 1)} className="text-gray-300 hover:text-white text-lg leading-none">‹‹</button>
-          <span className="text-base font-semibold tracking-wide">Agenda de Gestiones {year}</span>
+          <span className="text-base font-semibold tracking-wide">Gestiones {year}</span>
           <button onClick={() => setYear(y => y + 1)} className="text-gray-300 hover:text-white text-lg leading-none">››</button>
         </div>
         <button onClick={() => setYear(y => y + 1)} className="text-gray-400 hover:text-white text-sm font-medium w-12 text-right">
@@ -1420,21 +1396,6 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
         />
       )}
 
-      {firmarGestionId && (
-        <FirmaInternaModal
-          open
-          onClose={() => { setFirmarGestionId(null); setFirmarGestionNombre('') }}
-          gestionNombre={firmarGestionNombre}
-          gestionEstablecimientoId={firmarGestionId}
-          onSuccess={() => {
-            setFirmarGestionId(null)
-            setFirmarGestionNombre('')
-            queryClient.invalidateQueries({ queryKey: ['gestiones-establecimiento', establecimientoId, year] })
-            queryClient.invalidateQueries({ queryKey: ['registros-gestion'] })
-            queryClient.invalidateQueries({ queryKey: ['firmas'] })
-          }}
-        />
-      )}
     </div>
   )
 }

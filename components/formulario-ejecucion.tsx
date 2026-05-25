@@ -11,7 +11,8 @@ import { Modal } from '@/components/ui/modal'
 import { finalizarFormulario, getOrCreateRespuesta } from '@/lib/actions/formulario-ejecucion'
 import { crearObservaciones } from '@/lib/actions/registro-gestion'
 import { PhotoCanvasEditor } from '@/components/photo-canvas-editor'
-import { Camera } from 'lucide-react'
+import { FirmaInternaModal } from '@/components/firmas/firma-interna-modal'
+import { Camera, FileSignature, CheckCircle } from 'lucide-react'
 
 interface ObsDraft {
   key: number
@@ -76,6 +77,8 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
   const [fotoPreview, setFotoPreview] = useState<string | null>(null)
   const [fotoBlob, setFotoBlob] = useState<Blob | null>(null)
   const fotoInputRef = useRef<HTMLInputElement>(null)
+  const [savedOk, setSavedOk] = useState(false)
+  const [firmarAhora, setFirmarAhora] = useState(false)
   const obsKeyRef = useRef(0)
   const reviewRef = useRef<HTMLDivElement>(null)
 
@@ -239,7 +242,7 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
         URL.revokeObjectURL(url)
       }
 
-      onSuccess()
+      setSavedOk(true)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(err?.message ?? 'Error inesperado')
@@ -481,6 +484,39 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
           )}
         </div>
       </div>
+    )
+  }
+
+  // ── Saved view ─────────────────────────────────────────────────────
+  if (savedOk) {
+    return (
+      <Modal open title="Gestión guardada" onClose={onSuccess} size="sm">
+        <div className="space-y-5 py-2">
+          <div className="text-center py-4">
+            <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+              <CheckCircle size={28} className="text-green-600" />
+            </div>
+            <h3 className="font-semibold text-gray-900 text-base">{registro.ge_gestion_nombre}</h3>
+            <p className="text-sm text-gray-500 mt-1">Guardada correctamente · {fechaEjecutada}</p>
+          </div>
+          <div className="flex gap-3">
+            <Button type="button" onClick={() => setFirmarAhora(true)}>
+              <FileSignature size={14} className="inline mr-1.5" />
+              Firmar gestión
+            </Button>
+            <Button type="button" variant="secondary" onClick={onSuccess}>Cerrar</Button>
+          </div>
+        </div>
+        {firmarAhora && registro.ge_id && (
+          <FirmaInternaModal
+            open
+            gestionEstablecimientoId={registro.ge_id}
+            gestionNombre={registro.ge_gestion_nombre ?? ''}
+            onClose={() => setFirmarAhora(false)}
+            onSuccess={onSuccess}
+          />
+        )}
+      </Modal>
     )
   }
 
