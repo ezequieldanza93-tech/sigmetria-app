@@ -34,10 +34,11 @@ export default function OnboardingPage() {
     setError(null)
     startTransition(async () => {
       const result = await inviteConsultoraAdmin(formData)
-      if (!result?.success) {
+      if (result?.success) {
+        router.push('/dashboard')
+      } else {
         setError(result?.error ?? 'Error desconocido')
       }
-      // On success inviteConsultoraAdmin redirects to /dashboard
     })
   }
 
