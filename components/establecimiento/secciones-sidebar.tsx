@@ -35,7 +35,7 @@ export function SeccionesSidebar({ empresaId, establecimientoId, expanded, onTog
       )}
       aria-label="Secciones del establecimiento"
     >
-      <nav className="flex flex-col py-3 px-2 gap-0.5 flex-1 overflow-hidden">
+      <nav className="flex flex-col py-3 px-2 gap-0.5 flex-1">
         {ITEMS.map(({ id, label, icon: Icon }) => {
           const isActive = activeSection === id
           const href = id === 'agenda' ? baseUrl : `${baseUrl}?section=${id}`
