@@ -1,5 +1,5 @@
 import { defaultCache } from '@serwist/next/worker'
-import { NetworkFirst, ExpirationPlugin, Serwist } from 'serwist'
+import { Serwist } from 'serwist'
 
 const serwist = new Serwist({
   precacheEntries: (self as unknown as { __SW_MANIFEST: Array<{ url: string; revision: string } | string> }).__SW_MANIFEST,
@@ -7,20 +7,6 @@ const serwist = new Serwist({
   clientsClaim: true,
   navigationPreload: true,
   runtimeCaching: [
-    {
-      matcher: /\.(?:js)$/i,
-      handler: new NetworkFirst({
-        cacheName: 'static-js-assets',
-        plugins: [
-          new ExpirationPlugin({
-            maxEntries: 64,
-            maxAgeSeconds: 24 * 60 * 60,
-            maxAgeFrom: 'last-used',
-          }),
-        ],
-        networkTimeoutSeconds: 5,
-      }),
-    },
     ...defaultCache,
   ],
   fallbacks: {
@@ -28,6 +14,22 @@ const serwist = new Serwist({
       { url: '/offline', matcher: ({ request }) => request.mode === 'navigate' },
     ],
   },
+})
+
+// On SW activation, purge ALL runtime caches (not precache) so old content
+// never causes hydration mismatches after a deploy.
+// The precache caches are managed automatically by serwist.
+self.addEventListener('activate', (event) => {
+  ;(event as unknown as { waitUntil: (p: Promise<unknown>) => void }).waitUntil(
+    (async () => {
+      const allCaches = await caches.keys()
+      await Promise.all(
+        allCaches
+          .filter((name) => !name.startsWith('serwist:precache'))
+          .map((name) => caches.delete(name)),
+      )
+    })(),
+  )
 })
 
 serwist.addEventListeners()
