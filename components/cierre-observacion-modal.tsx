@@ -368,7 +368,7 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
                   {c.contenido}
                 </div>
                 <span className="text-[10px] text-text-tertiary px-1">
-                  {c.es_viewer ? 'Cliente' : 'Profesional'} · {formatTime(c.created_at)}
+                  {c.profiles?.full_name ?? (c.es_viewer ? 'Cliente' : 'Profesional')} · {formatTime(c.created_at)}
                 </span>
               </div>
             ))}
