@@ -30,8 +30,11 @@ function todayStr(): string {
 
 function formatTime(ts: string) {
   const d = new Date(ts)
-  return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' }) +
-    ' ' + d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
+  const today = new Date()
+  const sameDay = d.toDateString() === today.toDateString()
+  const time = d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
+  if (sameDay) return time
+  return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }) + ' ' + time
 }
 
 export function CierreObservacionModal({ observacion, onClose, onSuccess, canWrite = true }: Props) {
@@ -61,7 +64,12 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
   const [comentarios, setComentarios] = useState<ObservacionComentario[]>([])
   const [nuevoComentario, setNuevoComentario] = useState('')
   const [addingComentario, setAddingComentario] = useState(false)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    createClient().auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id ?? null))
+  }, [])
 
   // Viewer photos
   const [fotosCliente, setFotosCliente] = useState<ObservacionFotoCliente[]>([])
@@ -355,39 +363,54 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
           )}
         </div>
 
-        {/* Chat thread */}
-        <div>
-          <p className="text-xs font-medium text-text-tertiary mb-2">Conversación</p>
-          <div className="space-y-2 max-h-48 overflow-y-auto bg-surface-sunken rounded-xl p-3 border border-border-subtle">
+        {/* Chat thread — estilo WhatsApp */}
+        <div className="rounded-xl overflow-hidden border border-border-subtle">
+          <div className="px-3 py-2 bg-[#075E54] text-white text-xs font-medium">Conversación</div>
+
+          <div className="flex flex-col gap-1.5 max-h-56 overflow-y-auto bg-[#efeae2] px-3 py-3">
             {comentarios.length === 0 && (
-              <p className="text-xs text-text-tertiary text-center py-2">Sin comentarios aún.</p>
+              <p className="text-xs text-[#667781] text-center py-4">Sin mensajes aún.</p>
             )}
-            {comentarios.map(c => (
-              <div key={c.id} className={`flex flex-col gap-0.5 ${c.es_viewer ? 'items-end' : 'items-start'}`}>
-                <div className={`max-w-[85%] rounded-xl px-3 py-2 text-sm ${c.es_viewer ? 'bg-blue-100 text-blue-900' : 'bg-white border border-border-default text-text-primary'}`}>
-                  {c.contenido}
+            {comentarios.map(c => {
+              const isOwn = c.autor_id === currentUserId
+              const name = (c.profiles as unknown as { full_name?: string | null } | null)?.full_name
+                ?? (c.es_viewer ? 'Cliente' : 'Profesional')
+              return (
+                <div key={c.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`relative max-w-[78%] px-3 pt-1.5 pb-1 shadow-sm text-sm
+                    ${isOwn
+                      ? 'bg-[#d9fdd3] rounded-2xl rounded-tr-sm text-gray-800'
+                      : 'bg-white rounded-2xl rounded-tl-sm text-gray-800'
+                    }`}
+                  >
+                    {!isOwn && (
+                      <p className="text-[11px] font-semibold text-[#075E54] mb-0.5 leading-tight">{name}</p>
+                    )}
+                    <p className="leading-snug pr-10">{c.contenido}</p>
+                    <span className="absolute bottom-1 right-2 text-[10px] text-[#667781] whitespace-nowrap">
+                      {formatTime(c.created_at)}
+                    </span>
+                  </div>
                 </div>
-                <span className="text-[10px] text-text-tertiary px-1">
-                  {c.profiles?.full_name ?? (c.es_viewer ? 'Cliente' : 'Profesional')} · {formatTime(c.created_at)}
-                </span>
-              </div>
-            ))}
+              )
+            })}
             <div ref={chatEndRef} />
           </div>
 
-          <form onSubmit={handleEnviarComentario} className="flex gap-2 mt-2">
+          <form onSubmit={handleEnviarComentario} className="flex items-center gap-2 bg-[#f0f2f5] px-3 py-2">
             <input
               type="text"
               value={nuevoComentario}
               onChange={e => setNuevoComentario(e.target.value)}
-              placeholder="Escribí un comentario…"
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleEnviarComentario(e) } }}
+              placeholder="Escribí un mensaje…"
               maxLength={2000}
-              className="flex-1 border border-border-default rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
+              className="flex-1 rounded-full bg-white border-0 px-4 py-2 text-sm focus:outline-none shadow-sm"
             />
             <button
               type="submit"
               disabled={addingComentario || !nuevoComentario.trim()}
-              className="p-1.5 rounded-lg bg-brand-primary text-white disabled:opacity-40 hover:bg-brand-primary/90 transition-colors shrink-0"
+              className="w-9 h-9 rounded-full bg-[#075E54] text-white flex items-center justify-center disabled:opacity-40 hover:bg-[#128C7E] transition-colors shrink-0"
             >
               <Send size={14} />
             </button>
