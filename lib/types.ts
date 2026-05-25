@@ -829,6 +829,7 @@ export interface ObservacionGestion {
   responsable_id: string | null
   responsable_cierre_id: string | null
   evidencia_cierre_url: string | null
+  foto_url: string | null
   created_at: string
   updated_at: string
   observaciones_clasificaciones?: { nombre: string } | null

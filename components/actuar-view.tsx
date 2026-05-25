@@ -88,7 +88,7 @@ export function ActuarView({ establecimientoId }: { establecimientoId: string })
 
         supabase
           .from('gestiones_observaciones')
-          .select('id, registro_gestion_id, descripcion, fecha_planificada, fecha_cierre, clasificacion_id, categoria_id, responsable_id, responsable_cierre_id, evidencia_cierre_url, personas_directorio!responsable_id(nombre, apellido), observaciones_clasificaciones(nombre), observaciones_categorias(nombre, nivel)')
+          .select('id, registro_gestion_id, descripcion, fecha_planificada, fecha_cierre, clasificacion_id, categoria_id, responsable_id, responsable_cierre_id, evidencia_cierre_url, foto_url, personas_directorio!responsable_id(nombre, apellido), observaciones_clasificaciones(nombre), observaciones_categorias(nombre, nivel)')
           .in('registro_gestion_id', rgIds)
           .order('fecha_planificada', { ascending: true })
           .then(({ data: obsData }) => {
@@ -294,6 +294,10 @@ export function ActuarView({ establecimientoId }: { establecimientoId: string })
           return (
             <div key={obs.id} className="bg-white dark:bg-surface-elevated border border-border-default rounded-xl p-4 cursor-pointer hover:border-brand-muted transition-colors" onClick={() => setSelectedObs(obs)}>
               <div className="flex items-start justify-between gap-4">
+                {obs.foto_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={obs.foto_url} alt="Foto observación" className="h-[2.5cm] w-auto object-cover rounded-lg border border-gray-200 shrink-0" />
+                )}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-text-primary">{obs.descripcion}</p>
 

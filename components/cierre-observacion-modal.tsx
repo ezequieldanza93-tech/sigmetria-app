@@ -217,6 +217,10 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess }: Prop
         <div>
           <p className="text-sm text-text-tertiary mb-0.5">Observación</p>
           <p className="text-sm font-medium text-text-primary">{obs.descripcion}</p>
+          {obs.foto_url && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={obs.foto_url} alt="Foto de la observación" className="mt-3 max-w-full rounded-xl border border-gray-200 object-contain" />
+          )}
         </div>
 
         {/* Responsable asignado original */}
