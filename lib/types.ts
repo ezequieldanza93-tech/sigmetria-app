@@ -830,11 +830,35 @@ export interface ObservacionGestion {
   responsable_cierre_id: string | null
   evidencia_cierre_url: string | null
   foto_url: string | null
+  sector_id: string | null
+  puesto_id: string | null
+  cliente_visto_at: string | null
   created_at: string
   updated_at: string
   observaciones_clasificaciones?: { nombre: string } | null
   observaciones_categorias?: { nombre: string; nivel: number } | null
   personas_directorio?: { nombre: string; apellido: string } | null
+  establecimientos_sectores?: { nombre: string } | null
+  puestos_de_trabajo?: { nombre: string } | null
+}
+
+export interface ObservacionComentario {
+  id: string
+  observacion_id: string
+  autor_id: string
+  es_viewer: boolean
+  contenido: string
+  created_at: string
+  profiles?: { full_name: string | null; email: string | null } | null
+}
+
+export interface ObservacionFotoCliente {
+  id: string
+  observacion_id: string
+  autor_id: string
+  url: string
+  categoria: string | null
+  created_at: string
 }
 
 export interface EstablecimientoDenuncia {

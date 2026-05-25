@@ -199,7 +199,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
       )}
 
       {section === 'seguimiento' && (
-        <ActuarView establecimientoId={estId} />
+        <ActuarView establecimientoId={estId} canWrite={userCanWrite} />
       )}
     </div>
   )

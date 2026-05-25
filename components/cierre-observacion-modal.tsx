@@ -3,10 +3,12 @@
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { cerrarObservacion } from '@/lib/actions/observacion-gestion'
+import { addObservacionComentario, addObservacionFoto, marcarObservacionVista } from '@/lib/actions/observacion-comentarios'
 import { createPersonaDirectorio } from '@/lib/actions/persona-directorio'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
-import type { ObservacionGestion } from '@/lib/types'
+import { Send } from 'lucide-react'
+import type { ObservacionGestion, ObservacionComentario, ObservacionFotoCliente } from '@/lib/types'
 
 interface Persona {
   id: string
@@ -19,13 +21,20 @@ interface Props {
   observacion: ObservacionGestion | null
   onClose: () => void
   onSuccess: () => void
+  canWrite?: boolean
 }
 
 function todayStr(): string {
   return new Date().toISOString().split('T')[0]
 }
 
-export function CierreObservacionModal({ observacion, onClose, onSuccess }: Props) {
+function formatTime(ts: string) {
+  const d = new Date(ts)
+  return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' }) +
+    ' ' + d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
+}
+
+export function CierreObservacionModal({ observacion, onClose, onSuccess, canWrite = true }: Props) {
   const [fechaCierre, setFechaCierre] = useState(todayStr())
   const [responsableCierreId, setResponsableCierreId] = useState<string | ''>('')
   const [responsableLabel, setResponsableLabel] = useState('')
@@ -48,6 +57,16 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess }: Prop
   const searchRef = useRef<HTMLDivElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
+  // Chat
+  const [comentarios, setComentarios] = useState<ObservacionComentario[]>([])
+  const [nuevoComentario, setNuevoComentario] = useState('')
+  const [addingComentario, setAddingComentario] = useState(false)
+  const chatEndRef = useRef<HTMLDivElement>(null)
+
+  // Viewer photos
+  const [fotosCliente, setFotosCliente] = useState<ObservacionFotoCliente[]>([])
+  const [uploadingFoto, setUploadingFoto] = useState(false)
+
   useEffect(() => {
     if (observacion) {
       setFechaCierre(observacion.fecha_cierre ?? todayStr())
@@ -64,8 +83,40 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess }: Prop
       setDropOpen(false)
       setShowNewPersona(false)
       setSearchResults([])
+      setNuevoComentario('')
+
+      loadComentarios(observacion.id)
+      loadFotosCliente(observacion.id)
+
+      if (!canWrite) {
+        marcarObservacionVista(observacion.id).catch(() => { /* ignore */ })
+      }
     }
-  }, [observacion])
+  }, [observacion, canWrite])
+
+  async function loadComentarios(obsId: string) {
+    const supabase = createClient()
+    const { data } = await supabase
+      .from('observaciones_comentarios')
+      .select('id, observacion_id, autor_id, es_viewer, contenido, created_at, profiles!autor_id(full_name)')
+      .eq('observacion_id', obsId)
+      .order('created_at', { ascending: true })
+    setComentarios((data ?? []) as unknown as ObservacionComentario[])
+  }
+
+  async function loadFotosCliente(obsId: string) {
+    const supabase = createClient()
+    const { data } = await supabase
+      .from('observaciones_fotos_cliente')
+      .select('id, observacion_id, autor_id, url, categoria, created_at')
+      .eq('observacion_id', obsId)
+      .order('created_at', { ascending: true })
+    setFotosCliente((data ?? []) as ObservacionFotoCliente[])
+  }
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [comentarios])
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -146,6 +197,35 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess }: Prop
     setUploading(false)
   }
 
+  async function handleFotoClienteChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !observacion) return
+
+    setUploadingFoto(true)
+    const supabase = createClient()
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+    const path = `observaciones-cliente/${Date.now()}_${safeName}`
+
+    const { error: uploadError } = await supabase.storage
+      .from('documentos')
+      .upload(path, file, { cacheControl: '3600', upsert: false })
+
+    if (uploadError) {
+      setError('No se pudo subir la foto.')
+      setUploadingFoto(false)
+      return
+    }
+
+    const { data: { publicUrl } } = supabase.storage.from('documentos').getPublicUrl(path)
+    const result = await addObservacionFoto(observacion.id, publicUrl, null)
+    if (result.success) {
+      await loadFotosCliente(observacion.id)
+    } else {
+      setError(result.error ?? 'Error al guardar foto')
+    }
+    setUploadingFoto(false)
+  }
+
   async function createPersona(e: React.FormEvent) {
     e.preventDefault()
     if (!newNombre.trim() || !newApellido.trim()) return
@@ -193,14 +273,28 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess }: Prop
     }
   }
 
+  async function handleEnviarComentario(e: React.FormEvent) {
+    e.preventDefault()
+    if (!observacion || !nuevoComentario.trim()) return
+    setAddingComentario(true)
+    const result = await addObservacionComentario(observacion.id, nuevoComentario)
+    if (result.success) {
+      setNuevoComentario('')
+      await loadComentarios(observacion.id)
+    } else {
+      setError(result.error ?? 'Error al enviar comentario')
+    }
+    setAddingComentario(false)
+  }
+
   const obs = observacion
   if (!obs) return null
 
   const isCerrado = obs.fecha_cierre != null
 
   return (
-    <Modal open={true} onClose={onClose} title={isCerrado ? 'Editar cierre de observación' : 'Cerrar observación'} className="max-w-lg">
-      <form onSubmit={handleSubmit} className="space-y-5">
+    <Modal open={true} onClose={onClose} title={isCerrado ? 'Editar cierre de observación' : 'Observación'} className="max-w-lg">
+      <div className="space-y-5">
         {success && (
           <div className="bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-4 py-3">
             Observación cerrada correctamente ✓
@@ -223,6 +317,24 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess }: Prop
           )}
         </div>
 
+        {/* Sector / Puesto */}
+        {(obs.establecimientos_sectores || obs.puestos_de_trabajo) && (
+          <div className="flex gap-4">
+            {obs.establecimientos_sectores && (
+              <div>
+                <p className="text-xs text-text-tertiary mb-0.5">Sector</p>
+                <p className="text-sm text-text-primary">{obs.establecimientos_sectores.nombre}</p>
+              </div>
+            )}
+            {obs.puestos_de_trabajo && (
+              <div>
+                <p className="text-xs text-text-tertiary mb-0.5">Puesto</p>
+                <p className="text-sm text-text-primary">{obs.puestos_de_trabajo.nombre}</p>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Responsable asignado original */}
         <div>
           <p className="text-xs text-text-tertiary mb-1">Responsable asignado</p>
@@ -235,159 +347,248 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess }: Prop
           )}
         </div>
 
-        {/* Fecha de cierre */}
+        {/* Chat thread */}
         <div>
-          <label className="text-sm font-medium text-text-primary block mb-1">
-            Fecha de cierre <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="date"
-            value={fechaCierre}
-            onChange={e => setFechaCierre(e.target.value)}
-            required
-            className="w-full border border-border-default rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
-          />
+          <p className="text-xs font-medium text-text-tertiary mb-2">Conversación</p>
+          <div className="space-y-2 max-h-48 overflow-y-auto bg-surface-sunken rounded-xl p-3 border border-border-subtle">
+            {comentarios.length === 0 && (
+              <p className="text-xs text-text-tertiary text-center py-2">Sin comentarios aún.</p>
+            )}
+            {comentarios.map(c => (
+              <div key={c.id} className={`flex flex-col gap-0.5 ${c.es_viewer ? 'items-end' : 'items-start'}`}>
+                <div className={`max-w-[85%] rounded-xl px-3 py-2 text-sm ${c.es_viewer ? 'bg-blue-100 text-blue-900' : 'bg-white border border-border-default text-text-primary'}`}>
+                  {c.contenido}
+                </div>
+                <span className="text-[10px] text-text-tertiary px-1">
+                  {c.es_viewer ? 'Cliente' : 'Profesional'} · {formatTime(c.created_at)}
+                </span>
+              </div>
+            ))}
+            <div ref={chatEndRef} />
+          </div>
+
+          <form onSubmit={handleEnviarComentario} className="flex gap-2 mt-2">
+            <input
+              type="text"
+              value={nuevoComentario}
+              onChange={e => setNuevoComentario(e.target.value)}
+              placeholder="Escribí un comentario…"
+              maxLength={2000}
+              className="flex-1 border border-border-default rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
+            />
+            <button
+              type="submit"
+              disabled={addingComentario || !nuevoComentario.trim()}
+              className="p-1.5 rounded-lg bg-brand-primary text-white disabled:opacity-40 hover:bg-brand-primary/90 transition-colors shrink-0"
+            >
+              <Send size={14} />
+            </button>
+          </form>
         </div>
 
-        {/* Responsable de cierre — combobox con búsqueda */}
+        {/* Fotos del cliente */}
         <div>
-          <label className="text-sm font-medium text-text-primary block mb-1">
-            Responsable de cierre
-          </label>
-
-          {responsableCierreId && !showNewPersona ? (
-            <div className="flex items-center gap-2">
-              <span className="flex-1 text-sm text-text-primary bg-surface-sunken rounded-lg px-3 py-2 border border-border-subtle">
-                {responsableLabel}
-              </span>
-              <button type="button" onClick={clearResponsable} className="text-xs text-text-tertiary hover:text-text-primary shrink-0">
-                Cambiar
-              </button>
-              <button
-                type="button"
-                onClick={() => { clearResponsable(); setShowNewPersona(true) }}
-                className="text-xs text-brand-primary hover:text-brand-primary/80 font-medium shrink-0"
-              >
-                + Nueva
-              </button>
-            </div>
-          ) : showNewPersona ? (
-            <div className="space-y-2 bg-surface-sunken rounded-lg p-3 border border-border-subtle">
-              <input
-                value={newNombre}
-                onChange={e => setNewNombre(e.target.value)}
-                placeholder="Nombre *"
-                className="w-full border border-border-default rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
-              />
-              <input
-                value={newApellido}
-                onChange={e => setNewApellido(e.target.value)}
-                placeholder="Apellido *"
-                className="w-full border border-border-default rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
-              />
-              <input
-                value={newDni}
-                onChange={e => setNewDni(e.target.value)}
-                placeholder="DNI (opcional)"
-                className="w-full border border-border-default rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
-              />
-              <div className="flex gap-2">
-                <Button type="button" onClick={createPersona} className="text-xs">
-                  Crear persona
-                </Button>
-                <button
-                  type="button"
-                  onClick={() => { setShowNewPersona(false); if (responsableCierreId) setSearchQuery('') }}
-                  className="text-xs text-text-tertiary hover:text-text-primary"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="relative" ref={searchRef}>
-              <div className="flex gap-2">
-                <input
-                  type="search"
-                  value={searchQuery}
-                  onChange={e => searchPersonas(e.target.value)}
-                  onFocus={() => { if (searchResults.length > 0) setDropOpen(true) }}
-                  placeholder="Buscá por apellido, nombre o DNI…"
-                  className="flex-1 border border-border-default rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
+          <p className="text-xs font-medium text-text-tertiary mb-2">Fotos del cliente</p>
+          {fotosCliente.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-2">
+              {fotosCliente.map(f => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={f.id}
+                  src={f.url}
+                  alt={f.categoria ?? 'Foto cliente'}
+                  className="h-20 w-auto rounded-lg border border-gray-200 object-cover cursor-pointer hover:opacity-90"
+                  onClick={() => window.open(f.url, '_blank')}
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowNewPersona(true)}
-                  className="text-xs text-brand-primary hover:text-brand-primary/80 font-medium shrink-0"
-                >
-                  + Nueva
-                </button>
-              </div>
+              ))}
+            </div>
+          )}
+          <label className="inline-block cursor-pointer">
+            <span className="text-xs text-brand-primary hover:text-brand-primary/80 font-medium">
+              {uploadingFoto ? 'Subiendo…' : '+ Agregar foto'}
+            </span>
+            <input
+              type="file"
+              accept=".jpg,.jpeg,.png,.webp"
+              onChange={handleFotoClienteChange}
+              disabled={uploadingFoto}
+              className="hidden"
+            />
+          </label>
+        </div>
 
-              {searching && (
-                <p className="text-xs text-text-tertiary mt-1">Buscando...</p>
-              )}
+        {/* Close form — only for professionals */}
+        {canWrite && (
+          <form onSubmit={handleSubmit} className="space-y-5 border-t border-border-subtle pt-5">
+            <p className="text-xs font-medium text-text-tertiary uppercase tracking-wide">Cierre de observación</p>
 
-              {dropOpen && searchResults.length === 0 && searchQuery.trim() && !searching && (
-                <div className="absolute top-full mt-1 left-0 right-0 z-50 bg-white border border-border-default rounded-xl shadow-xl overflow-hidden">
-                  <div className="px-3 py-3 text-xs text-text-tertiary text-center">
-                    Sin resultados.
+            {/* Fecha de cierre */}
+            <div>
+              <label className="text-sm font-medium text-text-primary block mb-1">
+                Fecha de cierre <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="date"
+                value={fechaCierre}
+                onChange={e => setFechaCierre(e.target.value)}
+                required
+                className="w-full border border-border-default rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
+              />
+            </div>
+
+            {/* Responsable de cierre — combobox con búsqueda */}
+            <div>
+              <label className="text-sm font-medium text-text-primary block mb-1">
+                Responsable de cierre
+              </label>
+
+              {responsableCierreId && !showNewPersona ? (
+                <div className="flex items-center gap-2">
+                  <span className="flex-1 text-sm text-text-primary bg-surface-sunken rounded-lg px-3 py-2 border border-border-subtle">
+                    {responsableLabel}
+                  </span>
+                  <button type="button" onClick={clearResponsable} className="text-xs text-text-tertiary hover:text-text-primary shrink-0">
+                    Cambiar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { clearResponsable(); setShowNewPersona(true) }}
+                    className="text-xs text-brand-primary hover:text-brand-primary/80 font-medium shrink-0"
+                  >
+                    + Nueva
+                  </button>
+                </div>
+              ) : showNewPersona ? (
+                <div className="space-y-2 bg-surface-sunken rounded-lg p-3 border border-border-subtle">
+                  <input
+                    value={newNombre}
+                    onChange={e => setNewNombre(e.target.value)}
+                    placeholder="Nombre *"
+                    className="w-full border border-border-default rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
+                  />
+                  <input
+                    value={newApellido}
+                    onChange={e => setNewApellido(e.target.value)}
+                    placeholder="Apellido *"
+                    className="w-full border border-border-default rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
+                  />
+                  <input
+                    value={newDni}
+                    onChange={e => setNewDni(e.target.value)}
+                    placeholder="DNI (opcional)"
+                    className="w-full border border-border-default rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
+                  />
+                  <div className="flex gap-2">
+                    <Button type="button" onClick={createPersona} className="text-xs">
+                      Crear persona
+                    </Button>
+                    <button
+                      type="button"
+                      onClick={() => { setShowNewPersona(false); if (responsableCierreId) setSearchQuery('') }}
+                      className="text-xs text-text-tertiary hover:text-text-primary"
+                    >
+                      Cancelar
+                    </button>
                   </div>
                 </div>
-              )}
-
-              {dropOpen && searchResults.length > 0 && (
-                <div className="absolute top-full mt-1 left-0 right-0 z-50 bg-white border border-border-default rounded-xl shadow-xl overflow-hidden">
-                  {searchResults.map(p => (
+              ) : (
+                <div className="relative" ref={searchRef}>
+                  <div className="flex gap-2">
+                    <input
+                      type="search"
+                      value={searchQuery}
+                      onChange={e => searchPersonas(e.target.value)}
+                      onFocus={() => { if (searchResults.length > 0) setDropOpen(true) }}
+                      placeholder="Buscá por apellido, nombre o DNI…"
+                      className="flex-1 border border-border-default rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
+                    />
                     <button
-                      key={p.id}
                       type="button"
-                      onClick={() => selectPersona(p)}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left text-text-primary hover:bg-surface-sunken transition-colors"
+                      onClick={() => setShowNewPersona(true)}
+                      className="text-xs text-brand-primary hover:text-brand-primary/80 font-medium shrink-0"
                     >
-                      <span>{p.apellido}, {p.nombre}</span>
-                      {p.dni && (
-                        <span className="text-text-tertiary text-xs ml-auto">DNI: {p.dni}</span>
-                      )}
+                      + Nueva
                     </button>
-                  ))}
+                  </div>
+
+                  {searching && (
+                    <p className="text-xs text-text-tertiary mt-1">Buscando...</p>
+                  )}
+
+                  {dropOpen && searchResults.length === 0 && searchQuery.trim() && !searching && (
+                    <div className="absolute top-full mt-1 left-0 right-0 z-50 bg-white border border-border-default rounded-xl shadow-xl overflow-hidden">
+                      <div className="px-3 py-3 text-xs text-text-tertiary text-center">
+                        Sin resultados.
+                      </div>
+                    </div>
+                  )}
+
+                  {dropOpen && searchResults.length > 0 && (
+                    <div className="absolute top-full mt-1 left-0 right-0 z-50 bg-white border border-border-default rounded-xl shadow-xl overflow-hidden">
+                      {searchResults.map(p => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => selectPersona(p)}
+                          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left text-text-primary hover:bg-surface-sunken transition-colors"
+                        >
+                          <span>{p.apellido}, {p.nombre}</span>
+                          {p.dni && (
+                            <span className="text-text-tertiary text-xs ml-auto">DNI: {p.dni}</span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-          )}
-        </div>
 
-        {/* Evidencia foto */}
-        <div>
-          <label className="text-sm font-medium text-text-primary block mb-1">
-            Foto de evidencia
-          </label>
-          <input
-            type="file"
-            accept=".jpg,.jpeg,.png,.webp"
-            onChange={handleFileChange}
-            disabled={uploading}
-            className="w-full text-sm text-text-tertiary file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-brand-muted file:text-brand-primary hover:file:bg-brand-muted/80 cursor-pointer"
-          />
-          {uploading && <p className="text-xs text-brand-primary mt-1">Subiendo imagen...</p>}
-          {evidenciaUrl && !uploading && (
-            <p className="text-xs text-green-600 mt-1">✓ {evidenciaName}</p>
-          )}
-        </div>
+            {/* Evidencia foto */}
+            <div>
+              <label className="text-sm font-medium text-text-primary block mb-1">
+                Foto de evidencia
+              </label>
+              <input
+                type="file"
+                accept=".jpg,.jpeg,.png,.webp"
+                onChange={handleFileChange}
+                disabled={uploading}
+                className="w-full text-sm text-text-tertiary file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-brand-muted file:text-brand-primary hover:file:bg-brand-muted/80 cursor-pointer"
+              />
+              {uploading && <p className="text-xs text-brand-primary mt-1">Subiendo imagen...</p>}
+              {evidenciaUrl && !uploading && (
+                <p className="text-xs text-green-600 mt-1">✓ {evidenciaName}</p>
+              )}
+            </div>
 
-        <div className="flex gap-3 pt-2">
-          <Button type="submit" disabled={saving || uploading}>
-            {saving ? 'Guardando...' : isCerrado ? 'Actualizar cierre' : 'Cerrar observación'}
-          </Button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-sm text-text-tertiary hover:text-text-primary px-4"
-          >
-            Cancelar
-          </button>
-        </div>
-      </form>
+            <div className="flex gap-3 pt-2">
+              <Button type="submit" disabled={saving || uploading}>
+                {saving ? 'Guardando...' : isCerrado ? 'Actualizar cierre' : 'Cerrar observación'}
+              </Button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="text-sm text-text-tertiary hover:text-text-primary px-4"
+              >
+                Cancelar
+              </button>
+            </div>
+          </form>
+        )}
+
+        {!canWrite && (
+          <div className="flex justify-end pt-2 border-t border-border-subtle">
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-sm text-text-tertiary hover:text-text-primary px-4 py-2"
+            >
+              Cerrar
+            </button>
+          </div>
+        )}
+      </div>
     </Modal>
   )
 }
