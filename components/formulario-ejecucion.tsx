@@ -490,7 +490,7 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
   // ── Saved view ─────────────────────────────────────────────────────
   if (savedOk) {
     return (
-      <Modal open title="Gestión guardada" onClose={onSuccess} size="sm">
+      <Modal open title="Gestión guardada" onClose={onSuccess}>
         <div className="space-y-5 py-2">
           <div className="text-center py-4">
             <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
