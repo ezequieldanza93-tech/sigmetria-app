@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Sun, Moon, Users, UserCog, Network, Gauge, Shield, Settings2, LogOut, Building2, BarChart2, CreditCard, Smartphone, ShieldCheck, CalendarClock, AlertTriangle, Scale, Map, ClipboardList, MessageSquare, Wifi, WifiOff, Download } from 'lucide-react'
+import { Sun, Moon, Users, UserCog, Network, Gauge, Shield, Settings2, LogOut, Building2, BarChart2, CreditCard, Smartphone, ShieldCheck, CalendarClock, AlertTriangle, Scale, Map, ClipboardList, MessageSquare, Wifi, WifiOff, Download, GraduationCap, BookOpen } from 'lucide-react'
 import { SystemRole, UserRole, ROLE_LABELS, ROLE_COLORS } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 import { usePreview } from '@/lib/contexts/preview-context'
@@ -357,6 +357,20 @@ export function AppHeader({
                   </div>
                   <DropdownItem href="/dashboard/incidentes" icon={AlertTriangle} label="Incidentes" role="menuitem" />
                   <DropdownItem href="/dashboard/denuncias" icon={Scale} label="Denuncias" role="menuitem" />
+                </div>
+
+                {/* Capacitación */}
+                <div className="py-1 border-b border-border-subtle">
+                  <div className="px-4 py-1.5">
+                    <p className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold">Capacitación</p>
+                  </div>
+                  <DropdownItem href="/dashboard/cursos" icon={GraduationCap} label="Mis Cursos" role="menuitem" />
+                  {(userRole === 'full_access_main' || userRole === 'full_access_branch' || isSuperAdmin) && (
+                    <>
+                      <DropdownItem href="/dashboard/cursos/admin" icon={BookOpen} label="Administrar Cursos" role="menuitem" />
+                      <DropdownItem href="/dashboard/cursos/compliance" icon={BarChart2} label="Compliance" role="menuitem" />
+                    </>
+                  )}
                 </div>
 
                 {/* Herramientas */}

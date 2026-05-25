@@ -10,6 +10,9 @@ export type AssetBucket =
   | 'incidentes'
   | 'denuncias'
   | 'subcontratistas'
+  | 'cursos-material'
+  | 'cursos-portadas'
+  | 'cursos-certificados'
 
 export type EntityType =
   | 'empresa'
@@ -22,6 +25,7 @@ export type EntityType =
   | 'incidente'
   | 'denuncia'
   | 'subcontratista'
+  | 'curso'
 
 interface BucketConfig {
   maxBytes: number
@@ -39,6 +43,9 @@ const BUCKETS: Record<AssetBucket, BucketConfig> = {
   incidentes:   { maxBytes: 10 * 1024 * 1024, mimes: ['image/jpeg','image/png','image/webp','image/heic'],    public: false },
   denuncias:    { maxBytes: 10 * 1024 * 1024, mimes: ['image/jpeg','image/png','image/webp','image/heic'],    public: false },
   subcontratistas: { maxBytes: 10 * 1024 * 1024, mimes: ['application/pdf','image/jpeg','image/png'],        public: false },
+  'cursos-material':    { maxBytes: 500 * 1024 * 1024, mimes: ['video/mp4','video/webm','application/pdf','image/png','image/jpeg','image/webp'], public: false },
+  'cursos-portadas':    { maxBytes: 5 * 1024 * 1024, mimes: ['image/png','image/jpeg','image/webp'],                                            public: true  },
+  'cursos-certificados':{ maxBytes: 5 * 1024 * 1024, mimes: ['application/pdf'],                                                                 public: false },
 }
 
 const EXT_BY_MIME: Record<string, string> = {

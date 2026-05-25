@@ -6,13 +6,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { FirmaCanvas } from '@/components/firmas/firma-canvas'
 import { useFirmarRegistroTrabajador } from '@/lib/queries/firmas'
-import type { FirmaEntidadTipo } from '@/lib/types'
 import { PenLine, Loader2 } from 'lucide-react'
 
 interface FirmaTrabajadorModalProps {
   open: boolean
   onClose: () => void
-  entidadTipo: FirmaEntidadTipo
+  entidadTipo: 'gestion' | 'capacitacion' | 'permiso_trabajo' | 'entrega_epp'
   entidadId: string
   entidadNombre: string
   onSuccess: () => void

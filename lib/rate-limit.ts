@@ -29,6 +29,11 @@ export const apiRatelimit = createRatelimit(
   'ratelimit:api'
 )
 
+export const aiQuizRatelimit = createRatelimit(
+  Ratelimit.slidingWindow(5, '60 m'),
+  'ratelimit:ai-quiz'
+)
+
 export async function checkRateLimit(ratelimit: Ratelimit, identifier: string) {
   const { success, remaining } = await ratelimit.limit(identifier)
   if (!success) {

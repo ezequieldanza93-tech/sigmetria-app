@@ -1020,7 +1020,7 @@ export interface UserDashboardWidget {
 }
 
 // ---- Firmas ----
-export type FirmaEntidadTipo = 'gestion' | 'capacitacion' | 'permiso_trabajo' | 'entrega_epp'
+export type FirmaEntidadTipo = 'gestion' | 'capacitacion' | 'permiso_trabajo' | 'entrega_epp' | 'curso_certificado'
 export type FirmaFirmanteTipo = 'usuario_interno' | 'trabajador'
 
 export interface Firma {
@@ -1044,11 +1044,222 @@ export interface Firma {
   personas_directorio?: { nombre: string; apellido: string } | null
 }
 
+// ---- Campus Virtual (Cursos) ----
+export type CursoEstado = 'borrador' | 'publicado' | 'archivado'
+export type CursoNivel = 'basico' | 'intermedio' | 'avanzado'
+export type LeccionTipo = 'video' | 'pdf' | 'texto' | 'embed'
+export type PreguntaTipo = 'multiple_choice' | 'multiple_select' | 'true_false' | 'short_text'
+export type AsignacionEstado = 'pendiente' | 'en_curso' | 'aprobado' | 'vencido' | 'desasignado'
+export type ObligatorioScope = 'empresa' | 'establecimiento' | 'sector' | 'puesto'
+
+export interface Curso {
+  id: string
+  consultora_id: string | null
+  autor_id: string | null
+  titulo: string
+  descripcion_corta: string | null
+  descripcion_larga: string | null
+  portada_url: string | null
+  categoria: string | null
+  nivel: CursoNivel
+  idioma: string
+  duracion_estimada_minutos: number | null
+  vencimiento_meses: number | null
+  vigente_desde: string | null
+  vigente_hasta: string | null
+  estado: CursoEstado
+  es_publico: boolean
+  version: number
+  configuracion_quiz: Record<string, unknown>
+  created_at: string
+  updated_at: string
+}
+
+export interface CursoModulo {
+  id: string
+  curso_id: string
+  orden: number
+  titulo: string
+  descripcion: string | null
+  created_at: string
+  updated_at: string
+  lecciones: CursoLeccion[]
+  quiz?: CursoQuiz | null
+}
+
+export interface CursoLeccion {
+  id: string
+  modulo_id: string
+  orden: number
+  titulo: string
+  tipo: LeccionTipo
+  contenido_url: string | null
+  contenido_texto: string | null
+  duracion_minutos: number | null
+  descargable: boolean
+  anti_skip: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface CursoQuiz {
+  id: string
+  curso_id: string
+  modulo_id: string | null
+  titulo: string
+  porcentaje_aprobacion: number
+  max_intentos: number | null
+  tiempo_limite_minutos: number | null
+  randomizar_preguntas: boolean
+  mostrar_correctas: boolean
+  created_at: string
+  updated_at: string
+  preguntas: CursoPregunta[]
+}
+
+export interface CursoPregunta {
+  id: string
+  quiz_id: string
+  orden: number
+  enunciado: string
+  tipo: PreguntaTipo
+  puntaje: number
+  explicacion: string | null
+  short_text_respuesta: string | null
+  created_at: string
+  opciones: CursoOpcion[]
+}
+
+export interface CursoOpcion {
+  id: string
+  pregunta_id: string
+  orden: number
+  texto: string
+  es_correcta: boolean
+}
+
+export interface CursoAsignacion {
+  id: string
+  curso_id: string
+  persona_id: string
+  empresa_id: string | null
+  establecimiento_id: string | null
+  asignado_por_id: string | null
+  fecha_asignacion: string
+  fecha_limite: string | null
+  obligatorio: boolean
+  estado: AsignacionEstado
+  fecha_inicio: string | null
+  fecha_aprobacion: string | null
+  progreso_porcentaje: number
+  ultimo_acceso: string | null
+  curso_version: number
+  created_at: string
+  updated_at: string
+}
+
+export interface CursoCertificado {
+  id: string
+  asignacion_id: string | null
+  codigo_validacion: string
+  firma_id: string | null
+  pdf_path: string | null
+  pdf_url: string | null
+  fecha_emision: string
+  fecha_vencimiento: string | null
+  invalidado: boolean
+  motivo_invalidacion: string | null
+  created_at: string
+}
+
+export interface CertificadoPublico {
+  codigo: string
+  curso_titulo: string
+  persona_nombre: string
+  fecha_emision: string
+  fecha_vencimiento: string | null
+  valido: boolean
+  autor_nombre: string | null
+  consultora_nombre: string | null
+}
+
+export interface CumplimientoStats {
+  porcentaje_global: number
+  total_asignaciones: number
+  aprobadas: number
+  pendientes: number
+  vencidas: number
+  proximas_a_vencer: number
+}
+
+export interface CumplimientoEmpresa {
+  empresa_id: string
+  empresa_nombre: string
+  porcentaje: number
+  total: number
+  aprobadas: number
+  vencidas: number
+  detalle_por_establecimiento?: {
+    establecimiento_id: string
+    establecimiento_nombre: string
+    porcentaje: number
+    total: number
+    aprobadas: number
+  }[]
+}
+
+export interface CumplimientoTrendPoint {
+  mes: string
+  porcentaje: number
+  total: number
+}
+
+export const CURSO_NIVEL_LABELS: Record<CursoNivel, string> = {
+  basico: 'Básico',
+  intermedio: 'Intermedio',
+  avanzado: 'Avanzado',
+}
+
+export const CURSO_NIVEL_COLORS: Record<CursoNivel, string> = {
+  basico: 'bg-green-100 text-green-800',
+  intermedio: 'bg-yellow-100 text-yellow-800',
+  avanzado: 'bg-red-100 text-red-800',
+}
+
+export const CURSO_ESTADO_LABELS: Record<CursoEstado, string> = {
+  borrador: 'Borrador',
+  publicado: 'Publicado',
+  archivado: 'Archivado',
+}
+
+export const CURSO_ESTADO_COLORS: Record<CursoEstado, string> = {
+  borrador: 'bg-gray-100 text-gray-800',
+  publicado: 'bg-green-100 text-green-800',
+  archivado: 'bg-orange-100 text-orange-800',
+}
+
+export const ASIGNACION_ESTADO_LABELS: Record<AsignacionEstado, string> = {
+  pendiente: 'Pendiente',
+  en_curso: 'En curso',
+  aprobado: 'Aprobado',
+  vencido: 'Vencido',
+  desasignado: 'Desasignado',
+}
+
+export const ASIGNACION_ESTADO_COLORS: Record<AsignacionEstado, string> = {
+  pendiente: 'bg-gray-100 text-gray-800',
+  en_curso: 'bg-blue-100 text-blue-800',
+  aprobado: 'bg-green-100 text-green-800',
+  vencido: 'bg-red-100 text-red-800',
+  desasignado: 'bg-gray-100 text-gray-500',
+}
+
 export const FIRMA_ENTIDAD_LABELS: Record<FirmaEntidadTipo, string> = {
   gestion: 'Gestión',
   capacitacion: 'Capacitación',
   permiso_trabajo: 'Permiso de Trabajo',
   entrega_epp: 'Entrega de EPP',
+  curso_certificado: 'Certificado de Curso',
 }
 
 // ---- Incidentes y Denuncias ----

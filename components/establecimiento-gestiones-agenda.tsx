@@ -872,15 +872,14 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .map(ge => (ge as any).gestiones?.id)
         .filter(Boolean) as string[]
-      if (gestionIds.length === 0) return new Set<string>()
+      if (gestionIds.length === 0) return []
       const { data } = await supabase
         .from('formularios_secciones')
         .select('gestion_id')
         .in('gestion_id', gestionIds)
-      return new Set((data ?? []).map(s => s.gestion_id))
+      return (data ?? []).map(s => s.gestion_id)
     },
     enabled: geIds.length > 0,
-    meta: { persist: true },
   })
 
   const geMap = useMemo(() => {
@@ -901,7 +900,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
       aprobado_por: { nombre: string; apellido: string } | null
     }
 
-    const formSet = gestionesConForm ?? new Set<string>()
+    const formList = gestionesConForm ?? []
 
     return (rawRegistros as unknown as RegRaw[]).map(r => {
       const ge = geMap.get(r.gestion_establecimiento_id)
@@ -909,7 +908,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
         ...r,
         ge_id: ge?.id,
         ge_gestion_id: ge?.gestiones?.id,
-        ge_tiene_formulario: ge?.gestiones?.id ? formSet.has(ge.gestiones.id) : false,
+        ge_tiene_formulario: ge?.gestiones?.id ? formList.includes(ge.gestiones.id) : false,
         ge_tiene_entregable: ge?.gestiones?.tiene_entregable ?? false,
         ge_mostrar_lt: ge?.mostrar_lt ?? false,
         ge_firmada: ge?.firmada ?? false,
