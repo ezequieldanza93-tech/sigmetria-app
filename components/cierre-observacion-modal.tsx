@@ -373,27 +373,41 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
             )}
             {comentarios.map(c => {
               const isOwn = c.autor_id === currentUserId
-              const name = (c.profiles as unknown as { full_name?: string | null } | null)?.full_name
-                ?? (c.es_viewer ? 'Cliente' : 'Profesional')
+              const profile = c.profiles as unknown as { full_name?: string | null } | null
+              const name = profile?.full_name ?? (c.es_viewer ? 'Cliente' : 'Profesional')
+              const clienteVio = obs.cliente_visto_at
+              const leido = isOwn && (!c.es_viewer
+                ? (clienteVio != null && c.created_at <= clienteVio)
+                : true)
               return (
                 <div key={c.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`relative max-w-[78%] px-3 pt-1.5 pb-1 shadow-sm text-sm
+                  <div className={`max-w-[78%] px-3 pt-1.5 pb-1.5 shadow-sm text-sm
                     ${isOwn
-                      ? 'bg-[#d9fdd3] rounded-2xl rounded-tr-sm text-gray-800'
-                      : 'bg-white rounded-2xl rounded-tl-sm text-gray-800'
+                      ? 'bg-[#d9fdd3] rounded-2xl rounded-tr-sm'
+                      : 'bg-white rounded-2xl rounded-tl-sm'
                     }`}
                   >
                     {!isOwn && (
                       <p className="text-[11px] font-semibold text-[#075E54] mb-0.5 leading-tight">{name}</p>
                     )}
-                    <p className="leading-snug pr-10">{c.contenido}</p>
-                    <span className="absolute bottom-1 right-2 text-[10px] text-[#667781] whitespace-nowrap">
-                      {formatTime(c.created_at)}
-                    </span>
+                    <p className="text-gray-800 leading-snug text-sm">{c.contenido}</p>
+                    <div className="flex items-center justify-end gap-1 mt-0.5">
+                      <span className="text-[10px] text-[#667781] whitespace-nowrap">{formatTime(c.created_at)}</span>
+                      {isOwn && (
+                        <span className={`text-[11px] font-bold leading-none ${leido ? 'text-[#53bdeb]' : 'text-[#a0aab4]'}`}>
+                          {leido ? '✓✓' : '✓'}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               )
             })}
+            {obs.cliente_visto_at && comentarios.length > 0 && (
+              <p className="text-[10px] text-[#667781] text-right pr-1">
+                Visto por cliente · {formatTime(obs.cliente_visto_at)}
+              </p>
+            )}
             <div ref={chatEndRef} />
           </div>
 
