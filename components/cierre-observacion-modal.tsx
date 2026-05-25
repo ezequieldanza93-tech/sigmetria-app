@@ -62,9 +62,11 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
 
   // Chat
   const [comentarios, setComentarios] = useState<ObservacionComentario[]>([])
+  const [authorNames, setAuthorNames] = useState<Map<string, string>>(new Map())
   const [nuevoComentario, setNuevoComentario] = useState('')
   const [addingComentario, setAddingComentario] = useState(false)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [infoMsgId, setInfoMsgId] = useState<string | null>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -92,6 +94,8 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
       setShowNewPersona(false)
       setSearchResults([])
       setNuevoComentario('')
+      setInfoMsgId(null)
+      setAuthorNames(new Map())
 
       loadComentarios(observacion.id)
       loadFotosCliente(observacion.id)
@@ -107,10 +111,25 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
       const supabase = createClient()
       const { data } = await supabase
         .from('observaciones_comentarios')
-        .select('id, observacion_id, autor_id, es_viewer, contenido, created_at, profiles!autor_id(full_name)')
+        .select('id, observacion_id, autor_id, es_viewer, contenido, created_at')
         .eq('observacion_id', obsId)
         .order('created_at', { ascending: true })
-      setComentarios((data ?? []) as unknown as ObservacionComentario[])
+
+      const comments = (data ?? []) as ObservacionComentario[]
+      setComentarios(comments)
+
+      if (comments.length > 0) {
+        const authorIds = [...new Set(comments.map(c => c.autor_id))]
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, full_name')
+          .in('id', authorIds)
+        const nameMap = new Map<string, string>()
+        for (const p of (profiles ?? [])) {
+          if (p.full_name) nameMap.set(p.id, p.full_name)
+        }
+        setAuthorNames(nameMap)
+      }
     } catch {
       setComentarios([])
     }
@@ -333,6 +352,20 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
           )}
         </div>
 
+        {/* Evidencia de cierre */}
+        {obs.evidencia_cierre_url && (
+          <div>
+            <p className="text-xs text-text-tertiary mb-1">Foto de evidencia de cierre</p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={obs.evidencia_cierre_url}
+              alt="Evidencia de cierre"
+              className="max-w-full rounded-xl border border-gray-200 object-contain cursor-pointer hover:opacity-90"
+              onClick={() => window.open(obs.evidencia_cierre_url!, '_blank')}
+            />
+          </div>
+        )}
+
         {/* Sector / Puesto */}
         {(obs.establecimientos_sectores || obs.puestos_de_trabajo) && (
           <div className="flex gap-4">
@@ -373,41 +406,44 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
             )}
             {comentarios.map(c => {
               const isOwn = c.autor_id === currentUserId
-              const profile = c.profiles as unknown as { full_name?: string | null } | null
-              const name = profile?.full_name ?? (c.es_viewer ? 'Cliente' : 'Profesional')
+              const name = authorNames.get(c.autor_id) ?? (c.es_viewer ? 'Cliente' : 'Profesional')
               const clienteVio = obs.cliente_visto_at
-              const leido = isOwn && (!c.es_viewer
-                ? (clienteVio != null && c.created_at <= clienteVio)
-                : true)
+              const vistoPorCliente = clienteVio != null && c.created_at <= clienteVio
               return (
-                <div key={c.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[78%] px-3 pt-1.5 pb-1.5 shadow-sm text-sm
-                    ${isOwn
-                      ? 'bg-[#d9fdd3] rounded-2xl rounded-tr-sm'
-                      : 'bg-white rounded-2xl rounded-tl-sm'
-                    }`}
-                  >
-                    {!isOwn && (
-                      <p className="text-[11px] font-semibold text-[#075E54] mb-0.5 leading-tight">{name}</p>
-                    )}
-                    <p className="text-gray-800 leading-snug text-sm">{c.contenido}</p>
-                    <div className="flex items-center justify-end gap-1 mt-0.5">
-                      <span className="text-[10px] text-[#667781] whitespace-nowrap">{formatTime(c.created_at)}</span>
-                      {isOwn && (
-                        <span className={`text-[11px] font-bold leading-none ${leido ? 'text-[#53bdeb]' : 'text-[#a0aab4]'}`}>
-                          {leido ? '✓✓' : '✓'}
-                        </span>
+                <div key={c.id}>
+                  <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
+                    <div
+                      className={`max-w-[78%] px-3 pt-1.5 pb-1.5 shadow-sm text-sm cursor-pointer
+                        ${isOwn
+                          ? 'bg-[#d9fdd3] rounded-2xl rounded-tr-sm'
+                          : 'bg-white rounded-2xl rounded-tl-sm'
+                        }`}
+                      onClick={() => setInfoMsgId(prev => prev === c.id ? null : c.id)}
+                    >
+                      {!isOwn && (
+                        <p className="text-[11px] font-semibold text-[#075E54] mb-0.5 leading-tight">{name}</p>
                       )}
+                      <p className="text-gray-800 leading-snug text-sm">{c.contenido}</p>
+                      <div className="flex items-center justify-end gap-1 mt-0.5">
+                        <span className="text-[10px] text-[#667781] whitespace-nowrap">{formatTime(c.created_at)}</span>
+                        {isOwn && (
+                          <span className={`text-[11px] font-bold leading-none ${vistoPorCliente ? 'text-[#53bdeb]' : 'text-[#4fc3f7]'}`}>
+                            ✓✓
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
+                  {infoMsgId === c.id && (
+                    <p className={`text-[10px] text-[#667781] px-2 mt-0.5 ${isOwn ? 'text-right' : 'text-left'}`}>
+                      {vistoPorCliente
+                        ? `Visto por cliente · ${formatTime(clienteVio!)}`
+                        : 'Sin información de lectura'}
+                    </p>
+                  )}
                 </div>
               )
             })}
-            {obs.cliente_visto_at && comentarios.length > 0 && (
-              <p className="text-[10px] text-[#667781] text-right pr-1">
-                Visto por cliente · {formatTime(obs.cliente_visto_at)}
-              </p>
-            )}
             <div ref={chatEndRef} />
           </div>
 
