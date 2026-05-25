@@ -14,6 +14,7 @@ import {
   Plus, Camera, BarChart3, FileCheck, FileSignature,
   ClipboardCheck, GraduationCap, Heart, FileText, AlertTriangle,
   ClipboardList, UserPlus, Dumbbell, Kanban, HelpCircle,
+  Play, Upload, Download, BookMarked,
 } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import {
@@ -73,11 +74,11 @@ const MONTHS_FULL = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Jul
 const COL_WIDTHS_KEY = 'gestiones_col_widths'
 const DEFAULT_COL_WIDTHS: Record<string, number> = {
   categoria: 140, gestion: 180, fecha_plan: 100, fecha_ejec: 100,
-  responsable: 130, indice: 70, lt: 50, evidencia: 120, firma: 90,
+  responsable: 130, indice: 70, acciones: 130, firma: 90,
 }
 const COL_MIN_WIDTHS: Record<string, number> = {
   categoria: 80, gestion: 80, fecha_plan: 80, fecha_ejec: 80,
-  responsable: 80, indice: 50, lt: 40, evidencia: 80, firma: 70,
+  responsable: 80, indice: 50, acciones: 100, firma: 70,
 }
 
 const ROW_BG_COLORS: Record<EstadoGestion, string> = {
@@ -974,7 +975,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
       })).filter(g => g.regs.length > 0)
     : []
 
-  const totalCols = canWrite ? 9 : 8
+  const totalCols = 8
 
   // ── Row renderer ────────────────────────────────────────────────────────────
   function renderRows(regs: FullRegistro[]) {
@@ -982,10 +983,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
       const estado = calcularEstadoGestion(r.fecha_ejecutada ?? null, r.fecha_planificada)
 
       return (
-        <tr key={r.id} className={`${ROW_BG_COLORS[estado]} cursor-pointer`} onClick={() => {
-          if (r.ge_tiene_formulario && !r.fecha_ejecutada) setExecutingFormulario(r)
-          else setEditingRegistro(r)
-        }}>
+        <tr key={r.id} className={`${ROW_BG_COLORS[estado]} cursor-pointer`} onClick={() => setEditingRegistro(r)}>
           <td className="hidden md:table-cell px-4 py-1.5" style={{ maxWidth: colW('categoria'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             <span className="flex items-center gap-1.5">
               <CategoriaIcon nombre={r.ge_categoria_nombre} size={14} />
@@ -1005,41 +1003,54 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
           <td className="px-4 py-1.5 text-center text-sm tabular-nums text-gray-700">
             {r.index != null ? r.index : <span className="text-gray-300">—</span>}
           </td>
-          <td className="px-4 py-1.5 text-center">
-            <input
-              type="checkbox"
-              checked={r.ge_mostrar_lt ?? false}
-              onChange={e => {
-                e.stopPropagation()
-                const supabase = createClient()
-                supabase.from('gestiones_establecimientos').update({ mostrar_lt: e.target.checked }).eq('id', r.ge_id)
-                queryClient.invalidateQueries({ queryKey: ['gestiones-establecimiento', establecimientoId, year] })
-              }}
-              className="accent-sig-600 cursor-pointer"
-            />
-          </td>
-          {canWrite && (
-            <td className="px-4 py-1.5">
-              {r.ge_tiene_formulario && !r.fecha_ejecutada ? (
+          <td className="px-2 py-1.5" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-1 justify-center">
+              {r.ge_tiene_formulario && (
                 <button
-                  onClick={e => { e.stopPropagation(); setExecutingFormulario(r) }}
-                  className="text-xs font-semibold text-white bg-gray-700 hover:bg-gray-800 rounded-lg px-3 py-1 whitespace-nowrap"
+                  title="Ejecutar formulario"
+                  onClick={() => setExecutingFormulario(r)}
+                  className={`p-1.5 rounded-lg transition-colors ${r.fecha_ejecutada ? 'text-green-600 hover:bg-green-50' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-700'}`}
                 >
-                  Ejecutar
+                  <Play size={14} />
                 </button>
-              ) : r.evidencia_url ? (
+              )}
+              {canWrite && (
+                <button
+                  title="Cargar evidencia"
+                  onClick={() => setEditingRegistro(r)}
+                  className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+                >
+                  <Upload size={14} />
+                </button>
+              )}
+              {r.evidencia_url ? (
                 <a
                   href={r.evidencia_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  onClick={e => e.stopPropagation()}
-                  className="text-xs font-medium text-sig-600 hover:text-sig-800 underline underline-offset-2 whitespace-nowrap"
+                  title="Descargar adjunto"
+                  className="p-1.5 rounded-lg text-sig-600 hover:bg-sig-50 transition-colors"
                 >
-                  Ver PDF
+                  <Download size={14} />
                 </a>
-              ) : null}
-            </td>
-          )}
+              ) : (
+                <span className="p-1.5 text-gray-200 cursor-not-allowed" title="Sin adjunto">
+                  <Download size={14} />
+                </span>
+              )}
+              <button
+                title={r.ge_mostrar_lt ? 'Quitar del Legajo Técnico' : 'Habilitar en Legajo Técnico'}
+                onClick={() => {
+                  const supabase = createClient()
+                  supabase.from('gestiones_establecimientos').update({ mostrar_lt: !r.ge_mostrar_lt }).eq('id', r.ge_id)
+                  queryClient.invalidateQueries({ queryKey: ['gestiones-establecimiento', establecimientoId, year] })
+                }}
+                className={`p-1.5 rounded-lg transition-colors ${r.ge_mostrar_lt ? 'text-amber-500 hover:bg-amber-50' : 'text-gray-300 hover:bg-gray-100 hover:text-gray-600'}`}
+              >
+                <BookMarked size={14} />
+              </button>
+            </div>
+          </td>
           <td className="px-4 py-1.5 text-center">
             {r.ge_firmada ? (
               <FirmaBadge entidadTipo="gestion" entidadId={r.ge_id ?? ''} />
@@ -1096,14 +1107,9 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
         <th style={{ width: colW('indice') }} className="px-4 py-1.5 font-medium text-center relative select-none">
           Índice{rh('indice')}
         </th>
-        <th style={{ width: colW('lt') }} className="px-4 py-1.5 font-medium text-center relative select-none">
-          LT{rh('lt')}
+        <th style={{ width: colW('acciones') }} className="px-4 py-1.5 font-medium text-center relative select-none">
+          Acciones{rh('acciones')}
         </th>
-        {canWrite && (
-          <th style={{ width: colW('evidencia') }} className="px-4 py-1.5 font-medium relative select-none">
-            Evidencia{rh('evidencia')}
-          </th>
-        )}
         <th style={{ width: colW('firma') }} className="px-4 py-1.5 font-medium text-center relative select-none">
           Firma{rh('firma')}
         </th>
