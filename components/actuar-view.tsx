@@ -95,10 +95,12 @@ export function ActuarView({ establecimientoId, canWrite = true }: { establecimi
           .select(`
             id, registro_gestion_id, descripcion, fecha_planificada, fecha_cierre,
             clasificacion_id, categoria_id, responsable_id, responsable_cierre_id,
-            evidencia_cierre_url, foto_url,
+            evidencia_cierre_url, foto_url, sector_id, puesto_id, cliente_visto_at,
             personas_directorio!responsable_id(nombre, apellido),
             observaciones_clasificaciones(nombre),
-            observaciones_categorias(nombre, nivel)
+            observaciones_categorias(nombre, nivel),
+            establecimientos_sectores!sector_id(nombre),
+            puestos_de_trabajo!puesto_id(nombre)
           `)
           .in('registro_gestion_id', rgIds)
           .order('fecha_planificada', { ascending: true })
@@ -154,9 +156,17 @@ export function ActuarView({ establecimientoId, canWrite = true }: { establecimi
                 if (o.categoria_id) aspectos.add(o.categoria_id)
                 if (o.gestion_nombre) gestiones.add(o.gestion_nombre)
               }
+              const sectores = new Set<string>()
+              const puestos  = new Set<string>()
+              for (const o of full) {
+                if (o.sector_id) sectores.add(o.sector_id)
+                if (o.puesto_id) puestos.add(o.puesto_id)
+              }
               setFilterResponsable(responsables)
               setFilterAspecto(aspectos)
               setFilterGestion(gestiones)
+              setFilterSector(sectores)
+              setFilterPuesto(puestos)
             })
           })
       })
