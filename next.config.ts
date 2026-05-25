@@ -1,5 +1,6 @@
 import type { NextConfig } from 'next'
 import withSerwistInit from '@serwist/next'
+import withBundleAnalyzer from '@next/bundle-analyzer'
 
 const cspDirectives = [
   "default-src 'self'",
@@ -28,10 +29,20 @@ const nextConfig: NextConfig = {
   transpilePackages: ['recharts'],
   experimental: {
     serverActions: { bodySizeLimit: '10mb' },
-    optimizePackageImports: ['lucide-react', '@supabase/supabase-js', '@tanstack/react-query'],
+    optimizePackageImports: [
+      'lucide-react',
+      '@supabase/supabase-js',
+      '@tanstack/react-query',
+      'recharts',
+      'date-fns',
+    ],
+  },
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production' ? { exclude: ['error', 'warn'] } : false,
   },
   images: {
     remotePatterns: [{ protocol: 'https', hostname: '*.supabase.co' }],
+    formats: ['image/avif', 'image/webp'],
   },
   productionBrowserSourceMaps: false,
   async headers() {
@@ -51,4 +62,6 @@ const nextConfig: NextConfig = {
   },
 }
 
-export default withSerwist(nextConfig)
+const bundleAnalyzer = withBundleAnalyzer({ enabled: process.env.ANALYZE === 'true' })
+
+export default bundleAnalyzer(withSerwist(nextConfig))

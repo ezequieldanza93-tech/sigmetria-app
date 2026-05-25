@@ -1,8 +1,18 @@
+import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { CheckCircle, XCircle, AlertTriangle, Award } from 'lucide-react'
 
 // This page is PUBLIC — no auth required
 export const dynamic = 'force-dynamic'
+
+export const metadata: Metadata = {
+  title: 'Verificar certificado',
+  description: 'Verificá la autenticidad de un certificado emitido por Sigmetría HyS.',
+  robots: {
+    index: true,
+    follow: true,
+  },
+}
 
 export default async function VerificarCertificadoPage({
   params,

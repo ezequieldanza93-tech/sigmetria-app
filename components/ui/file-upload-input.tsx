@@ -68,32 +68,32 @@ export function FileUploadInput({
 
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">
-        {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+      <label className="block text-sm font-medium text-text-primary mb-1">
+        {label}{required && <span className="text-danger ml-0.5">*</span>}
       </label>
 
       {showCurrent && (
-        <div className="mb-2 flex items-center gap-3 p-2.5 bg-gray-50 border border-gray-200 rounded-lg">
+        <div className="mb-2 flex items-center gap-3 p-2.5 bg-surface-sunken border border-border-subtle rounded-lg">
           {kind === 'image' ? (
             <NextImage
               src={currentUrl!}
               alt="Actual"
               width={64}
               height={64}
-              className="w-16 h-16 object-cover rounded border border-gray-200 bg-white"
+              className="w-16 h-16 object-cover rounded border border-border-subtle bg-surface-elevated"
             />
           ) : (
-            <div className="w-16 h-16 flex items-center justify-center rounded border border-gray-200 bg-white">
-              <Icon size={28} className="text-gray-400" />
+            <div className="w-16 h-16 flex items-center justify-center rounded border border-border-subtle bg-surface-elevated">
+              <Icon size={28} className="text-text-tertiary" />
             </div>
           )}
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-gray-700 mb-1">Archivo actual</p>
+            <p className="text-xs font-medium text-text-primary mb-1">Archivo actual</p>
             <a
               href={currentUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs text-sig-600 hover:text-sig-700"
+              className="inline-flex items-center gap-1 text-xs text-brand-primary hover:text-brand-hover"
             >
               Ver actual <ExternalLink size={11} />
             </a>
@@ -101,7 +101,7 @@ export function FileUploadInput({
           <button
             type="button"
             onClick={handleRemove}
-            className="text-xs text-red-600 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50"
+            className="text-xs text-danger hover:opacity-80 px-2 py-1 rounded hover:bg-danger-bg"
           >
             Quitar
           </button>
@@ -141,7 +141,7 @@ export function FileUploadInput({
       <div className="flex items-center gap-2">
         <label
           htmlFor={`fileinp_${name}`}
-          className="inline-flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 cursor-pointer transition-colors"
+          className="inline-flex items-center gap-2 px-3 py-2 bg-surface-elevated border border-border-default rounded-lg text-sm text-text-primary hover:bg-surface-sunken cursor-pointer transition-colors"
         >
           <Upload size={16} />
           {showCurrent || showNew ? 'Cambiar archivo' : 'Seleccionar archivo'}
@@ -162,10 +162,10 @@ export function FileUploadInput({
       </div>
 
       {error && (
-        <p className="mt-1.5 text-xs text-red-600">{error}</p>
+        <p className="mt-1.5 text-xs text-danger">{error}</p>
       )}
       {helpText && !error && (
-        <p className="mt-1.5 text-xs text-gray-500">{helpText}</p>
+        <p className="mt-1.5 text-xs text-text-tertiary">{helpText}</p>
       )}
     </div>
   )

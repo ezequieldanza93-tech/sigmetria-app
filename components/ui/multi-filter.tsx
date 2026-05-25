@@ -40,13 +40,13 @@ export function MultiFilter({
         </svg>
       </button>
       {open && (
-        <div className="absolute top-full mt-1 left-0 z-50 min-w-[200px] bg-white border border-border-default rounded-xl shadow-xl overflow-hidden">
+        <div className="absolute top-full mt-1 left-0 z-50 min-w-[200px] bg-surface-elevated border border-border-default rounded-xl shadow-xl overflow-hidden">
           {options.map(opt => {
             const isOn = selected.has(opt.value)
             return (
               <label
                 key={opt.value}
-                className="flex items-center gap-2 px-3 py-2 text-xs text-gray-900 hover:bg-gray-50 cursor-pointer transition-colors"
+                className="flex items-center gap-2 px-3 py-2 text-xs text-text-primary hover:bg-surface-sunken cursor-pointer transition-colors"
               >
                 <input
                   type="checkbox"
@@ -56,7 +56,7 @@ export function MultiFilter({
                     if (isOn) { next.delete(opt.value) } else { next.add(opt.value) }
                     onChange(next)
                   }}
-                  className="rounded border-gray-300 text-brand-primary focus:ring-brand-primary/30"
+                  className="rounded border-border-default text-brand-primary focus:ring-brand-primary/30"
                 />
                 {opt.label}
               </label>

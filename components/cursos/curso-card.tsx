@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import type { Curso } from '@/lib/types'
 import { CURSO_ESTADO_LABELS, CURSO_ESTADO_COLORS } from '@/lib/types'
 import { CursoProgressBar } from '@/components/cursos/curso-progress-bar'
@@ -19,7 +20,14 @@ export function CursoCard({ curso, href, progreso, estadoAsignacion, fechaLimite
       {/* Portada */}
       <div className="h-36 bg-surface-sunken flex items-center justify-center overflow-hidden">
         {curso.portada_url ? (
-          <img src={curso.portada_url} alt={curso.titulo} className="w-full h-full object-cover" />
+          <Image
+            src={curso.portada_url}
+            alt={curso.titulo}
+            width={400}
+            height={225}
+            sizes="(max-width: 768px) 100vw, 400px"
+            className="w-full h-full object-cover"
+          />
         ) : (
           <span className="text-4xl text-text-tertiary/30 font-bold uppercase">
             {curso.titulo.slice(0, 2)}
