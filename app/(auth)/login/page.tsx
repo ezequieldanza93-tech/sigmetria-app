@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
 import { AlertCircle, Loader2, Bug } from 'lucide-react'
 import { DemoCredentials } from '@/components/demo-credentials'
+import { login } from '@/lib/actions/login'
 
 const LOGIN_TIMEOUT = 8_000
 
@@ -13,7 +13,6 @@ interface LogEntry {
 }
 
 export default function LoginPage() {
-  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -34,43 +33,42 @@ export default function LoginPage() {
     setLogs([])
     addLog('Submit clicked')
 
+    const form = e.currentTarget as HTMLFormElement
+    const formData = new FormData(form)
+
     let timedOut = false
     const timeout = setTimeout(() => {
       timedOut = true
       addLog('TIMEOUT fired after 8s')
       setLoading(false)
       setError('Tiempo de espera agotado. Verificá tu conexión.')
-      console.error('[LOGIN-DEBUG] Timeout reached — fetch never completed')
+      console.error('[LOGIN-DEBUG] Timeout reached — server action never completed')
     }, LOGIN_TIMEOUT)
 
     try {
-      addLog('Calling fetch POST /api/auth/login...')
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      })
-      addLog(`Fetch returned status ${res.status}`)
+      addLog('Calling server action login...')
+      const result = await login(formData)
+      addLog(`Server action returned (not redirected)`)
 
       if (timedOut) { addLog('Ignored — timed out'); return }
       clearTimeout(timeout)
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({ error: 'Error de conexión' }))
-        addLog(`Error response: ${data.error}`)
-        setError(data.error || 'Error de autenticación')
+      if (result?.error) {
+        addLog(`Error: ${result.error}`)
+        setError(result.error)
         setLoading(false)
         return
       }
 
-      addLog('Login OK, redirecting...')
-      router.push('/dashboard/empresas')
-      router.refresh()
+      // If we get here, login succeeded but redirect() didn't fire
+      // This shouldn't happen — fallback redirect
+      addLog('Fallback: redirecting via window.location')
+      window.location.href = '/dashboard/empresas'
     } catch (e) {
       if (timedOut) { addLog('Ignored — timed out'); return }
       clearTimeout(timeout)
       const msg = e instanceof Error ? e.message : 'desconocido'
-      addLog(`Catch error: ${msg}`)
+      addLog(`Exception: ${msg}`)
       console.error('[LOGIN-DEBUG] Unhandled exception:', e)
       setError(`Error inesperado: ${msg}`)
       setLoading(false)
@@ -154,6 +152,7 @@ export default function LoginPage() {
               </label>
               <input
                 id="email"
+                name="email"
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
@@ -173,6 +172,7 @@ export default function LoginPage() {
               </label>
               <input
                 id="password"
+                name="password"
                 type="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
