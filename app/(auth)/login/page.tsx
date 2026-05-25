@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { AlertCircle, Loader2 } from 'lucide-react'
 import { DemoCredentials } from '@/components/demo-credentials'
 
-const LOGIN_TIMEOUT = 15_000
+const LOGIN_TIMEOUT = 10_000
 
 export default function LoginPage() {
   const router = useRouter()
@@ -35,7 +35,7 @@ export default function LoginPage() {
       clearTimeout(timeout)
 
       if (error) {
-        setError('Email o contraseña incorrectos')
+        setError(`Error: ${error.message}`)
         setLoading(false)
         return
       }
@@ -48,10 +48,10 @@ export default function LoginPage() {
 
       router.push('/dashboard/empresas')
       router.refresh()
-    } catch {
+    } catch (e) {
       if (timedOut) return
       clearTimeout(timeout)
-      setError('Error de conexión. Verificá tu red.')
+      setError(`Error inesperado: ${e instanceof Error ? e.message : 'desconocido'}`)
       setLoading(false)
     }
   }
