@@ -17,3 +17,7 @@ supabase/.temp/
 /e2e/.auth/
 
 auditoria_tablas.xlsx
+
+# Build artifacts
+public/sw.js
+tsconfig.tsbuildinfo

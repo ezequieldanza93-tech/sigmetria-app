@@ -2,7 +2,7 @@
 
 import { z } from 'zod'
 import { createClient as createServerClient } from '@/lib/supabase/server'
-import { createClient } from '@supabase/supabase-js'
+import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import type { ActionResult, UserRole } from '@/lib/types'
 import { canManageUsers } from '@/lib/types'
@@ -10,8 +10,8 @@ import { validateFormData, formatZodErrors } from '@/lib/validation/helpers'
 import { userRole } from '@/lib/validation/schemas'
 
 const inviteUsuarioSchema = z.object({
-  email: z.email({ error: 'Email inválido' }),
-  full_name: z.string().min(1, { error: 'El nombre es obligatorio' }),
+  email: z.string().email({ message: 'Email inválido' }),
+  full_name: z.string().min(1, { message: 'El nombre es obligatorio' }),
   role: userRole,
 })
 
@@ -68,33 +68,20 @@ export async function inviteUsuario(_prevState: ActionResult<null> | null, formD
     return { success: false, error: `SEATS_LIMIT:${seatsUsed}:${seatsMax}` }
   }
 
-  const adminClient = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
+  const headersList = await headers()
+  const host = headersList.get('host') ?? 'localhost:3000'
+  const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https'
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? `${protocol}://${host}`
 
-  const { data: invited, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(
-    email,
-    { data: { full_name: fullName } }
-  )
+  const response = await fetch(`${baseUrl}/api/admin/invite-user`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, full_name: fullName, role }),
+  })
 
-  if (inviteError) return { success: false, error: inviteError.message }
-
-  if (invited.user) {
-    await adminClient.from('profiles').upsert({
-      id: invited.user.id,
-      full_name: fullName || email,
-      system_role: 'user',
-    }, { onConflict: 'id' })
-
-    const { error: memberError } = await adminClient.from('consultoras_members').insert({
-      consultora_id: consultoraId,
-      user_id: invited.user.id,
-      role,
-      invited_by: ctx.user.id,
-    })
-
-    if (memberError) return { success: false, error: memberError.message }
+  if (!response.ok) {
+    const { error } = await response.json().catch(() => ({ error: 'Error al invitar usuario' }))
+    return { success: false, error }
   }
 
   revalidatePath('/dashboard/usuarios')

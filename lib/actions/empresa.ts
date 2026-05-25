@@ -1,10 +1,12 @@
 'use server'
 
+import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import type { ActionResult } from '@/lib/types'
 import { uploadAsset, deleteAsset, pathFromUrl } from '@/lib/storage/upload'
+import { validateFormData, formatZodErrors } from '@/lib/validation/helpers'
 
 interface EmpresaFormState {
   success: boolean
@@ -13,6 +15,19 @@ interface EmpresaFormState {
   fields?: Record<string, string>
   data?: { id: string }
 }
+
+const empresaActionSchema = z.object({
+  razon_social: z.string().min(1, 'La razón social es obligatoria'),
+  tipo_identidad_impositiva: z.string().nullable().optional(),
+  cuit: z.string().nullable().optional(),
+  rubro_id: z.string().uuid().nullable().optional(),
+  domicilio: z.string().nullable().optional(),
+  localidad_id: z.string().uuid().nullable().optional(),
+  codigo_postal: z.string().nullable().optional(),
+  art_id: z.string().uuid().nullable().optional(),
+  art_numero_contrato: z.string().nullable().optional(),
+  informacion_general: z.string().nullable().optional(),
+})
 
 function extractFields(formData: FormData): Record<string, string> {
   const fieldNames = [
@@ -97,12 +112,9 @@ export async function createEmpresa(_prev: EmpresaFormState | null, formData: Fo
   if (!canWrite) return { success: false, error: 'Sin permisos para crear empresas', fields }
   if (!isDev && !membership?.consultora_id) return { success: false, error: 'No pertenecés a ninguna consultora', fields }
 
-  const fieldErrors: Record<string, string> = {}
-
-  if (!fields.razon_social?.trim()) fieldErrors.razon_social = 'La razón social es obligatoria'
-
-  if (Object.keys(fieldErrors).length > 0) {
-    return { success: false, error: 'Corregí los campos marcados en rojo', fieldErrors, fields }
+  const parsed = validateFormData(empresaActionSchema, formData)
+  if (!parsed.success) {
+    return { success: false, error: formatZodErrors(parsed.error), fields }
   }
 
   const { data: inserted, error } = await supabase
@@ -160,11 +172,9 @@ export async function updateEmpresa(id: string, _prev: EmpresaFormState | null, 
 
   if (!existing) return { success: false, error: 'Empresa no encontrada', fields }
 
-  const fieldErrors: Record<string, string> = {}
-  if (!fields.razon_social?.trim()) fieldErrors.razon_social = 'La razón social es obligatoria'
-
-  if (Object.keys(fieldErrors).length > 0) {
-    return { success: false, error: 'Corregí los campos marcados en rojo', fieldErrors, fields }
+  const parsed = validateFormData(empresaActionSchema, formData)
+  if (!parsed.success) {
+    return { success: false, error: formatZodErrors(parsed.error), fields }
   }
 
   const logos = await processLogoUploads(

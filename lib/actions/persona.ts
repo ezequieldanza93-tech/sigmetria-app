@@ -1,8 +1,35 @@
 'use server'
 
+import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import type { ActionResult } from '@/lib/types'
+import { validateFormData, formatZodErrors } from '@/lib/validation/helpers'
+
+const personaActionSchema = z.object({
+  nombre: z.string().min(1, 'El nombre es obligatorio').transform(s => s.trim()),
+  apellido: z.string().min(1, 'El apellido es obligatorio').transform(s => s.trim()),
+  tipo_id: z.string().min(1, 'El tipo de persona es obligatorio'),
+  establecimiento_id: z.string().optional(),
+  dni: z.string().nullable().optional(),
+  legajo: z.string().nullable().optional(),
+  fecha_nacimiento: z.string().nullable().optional(),
+  fecha_ingreso: z.string().nullable().optional(),
+  telefono: z.string().nullable().optional(),
+  email: z.string().nullable().optional(),
+  direccion: z.string().nullable().optional(),
+  organizacion_id: z.string().nullable().optional(),
+  notas: z.string().nullable().optional(),
+  talle_calzado: z.string().nullable().optional(),
+  talle_pantalon: z.string().nullable().optional(),
+  talle_remera: z.string().nullable().optional(),
+  talle_camisa: z.string().nullable().optional(),
+  talle_buzo: z.string().nullable().optional(),
+  talle_campera: z.string().nullable().optional(),
+  beneficiario_seguro: z.string().nullable().optional(),
+  contacto_emergencia_nombre: z.string().nullable().optional(),
+  contacto_emergencia_telefono: z.string().nullable().optional(),
+})
 
 async function detectarDuplicado(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -51,16 +78,12 @@ export async function createPersona(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
-  const nombre = (formData.get('nombre') as string)?.trim()
-  const apellido = (formData.get('apellido') as string)?.trim()
-  const tipoId = formData.get('tipo_id') as string
-  const establecimientoId = formData.get('establecimiento_id') as string
+  const parsed = validateFormData(personaActionSchema, formData)
+  if (!parsed.success) {
+    return { success: false, error: formatZodErrors(parsed.error) }
+  }
 
-  if (!nombre) return { success: false, error: 'El nombre es obligatorio' }
-  if (!apellido) return { success: false, error: 'El apellido es obligatorio' }
-  if (!tipoId) return { success: false, error: 'El tipo de persona es obligatorio' }
-  if (!establecimientoId) return { success: false, error: 'El establecimiento es obligatorio' }
-
+  const { nombre, apellido, tipo_id: tipoId, establecimiento_id: establecimientoId } = parsed.data
   const dni = (formData.get('dni') as string)?.trim() || null
 
   // Detectar duplicados antes de crear
@@ -158,12 +181,12 @@ export async function updatePersona(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
-  const nombre = (formData.get('nombre') as string)?.trim()
-  const apellido = (formData.get('apellido') as string)?.trim()
+  const parsed = validateFormData(personaActionSchema.omit({ establecimiento_id: true }), formData)
+  if (!parsed.success) {
+    return { success: false, error: formatZodErrors(parsed.error) }
+  }
 
-  if (!nombre) return { success: false, error: 'El nombre es obligatorio' }
-  if (!apellido) return { success: false, error: 'El apellido es obligatorio' }
-
+  const { nombre, apellido } = parsed.data
   const dni = (formData.get('dni') as string)?.trim() || null
 
   // Detectar duplicados (excluyendo la persona actual)

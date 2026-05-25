@@ -124,19 +124,22 @@ async function processFloorPlans(
   return result
 }
 
-async function uploadFoto(file: File, establecimientoId: string): Promise<string | null> {
+async function uploadFoto(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  file: File,
+  consultoraId: string,
+  establecimientoId: string,
+): Promise<string | null> {
   try {
     if (!file || file.size === 0) return null
     const ext = file.name.split('.').pop() ?? 'jpg'
-    const path = `fotos/${establecimientoId}/${Date.now()}.${ext}`
-    const { createAdminClient } = await import('@/lib/supabase/admin')
-    const admin = createAdminClient()
-    const { error } = await admin.storage.from('establecimientos').upload(path, file, { upsert: true })
+    const path = `${consultoraId}/fotos/${establecimientoId}/${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('establecimientos').upload(path, file, { upsert: true })
     if (error) {
       console.error('[uploadFoto] Storage error:', error)
       return null
     }
-    const { data: urlData } = admin.storage.from('establecimientos').getPublicUrl(path)
+    const { data: urlData } = supabase.storage.from('establecimientos').getPublicUrl(path)
     return urlData.publicUrl
   } catch (err) {
     console.error('[uploadFoto] Unexpected error:', err)
@@ -181,17 +184,19 @@ export async function createEstablecimiento(
 
   if (error) return { success: false, error: error.message }
 
-  const foto = formData.get('foto') as File | null
-  const photo_site = foto ? await uploadFoto(foto, data.id) : null
-  if (photo_site) {
-    await supabase.from('establecimientos').update({ photo_site }).eq('id', data.id)
-  }
-
   const { data: empresaConsultora } = await supabase
     .from('empresas')
     .select('consultora_id')
     .eq('id', empresaId)
     .single()
+
+  const foto = formData.get('foto') as File | null
+  const photo_site = foto && empresaConsultora?.consultora_id
+    ? await uploadFoto(supabase, foto, empresaConsultora.consultora_id, data.id)
+    : null
+  if (photo_site) {
+    await supabase.from('establecimientos').update({ photo_site }).eq('id', data.id)
+  }
 
   if (empresaConsultora?.consultora_id) {
     const plans = await processFloorPlans(
@@ -245,14 +250,16 @@ export async function updateEstablecimiento(
 
   const { latitud, longitud } = await parseUbicacion(ubicacion_gmaps ?? null)
 
-  const foto = formData.get('foto') as File | null
-  const photo_site = foto?.size ? await uploadFoto(foto, id) : undefined
-
   const { data: existing } = await supabase
     .from('establecimientos')
     .select('floor_plan_pdf_url, floor_plan_cad_url, empresas!inner(consultora_id)')
     .eq('id', id)
     .single() as { data: { floor_plan_pdf_url: string | null; floor_plan_cad_url: string | null; empresas: { consultora_id: string } } | null }
+
+  const foto = formData.get('foto') as File | null
+  const photo_site = foto?.size && existing?.empresas?.consultora_id
+    ? await uploadFoto(supabase, foto, existing.empresas.consultora_id, id)
+    : undefined
 
   let plansUpdate: { floor_plan_pdf_url?: string | null; floor_plan_cad_url?: string | null } = {}
   if (existing?.empresas?.consultora_id) {

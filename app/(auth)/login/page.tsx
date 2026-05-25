@@ -1,9 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { AlertCircle, Loader2 } from 'lucide-react'
+import { DemoCredentials } from '@/components/demo-credentials'
+import { checkLoginRateLimit } from '@/lib/actions/check-rate-limit'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -12,10 +14,22 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
+  const rateLimitChecked = useRef(false)
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError('')
+
+    if (!rateLimitChecked.current) {
+      const { allowed, message } = await checkLoginRateLimit()
+      if (!allowed) {
+        setError(message ?? 'Demasiados intentos. Esperá un minuto.')
+        setLoading(false)
+        return
+      }
+      rateLimitChecked.current = true
+    }
 
     const supabase = createClient()
     const { error } = await supabase.auth.signInWithPassword({ email, password })
@@ -23,6 +37,7 @@ export default function LoginPage() {
     if (error) {
       setError('Email o contraseña incorrectos')
       setLoading(false)
+      rateLimitChecked.current = false
       return
     }
 
@@ -154,36 +169,9 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Demo Users Section */}
-          <div className="mt-8 pt-8 border-t border-border-subtle">
-            <p className="text-text-secondary text-xs font-medium mb-3">
-              Usuarios de demostración
-            </p>
-            <div className="bg-surface-sunken rounded-lg p-4">
-              <p className="text-text-tertiary text-xs mb-3">
-                Contraseña para todos: <code className="bg-surface-base px-1.5 py-0.5 rounded text-text-primary">Demo1234!</code>
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                <DemoUser email="dev@sigmetria.app" role="Developer" />
-                <DemoUser email="admin.main@sigmetria.app" role="Admin Principal" />
-                <DemoUser email="admin.branch@sigmetria.app" role="Admin Branch" />
-                <DemoUser email="colaborador@sigmetria.app" role="Colaborador" />
-                <DemoUser email="viewer@sigmetria.app" role="Viewer Global" />
-                <DemoUser email="colaborador.viewer@sigmetria.app" role="Viewer Limitado" />
-              </div>
-            </div>
-          </div>
+          <DemoCredentials />
         </div>
       </div>
-    </div>
-  )
-}
-
-function DemoUser({ email, role }: { email: string; role: string }) {
-  return (
-    <div className="flex flex-col">
-      <span className="text-text-primary font-medium truncate">{email}</span>
-      <span className="text-text-tertiary">{role}</span>
     </div>
   )
 }

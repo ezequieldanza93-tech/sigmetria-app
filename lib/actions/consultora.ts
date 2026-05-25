@@ -1,11 +1,25 @@
 'use server'
 
 import { createClient as createServerClient } from '@/lib/supabase/server'
-import { createClient } from '@supabase/supabase-js'
-import { redirect } from 'next/navigation'
 import type { ActionResult, Consultora } from '@/lib/types'
 import { revalidatePath } from 'next/cache'
 import { uploadAsset, deleteAsset, pathFromUrl } from '@/lib/storage/upload'
+import { z } from 'zod'
+import { validateFormData, formatZodErrors } from '@/lib/validation/helpers'
+import { headers } from 'next/headers'
+
+const createConsultoraSchema = z.object({
+  nombre: z.string().min(1, { message: 'El nombre es obligatorio' }),
+  cuit: z.string().nullable().optional(),
+  email: z.string().email({ message: 'Email inválido' }).nullable().optional(),
+  telefono: z.string().nullable().optional(),
+})
+
+const inviteConsultoraAdminSchema = z.object({
+  email: z.string().email({ message: 'Email inválido' }),
+  full_name: z.string().min(1, { message: 'El nombre es obligatorio' }),
+  consultora_id: z.string().uuid({ message: 'ID de consultora inválido' }),
+})
 
 export async function createConsultora(formData: FormData): Promise<ActionResult<{ id: string }>> {
   const supabase = await createServerClient()
@@ -22,12 +36,12 @@ export async function createConsultora(formData: FormData): Promise<ActionResult
     return { success: false, error: 'Solo developers pueden crear consultoras' }
   }
 
-  const nombre = formData.get('nombre') as string
-  const cuit = formData.get('cuit') as string
-  const email = formData.get('email') as string
-  const telefono = formData.get('telefono') as string
+  const parsed = validateFormData(createConsultoraSchema, formData)
+  if (!parsed.success) {
+    return { success: false, error: formatZodErrors(parsed.error) }
+  }
 
-  if (!nombre?.trim()) return { success: false, error: 'El nombre es obligatorio' }
+  const { nombre, cuit, email, telefono } = parsed.data
 
   const { data, error } = await supabase
     .from('consultoras')
@@ -54,42 +68,35 @@ export async function inviteConsultoraAdmin(formData: FormData): Promise<ActionR
     return { success: false, error: 'Solo developers pueden usar esta función' }
   }
 
-  const email = formData.get('email') as string
-  const fullName = formData.get('full_name') as string
-  const consultoraId = formData.get('consultora_id') as string
-
-  if (!email || !consultoraId) return { success: false, error: 'Email y consultora son obligatorios' }
-
-  const adminClient = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
-
-  const { data: invited, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email, {
-    data: { full_name: fullName },
-  })
-
-  if (inviteError) return { success: false, error: inviteError.message }
-
-  // Upsert profile
-  if (invited.user) {
-    await adminClient.from('profiles').upsert({
-      id: invited.user.id,
-      full_name: fullName,
-      system_role: 'user',
-    }, { onConflict: 'id' })
-
-    const { error: memberError } = await adminClient.from('consultoras_members').insert({
-      consultora_id: consultoraId,
-      user_id: invited.user.id,
-      role: 'full_access_main',
-      invited_by: user.id,
-    })
-
-    if (memberError) return { success: false, error: memberError.message }
+  const parsed = validateFormData(inviteConsultoraAdminSchema, formData)
+  if (!parsed.success) {
+    return { success: false, error: formatZodErrors(parsed.error) }
   }
 
-  redirect('/dashboard')
+  const { email, full_name: fullName, consultora_id: consultoraId } = parsed.data
+
+  const headersList = await headers()
+  const host = headersList.get('host') ?? 'localhost:3000'
+  const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https'
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? `${protocol}://${host}`
+
+  const response = await fetch(`${baseUrl}/api/admin/invite-user`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email,
+      full_name: fullName,
+      role: 'full_access_main',
+      consultora_id: consultoraId,
+    }),
+  })
+
+  if (!response.ok) {
+    const { error } = await response.json().catch(() => ({ error: 'Error al invitar usuario' }))
+    return { success: false, error }
+  }
+
+  return { success: true, data: null }
 }
 
 export async function updateConsultora(data: {

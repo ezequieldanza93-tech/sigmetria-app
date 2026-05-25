@@ -13,10 +13,11 @@ export async function POST(req: NextRequest) {
     .from('agent_pending_actions')
     .select('*')
     .eq('id', actionId)
+    .eq('requested_by', user.id)
     .single()
 
   if (fetchError || !action) {
-    return NextResponse.json({ error: 'Acción no encontrada' }, { status: 404 })
+    return NextResponse.json({ error: 'Acción no encontrada o no te pertenece' }, { status: 403 })
   }
 
   if (action.status !== 'pending') {

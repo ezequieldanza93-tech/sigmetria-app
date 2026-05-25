@@ -1,8 +1,18 @@
 'use server'
 
+import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import type { ActionResult, RiesgoNivel } from '@/lib/types'
+import type { ActionResult } from '@/lib/types'
+import { validateFormData, formatZodErrors } from '@/lib/validation/helpers'
+
+const createRiesgoSchema = z.object({
+  descripcion: z.string().min(1, 'La descripción es obligatoria').transform(s => s.trim()),
+  nivel: z.enum(['bajo', 'medio', 'alto', 'critico']),
+  fecha_identificacion: z.string().min(1, 'La fecha de identificación es obligatoria'),
+  medida_correctiva: z.string().nullable().optional(),
+  responsable_id: z.string().nullable().optional(),
+})
 
 export async function createRiesgo(
   establecimientoId: string,
@@ -14,23 +24,22 @@ export async function createRiesgo(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
-  const descripcion = formData.get('descripcion') as string
-  const nivel = formData.get('nivel') as RiesgoNivel
-  const fechaIdentificacion = formData.get('fecha_identificacion') as string
+  const parsed = validateFormData(createRiesgoSchema, formData)
+  if (!parsed.success) {
+    return { success: false, error: formatZodErrors(parsed.error) }
+  }
 
-  if (!descripcion?.trim()) return { success: false, error: 'La descripción es obligatoria' }
-  if (!nivel) return { success: false, error: 'El nivel es obligatorio' }
-  if (!fechaIdentificacion) return { success: false, error: 'La fecha de identificación es obligatoria' }
+  const { descripcion, nivel, fecha_identificacion, medida_correctiva, responsable_id } = parsed.data
 
   const { error } = await supabase
     .from('riesgos')
     .insert({
       establecimiento_id: establecimientoId,
-      descripcion: descripcion.trim(),
+      descripcion,
       nivel,
-      medida_correctiva: (formData.get('medida_correctiva') as string) || null,
-      responsable_id: (formData.get('responsable_id') as string) || null,
-      fecha_identificacion: fechaIdentificacion,
+      medida_correctiva: medida_correctiva || null,
+      responsable_id: responsable_id || null,
+      fecha_identificacion,
       resuelto: false,
     })
 
@@ -39,6 +48,13 @@ export async function createRiesgo(
   revalidatePath(`/dashboard/empresas/${empresaId}/establecimientos/${establecimientoId}`)
   return { success: true, data: null }
 }
+
+const updateRiesgoSchema = z.object({
+  descripcion: z.string().min(1, 'La descripción es obligatoria'),
+  nivel: z.enum(['bajo', 'medio', 'alto', 'critico']),
+  medida_correctiva: z.string().nullable().optional(),
+  responsable_id: z.string().nullable().optional(),
+})
 
 export async function updateRiesgo(
   riesgoId: string,
@@ -50,13 +66,20 @@ export async function updateRiesgo(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
+  const parsed = validateFormData(updateRiesgoSchema, formData)
+  if (!parsed.success) {
+    return { success: false, error: formatZodErrors(parsed.error) }
+  }
+
+  const { descripcion, nivel, medida_correctiva, responsable_id } = parsed.data
+
   const { error } = await supabase
     .from('riesgos')
     .update({
-      descripcion: (formData.get('descripcion') as string)?.trim(),
-      nivel: formData.get('nivel') as RiesgoNivel,
-      medida_correctiva: (formData.get('medida_correctiva') as string) || null,
-      responsable_id: (formData.get('responsable_id') as string) || null,
+      descripcion: descripcion.trim(),
+      nivel,
+      medida_correctiva: medida_correctiva || null,
+      responsable_id: responsable_id || null,
     })
     .eq('id', riesgoId)
 

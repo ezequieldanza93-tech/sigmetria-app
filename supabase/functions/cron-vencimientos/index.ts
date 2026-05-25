@@ -6,10 +6,25 @@
 //
 // Schedule (via Supabase Dashboard > Edge Functions > Triggers):
 //   Schedule: 0 6 * * * (todos los días a las 6 AM)
+//
+// Security: protegido por CRON_SECRET (requerido)
+// El caller debe enviar: Authorization: Bearer <CRON_SECRET>
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 
-Deno.serve(async () => {
+Deno.serve(async (req: Request) => {
+  const cronSecret = Deno.env.get('CRON_SECRET')
+  const authHeader = req.headers.get('authorization')
+
+  if (!cronSecret) {
+    console.error('CRON_SECRET no configurado en la Edge Function')
+    return new Response(JSON.stringify({ error: 'Server misconfiguration' }), { status: 500 })
+  }
+
+  if (authHeader !== `Bearer ${cronSecret}`) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })
+  }
+
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
   const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   const supabase = createClient(supabaseUrl, supabaseKey)
