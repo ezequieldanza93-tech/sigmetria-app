@@ -97,6 +97,7 @@ export async function crearObservaciones(
     clasificacion_id: string
     responsable_id: string
     fecha_subsanacion: string
+    foto_url?: string | null
   }>
 ): Promise<ActionResult<null>> {
   const supabase = await createClient()
@@ -111,6 +112,7 @@ export async function crearObservaciones(
       clasificacion_id: o.clasificacion_id || null,
       responsable_id: o.responsable_id || null,
       fecha_planificada: o.fecha_subsanacion || null,
+      foto_url: o.foto_url || null,
     }))
 
   if (rows.length === 0) return { success: true, data: null }

@@ -6,7 +6,7 @@ import { PhotoCanvasEditor } from '@/components/photo-canvas-editor'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
-import { Camera } from 'lucide-react'
+import { Camera, CameraOff } from 'lucide-react'
 
 interface ReporteFotograficoModalProps {
   establecimientoId: string
@@ -20,6 +20,9 @@ interface ObsDraft {
   clasificacion_id: string
   responsable_id: string
   fecha_subsanacion: string
+  foto_preview: string | null
+  foto_blob: Blob | null
+  foto_editing: boolean
 }
 
 export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess }: ReporteFotograficoModalProps) {
@@ -83,7 +86,16 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
       clasificacion_id: '',
       responsable_id: '',
       fecha_subsanacion: '',
+      foto_preview: null,
+      foto_blob: null,
+      foto_editing: false,
     }])
+  }
+
+  function updateObsFoto(key: number, preview: string | null, blob: Blob | null, editing?: boolean) {
+    setObservaciones(prev => prev.map(o =>
+      o.key === key ? { ...o, foto_preview: preview, foto_blob: blob, foto_editing: editing ?? o.foto_editing } : o
+    ))
   }
 
   function removeObs(key: number) {
@@ -125,12 +137,18 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
 
     const validObs = observaciones.filter(o => o.descripcion.trim())
     if (validObs.length > 0) {
-      fd.set('observaciones', JSON.stringify(validObs.map(o => ({
-        descripcion: o.descripcion,
-        clasificacion_id: o.clasificacion_id,
-        responsable_id: o.responsable_id,
-        fecha_subsanacion: o.fecha_subsanacion,
-      }))))
+      const supabase = createClient()
+      const obsConFotos = await Promise.all(validObs.map(async o => {
+        let foto_url: string | null = null
+        if (o.foto_blob) {
+          const file = new File([o.foto_blob], `obs-foto-${Date.now()}-${o.key}.png`, { type: 'image/png' })
+          const path = `observaciones-fotos/${establecimientoId}/${file.name}`
+          const { data: up } = await supabase.storage.from('documentos').upload(path, file, { upsert: false })
+          if (up) foto_url = supabase.storage.from('documentos').getPublicUrl(up.path).data.publicUrl
+        }
+        return { descripcion: o.descripcion, clasificacion_id: o.clasificacion_id, responsable_id: o.responsable_id, fecha_subsanacion: o.fecha_subsanacion, foto_url }
+      }))
+      fd.set('observaciones', JSON.stringify(obsConFotos))
     }
 
     formAction(fd)
@@ -278,6 +296,56 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
                         className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-sig-500"
                       />
                     </div>
+                  </div>
+
+                  {/* Foto de la observación */}
+                  <div className="pl-6">
+                    {!obs.foto_preview ? (
+                      <label className="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-sig-600 cursor-pointer transition-colors">
+                        <Camera size={13} />
+                        Adjuntar foto
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          className="hidden"
+                          onChange={e => {
+                            const f = e.target.files?.[0]
+                            if (!f) return
+                            updateObsFoto(obs.key, URL.createObjectURL(f), f, false)
+                          }}
+                        />
+                      </label>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-3">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={obs.foto_preview} alt="Foto observación" className="w-14 h-14 object-cover rounded-lg border border-gray-200" />
+                          <div className="flex flex-col gap-1">
+                            <button
+                              type="button"
+                              onClick={() => setObservaciones(prev => prev.map(o => o.key === obs.key ? { ...o, foto_editing: !o.foto_editing } : o))}
+                              className="text-xs text-sig-600 hover:text-sig-700 font-medium"
+                            >
+                              {obs.foto_editing ? 'Cerrar editor' : 'Editar con herramientas'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => updateObsFoto(obs.key, null, null, false)}
+                              className="text-xs text-red-400 hover:text-red-500"
+                            >
+                              Eliminar foto
+                            </button>
+                          </div>
+                        </div>
+                        {obs.foto_editing && (
+                          <PhotoCanvasEditor
+                            imageUrl={obs.foto_preview}
+                            onImageChange={blob => setObservaciones(prev => prev.map(o => o.key === obs.key ? { ...o, foto_blob: blob } : o))}
+                          />
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}

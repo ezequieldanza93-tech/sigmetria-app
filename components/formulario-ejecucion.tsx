@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { finalizarFormulario, getOrCreateRespuesta } from '@/lib/actions/formulario-ejecucion'
 import { crearObservaciones } from '@/lib/actions/registro-gestion'
+import { PhotoCanvasEditor } from '@/components/photo-canvas-editor'
+import { Camera } from 'lucide-react'
 
 interface ObsDraft {
   key: number
@@ -17,6 +19,9 @@ interface ObsDraft {
   clasificacion_id: string
   responsable_id: string
   fecha_subsanacion: string
+  foto_preview: string | null
+  foto_blob: Blob | null
+  foto_editing: boolean
 }
 
 interface FullRegistro extends RegistroGestion {
@@ -68,6 +73,9 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
   const [fechaEjecutada, setFechaEjecutada] = useState(registro.fecha_ejecutada ?? new Date().toISOString().split('T')[0])
   const [responsableId, setResponsableId] = useState(registro.responsable_id ?? '')
   const [notas, setNotas] = useState(registro.notas ?? '')
+  const [fotoPreview, setFotoPreview] = useState<string | null>(null)
+  const [fotoBlob, setFotoBlob] = useState<Blob | null>(null)
+  const fotoInputRef = useRef<HTMLInputElement>(null)
   const obsKeyRef = useRef(0)
   const reviewRef = useRef<HTMLDivElement>(null)
 
@@ -181,6 +189,10 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
       fd.set('notas', notas)
       fd.set('evidencia_pdf', pdfB64)
 
+      if (fotoBlob) {
+        fd.set('foto_evidencia', new File([fotoBlob], `foto-formulario-${Date.now()}.png`, { type: 'image/png' }))
+      }
+
       let i = 0
       for (const [itemId, r] of respuestas) {
         if (r.answer) {
@@ -200,7 +212,17 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
       }
       const validObs = allObs.filter(o => o.descripcion.trim())
       if (validObs.length > 0) {
-        const obsResult = await crearObservaciones(registro.id, validObs)
+        const obsConFotos = await Promise.all(validObs.map(async obs => {
+          let foto_url: string | null = null
+          if (obs.foto_blob) {
+            const fotoFile = new File([obs.foto_blob], `obs-${Date.now()}-${obs.key}.png`, { type: 'image/png' })
+            const path = `observaciones-fotos/${registro.id}/${fotoFile.name}`
+            const { data: up } = await supabase.storage.from('documentos').upload(path, fotoFile, { upsert: false })
+            if (up) foto_url = supabase.storage.from('documentos').getPublicUrl(up.path).data.publicUrl
+          }
+          return { ...obs, foto_url }
+        }))
+        const obsResult = await crearObservaciones(registro.id, obsConFotos)
         if (!obsResult.success) { setError(obsResult.error); setSaving(false); return }
       }
 
@@ -241,6 +263,9 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
         clasificacion_id: '',
         responsable_id: '',
         fecha_subsanacion: '',
+        foto_preview: null,
+        foto_blob: null,
+        foto_editing: false,
       })
       next.set(secId, list)
       return next
@@ -396,6 +421,60 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
                       />
                     </div>
                   </div>
+
+                  {/* Foto de la observación */}
+                  <div className="pl-0 sm:pl-6">
+                    {!obs.foto_preview ? (
+                      <label className="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-sig-600 cursor-pointer transition-colors">
+                        <Camera size={13} />
+                        Adjuntar foto
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          className="hidden"
+                          onChange={e => {
+                            const f = e.target.files?.[0]
+                            if (!f) return
+                            updateObs(secId, obs.key, {
+                              foto_preview: URL.createObjectURL(f),
+                              foto_blob: f,
+                              foto_editing: false,
+                            })
+                          }}
+                        />
+                      </label>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-3">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={obs.foto_preview} alt="Foto observación" className="w-14 h-14 object-cover rounded-lg border border-gray-200" />
+                          <div className="flex flex-col gap-1">
+                            <button
+                              type="button"
+                              onClick={() => updateObs(secId, obs.key, { foto_editing: !obs.foto_editing })}
+                              className="text-xs text-sig-600 hover:text-sig-700 font-medium"
+                            >
+                              {obs.foto_editing ? 'Cerrar editor' : 'Editar con herramientas'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => updateObs(secId, obs.key, { foto_preview: null, foto_blob: null, foto_editing: false })}
+                              className="text-xs text-red-400 hover:text-red-500"
+                            >
+                              Eliminar foto
+                            </button>
+                          </div>
+                        </div>
+                        {obs.foto_editing && (
+                          <PhotoCanvasEditor
+                            imageUrl={obs.foto_preview}
+                            onImageChange={blob => updateObs(secId, obs.key, { foto_blob: blob })}
+                          />
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -475,6 +554,47 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
                 className={`${inputCls} resize-none`}
               />
             </div>
+          </div>
+
+          {/* Foto del formulario */}
+          <div className="border border-gray-200 rounded-xl p-4">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+              <Camera size={15} className="text-gray-400" />
+              Foto del Formulario
+              <span className="text-xs font-normal text-gray-400">(opcional)</span>
+            </h3>
+            {!fotoPreview ? (
+              <div
+                onClick={() => fotoInputRef.current?.click()}
+                className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center cursor-pointer hover:border-sig-400 hover:bg-sig-50/30 transition-colors"
+              >
+                <Camera size={28} strokeWidth={1.5} className="mx-auto text-gray-300 mb-2" />
+                <p className="text-sm text-gray-400">Adjuntar foto del formulario físico</p>
+                <input
+                  ref={fotoInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={e => {
+                    const f = e.target.files?.[0]
+                    if (!f) return
+                    setFotoPreview(URL.createObjectURL(f))
+                    setFotoBlob(f)
+                  }}
+                />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-gray-600">Foto adjuntada — podés anotarla antes de guardar</span>
+                  <button type="button" onClick={() => { setFotoPreview(null); setFotoBlob(null) }} className="text-xs text-red-500 hover:text-red-600">
+                    Eliminar
+                  </button>
+                </div>
+                <PhotoCanvasEditor imageUrl={fotoPreview} onImageChange={blob => setFotoBlob(blob)} />
+              </div>
+            )}
           </div>
 
           {secciones.map(sec => (

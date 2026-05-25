@@ -72,6 +72,20 @@ export async function finalizarFormulario(
 
   if (respUpdateError) return { success: false, error: 'Error al finalizar formulario: ' + respUpdateError.message }
 
+  // Upload form photo evidence if provided
+  const fotoEvidencia = formData.get('foto_evidencia') as File | null
+  let fotoEvidenciaUrl: string | null = null
+  if (fotoEvidencia && fotoEvidencia.size > 0) {
+    const ext = fotoEvidencia.name.split('.').pop() ?? 'png'
+    const path = `formularios-fotos/${registroId}/${Date.now()}.${ext}`
+    const { data: fotoUpload, error: fotoUploadError } = await supabase.storage
+      .from('documentos')
+      .upload(path, fotoEvidencia, { upsert: false })
+    if (!fotoUploadError) {
+      fotoEvidenciaUrl = supabase.storage.from('documentos').getPublicUrl(fotoUpload.path).data.publicUrl
+    }
+  }
+
   // Upload PDF to storage if provided
   let evidenciaUrl: string | null = null
   if (evidenciaB64) {
@@ -100,9 +114,8 @@ export async function finalizarFormulario(
   if (indexStr && !isNaN(Number(indexStr))) {
     updates.index = Number(indexStr)
   }
-  if (evidenciaUrl) {
-    updates.evidencia_url = evidenciaUrl
-  }
+  if (evidenciaUrl) updates.evidencia_url = evidenciaUrl
+  if (fotoEvidenciaUrl) updates.foto_evidencia_url = fotoEvidenciaUrl
 
   const { error: regError } = await supabase
     .from('gestiones_registros')

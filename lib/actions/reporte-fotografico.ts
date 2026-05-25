@@ -70,14 +70,15 @@ export async function crearReporteFotografico(
   if (observacionesRaw) {
     try {
       const observaciones: Array<{ descripcion: string; clasificacion_id: string; responsable_id: string; fecha_subsanacion: string }> = JSON.parse(observacionesRaw)
-      const validas = observaciones.filter(o => o.descripcion?.trim())
+      const validas = observaciones.filter((o: { descripcion?: string }) => o.descripcion?.trim())
       if (validas.length > 0) {
-        const rows = validas.map(o => ({
+        const rows = validas.map((o: { descripcion: string; clasificacion_id: string; responsable_id: string; fecha_subsanacion: string; foto_url?: string | null }) => ({
           registro_gestion_id: reg.id,
           descripcion: o.descripcion.trim(),
           clasificacion_id: o.clasificacion_id || null,
           responsable_id: o.responsable_id || null,
           fecha_planificada: o.fecha_subsanacion || null,
+          foto_url: o.foto_url || null,
         }))
         await supabase.from('gestiones_observaciones').insert(rows)
       }
