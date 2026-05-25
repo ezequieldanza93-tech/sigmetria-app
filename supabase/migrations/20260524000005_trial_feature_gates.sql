@@ -74,7 +74,7 @@ BEGIN
       SELECT COUNT(*) INTO v_current
       FROM public.establecimientos est
       JOIN public.empresas e ON e.id = est.empresa_id
-      WHERE e.consultora_id = p_consultora_id AND est.is_active = true;
+      WHERE e.consultora_id = p_consultora_id AND e.is_active = true AND est.status = 'active';
 
     WHEN 'gestiones_registros' THEN
       v_max := v_limits.max_gestiones_registros;
