@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { AlertCircle, Loader2 } from 'lucide-react'
 import { DemoCredentials } from '@/components/demo-credentials'
-import { checkLoginRateLimit } from '@/lib/actions/check-rate-limit'
+
+const LOGIN_TIMEOUT = 15_000
 
 export default function LoginPage() {
   const router = useRouter()
@@ -14,53 +15,45 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const rateLimitChecked = useRef(false)
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError('')
 
-    if (!rateLimitChecked.current) {
-      try {
-        const { allowed, message } = await checkLoginRateLimit()
-        if (!allowed) {
-          setError(message ?? 'Demasiados intentos. Esperá un minuto.')
-          setLoading(false)
-          return
-        }
-        rateLimitChecked.current = true
-      } catch {
-        setError('Error de conexión. Verificá tu red e intentá de nuevo.')
-        setLoading(false)
-        return
-      }
-    }
-
-    const supabase = createClient()
+    let timedOut = false
+    const timeout = setTimeout(() => {
+      timedOut = true
+      setLoading(false)
+      setError('Tiempo de espera agotado. Verificá tu conexión.')
+    }, LOGIN_TIMEOUT)
 
     try {
+      const supabase = createClient()
       const { error } = await supabase.auth.signInWithPassword({ email, password })
+
+      if (timedOut) return
+      clearTimeout(timeout)
+
       if (error) {
         setError('Email o contraseña incorrectos')
         setLoading(false)
-        rateLimitChecked.current = false
         return
       }
+
+      try {
+        await supabase.rpc('cache_user_permissions')
+      } catch {
+        // non-critical
+      }
+
+      router.push('/dashboard/empresas')
+      router.refresh()
     } catch {
-      setError('Error de conexión. Verificá tu red e intentá de nuevo.')
+      if (timedOut) return
+      clearTimeout(timeout)
+      setError('Error de conexión. Verificá tu red.')
       setLoading(false)
-      return
     }
-
-    try {
-      await supabase.rpc('cache_user_permissions')
-    } catch {
-      // non-critical — continue even if cache fails
-    }
-
-    router.push('/dashboard/empresas')
-    router.refresh()
   }
 
   return (
