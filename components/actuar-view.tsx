@@ -95,12 +95,10 @@ export function ActuarView({ establecimientoId, canWrite = true }: { establecimi
           .select(`
             id, registro_gestion_id, descripcion, fecha_planificada, fecha_cierre,
             clasificacion_id, categoria_id, responsable_id, responsable_cierre_id,
-            evidencia_cierre_url, foto_url, sector_id, puesto_id, cliente_visto_at,
+            evidencia_cierre_url, foto_url,
             personas_directorio!responsable_id(nombre, apellido),
             observaciones_clasificaciones(nombre),
-            observaciones_categorias(nombre, nivel),
-            establecimientos_sectores!sector_id(nombre),
-            puestos_de_trabajo!puesto_id(nombre)
+            observaciones_categorias(nombre, nivel)
           `)
           .in('registro_gestion_id', rgIds)
           .order('fecha_planificada', { ascending: true })
@@ -121,24 +119,21 @@ export function ActuarView({ establecimientoId, canWrite = true }: { establecimi
               }
             })
 
-            // Fetch comment and photo counts for all observations
+            // Fetch comment and photo counts (tables may not exist yet pre-migration)
             const obsIds = obsRows.map(o => o.id)
-            Promise.all([
-              supabase
-                .from('observaciones_comentarios')
-                .select('observacion_id')
-                .in('observacion_id', obsIds),
-              supabase
-                .from('observaciones_fotos_cliente')
-                .select('observacion_id')
-                .in('observacion_id', obsIds),
-            ]).then(([{ data: comentData }, { data: fotoData }]) => {
+            Promise.allSettled([
+              supabase.from('observaciones_comentarios').select('observacion_id').in('observacion_id', obsIds),
+              supabase.from('observaciones_fotos_cliente').select('observacion_id').in('observacion_id', obsIds),
+            ]).then(([comentRes, fotoRes]) => {
+              const comentData = comentRes.status === 'fulfilled' ? (comentRes.value.data ?? []) : []
+              const fotoData   = fotoRes.status   === 'fulfilled' ? (fotoRes.value.data   ?? []) : []
+
               const comentCount: Record<string, number> = {}
-              for (const c of (comentData ?? [])) {
+              for (const c of comentData) {
                 comentCount[c.observacion_id] = (comentCount[c.observacion_id] ?? 0) + 1
               }
               const fotoCount: Record<string, number> = {}
-              for (const f of (fotoData ?? [])) {
+              for (const f of fotoData) {
                 fotoCount[f.observacion_id] = (fotoCount[f.observacion_id] ?? 0) + 1
               }
 
@@ -154,20 +149,14 @@ export function ActuarView({ establecimientoId, canWrite = true }: { establecimi
               const responsables = new Set<string>()
               const aspectos = new Set<string>()
               const gestiones = new Set<string>()
-              const sectores = new Set<string>()
-              const puestos = new Set<string>()
               for (const o of full) {
                 if (o.responsable_id) responsables.add(o.responsable_id)
                 if (o.categoria_id) aspectos.add(o.categoria_id)
                 if (o.gestion_nombre) gestiones.add(o.gestion_nombre)
-                if (o.sector_id) sectores.add(o.sector_id)
-                if (o.puesto_id) puestos.add(o.puesto_id)
               }
               setFilterResponsable(responsables)
               setFilterAspecto(aspectos)
               setFilterGestion(gestiones)
-              setFilterSector(sectores)
-              setFilterPuesto(puestos)
             })
           })
       })

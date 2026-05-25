@@ -95,23 +95,31 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
   }, [observacion, canWrite])
 
   async function loadComentarios(obsId: string) {
-    const supabase = createClient()
-    const { data } = await supabase
-      .from('observaciones_comentarios')
-      .select('id, observacion_id, autor_id, es_viewer, contenido, created_at, profiles!autor_id(full_name)')
-      .eq('observacion_id', obsId)
-      .order('created_at', { ascending: true })
-    setComentarios((data ?? []) as unknown as ObservacionComentario[])
+    try {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('observaciones_comentarios')
+        .select('id, observacion_id, autor_id, es_viewer, contenido, created_at, profiles!autor_id(full_name)')
+        .eq('observacion_id', obsId)
+        .order('created_at', { ascending: true })
+      setComentarios((data ?? []) as unknown as ObservacionComentario[])
+    } catch {
+      setComentarios([])
+    }
   }
 
   async function loadFotosCliente(obsId: string) {
-    const supabase = createClient()
-    const { data } = await supabase
-      .from('observaciones_fotos_cliente')
-      .select('id, observacion_id, autor_id, url, categoria, created_at')
-      .eq('observacion_id', obsId)
-      .order('created_at', { ascending: true })
-    setFotosCliente((data ?? []) as ObservacionFotoCliente[])
+    try {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('observaciones_fotos_cliente')
+        .select('id, observacion_id, autor_id, url, categoria, created_at')
+        .eq('observacion_id', obsId)
+        .order('created_at', { ascending: true })
+      setFotosCliente((data ?? []) as ObservacionFotoCliente[])
+    } catch {
+      setFotosCliente([])
+    }
   }
 
   useEffect(() => {
