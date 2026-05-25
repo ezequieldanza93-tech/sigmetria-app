@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useLayoutEffect } from 'react'
+import { useState } from 'react'
 import { Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -49,8 +49,7 @@ interface DashboardShellProps {
 type DashboardTab = 'panel' | 'analytics' | 'empresas'
 
 export function DashboardShell({ consultoraId, establecimientos, empresasContent }: DashboardShellProps) {
-  const [tab, setTab] = useState<DashboardTab>('panel')
-  useLayoutEffect(() => { setTab('empresas') }, [])
+  const [tab, setTab] = useState<DashboardTab>('empresas')
   const [configOpen, setConfigOpen] = useState(false)
   const { widgetKeys, isLoading: configLoading } = useVisibleWidgetKeys()
   const { data: kpiData, isLoading: kpiLoading, isError } = useDashboardKpis(widgetKeys)
