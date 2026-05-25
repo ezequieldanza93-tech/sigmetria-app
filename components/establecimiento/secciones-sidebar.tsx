@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { ClipboardList, FileText, BarChart3, Crosshair } from 'lucide-react'
+import { ClipboardList, FileText, BarChart3, Crosshair, ChevronsRight, ChevronsLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type Section = 'agenda' | 'ficha' | 'dashboard' | 'seguimiento'
@@ -17,9 +17,11 @@ const ITEMS: { id: Section; label: string; icon: typeof FileText }[] = [
 interface Props {
   empresaId: string
   establecimientoId: string
+  expanded: boolean
+  onToggle: () => void
 }
 
-export function SeccionesSidebar({ empresaId, establecimientoId }: Props) {
+export function SeccionesSidebar({ empresaId, establecimientoId, expanded, onToggle }: Props) {
   const searchParams = useSearchParams()
   const activeSection = (searchParams.get('section') ?? 'agenda') as Section
 
@@ -27,38 +29,67 @@ export function SeccionesSidebar({ empresaId, establecimientoId }: Props) {
 
   return (
     <aside
-      className="hidden lg:flex peer/sidebar group fixed top-14 left-0 bottom-0 z-20 border-r border-border-subtle bg-surface-base flex-col w-14 hover:w-40 transition-[width] duration-200 overflow-hidden"
+      className={cn(
+        'hidden lg:flex fixed top-14 left-0 bottom-0 z-20 border-r border-border-subtle bg-surface-base flex-col transition-[width] duration-200 overflow-visible',
+        expanded ? 'w-40' : 'w-14'
+      )}
       aria-label="Secciones del establecimiento"
     >
-      <nav className="flex flex-col py-3 px-2 gap-0.5">
+      <nav className="flex flex-col py-3 px-2 gap-0.5 flex-1 overflow-hidden">
         {ITEMS.map(({ id, label, icon: Icon }) => {
           const isActive = activeSection === id
           const href = id === 'agenda' ? baseUrl : `${baseUrl}?section=${id}`
           return (
-            <Link
-              key={id}
-              href={href}
-              className={cn(
-                'relative flex items-center gap-2 rounded-lg px-2 py-2.5 transition-colors',
-                isActive
-                  ? 'bg-brand-muted text-brand-primary'
-                  : 'text-text-tertiary hover:text-text-primary hover:bg-surface-elevated',
+            <div key={id} className="relative group/item">
+              <Link
+                href={href}
+                className={cn(
+                  'relative flex items-center gap-2 rounded-lg px-2 py-2.5 transition-colors',
+                  isActive
+                    ? 'bg-brand-muted text-brand-primary'
+                    : 'text-text-tertiary hover:text-text-primary hover:bg-surface-elevated',
+                )}
+              >
+                {isActive && (
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-brand-primary rounded-r-full" />
+                )}
+                <span className="shrink-0">
+                  <Icon size={18} strokeWidth={1.75} />
+                </span>
+                {expanded && (
+                  <span className="text-sm whitespace-nowrap truncate">{label}</span>
+                )}
+              </Link>
+              {!expanded && (
+                <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2 py-1 text-xs font-medium bg-surface-elevated border border-border-subtle rounded-lg text-text-primary shadow-md whitespace-nowrap opacity-0 group-hover/item:opacity-100 transition-opacity duration-150 z-50">
+                  {label}
+                </span>
               )}
-              title={label}
-            >
-              {isActive && (
-                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-brand-primary rounded-r-full" />
-              )}
-              <span className="shrink-0">
-                <Icon size={18} strokeWidth={1.75} />
-              </span>
-              <span className="text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity truncate">
-                {label}
-              </span>
-            </Link>
+            </div>
           )
         })}
       </nav>
+
+      <div className="px-2 pb-4">
+        <button
+          onClick={onToggle}
+          className={cn(
+            'w-full flex items-center rounded-lg px-2 py-2 text-text-tertiary hover:text-text-primary hover:bg-surface-elevated transition-colors text-xs font-medium',
+            expanded ? 'justify-start gap-1.5' : 'justify-center'
+          )}
+          aria-label={expanded ? 'Contraer sidebar' : 'Expandir sidebar'}
+          title={expanded ? 'Contraer' : 'Expandir'}
+        >
+          {expanded ? (
+            <>
+              <ChevronsLeft size={15} />
+              <span>Contraer</span>
+            </>
+          ) : (
+            <ChevronsRight size={15} />
+          )}
+        </button>
+      </div>
     </aside>
   )
 }

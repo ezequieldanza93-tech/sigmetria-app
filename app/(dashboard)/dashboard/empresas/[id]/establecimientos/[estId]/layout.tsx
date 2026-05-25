@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import { EstablecimientoProvider } from '@/lib/contexts/establecimiento-context'
-import { SeccionesSidebar } from '@/components/establecimiento/secciones-sidebar'
+import { EstablecimientoShell } from '@/components/establecimiento/establecimiento-shell'
 import { SeccionesBottomNav } from '@/components/establecimiento/secciones-bottom-nav'
 
 interface Props {
@@ -25,11 +25,13 @@ export default async function EstablecimientoLegacyLayout({ children, params }: 
 
   return (
     <EstablecimientoProvider establecimientoId={estId} nombre={establecimiento.nombre} empresaId={empresaId}>
-      <SeccionesSidebar empresaId={empresaId} establecimientoId={estId} />
-      <div className="lg:pl-14 lg:peer-hover/sidebar:pl-40 lg:transition-[padding] lg:duration-200 pb-[calc(env(safe-area-inset-bottom,0px)+64px)] lg:pb-0">
+      <EstablecimientoShell
+        empresaId={empresaId}
+        establecimientoId={estId}
+        bottomNav={<SeccionesBottomNav empresaId={empresaId} establecimientoId={estId} />}
+      >
         {children}
-      </div>
-      <SeccionesBottomNav empresaId={empresaId} establecimientoId={estId} />
+      </EstablecimientoShell>
     </EstablecimientoProvider>
   )
 }
