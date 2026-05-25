@@ -18,24 +18,18 @@ export async function cleanupTestData() {
 
   const testEmail = process.env.E2E_TEST_USER_EMAIL ?? 'test@sigmetria.e2e'
 
-  const { data: testUser } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('email', testEmail)
-    .maybeSingle()
-
-  if (testUser) {
-    await supabase.from('consultoras_members').delete().eq('user_id', testUser.id)
-    await supabase.from('profiles').delete().eq('id', testUser.id)
+  let userId: string | null = null
+  try {
+    const { data: adminUser } = await supabase.auth.admin.listUsers()
+    const e2eUser = adminUser?.users?.find(u => u.email === testEmail)
+    if (e2eUser) userId = e2eUser.id
+  } catch {
+    console.warn('Could not list auth users (may need admin permission)')
   }
 
-  const { data: testMembers } = await supabase
-    .from('consultoras_members')
-    .select('consultora_id')
-    .eq('consultoras.razon_social', 'E2E Test Consultora')
-
-  for (const m of testMembers ?? []) {
-    await supabase.from('consultoras_members').delete().eq('consultora_id', m.consultora_id)
+  if (userId) {
+    await supabase.from('consultoras_members').delete().eq('user_id', userId)
+    await supabase.from('profiles').delete().eq('id', userId)
   }
 
   const { data: empresas } = await supabase
@@ -48,15 +42,13 @@ export async function cleanupTestData() {
     await supabase.from('empresas').delete().eq('id', e.id)
   }
 
-  await supabase.from('consultoras').delete().ilike('razon_social', 'E2E Test%')
+  await supabase.from('consultoras').delete().ilike('nombre', 'E2E Test%')
 
-  try {
-    const { data: adminUser } = await supabase.auth.admin.listUsers()
-    const e2eUser = adminUser?.users?.find(u => u.email === testEmail)
-    if (e2eUser) {
-      await supabase.auth.admin.deleteUser(e2eUser.id)
+  if (userId) {
+    try {
+      await supabase.auth.admin.deleteUser(userId)
+    } catch {
+      console.warn('Could not delete auth user (may need admin permission)')
     }
-  } catch {
-    console.warn('Could not delete auth user (may need admin权限)')
   }
 }

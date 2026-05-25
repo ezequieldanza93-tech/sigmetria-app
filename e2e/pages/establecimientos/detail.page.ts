@@ -8,7 +8,7 @@ export class EstablecimientoDetailPage {
   }
 
   get agendaTab() {
-    return this.page.getByRole('link', { name: /agenda/i })
+    return this.page.getByRole('link', { name: /gestiones/i })
   }
 
   get fichaTab() {

@@ -17,17 +17,21 @@ async function main() {
   const testPassword = process.env.E2E_TEST_USER_PASSWORD ?? 'TestE2E2026!'
 
   const cleanup = async () => {
-    const { data: existing } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('email', testEmail)
-      .maybeSingle()
+    let userId: string | null = null
 
-    if (existing) {
+    try {
+      const { data: adminUser } = await supabase.auth.admin.listUsers()
+      const e2eUser = adminUser?.users?.find(u => u.email === testEmail)
+      if (e2eUser) userId = e2eUser.id
+    } catch {
+      console.warn('  Could not list auth users (may need admin permission)')
+    }
+
+    if (userId) {
       const { data: memberships } = await supabase
         .from('consultoras_members')
         .select('consultora_id')
-        .eq('user_id', existing.id)
+        .eq('user_id', userId)
 
       for (const m of memberships ?? []) {
         await supabase.from('consultoras_members').delete().eq('consultora_id', m.consultora_id)
@@ -43,12 +47,12 @@ async function main() {
         await supabase.from('empresas').delete().eq('id', e.id)
       }
 
-      await supabase.from('consultoras_members').delete().eq('user_id', existing.id)
-      await supabase.from('profiles').delete().eq('id', existing.id)
-      await supabase.from('consultoras').delete().ilike('razon_social', 'E2E Test%')
+      await supabase.from('consultoras').delete().ilike('nombre', 'E2E Test%')
+      await supabase.from('consultoras_members').delete().eq('user_id', userId)
+      await supabase.from('profiles').delete().eq('id', userId)
 
       try {
-        await supabase.auth.admin.deleteUser(existing.id)
+        await supabase.auth.admin.deleteUser(userId)
       } catch {
         console.warn('  Could not delete auth user (may need admin permission)')
       }
@@ -77,17 +81,15 @@ async function main() {
   const { data: consultora, error: cError } = await supabase
     .from('consultoras')
     .insert({
-      razon_social: 'E2E Test Consultora',
+      nombre: 'E2E Test Consultora',
       cuit: '30999999991',
-      domicilio: 'Av. Test 1234',
-      slug: `e2e-test-${Date.now()}`,
       is_active: true,
     })
     .select()
     .single()
 
   if (cError) { console.error('Failed to create consultora:', cError.message); process.exit(1) }
-  console.log(`  ✓ Consultora: ${consultora.razon_social} (${consultora.id})`)
+  console.log(`  ✓ Consultora: ${consultora.nombre} (${consultora.id})`)
 
   const { error: mError } = await supabase
     .from('consultoras_members')
@@ -105,9 +107,7 @@ async function main() {
     .from('profiles')
     .upsert({
       id: userId,
-      email: testEmail,
-      nombre: 'E2E',
-      apellido: 'Test',
+      full_name: 'E2E Test',
       system_role: 'user',
     })
 

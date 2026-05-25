@@ -39,7 +39,7 @@ test.describe('Establecimiento Navigation', () => {
     await detailPage.navigateToSection('seguimiento')
     await expect(page).toHaveURL(/section=seguimiento/)
 
-    await detailPage.navigateToSection('agenda')
+    await detailPage.navigateToSection('Gestiones')
     await expect(page).not.toHaveURL(/section=/)
   })
 })

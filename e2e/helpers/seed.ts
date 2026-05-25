@@ -26,10 +26,8 @@ export async function seedTestData(): Promise<TestData> {
   const { data: consultora, error: cError } = await supabase
     .from('consultoras')
     .insert({
-      razon_social: 'E2E Test Consultora',
+      nombre: 'E2E Test Consultora',
       cuit: '30999999991',
-      domicilio: 'Av. Test 1234',
-      slug: `e2e-test-${Date.now()}`,
       is_active: true,
     })
     .select()
@@ -54,9 +52,7 @@ export async function seedTestData(): Promise<TestData> {
     .from('profiles')
     .upsert({
       id: userId,
-      email: testEmail,
-      nombre: 'E2E',
-      apellido: 'Test',
+      full_name: 'E2E Test',
       system_role: 'user',
     })
 

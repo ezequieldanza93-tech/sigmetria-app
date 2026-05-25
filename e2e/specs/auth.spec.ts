@@ -2,6 +2,8 @@ import { test, expect } from '@playwright/test'
 import { LoginPage } from '../pages/login.page'
 
 test.describe('Authentication', () => {
+  test.use({ storageState: { cookies: [], origins: [] } })
+
   test('redirects to login when accessing protected route', async ({ page }) => {
     await page.goto('/dashboard')
     await expect(page).toHaveURL(/\/login/)

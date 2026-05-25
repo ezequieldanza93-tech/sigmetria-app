@@ -22,26 +22,42 @@ export default function LoginPage() {
     setError('')
 
     if (!rateLimitChecked.current) {
-      const { allowed, message } = await checkLoginRateLimit()
-      if (!allowed) {
-        setError(message ?? 'Demasiados intentos. Esperá un minuto.')
+      try {
+        const { allowed, message } = await checkLoginRateLimit()
+        if (!allowed) {
+          setError(message ?? 'Demasiados intentos. Esperá un minuto.')
+          setLoading(false)
+          return
+        }
+        rateLimitChecked.current = true
+      } catch {
+        setError('Error de conexión. Verificá tu red e intentá de nuevo.')
         setLoading(false)
         return
       }
-      rateLimitChecked.current = true
     }
 
     const supabase = createClient()
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
 
-    if (error) {
-      setError('Email o contraseña incorrectos')
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) {
+        setError('Email o contraseña incorrectos')
+        setLoading(false)
+        rateLimitChecked.current = false
+        return
+      }
+    } catch {
+      setError('Error de conexión. Verificá tu red e intentá de nuevo.')
       setLoading(false)
-      rateLimitChecked.current = false
       return
     }
 
-    await supabase.rpc('cache_user_permissions')
+    try {
+      await supabase.rpc('cache_user_permissions')
+    } catch {
+      // non-critical — continue even if cache fails
+    }
 
     router.push('/dashboard/empresas')
     router.refresh()
