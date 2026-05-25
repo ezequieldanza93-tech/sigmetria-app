@@ -1,11 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { AlertCircle, Loader2 } from 'lucide-react'
+import { AlertCircle, Loader2, Bug } from 'lucide-react'
 import { DemoCredentials } from '@/components/demo-credentials'
 
-const LOGIN_TIMEOUT = 10_000
+const LOGIN_TIMEOUT = 8_000
+
+interface LogEntry {
+  t: string
+  msg: string
+}
 
 export default function LoginPage() {
   const router = useRouter()
@@ -13,42 +18,61 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [logs, setLogs] = useState<LogEntry[]>([])
+  const [showDebug, setShowDebug] = useState(false)
+
+  const addLog = useCallback((msg: string) => {
+    const entry = { t: new Date().toISOString().slice(11, 23), msg }
+    console.warn('[LOGIN-DEBUG]', entry.t, msg)
+    setLogs(prev => [...prev.slice(-49), entry])
+  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError('')
+    setLogs([])
+    addLog('Submit clicked')
 
     let timedOut = false
     const timeout = setTimeout(() => {
       timedOut = true
+      addLog('TIMEOUT fired after 8s')
       setLoading(false)
       setError('Tiempo de espera agotado. Verificá tu conexión.')
+      console.error('[LOGIN-DEBUG] Timeout reached — fetch never completed')
     }, LOGIN_TIMEOUT)
 
     try {
+      addLog('Calling fetch POST /api/auth/login...')
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       })
+      addLog(`Fetch returned status ${res.status}`)
 
-      if (timedOut) return
+      if (timedOut) { addLog('Ignored — timed out'); return }
       clearTimeout(timeout)
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({ error: 'Error de conexión' }))
+        addLog(`Error response: ${data.error}`)
         setError(data.error || 'Error de autenticación')
         setLoading(false)
         return
       }
 
+      addLog('Login OK, redirecting...')
       router.push('/dashboard/empresas')
       router.refresh()
     } catch (e) {
-      if (timedOut) return
+      if (timedOut) { addLog('Ignored — timed out'); return }
       clearTimeout(timeout)
-      setError(`Error inesperado: ${e instanceof Error ? e.message : 'desconocido'}`)
+      const msg = e instanceof Error ? e.message : 'desconocido'
+      addLog(`Catch error: ${msg}`)
+      console.error('[LOGIN-DEBUG] Unhandled exception:', e)
+      setError(`Error inesperado: ${msg}`)
       setLoading(false)
     }
   }
@@ -176,6 +200,45 @@ export default function LoginPage() {
           </form>
 
           <DemoCredentials />
+
+          {/* Debug button */}
+          <button
+            type="button"
+            onClick={() => setShowDebug(o => !o)}
+            className="mt-4 flex items-center gap-1.5 text-xs text-text-tertiary hover:text-text-secondary transition-colors mx-auto"
+          >
+            <Bug className="h-3 w-3" />
+            {showDebug ? 'Ocultar debug' : 'Debug login'}
+          </button>
+
+          {showDebug && (
+            <div className="mt-3 bg-gray-950 text-green-400 rounded-lg p-3 text-[11px] font-mono max-h-64 overflow-y-auto">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-gray-500 font-semibold uppercase tracking-wider text-[10px]">
+                  Debug logs ({logs.length})
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const text = logs.map(l => `[${l.t}] ${l.msg}`).join('\n')
+                    navigator.clipboard.writeText(text || '(sin logs)')
+                  }}
+                  className="text-gray-500 hover:text-white transition-colors text-[10px] uppercase tracking-wider"
+                >
+                  Copiar
+                </button>
+              </div>
+              {logs.length === 0 && (
+                <p className="text-gray-600 italic">Completá el formulario y presioná Ingresar</p>
+              )}
+              {logs.map((l, i) => (
+                <div key={i} className="leading-relaxed">
+                  <span className="text-gray-600">[{l.t}]</span>{' '}
+                  <span className="text-green-300">{l.msg}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
