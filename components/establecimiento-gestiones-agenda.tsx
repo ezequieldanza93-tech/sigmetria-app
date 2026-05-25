@@ -880,6 +880,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
       return new Set((data ?? []).map(s => s.gestion_id))
     },
     enabled: geIds.length > 0,
+    meta: { persist: true },
   })
 
   const geMap = useMemo(() => {

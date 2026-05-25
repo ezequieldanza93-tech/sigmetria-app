@@ -55,6 +55,7 @@ export function useGestionesEstablecimiento(establecimientoId: string | undefine
     },
     enabled: !!establecimientoId,
     staleTime: 1000 * 30,
+    meta: { persist: true },
   })
 }
 
@@ -79,6 +80,7 @@ export function useRegistrosGestion(geIds: string[] | undefined, year: number) {
     },
     enabled: !!geIds && geIds.length > 0,
     staleTime: 1000 * 30,
+    meta: { persist: true },
   })
 }
 
@@ -115,6 +117,7 @@ export function useObservacionesClasificaciones() {
       return (data ?? []) as { id: string; nombre: string }[]
     },
     staleTime: 1000 * 60 * 30,
+    meta: { persist: true },
   })
 }
 
@@ -165,5 +168,6 @@ export function useCatalogo() {
       }
     },
     staleTime: 1000 * 60 * 30,
+    meta: { persist: true },
   })
 }
