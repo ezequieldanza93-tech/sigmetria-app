@@ -97,6 +97,10 @@ export const establecimientoStatusSchema = z.enum([
 
 export const feedbackTipoSchema = z.enum(['positivo', 'negativo', 'sugerencia'])
 
+export const feedbackNpsTipoSchema = z.enum(['nps', 'bug', 'sugerencia', 'general'])
+export const feedbackStatusSchema = z.enum(['nuevo', 'revisado', 'descartado', 'implementado'])
+export const npsCategoriaSchema = z.enum(['promotor', 'pasivo', 'detractor'])
+
 export const estadoGestionSchema = z.enum(['Realizado', 'Pendiente', 'Planificado'])
 
 export const answerValueSchema = z.enum(['cumple', 'no_cumple', 'no_aplica'])

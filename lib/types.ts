@@ -849,6 +849,44 @@ export interface EstablecimientoDenuncia {
 
 export type FeedbackTipo = 'positivo' | 'negativo' | 'sugerencia'
 
+// ---- Feedback + NPS (internal) ----
+export type FeedbackNpsTipo = 'nps' | 'bug' | 'sugerencia' | 'general'
+export type FeedbackStatus = 'nuevo' | 'revisado' | 'descartado' | 'implementado'
+export type NpsCategoria = 'promotor' | 'pasivo' | 'detractor'
+
+export interface Feedback {
+  id: string
+  user_id: string | null
+  consultora_id: string | null
+  tipo: FeedbackNpsTipo
+  nps_score: number | null
+  nps_categoria: NpsCategoria | null
+  titulo: string | null
+  comentario: string
+  status: FeedbackStatus
+  metadata: Record<string, unknown>
+  created_at: string
+  updated_at: string
+  // Joins opcionales (desde la query)
+  user_email?: string
+  user_nombre?: string
+  consultora_nombre?: string
+}
+
+export interface NpsStats {
+  total_respuestas: number
+  promotores: number
+  pasivos: number
+  detractores: number
+  nps_score: number
+}
+
+export interface NpsTrendPoint {
+  mes: string
+  total_respuestas: number
+  nps_score: number
+}
+
 export interface EnteRegulador {
   id: string
   nombre: string
