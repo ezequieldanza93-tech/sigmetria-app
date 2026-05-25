@@ -1,45 +1,15 @@
 'use client'
 
-import { useActionState, useState, useEffect, useRef } from 'react'
-import { AlertCircle, Loader2, Bug } from 'lucide-react'
+import { useActionState } from 'react'
+import { AlertCircle, Loader2 } from 'lucide-react'
 import { DemoCredentials } from '@/components/demo-credentials'
 import { login } from '@/lib/actions/login'
-
-interface LogEntry {
-  t: string
-  msg: string
-}
 
 export default function LoginPage() {
   const [state, formAction, pending] = useActionState<
     { error?: string } | undefined,
     FormData
   >(login, undefined)
-  const [showDebug, setShowDebug] = useState(false)
-  const [logs, setLogs] = useState<LogEntry[]>([])
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
-
-  const addLog = (msg: string) => {
-    const entry = { t: new Date().toISOString().slice(11, 23), msg }
-    setLogs((prev) => [...prev.slice(-49), entry])
-  }
-
-  // Track pending state to log form submission lifecycle
-  const prevPending = useRef(false)
-  useEffect(() => {
-    if (!prevPending.current && pending) {
-      addLog('Form submitted, waiting for server action...')
-      timeoutRef.current = setTimeout(() => {
-        addLog('⚠ TIMEOUT: 8s elapsed without server response')
-      }, 8000)
-    } else if (prevPending.current && !pending) {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current)
-      if (state?.error) {
-        addLog(`Error from server: ${state.error}`)
-      }
-    }
-    prevPending.current = pending
-  }, [pending, state?.error])
 
   return (
     <div className="min-h-screen bg-surface-base flex">
@@ -162,47 +132,6 @@ export default function LoginPage() {
           </form>
 
           <DemoCredentials />
-
-          {/* Debug button */}
-          <div className="mt-4 text-center">
-            <button
-              type="button"
-              onClick={() => setShowDebug((o) => !o)}
-              className="inline-flex items-center gap-1.5 text-xs text-text-tertiary hover:text-text-secondary transition-colors"
-            >
-              <Bug className="h-3 w-3" />
-              {showDebug ? 'Ocultar debug' : 'Debug login'}
-            </button>
-
-            {showDebug && (
-              <div className="mt-3 bg-gray-950 text-green-400 rounded-lg p-3 text-[11px] font-mono max-h-64 overflow-y-auto text-left">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-gray-500 font-semibold uppercase tracking-wider text-[10px]">
-                    Logs ({logs.length})
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const text = logs.map((l) => `[${l.t}] ${l.msg}`).join('\n')
-                      navigator.clipboard.writeText(text || '(sin logs)')
-                    }}
-                    className="text-gray-500 hover:text-white transition-colors text-[10px] uppercase tracking-wider"
-                  >
-                    Copiar
-                  </button>
-                </div>
-                {logs.length === 0 && (
-                  <p className="text-gray-600 italic">Completá el formulario y presioná Ingresar</p>
-                )}
-                {logs.map((l, i) => (
-                  <div key={i} className="leading-relaxed">
-                    <span className="text-gray-600">[{l.t}]</span>{' '}
-                    <span className="text-green-300">{l.msg}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
       </div>
     </div>
