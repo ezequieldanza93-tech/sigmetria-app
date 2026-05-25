@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import { AlertCircle, Loader2 } from 'lucide-react'
 import { DemoCredentials } from '@/components/demo-credentials'
 
@@ -28,22 +27,20 @@ export default function LoginPage() {
     }, LOGIN_TIMEOUT)
 
     try {
-      const supabase = createClient()
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      })
 
       if (timedOut) return
       clearTimeout(timeout)
 
-      if (error) {
-        setError(`Error: ${error.message}`)
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: 'Error de conexión' }))
+        setError(data.error || 'Error de autenticación')
         setLoading(false)
         return
-      }
-
-      try {
-        await supabase.rpc('cache_user_permissions')
-      } catch {
-        // non-critical
       }
 
       router.push('/dashboard/empresas')
