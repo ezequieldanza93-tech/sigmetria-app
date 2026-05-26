@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import {
-  Building2, CalendarClock, AlertTriangle, Scale, GraduationCap,
+  Building2, CalendarClock, AlertTriangle, GraduationCap,
   FileText, ClipboardList, BarChart2, Map, UserCog, CreditCard,
   MessageSquare, BookMarked, ArrowRight, Zap,
 } from 'lucide-react'
