@@ -1,5 +1,13 @@
 import { defaultCache } from '@serwist/next/worker'
-import { Serwist } from 'serwist'
+import { Serwist, NetworkOnly } from 'serwist'
+
+// RSC requests must never be served from cache — a stale RSC payload after a deploy
+// causes React error #418 (hydration mismatch). NetworkOnly ensures every RSC fetch
+// goes to the network, matching the HTML the server just rendered.
+const rscNetworkOnly = {
+  matcher: ({ request }: { request: Request }) => request.headers.get('RSC') === '1',
+  handler: new NetworkOnly(),
+}
 
 const serwist = new Serwist({
   precacheEntries: (self as unknown as { __SW_MANIFEST: Array<{ url: string; revision: string } | string> }).__SW_MANIFEST,
@@ -7,6 +15,7 @@ const serwist = new Serwist({
   clientsClaim: true,
   navigationPreload: true,
   runtimeCaching: [
+    rscNetworkOnly,
     ...defaultCache,
   ],
   fallbacks: {
