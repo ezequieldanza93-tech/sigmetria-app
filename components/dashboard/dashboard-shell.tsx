@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Settings } from 'lucide-react'
+import { Home, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { KpiCard } from '@/components/analytics/kpi-card'
@@ -46,7 +46,7 @@ interface DashboardShellProps {
   empresasContent: React.ReactNode
 }
 
-type DashboardTab = 'panel' | 'analytics' | 'empresas'
+type DashboardTab = 'empresas' | 'dashboard'
 
 export function DashboardShell({ consultoraId, establecimientos, empresasContent }: DashboardShellProps) {
   const [tab, setTab] = useState<DashboardTab>('empresas')
@@ -55,13 +55,23 @@ export function DashboardShell({ consultoraId, establecimientos, empresasContent
   const { data: kpiData, isLoading: kpiLoading, isError } = useDashboardKpis(widgetKeys)
 
   const TABS: { id: DashboardTab; label: string }[] = [
-    { id: 'panel', label: 'Panel Ejecutivo' },
-    { id: 'analytics', label: 'Analítica' },
     { id: 'empresas', label: 'Empresas' },
+    { id: 'dashboard', label: 'Dashboard' },
   ]
 
   return (
     <div>
+      {/* Page heading */}
+      <div className="flex items-center gap-2 mb-6">
+        <Home size={20} className="text-brand-primary" strokeWidth={1.75} aria-hidden="true" />
+        <h1
+          className="text-lg font-semibold text-text-primary"
+          style={{ fontFamily: 'var(--font-heading)' }}
+        >
+          Inicio
+        </h1>
+      </div>
+
       {/* Tab bar */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex gap-1">
@@ -80,7 +90,7 @@ export function DashboardShell({ consultoraId, establecimientos, empresasContent
             </button>
           ))}
         </div>
-        {tab === 'panel' && (
+        {tab === 'dashboard' && (
           <Button variant="secondary" size="sm" onClick={() => setConfigOpen(true)}>
             <Settings size={14} />
             Configurar Dashboard
@@ -88,8 +98,8 @@ export function DashboardShell({ consultoraId, establecimientos, empresasContent
         )}
       </div>
 
-      {/* Panel Ejecutivo */}
-      {tab === 'panel' && (
+      {/* Dashboard (Panel Ejecutivo + Analítica) */}
+      {tab === 'dashboard' && (
         <>
           {configLoading || kpiLoading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-pulse">
@@ -147,30 +157,27 @@ export function DashboardShell({ consultoraId, establecimientos, empresasContent
                   )
                 })}
               </div>
-
-              {/* Subcontratistas — documentos próximos a vencer */}
               <div className="mt-6">
                 <SubcontratistasVencimientosWidget />
               </div>
             </>
           )}
-        </>
-      )}
 
-      {/* Analítica */}
-      {tab === 'analytics' && (
-        consultoraId ? (
-          <AnalyticsDashboard
-            level="consultora"
-            consultoraId={consultoraId}
-            establecimientos={establecimientos}
-          />
-        ) : (
-          <div className="rounded-xl border border-border-subtle bg-surface-elevated p-12 text-center">
-            <p className="text-text-secondary font-semibold">Sin consultora asociada</p>
-            <p className="text-sm text-text-tertiary mt-1">No se encontró una consultora activa para tu cuenta.</p>
+          <div className="mt-8">
+            {consultoraId ? (
+              <AnalyticsDashboard
+                level="consultora"
+                consultoraId={consultoraId}
+                establecimientos={establecimientos}
+              />
+            ) : (
+              <div className="rounded-xl border border-border-subtle bg-surface-elevated p-12 text-center">
+                <p className="text-text-secondary font-semibold">Sin consultora asociada</p>
+                <p className="text-sm text-text-tertiary mt-1">No se encontró una consultora activa para tu cuenta.</p>
+              </div>
+            )}
           </div>
-        )
+        </>
       )}
 
       {/* Empresas */}

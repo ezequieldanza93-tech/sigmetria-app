@@ -827,13 +827,16 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
   const queryClient = useQueryClient()
   const { data: canWriteData } = useCanWrite(establecimientoId)
   const canWrite = canWriteProp || (canWriteData ?? false)
-  const currentYear = new Date().getFullYear()
-  const [year, setYear] = useState(currentYear)
+  const [year, setYear] = useState(0)
 
   // Task 1: default = current month
-  const [selectedMonths, setSelectedMonths] = useState<Set<number>>(
-    () => new Set([new Date().getMonth()])
-  )
+  const [selectedMonths, setSelectedMonths] = useState<Set<number>>(new Set())
+
+  useEffect(() => {
+    const now = new Date()
+    setYear(now.getFullYear())
+    setSelectedMonths(new Set([now.getMonth()]))
+  }, [])
 
   // Task 2: collapsed months for group view
   const [collapsedMonths, setCollapsedMonths] = useState<Set<number>>(new Set())
