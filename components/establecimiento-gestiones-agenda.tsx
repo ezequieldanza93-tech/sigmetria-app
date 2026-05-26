@@ -12,7 +12,7 @@ import { Modal } from '@/components/ui/modal'
 import { MultiFilter } from '@/components/ui/multi-filter'
 import { ViewSelector } from '@/components/ui/view-selector'
 import {
-  Plus, Camera, BarChart3, FileCheck,
+  Camera, BarChart3, FileCheck,
   ClipboardCheck, GraduationCap, Heart, FileText, AlertTriangle,
   ClipboardList, UserPlus, Dumbbell, Kanban, HelpCircle,
   Play, Upload, Download, BookMarked,
