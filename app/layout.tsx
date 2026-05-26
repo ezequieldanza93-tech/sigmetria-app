@@ -83,10 +83,10 @@ const THEME_INIT_SCRIPT = `
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es-AR" className={`${poppins.variable} ${montserrat.variable}`} suppressHydrationWarning>
-      <head>
+      <head suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
-      <body className="bg-surface-base text-text-primary antialiased font-body">
+      <body suppressHydrationWarning className="bg-surface-base text-text-primary antialiased font-body">
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:rounded-md focus:bg-brand-primary focus:px-3 focus:py-2 focus:text-white focus:shadow-lg"
