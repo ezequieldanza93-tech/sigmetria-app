@@ -15,6 +15,7 @@ import {
   ClipboardCheck, GraduationCap, Heart, FileText, AlertTriangle,
   ClipboardList, UserPlus, Dumbbell, Kanban, HelpCircle,
   Play, Upload, Download, BookMarked,
+  ChevronUp, ChevronDown, Columns, CalendarDays, List,
 } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import {
@@ -77,8 +78,8 @@ const DEFAULT_COL_WIDTHS: Record<string, number> = {
   responsable: 130, indice: 70, acciones: 130,
 }
 const COL_MIN_WIDTHS: Record<string, number> = {
-  categoria: 80, gestion: 80, fecha_plan: 80, fecha_ejec: 80,
-  responsable: 80, indice: 50, acciones: 100,
+  categoria: 24, gestion: 24, fecha_plan: 24, fecha_ejec: 24,
+  responsable: 24, indice: 15, acciones: 30,
 }
 
 const ROW_BG_COLORS: Record<EstadoGestion, string> = {
@@ -86,6 +87,17 @@ const ROW_BG_COLORS: Record<EstadoGestion, string> = {
   Pendiente: 'bg-danger-bg hover:bg-red-200',
   Planificado: 'bg-sky-100 hover:bg-sky-200',
 }
+
+const COL_VISIBLE_KEY = 'gestiones_col_visible'
+const TOGGLEABLE_COLS = [
+  { key: 'categoria', label: 'Categoría' },
+  { key: 'fecha_ejec', label: 'Fecha Ejec.' },
+  { key: 'responsable', label: 'Responsable' },
+  { key: 'indice', label: 'Índice' },
+] as const
+
+type SortCol = 'categoria' | 'gestion' | 'fecha_plan' | 'fecha_ejec' | 'responsable' | 'indice'
+type ViewMode = 'tabla' | 'calendario' | 'kanban'
 
 
 interface FullRegistro extends RegistroGestion {
@@ -846,7 +858,10 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
   const [filterCategoria, setFilterCategoria] = useState<Set<string> | null>(null)
   const [filterGrupo, setFilterGrupo] = useState<Set<string> | null>(null)
   const [filterResponsable, setFilterResponsable] = useState<Set<string> | null>(null)
-  const [orderByCategoria, setOrderByCategoria] = useState(false)
+  const [sortConfig, setSortConfig] = useState<{ col: SortCol | null; dir: 'asc' | 'desc' }>({ col: null, dir: 'asc' })
+  const [viewMode, setViewMode] = useState<ViewMode>('tabla')
+  const [visibleCols, setVisibleCols] = useState<Set<string>>(new Set(['categoria', 'gestion', 'fecha_plan', 'fecha_ejec', 'responsable', 'indice', 'acciones']))
+  const [showColPicker, setShowColPicker] = useState(false)
   const [editingRegistro, setEditingRegistro] = useState<FullRegistro | null>(null)
   const [executingFormulario, setExecutingFormulario] = useState<FullRegistro | null>(null)
   const [showPlanificarModal, setShowPlanificarModal] = useState(false)
@@ -864,6 +879,12 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
     try {
       const stored = localStorage.getItem(COL_WIDTHS_KEY)
       if (stored) setColWidths(JSON.parse(stored))
+    } catch {}
+  }, [])
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(COL_VISIBLE_KEY)
+      if (stored) setVisibleCols(new Set(JSON.parse(stored)))
     } catch {}
   }, [])
   const resizingRef = useRef<{ col: string; startX: number; startW: number } | null>(null)
@@ -994,11 +1015,21 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
     return true
   })
 
-  const sortedRegistros = orderByCategoria
-    ? [...filteredRegistros].sort((a, b) =>
-        (a.ge_categoria_nombre ?? '').localeCompare(b.ge_categoria_nombre ?? '')
-      )
-    : filteredRegistros
+  const sortedRegistros = (() => {
+    if (!sortConfig.col) return filteredRegistros
+    return [...filteredRegistros].sort((a, b) => {
+      let cmp = 0
+      switch (sortConfig.col) {
+        case 'categoria': cmp = (a.ge_categoria_nombre ?? '').localeCompare(b.ge_categoria_nombre ?? ''); break
+        case 'gestion': cmp = (a.ge_gestion_nombre ?? '').localeCompare(b.ge_gestion_nombre ?? ''); break
+        case 'fecha_plan': cmp = (a.fecha_planificada ?? '').localeCompare(b.fecha_planificada ?? ''); break
+        case 'fecha_ejec': cmp = (a.fecha_ejecutada ?? '').localeCompare(b.fecha_ejecutada ?? ''); break
+        case 'responsable': cmp = (a.responsable_nombre ?? '').localeCompare(b.responsable_nombre ?? ''); break
+        case 'indice': cmp = (a.index ?? -Infinity) - (b.index ?? -Infinity); break
+      }
+      return sortConfig.dir === 'asc' ? cmp : -cmp
+    })
+  })()
 
   const categoriasFiltro = Array.from(
     new Set((registros ?? []).map(r => r.ge_categoria_nombre).filter(Boolean))
@@ -1032,7 +1063,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
 
       return (
         <tr key={r.id} className={`${ROW_BG_COLORS[estado]} cursor-pointer`} onClick={() => setEditingRegistro(r)}>
-          <td className="hidden md:table-cell px-4 py-1.5" style={{ maxWidth: colW('categoria'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <td className={`${visibleCols.has('categoria') ? 'hidden md:table-cell' : 'hidden'} px-4 py-1.5`} style={{ maxWidth: colW('categoria'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             <span className="flex items-center gap-1.5">
               <CategoriaIcon nombre={r.ge_categoria_nombre} size={14} />
               <CategoriaAbbr nombre={r.ge_categoria_nombre} />
@@ -1042,26 +1073,34 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
             {r.ge_gestion_nombre ?? '—'}
           </td>
           <td className="px-4 py-1.5 text-text-secondary tabular-nums text-xs">{r.fecha_planificada}</td>
-          <td className="hidden md:table-cell px-4 py-1.5 text-text-secondary tabular-nums text-xs">
+          <td className={`${visibleCols.has('fecha_ejec') ? 'hidden md:table-cell' : 'hidden'} px-4 py-1.5 text-text-secondary tabular-nums text-xs`}>
             {r.fecha_ejecutada ?? <span className="text-text-tertiary">—</span>}
           </td>
-          <td className="hidden md:table-cell px-4 py-1.5 text-text-secondary text-xs" style={{ maxWidth: colW('responsable'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <td className={`${visibleCols.has('responsable') ? 'hidden md:table-cell' : 'hidden'} px-4 py-1.5 text-text-secondary text-xs`} style={{ maxWidth: colW('responsable'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {r.responsable_nombre ?? <span className="text-text-tertiary">—</span>}
           </td>
-          <td className="px-4 py-1.5 text-center text-sm tabular-nums text-text-secondary">
+          <td className={`${visibleCols.has('indice') ? '' : 'hidden'} px-4 py-1.5 text-center text-sm tabular-nums text-text-secondary`}>
             {r.index != null ? r.index : <span className="text-text-tertiary">—</span>}
           </td>
           <td className="px-2 py-1.5" onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-1 justify-center">
-              {r.ge_tiene_formulario && (
-                <button
-                  title="Ejecutar formulario"
-                  onClick={() => setExecutingFormulario(r)}
-                  className={`p-1.5 rounded-lg transition-colors ${r.fecha_ejecutada ? 'text-success hover:bg-success-bg' : 'text-text-tertiary hover:bg-surface-elevated hover:text-text-secondary'}`}
-                >
-                  <Play size={14} />
-                </button>
-              )}
+              {r.ge_tiene_formulario && (() => {
+                const blocked = !!(r.fecha_ejecutada || r.evidencia_url)
+                return (
+                  <button
+                    title={blocked ? 'Gestión ya ejecutada' : 'Ejecutar formulario'}
+                    onClick={() => { if (!blocked) setExecutingFormulario(r) }}
+                    disabled={blocked}
+                    className={`p-1.5 rounded-lg transition-colors ${
+                      blocked
+                        ? 'text-text-tertiary opacity-30 cursor-not-allowed'
+                        : 'text-text-tertiary hover:bg-surface-elevated hover:text-text-secondary'
+                    }`}
+                  >
+                    <Play size={14} />
+                  </button>
+                )
+              })()}
               {canWrite && (
                 <button
                   title="Cargar evidencia"
@@ -1110,32 +1149,96 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
       <div
         className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-white/30 select-none"
         onMouseDown={e => startResize(col, e)}
+        onClick={e => e.stopPropagation()}
       />
     )
+  }
+
+  function toggleCol(key: string) {
+    setVisibleCols(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      try { localStorage.setItem(COL_VISIBLE_KEY, JSON.stringify(Array.from(next))) } catch {}
+      return next
+    })
+  }
+
+  function toggleSort(col: SortCol) {
+    setSortConfig(prev =>
+      prev.col === col
+        ? { col, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
+        : { col, dir: 'asc' }
+    )
+  }
+
+  function sortIndicator(col: SortCol) {
+    if (sortConfig.col !== col) return null
+    return sortConfig.dir === 'asc'
+      ? <ChevronUp size={11} className="inline ml-0.5 opacity-80" />
+      : <ChevronDown size={11} className="inline ml-0.5 opacity-80" />
   }
 
   // ── Table header ────────────────────────────────────────────────────────────
   const tableHead = (
     <thead>
       <tr className="bg-gray-800 text-white text-left text-xs">
-        <th style={{ width: colW('categoria') }} className="hidden md:table-cell px-4 py-1.5 font-medium relative select-none">
-          Categoría{rh('categoria')}
+        {visibleCols.has('categoria') && (
+          <th
+            style={{ width: colW('categoria') }}
+            className="hidden md:table-cell px-4 py-1.5 font-medium relative select-none cursor-pointer hover:bg-gray-700"
+            onClick={() => toggleSort('categoria')}
+          >
+            <span className="flex items-center gap-1">Categoría{sortIndicator('categoria')}</span>
+            {rh('categoria')}
+          </th>
+        )}
+        <th
+          style={{ width: colW('gestion') }}
+          className="px-4 py-1.5 font-medium relative select-none cursor-pointer hover:bg-gray-700"
+          onClick={() => toggleSort('gestion')}
+        >
+          <span className="flex items-center gap-1">Gestión{sortIndicator('gestion')}</span>
+          {rh('gestion')}
         </th>
-        <th style={{ width: colW('gestion') }} className="px-4 py-1.5 font-medium relative select-none">
-          Gestión{rh('gestion')}
+        <th
+          style={{ width: colW('fecha_plan') }}
+          className="px-4 py-1.5 font-medium relative select-none cursor-pointer hover:bg-gray-700"
+          onClick={() => toggleSort('fecha_plan')}
+        >
+          <span className="flex items-center gap-1">Fecha Plan.{sortIndicator('fecha_plan')}</span>
+          {rh('fecha_plan')}
         </th>
-        <th style={{ width: colW('fecha_plan') }} className="px-4 py-1.5 font-medium relative select-none">
-          Fecha Plan.{rh('fecha_plan')}
-        </th>
-        <th style={{ width: colW('fecha_ejec') }} className="hidden md:table-cell px-4 py-1.5 font-medium relative select-none">
-          Fecha Ejec.{rh('fecha_ejec')}
-        </th>
-        <th style={{ width: colW('responsable') }} className="hidden md:table-cell px-4 py-1.5 font-medium relative select-none">
-          Responsable{rh('responsable')}
-        </th>
-        <th style={{ width: colW('indice') }} className="px-4 py-1.5 font-medium text-center relative select-none">
-          Índice{rh('indice')}
-        </th>
+        {visibleCols.has('fecha_ejec') && (
+          <th
+            style={{ width: colW('fecha_ejec') }}
+            className="hidden md:table-cell px-4 py-1.5 font-medium relative select-none cursor-pointer hover:bg-gray-700"
+            onClick={() => toggleSort('fecha_ejec')}
+          >
+            <span className="flex items-center gap-1">Fecha Ejec.{sortIndicator('fecha_ejec')}</span>
+            {rh('fecha_ejec')}
+          </th>
+        )}
+        {visibleCols.has('responsable') && (
+          <th
+            style={{ width: colW('responsable') }}
+            className="hidden md:table-cell px-4 py-1.5 font-medium relative select-none cursor-pointer hover:bg-gray-700"
+            onClick={() => toggleSort('responsable')}
+          >
+            <span className="flex items-center gap-1">Responsable{sortIndicator('responsable')}</span>
+            {rh('responsable')}
+          </th>
+        )}
+        {visibleCols.has('indice') && (
+          <th
+            style={{ width: colW('indice') }}
+            className="px-4 py-1.5 font-medium text-center relative select-none cursor-pointer hover:bg-gray-700"
+            onClick={() => toggleSort('indice')}
+          >
+            <span className="flex items-center justify-center gap-1">Índice{sortIndicator('indice')}</span>
+            {rh('indice')}
+          </th>
+        )}
         <th style={{ width: colW('acciones') }} className="px-4 py-1.5 font-medium text-center relative select-none">
           Acciones{rh('acciones')}
         </th>
@@ -1164,6 +1267,147 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
           </div>
         </td>
       </tr>
+    )
+  }
+
+  // ── Calendar view ────────────────────────────────────────────────────────────
+  function renderCalendario() {
+    if (!year) return null
+    const months = Array.from(selectedMonths).sort((a, b) => a - b)
+    if (months.length === 0) {
+      return (
+        <div className="bg-surface-base rounded-xl border border-border-subtle p-8 text-center text-text-tertiary text-sm mb-8">
+          Seleccioná al menos un mes para ver el calendario.
+        </div>
+      )
+    }
+    const DAY_LABELS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+    const today = new Date()
+    return (
+      <div className="space-y-4 mb-8">
+        {months.map(monthIdx => {
+          const firstDay = new Date(year, monthIdx, 1)
+          const daysInMonth = new Date(year, monthIdx + 1, 0).getDate()
+          const startOffset = (firstDay.getDay() + 6) % 7
+          const monthRegs = filteredRegistros.filter(r =>
+            r.fecha_planificada?.startsWith(`${year}-${String(monthIdx + 1).padStart(2, '0')}`)
+          )
+          const byDay = new Map<number, FullRegistro[]>()
+          for (const r of monthRegs) {
+            const day = parseInt(r.fecha_planificada.split('-')[2])
+            if (!byDay.has(day)) byDay.set(day, [])
+            byDay.get(day)!.push(r)
+          }
+          const cells: (number | null)[] = []
+          for (let i = 0; i < startOffset; i++) cells.push(null)
+          for (let d = 1; d <= daysInMonth; d++) cells.push(d)
+          while (cells.length % 7 !== 0) cells.push(null)
+          return (
+            <div key={monthIdx} className="bg-surface-base rounded-xl border border-border-subtle overflow-hidden">
+              <div className="bg-gray-800 text-white px-4 py-2.5 flex items-center gap-2">
+                <span className="font-semibold text-sm">{MONTHS_FULL[monthIdx]} {year}</span>
+                <span className="text-xs text-gray-400">{monthRegs.length} gestiones</span>
+              </div>
+              <div className="p-3">
+                <div className="grid grid-cols-7 mb-1">
+                  {DAY_LABELS.map(d => (
+                    <div key={d} className="text-center text-[11px] font-medium text-text-tertiary py-1">{d}</div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-7 gap-0.5">
+                  {cells.map((day, idx) => {
+                    if (!day) return <div key={idx} />
+                    const regs = byDay.get(day) ?? []
+                    const isToday = today.getFullYear() === year && today.getMonth() === monthIdx && today.getDate() === day
+                    return (
+                      <div
+                        key={idx}
+                        className={`min-h-[56px] p-1 rounded-lg border ${isToday ? 'border-sig-400 bg-sig-50' : 'border-transparent hover:bg-surface-elevated'}`}
+                      >
+                        <div className={`text-[11px] font-medium mb-0.5 w-5 h-5 flex items-center justify-center rounded-full ${isToday ? 'bg-sig-500 text-white' : 'text-text-secondary'}`}>
+                          {day}
+                        </div>
+                        <div className="space-y-0.5">
+                          {regs.map(r => {
+                            const estado = calcularEstadoGestion(r.fecha_ejecutada ?? null, r.fecha_planificada)
+                            const dot = estado === 'Realizado' ? 'bg-green-500' : estado === 'Pendiente' ? 'bg-red-500' : 'bg-sky-500'
+                            return (
+                              <div
+                                key={r.id}
+                                onClick={() => setEditingRegistro(r)}
+                                className="flex items-center gap-1 cursor-pointer hover:opacity-70"
+                                title={r.ge_gestion_nombre}
+                              >
+                                <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${dot}`} />
+                                <span className="text-[10px] text-text-secondary leading-tight truncate">{r.ge_gestion_nombre}</span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
+  // ── Kanban view ──────────────────────────────────────────────────────────────
+  function renderKanban() {
+    const columns: { estado: EstadoGestion; label: string; header: string; card: string }[] = [
+      { estado: 'Planificado', label: 'Planificado', header: 'bg-sky-600', card: 'bg-sky-50 border-sky-100' },
+      { estado: 'Pendiente', label: 'Pendiente', header: 'bg-red-500', card: 'bg-red-50 border-red-100' },
+      { estado: 'Realizado', label: 'Realizado', header: 'bg-green-600', card: 'bg-green-50 border-green-100' },
+    ]
+    return (
+      <div className="grid grid-cols-3 gap-3 mb-8">
+        {columns.map(({ estado, label, header, card }) => {
+          const regs = filteredRegistros.filter(r =>
+            calcularEstadoGestion(r.fecha_ejecutada ?? null, r.fecha_planificada) === estado
+          )
+          return (
+            <div key={estado} className={`${card} rounded-xl border overflow-hidden`}>
+              <div className={`${header} text-white px-3 py-2 flex items-center justify-between`}>
+                <span className="font-semibold text-sm">{label}</span>
+                <span className="bg-white/20 text-xs rounded-full px-2 py-0.5">{regs.length}</span>
+              </div>
+              <div className="p-2 space-y-2 max-h-[600px] overflow-y-auto">
+                {regs.length === 0 ? (
+                  <p className="text-xs text-text-tertiary text-center py-4">Sin gestiones</p>
+                ) : regs.map(r => (
+                  <div
+                    key={r.id}
+                    onClick={() => setEditingRegistro(r)}
+                    className="bg-white rounded-lg border border-border-subtle p-2.5 cursor-pointer hover:border-sig-300 hover:shadow-sm transition-all"
+                  >
+                    <div className="flex items-center gap-1 mb-1">
+                      <CategoriaIcon nombre={r.ge_categoria_nombre} size={12} />
+                      <span className="text-[10px] text-text-tertiary">{r.ge_categoria_nombre ?? '—'}</span>
+                    </div>
+                    <p className="text-xs font-medium text-text-primary mb-1 line-clamp-2">{r.ge_gestion_nombre ?? '—'}</p>
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-[10px] text-text-tertiary tabular-nums shrink-0">{r.fecha_planificada}</span>
+                      {r.responsable_nombre && (
+                        <span className="text-[10px] text-text-tertiary truncate">{r.responsable_nombre}</span>
+                      )}
+                    </div>
+                    {r.fecha_ejecutada && r.fecha_ejecutada !== r.fecha_planificada && (
+                      <div className="mt-1 text-[10px] text-green-600">Ejec: {r.fecha_ejecutada}</div>
+                    )}
+                    {r.index != null && (
+                      <div className="mt-0.5 text-[10px] text-text-tertiary">Índice: {r.index}</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        })}
+      </div>
     )
   }
 
@@ -1313,22 +1557,57 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
           onChange={setFilterEstado}
         />
         <button
-          onClick={() => { setFilterEstado(null); setFilterCategoria(null); setFilterGrupo(null); setFilterResponsable(null); setOrderByCategoria(false) }}
+          onClick={() => { setFilterEstado(null); setFilterCategoria(null); setFilterGrupo(null); setFilterResponsable(null); setSortConfig({ col: null, dir: 'asc' }) }}
           className="text-xs border border-border-subtle rounded-lg px-2 py-1.5 text-text-secondary hover:bg-surface-base shrink-0"
         >
           Rest.
         </button>
 
-        <button
-          onClick={() => setOrderByCategoria(v => !v)}
-          className={`text-xs border rounded-lg px-2 py-1.5 transition-colors shrink-0 ${
-            orderByCategoria
-              ? 'border-sig-300 bg-sig-50 text-sig-700'
-              : 'border-border-subtle text-text-secondary hover:bg-surface-base'
-          }`}
-        >
-          Ordenar Categoría
-        </button>
+        {/* Column visibility picker — desktop only */}
+        <div className="relative hidden md:block shrink-0">
+          <button
+            onClick={() => setShowColPicker(v => !v)}
+            className={`text-xs border rounded-lg px-2 py-1.5 flex items-center gap-1 transition-colors ${
+              showColPicker ? 'border-sig-300 bg-sig-50 text-sig-700' : 'border-border-subtle text-text-secondary hover:bg-surface-base'
+            }`}
+          >
+            <Columns size={12} />
+            Columnas
+          </button>
+          {showColPicker && (
+            <div className="absolute top-full mt-1 left-0 bg-surface-base border border-border-subtle rounded-xl shadow-lg p-1.5 z-20 min-w-[140px]">
+              {TOGGLEABLE_COLS.map(({ key, label }) => (
+                <label key={key} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-surface-elevated cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={visibleCols.has(key)}
+                    onChange={() => toggleCol(key)}
+                    className="rounded"
+                  />
+                  <span className="text-xs text-text-secondary">{label}</span>
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* View mode toggle — desktop only */}
+        <div className="hidden md:flex items-center gap-1 shrink-0">
+          {(['tabla', 'calendario', 'kanban'] as ViewMode[]).map(mode => (
+            <button
+              key={mode}
+              onClick={() => setViewMode(mode)}
+              className={`text-xs border rounded-lg px-2 py-1.5 flex items-center gap-1 transition-colors ${
+                viewMode === mode ? 'border-sig-300 bg-sig-50 text-sig-700' : 'border-border-subtle text-text-secondary hover:bg-surface-base'
+              }`}
+            >
+              {mode === 'tabla' && <List size={12} />}
+              {mode === 'calendario' && <CalendarDays size={12} />}
+              {mode === 'kanban' && <Kanban size={12} />}
+              {mode.charAt(0).toUpperCase() + mode.slice(1)}
+            </button>
+          ))}
+        </div>
 
         <div className="flex items-center gap-2 ml-auto">
           <span className="text-xs text-text-tertiary">
@@ -1337,7 +1616,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
         </div>
       </div>
 
-      {/* Gestiones table */}
+      {/* Gestiones view */}
       {registros === null ? (
         <div className="bg-surface-base rounded-xl border border-border-subtle p-8 text-center text-text-tertiary text-sm">
           Cargando…
@@ -1347,34 +1626,50 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
           No hay gestiones para el período seleccionado.
         </div>
       ) : (
-        <div className="bg-surface-base rounded-xl border border-border-subtle overflow-hidden mb-8">
-          <div className="overflow-x-auto">
-            <table className="text-sm" style={{ tableLayout: 'fixed', width: '100%', minWidth: 500 }}>
-              {tableHead}
-
-              {/* Task 2: grouped view when multiple months, flat otherwise */}
-              {selectedMonths.size > 1 ? (
-                grouped.map(group => (
-                  <Fragment key={group.monthIdx}>
-                    <tbody>
-                      {groupHeaderRow(group.monthIdx, group.regs.length)}
+        <>
+          {/* Table — always on mobile, on desktop only when viewMode === 'tabla' */}
+          <div className={viewMode !== 'tabla' ? 'md:hidden' : undefined}>
+            <div className="bg-surface-base rounded-xl border border-border-subtle overflow-hidden mb-8">
+              <div className="overflow-x-auto">
+                <table className="text-sm" style={{ tableLayout: 'fixed', width: '100%', minWidth: 500 }}>
+                  {tableHead}
+                  {selectedMonths.size > 1 ? (
+                    grouped.map(group => (
+                      <Fragment key={group.monthIdx}>
+                        <tbody>
+                          {groupHeaderRow(group.monthIdx, group.regs.length)}
+                        </tbody>
+                        {!collapsedMonths.has(group.monthIdx) && (
+                          <tbody className="divide-y divide-gray-50">
+                            {renderRows(group.regs)}
+                          </tbody>
+                        )}
+                      </Fragment>
+                    ))
+                  ) : (
+                    <tbody className="divide-y divide-gray-50">
+                      {renderRows(sortedRegistros)}
                     </tbody>
-                    {!collapsedMonths.has(group.monthIdx) && (
-                      <tbody className="divide-y divide-gray-50">
-                        {renderRows(group.regs)}
-                      </tbody>
-      )}
-
-                  </Fragment>
-                ))
-              ) : (
-                <tbody className="divide-y divide-gray-50">
-                  {renderRows(sortedRegistros)}
-                </tbody>
-              )}
-            </table>
+                  )}
+                </table>
+              </div>
+            </div>
           </div>
-        </div>
+
+          {/* Calendar — desktop only */}
+          {viewMode === 'calendario' && (
+            <div className="hidden md:block">
+              {renderCalendario()}
+            </div>
+          )}
+
+          {/* Kanban — desktop only */}
+          {viewMode === 'kanban' && (
+            <div className="hidden md:block">
+              {renderKanban()}
+            </div>
+          )}
+        </>
       )}
 
 
