@@ -863,6 +863,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
   const [viewMode, setViewMode] = useState<ViewMode>('tabla')
   const [visibleCols, setVisibleCols] = useState<Set<string>>(new Set(['categoria', 'gestion', 'fecha_plan', 'fecha_ejec', 'responsable', 'indice', 'acciones']))
   const [showColPicker, setShowColPicker] = useState(false)
+  const [groupByMonth, setGroupByMonth] = useState(true)
   const [colPickerPos, setColPickerPos] = useState<{ top: number; left: number } | null>(null)
   const colPickerTriggerRef = useRef<HTMLDivElement>(null)
   const colPickerDropdownRef = useRef<HTMLDivElement>(null)
@@ -1061,8 +1062,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
     new Set((registros ?? []).map(r => r.responsable_nombre).filter(Boolean))
   ).sort() as string[]
 
-  // Task 2: group by month when multiple months selected
-  const grouped = selectedMonths.size > 1
+  const grouped = groupByMonth && selectedMonths.size > 1
     ? Array.from(selectedMonths).sort((a, b) => a - b).map(mi => ({
         monthIdx: mi,
         regs: sortedRegistros.filter(r => {
@@ -1594,6 +1594,19 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
           Rest.
         </button>
 
+        {selectedMonths.size > 1 && (
+          <button
+            onClick={() => setGroupByMonth(v => !v)}
+            className={`text-xs border rounded-lg px-2 py-1.5 transition-colors shrink-0 ${
+              groupByMonth
+                ? 'border-sig-300 bg-sig-50 text-sig-700'
+                : 'border-border-subtle text-text-secondary hover:bg-surface-base'
+            }`}
+          >
+            {groupByMonth ? 'Desagrupar' : 'Agrupar por mes'}
+          </button>
+        )}
+
         {/* Column visibility picker — desktop only */}
         <div ref={colPickerTriggerRef} className="hidden md:block shrink-0">
           <button
@@ -1675,7 +1688,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
               <div className="overflow-x-auto">
                 <table className="text-sm" style={{ tableLayout: 'fixed', width: '100%', minWidth: 500 }}>
                   {tableHead}
-                  {selectedMonths.size > 1 ? (
+                  {grouped.length > 0 ? (
                     grouped.map(group => (
                       <Fragment key={group.monthIdx}>
                         <tbody>
