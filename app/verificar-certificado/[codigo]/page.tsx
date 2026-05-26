@@ -36,14 +36,14 @@ export default async function VerificarCertificadoPage({
 
   if (!cert || cert.invalidado) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 p-4">
-        <div className="max-w-md w-full bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-800 p-8 text-center space-y-4">
-          <XCircle size={48} className="mx-auto text-red-500" />
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">Certificado no válido</h1>
-          <p className="text-sm text-gray-500">
+      <div className="min-h-screen flex items-center justify-center bg-surface-base dark:bg-gray-950 p-4">
+        <div className="max-w-md w-full bg-surface-base dark:bg-gray-900 rounded-2xl shadow-lg border border-border-subtle dark:border-gray-800 p-8 text-center space-y-4">
+          <XCircle size={48} className="mx-auto text-danger" />
+          <h1 className="text-xl font-bold text-text-primary dark:text-white">Certificado no válido</h1>
+          <p className="text-sm text-text-secondary">
             El código ingresado no corresponde a un certificado válido.
           </p>
-          <p className="text-xs text-gray-400 font-mono">{codigo}</p>
+          <p className="text-xs text-text-tertiary font-mono">{codigo}</p>
         </div>
       </div>
     )
@@ -52,11 +52,11 @@ export default async function VerificarCertificadoPage({
   const asig = (cert as any).curso_asignaciones
   if (!asig) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 p-4">
-        <div className="max-w-md w-full bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-800 p-8 text-center space-y-4">
+      <div className="min-h-screen flex items-center justify-center bg-surface-base dark:bg-gray-950 p-4">
+        <div className="max-w-md w-full bg-surface-base dark:bg-gray-900 rounded-2xl shadow-lg border border-border-subtle dark:border-gray-800 p-8 text-center space-y-4">
           <AlertTriangle size={48} className="mx-auto text-amber-500" />
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">Certificado no disponible</h1>
-          <p className="text-sm text-gray-500">
+          <h1 className="text-xl font-bold text-text-primary dark:text-white">Certificado no disponible</h1>
+          <p className="text-sm text-text-secondary">
             Este certificado no tiene asignación asociada.
           </p>
         </div>
@@ -69,22 +69,22 @@ export default async function VerificarCertificadoPage({
   const estaVencido = cert.fecha_vencimiento && new Date(cert.fecha_vencimiento) < new Date()
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 p-4">
-      <div className="max-w-md w-full bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-800 p-8 space-y-6">
+    <div className="min-h-screen flex items-center justify-center bg-surface-base dark:bg-gray-950 p-4">
+      <div className="max-w-md w-full bg-surface-base dark:bg-gray-900 rounded-2xl shadow-lg border border-border-subtle dark:border-gray-800 p-8 space-y-6">
         {/* Header */}
         <div className="text-center space-y-3">
           <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center ${
-            estaVencido ? 'bg-amber-100' : 'bg-green-100'
+            estaVencido ? 'bg-amber-100' : 'bg-success-bg'
           }`}>
             {estaVencido ? (
               <AlertTriangle size={32} className="text-amber-600" />
             ) : (
-              <CheckCircle size={32} className="text-green-600" />
+              <CheckCircle size={32} className="text-success" />
             )}
           </div>
 
           <h1 className={`text-xl font-bold ${
-            estaVencido ? 'text-amber-700' : 'text-green-700'
+            estaVencido ? 'text-amber-700' : 'text-success'
           }`}>
             {estaVencido ? '⚠ Certificado expirado' : '✓ Certificado válido'}
           </h1>
@@ -94,13 +94,13 @@ export default async function VerificarCertificadoPage({
         <div className="space-y-4">
           <div className="text-center">
             <Award size={40} className="mx-auto text-brand-primary mb-2" />
-            <p className="text-sm text-gray-500">Certificado otorgado a</p>
-            <p className="text-lg font-bold text-gray-900 dark:text-white">
+            <p className="text-sm text-text-secondary">Certificado otorgado a</p>
+            <p className="text-lg font-bold text-text-primary dark:text-white">
               {personaData?.nombre} {personaData?.apellido}
             </p>
           </div>
 
-          <div className="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-2">
+          <div className="border-t border-border-subtle dark:border-gray-700 pt-4 space-y-2">
             <DetailRow label="Curso" value={cursoData?.titulo} />
             <DetailRow label="Fecha de emisión" value={new Date(cert.fecha_emision).toLocaleDateString()} />
             {cert.fecha_vencimiento && (
@@ -113,7 +113,7 @@ export default async function VerificarCertificadoPage({
           </div>
         </div>
 
-        <p className="text-xs text-gray-400 text-center">
+        <p className="text-xs text-text-tertiary text-center">
           Este certificado fue verificado electrónicamente en Sigmetría HyS.
           {estaVencido && ' El curso debe ser renovado.'}
         </p>
@@ -125,8 +125,8 @@ export default async function VerificarCertificadoPage({
 function DetailRow({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
   return (
     <div className="flex justify-between items-center">
-      <span className="text-sm text-gray-500">{label}</span>
-      <span className={`text-sm font-medium text-gray-900 dark:text-white ${mono ? 'font-mono text-xs' : ''}`}>
+      <span className="text-sm text-text-secondary">{label}</span>
+      <span className={`text-sm font-medium text-text-primary dark:text-white ${mono ? 'font-mono text-xs' : ''}`}>
         {value}
       </span>
     </div>

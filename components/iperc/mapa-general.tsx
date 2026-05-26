@@ -46,7 +46,7 @@ export function MapaGeneral() {
     return establecimientos.filter((e: any) => e.latitud && e.longitud)
   }, [establecimientos])
 
-  if (isLoading) return <div className="text-center py-8"><p className="text-gray-500">Cargando mapa...</p></div>
+  if (isLoading) return <div className="text-center py-8"><p className="text-text-secondary">Cargando mapa...</p></div>
 
   return (
     <div className="h-[calc(100vh-10rem)] w-full rounded-lg overflow-hidden border">
@@ -65,7 +65,7 @@ export function MapaGeneral() {
               <Popup>
                 <div className="text-sm">
                   <p className="font-semibold">{e.nombre}</p>
-                  <p className="text-gray-500">{e.empresas?.razon_social}</p>
+                  <p className="text-text-secondary">{e.empresas?.razon_social}</p>
                   {nivelNombre && (
                     <p className="mt-1">
                       <span

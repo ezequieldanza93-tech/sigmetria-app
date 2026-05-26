@@ -17,11 +17,11 @@ interface DocumentosTabProps {
 }
 
 function vencimientoClass(fecha: string | null): string {
-  if (!fecha) return 'text-gray-400'
+  if (!fecha) return 'text-text-tertiary'
   const days = Math.ceil((new Date(fecha).getTime() - Date.now()) / 86400000)
-  if (days < 0) return 'text-red-600 font-medium'
-  if (days <= 30) return 'text-yellow-600 font-medium'
-  return 'text-gray-500'
+  if (days < 0) return 'text-danger font-medium'
+  if (days <= 30) return 'text-warning font-medium'
+  return 'text-text-secondary'
 }
 
 export function DocumentosTab({ documentos, documentTypes, establecimientoId, empresaId, canWrite }: DocumentosTabProps) {
@@ -31,32 +31,32 @@ export function DocumentosTab({ documentos, documentTypes, establecimientoId, em
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-900 dark:text-white">Documentación</h3>
+        <h3 className="font-semibold text-text-primary dark:text-white">Documentación</h3>
         {canWrite && (
           <Button size="sm" onClick={() => setShowModal(true)}>+ Agregar Documento</Button>
         )}
       </div>
 
       {!documentos.length ? (
-        <div className="bg-white dark:bg-surface-elevated rounded-xl border border-gray-200 dark:border-border-subtle p-8 text-center text-gray-400">
+        <div className="bg-surface-base dark:bg-surface-elevated rounded-xl border border-border-subtle dark:border-border-subtle p-8 text-center text-text-tertiary">
           No hay documentos cargados
         </div>
       ) : (
-        <div className="bg-white dark:bg-surface-elevated rounded-xl border border-gray-200 dark:border-border-subtle overflow-hidden">
+        <div className="bg-surface-base dark:bg-surface-elevated rounded-xl border border-border-subtle dark:border-border-subtle overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="border-b border-gray-100 dark:border-border-subtle bg-gray-50 dark:bg-surface-sunken">
+            <thead className="border-b border-border-subtle dark:border-border-subtle bg-surface-base dark:bg-surface-sunken">
               <tr className="text-left">
-                <th className="px-5 py-3 text-gray-500 font-medium">Tipo</th>
-                <th className="px-5 py-3 text-gray-500 font-medium">Vencimiento</th>
-                <th className="px-5 py-3 text-gray-500 font-medium">Archivo</th>
+                <th className="px-5 py-3 text-text-secondary font-medium">Tipo</th>
+                <th className="px-5 py-3 text-text-secondary font-medium">Vencimiento</th>
+                <th className="px-5 py-3 text-text-secondary font-medium">Archivo</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50 dark:divide-border-subtle">
               {documentos.map(d => {
                 const typeName = d.documentos_tipos?.nombre ?? '—'
                 return (
-                  <tr key={d.id} className="hover:bg-gray-50">
-                    <td className="px-5 py-3.5 font-medium text-gray-900 dark:text-white">{typeName}</td>
+                  <tr key={d.id} className="hover:bg-surface-base">
+                    <td className="px-5 py-3.5 font-medium text-text-primary dark:text-white">{typeName}</td>
                     <td className={`px-5 py-3.5 ${vencimientoClass(d.fecha_vencimiento)}`}>
                       {d.fecha_vencimiento ? formatDate(d.fecha_vencimiento) : '—'}
                     </td>
@@ -66,7 +66,7 @@ export function DocumentosTab({ documentos, documentTypes, establecimientoId, em
                           Ver archivo
                         </a>
                       ) : (
-                        <span className="text-gray-400">—</span>
+                        <span className="text-text-tertiary">—</span>
                       )}
                     </td>
                   </tr>

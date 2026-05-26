@@ -42,7 +42,7 @@ export function InspeccionForm({ action, onSuccess }: InspeccionFormProps) {
   return (
     <form action={formAction} className="space-y-4">
       {state && !state.success && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+        <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3">
           {state.error}
         </div>
       )}
@@ -71,8 +71,8 @@ export function InspeccionForm({ action, onSuccess }: InspeccionFormProps) {
       />
 
       <div>
-        <label className="text-xs text-gray-600 block mb-1">Ente regulador</label>
-        <select name="ente_regulador_id" className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white">
+        <label className="text-xs text-text-secondary block mb-1">Ente regulador</label>
+        <select name="ente_regulador_id" className="w-full border border-border-default rounded px-3 py-2 text-sm bg-surface-base">
           <option value="">Seleccioná un ente…</option>
           {entes.map(e => (
             <option key={e.id} value={e.id}>{e.nombre}</option>

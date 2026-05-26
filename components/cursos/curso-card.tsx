@@ -67,8 +67,8 @@ export function CursoCard({ curso, href, progreso, estadoAsignacion, fechaLimite
             <CursoProgressBar value={progreso} />
             {estadoAsignacion && (
               <span className={`text-xs font-medium ${
-                estadoAsignacion === 'aprobado' ? 'text-green-600' :
-                estadoAsignacion === 'vencido' ? 'text-red-600' :
+                estadoAsignacion === 'aprobado' ? 'text-success' :
+                estadoAsignacion === 'vencido' ? 'text-danger' :
                 'text-text-tertiary'
               }`}>
                 {estadoAsignacion === 'pendiente' && 'Pendiente'}
@@ -78,7 +78,7 @@ export function CursoCard({ curso, href, progreso, estadoAsignacion, fechaLimite
               </span>
             )}
             {fechaLimite && (
-              <p className="text-xs text-red-500">
+              <p className="text-xs text-danger">
                 Vence: {new Date(fechaLimite).toLocaleDateString()}
               </p>
             )}

@@ -21,12 +21,12 @@ const ESTADO_LABELS: Record<SubscriptionEstado, string> = {
 }
 
 const ESTADO_COLORS: Record<SubscriptionEstado, string> = {
-  trialing: 'text-blue-600 bg-blue-50 border-blue-200',
-  trial_view_only: 'text-yellow-700 bg-yellow-50 border-yellow-200',
-  active: 'text-green-700 bg-green-50 border-green-200',
+  trialing: 'text-info bg-info-bg border-blue-200',
+  trial_view_only: 'text-warning bg-warning-bg border-yellow-200',
+  active: 'text-success bg-success-bg border-green-200',
   past_due: 'text-orange-700 bg-orange-50 border-orange-200',
   grace_period: 'text-orange-700 bg-orange-50 border-orange-200',
-  canceled: 'text-red-700 bg-red-50 border-red-200',
+  canceled: 'text-danger bg-danger-bg border-red-200',
   expired: 'text-zinc-600 bg-zinc-50 border-zinc-200',
 }
 

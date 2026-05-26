@@ -11,18 +11,18 @@ export function SubcontratistasVencimientosWidget() {
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <h3 className="text-sm font-semibold text-gray-900 mb-3">Subcontratistas — Docs por Vencer</h3>
-        <div className="text-sm text-gray-400">Cargando…</div>
+      <div className="bg-surface-base rounded-xl border border-border-subtle p-5">
+        <h3 className="text-sm font-semibold text-text-primary mb-3">Subcontratistas — Docs por Vencer</h3>
+        <div className="text-sm text-text-tertiary">Cargando…</div>
       </div>
     )
   }
 
   if (items.length === 0) {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <h3 className="text-sm font-semibold text-gray-900 mb-3">Subcontratistas — Docs por Vencer</h3>
-        <div className="text-sm text-gray-400">Ningún documento próximo a vencer en los próximos 30 días</div>
+      <div className="bg-surface-base rounded-xl border border-border-subtle p-5">
+        <h3 className="text-sm font-semibold text-text-primary mb-3">Subcontratistas — Docs por Vencer</h3>
+        <div className="text-sm text-text-tertiary">Ningún documento próximo a vencer en los próximos 30 días</div>
       </div>
     )
   }
@@ -39,29 +39,29 @@ export function SubcontratistasVencimientosWidget() {
   const entries = Object.entries(grouped)
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5">
-      <h3 className="text-sm font-semibold text-gray-900 mb-3">
+    <div className="bg-surface-base rounded-xl border border-border-subtle p-5">
+      <h3 className="text-sm font-semibold text-text-primary mb-3">
         Subcontratistas — Docs por Vencer
-        <span className="ml-2 text-xs font-normal text-gray-500">({items.length} documentos)</span>
+        <span className="ml-2 text-xs font-normal text-text-secondary">({items.length} documentos)</span>
       </h3>
       <div className="space-y-3 max-h-80 overflow-y-auto">
         {entries.map(([subId, group]) => (
           <Link
             key={subId}
             href={`/dashboard/organizaciones-externas/${subId}?tab=documentos`}
-            className="block bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors"
+            className="block bg-surface-base rounded-lg p-3 hover:bg-surface-elevated transition-colors"
           >
-            <p className="text-sm font-medium text-gray-900 mb-1.5 truncate">{group.nombre}</p>
+            <p className="text-sm font-medium text-text-primary mb-1.5 truncate">{group.nombre}</p>
             <div className="space-y-1">
               {group.docs.slice(0, 3).map(doc => (
                 <div key={doc.documento_id} className="flex items-center justify-between text-xs">
-                  <span className="text-gray-600 truncate">{doc.tipo_nombre}</span>
+                  <span className="text-text-secondary truncate">{doc.tipo_nombre}</span>
                   <span className={`shrink-0 ml-2 font-medium ${
                     doc.dias_restantes <= 7
-                      ? 'text-red-600'
+                      ? 'text-danger'
                       : doc.dias_restantes <= 15
                         ? 'text-orange-500'
-                        : 'text-yellow-600'
+                        : 'text-warning'
                   }`}>
                     {doc.dias_restantes <= 0
                       ? 'VENCIDO'
@@ -71,7 +71,7 @@ export function SubcontratistasVencimientosWidget() {
                 </div>
               ))}
               {group.docs.length > 3 && (
-                <p className="text-xs text-gray-400">+{group.docs.length - 3} más</p>
+                <p className="text-xs text-text-tertiary">+{group.docs.length - 3} más</p>
               )}
             </div>
           </Link>

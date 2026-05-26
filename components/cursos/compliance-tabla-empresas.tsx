@@ -54,8 +54,8 @@ export function ComplianceTablaEmpresas({ empresas, loading }: TablaEmpresasProp
                   </div>
                 </td>
                 <td className="px-4 py-3 text-center text-text-secondary">{emp.total}</td>
-                <td className="px-4 py-3 text-center text-green-600 font-medium">{emp.aprobadas}</td>
-                <td className={`px-4 py-3 text-center font-medium ${emp.vencidas > 0 ? 'text-red-600' : 'text-text-tertiary'}`}>
+                <td className="px-4 py-3 text-center text-success font-medium">{emp.aprobadas}</td>
+                <td className={`px-4 py-3 text-center font-medium ${emp.vencidas > 0 ? 'text-danger' : 'text-text-tertiary'}`}>
                   {emp.vencidas}
                 </td>
                 <td className="px-4 py-3">
@@ -63,13 +63,13 @@ export function ComplianceTablaEmpresas({ empresas, loading }: TablaEmpresasProp
                     <div className="w-16 h-2 bg-surface-sunken rounded-full overflow-hidden">
                       <div
                         className={`h-full rounded-full ${
-                          emp.porcentaje >= 80 ? 'bg-green-500' : emp.porcentaje >= 50 ? 'bg-amber-500' : 'bg-red-500'
+                          emp.porcentaje >= 80 ? 'bg-success' : emp.porcentaje >= 50 ? 'bg-amber-500' : 'bg-danger'
                         }`}
                         style={{ width: `${emp.porcentaje}%` }}
                       />
                     </div>
                     <span className={`text-sm font-medium ${
-                      emp.porcentaje >= 80 ? 'text-green-600' : emp.porcentaje >= 50 ? 'text-amber-600' : 'text-red-600'
+                      emp.porcentaje >= 80 ? 'text-success' : emp.porcentaje >= 50 ? 'text-amber-600' : 'text-danger'
                     }`}>
                       {emp.porcentaje}%
                     </span>

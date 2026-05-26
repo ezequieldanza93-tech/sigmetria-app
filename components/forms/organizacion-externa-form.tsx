@@ -26,8 +26,8 @@ interface Props {
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <div className="border-t border-gray-100 pt-5 mt-5">
-      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">{children}</h3>
+    <div className="border-t border-border-subtle pt-5 mt-5">
+      <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-4">{children}</h3>
     </div>
   )
 }
@@ -92,20 +92,20 @@ export function OrganizacionExternaForm({ action }: Props) {
       <input type="hidden" name="tipo_nombre" value={selectedTipoNombre} />
 
       {state && !state.success && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+        <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3">
           {state.error}
         </div>
       )}
 
       {/* ── Tipo ─────────────────────────────────────────────── */}
       <div>
-        <label className="text-sm font-medium text-gray-700 block mb-1">Tipo de organización *</label>
+        <label className="text-sm font-medium text-text-secondary block mb-1">Tipo de organización *</label>
         <select
           name="tipo_id"
           value={selectedTipoId}
           onChange={e => handleTipoChange(e.target.value)}
           required
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sig-500"
+          className="w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500"
         >
           <option value="">Seleccioná un tipo…</option>
           {tiposOrg.map(t => (
@@ -193,12 +193,12 @@ export function OrganizacionExternaForm({ action }: Props) {
           {/* Actividad */}
           <SectionTitle>Actividad y establecimiento</SectionTitle>
           <div>
-            <label className="text-sm font-medium text-gray-700 block mb-1">Tipo de establecimiento</label>
+            <label className="text-sm font-medium text-text-secondary block mb-1">Tipo de establecimiento</label>
             <select
               name="tipo_establecimiento_id"
               value={selectedTipoEstId}
               onChange={e => setSelectedTipoEstId(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sig-500"
+              className="w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500"
             >
               <option value="">Seleccionar tipo…</option>
               {tiposEst.map(t => (
@@ -222,7 +222,7 @@ export function OrganizacionExternaForm({ action }: Props) {
               <p className="text-xs font-semibold text-sig-700 uppercase tracking-wider">
                 Condiciones del establecimiento
               </p>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-text-secondary">
                 Respondé las siguientes preguntas para identificar qué requisitos legales aplican.
               </p>
               {preguntas.map(p => (
@@ -237,9 +237,9 @@ export function OrganizacionExternaForm({ action }: Props) {
                       value="true"
                       checked={respuestas[p.id] ?? false}
                       onChange={e => setRespuestas(prev => ({ ...prev, [p.id]: e.target.checked }))}
-                      className="w-4 h-4 mt-0.5 rounded border-gray-300 text-sig-500 focus:ring-sig-400 shrink-0"
+                      className="w-4 h-4 mt-0.5 rounded border-border-default text-sig-500 focus:ring-sig-400 shrink-0"
                     />
-                    <span className="text-sm text-gray-700 group-hover:text-gray-900">{p.texto}</span>
+                    <span className="text-sm text-text-secondary group-hover:text-text-primary">{p.texto}</span>
                   </label>
                 ))}
               </div>
@@ -260,13 +260,13 @@ export function OrganizacionExternaForm({ action }: Props) {
           </div>
 
           <div>
-            <label className="text-sm font-medium text-gray-700 block mb-1">
+            <label className="text-sm font-medium text-text-secondary block mb-1">
               {isSubcontratista ? 'Información general' : 'Notas'}
             </label>
             <textarea
               name={isSubcontratista ? 'informacion_general' : 'notas'}
               rows={3}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500 focus:border-transparent resize-none"
+              className="w-full border border-border-default rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500 focus:border-transparent resize-none"
               placeholder={isSubcontratista ? 'Descripción, notas o información adicional…' : 'Notas opcionales…'}
             />
           </div>

@@ -102,7 +102,7 @@ export default function CursoPlayerPage({ params }: { params: Promise<{ id: stri
 
           {asignacion?.estado === 'aprobado' && (
             <div className="text-center space-y-3">
-              <p className="text-green-600 font-semibold">✓ Curso aprobado</p>
+              <p className="text-success font-semibold">✓ Curso aprobado</p>
               <button
                 onClick={() => router.push(`/dashboard/cursos/${id}/certificado`)}
                 className="px-6 py-2.5 bg-brand-primary text-white rounded-lg font-medium hover:bg-brand-primary/90 transition-colors"

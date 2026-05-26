@@ -11,7 +11,7 @@ export default function CheckoutPendingPage() {
   return (
     <div className="p-8 max-w-lg mx-auto">
       <Card className="text-center space-y-6 py-12">
-        <Clock className="w-12 h-12 text-yellow-500 mx-auto" />
+        <Clock className="w-12 h-12 text-warning mx-auto" />
         <div>
           <h1 className="text-xl font-bold text-text-primary">Pago pendiente</h1>
           <p className="text-sm text-text-tertiary mt-2">

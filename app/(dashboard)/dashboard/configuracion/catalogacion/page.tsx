@@ -52,12 +52,12 @@ function CheckboxGrid({
       {tipos.length > 0 && onSelectAll && (
         <div className="flex gap-2 mb-2">
           {!todosAsignados && (
-            <button onClick={() => onSelectAll(true)} disabled={loading} className="text-xs text-blue-600 hover:text-blue-800 disabled:opacity-50">
+            <button onClick={() => onSelectAll(true)} disabled={loading} className="text-xs text-info hover:text-blue-800 disabled:opacity-50">
               + Seleccionar todos
             </button>
           )}
           {!ningunoAsignado && (
-            <button onClick={() => onSelectAll(false)} disabled={loading} className="text-xs text-red-500 hover:text-red-700 disabled:opacity-50">
+            <button onClick={() => onSelectAll(false)} disabled={loading} className="text-xs text-danger hover:text-danger disabled:opacity-50">
               - Deseleccionar todos
             </button>
           )}
@@ -70,10 +70,10 @@ function CheckboxGrid({
             <div key={t.id} className="flex items-center gap-3">
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <input type="checkbox" className="sr-only" checked={active} disabled={loading} onChange={() => onToggle(t.id, !active)} />
-                <span className={`w-4 h-4 rounded border flex items-center justify-center text-[10px] font-bold transition-colors ${active ? 'bg-blue-500 border-blue-500 text-white' : 'border-gray-300 bg-white'}`}>
+                <span className={`w-4 h-4 rounded border flex items-center justify-center text-[10px] font-bold transition-colors ${active ? 'bg-blue-500 border-blue-500 text-white' : 'border-border-default bg-surface-base'}`}>
                   {active && '✓'}
                 </span>
-                <span className={`text-sm ${active ? 'text-gray-800 font-medium' : 'text-gray-500'}`}>{t.nombre}</span>
+                <span className={`text-sm ${active ? 'text-text-primary font-medium' : 'text-text-secondary'}`}>{t.nombre}</span>
               </label>
             </div>
           )
@@ -92,7 +92,7 @@ function IsoToggle({ value, onChange, loading }: { value: boolean; onChange: (v:
       className={`text-[10px] font-bold px-2 py-0.5 rounded transition-colors ${
         value
           ? 'bg-green-200 text-green-800 hover:bg-green-300 cursor-pointer'
-          : 'bg-gray-200 text-gray-500 hover:bg-gray-300 cursor-pointer'
+          : 'bg-surface-sunken text-text-secondary hover:bg-gray-300 cursor-pointer'
       }`}
       title={value ? 'Aplica por ISO 45001' : 'No aplica por ISO 45001'}
     >
@@ -204,17 +204,17 @@ export default function CatalogacionPage() {
 
   return (
     <div className="max-w-7xl mx-auto p-6">
-      <h1 className="text-2xl font-bold text-gray-900 mb-1">Catalogación</h1>
-      <p className="text-sm text-gray-500 mb-6">Asigná qué aplica a cada elemento</p>
+      <h1 className="text-2xl font-bold text-text-primary mb-1">Catalogación</h1>
+      <p className="text-sm text-text-secondary mb-6">Asigná qué aplica a cada elemento</p>
 
-      <p className="text-sm text-gray-400 mb-4">Secciones → Aspectos</p>
+      <p className="text-sm text-text-tertiary mb-4">Secciones → Aspectos</p>
 
       <div>
-        {errSec && <p className="text-red-500 text-sm mb-2">{errSec}</p>}
+        {errSec && <p className="text-danger text-sm mb-2">{errSec}</p>}
         <div className="mb-4">
-          <label className="text-xs font-medium text-gray-500 block mb-1">Filtrar por gestión</label>
+          <label className="text-xs font-medium text-text-secondary block mb-1">Filtrar por gestión</label>
           <select
-            className="w-full max-w-md px-3 py-2 border border-gray-300 rounded-lg text-sm"
+            className="w-full max-w-md px-3 py-2 border border-border-default rounded-lg text-sm"
             value={gestionFilter}
             onChange={e => setGestionFilter(e.target.value)}
           >
@@ -226,16 +226,16 @@ export default function CatalogacionPage() {
           </select>
         </div>
         {loadingSec ? (
-          <p className="text-gray-400 text-sm">Cargando...</p>
+          <p className="text-text-tertiary text-sm">Cargando...</p>
         ) : (
           <div className="space-y-3">
             {filteredSecciones.map(s => (
-              <div key={s.id} className="bg-white border border-gray-200 rounded-xl p-4">
+              <div key={s.id} className="bg-surface-base border border-border-subtle rounded-xl p-4">
                 <div className="flex items-center justify-between mb-1">
-                  <p className="text-sm font-semibold text-gray-800">{s.title}</p>
+                  <p className="text-sm font-semibold text-text-primary">{s.title}</p>
                   <IsoToggle value={s.aplicaPorIso} onChange={v => handleAplicaPorIso(s.id, v, toggleSeccionAplicaPorIso, setLocalSec)} loading={saving.has(`iso:${s.id}`)} />
                 </div>
-                <p className="text-xs text-gray-400 mb-3">{localGes.find(g => g.id === s.gestion_id)?.nombre ?? '?'}</p>
+                <p className="text-xs text-text-tertiary mb-3">{localGes.find(g => g.id === s.gestion_id)?.nombre ?? '?'}</p>
                 <CheckboxGrid
                   tipos={aspectos ?? []}
                   asignados={s.aspectos}

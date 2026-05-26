@@ -27,7 +27,7 @@ export function QuizResultados({ preguntas, respuestas, mostrarCorrectas }: Quiz
               : 'border-red-200 bg-red-50/50 dark:bg-red-900/10'
           }`}>
             <div className="flex items-start gap-3">
-              <span className={`mt-0.5 ${resp?.es_correcta ? 'text-green-600' : 'text-red-600'}`}>
+              <span className={`mt-0.5 ${resp?.es_correcta ? 'text-success' : 'text-danger'}`}>
                 {resp?.es_correcta ? <Check size={18} /> : <X size={18} />}
               </span>
               <div className="flex-1">
@@ -40,9 +40,9 @@ export function QuizResultados({ preguntas, respuestas, mostrarCorrectas }: Quiz
                       return (
                         <div key={o.id} className={`flex items-center gap-2 px-3 py-1.5 rounded text-sm ${
                           o.es_correcta
-                            ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+                            ? 'bg-success-bg dark:bg-green-900/30 text-success dark:text-green-300'
                             : selected
-                            ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+                            ? 'bg-danger-bg dark:bg-red-900/30 text-danger dark:text-red-300'
                             : 'text-text-tertiary'
                         }`}>
                           {o.es_correcta && <Check size={14} />}

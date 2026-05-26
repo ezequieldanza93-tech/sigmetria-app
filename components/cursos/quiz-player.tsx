@@ -79,9 +79,9 @@ export function QuizPlayer({ quiz, cursoId, intentoId, numeroIntento, maxIntento
     return (
       <div className="max-w-2xl mx-auto py-8 space-y-6">
         <div className={`p-8 rounded-xl text-center space-y-4 ${
-          resultado.aprobado ? 'bg-green-50 dark:bg-green-900/20 border border-green-200' : 'bg-red-50 dark:bg-red-900/20 border border-red-200'
+          resultado.aprobado ? 'bg-success-bg dark:bg-green-900/20 border border-green-200' : 'bg-danger-bg dark:bg-red-900/20 border border-red-200'
         }`}>
-          <h2 className={`text-2xl font-bold ${resultado.aprobado ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
+          <h2 className={`text-2xl font-bold ${resultado.aprobado ? 'text-success dark:text-green-400' : 'text-danger dark:text-red-400'}`}>
             {resultado.aprobado ? '✓ ¡Aprobado!' : '✗ No aprobado'}
           </h2>
           <p className="text-lg">Puntaje: {Math.round(resultado.puntaje)}%</p>
@@ -113,7 +113,7 @@ export function QuizPlayer({ quiz, cursoId, intentoId, numeroIntento, maxIntento
                     Reintentar
                   </button>
                 ) : (
-                  <p className="text-sm text-red-600 font-medium">Alcanzaste el máximo de intentos.</p>
+                  <p className="text-sm text-danger font-medium">Alcanzaste el máximo de intentos.</p>
                 )}
               </>
             )}
@@ -139,11 +139,11 @@ export function QuizPlayer({ quiz, cursoId, intentoId, numeroIntento, maxIntento
                   <p className="font-medium text-text-primary mb-2">{p.enunciado}</p>
                   {p.opciones?.map(o => (
                     <div key={o.id} className={`flex items-center gap-2 px-3 py-1.5 rounded text-sm ${
-                      o.es_correcta ? 'bg-green-50 dark:bg-green-900/20 text-green-700' :
-                      resp?.opciones_seleccionadas?.includes(o.id) ? 'bg-red-50 dark:bg-red-900/20 text-red-600' : ''
+                      o.es_correcta ? 'bg-success-bg dark:bg-green-900/20 text-success' :
+                      resp?.opciones_seleccionadas?.includes(o.id) ? 'bg-danger-bg dark:bg-red-900/20 text-danger' : ''
                     }`}>
-                      {o.es_correcta && <span className="text-green-600">✓</span>}
-                      {!o.es_correcta && resp?.opciones_seleccionadas?.includes(o.id) && <span className="text-red-600">✗</span>}
+                      {o.es_correcta && <span className="text-success">✓</span>}
+                      {!o.es_correcta && resp?.opciones_seleccionadas?.includes(o.id) && <span className="text-danger">✗</span>}
                       {o.texto}
                     </div>
                   ))}
@@ -244,7 +244,7 @@ export function QuizPlayer({ quiz, cursoId, intentoId, numeroIntento, maxIntento
           <button
             onClick={handleSubmit}
             disabled={submitting}
-            className="flex items-center gap-1.5 px-6 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 transition-colors"
+            className="flex items-center gap-1.5 px-6 py-2.5 bg-success text-white rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 transition-colors"
           >
             {submitting ? 'Enviando...' : 'Enviar quiz'}
             <Send size={16} />

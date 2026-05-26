@@ -54,7 +54,7 @@ export function IpercMatrizWizard({ establecimientoId, canWrite }: Props) {
     return entry ? entry[1] : '#6b7280'
   }
 
-  if (isLoading) return <div className="text-center py-8"><p className="text-gray-500">Cargando matriz IPERC...</p></div>
+  if (isLoading) return <div className="text-center py-8"><p className="text-text-secondary">Cargando matriz IPERC...</p></div>
 
   return (
     <div className="space-y-4">
@@ -81,7 +81,7 @@ export function IpercMatrizWizard({ establecimientoId, canWrite }: Props) {
       </Modal>
 
       {!completo?.length && (
-        <div className="text-center py-8 text-gray-400 border-2 border-dashed rounded-lg">
+        <div className="text-center py-8 text-text-tertiary border-2 border-dashed rounded-lg">
           No hay sectores IPERC. Creá uno para empezar.
         </div>
       )}
@@ -91,7 +91,7 @@ export function IpercMatrizWizard({ establecimientoId, canWrite }: Props) {
         <div key={sector.id} className="border rounded-lg overflow-hidden">
           <button
             onClick={() => setExpandedSector(expandedSector === sector.id ? null : sector.id)}
-            className="w-full flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100"
+            className="w-full flex items-center justify-between p-3 bg-surface-base hover:bg-surface-elevated"
           >
             <div className="flex items-center gap-2">
               <span className="font-medium">{sector.nombre}</span>
@@ -101,14 +101,14 @@ export function IpercMatrizWizard({ establecimientoId, canWrite }: Props) {
                 </span>
               )}
             </div>
-            <span className="text-gray-400">{expandedSector === sector.id ? '▼' : '▶'}</span>
+            <span className="text-text-tertiary">{expandedSector === sector.id ? '▼' : '▶'}</span>
           </button>
 
           {expandedSector === sector.id && (
             <div className="p-3 pl-6 space-y-3">
               {/* Procesos */}
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium text-gray-600">Procesos / Actividades</h3>
+                <h3 className="text-sm font-medium text-text-secondary">Procesos / Actividades</h3>
                 {canWrite && <Button size="sm" variant="ghost" onClick={() => setProcesoModal(sector.id)}>+ Proceso</Button>}
               </div>
 
@@ -129,10 +129,10 @@ export function IpercMatrizWizard({ establecimientoId, canWrite }: Props) {
               </Modal>
 
               {(sector.iperc_procesos ?? []).map((proceso: any) => (
-                <div key={proceso.id} className="border-l-2 border-gray-200 pl-3 space-y-2">
+                <div key={proceso.id} className="border-l-2 border-border-subtle pl-3 space-y-2">
                   <button
                     onClick={() => setExpandedProceso(expandedProceso === proceso.id ? null : proceso.id)}
-                    className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+                    className="flex items-center gap-2 text-sm font-medium text-text-secondary hover:text-text-primary"
                   >
                     <span>{expandedProceso === proceso.id ? '▼' : '▶'}</span>
                     {proceso.nombre}
@@ -141,7 +141,7 @@ export function IpercMatrizWizard({ establecimientoId, canWrite }: Props) {
                   {expandedProceso === proceso.id && (
                     <div className="pl-4 space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs text-gray-400">Tareas</span>
+                        <span className="text-xs text-text-tertiary">Tareas</span>
                         {canWrite && <Button size="sm" variant="ghost" onClick={() => setTareaModal(proceso.id)}>+ Tarea</Button>}
                       </div>
 
@@ -163,20 +163,20 @@ export function IpercMatrizWizard({ establecimientoId, canWrite }: Props) {
                       </Modal>
 
                       {(proceso.iperc_tareas ?? []).sort((a: any, b: any) => a.task_number - b.task_number).map((tarea: any) => (
-                        <div key={tarea.id} className="border rounded p-2 bg-white">
+                        <div key={tarea.id} className="border rounded p-2 bg-surface-base">
                           <button
                             onClick={() => setExpandedTarea(expandedTarea === tarea.id ? null : tarea.id)}
                             className="w-full flex items-center justify-between text-sm"
                           >
                             <span><strong>#{tarea.task_number}</strong> {tarea.nombre}</span>
-                            <span className="text-gray-400">{expandedTarea === tarea.id ? '▼' : '▶'}</span>
+                            <span className="text-text-tertiary">{expandedTarea === tarea.id ? '▼' : '▶'}</span>
                           </button>
 
                           {expandedTarea === tarea.id && (
                             <div className="mt-2 pl-2 space-y-3">
                               {/* Peligros */}
                               <div className="flex items-center justify-between">
-                                <span className="text-xs font-medium text-gray-500">Peligros</span>
+                                <span className="text-xs font-medium text-text-secondary">Peligros</span>
                                 {canWrite && <Button size="sm" variant="ghost" onClick={() => { setPeligroModal(tarea.id); setSelectedPeligroId('') }}>+ Peligro</Button>}
                               </div>
 
@@ -215,7 +215,7 @@ export function IpercMatrizWizard({ establecimientoId, canWrite }: Props) {
                                   {/* Riesgos */}
                                   <div className="mt-2 pl-2 space-y-2">
                                     <div className="flex items-center justify-between">
-                                      <span className="text-xs text-gray-400">Riesgos asociados</span>
+                                      <span className="text-xs text-text-tertiary">Riesgos asociados</span>
                                       {canWrite && <Button size="sm" variant="ghost" onClick={() => { setRiesgoModal(mp.id); setSelectedRiesgoId('') }}>+ Riesgo</Button>}
                                     </div>
 
@@ -242,7 +242,7 @@ export function IpercMatrizWizard({ establecimientoId, canWrite }: Props) {
                                     </Modal>
 
                                     {(mp.iperc_matriz_riesgos ?? []).map((mr: any) => (
-                                      <div key={mr.id} className="border rounded p-2 bg-gray-50">
+                                      <div key={mr.id} className="border rounded p-2 bg-surface-base">
                                         <div className="flex items-start justify-between">
                                           <div className="space-y-1 flex-1">
                                             <div className="flex items-center gap-2">
@@ -273,7 +273,7 @@ export function IpercMatrizWizard({ establecimientoId, canWrite }: Props) {
                                                   <option key={p.id} value={p.id}>{p.nivel} ({p.valor_numerico})</option>
                                                 ))}
                                               </select>
-                                              <span className="text-gray-300">×</span>
+                                              <span className="text-text-tertiary">×</span>
                                               <select
                                                 className="text-xs border rounded px-2 py-1"
                                                 value={mr.consecuencia_id || ''}
@@ -306,7 +306,7 @@ export function IpercMatrizWizard({ establecimientoId, canWrite }: Props) {
                                             {/* Medidas de Control */}
                                             <div className="mt-2">
                                               <div className="flex items-center justify-between">
-                                                <span className="text-xs text-gray-400">Medidas de Control</span>
+                                                <span className="text-xs text-text-tertiary">Medidas de Control</span>
                                                 {canWrite && <Button size="sm" variant="ghost" onClick={() => { setMedidaModal(mr.id); setSelectedMedidaId('') }}>+ Medida</Button>}
                                               </div>
 
@@ -337,7 +337,7 @@ export function IpercMatrizWizard({ establecimientoId, canWrite }: Props) {
                                                     value={newMedidaTexto}
                                                     onChange={e => setNewMedidaTexto(e.target.value)}
                                                   />
-                                                  <p className="text-xs text-gray-400">{newMedidaTexto.length}/150</p>
+                                                  <p className="text-xs text-text-tertiary">{newMedidaTexto.length}/150</p>
                                                   <div className="flex gap-2 justify-end">
                                                     <Button type="button" variant="secondary" onClick={() => setMedidaModal(null)}>Cancelar</Button>
                                                   </div>
@@ -346,10 +346,10 @@ export function IpercMatrizWizard({ establecimientoId, canWrite }: Props) {
 
                                               <div className="flex flex-wrap gap-1 mt-1">
                                                 {(mr.iperc_riesgos_medidas ?? []).map((rm: any) => (
-                                                  <span key={rm.id} className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded-full">
+                                                  <span key={rm.id} className="inline-flex items-center gap-1 px-2 py-0.5 bg-info-bg text-info text-xs rounded-full">
                                                     {rm.medida?.texto}
                                                     {canWrite && (
-                                                      <button onClick={() => { /* remove */ }} className="text-blue-400 hover:text-blue-700">×</button>
+                                                      <button onClick={() => { /* remove */ }} className="text-blue-400 hover:text-info">×</button>
                                                     )}
                                                   </span>
                                                 ))}

@@ -17,7 +17,7 @@ export function PlanDetailClient({ planId, subscriberCount }: PlanDetailClientPr
   if (confirming) {
     return (
       <div className="flex items-center gap-2">
-        <span className="text-sm text-red-500">
+        <span className="text-sm text-danger">
           {subscriberCount > 0
             ? 'Se desactivará (tiene suscriptores)'
             : '¿Eliminar permanentemente?'
@@ -32,7 +32,7 @@ export function PlanDetailClient({ planId, subscriberCount }: PlanDetailClientPr
               router.push('/dashboard/admin/planes')
             })
           }}
-          className="px-3 py-1.5 rounded-lg bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-colors disabled:opacity-50"
+          className="px-3 py-1.5 rounded-lg bg-danger text-white text-sm font-medium hover:bg-danger transition-colors disabled:opacity-50"
         >
           {isPending ? '…' : 'Confirmar'}
         </button>
@@ -51,7 +51,7 @@ export function PlanDetailClient({ planId, subscriberCount }: PlanDetailClientPr
     <button
       type="button"
       onClick={() => setConfirming(true)}
-      className="px-3 py-1.5 rounded-lg border border-red-200 text-sm text-red-500 hover:bg-red-50 transition-colors"
+      className="px-3 py-1.5 rounded-lg border border-red-200 text-sm text-danger hover:bg-danger-bg transition-colors"
     >
       {subscriberCount > 0 ? 'Desactivar plan' : 'Eliminar plan'}
     </button>

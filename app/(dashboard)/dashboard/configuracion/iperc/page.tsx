@@ -27,7 +27,7 @@ export default function IpercConfigPage() {
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-6">Configuración IPERC</h1>
-      <div className="border-b border-gray-200 mb-6">
+      <div className="border-b border-border-subtle mb-6">
         <div className="flex gap-1 overflow-x-auto">
           {TABS.map(t => (
             <button
@@ -36,7 +36,7 @@ export default function IpercConfigPage() {
               className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap rounded-t-lg transition-colors -mb-px border-b-2 ${
                 t.id === tab
                   ? 'border-sig-500 text-sig-500'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  : 'border-transparent text-text-secondary hover:text-text-secondary hover:border-border-default'
               }`}
             >
               {t.label}
@@ -64,7 +64,7 @@ function PeligrosTab() {
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <p className="text-sm text-gray-500">{peligros?.length ?? 0} peligros</p>
+        <p className="text-sm text-text-secondary">{peligros?.length ?? 0} peligros</p>
         <Button onClick={() => setModal(true)}>Nuevo Peligro</Button>
       </div>
       <Modal open={modal} onClose={() => setModal(false)} title="Nuevo Peligro">
@@ -85,7 +85,7 @@ function PeligrosTab() {
       {isLoading ? <p>Cargando...</p> : (
         <div className="grid gap-2">
           {(peligros ?? []).map((p: any) => (
-            <div key={p.id} className="flex items-center justify-between p-3 bg-white border rounded-lg">
+            <div key={p.id} className="flex items-center justify-between p-3 bg-surface-base border rounded-lg">
               <div>
                 <p className="font-medium">{p.nombre}</p>
                 <Badge>{p.factor}</Badge>
@@ -116,7 +116,7 @@ function RiesgosTab() {
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <p className="text-sm text-gray-500">{riesgos?.length ?? 0} riesgos</p>
+        <p className="text-sm text-text-secondary">{riesgos?.length ?? 0} riesgos</p>
         <Button onClick={() => setModal(true)}>Nuevo Riesgo</Button>
       </div>
       <Modal open={modal} onClose={() => setModal(false)} title="Nuevo Riesgo">
@@ -132,7 +132,7 @@ function RiesgosTab() {
       {isLoading ? <p>Cargando...</p> : (
         <div className="grid gap-2">
           {(riesgos ?? []).map((r: any) => (
-            <div key={r.id} className="flex items-center justify-between p-3 bg-white border rounded-lg">
+            <div key={r.id} className="flex items-center justify-between p-3 bg-surface-base border rounded-lg">
               <div>
                 <p className="font-medium">{r.nombre}</p>
                 <Badge variant="info">{r.tipo}</Badge>
@@ -164,7 +164,7 @@ function MedidasTab() {
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <p className="text-sm text-gray-500">{medidas?.length ?? 0} medidas (más usadas)</p>
+        <p className="text-sm text-text-secondary">{medidas?.length ?? 0} medidas (más usadas)</p>
         <Button onClick={() => setModal(true)}>Nueva Medida</Button>
       </div>
       <Modal open={modal} onClose={() => setModal(false)} title="Nueva Medida de Control">
@@ -177,7 +177,7 @@ function MedidasTab() {
             value={texto}
             onChange={e => setTexto(e.target.value)}
           />
-          <p className="text-xs text-gray-400">{texto.length}/150</p>
+          <p className="text-xs text-text-tertiary">{texto.length}/150</p>
           <div className="flex gap-2 justify-end">
             <Button type="button" variant="secondary" onClick={() => setModal(false)}>Cancelar</Button>
             <Button type="submit">Crear</Button>
@@ -187,10 +187,10 @@ function MedidasTab() {
       {isLoading ? <p>Cargando...</p> : (
         <div className="grid gap-2">
           {(medidas ?? []).map((m: any) => (
-            <div key={m.id} className="flex items-center justify-between p-3 bg-white border rounded-lg">
+            <div key={m.id} className="flex items-center justify-between p-3 bg-surface-base border rounded-lg">
               <div className="flex-1">
                 <p className="font-medium">{m.texto}</p>
-                <p className="text-xs text-gray-400">Usada {m.veces_usada} veces</p>
+                <p className="text-xs text-text-tertiary">Usada {m.veces_usada} veces</p>
               </div>
               <Button variant="ghost" size="sm" onClick={() => deleteMedida.mutate(m.id)}>Eliminar</Button>
             </div>
@@ -209,14 +209,14 @@ function ConsecuenciasTab() {
   return (
     <div className="grid gap-4">
       {(consecuencias ?? []).map((c: any) => (
-        <div key={c.id} className="p-4 bg-white border rounded-lg">
+        <div key={c.id} className="p-4 bg-surface-base border rounded-lg">
           <div className="flex items-center gap-2 mb-2">
             <h3 className="font-semibold">{c.nivel}</h3>
             <Badge>Valor: {c.valor_numerico}</Badge>
           </div>
           <div className="flex flex-wrap gap-1">
             {(c.iperc_consecuencia_items ?? []).map((item: any) => (
-              <span key={item.id} className="px-2 py-1 bg-gray-100 text-xs rounded">{item.nombre}</span>
+              <span key={item.id} className="px-2 py-1 bg-surface-elevated text-xs rounded">{item.nombre}</span>
             ))}
           </div>
         </div>
@@ -233,7 +233,7 @@ function ProbabilidadesTab() {
   return (
     <div className="grid gap-3">
       {(probabilidades ?? []).map((p: any) => (
-        <div key={p.id} className="flex items-center justify-between p-4 bg-white border rounded-lg">
+        <div key={p.id} className="flex items-center justify-between p-4 bg-surface-base border rounded-lg">
           <span className="font-medium">{p.nivel}</span>
           <Badge>Valor: {p.valor_numerico}</Badge>
         </div>
@@ -250,15 +250,15 @@ function NivelesTab() {
   return (
     <div className="grid gap-4">
       {(niveles ?? []).map((n: any) => (
-        <div key={n.id} className="p-4 bg-white border rounded-lg" style={{ borderLeftColor: n.color, borderLeftWidth: 4 }}>
+        <div key={n.id} className="p-4 bg-surface-base border rounded-lg" style={{ borderLeftColor: n.color, borderLeftWidth: 4 }}>
           <div className="flex items-center gap-2 mb-2">
             <h3 className="font-semibold">{n.nombre}</h3>
             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${NIVEL_RIESGO_BADGE[n.nombre as keyof typeof NIVEL_RIESGO_BADGE] || ''}`}>
               {n.valor_ref}
             </span>
           </div>
-          <p className="text-xs text-gray-500 mb-1">Rango: {n.valor_min} - {n.valor_max} | Valor ref: {n.valor_ref}</p>
-          <p className="text-sm text-gray-600">{n.acciones_requeridas}</p>
+          <p className="text-xs text-text-secondary mb-1">Rango: {n.valor_min} - {n.valor_max} | Valor ref: {n.valor_ref}</p>
+          <p className="text-sm text-text-secondary">{n.acciones_requeridas}</p>
         </div>
       ))}
     </div>

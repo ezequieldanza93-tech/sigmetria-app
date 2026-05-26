@@ -45,15 +45,15 @@ function AddGestionTree({
 
   if (gestionsNotAdded.length === 0) {
     return (
-      <div className="bg-gray-50 rounded-lg p-3 mb-4">
-        <p className="text-xs text-gray-400">Todas las gestiones ya fueron agregadas.</p>
+      <div className="bg-surface-base rounded-lg p-3 mb-4">
+        <p className="text-xs text-text-tertiary">Todas las gestiones ya fueron agregadas.</p>
       </div>
     )
   }
 
   return (
-    <div className="bg-gray-50 rounded-lg p-3 mb-4">
-      <p className="text-xs font-medium text-gray-600 mb-2">Seleccioná gestiones para agregar:</p>
+    <div className="bg-surface-base rounded-lg p-3 mb-4">
+      <p className="text-xs font-medium text-text-secondary mb-2">Seleccioná gestiones para agregar:</p>
       <div className="space-y-0.5 max-h-80 overflow-y-auto pr-1">
         {Array.from(byGrupo.entries()).map(([grupoNombre, byCat]) => {
           const isOpen = openGrupos.has(grupoNombre)
@@ -62,13 +62,13 @@ function AddGestionTree({
             <div key={grupoNombre}>
               <button
                 onClick={() => toggleGrupo(grupoNombre)}
-                className="flex items-center gap-2 w-full text-left px-2 py-1.5 text-xs font-semibold text-gray-700 dark:text-white hover:bg-white rounded-lg transition-colors"
+                className="flex items-center gap-2 w-full text-left px-2 py-1.5 text-xs font-semibold text-text-secondary dark:text-white hover:bg-surface-base rounded-lg transition-colors"
               >
-                <svg className={`w-3 h-3 text-gray-400 transition-transform shrink-0 ${isOpen ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <svg className={`w-3 h-3 text-text-tertiary transition-transform shrink-0 ${isOpen ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                 </svg>
                 {grupoNombre}
-                <span className="text-gray-400 font-normal ml-1">({total})</span>
+                <span className="text-text-tertiary font-normal ml-1">({total})</span>
               </button>
               {isOpen && Array.from(byCat.entries()).map(([catNombre, gestiones]) => {
                 const catKey = `${grupoNombre}:${catNombre}`
@@ -77,13 +77,13 @@ function AddGestionTree({
                   <div key={catNombre} className="ml-4">
                     <button
                       onClick={() => toggleCategoria(catKey)}
-                      className="flex items-center gap-2 w-full text-left px-2 py-1 text-xs text-gray-600 hover:bg-white rounded transition-colors"
+                      className="flex items-center gap-2 w-full text-left px-2 py-1 text-xs text-text-secondary hover:bg-surface-base rounded transition-colors"
                     >
-                      <svg className={`w-2.5 h-2.5 text-gray-400 transition-transform shrink-0 ${isCatOpen ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <svg className={`w-2.5 h-2.5 text-text-tertiary transition-transform shrink-0 ${isCatOpen ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                       </svg>
                       {catNombre}
-                      <span className="text-gray-400 font-normal">({gestiones.length})</span>
+                      <span className="text-text-tertiary font-normal">({gestiones.length})</span>
                     </button>
                     {isCatOpen && (
                       <div className="ml-4 py-0.5 space-y-0.5">
@@ -91,7 +91,7 @@ function AddGestionTree({
                           <button
                             key={g.id}
                             onClick={() => onAdd(g.id)}
-                            className="block w-full text-left text-xs py-1 px-2 text-gray-700 hover:bg-sig-50 hover:text-sig-700 rounded transition-colors"
+                            className="block w-full text-left text-xs py-1 px-2 text-text-secondary hover:bg-sig-50 hover:text-sig-700 rounded transition-colors"
                           >
                             {g.nombre}
                           </button>
@@ -123,17 +123,17 @@ function RegistroGestionForm({
   onSuccessRef.current = onSuccess
   useEffect(() => { if (state?.success) onSuccessRef.current() }, [state])
   return (
-    <form action={formAction} className="bg-white border border-gray-200 rounded-lg p-3 mt-2 space-y-2">
+    <form action={formAction} className="bg-surface-base border border-border-subtle rounded-lg p-3 mt-2 space-y-2">
       <input type="hidden" name="gestion_establecimiento_id" value={gestionEstablecimientoId} />
-      {state && !state.success && <p className="text-xs text-red-600">{state.error}</p>}
+      {state && !state.success && <p className="text-xs text-danger">{state.error}</p>}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <div>
-          <label className="text-xs font-medium text-gray-600 block mb-1">Fecha planificada *</label>
-          <input name="fecha_planificada" type="date" required className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs" />
+          <label className="text-xs font-medium text-text-secondary block mb-1">Fecha planificada *</label>
+          <input name="fecha_planificada" type="date" required className="w-full border border-border-default rounded px-2 py-1.5 text-xs" />
         </div>
         <div>
-          <label className="text-xs font-medium text-gray-600 block mb-1">Responsable</label>
-          <select name="responsable_id" className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs bg-white">
+          <label className="text-xs font-medium text-text-secondary block mb-1">Responsable</label>
+          <select name="responsable_id" className="w-full border border-border-default rounded px-2 py-1.5 text-xs bg-surface-base">
             <option value="">—</option>
             {personas.map(p => <option key={p.id} value={p.id}>{p.apellido}, {p.nombre}</option>)}
           </select>
@@ -168,14 +168,14 @@ function ObservacionForm({
   }, [])
 
   return (
-    <form action={formAction} className="bg-white border border-gray-200 rounded-lg p-3 mt-2 space-y-2">
+    <form action={formAction} className="bg-surface-base border border-border-subtle rounded-lg p-3 mt-2 space-y-2">
       <input type="hidden" name="registro_gestion_id" value={registroGestionId} />
-      {state && !state.success && <p className="text-xs text-red-600">{state.error}</p>}
+      {state && !state.success && <p className="text-xs text-danger">{state.error}</p>}
       <div>
-        <label className="text-xs font-medium text-gray-600 block mb-1">
-          Categoría <span className="text-red-500">*</span>
+        <label className="text-xs font-medium text-text-secondary block mb-1">
+          Categoría <span className="text-danger">*</span>
         </label>
-        <select name="categoria_id" required className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs bg-white">
+        <select name="categoria_id" required className="w-full border border-border-default rounded px-2 py-1.5 text-xs bg-surface-base">
           <option value="">Seleccionar...</option>
           {categorias.map(c => (
             <option key={c.id} value={c.id}>{c.nombre}</option>
@@ -183,17 +183,17 @@ function ObservacionForm({
         </select>
       </div>
       <div>
-        <label className="text-xs font-medium text-gray-600 block mb-1">Descripción *</label>
-        <textarea name="descripcion" required rows={2} className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs resize-none" />
+        <label className="text-xs font-medium text-text-secondary block mb-1">Descripción *</label>
+        <textarea name="descripcion" required rows={2} className="w-full border border-border-default rounded px-2 py-1.5 text-xs resize-none" />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <div>
-          <label className="text-xs font-medium text-gray-600 block mb-1">Fecha límite *</label>
-          <input name="fecha_planificada" type="date" required className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs" />
+          <label className="text-xs font-medium text-text-secondary block mb-1">Fecha límite *</label>
+          <input name="fecha_planificada" type="date" required className="w-full border border-border-default rounded px-2 py-1.5 text-xs" />
         </div>
         <div>
-          <label className="text-xs font-medium text-gray-600 block mb-1">Responsable cierre</label>
-          <select name="responsable_cierre_id" className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs bg-white">
+          <label className="text-xs font-medium text-text-secondary block mb-1">Responsable cierre</label>
+          <select name="responsable_cierre_id" className="w-full border border-border-default rounded px-2 py-1.5 text-xs bg-surface-base">
             <option value="">—</option>
             {personas.map(p => <option key={p.id} value={p.id}>{p.apellido}, {p.nombre}</option>)}
           </select>
@@ -283,8 +283,8 @@ export function GestionesTab({ establecimientoId, canWrite }: GestionesTabProps)
   ]
 
   const estadoColors: Record<EstadoGestion, string> = {
-    Realizado: 'bg-green-100 text-green-700',
-    Pendiente: 'bg-red-100 text-red-700',
+    Realizado: 'bg-success-bg text-success',
+    Pendiente: 'bg-danger-bg text-danger',
     Planificado: 'bg-sky-100 text-sky-700',
   }
 
@@ -294,8 +294,8 @@ export function GestionesTab({ establecimientoId, canWrite }: GestionesTabProps)
 
   return (
     <div className="flex gap-0 min-h-[400px]">
-      <nav className="w-44 shrink-0 border-r border-gray-200 pr-0 mr-6">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Ciclo PHVA</p>
+      <nav className="w-44 shrink-0 border-r border-border-subtle pr-0 mr-6">
+        <p className="text-xs font-semibold text-text-tertiary uppercase tracking-wider mb-3">Ciclo PHVA</p>
         <div className="flex flex-col gap-1">
           {PHVA_ITEMS.map(item => (
             <button
@@ -304,11 +304,11 @@ export function GestionesTab({ establecimientoId, canWrite }: GestionesTabProps)
               className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left w-full ${
                 activeSection === item.id
                   ? 'bg-sig-50 text-sig-700'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  : 'text-text-secondary hover:bg-surface-base hover:text-text-primary'
               }`}
             >
               <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                activeSection === item.id ? 'bg-sig-500 text-white' : 'bg-gray-200 text-gray-500'
+                activeSection === item.id ? 'bg-sig-500 text-white' : 'bg-surface-sunken text-text-secondary'
               }`}>{item.icon}</span>
               {item.label}
             </button>
@@ -320,7 +320,7 @@ export function GestionesTab({ establecimientoId, canWrite }: GestionesTabProps)
         {activeSection === 'planificar' && (
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-gray-700 dark:text-white">Gestiones del Establecimiento</h3>
+              <h3 className="text-sm font-semibold text-text-secondary dark:text-white">Gestiones del Establecimiento</h3>
               {canWrite && (
                 <button onClick={() => setShowAddGestion(v => !v)} className="text-xs text-sig-500 hover:text-sig-700 font-medium">
                   {showAddGestion ? 'Cancelar' : '+ Agregar gestión'}
@@ -344,9 +344,9 @@ export function GestionesTab({ establecimientoId, canWrite }: GestionesTabProps)
             )}
 
             {gestionesEstablecimiento === null ? (
-              <p className="text-sm text-gray-400">Cargando…</p>
+              <p className="text-sm text-text-tertiary">Cargando…</p>
             ) : gestionesEstablecimiento.length === 0 ? (
-              <p className="text-sm text-gray-400">No hay gestiones asignadas a este establecimiento.</p>
+              <p className="text-sm text-text-tertiary">No hay gestiones asignadas a este establecimiento.</p>
             ) : (() => {
               const byGrupo = new Map<string, GestionEstablecimiento[]>()
               for (const ge of gestionesEstablecimiento) {
@@ -358,21 +358,21 @@ export function GestionesTab({ establecimientoId, canWrite }: GestionesTabProps)
                 <div className="space-y-5">
                   {Array.from(byGrupo.entries()).map(([grupoNombre, items]) => (
                     <div key={grupoNombre}>
-                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{grupoNombre}</p>
+                      <p className="text-xs font-semibold text-text-tertiary uppercase tracking-wider mb-2">{grupoNombre}</p>
                       <div className="space-y-2">
                         {items.map(ge => {
                           const geRegistros = registros?.filter(r => r.gestion_establecimiento_id === ge.id) ?? []
                           return (
-                            <div key={ge.id} className="bg-white border border-gray-200 rounded-xl p-4">
+                            <div key={ge.id} className="bg-surface-base border border-border-subtle rounded-xl p-4">
                               <div className="flex items-center justify-between mb-2">
                                 <div>
-                                  <p className="font-medium text-gray-900 text-sm">{ge.gestiones?.nombre ?? '—'}</p>
+                                  <p className="font-medium text-text-primary text-sm">{ge.gestiones?.nombre ?? '—'}</p>
                                   {ge.gestiones?.gestiones_categorias && (
-                                    <p className="text-xs text-gray-400">{ge.gestiones.gestiones_categorias.nombre}</p>
+                                    <p className="text-xs text-text-tertiary">{ge.gestiones.gestiones_categorias.nombre}</p>
                                   )}
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <span className="text-xs text-gray-400">{geRegistros.length} registros</span>
+                                  <span className="text-xs text-text-tertiary">{geRegistros.length} registros</span>
                                   {canWrite && (
                                     <button
                                       onClick={() => setShowRegistroForm(showRegistroForm === ge.id ? null : ge.id)}
@@ -398,11 +398,11 @@ export function GestionesTab({ establecimientoId, canWrite }: GestionesTabProps)
                                   {geRegistros.map(r => {
                                     const estado = calcularEstadoGestion(r.fecha_ejecutada, r.fecha_planificada)
                                     return (
-                                      <div key={r.id} className="flex items-center justify-between text-xs bg-gray-50 rounded-lg px-3 py-1.5">
-                                        <span className="text-gray-600">{r.fecha_planificada}</span>
+                                      <div key={r.id} className="flex items-center justify-between text-xs bg-surface-base rounded-lg px-3 py-1.5">
+                                        <span className="text-text-secondary">{r.fecha_planificada}</span>
                                         <span className={`px-2 py-0.5 rounded-full font-medium ${estadoColors[estado]}`}>{estado}</span>
                                         {r.personas_directorio && (
-                                          <span className="text-gray-400">{r.personas_directorio.apellido}</span>
+                                          <span className="text-text-tertiary">{r.personas_directorio.apellido}</span>
                                         )}
                                       </div>
                                     )
@@ -423,9 +423,9 @@ export function GestionesTab({ establecimientoId, canWrite }: GestionesTabProps)
 
         {activeSection === 'hacer' && (
           <div>
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-white mb-4">Ejecución de Gestiones</h3>
+            <h3 className="text-sm font-semibold text-text-secondary dark:text-white mb-4">Ejecución de Gestiones</h3>
             {registros === null ? (
-              <p className="text-sm text-gray-400">Cargando…</p>
+              <p className="text-sm text-text-tertiary">Cargando…</p>
             ) : (
               <div className="space-y-2">
                 {registros
@@ -434,13 +434,13 @@ export function GestionesTab({ establecimientoId, canWrite }: GestionesTabProps)
                     const estado = calcularEstadoGestion(r.fecha_ejecutada, r.fecha_planificada)
                     const ge = gestionesEstablecimiento?.find(ge => ge.id === r.gestion_establecimiento_id)
                     return (
-                      <div key={r.id} className="bg-white border border-gray-200 rounded-xl p-4">
+                      <div key={r.id} className="bg-surface-base border border-border-subtle rounded-xl p-4">
                         <div className="flex items-start justify-between">
                           <div>
-                            <p className="font-medium text-gray-900 text-sm">{ge?.gestiones?.nombre ?? '—'}</p>
-                            <p className="text-xs text-gray-400 mt-0.5">Planificado: {r.fecha_planificada}</p>
+                            <p className="font-medium text-text-primary text-sm">{ge?.gestiones?.nombre ?? '—'}</p>
+                            <p className="text-xs text-text-tertiary mt-0.5">Planificado: {r.fecha_planificada}</p>
                             {r.personas_directorio && (
-                              <p className="text-xs text-gray-400">{r.personas_directorio.apellido}, {r.personas_directorio.nombre}</p>
+                              <p className="text-xs text-text-tertiary">{r.personas_directorio.apellido}, {r.personas_directorio.nombre}</p>
                             )}
                           </div>
                           <div className="flex items-center gap-2">
@@ -487,7 +487,7 @@ export function GestionesTab({ establecimientoId, canWrite }: GestionesTabProps)
                     )
                   })}
                 {registros.filter(r => calcularEstadoGestion(r.fecha_ejecutada, r.fecha_planificada) !== 'Realizado').length === 0 && (
-                  <p className="text-sm text-gray-400">No hay gestiones pendientes de ejecución.</p>
+                  <p className="text-sm text-text-tertiary">No hay gestiones pendientes de ejecución.</p>
                 )}
               </div>
             )}
@@ -495,34 +495,34 @@ export function GestionesTab({ establecimientoId, canWrite }: GestionesTabProps)
         )}
 
         {activeSection === 'verificar' && (
-          <div className="bg-gray-50 rounded-xl border border-dashed border-gray-300 p-8 text-center">
-            <p className="text-sm font-medium text-gray-500">Dashboard de Verificación</p>
-            <p className="text-xs text-gray-400 mt-1">En construcción — próxima versión.</p>
+          <div className="bg-surface-base rounded-xl border border-dashed border-border-default p-8 text-center">
+            <p className="text-sm font-medium text-text-secondary">Dashboard de Verificación</p>
+            <p className="text-xs text-text-tertiary mt-1">En construcción — próxima versión.</p>
           </div>
         )}
 
         {activeSection === 'actuar' && (
           <div>
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-white mb-4">Observaciones — Seguimiento y Cierre</h3>
+            <h3 className="text-sm font-semibold text-text-secondary dark:text-white mb-4">Observaciones — Seguimiento y Cierre</h3>
             {observaciones === null ? (
-              <p className="text-sm text-gray-400">Cargando…</p>
+              <p className="text-sm text-text-tertiary">Cargando…</p>
             ) : observaciones.length === 0 ? (
-              <p className="text-sm text-gray-400">No hay observaciones registradas.</p>
+              <p className="text-sm text-text-tertiary">No hay observaciones registradas.</p>
             ) : (
               <div className="space-y-2">
                 {observaciones.map(obs => {
                   const hoy = new Date(); hoy.setHours(0,0,0,0)
                   const planDate = new Date(obs.fecha_planificada); planDate.setHours(0,0,0,0)
                   const estado = obs.fecha_cierre ? 'Cerrado' : planDate < hoy ? 'Pendiente' : 'Planificado'
-                  const obsColors: Record<string, string> = { Cerrado: 'bg-sig-50 text-sig-700', Pendiente: 'bg-red-100 text-red-700', Planificado: 'bg-gray-100 text-gray-600' }
+                  const obsColors: Record<string, string> = { Cerrado: 'bg-sig-50 text-sig-700', Pendiente: 'bg-danger-bg text-danger', Planificado: 'bg-surface-elevated text-text-secondary' }
                   return (
-                    <div key={obs.id} className="bg-white border border-gray-200 rounded-xl p-4">
+                    <div key={obs.id} className="bg-surface-base border border-border-subtle rounded-xl p-4">
                       <div className="flex items-start justify-between">
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm text-gray-900 dark:text-white">{obs.descripcion}</p>
-                          <p className="text-xs text-gray-400 mt-0.5">Planificado: {obs.fecha_planificada}</p>
+                          <p className="text-sm text-text-primary dark:text-white">{obs.descripcion}</p>
+                          <p className="text-xs text-text-tertiary mt-0.5">Planificado: {obs.fecha_planificada}</p>
                           {obs.personas_directorio && (
-                            <p className="text-xs text-gray-400">Responsable: {obs.personas_directorio.apellido}</p>
+                            <p className="text-xs text-text-tertiary">Responsable: {obs.personas_directorio.apellido}</p>
                           )}
                           {obs.fecha_cierre && (
                             <p className="text-xs text-sig-500 mt-0.5">Cerrado: {obs.fecha_cierre}</p>

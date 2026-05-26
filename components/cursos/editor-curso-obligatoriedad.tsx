@@ -105,7 +105,7 @@ export function EditorObligatoriedad({ cursoId, reglas, onRefresh }: EditorOblig
               <span className="text-xs font-mono text-text-tertiary">{r.scope_id.slice(0, 8)}...</span>
               <span className="text-xs text-text-tertiary">Desde: {r.vigente_desde}</span>
               {r.fecha_limite_dias && <span className="text-xs text-text-tertiary">{r.fecha_limite_dias} días límite</span>}
-              <button onClick={() => handleEliminarRegla(r.id)} className="ml-auto p-1 text-text-tertiary hover:text-red-600 transition-colors">
+              <button onClick={() => handleEliminarRegla(r.id)} className="ml-auto p-1 text-text-tertiary hover:text-danger transition-colors">
                 <Trash2 size={14} />
               </button>
             </div>

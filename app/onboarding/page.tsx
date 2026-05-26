@@ -43,39 +43,39 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-surface-base flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-14 h-14 bg-sig-500 rounded-2xl mb-4">
             <span className="text-white text-2xl font-bold">S</span>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Configuración Inicial</h1>
-          <p className="text-gray-500 text-sm mt-1">Crear nueva consultora en la plataforma</p>
+          <h1 className="text-2xl font-bold text-text-primary">Configuración Inicial</h1>
+          <p className="text-text-secondary text-sm mt-1">Crear nueva consultora en la plataforma</p>
         </div>
 
         {/* Stepper */}
         <div className="flex items-center gap-2 mb-8">
           <div className={`flex items-center gap-2 flex-1`}>
-            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${step >= 1 ? 'bg-sig-500 text-white' : 'bg-gray-200 text-gray-500'}`}>1</div>
-            <span className={`text-sm font-medium ${step === 1 ? 'text-sig-500' : step > 1 ? 'text-gray-500' : 'text-gray-400'}`}>Datos de la Consultora</span>
+            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${step >= 1 ? 'bg-sig-500 text-white' : 'bg-surface-sunken text-text-secondary'}`}>1</div>
+            <span className={`text-sm font-medium ${step === 1 ? 'text-sig-500' : step > 1 ? 'text-text-secondary' : 'text-text-tertiary'}`}>Datos de la Consultora</span>
           </div>
           <div className="w-6 h-px bg-gray-300 shrink-0" />
           <div className={`flex items-center gap-2 flex-1`}>
-            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${step >= 2 ? 'bg-sig-500 text-white' : 'bg-gray-200 text-gray-500'}`}>2</div>
-            <span className={`text-sm font-medium ${step === 2 ? 'text-sig-500' : 'text-gray-400'}`}>Admin Principal</span>
+            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${step >= 2 ? 'bg-sig-500 text-white' : 'bg-surface-sunken text-text-secondary'}`}>2</div>
+            <span className={`text-sm font-medium ${step === 2 ? 'text-sig-500' : 'text-text-tertiary'}`}>Admin Principal</span>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-200 p-6">
+        <div className="bg-surface-base rounded-2xl border border-border-subtle p-6">
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-4">
+            <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3 mb-4">
               {error}
             </div>
           )}
 
           {step === 1 && (
             <>
-              <h2 className="font-semibold text-gray-900 mb-4">Datos de la Consultora</h2>
+              <h2 className="font-semibold text-text-primary mb-4">Datos de la Consultora</h2>
               <form action={handleConsultora} className="space-y-4">
                 <Input label="Nombre de la Consultora" name="nombre" required placeholder="Sigmetría HyS" />
                 <Input label="CUIT" name="cuit" placeholder="30-12345678-9" />
@@ -90,8 +90,8 @@ export default function OnboardingPage() {
 
           {step === 2 && (
             <>
-              <h2 className="font-semibold text-gray-900 mb-1">Admin Principal</h2>
-              <p className="text-gray-500 text-sm mb-4">
+              <h2 className="font-semibold text-text-primary mb-1">Admin Principal</h2>
+              <p className="text-text-secondary text-sm mb-4">
                 Invitar al usuario que va a gestionar esta consultora como Admin Principal.
                 Recibirá un email para establecer su contraseña.
               </p>
@@ -104,7 +104,7 @@ export default function OnboardingPage() {
               </form>
               <button
                 onClick={() => router.push('/dashboard')}
-                className="mt-3 w-full text-center text-sm text-gray-400 hover:text-gray-600"
+                className="mt-3 w-full text-center text-sm text-text-tertiary hover:text-text-secondary"
               >
                 Omitir por ahora →
               </button>

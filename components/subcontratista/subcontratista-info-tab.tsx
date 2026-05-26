@@ -23,7 +23,7 @@ function DataRow({ label, value }: { label: string; value: React.ReactNode }) {
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider pb-2 border-b border-border-subtle mb-3">
+    <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider pb-2 border-b border-border-subtle mb-3">
       {children}
     </h3>
   )

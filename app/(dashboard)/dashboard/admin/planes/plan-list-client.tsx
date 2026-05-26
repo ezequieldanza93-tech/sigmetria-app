@@ -149,11 +149,11 @@ function VisibilityToggle({ planId, isVisible }: { planId: string; isVisible: bo
         })
       }}
       className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-brand-primary focus:ring-offset-1 ${
-        isVisible ? 'bg-green-500' : 'bg-zinc-300'
+        isVisible ? 'bg-success' : 'bg-zinc-300'
       }`}
     >
       <span
-        className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+        className={`inline-block h-3.5 w-3.5 transform rounded-full bg-surface-base transition-transform ${
           isVisible ? 'translate-x-4.5' : 'translate-x-1'
         }`}
       />
@@ -180,7 +180,7 @@ function DestacadoToggle({ planId, destacado }: { planId: string; destacado: boo
       }`}
     >
       <span
-        className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+        className={`inline-block h-3.5 w-3.5 transform rounded-full bg-surface-base transition-transform ${
           destacado ? 'translate-x-4.5' : 'translate-x-1'
         }`}
       />
@@ -196,7 +196,7 @@ function DeleteButton({ planId, subscriberCount }: { planId: string; subscriberC
   if (confirming) {
     return (
       <div className="flex items-center gap-1">
-        <span className="text-xs text-red-500">¿Eliminar?</span>
+        <span className="text-xs text-danger">¿Eliminar?</span>
         <button
           type="button"
           disabled={isPending}
@@ -206,7 +206,7 @@ function DeleteButton({ planId, subscriberCount }: { planId: string; subscriberC
               router.refresh()
             })
           }}
-          className="px-2 py-1 rounded-md bg-red-500 text-white text-xs hover:bg-red-600 transition-colors"
+          className="px-2 py-1 rounded-md bg-danger text-white text-xs hover:bg-danger transition-colors"
         >
           {isPending ? '…' : 'Sí'}
         </button>
@@ -225,7 +225,7 @@ function DeleteButton({ planId, subscriberCount }: { planId: string; subscriberC
     <button
       type="button"
       onClick={() => setConfirming(true)}
-      className="px-2.5 py-1 rounded-md border border-border-subtle text-xs text-red-500 hover:bg-red-50 transition-colors"
+      className="px-2.5 py-1 rounded-md border border-border-subtle text-xs text-danger hover:bg-danger-bg transition-colors"
     >
       {(subscriberCount ?? 0) > 0 ? 'Desactivar' : 'Eliminar'}
     </button>

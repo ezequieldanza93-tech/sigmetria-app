@@ -26,7 +26,7 @@ export function RiesgoMapaInterno({ establecimientoId, planoUrl, canWrite }: Pro
 
   if (!completo?.length && !planoUrl) {
     return (
-      <div className="text-center py-8 text-gray-400 border-2 border-dashed rounded-lg">
+      <div className="text-center py-8 text-text-tertiary border-2 border-dashed rounded-lg">
         <p>No hay sectores IPERC cargados.</p>
         <p className="text-sm mt-1">Primero cargá la matriz IPERC para ver el mapa de riesgo.</p>
       </div>
@@ -57,7 +57,7 @@ export function RiesgoMapaInterno({ establecimientoId, planoUrl, canWrite }: Pro
 
       {/* Plano y sectores */}
       {planoUrl && (
-        <div className="relative border rounded-lg overflow-hidden bg-gray-100" style={{ minHeight: 400 }}>
+        <div className="relative border rounded-lg overflow-hidden bg-surface-elevated" style={{ minHeight: 400 }}>
           <img
             src={planoUrl}
             alt="Plano del establecimiento"
@@ -93,7 +93,7 @@ export function RiesgoMapaInterno({ establecimientoId, planoUrl, canWrite }: Pro
       )}
 
       {!planoUrl && (
-        <div className="text-center py-12 border-2 border-dashed rounded-lg text-gray-400">
+        <div className="text-center py-12 border-2 border-dashed rounded-lg text-text-tertiary">
           <p>Sin plano cargado. Subí un plano para visualizar los sectores.</p>
         </div>
       )}
@@ -105,7 +105,7 @@ export function RiesgoMapaInterno({ establecimientoId, planoUrl, canWrite }: Pro
           <div key={sector.id} className="border rounded-lg overflow-hidden">
             <button
               onClick={() => setSelectedSector(selectedSector?.id === sector.id ? null : sector)}
-              className="w-full flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100"
+              className="w-full flex items-center justify-between p-3 bg-surface-base hover:bg-surface-elevated"
             >
               <div className="flex items-center gap-2">
                 <span className="font-medium">{sector.nombre}</span>
@@ -124,11 +124,11 @@ export function RiesgoMapaInterno({ establecimientoId, planoUrl, canWrite }: Pro
                   p.iperc_tareas?.flatMap((t: any) =>
                     t.iperc_matriz_peligros?.flatMap((mp: any) =>
                       mp.iperc_matriz_riesgos?.map((mr: any) => (
-                        <div key={mr.id} className="flex items-center justify-between p-2 bg-white border rounded text-sm">
+                        <div key={mr.id} className="flex items-center justify-between p-2 bg-surface-base border rounded text-sm">
                           <div className="flex-1">
                             <span className="font-medium">{mr.riesgo?.nombre}</span>
-                            <span className="text-gray-400 mx-2">|</span>
-                            <span className="text-gray-500">Tarea: {t.nombre}</span>
+                            <span className="text-text-tertiary mx-2">|</span>
+                            <span className="text-text-secondary">Tarea: {t.nombre}</span>
                           </div>
                           {mr.nivel_riesgo && (
                             <span className={`text-xs px-2 py-0.5 rounded-full ${NIVEL_RIESGO_BADGE[mr.nivel_riesgo.nombre as keyof typeof NIVEL_RIESGO_BADGE] || ''}`}>

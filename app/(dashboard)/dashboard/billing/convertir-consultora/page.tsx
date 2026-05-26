@@ -37,7 +37,7 @@ export default function ConvertirConsultoraPage() {
     return (
       <div className="p-8 max-w-4xl mx-auto">
         <Card className="text-center py-12">
-          <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto" />
+          <CheckCircle2 className="w-12 h-12 text-success mx-auto" />
           <h1 className="text-xl font-bold text-text-primary mt-4">Ya sos una consultora</h1>
           <p className="text-sm text-text-tertiary mt-2">
             Tu cuenta ya está configurada como consultora. Podés invitar miembros a tu equipo.
@@ -89,9 +89,9 @@ export default function ConvertirConsultoraPage() {
 
       {step === 'select' && (
         <div className="space-y-4">
-          <Card className="bg-blue-50 border-blue-200">
+          <Card className="bg-info-bg border-blue-200">
             <div className="flex items-start gap-3">
-              <Building2 className="w-5 h-5 text-blue-600 mt-0.5" />
+              <Building2 className="w-5 h-5 text-info mt-0.5" />
               <div className="text-sm text-blue-800">
                 <p className="font-medium">¿Qué significa convertirte en consultora?</p>
                 <ul className="mt-2 space-y-1 list-disc list-inside">

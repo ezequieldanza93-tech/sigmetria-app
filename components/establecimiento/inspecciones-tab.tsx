@@ -83,14 +83,14 @@ export function InspeccionesTab({ inspecciones, establecimientoId, empresaId, ca
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-900">Inspecciones</h3>
+        <h3 className="font-semibold text-text-primary">Inspecciones</h3>
         {canWrite && (
           <Button size="sm" onClick={() => setShowModal(true)}>+ Nueva Inspección</Button>
         )}
       </div>
 
       {!inspecciones.length ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400">
+        <div className="bg-surface-base rounded-xl border border-border-subtle p-8 text-center text-text-tertiary">
           No hay inspecciones registradas
         </div>
       ) : (
@@ -99,16 +99,16 @@ export function InspeccionesTab({ inspecciones, establecimientoId, empresaId, ca
             const visual = estadoVisual(i)
             const obs = obsDescriptions[i.id] ?? []
             return (
-              <div key={i.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div key={i.id} className="bg-surface-base rounded-xl border border-border-subtle overflow-hidden">
                 <button
                   type="button"
                   onClick={() => setExpandedId(expandedId === i.id ? null : i.id)}
-                  className="w-full text-left px-5 py-3.5 hover:bg-gray-50 transition-colors"
+                  className="w-full text-left px-5 py-3.5 hover:bg-surface-base transition-colors"
                 >
                   <div className="flex items-center gap-4">
                     <div className="min-w-0 flex-1 grid grid-cols-5 gap-4 text-sm items-center">
-                      <div><span className="text-gray-500">Prog:</span> {formatDate(i.fecha_programada)}</div>
-                      <div><span className="text-gray-500">Real:</span> {formatDate(i.fecha_realizada)}</div>
+                      <div><span className="text-text-secondary">Prog:</span> {formatDate(i.fecha_programada)}</div>
+                      <div><span className="text-text-secondary">Real:</span> {formatDate(i.fecha_realizada)}</div>
                       <div>
                         <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${INSPECCION_ESTADO_COLORS[i.estado as InspeccionEstado]}`}>
                           {INSPECCION_ESTADO_LABELS[i.estado]}
@@ -116,7 +116,7 @@ export function InspeccionesTab({ inspecciones, establecimientoId, empresaId, ca
                       </div>
                       <div className="text-center">
                         {i.puntaje !== null ? (
-                          <span className={`font-bold tabular-nums ${i.puntaje >= 80 ? 'text-green-600' : i.puntaje >= 60 ? 'text-yellow-600' : 'text-red-600'}`}>
+                          <span className={`font-bold tabular-nums ${i.puntaje >= 80 ? 'text-success' : i.puntaje >= 60 ? 'text-warning' : 'text-danger'}`}>
                             {i.puntaje}
                           </span>
                         ) : '—'}
@@ -129,22 +129,22 @@ export function InspeccionesTab({ inspecciones, establecimientoId, empresaId, ca
                         )}
                       </div>
                     </div>
-                    <svg className={`w-4 h-4 text-gray-400 transition-transform ${expandedId === i.id ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                    <svg className={`w-4 h-4 text-text-tertiary transition-transform ${expandedId === i.id ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                   </div>
                 </button>
 
                 {expandedId === i.id && (
-                  <div className="border-t border-gray-100 px-5 py-4 space-y-4 bg-gray-50/50">
+                  <div className="border-t border-border-subtle px-5 py-4 space-y-4 bg-gray-50/50">
                     {i.observaciones && (
                       <div>
-                        <p className="text-xs font-medium text-gray-500 mb-1">Observaciones de la inspección</p>
-                        <p className="text-sm text-gray-700">{i.observaciones}</p>
+                        <p className="text-xs font-medium text-text-secondary mb-1">Observaciones de la inspección</p>
+                        <p className="text-sm text-text-secondary">{i.observaciones}</p>
                       </div>
                     )}
                     {i.entes_reguladores && (
                       <div>
-                        <p className="text-xs font-medium text-gray-500 mb-1">Ente regulador</p>
-                        <p className="text-sm text-gray-700">{i.entes_reguladores.nombre}</p>
+                        <p className="text-xs font-medium text-text-secondary mb-1">Ente regulador</p>
+                        <p className="text-sm text-text-secondary">{i.entes_reguladores.nombre}</p>
                       </div>
                     )}
 
@@ -152,7 +152,7 @@ export function InspeccionesTab({ inspecciones, establecimientoId, empresaId, ca
                     {(obs.length > 0 || canWrite) && (
                       <div>
                         <div className="flex items-center justify-between mb-2">
-                          <p className="text-xs font-medium text-gray-500">Observaciones de seguimiento ({obs.filter(o => !o.resuelta).length} abiertas)</p>
+                          <p className="text-xs font-medium text-text-secondary">Observaciones de seguimiento ({obs.filter(o => !o.resuelta).length} abiertas)</p>
                           {canWrite && (
                             <Button size="sm" variant="secondary" onClick={() => setShowObsModal(i.id)}>
                               + Agregar
@@ -163,8 +163,8 @@ export function InspeccionesTab({ inspecciones, establecimientoId, empresaId, ca
                           <div className="space-y-1.5">
                             {obs.map(o => (
                               <div key={o.id} className="flex items-start gap-2 text-sm">
-                                <span className={`mt-1 w-2 h-2 rounded-full shrink-0 ${o.resuelta ? 'bg-green-500' : 'bg-red-500'}`} />
-                                <span className={`flex-1 ${o.resuelta ? 'text-gray-400 line-through' : 'text-gray-700'}`}>{o.descripcion}</span>
+                                <span className={`mt-1 w-2 h-2 rounded-full shrink-0 ${o.resuelta ? 'bg-success' : 'bg-danger'}`} />
+                                <span className={`flex-1 ${o.resuelta ? 'text-text-tertiary line-through' : 'text-text-secondary'}`}>{o.descripcion}</span>
                                 {!o.resuelta && canWrite && (
                                   <button
                                     type="button"
@@ -180,7 +180,7 @@ export function InspeccionesTab({ inspecciones, establecimientoId, empresaId, ca
                             ))}
                           </div>
                         ) : (
-                          <p className="text-xs text-gray-400">Sin observaciones de seguimiento</p>
+                          <p className="text-xs text-text-tertiary">Sin observaciones de seguimiento</p>
                         )}
                       </div>
                     )}
@@ -220,17 +220,17 @@ export function InspeccionesTab({ inspecciones, establecimientoId, empresaId, ca
           className="space-y-3"
         >
           {obsError && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg px-3 py-2">{obsError}</div>
+            <div className="bg-danger-bg border border-red-200 text-danger text-xs rounded-lg px-3 py-2">{obsError}</div>
           )}
           <div>
-            <label className="text-xs text-gray-600 block mb-1">
-              Categoría <span className="text-red-500">*</span>
+            <label className="text-xs text-text-secondary block mb-1">
+              Categoría <span className="text-danger">*</span>
             </label>
             <select
               required
               value={obsCategoriaId}
               onChange={e => setObsCategoriaId(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-sig-500"
+              className="w-full border border-border-default rounded-lg px-2 py-1.5 text-xs bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500"
               style={obsCategoriaId ? { backgroundColor: categorias.find(c => c.id === obsCategoriaId)?.color, color: '#000' } : {}}
             >
               <option value="">Seleccionar…</option>
@@ -240,8 +240,8 @@ export function InspeccionesTab({ inspecciones, establecimientoId, empresaId, ca
             </select>
           </div>
           <div>
-            <label className="text-xs text-gray-600 block mb-1">Descripción *</label>
-            <textarea name="descripcion" required rows={3} className="w-full border border-gray-300 rounded px-3 py-2 text-sm" />
+            <label className="text-xs text-text-secondary block mb-1">Descripción *</label>
+            <textarea name="descripcion" required rows={3} className="w-full border border-border-default rounded px-3 py-2 text-sm" />
           </div>
           <div className="flex justify-end gap-2">
             <Button size="sm" variant="secondary" type="button" onClick={() => { setShowObsModal(null); setObsCategoriaId(''); setObsError(null) }}>Cancelar</Button>

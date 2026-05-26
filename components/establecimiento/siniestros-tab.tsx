@@ -24,41 +24,41 @@ export function SiniestrosTab({ siniestros, establecimientoId, empresaId, canWri
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-900 dark:text-white">Siniestros</h3>
+        <h3 className="font-semibold text-text-primary dark:text-white">Siniestros</h3>
         {canWrite && (
           <Button size="sm" onClick={() => setShowModal(true)}>+ Nuevo Siniestro</Button>
         )}
       </div>
 
       {!siniestros.length ? (
-        <div className="bg-white dark:bg-surface-elevated rounded-xl border border-gray-200 dark:border-border-subtle p-8 text-center text-gray-400">
+        <div className="bg-surface-base dark:bg-surface-elevated rounded-xl border border-border-subtle dark:border-border-subtle p-8 text-center text-text-tertiary">
           No hay siniestros registrados
         </div>
       ) : (
-        <div className="bg-white dark:bg-surface-elevated rounded-xl border border-gray-200 dark:border-border-subtle overflow-hidden">
+        <div className="bg-surface-base dark:bg-surface-elevated rounded-xl border border-border-subtle dark:border-border-subtle overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="border-b border-gray-100 dark:border-border-subtle bg-gray-50 dark:bg-surface-sunken">
+            <thead className="border-b border-border-subtle dark:border-border-subtle bg-surface-base dark:bg-surface-sunken">
               <tr className="text-left">
-                <th className="px-5 py-3 text-gray-500 font-medium">Tipo</th>
-                <th className="px-5 py-3 text-gray-500 font-medium">Persona</th>
-                <th className="px-5 py-3 text-gray-500 font-medium">Fecha</th>
-                <th className="px-5 py-3 text-gray-500 font-medium">Estado</th>
-                <th className="px-5 py-3 text-gray-500 font-medium text-center">Días Perdidos</th>
-                <th className="px-5 py-3 text-gray-500 font-medium text-center">Calc.</th>
-                <th className="px-5 py-3 text-gray-500 font-medium">Deriv.</th>
+                <th className="px-5 py-3 text-text-secondary font-medium">Tipo</th>
+                <th className="px-5 py-3 text-text-secondary font-medium">Persona</th>
+                <th className="px-5 py-3 text-text-secondary font-medium">Fecha</th>
+                <th className="px-5 py-3 text-text-secondary font-medium">Estado</th>
+                <th className="px-5 py-3 text-text-secondary font-medium text-center">Días Perdidos</th>
+                <th className="px-5 py-3 text-text-secondary font-medium text-center">Calc.</th>
+                <th className="px-5 py-3 text-text-secondary font-medium">Deriv.</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50 dark:divide-border-subtle">
               {siniestros.map(s => (
-                <tr key={s.id} className="hover:bg-gray-50">
-                  <td className="px-5 py-3.5 font-medium text-gray-900">{SINIESTRO_TIPO_LABELS[s.tipo]}</td>
-                  <td className="px-5 py-3.5 text-gray-500">
+                <tr key={s.id} className="hover:bg-surface-base">
+                  <td className="px-5 py-3.5 font-medium text-text-primary">{SINIESTRO_TIPO_LABELS[s.tipo]}</td>
+                  <td className="px-5 py-3.5 text-text-secondary">
                     {s.persona ? `${s.persona.apellido}, ${s.persona.nombre}` : '—'}
-                    {s.tipo_persona && <span className="text-xs text-gray-400 ml-1">({TIPO_PERSONA_SINIESTRO_LABELS[s.tipo_persona]})</span>}
+                    {s.tipo_persona && <span className="text-xs text-text-tertiary ml-1">({TIPO_PERSONA_SINIESTRO_LABELS[s.tipo_persona]})</span>}
                   </td>
-                  <td className="px-5 py-3.5 text-gray-500">
+                  <td className="px-5 py-3.5 text-text-secondary">
                     {formatDate(s.fecha_ocurrencia)}
-                    {s.hora_ocurrencia && <span className="text-xs text-gray-400 ml-1">{s.hora_ocurrencia.slice(0, 5)}</span>}
+                    {s.hora_ocurrencia && <span className="text-xs text-text-tertiary ml-1">{s.hora_ocurrencia.slice(0, 5)}</span>}
                   </td>
                   <td className="px-5 py-3.5">
                     <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${SINIESTRO_ESTADO_COLORS[s.estado]}`}>
@@ -66,7 +66,7 @@ export function SiniestrosTab({ siniestros, establecimientoId, empresaId, canWri
                     </span>
                   </td>
                   <td className="px-5 py-3.5 text-center tabular-nums">{s.dias_perdidos ?? '—'}</td>
-                  <td className="px-5 py-3.5 text-center tabular-nums text-gray-400">
+                  <td className="px-5 py-3.5 text-center tabular-nums text-text-tertiary">
                     {s.dias_perdidos_calculados ?? '—'}
                   </td>
                   <td className="px-5 py-3.5">{s.requiere_derivacion ? 'Sí' : 'No'}</td>

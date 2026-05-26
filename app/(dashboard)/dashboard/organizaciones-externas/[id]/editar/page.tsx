@@ -70,14 +70,14 @@ export default async function EditarSubcontratistaPage({ params }: Props) {
       <div className="mb-6">
         <Link
           href={`/dashboard/organizaciones-externas/${id}`}
-          className="text-sm text-gray-500 hover:text-gray-900 transition-colors"
+          className="text-sm text-text-secondary hover:text-text-primary transition-colors"
         >
           ← {sub.organizaciones_externas?.nombre ?? 'Subcontratista'}
         </Link>
-        <h1 className="text-2xl font-bold text-gray-900 mt-2">Editar Subcontratista</h1>
+        <h1 className="text-2xl font-bold text-text-primary mt-2">Editar Subcontratista</h1>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <div className="bg-surface-base rounded-xl border border-border-subtle p-6">
         <SubcontratistaEditForm
           action={updateAction}
           // eslint-disable-next-line @typescript-eslint/no-explicit-any

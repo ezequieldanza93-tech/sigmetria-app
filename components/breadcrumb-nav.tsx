@@ -74,22 +74,22 @@ export function BreadcrumbNav() {
   if (!crumbs.length) return null
 
   return (
-    <div className="bg-white border-b border-gray-100 px-6 py-2">
+    <div className="bg-surface-base border-b border-border-subtle px-6 py-2">
       <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-sm">
         {crumbs.map((crumb, i) => (
           <div key={i} className="flex items-center gap-1.5">
-            {i > 0 && <span className="text-gray-300 select-none">›</span>}
+            {i > 0 && <span className="text-text-tertiary select-none">›</span>}
             {crumb.href ? (
               <Link
                 href={crumb.href}
-                className="text-gray-400 hover:text-gray-700 transition-colors"
+                className="text-text-tertiary hover:text-text-secondary transition-colors"
                 style={{ fontFamily: 'Poppins, system-ui' }}
               >
                 {crumb.label}
               </Link>
             ) : (
               <span
-                className="text-gray-700 font-medium"
+                className="text-text-secondary font-medium"
                 style={{ fontFamily: 'Poppins, system-ui' }}
               >
                 {crumb.label}

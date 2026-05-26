@@ -83,7 +83,7 @@ export function EditorCursoQuizzes({ cursoId, modulos, quizFinal, onRefresh }: E
               <span className="text-xs text-text-tertiary">{quiz.modulo}</span>
               <button
                 onClick={() => handleEliminarQuiz(quiz.id)}
-                className="p-1 text-text-tertiary hover:text-red-600 transition-colors"
+                className="p-1 text-text-tertiary hover:text-danger transition-colors"
               >
                 <Trash2 size={16} />
               </button>
@@ -228,7 +228,7 @@ function EditorPreguntas({ quizId, preguntas, onSave }: { quizId: string; pregun
                     onChange={e => updateOpcion(idx, oi, 'texto', e.target.value)}
                     className="flex-1 px-2 py-1 text-sm rounded border border-border-subtle bg-surface-base text-text-primary focus:outline-none"
                   />
-                  <button onClick={() => removeOpcion(idx, oi)} className="p-1 text-text-tertiary hover:text-red-600"><Trash2 size={14} /></button>
+                  <button onClick={() => removeOpcion(idx, oi)} className="p-1 text-text-tertiary hover:text-danger"><Trash2 size={14} /></button>
                 </div>
               ))}
               <button onClick={() => addOpcion(idx)} className="text-xs text-brand-primary hover:underline">+ Agregar opción</button>

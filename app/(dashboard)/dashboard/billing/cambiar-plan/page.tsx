@@ -48,7 +48,7 @@ export default function CambiarPlanPage() {
   if (error || !data) {
     return (
       <div className="p-8 max-w-4xl mx-auto">
-        <p className="text-red-600">Error al cargar datos</p>
+        <p className="text-danger">Error al cargar datos</p>
       </div>
     )
   }

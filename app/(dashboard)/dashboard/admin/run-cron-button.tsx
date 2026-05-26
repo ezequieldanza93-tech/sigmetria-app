@@ -43,7 +43,7 @@ export function RunCronButton() {
         </span>
       )}
       {error && (
-        <span className="text-xs text-red-500">{error}</span>
+        <span className="text-xs text-danger">{error}</span>
       )}
     </div>
   )

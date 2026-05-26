@@ -90,9 +90,9 @@ export function ManualPaymentForm({ plans, planFeatures, formatARS }: ManualPaym
 
   if (success) {
     return (
-      <div className="rounded-xl border border-green-200 bg-green-50 p-5 text-center space-y-2">
-        <p className="text-base font-semibold text-green-700">¡Pago registrado correctamente!</p>
-        <p className="text-sm text-green-600">
+      <div className="rounded-xl border border-green-200 bg-success-bg p-5 text-center space-y-2">
+        <p className="text-base font-semibold text-success">¡Pago registrado correctamente!</p>
+        <p className="text-sm text-success">
           Revisaremos tu transferencia y activaremos tu cuenta dentro de las 24 hs hábiles.
         </p>
       </div>
@@ -262,7 +262,7 @@ export function ManualPaymentForm({ plans, planFeatures, formatARS }: ManualPaym
                                   key={f.key}
                                   className={`inline-flex items-center gap-1 text-xs ${
                                     getFeatureValue(plan.id, f.key)
-                                      ? 'text-green-600'
+                                      ? 'text-success'
                                       : 'text-zinc-300'
                                   }`}
                                 >
@@ -353,7 +353,7 @@ export function ManualPaymentForm({ plans, planFeatures, formatARS }: ManualPaym
             />
           </div>
 
-          {error && <p className="text-sm text-red-500">{error}</p>}
+          {error && <p className="text-sm text-danger">{error}</p>}
 
           <div className="flex gap-2">
             <button

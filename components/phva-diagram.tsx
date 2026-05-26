@@ -391,17 +391,17 @@ export function PHVADiagram({ empresaId, establecimientoId }: PHVADiagramProps) 
 
         {/* Module selection panel */}
         {selectedPhase && modules && phaseLabel ? (
-          <div className="mt-3 bg-white rounded-xl border border-gray-200 p-4 animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <div className="mt-3 bg-surface-base rounded-xl border border-border-subtle p-4 animate-in fade-in slide-in-from-bottom-2 duration-200">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-gray-900">{phaseLabel.title}</span>
-                <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded font-mono">
+                <span className="text-sm font-semibold text-text-primary">{phaseLabel.title}</span>
+                <span className="text-xs text-text-tertiary bg-surface-elevated px-1.5 py-0.5 rounded font-mono">
                   ISO {phaseLabel.iso}
                 </span>
               </div>
               <button
                 onClick={() => setSelectedPhase(null)}
-                className="text-gray-400 hover:text-gray-600 transition-colors text-lg leading-none"
+                className="text-text-tertiary hover:text-text-secondary transition-colors text-lg leading-none"
                 aria-label="Cerrar"
               >
                 ×
@@ -412,7 +412,7 @@ export function PHVADiagram({ empresaId, establecimientoId }: PHVADiagramProps) 
                 <button
                   key={mod.label}
                   onClick={() => handleModuleClick(mod)}
-                  className="text-left px-3 py-2.5 rounded-lg border border-gray-100 bg-gray-50 hover:bg-green-50 hover:border-green-200 hover:text-green-700 text-sm font-medium text-gray-700 transition-colors"
+                  className="text-left px-3 py-2.5 rounded-lg border border-border-subtle bg-surface-base hover:bg-success-bg hover:border-green-200 hover:text-success text-sm font-medium text-text-secondary transition-colors"
                 >
                   {mod.label}
                 </button>
@@ -426,10 +426,10 @@ export function PHVADiagram({ empresaId, establecimientoId }: PHVADiagramProps) 
               <button
                 key={c.key}
                 onClick={() => setSelectedPhase(c.key)}
-                className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-green-600 transition-colors"
+                className="flex items-center gap-1.5 text-xs text-text-tertiary hover:text-success transition-colors"
               >
                 <span className="w-2 h-2 rounded-full bg-gray-300 inline-block" />
-                <span className="font-medium text-gray-500">{c.key}</span>
+                <span className="font-medium text-text-secondary">{c.key}</span>
                 <span>{c.phva}</span>
               </button>
             ))}

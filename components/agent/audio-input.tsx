@@ -59,7 +59,7 @@ export function AudioInput({ onTranscript, disabled }: AudioInputProps) {
       disabled={disabled}
       className={`shrink-0 rounded-full p-2 transition-colors ${
         isListening
-          ? 'bg-red-500 text-white animate-pulse'
+          ? 'bg-danger text-white animate-pulse'
           : 'text-text-tertiary hover:text-text-primary hover:bg-surface-elevated'
       }`}
       title={isListening ? 'Detener grabación' : 'Grabar audio'}

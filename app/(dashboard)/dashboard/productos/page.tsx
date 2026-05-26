@@ -29,23 +29,23 @@ function ProductoForm({
   return (
     <form action={formAction} className="space-y-4">
       {state && !state.success && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{state.error}</div>
+        <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3">{state.error}</div>
       )}
       <div>
-        <label className="text-sm font-medium text-gray-700 block mb-1">Nombre *</label>
-        <input name="nombre" required className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Ej: Casco de seguridad" />
+        <label className="text-sm font-medium text-text-secondary block mb-1">Nombre *</label>
+        <input name="nombre" required className="w-full border border-border-default rounded-lg px-3 py-2 text-sm" placeholder="Ej: Casco de seguridad" />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="text-sm font-medium text-gray-700 block mb-1">Categoría *</label>
-          <select name="categoria_id" required className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
+          <label className="text-sm font-medium text-text-secondary block mb-1">Categoría *</label>
+          <select name="categoria_id" required className="w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base">
             <option value="">Seleccioná…</option>
             {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
           </select>
         </div>
         <div>
-          <label className="text-sm font-medium text-gray-700 block mb-1">Marca</label>
-          <select name="marca_id" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
+          <label className="text-sm font-medium text-text-secondary block mb-1">Marca</label>
+          <select name="marca_id" className="w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base">
             <option value="">Sin marca</option>
             {marcas.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
           </select>
@@ -53,20 +53,20 @@ function ProductoForm({
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="text-sm font-medium text-gray-700 block mb-1">Tamaño</label>
-          <input name="tamano" type="number" step="0.01" min="0" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Ej: 500" />
+          <label className="text-sm font-medium text-text-secondary block mb-1">Tamaño</label>
+          <input name="tamano" type="number" step="0.01" min="0" className="w-full border border-border-default rounded-lg px-3 py-2 text-sm" placeholder="Ej: 500" />
         </div>
         <div>
-          <label className="text-sm font-medium text-gray-700 block mb-1">Unidad</label>
-          <select name="unidad_id" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
+          <label className="text-sm font-medium text-text-secondary block mb-1">Unidad</label>
+          <select name="unidad_id" className="w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base">
             <option value="">—</option>
             {unidades.map(u => <option key={u.id} value={u.id}>{u.nombre} ({u.simbolo})</option>)}
           </select>
         </div>
       </div>
       <div>
-        <label className="text-sm font-medium text-gray-700 block mb-1">Descripción</label>
-        <textarea name="descripcion" rows={2} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none" placeholder="Opcional…" />
+        <label className="text-sm font-medium text-text-secondary block mb-1">Descripción</label>
+        <textarea name="descripcion" rows={2} className="w-full border border-border-default rounded-lg px-3 py-2 text-sm resize-none" placeholder="Opcional…" />
       </div>
       <div className="flex justify-end">
         <Button type="submit" disabled={pending}>{pending ? 'Guardando…' : 'Guardar'}</Button>
@@ -127,8 +127,8 @@ export default function ProductosPage() {
     <div className="p-8 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Productos</h1>
-          <p className="text-sm text-gray-500 mt-1">Catálogo de EPP y otros productos de seguridad</p>
+          <h1 className="text-2xl font-bold text-text-primary">Productos</h1>
+          <p className="text-sm text-text-secondary mt-1">Catálogo de EPP y otros productos de seguridad</p>
         </div>
         <Button onClick={() => setShowModal(true)}>+ Nuevo Producto</Button>
       </div>
@@ -137,7 +137,7 @@ export default function ProductosPage() {
       <div className="flex gap-1 mb-5 flex-wrap">
         <button
           onClick={() => setActiveCategoria('todos')}
-          className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${activeCategoria === 'todos' ? 'bg-gray-900 text-white border-gray-900' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
+          className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${activeCategoria === 'todos' ? 'bg-gray-900 text-white border-gray-900' : 'border-border-default text-text-secondary hover:bg-surface-base'}`}
         >
           Todos {productos !== null && `(${productos.length})`}
         </button>
@@ -147,7 +147,7 @@ export default function ProductosPage() {
             <button
               key={c.id}
               onClick={() => setActiveCategoria(c.id)}
-              className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${activeCategoria === c.id ? 'bg-sig-500 text-white border-sig-500' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
+              className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${activeCategoria === c.id ? 'bg-sig-500 text-white border-sig-500' : 'border-border-default text-text-secondary hover:bg-surface-base'}`}
             >
               {c.nombre} ({count})
             </button>
@@ -156,40 +156,40 @@ export default function ProductosPage() {
       </div>
 
       {filtered === null ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400">Cargando…</div>
+        <div className="bg-surface-base rounded-xl border border-border-subtle p-8 text-center text-text-tertiary">Cargando…</div>
       ) : filtered.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400">
+        <div className="bg-surface-base rounded-xl border border-border-subtle p-8 text-center text-text-tertiary">
           No hay productos registrados{activeCategoria !== 'todos' ? ' en esta categoría' : ''}.
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="bg-surface-base rounded-xl border border-border-subtle overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="border-b border-gray-100 bg-gray-50">
+            <thead className="border-b border-border-subtle bg-surface-base">
               <tr className="text-left">
-                <th className="px-5 py-3 text-gray-500 font-medium">Nombre</th>
-                <th className="px-5 py-3 text-gray-500 font-medium">Categoría</th>
-                <th className="px-5 py-3 text-gray-500 font-medium">Marca</th>
-                <th className="px-5 py-3 text-gray-500 font-medium">Tamaño</th>
+                <th className="px-5 py-3 text-text-secondary font-medium">Nombre</th>
+                <th className="px-5 py-3 text-text-secondary font-medium">Categoría</th>
+                <th className="px-5 py-3 text-text-secondary font-medium">Marca</th>
+                <th className="px-5 py-3 text-text-secondary font-medium">Tamaño</th>
                 <th className="px-5 py-3"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {filtered.map(p => (
-                <tr key={p.id} className="hover:bg-gray-50">
-                  <td className="px-5 py-3.5 font-medium text-gray-900">{p.nombre}</td>
+                <tr key={p.id} className="hover:bg-surface-base">
+                  <td className="px-5 py-3.5 font-medium text-text-primary">{p.nombre}</td>
                   <td className="px-5 py-3.5">
                     <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-sig-50 text-sig-700">
                       {p.productos_categorias?.nombre ?? '—'}
                     </span>
                   </td>
-                  <td className="px-5 py-3.5 text-gray-500">{p.organizaciones_externas?.nombre ?? '—'}</td>
-                  <td className="px-5 py-3.5 text-gray-500">
+                  <td className="px-5 py-3.5 text-text-secondary">{p.organizaciones_externas?.nombre ?? '—'}</td>
+                  <td className="px-5 py-3.5 text-text-secondary">
                     {p.tamano ? `${p.tamano} ${p.unidades?.simbolo ?? ''}`.trim() : '—'}
                   </td>
                   <td className="px-5 py-3.5 text-right">
                     <button
                       onClick={() => handleDelete(p.id)}
-                      className="text-xs text-red-400 hover:text-red-600"
+                      className="text-xs text-red-400 hover:text-danger"
                     >
                       Eliminar
                     </button>

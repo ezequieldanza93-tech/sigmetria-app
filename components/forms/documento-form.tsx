@@ -76,19 +76,19 @@ export function DocumentoForm({ action, documentTypes, context, onSuccess }: Pro
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+        <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3">
           {error}
         </div>
       )}
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Tipo de Documento <span className="text-red-500">*</span>
+        <label className="block text-sm font-medium text-text-secondary mb-1">
+          Tipo de Documento <span className="text-danger">*</span>
         </label>
         <select
           name="document_type_id"
           required
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500"
+          className="w-full border border-border-default rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500"
         >
           <option value="">Seleccionar tipo...</option>
           {filteredTypes.map(dt => (
@@ -98,18 +98,18 @@ export function DocumentoForm({ action, documentTypes, context, onSuccess }: Pro
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-text-secondary mb-1">
           Fecha de Vencimiento
         </label>
         <input
           name="fecha_vencimiento"
           type="date"
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500"
+          className="w-full border border-border-default rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-text-secondary mb-1">
           Adjunto
         </label>
         <input
@@ -117,13 +117,13 @@ export function DocumentoForm({ action, documentTypes, context, onSuccess }: Pro
           accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp"
           onChange={handleFileChange}
           disabled={uploading}
-          className="w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-sig-50 file:text-sig-700 hover:file:bg-sig-100 cursor-pointer"
+          className="w-full text-sm text-text-secondary file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-sig-50 file:text-sig-700 hover:file:bg-sig-100 cursor-pointer"
         />
         {uploading && (
           <p className="text-xs text-sig-500 mt-1">Subiendo archivo...</p>
         )}
         {fileData && !uploading && (
-          <p className="text-xs text-green-600 mt-1">✓ {fileData.name}</p>
+          <p className="text-xs text-success mt-1">✓ {fileData.name}</p>
         )}
       </div>
 
@@ -133,9 +133,9 @@ export function DocumentoForm({ action, documentTypes, context, onSuccess }: Pro
           name="include_in_legajo"
           type="checkbox"
           value="1"
-          className="w-4 h-4 rounded border-gray-300 text-sig-500 focus:ring-sig-500"
+          className="w-4 h-4 rounded border-border-default text-sig-500 focus:ring-sig-500"
         />
-        <label htmlFor="include_in_legajo" className="text-sm text-gray-700 cursor-pointer">
+        <label htmlFor="include_in_legajo" className="text-sm text-text-secondary cursor-pointer">
           Incluir en el <span className="font-medium">Legajo Técnico Digital</span>
         </label>
       </div>

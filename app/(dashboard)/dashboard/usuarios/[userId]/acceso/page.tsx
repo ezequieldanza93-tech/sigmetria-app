@@ -74,13 +74,13 @@ export default async function UserAccesoPage({ params }: Props) {
   return (
     <div className="p-8 max-w-4xl mx-auto">
       <div className="mb-6">
-        <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
-          <Link href="/dashboard/usuarios" className="hover:text-gray-900">Usuarios</Link>
+        <div className="flex items-center gap-2 text-sm text-text-secondary mb-4">
+          <Link href="/dashboard/usuarios" className="hover:text-text-primary">Usuarios</Link>
           <span>/</span>
-          <span className="text-gray-900">Accesos de {targetProfile.full_name}</span>
+          <span className="text-text-primary">Accesos de {targetProfile.full_name}</span>
         </div>
-        <h1 className="text-2xl font-bold text-gray-900">Gestionar Accesos</h1>
-        <p className="text-gray-500 text-sm mt-1">
+        <h1 className="text-2xl font-bold text-text-primary">Gestionar Accesos</h1>
+        <p className="text-text-secondary text-sm mt-1">
           Configurar a qué empresas y establecimientos puede acceder <strong>{targetProfile.full_name}</strong>
         </p>
       </div>

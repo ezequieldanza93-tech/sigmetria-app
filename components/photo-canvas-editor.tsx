@@ -418,7 +418,7 @@ export function PhotoCanvasEditor({
       type="button"
       onClick={() => { setTool(key); setSelectedId(null) }}
       className={`px-2.5 py-1 text-xs rounded-lg border transition-colors ${
-        tool === key ? 'bg-sig-500 text-white border-sig-500' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+        tool === key ? 'bg-sig-500 text-white border-sig-500' : 'border-border-subtle text-text-secondary hover:bg-surface-base'
       }`}
     >
       {label}
@@ -429,7 +429,7 @@ export function PhotoCanvasEditor({
     <div className="space-y-3">
       <div className="flex items-center gap-2 flex-wrap">
         <div className="flex items-center gap-1 mr-2">
-          <span className="text-xs text-gray-500 mr-1">Herramienta:</span>
+          <span className="text-xs text-text-secondary mr-1">Herramienta:</span>
           {toolBtn('select', 'Seleccionar')}
           {toolBtn('pen', 'Lápiz')}
           {toolBtn('text', 'Texto')}
@@ -440,14 +440,14 @@ export function PhotoCanvasEditor({
         </div>
 
         <div className="flex items-center gap-1 mr-2">
-          <span className="text-xs text-gray-500 mr-1">Color:</span>
+          <span className="text-xs text-text-secondary mr-1">Color:</span>
           {COLORS.map(c => (
             <button
               key={c.value}
               type="button"
               title={c.label}
               onClick={() => updateSelectedColor(c.value)}
-              className={`w-5 h-5 rounded-full border-2 ${color === c.value ? 'border-gray-800 scale-125' : 'border-gray-200'} transition-transform`}
+              className={`w-5 h-5 rounded-full border-2 ${color === c.value ? 'border-gray-800 scale-125' : 'border-border-subtle'} transition-transform`}
               style={{ backgroundColor: c.value }}
             />
           ))}
@@ -455,13 +455,13 @@ export function PhotoCanvasEditor({
 
         {(tool === 'pen' || tool === 'rect' || tool === 'circle' || tool === 'arrow' || (selectedObject && !selectedIsText)) && (
           <div className="flex items-center gap-1 mr-2">
-            <span className="text-xs text-gray-500 mr-1">Grosor:</span>
+            <span className="text-xs text-text-secondary mr-1">Grosor:</span>
             {BRUSH_SIZES.map(s => (
               <button
                 key={s}
                 type="button"
                 onClick={() => updateSelectedStrokeWidth(s)}
-                className={`w-7 h-6 flex items-center justify-center rounded border text-[11px] ${strokeWidth === s ? 'bg-sig-500 text-white border-sig-500' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                className={`w-7 h-6 flex items-center justify-center rounded border text-[11px] ${strokeWidth === s ? 'bg-sig-500 text-white border-sig-500' : 'border-border-subtle text-text-secondary hover:bg-surface-base'}`}
               >
                 {s}
               </button>
@@ -471,13 +471,13 @@ export function PhotoCanvasEditor({
 
         {(tool === 'text' || tool === 'observacion' || selectedIsText) && (
           <div className="flex items-center gap-1 mr-2">
-            <span className="text-xs text-gray-500 mr-1">Texto:</span>
+            <span className="text-xs text-text-secondary mr-1">Texto:</span>
             {TEXT_SIZES.map(s => (
               <button
                 key={s}
                 type="button"
                 onClick={() => updateSelectedFontSize(s)}
-                className={`px-2 h-6 flex items-center justify-center rounded border text-[11px] ${fontSize === s ? 'bg-sig-500 text-white border-sig-500' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                className={`px-2 h-6 flex items-center justify-center rounded border text-[11px] ${fontSize === s ? 'bg-sig-500 text-white border-sig-500' : 'border-border-subtle text-text-secondary hover:bg-surface-base'}`}
               >
                 {s}
               </button>
@@ -490,7 +490,7 @@ export function PhotoCanvasEditor({
             <button
               type="button"
               onClick={deleteSelected}
-              className="px-2 py-1 text-xs border border-red-200 rounded-lg text-red-600 hover:bg-red-50"
+              className="px-2 py-1 text-xs border border-red-200 rounded-lg text-danger hover:bg-danger-bg"
             >
               🗑 Eliminar
             </button>
@@ -499,7 +499,7 @@ export function PhotoCanvasEditor({
             type="button"
             onClick={undo}
             disabled={undoStack.current.length === 0}
-            className="px-2 py-1 text-xs border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-30"
+            className="px-2 py-1 text-xs border border-border-subtle rounded-lg text-text-secondary hover:bg-surface-base disabled:opacity-30"
           >
             ↩ Deshacer
           </button>
@@ -507,14 +507,14 @@ export function PhotoCanvasEditor({
             type="button"
             onClick={redo}
             disabled={redoStack.current.length === 0}
-            className="px-2 py-1 text-xs border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-30"
+            className="px-2 py-1 text-xs border border-border-subtle rounded-lg text-text-secondary hover:bg-surface-base disabled:opacity-30"
           >
             ↪ Rehacer
           </button>
         </div>
       </div>
 
-      <div ref={containerRef} className="relative border border-gray-300 rounded-lg overflow-hidden bg-white touch-none">
+      <div ref={containerRef} className="relative border border-border-default rounded-lg overflow-hidden bg-surface-base touch-none">
         {image && stageSize.width > 0 && (
           <Stage
             ref={stageRef}
@@ -710,8 +710,8 @@ export function PhotoCanvasEditor({
         {/* Modal de input de texto */}
         {placingText && (
           <div className="absolute inset-0 bg-black/30 flex items-center justify-center z-10">
-            <div className="bg-white rounded-lg shadow-lg p-4 w-[90%] max-w-md space-y-3">
-              <h4 className="text-sm font-semibold text-gray-700">Escribir texto</h4>
+            <div className="bg-surface-base rounded-lg shadow-lg p-4 w-[90%] max-w-md space-y-3">
+              <h4 className="text-sm font-semibold text-text-secondary">Escribir texto</h4>
               <input
                 autoFocus
                 type="text"
@@ -719,10 +719,10 @@ export function PhotoCanvasEditor({
                 onChange={e => setTextInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); confirmText() } }}
                 placeholder="Texto…"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500"
+                className="w-full border border-border-default rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500"
               />
               <div className="flex justify-end gap-2">
-                <button type="button" onClick={() => { setPlacingText(null); setTextInput('') }} className="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-100 rounded-lg">
+                <button type="button" onClick={() => { setPlacingText(null); setTextInput('') }} className="px-3 py-1.5 text-xs text-text-secondary hover:bg-surface-elevated rounded-lg">
                   Cancelar
                 </button>
                 <button type="button" onClick={confirmText} className="px-3 py-1.5 text-xs bg-sig-500 text-white rounded-lg hover:bg-sig-600">
@@ -736,25 +736,25 @@ export function PhotoCanvasEditor({
         {/* Picker de categoría para Escribir observación */}
         {pickingObsCat && (
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-10">
-            <div className="bg-white rounded-lg shadow-lg p-4 w-[90%] max-w-md space-y-3 max-h-[90%] overflow-y-auto">
-              <h4 className="text-sm font-semibold text-gray-700">Escribir observación</h4>
+            <div className="bg-surface-base rounded-lg shadow-lg p-4 w-[90%] max-w-md space-y-3 max-h-[90%] overflow-y-auto">
+              <h4 className="text-sm font-semibold text-text-secondary">Escribir observación</h4>
 
               <div>
-                <label className="text-xs text-gray-500 block mb-1">Categoría</label>
+                <label className="text-xs text-text-secondary block mb-1">Categoría</label>
                 <div className="grid grid-cols-1 gap-1">
                   {categorias.length === 0 ? (
-                    <p className="text-xs text-gray-400">No hay categorías cargadas.</p>
+                    <p className="text-xs text-text-tertiary">No hay categorías cargadas.</p>
                   ) : categorias.map(cat => (
                     <button
                       key={cat.id}
                       type="button"
                       onClick={() => setObsCatId(cat.id)}
                       className={`flex items-center gap-2 text-left px-3 py-2 rounded-lg border text-sm ${
-                        obsCatId === cat.id ? 'border-sig-500 bg-sig-50' : 'border-gray-200 hover:bg-gray-50'
+                        obsCatId === cat.id ? 'border-sig-500 bg-sig-50' : 'border-border-subtle hover:bg-surface-base'
                       }`}
                     >
                       <span
-                        className="w-5 h-5 rounded border border-gray-300"
+                        className="w-5 h-5 rounded border border-border-default"
                         style={{ backgroundColor: cat.color }}
                       />
                       <span>{cat.nombre}</span>
@@ -764,18 +764,18 @@ export function PhotoCanvasEditor({
               </div>
 
               <div>
-                <label className="text-xs text-gray-500 block mb-1">Descripción</label>
+                <label className="text-xs text-text-secondary block mb-1">Descripción</label>
                 <textarea
                   value={obsDescripcion}
                   onChange={e => setObsDescripcion(e.target.value)}
                   rows={3}
                   placeholder="Describí la observación…"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sig-500"
+                  className="w-full border border-border-default rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sig-500"
                 />
               </div>
 
               <div className="flex justify-end gap-2">
-                <button type="button" onClick={closeObsPicker} className="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-100 rounded-lg">
+                <button type="button" onClick={closeObsPicker} className="px-3 py-1.5 text-xs text-text-secondary hover:bg-surface-elevated rounded-lg">
                   Cancelar
                 </button>
                 <button
@@ -792,7 +792,7 @@ export function PhotoCanvasEditor({
         )}
       </div>
 
-      <p className="text-xs text-gray-400">
+      <p className="text-xs text-text-tertiary">
         {tool === 'select' && 'Tocá un objeto para seleccionarlo. Usá los handles para mover, redimensionar o rotar.'}
         {tool === 'pen' && 'Dibujá libremente con el mouse o el dedo.'}
         {tool === 'text' && 'Tocá la imagen para colocar texto.'}

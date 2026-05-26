@@ -63,21 +63,21 @@ export function EmpresaRightPanel({
     `px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
       activeTab === t
         ? 'border-sig-500 text-sig-600'
-        : 'border-transparent text-gray-500 hover:text-gray-700'
+        : 'border-transparent text-text-secondary hover:text-text-secondary'
     }`
 
   return (
     <div className="flex-1 min-w-0 p-8">
       {/* Tabs */}
       <div className="flex items-center justify-between mb-6">
-        <div className="flex border-b border-gray-200 -mb-px">
+        <div className="flex border-b border-border-subtle -mb-px">
           <button onClick={() => setActiveTab('establecimientos')} className={tabCls('establecimientos')}>
             Establecimientos
-            <span className="ml-2 text-xs font-normal text-gray-400">({establecimientos.length})</span>
+            <span className="ml-2 text-xs font-normal text-text-tertiary">({establecimientos.length})</span>
           </button>
           <button onClick={() => setActiveTab('stakeholders')} className={tabCls('stakeholders')}>
             Stakeholders
-            <span className="ml-2 text-xs font-normal text-gray-400">
+            <span className="ml-2 text-xs font-normal text-text-tertiary">
               ({new Set(personasLinks.map(p => p.personas_directorio?.id).filter(Boolean)).size + new Set(orgsLinks.map(o => o.organizaciones?.id).filter(Boolean)).size})
             </span>
           </button>
@@ -97,9 +97,9 @@ export function EmpresaRightPanel({
       {activeTab === 'establecimientos' && (
         <>
           {!establecimientos.length ? (
-            <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-              <p className="text-gray-400 text-4xl mb-3">🏭</p>
-              <p className="text-gray-500">No hay establecimientos registrados</p>
+            <div className="bg-surface-base rounded-xl border border-border-subtle p-12 text-center">
+              <p className="text-text-tertiary text-4xl mb-3">🏭</p>
+              <p className="text-text-secondary">No hay establecimientos registrados</p>
               {puedeEditar && (
                 <Link
                   href={`/dashboard/empresas/${empresaId}/establecimientos/nuevo`}
@@ -110,18 +110,18 @@ export function EmpresaRightPanel({
               )}
             </div>
           ) : (
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div className="bg-surface-base rounded-xl border border-border-subtle overflow-hidden">
               <table className="w-full text-sm">
-                <thead className="border-b border-gray-100 bg-gray-50">
+                <thead className="border-b border-border-subtle bg-surface-base">
                   <tr className="text-left">
-                    <th className="px-5 py-3.5 text-gray-500 font-medium">Nombre</th>
-                    <th className="px-5 py-3.5 text-gray-500 font-medium">Tipo</th>
-                    <th className="px-5 py-3.5 text-gray-500 font-medium hidden lg:table-cell">Ubicación</th>
-                    <th className="px-5 py-3.5 text-gray-500 font-medium text-center">Sectores</th>
-                    <th className="px-5 py-3.5 text-gray-500 font-medium text-center">
+                    <th className="px-5 py-3.5 text-text-secondary font-medium">Nombre</th>
+                    <th className="px-5 py-3.5 text-text-secondary font-medium">Tipo</th>
+                    <th className="px-5 py-3.5 text-text-secondary font-medium hidden lg:table-cell">Ubicación</th>
+                    <th className="px-5 py-3.5 text-text-secondary font-medium text-center">Sectores</th>
+                    <th className="px-5 py-3.5 text-text-secondary font-medium text-center">
                       <span title="Ingresado manualmente">Trab. (Manual)</span>
                     </th>
-                    <th className="px-5 py-3.5 text-gray-500 font-medium text-center">
+                    <th className="px-5 py-3.5 text-text-secondary font-medium text-center">
                       <span title="Calculado desde sectores → puestos → personas activas">Trab. (Auto)</span>
                     </th>
                   </tr>
@@ -132,8 +132,8 @@ export function EmpresaRightPanel({
                     const sectoresCount = sectores.length
                     const trabajadoresAuto = sectores.reduce((sum, s) => sum + (s.cantidad_trabajadores ?? 0), 0)
                     return (
-                      <tr key={est.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-5 py-4 font-medium text-gray-900">
+                      <tr key={est.id} className="hover:bg-surface-base transition-colors">
+                        <td className="px-5 py-4 font-medium text-text-primary">
                           <Link
                             href={`/dashboard/empresas/${empresaId}/establecimientos/${est.id}`}
                             className="hover:text-sig-500 transition-colors"
@@ -141,18 +141,18 @@ export function EmpresaRightPanel({
                             {est.nombre}
                           </Link>
                         </td>
-                        <td className="px-5 py-4 text-gray-500">
+                        <td className="px-5 py-4 text-text-secondary">
                           {est.establecimientos_tipos?.[0]?.nombre ?? '—'}
                         </td>
-                        <td className="px-5 py-4 text-gray-500 hidden lg:table-cell">
+                        <td className="px-5 py-4 text-text-secondary hidden lg:table-cell">
                           {est.localidades ? `${est.localidades.nombre}, ${est.localidades.provincia}` : '—'}
                         </td>
-                        <td className="px-5 py-4 text-gray-500 text-center">{sectoresCount}</td>
-                        <td className="px-5 py-4 text-gray-400 text-center">
-                          {est.cantidad_trabajadores ?? <span className="text-gray-300">—</span>}
+                        <td className="px-5 py-4 text-text-secondary text-center">{sectoresCount}</td>
+                        <td className="px-5 py-4 text-text-tertiary text-center">
+                          {est.cantidad_trabajadores ?? <span className="text-text-tertiary">—</span>}
                         </td>
-                        <td className="px-5 py-4 text-gray-900 text-center font-medium">
-                          {trabajadoresAuto > 0 ? trabajadoresAuto : <span className="text-gray-300">0</span>}
+                        <td className="px-5 py-4 text-text-primary text-center font-medium">
+                          {trabajadoresAuto > 0 ? trabajadoresAuto : <span className="text-text-tertiary">0</span>}
                         </td>
                       </tr>
                     )

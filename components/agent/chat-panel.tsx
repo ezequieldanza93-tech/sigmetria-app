@@ -188,7 +188,7 @@ export function ChatPanel({ onClose, variant = 'popover', establecimientoId, emp
               Acciones pendientes de aprobación
             </div>
             {pendingActions.map(action => (
-              <div key={action.id} className="flex items-center justify-between gap-2 bg-white rounded-lg p-2 border border-amber-100">
+              <div key={action.id} className="flex items-center justify-between gap-2 bg-surface-base rounded-lg p-2 border border-amber-100">
                 <div className="text-xs text-text-primary">
                   <span className="font-medium">{action.action_type}:</span>{' '}
                   {JSON.stringify(action.payload)}
@@ -196,14 +196,14 @@ export function ChatPanel({ onClose, variant = 'popover', establecimientoId, emp
                 <div className="flex gap-1 shrink-0">
                   <button
                     onClick={() => handleApprove(action.id)}
-                    className="p-1 rounded bg-green-100 text-green-700 hover:bg-green-200 transition-colors"
+                    className="p-1 rounded bg-success-bg text-success hover:bg-green-200 transition-colors"
                     title="Aprobar"
                   >
                     <Check size={14} />
                   </button>
                   <button
                     onClick={() => handleReject(action.id)}
-                    className="p-1 rounded bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
+                    className="p-1 rounded bg-danger-bg text-danger hover:bg-red-200 transition-colors"
                     title="Rechazar"
                   >
                     <X size={14} />

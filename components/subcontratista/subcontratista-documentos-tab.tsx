@@ -16,23 +16,23 @@ interface Props {
 }
 
 function vencimientoInfo(fecha: string | null): { label: string; className: string } {
-  if (!fecha) return { label: 'Sin vencimiento', className: 'text-gray-400' }
+  if (!fecha) return { label: 'Sin vencimiento', className: 'text-text-tertiary' }
   const days = Math.ceil((new Date(fecha).getTime() - Date.now()) / 86400000)
-  if (days < 0) return { label: `Vencido (${Math.abs(days)} días)`, className: 'text-red-600 font-medium' }
-  if (days <= 7) return { label: `Vence en ${days} día${days === 1 ? '' : 's'}`, className: 'text-red-500 font-medium' }
+  if (days < 0) return { label: `Vencido (${Math.abs(days)} días)`, className: 'text-danger font-medium' }
+  if (days <= 7) return { label: `Vence en ${days} día${days === 1 ? '' : 's'}`, className: 'text-danger font-medium' }
   if (days <= 15) return { label: `Vence en ${days} días`, className: 'text-orange-500 font-medium' }
-  if (days <= 30) return { label: `Vence en ${days} días`, className: 'text-yellow-600 font-medium' }
-  return { label: 'Vigente', className: 'text-green-600 font-medium' }
+  if (days <= 30) return { label: `Vence en ${days} días`, className: 'text-warning font-medium' }
+  return { label: 'Vigente', className: 'text-success font-medium' }
 }
 
 function estadoBadge(fecha: string | null): { label: string; className: string } {
-  if (!fecha) return { label: 'Sin vencer', className: 'bg-gray-100 text-gray-600' }
+  if (!fecha) return { label: 'Sin vencer', className: 'bg-surface-elevated text-text-secondary' }
   const days = Math.ceil((new Date(fecha).getTime() - Date.now()) / 86400000)
-  if (days < 0) return { label: 'Vencido', className: 'bg-red-100 text-red-700' }
-  if (days <= 7) return { label: 'Crítico', className: 'bg-red-100 text-red-700' }
+  if (days < 0) return { label: 'Vencido', className: 'bg-danger-bg text-danger' }
+  if (days <= 7) return { label: 'Crítico', className: 'bg-danger-bg text-danger' }
   if (days <= 15) return { label: 'Próximo', className: 'bg-orange-100 text-orange-700' }
-  if (days <= 30) return { label: 'Próximo', className: 'bg-yellow-100 text-yellow-700' }
-  return { label: 'Vigente', className: 'bg-green-100 text-green-700' }
+  if (days <= 30) return { label: 'Próximo', className: 'bg-warning-bg text-warning' }
+  return { label: 'Vigente', className: 'bg-success-bg text-success' }
 }
 
 export function SubcontratistaDocumentosTab({ documentos, documentTypes, subcontratistaId, puedeEditar }: Props) {
@@ -47,9 +47,9 @@ export function SubcontratistaDocumentosTab({ documentos, documentTypes, subcont
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-900 dark:text-white">
+        <h3 className="font-semibold text-text-primary dark:text-white">
           Documentación
-          <span className="ml-2 text-sm font-normal text-gray-500">({documentos.length})</span>
+          <span className="ml-2 text-sm font-normal text-text-secondary">({documentos.length})</span>
         </h3>
         {puedeEditar && (
           <Button size="sm" onClick={() => setShowModal(true)}>
@@ -59,19 +59,19 @@ export function SubcontratistaDocumentosTab({ documentos, documentTypes, subcont
       </div>
 
       {!documentos.length ? (
-        <div className="bg-white dark:bg-surface-elevated rounded-xl border border-gray-200 dark:border-border-subtle p-10 text-center text-gray-400">
+        <div className="bg-surface-base dark:bg-surface-elevated rounded-xl border border-border-subtle dark:border-border-subtle p-10 text-center text-text-tertiary">
           No hay documentos cargados para este subcontratista
         </div>
       ) : (
-        <div className="bg-white dark:bg-surface-elevated rounded-xl border border-gray-200 dark:border-border-subtle overflow-hidden">
+        <div className="bg-surface-base dark:bg-surface-elevated rounded-xl border border-border-subtle dark:border-border-subtle overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="border-b border-gray-100 dark:border-border-subtle bg-gray-50 dark:bg-surface-sunken">
+            <thead className="border-b border-border-subtle dark:border-border-subtle bg-surface-base dark:bg-surface-sunken">
               <tr className="text-left">
-                <th className="px-5 py-3 text-gray-500 font-medium">Tipo</th>
-                <th className="px-5 py-3 text-gray-500 font-medium">Emisión</th>
-                <th className="px-5 py-3 text-gray-500 font-medium">Vencimiento</th>
-                <th className="px-5 py-3 text-gray-500 font-medium">Estado</th>
-                <th className="px-5 py-3 text-gray-500 font-medium">Archivo</th>
+                <th className="px-5 py-3 text-text-secondary font-medium">Tipo</th>
+                <th className="px-5 py-3 text-text-secondary font-medium">Emisión</th>
+                <th className="px-5 py-3 text-text-secondary font-medium">Vencimiento</th>
+                <th className="px-5 py-3 text-text-secondary font-medium">Estado</th>
+                <th className="px-5 py-3 text-text-secondary font-medium">Archivo</th>
                 <th className="px-5 py-3"></th>
               </tr>
             </thead>
@@ -82,9 +82,9 @@ export function SubcontratistaDocumentosTab({ documentos, documentTypes, subcont
                 const badge = estadoBadge(d.fecha_vencimiento)
 
                 return (
-                  <tr key={d.id} className="hover:bg-gray-50 dark:hover:bg-surface-sunken">
-                    <td className="px-5 py-3.5 font-medium text-gray-900 dark:text-white">{typeName}</td>
-                    <td className="px-5 py-3.5 text-gray-500">
+                  <tr key={d.id} className="hover:bg-surface-base dark:hover:bg-surface-sunken">
+                    <td className="px-5 py-3.5 font-medium text-text-primary dark:text-white">{typeName}</td>
+                    <td className="px-5 py-3.5 text-text-secondary">
                       {d.fecha_emision ? formatDate(d.fecha_emision) : '—'}
                     </td>
                     <td className={`px-5 py-3.5 ${venc.className}`}>
@@ -106,14 +106,14 @@ export function SubcontratistaDocumentosTab({ documentos, documentTypes, subcont
                           Ver archivo
                         </a>
                       ) : (
-                        <span className="text-gray-400">—</span>
+                        <span className="text-text-tertiary">—</span>
                       )}
                     </td>
                     <td className="px-5 py-3.5 text-right">
                       {puedeEditar && (
                         <button
                           onClick={() => handleDelete(d.id)}
-                          className="text-xs text-red-400 hover:text-red-600 transition-colors"
+                          className="text-xs text-red-400 hover:text-danger transition-colors"
                         >
                           Eliminar
                         </button>

@@ -104,23 +104,23 @@ function TrabajadorSearchPicker({
   }
 
   return (
-    <div className="bg-gray-50 rounded-lg p-3 mt-2 space-y-2">
+    <div className="bg-surface-base rounded-lg p-3 mt-2 space-y-2">
       <input
         type="search"
         placeholder="Buscar por apellido, nombre o DNI…"
         value={query}
         onChange={e => setQuery(e.target.value)}
         autoFocus
-        className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-sig-400"
+        className="w-full border border-border-default rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-sig-400"
       />
       {available === null ? (
-        <p className="text-xs text-gray-400 py-2 text-center">Cargando trabajadores…</p>
+        <p className="text-xs text-text-tertiary py-2 text-center">Cargando trabajadores…</p>
       ) : filtered.length === 0 ? (
-        <p className="text-xs text-gray-400 py-2 text-center">
+        <p className="text-xs text-text-tertiary py-2 text-center">
           {query ? 'Sin resultados para esa búsqueda.' : 'No hay trabajadores sin sector asignado.'}
         </p>
       ) : (
-        <ul className="divide-y divide-gray-100 max-h-48 overflow-y-auto rounded border border-gray-200 bg-white">
+        <ul className="divide-y divide-gray-100 max-h-48 overflow-y-auto rounded border border-border-subtle bg-surface-base">
           {filtered.map(p => (
             <li key={p.id}>
               <button
@@ -129,14 +129,14 @@ function TrabajadorSearchPicker({
                 onClick={() => assign(p.id)}
                 className="w-full text-left px-3 py-2 text-sm hover:bg-sig-50 transition-colors disabled:opacity-50"
               >
-                <span className="font-medium text-gray-800 dark:text-white">{p.apellido}, {p.nombre}</span>
-                {p.dni && <span className="text-gray-400 text-xs ml-2">DNI {p.dni}</span>}
+                <span className="font-medium text-text-primary dark:text-white">{p.apellido}, {p.nombre}</span>
+                {p.dni && <span className="text-text-tertiary text-xs ml-2">DNI {p.dni}</span>}
               </button>
             </li>
           ))}
         </ul>
       )}
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs text-danger">{error}</p>}
       <div className="flex justify-end">
         <Button size="sm" variant="secondary" type="button" onClick={onCancel}>Cancelar</Button>
       </div>
@@ -159,25 +159,25 @@ function PuestoInlineForm({
   onSuccessRef.current = onSuccess
   useEffect(() => { if (state?.success) onSuccessRef.current() }, [state])
   return (
-    <form action={formAction} className="mt-2 space-y-2 bg-gray-50 rounded-lg p-3">
+    <form action={formAction} className="mt-2 space-y-2 bg-surface-base rounded-lg p-3">
       <div className="flex gap-2">
         <input
           name="nombre"
           placeholder="Nombre del puesto *"
           required
-          className="flex-1 border border-gray-300 rounded px-2 py-1.5 text-sm"
+          className="flex-1 border border-border-default rounded px-2 py-1.5 text-sm"
         />
         <select
           name="tipo"
           required
-          className="border border-gray-300 rounded px-2 py-1.5 text-sm bg-white"
+          className="border border-border-default rounded px-2 py-1.5 text-sm bg-surface-base"
         >
           <option value="">Tipo *</option>
           <option value="operativo">Operativo</option>
           <option value="administrativo">Administrativo</option>
         </select>
       </div>
-      {state && !state.success && <p className="text-xs text-red-600">{state.error}</p>}
+      {state && !state.success && <p className="text-xs text-danger">{state.error}</p>}
       <div className="flex justify-end gap-2">
         <Button size="sm" variant="secondary" type="button" onClick={onCancel}>Cancelar</Button>
         <Button size="sm" type="submit" disabled={pending}>{pending ? '…' : 'Agregar'}</Button>
@@ -218,8 +218,8 @@ function EppInlineForm({
       <p className="text-xs font-semibold text-sig-700 mb-1">Agregar EPP</p>
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="text-xs text-gray-600 block mb-1">Producto *</label>
-          <select name="producto_id" required className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm bg-white">
+          <label className="text-xs text-text-secondary block mb-1">Producto *</label>
+          <select name="producto_id" required className="w-full border border-border-default rounded px-2 py-1.5 text-sm bg-surface-base">
             <option value="">Seleccioná…</option>
             {productos === null ? (
               <option disabled>Cargando…</option>
@@ -233,11 +233,11 @@ function EppInlineForm({
           </select>
         </div>
         <div>
-          <label className="text-xs text-gray-600 block mb-1">Vida útil (hs)</label>
-          <input name="horas_vida_util" type="number" min="0" step="0.5" placeholder="Opcional" className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
+          <label className="text-xs text-text-secondary block mb-1">Vida útil (hs)</label>
+          <input name="horas_vida_util" type="number" min="0" step="0.5" placeholder="Opcional" className="w-full border border-border-default rounded px-2 py-1.5 text-sm" />
         </div>
       </div>
-      {state && !state.success && <p className="text-xs text-red-600">{state.error}</p>}
+      {state && !state.success && <p className="text-xs text-danger">{state.error}</p>}
       <div className="flex gap-2 justify-end">
         <Button size="sm" variant="secondary" type="button" onClick={onCancel}>Cancelar</Button>
         <Button size="sm" type="submit" disabled={pending}>{pending ? '…' : 'Agregar'}</Button>
@@ -313,27 +313,27 @@ function PuestoRow({
   const eppAction = addEppToPuesto.bind(null, puesto.id, establecimientoId, empresaId)
 
   return (
-    <div className="border border-gray-100 rounded-lg">
+    <div className="border border-border-subtle rounded-lg">
       <div className="flex items-center gap-2 px-4 py-2.5">
         <button
           onClick={() => setOpen(v => !v)}
-          className="flex items-center gap-2 flex-1 text-left text-sm font-medium text-gray-800 dark:text-white hover:text-gray-900"
+          className="flex items-center gap-2 flex-1 text-left text-sm font-medium text-text-primary dark:text-white hover:text-text-primary"
         >
-          <svg className={`w-3.5 h-3.5 text-gray-400 transition-transform shrink-0 ${open ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <svg className={`w-3.5 h-3.5 text-text-tertiary transition-transform shrink-0 ${open ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
           </svg>
           {puesto.nombre}
           {puesto.tipo && (
             <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${
               puesto.tipo === 'operativo'
-                ? 'bg-blue-50 text-blue-700'
+                ? 'bg-info-bg text-info'
                 : 'bg-purple-50 text-purple-700'
             }`}>
               {puesto.tipo === 'operativo' ? 'Op.' : 'Admin.'}
             </span>
           )}
           {personas !== null && (
-            <span className="text-xs text-gray-400 font-normal">({personas.length} trabajador{personas.length !== 1 ? 'es' : ''})</span>
+            <span className="text-xs text-text-tertiary font-normal">({personas.length} trabajador{personas.length !== 1 ? 'es' : ''})</span>
           )}
           {epp !== null && epp.length > 0 && (
             <span className="text-xs bg-sig-50 text-sig-700 font-medium px-1.5 py-0.5 rounded">{epp.length} EPP</span>
@@ -343,7 +343,7 @@ function PuestoRow({
           <button
             onClick={handleDeletePuesto}
             disabled={isPending}
-            className="text-xs text-red-400 hover:text-red-600 transition-colors"
+            className="text-xs text-red-400 hover:text-danger transition-colors"
           >
             Eliminar
           </button>
@@ -353,11 +353,11 @@ function PuestoRow({
       {open && (
         <div className="px-4 pb-3 border-t border-gray-50 space-y-3">
           <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mt-2 mb-1">Trabajadores</p>
+            <p className="text-xs font-semibold text-text-tertiary uppercase tracking-wider mt-2 mb-1">Trabajadores</p>
             {personas === null ? (
-              <p className="text-xs text-gray-400 py-1">Cargando…</p>
+              <p className="text-xs text-text-tertiary py-1">Cargando…</p>
             ) : personas.length === 0 && !showAddPersona ? (
-              <p className="text-xs text-gray-400 py-1">Sin trabajadores en este puesto.</p>
+              <p className="text-xs text-text-tertiary py-1">Sin trabajadores en este puesto.</p>
             ) : (
               <ul className="divide-y divide-gray-50 dark:divide-border-subtle">
                 {personas.map(ep => (
@@ -367,13 +367,13 @@ function PuestoRow({
                       className="text-left text-sig-500 hover:text-sig-700 font-medium"
                     >
                       {ep.personas_directorio?.apellido}, {ep.personas_directorio?.nombre}
-                      {ep.personas_directorio?.dni && <span className="text-gray-400 text-xs font-normal ml-2">DNI {ep.personas_directorio.dni}</span>}
+                      {ep.personas_directorio?.dni && <span className="text-text-tertiary text-xs font-normal ml-2">DNI {ep.personas_directorio.dni}</span>}
                     </button>
                     {canDelete && (
                       <button
                         onClick={() => handleRemovePersona(ep.id)}
                         disabled={isPending}
-                        className="text-xs text-red-400 hover:text-red-600"
+                        className="text-xs text-red-400 hover:text-danger"
                       >
                         Quitar
                       </button>
@@ -402,11 +402,11 @@ function PuestoRow({
           </div>
 
           <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">EPP Requerido</p>
+            <p className="text-xs font-semibold text-text-tertiary uppercase tracking-wider mb-1">EPP Requerido</p>
             {epp === null ? (
-              <p className="text-xs text-gray-400 py-1">Cargando…</p>
+              <p className="text-xs text-text-tertiary py-1">Cargando…</p>
             ) : epp.length === 0 && !showAddEpp ? (
-              <p className="text-xs text-gray-400 py-1">Sin EPP definido.</p>
+              <p className="text-xs text-text-tertiary py-1">Sin EPP definido.</p>
             ) : (
               <ul className="divide-y divide-gray-50 dark:divide-border-subtle">
                  {epp.map(e => {
@@ -414,16 +414,16 @@ function PuestoRow({
                    const unidadSimbolo = (e.productos as any).unidades?.simbolo ?? ''
                    return (
                    <li key={e.id} className="flex items-center justify-between py-1.5 text-sm">
-                     <span className="text-gray-800">
+                     <span className="text-text-primary">
                        {e.productos?.nombre}
-                       {e.productos?.tamano && <span className="text-gray-500 ml-1">{e.productos.tamano}{unidadSimbolo}</span>}
-                       {e.horas_vida_util && <span className="text-gray-400 text-xs ml-2">{e.horas_vida_util}hs vida útil</span>}
+                       {e.productos?.tamano && <span className="text-text-secondary ml-1">{e.productos.tamano}{unidadSimbolo}</span>}
+                       {e.horas_vida_util && <span className="text-text-tertiary text-xs ml-2">{e.horas_vida_util}hs vida útil</span>}
                      </span>
                      {canDelete && (
                        <button
                          onClick={() => handleRemoveEpp(e.id)}
                          disabled={isPending}
-                         className="text-xs text-red-400 hover:text-red-600"
+                         className="text-xs text-red-400 hover:text-danger"
                        >
                          Quitar
                        </button>
@@ -520,21 +520,21 @@ function SectorRow({
   const puestoAction = createPuesto.bind(null, sector.id, establecimientoId, empresaId)
 
   return (
-    <div className="bg-white dark:bg-surface-elevated rounded-xl border border-gray-200 dark:border-border-subtle">
+    <div className="bg-surface-base dark:bg-surface-elevated rounded-xl border border-border-subtle dark:border-border-subtle">
       <div className="flex items-center gap-3 px-5 py-3.5">
         <button
           onClick={() => setOpen(v => !v)}
           className="flex items-center gap-2 flex-1 text-left"
         >
-          <svg className={`w-4 h-4 text-gray-400 transition-transform shrink-0 ${open ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <svg className={`w-4 h-4 text-text-tertiary transition-transform shrink-0 ${open ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
           </svg>
-          <span className="font-medium text-gray-900 text-sm">{sector.nombre}</span>
-          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${sector.es_custom ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'}`}>
+          <span className="font-medium text-text-primary text-sm">{sector.nombre}</span>
+          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${sector.es_custom ? 'bg-purple-100 text-purple-700' : 'bg-surface-elevated text-text-secondary'}`}>
             {sector.es_custom ? 'Custom' : 'Predefinido'}
           </span>
           {puestos !== null && (
-            <span className="text-xs text-gray-400">{puestos.length} puesto{puestos.length !== 1 ? 's' : ''}</span>
+            <span className="text-xs text-text-tertiary">{puestos.length} puesto{puestos.length !== 1 ? 's' : ''}</span>
           )}
         </button>
 
@@ -543,7 +543,7 @@ function SectorRow({
             <input
               type="number" min="0" value={editingVal}
               onChange={e => setEditingVal(e.target.value)}
-              className="w-16 border border-gray-300 rounded px-2 py-1 text-xs text-center"
+              className="w-16 border border-border-default rounded px-2 py-1 text-xs text-center"
               autoFocus
             />
             <Button size="sm" onClick={() => saveWorkers(sector.id)} disabled={isPending}>OK</Button>
@@ -552,7 +552,7 @@ function SectorRow({
         ) : (
           <button
             onClick={() => canWrite && (setEditingId(sector.id), setEditingVal(sector.cantidad_trabajadores.toString()))}
-            className={`text-sm text-gray-500 ${canWrite ? 'hover:text-sig-500 cursor-pointer' : 'cursor-default'}`}
+            className={`text-sm text-text-secondary ${canWrite ? 'hover:text-sig-500 cursor-pointer' : 'cursor-default'}`}
             title={canWrite ? 'Click para editar trabajadores' : undefined}
           >
             {sector.cantidad_trabajadores} trabajadores
@@ -563,7 +563,7 @@ function SectorRow({
           <button
             onClick={handleDeleteSector}
             disabled={isPending}
-            className="text-xs text-red-400 hover:text-red-600 transition-colors"
+            className="text-xs text-red-400 hover:text-danger transition-colors"
           >
             Eliminar
           </button>
@@ -571,13 +571,13 @@ function SectorRow({
       </div>
 
       {open && (
-        <div className="border-t border-gray-100 px-5 py-3 space-y-2">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Puestos de trabajo</p>
+        <div className="border-t border-border-subtle px-5 py-3 space-y-2">
+          <p className="text-xs font-semibold text-text-tertiary uppercase tracking-wider mb-2">Puestos de trabajo</p>
 
           {puestos === null ? (
-            <p className="text-xs text-gray-400">Cargando…</p>
+            <p className="text-xs text-text-tertiary">Cargando…</p>
           ) : puestos.length === 0 && !showAddPuesto ? (
-            <p className="text-xs text-gray-400">Sin puestos definidos.</p>
+            <p className="text-xs text-text-tertiary">Sin puestos definidos.</p>
           ) : (
             <div className="space-y-1.5">
               {puestos.map(puesto => (
@@ -658,11 +658,11 @@ export function SectoresTab({ sectores, establecimientoId, empresaId, canWrite, 
     <div>
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="font-semibold text-gray-900 dark:text-white">Sectores del Establecimiento</h3>
+          <h3 className="font-semibold text-text-primary dark:text-white">Sectores del Establecimiento</h3>
           {workerCounts !== null && (workerCounts.operativo > 0 || workerCounts.administrativo > 0) && (
-            <p className="text-xs text-gray-500 mt-0.5">
-              <span className="text-blue-600 font-medium">{workerCounts.operativo} operativo{workerCounts.operativo !== 1 ? 's' : ''}</span>
-              <span className="text-gray-300 mx-1.5">·</span>
+            <p className="text-xs text-text-secondary mt-0.5">
+              <span className="text-info font-medium">{workerCounts.operativo} operativo{workerCounts.operativo !== 1 ? 's' : ''}</span>
+              <span className="text-text-tertiary mx-1.5">·</span>
               <span className="text-purple-600 font-medium">{workerCounts.administrativo} administrativo{workerCounts.administrativo !== 1 ? 's' : ''}</span>
             </p>
           )}
@@ -675,7 +675,7 @@ export function SectoresTab({ sectores, establecimientoId, empresaId, canWrite, 
       </div>
 
       {localSectores.length === 0 ? (
-        <div className="bg-white dark:bg-surface-elevated rounded-xl border border-gray-200 dark:border-border-subtle p-8 text-center text-gray-400 text-sm">
+        <div className="bg-surface-base dark:bg-surface-elevated rounded-xl border border-border-subtle dark:border-border-subtle p-8 text-center text-text-tertiary text-sm">
           No hay sectores registrados
         </div>
       ) : (

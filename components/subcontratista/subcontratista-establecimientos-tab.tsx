@@ -45,9 +45,9 @@ export function SubcontratistaEstablecimientosTab({ establecimientos, subcontrat
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-900 dark:text-white">
+        <h3 className="font-semibold text-text-primary dark:text-white">
           Establecimientos donde trabaja
-          <span className="ml-2 text-sm font-normal text-gray-500">({establecimientos.length})</span>
+          <span className="ml-2 text-sm font-normal text-text-secondary">({establecimientos.length})</span>
         </h3>
         {puedeEditar && (
           <Button size="sm" onClick={() => setShowModal(true)}>
@@ -57,17 +57,17 @@ export function SubcontratistaEstablecimientosTab({ establecimientos, subcontrat
       </div>
 
       {!establecimientos.length ? (
-        <div className="bg-white dark:bg-surface-elevated rounded-xl border border-gray-200 dark:border-border-subtle p-10 text-center text-gray-400">
+        <div className="bg-surface-base dark:bg-surface-elevated rounded-xl border border-border-subtle dark:border-border-subtle p-10 text-center text-text-tertiary">
           No está vinculado a ningún establecimiento
         </div>
       ) : (
-        <div className="bg-white dark:bg-surface-elevated rounded-xl border border-gray-200 dark:border-border-subtle overflow-hidden">
+        <div className="bg-surface-base dark:bg-surface-elevated rounded-xl border border-border-subtle dark:border-border-subtle overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="border-b border-gray-100 dark:border-border-subtle bg-gray-50 dark:bg-surface-sunken">
+            <thead className="border-b border-border-subtle dark:border-border-subtle bg-surface-base dark:bg-surface-sunken">
               <tr className="text-left">
-                <th className="px-5 py-3 text-gray-500 font-medium">Establecimiento</th>
-                <th className="px-5 py-3 text-gray-500 font-medium">Empresa</th>
-                <th className="px-5 py-3 text-gray-500 font-medium">Actividad</th>
+                <th className="px-5 py-3 text-text-secondary font-medium">Establecimiento</th>
+                <th className="px-5 py-3 text-text-secondary font-medium">Empresa</th>
+                <th className="px-5 py-3 text-text-secondary font-medium">Actividad</th>
                 <th className="px-5 py-3"></th>
               </tr>
             </thead>
@@ -79,11 +79,11 @@ export function SubcontratistaEstablecimientosTab({ establecimientos, subcontrat
                 empresas?: { razon_social: string } | null
                 establecimientos_tipos?: { nombre: string } | null
               }) => (
-                <tr key={e.id} className="hover:bg-gray-50 dark:hover:bg-surface-sunken">
-                  <td className="px-5 py-3.5 font-medium text-gray-900 dark:text-white">{e.nombre}</td>
-                  <td className="px-5 py-3.5 text-gray-500">{e.empresas?.razon_social ?? '—'}</td>
-                  <td className="px-5 py-3.5 text-gray-500">
-                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
+                <tr key={e.id} className="hover:bg-surface-base dark:hover:bg-surface-sunken">
+                  <td className="px-5 py-3.5 font-medium text-text-primary dark:text-white">{e.nombre}</td>
+                  <td className="px-5 py-3.5 text-text-secondary">{e.empresas?.razon_social ?? '—'}</td>
+                  <td className="px-5 py-3.5 text-text-secondary">
+                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-surface-elevated text-text-secondary">
                       {e.establecimientos_tipos?.nombre ?? e.actividad_principal ?? '—'}
                     </span>
                   </td>
@@ -91,7 +91,7 @@ export function SubcontratistaEstablecimientosTab({ establecimientos, subcontrat
                     {puedeEditar && (
                       <button
                         onClick={() => handleUnlink(e.id)}
-                        className="text-xs text-red-400 hover:text-red-600 transition-colors"
+                        className="text-xs text-red-400 hover:text-danger transition-colors"
                       >
                         Desvincular
                       </button>

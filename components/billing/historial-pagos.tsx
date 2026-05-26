@@ -28,10 +28,10 @@ const ESTADO_LABELS: Record<string, string> = {
 }
 
 const ESTADO_COLORS: Record<string, string> = {
-  approved: 'text-green-600 bg-green-50',
-  pending: 'text-yellow-600 bg-yellow-50',
-  rejected: 'text-red-600 bg-red-50',
-  refunded: 'text-gray-600 bg-gray-50',
+  approved: 'text-success bg-success-bg',
+  pending: 'text-warning bg-warning-bg',
+  rejected: 'text-danger bg-danger-bg',
+  refunded: 'text-text-secondary bg-surface-base',
 }
 
 export function HistorialPagos() {
@@ -50,7 +50,7 @@ export function HistorialPagos() {
   if (queryError) {
     return (
       <Card>
-        <p className="text-sm text-red-600">Error al cargar pagos</p>
+        <p className="text-sm text-danger">Error al cargar pagos</p>
       </Card>
     )
   }

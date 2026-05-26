@@ -90,19 +90,19 @@ export function PlanGrilla({
               <ul className="space-y-2 text-sm text-text-secondary pt-2">
                 {plan.max_colaboradores != null && (
                   <li className="flex items-start gap-2">
-                    <Check className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
+                    <Check className="w-4 h-4 text-success mt-0.5 shrink-0" />
                     <span>Hasta {plan.max_colaboradores} colaboradores</span>
                   </li>
                 )}
                 {plan.max_empresas != null && (
                   <li className="flex items-start gap-2">
-                    <Check className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
+                    <Check className="w-4 h-4 text-success mt-0.5 shrink-0" />
                     <span>Hasta {plan.max_empresas} empresas</span>
                   </li>
                 )}
                 {plan.max_establecimientos != null && (
                   <li className="flex items-start gap-2">
-                    <Check className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
+                    <Check className="w-4 h-4 text-success mt-0.5 shrink-0" />
                     <span>Hasta {plan.max_establecimientos} establecimientos</span>
                   </li>
                 )}

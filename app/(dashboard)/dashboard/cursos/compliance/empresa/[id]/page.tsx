@@ -47,7 +47,7 @@ export default function ComplianceEmpresaPage({ params }: { params: Promise<{ id
               <p className="text-xs text-text-tertiary">Total asignaciones</p>
             </div>
             <div className="p-4 bg-surface-elevated border border-border-subtle rounded-xl text-center">
-              <p className="text-2xl font-bold text-green-600">{empresa.aprobadas}</p>
+              <p className="text-2xl font-bold text-success">{empresa.aprobadas}</p>
               <p className="text-xs text-text-tertiary">Aprobadas</p>
             </div>
           </div>
@@ -61,7 +61,7 @@ export default function ComplianceEmpresaPage({ params }: { params: Promise<{ id
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-medium text-text-primary">{est.establecimiento_nombre}</span>
                     <span className={`text-sm font-medium ${
-                      est.porcentaje >= 80 ? 'text-green-600' : est.porcentaje >= 50 ? 'text-amber-600' : 'text-red-600'
+                      est.porcentaje >= 80 ? 'text-success' : est.porcentaje >= 50 ? 'text-amber-600' : 'text-danger'
                     }`}>
                       {est.porcentaje}%
                     </span>

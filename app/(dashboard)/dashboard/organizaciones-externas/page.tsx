@@ -109,8 +109,8 @@ export default function OrganizacionesExternasPage() {
     <div className="p-8 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Organizaciones Externas</h1>
-          <p className="text-sm text-gray-500 mt-1">Proveedores, subcontratistas, marcas y organismos externos</p>
+          <h1 className="text-2xl font-bold text-text-primary">Organizaciones Externas</h1>
+          <p className="text-sm text-text-secondary mt-1">Proveedores, subcontratistas, marcas y organismos externos</p>
         </div>
         <Link href="/dashboard/organizaciones-externas/nueva">
           <Button>+ Nueva Organización</Button>
@@ -124,7 +124,7 @@ export default function OrganizacionesExternasPage() {
           placeholder="Buscar por nombre o email…"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="w-full max-w-md border border-gray-300 rounded-lg px-3 py-2 text-sm"
+          className="w-full max-w-md border border-border-default rounded-lg px-3 py-2 text-sm"
         />
       </div>
 
@@ -132,7 +132,7 @@ export default function OrganizacionesExternasPage() {
       <div className="flex gap-1 mb-5 flex-wrap">
         <button
           onClick={() => setActiveTipo('todos')}
-          className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${activeTipo === 'todos' ? 'bg-gray-900 text-white border-gray-900' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
+          className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${activeTipo === 'todos' ? 'bg-gray-900 text-white border-gray-900' : 'border-border-default text-text-secondary hover:bg-surface-base'}`}
         >
           Todos {organizaciones !== null && `(${organizaciones.length})`}
         </button>
@@ -142,7 +142,7 @@ export default function OrganizacionesExternasPage() {
             <button
               key={t.id}
               onClick={() => setActiveTipo(t.id)}
-              className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${activeTipo === t.id ? 'bg-sig-500 text-white border-sig-500' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
+              className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${activeTipo === t.id ? 'bg-sig-500 text-white border-sig-500' : 'border-border-default text-text-secondary hover:bg-surface-base'}`}
             >
               {t.nombre} ({count})
             </button>
@@ -151,21 +151,21 @@ export default function OrganizacionesExternasPage() {
       </div>
 
       {filtered === null ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400">Cargando…</div>
+        <div className="bg-surface-base rounded-xl border border-border-subtle p-8 text-center text-text-tertiary">Cargando…</div>
       ) : filtered.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400">
+        <div className="bg-surface-base rounded-xl border border-border-subtle p-8 text-center text-text-tertiary">
           No hay organizaciones registradas{activeTipo !== 'todos' ? ' de este tipo' : ''}.
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="bg-surface-base rounded-xl border border-border-subtle overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="border-b border-gray-100 bg-gray-50">
+            <thead className="border-b border-border-subtle bg-surface-base">
               <tr className="text-left">
-                <th className="px-5 py-3 text-gray-500 font-medium">Nombre</th>
-                <th className="px-5 py-3 text-gray-500 font-medium">Tipo</th>
-                <th className="px-5 py-3 text-gray-500 font-medium">Rubro</th>
-                <th className="px-5 py-3 text-gray-500 font-medium">Email</th>
-                <th className="px-5 py-3 text-gray-500 font-medium">Teléfono</th>
+                <th className="px-5 py-3 text-text-secondary font-medium">Nombre</th>
+                <th className="px-5 py-3 text-text-secondary font-medium">Tipo</th>
+                <th className="px-5 py-3 text-text-secondary font-medium">Rubro</th>
+                <th className="px-5 py-3 text-text-secondary font-medium">Email</th>
+                <th className="px-5 py-3 text-text-secondary font-medium">Teléfono</th>
                 <th className="px-5 py-3"></th>
               </tr>
             </thead>
@@ -180,10 +180,10 @@ export default function OrganizacionesExternasPage() {
                 return (
                   <tr
                     key={o.id}
-                    className={`hover:bg-gray-50 ${isSub ? 'cursor-pointer' : ''}`}
+                    className={`hover:bg-surface-base ${isSub ? 'cursor-pointer' : ''}`}
                     onClick={isSub ? () => router.push(linkHref) : undefined}
                   >
-                    <td className="px-5 py-3.5 font-medium text-gray-900">
+                    <td className="px-5 py-3.5 font-medium text-text-primary">
                       <div className="flex items-center gap-2">
                         <span>{o.nombre}</span>
                         {isSub && (
@@ -192,7 +192,7 @@ export default function OrganizacionesExternasPage() {
                           </span>
                         )}
                         {subInfo?.hasVencidos && (
-                          <span className="text-xs text-red-500" title="Documentos vencidos">⚠</span>
+                          <span className="text-xs text-danger" title="Documentos vencidos">⚠</span>
                         )}
                       </div>
                     </td>
@@ -200,16 +200,16 @@ export default function OrganizacionesExternasPage() {
                       <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                         isSub
                           ? 'bg-sig-100 text-sig-700'
-                          : 'bg-gray-100 text-gray-700'
+                          : 'bg-surface-elevated text-text-secondary'
                       }`}>
                         {o.organizaciones_tipos?.nombre ?? '—'}
                       </span>
                     </td>
-                    <td className="px-5 py-3.5 text-gray-500">
+                    <td className="px-5 py-3.5 text-text-secondary">
                       {subInfo?.rubro ?? '—'}
                     </td>
-                    <td className="px-5 py-3.5 text-gray-500">{o.email ?? '—'}</td>
-                    <td className="px-5 py-3.5 text-gray-500">{o.telefono ?? '—'}</td>
+                    <td className="px-5 py-3.5 text-text-secondary">{o.email ?? '—'}</td>
+                    <td className="px-5 py-3.5 text-text-secondary">{o.telefono ?? '—'}</td>
                     <td className="px-5 py-3.5 text-right">
                       <div className="flex gap-2 justify-end">
                         {isSub && (
@@ -223,7 +223,7 @@ export default function OrganizacionesExternasPage() {
                         )}
                         <button
                           onClick={e => { e.stopPropagation(); handleDelete(o.id) }}
-                          className="text-xs text-red-400 hover:text-red-600"
+                          className="text-xs text-red-400 hover:text-danger"
                         >
                           Eliminar
                         </button>

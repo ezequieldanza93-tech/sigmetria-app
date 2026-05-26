@@ -63,7 +63,7 @@ export function PlayerSidebar({ cursoId, modulos, leccionesCompletadas, progreso
                 >
                   <span className="shrink-0 w-4 h-4 flex items-center justify-center">
                     {completada ? (
-                      <Check size={14} className="text-green-500" strokeWidth={2.5} />
+                      <Check size={14} className="text-success" strokeWidth={2.5} />
                     ) : isActive ? (
                       <Play size={14} />
                     ) : (

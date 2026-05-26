@@ -9,9 +9,9 @@ interface NpsInputProps {
 }
 
 const SCORE_COLORS: Record<string, string> = {
-  detractor: 'bg-red-500 hover:bg-red-600 focus:ring-red-400',
+  detractor: 'bg-danger hover:bg-danger focus:ring-red-400',
   pasivo: 'bg-amber-400 hover:bg-amber-500 focus:ring-amber-300',
-  promotor: 'bg-green-500 hover:bg-green-600 focus:ring-green-400',
+  promotor: 'bg-success hover:bg-success focus:ring-green-400',
 }
 
 function getScoreColor(score: number): string {
@@ -21,9 +21,9 @@ function getScoreColor(score: number): string {
 }
 
 function getScoreBgClass(score: number): string {
-  if (score >= 9) return 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800'
+  if (score >= 9) return 'bg-success-bg dark:bg-green-950/20 border-green-200 dark:border-green-800'
   if (score >= 7) return 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800'
-  return 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800'
+  return 'bg-danger-bg dark:bg-red-950/20 border-red-200 dark:border-red-800'
 }
 
 export function NpsInput({ value, onChange, disabled }: NpsInputProps) {

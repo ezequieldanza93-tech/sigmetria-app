@@ -22,10 +22,10 @@ function getEntidadIcon(tipo: string) {
 }
 
 function getVencimientoBadge(dias: number): { label: string; cls: string } {
-  if (dias < 0) return { label: `Venc`, cls: 'bg-red-100 text-red-700' }
+  if (dias < 0) return { label: `Venc`, cls: 'bg-danger-bg text-danger' }
   if (dias === 0) return { label: 'Hoy', cls: 'bg-orange-100 text-orange-700' }
   if (dias <= 3) return { label: `${dias}d`, cls: 'bg-orange-100 text-orange-700' }
-  return { label: `${dias}d`, cls: 'bg-yellow-100 text-yellow-700' }
+  return { label: `${dias}d`, cls: 'bg-warning-bg text-warning' }
 }
 
 export function NotificationDropdown() {
@@ -112,7 +112,7 @@ export function NotificationDropdown() {
       >
         <Bell size={18} strokeWidth={1.75} />
         {notifCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+          <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-danger text-white text-[10px] font-bold rounded-full flex items-center justify-center">
             {notifCount > 9 ? '9+' : notifCount}
           </span>
         )}
@@ -166,9 +166,9 @@ export function NotificationDropdown() {
                       }`}
                     >
                       <div className={`p-1.5 rounded-lg shrink-0 mt-0.5 ${
-                        n.dias_restantes < 0 ? 'bg-red-100' : 'bg-surface-base'
+                        n.dias_restantes < 0 ? 'bg-danger-bg' : 'bg-surface-base'
                       }`}>
-                        <Icon size={14} className={n.dias_restantes < 0 ? 'text-red-600' : 'text-text-tertiary'} />
+                        <Icon size={14} className={n.dias_restantes < 0 ? 'text-danger' : 'text-text-tertiary'} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 mb-0.5">

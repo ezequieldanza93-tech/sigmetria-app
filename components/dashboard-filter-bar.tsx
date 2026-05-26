@@ -35,7 +35,7 @@ export function DashboardFilterBar({ empresas, establecimientos, selectedEmpresa
       <select
         value={selectedEmpresaId}
         onChange={e => handleEmpresaChange(e.target.value)}
-        className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500 min-w-[220px] bg-white"
+        className="border border-border-default rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500 min-w-[220px] bg-surface-base"
       >
         <option value="">Todas las empresas</option>
         {empresas.map(e => (
@@ -47,7 +47,7 @@ export function DashboardFilterBar({ empresas, establecimientos, selectedEmpresa
         value={selectedEstId}
         onChange={e => handleEstChange(e.target.value)}
         disabled={!selectedEmpresaId || filteredEsts.length === 0}
-        className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500 min-w-[220px] bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+        className="border border-border-default rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500 min-w-[220px] bg-surface-base disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <option value="">Todos los establecimientos</option>
         {filteredEsts.map(e => (
@@ -58,7 +58,7 @@ export function DashboardFilterBar({ empresas, establecimientos, selectedEmpresa
       {(selectedEmpresaId || selectedEstId) && (
         <button
           onClick={() => router.push(pathname)}
-          className="text-sm text-gray-500 hover:text-gray-900 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+          className="text-sm text-text-secondary hover:text-text-primary px-3 py-2 rounded-lg hover:bg-surface-elevated transition-colors"
         >
           × Limpiar
         </button>

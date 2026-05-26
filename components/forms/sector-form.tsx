@@ -27,23 +27,23 @@ export function SectorForm({ action, onSuccess }: SectorFormProps) {
   return (
     <form action={formAction} className="space-y-4">
       {state && !state.success && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+        <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3">
           {state.error}
         </div>
       )}
 
       <div>
-        <label className="text-xs text-gray-600 block mb-1">Nombre del sector *</label>
+        <label className="text-xs text-text-secondary block mb-1">Nombre del sector *</label>
         <input
           name="nombre"
           type="text"
           required
           placeholder="Ej: Producción, Mantenimiento…"
-          className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+          className="w-full border border-border-default rounded px-3 py-2 text-sm"
         />
       </div>
 
-      <p className="text-xs text-gray-400">
+      <p className="text-xs text-text-tertiary">
         Los trabajadores se asignan desde los puestos de trabajo. La cantidad se calcula automáticamente.
       </p>
 

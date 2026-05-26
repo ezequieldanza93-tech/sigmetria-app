@@ -269,15 +269,15 @@ export function ActuarView({ establecimientoId, canWrite = true }: { establecimi
   ]
 
   const obsColors: Record<string, string> = {
-    Cerrado: 'bg-green-100 text-green-700',
-    Vencido: 'bg-red-100 text-red-700',
+    Cerrado: 'bg-success-bg text-success',
+    Vencido: 'bg-danger-bg text-danger',
     Planificado: 'bg-sky-100 text-sky-700',
   }
 
   const catDot: Record<number, string> = {
     1: 'bg-yellow-400',
     2: 'bg-orange-500',
-    3: 'bg-red-500',
+    3: 'bg-danger',
     4: 'bg-red-700',
   }
 
@@ -372,18 +372,18 @@ export function ActuarView({ establecimientoId, canWrite = true }: { establecimi
           const vencido = estado === 'Vencido'
 
           return (
-            <div key={obs.id} className="bg-white dark:bg-surface-elevated border border-border-default rounded-xl p-4 cursor-pointer hover:border-brand-muted transition-colors" onClick={() => setSelectedObs(obs)}>
+            <div key={obs.id} className="bg-surface-base dark:bg-surface-elevated border border-border-default rounded-xl p-4 cursor-pointer hover:border-brand-muted transition-colors" onClick={() => setSelectedObs(obs)}>
               <div className="flex items-start justify-between gap-4">
                 {obs.foto_url && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={obs.foto_url} alt="Foto observación" className="h-[2.5cm] w-auto object-cover rounded-lg border border-gray-200 shrink-0" />
+                  <img src={obs.foto_url} alt="Foto observación" className="h-[2.5cm] w-auto object-cover rounded-lg border border-border-subtle shrink-0" />
                 )}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-text-primary">{obs.descripcion}</p>
 
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2">
                     {/* Fecha vencimiento */}
-                    <span className={`text-xs font-semibold ${vencido ? 'text-red-600' : 'text-amber-600'}`}>
+                    <span className={`text-xs font-semibold ${vencido ? 'text-danger' : 'text-amber-600'}`}>
                       {vencido ? `🔴 Vencido hace ${-diffDays} día${-diffDays !== 1 ? 's' : ''}` : `📅 Vence en ${diffDays} día${diffDays !== 1 ? 's' : ''}`}
                     </span>
                     <span className="text-xs text-text-tertiary">
@@ -431,7 +431,7 @@ export function ActuarView({ establecimientoId, canWrite = true }: { establecimi
                       </span>
                     )}
                     {obs.fecha_cierre && (
-                      <span className="text-xs text-green-600">✓ Cerrado: {obs.fecha_cierre}</span>
+                      <span className="text-xs text-success">✓ Cerrado: {obs.fecha_cierre}</span>
                     )}
                   </div>
 
@@ -449,7 +449,7 @@ export function ActuarView({ establecimientoId, canWrite = true }: { establecimi
                         </span>
                       )}
                       {obs.cliente_visto_at && (
-                        <span className="inline-flex items-center gap-1 text-xs text-green-600">
+                        <span className="inline-flex items-center gap-1 text-xs text-success">
                           ✓ Visto por cliente
                         </span>
                       )}

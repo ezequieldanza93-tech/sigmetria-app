@@ -25,22 +25,22 @@ function AgregarPersonaStakeholderForm({
   onSuccessRef.current = onSuccess
   useEffect(() => { if (state?.success) onSuccessRef.current() }, [state])
   return (
-    <form action={formAction} className="bg-gray-50 rounded-lg p-4 space-y-3 border border-gray-200">
-      <p className="text-xs font-semibold text-gray-700 dark:text-white uppercase tracking-wider">Nueva persona</p>
+    <form action={formAction} className="bg-surface-base rounded-lg p-4 space-y-3 border border-border-subtle">
+      <p className="text-xs font-semibold text-text-secondary dark:text-white uppercase tracking-wider">Nueva persona</p>
       <input type="hidden" name="establecimiento_id" value={establecimientoId} />
       <div className="grid grid-cols-2 gap-2">
-        <input name="nombre" placeholder="Nombre *" required className="border border-gray-300 rounded px-2 py-1.5 text-sm" />
-        <input name="apellido" placeholder="Apellido *" required className="border border-gray-300 rounded px-2 py-1.5 text-sm" />
+        <input name="nombre" placeholder="Nombre *" required className="border border-border-default rounded px-2 py-1.5 text-sm" />
+        <input name="apellido" placeholder="Apellido *" required className="border border-border-default rounded px-2 py-1.5 text-sm" />
       </div>
       <div className="grid grid-cols-2 gap-2">
-        <select name="tipo_id" required className="border border-gray-300 rounded px-2 py-1.5 text-sm bg-white">
+        <select name="tipo_id" required className="border border-border-default rounded px-2 py-1.5 text-sm bg-surface-base">
           <option value="">Tipo *</option>
           {tiposPersona.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
         </select>
-        <input name="dni" placeholder="DNI" className="border border-gray-300 rounded px-2 py-1.5 text-sm" />
+        <input name="dni" placeholder="DNI" className="border border-border-default rounded px-2 py-1.5 text-sm" />
       </div>
-      <input name="fecha_ingreso" type="date" className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-600" />
-      {state && !state.success && <p className="text-xs text-red-600">{state.error}</p>}
+      <input name="fecha_ingreso" type="date" className="w-full border border-border-default rounded px-2 py-1.5 text-sm text-text-secondary" />
+      {state && !state.success && <p className="text-xs text-danger">{state.error}</p>}
       <div className="flex gap-2 justify-end">
         <Button size="sm" variant="secondary" type="button" onClick={onCancel}>Cancelar</Button>
         <Button size="sm" type="submit" disabled={pending}>{pending ? 'Guardando…' : 'Agregar'}</Button>
@@ -65,18 +65,18 @@ function AgregarOrgStakeholderForm({
   onSuccessRef.current = onSuccess
   useEffect(() => { if (state?.success) onSuccessRef.current() }, [state])
   return (
-    <form action={formAction} className="bg-gray-50 rounded-lg p-4 space-y-3 border border-gray-200">
-      <p className="text-xs font-semibold text-gray-700 dark:text-white uppercase tracking-wider">Nueva organización externa</p>
-      <input name="nombre" placeholder="Nombre *" required className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
-      <select name="tipo_id" required className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm bg-white">
+    <form action={formAction} className="bg-surface-base rounded-lg p-4 space-y-3 border border-border-subtle">
+      <p className="text-xs font-semibold text-text-secondary dark:text-white uppercase tracking-wider">Nueva organización externa</p>
+      <input name="nombre" placeholder="Nombre *" required className="w-full border border-border-default rounded px-2 py-1.5 text-sm" />
+      <select name="tipo_id" required className="w-full border border-border-default rounded px-2 py-1.5 text-sm bg-surface-base">
         <option value="">Tipo *</option>
         {tiposOrg.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
       </select>
       <div className="grid grid-cols-2 gap-2">
-        <input name="email" type="email" placeholder="Email" className="border border-gray-300 rounded px-2 py-1.5 text-sm" />
-        <input name="telefono" placeholder="Teléfono" className="border border-gray-300 rounded px-2 py-1.5 text-sm" />
+        <input name="email" type="email" placeholder="Email" className="border border-border-default rounded px-2 py-1.5 text-sm" />
+        <input name="telefono" placeholder="Teléfono" className="border border-border-default rounded px-2 py-1.5 text-sm" />
       </div>
-      {state && !state.success && <p className="text-xs text-red-600">{state.error}</p>}
+      {state && !state.success && <p className="text-xs text-danger">{state.error}</p>}
       <div className="flex gap-2 justify-end">
         <Button size="sm" variant="secondary" type="button" onClick={onCancel}>Cancelar</Button>
         <Button size="sm" type="submit" disabled={pending}>{pending ? 'Guardando…' : 'Agregar'}</Button>
@@ -158,20 +158,20 @@ export function StakeholdersTab({ establecimientoId, empresaId, canWrite }: Stak
 
   return (
     <div className="space-y-4">
-      <div className="bg-white dark:bg-surface-elevated rounded-xl border border-gray-200 dark:border-border-subtle overflow-hidden">
+      <div className="bg-surface-base dark:bg-surface-elevated rounded-xl border border-border-subtle dark:border-border-subtle overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4">
           <button
             onClick={() => setPersonasOpen(o => !o)}
             className="flex items-center gap-3 hover:opacity-75 transition-opacity"
           >
-            <span className="font-semibold text-gray-900 dark:text-white">Personas</span>
+            <span className="font-semibold text-text-primary dark:text-white">Personas</span>
             {personas !== null && (
-              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-surface-elevated text-text-secondary">
                 {personas.length}
               </span>
             )}
             <svg
-              className={`w-4 h-4 text-gray-400 transition-transform ${personasOpen ? 'rotate-180' : ''}`}
+              className={`w-4 h-4 text-text-tertiary transition-transform ${personasOpen ? 'rotate-180' : ''}`}
               viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5"
             >
               <path d="M2 4l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
@@ -188,11 +188,11 @@ export function StakeholdersTab({ establecimientoId, empresaId, canWrite }: Stak
         </div>
 
         {personasOpen && (
-          <div className="border-t border-gray-100">
-            <div className="flex gap-1 px-5 py-3 flex-wrap border-b border-gray-100">
+          <div className="border-t border-border-subtle">
+            <div className="flex gap-1 px-5 py-3 flex-wrap border-b border-border-subtle">
               <button
                 onClick={() => setActiveTipo('todos')}
-                className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${activeTipo === 'todos' ? 'bg-gray-900 text-white border-gray-900' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
+                className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${activeTipo === 'todos' ? 'bg-gray-900 text-white border-gray-900' : 'border-border-default text-text-secondary hover:bg-surface-base'}`}
               >
                 Todos {personas !== null && `(${personas.length})`}
               </button>
@@ -202,7 +202,7 @@ export function StakeholdersTab({ establecimientoId, empresaId, canWrite }: Stak
                   <button
                     key={t.id}
                     onClick={() => setActiveTipo(t.id)}
-                    className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${activeTipo === t.id ? 'bg-sig-500 text-white border-sig-500' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
+                    className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${activeTipo === t.id ? 'bg-sig-500 text-white border-sig-500' : 'border-border-default text-text-secondary hover:bg-surface-base'}`}
                   >
                     {t.nombre} {personas !== null && `(${count})`}
                   </button>
@@ -210,35 +210,35 @@ export function StakeholdersTab({ establecimientoId, empresaId, canWrite }: Stak
               })}
             </div>
 
-            <div className="px-5 py-2 border-b border-gray-100">
+            <div className="px-5 py-2 border-b border-border-subtle">
               <input
                 type="text"
                 placeholder="Buscar por apellido, nombre o DNI…"
                 value={personaSearch}
                 onChange={e => setPersonaSearch(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
+                className="w-full border border-border-default rounded-lg px-3 py-1.5 text-sm"
               />
             </div>
 
             {filtered === null ? (
-              <div className="p-8 text-center text-gray-400 text-sm">Cargando…</div>
+              <div className="p-8 text-center text-text-tertiary text-sm">Cargando…</div>
             ) : filtered.length === 0 ? (
-              <div className="p-8 text-center text-gray-400 text-sm">
+              <div className="p-8 text-center text-text-tertiary text-sm">
                 No hay personas registradas{activeTipo !== 'todos' ? ' de este tipo' : ''}.
               </div>
             ) : (
               <table className="w-full text-sm">
-                <thead className="border-b border-gray-100 dark:border-border-subtle bg-gray-50 dark:bg-surface-sunken">
+                <thead className="border-b border-border-subtle dark:border-border-subtle bg-surface-base dark:bg-surface-sunken">
                   <tr className="text-left">
-                    <th className="px-5 py-3 text-gray-500 font-medium">Nombre</th>
-                    <th className="px-5 py-3 text-gray-500 font-medium">DNI</th>
-                    <th className="px-5 py-3 text-gray-500 font-medium">Tipo</th>
-                    <th className="px-5 py-3 text-gray-500 font-medium">Ingreso</th>
+                    <th className="px-5 py-3 text-text-secondary font-medium">Nombre</th>
+                    <th className="px-5 py-3 text-text-secondary font-medium">DNI</th>
+                    <th className="px-5 py-3 text-text-secondary font-medium">Tipo</th>
+                    <th className="px-5 py-3 text-text-secondary font-medium">Ingreso</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50 dark:divide-border-subtle">
                   {filtered.map(p => (
-                    <tr key={p.id} className="hover:bg-gray-50">
+                    <tr key={p.id} className="hover:bg-surface-base">
                       <td className="px-5 py-3.5">
                         <button
                           onClick={() => setSelectedPersona(p)}
@@ -247,13 +247,13 @@ export function StakeholdersTab({ establecimientoId, empresaId, canWrite }: Stak
                           {p.apellido}, {p.nombre}
                         </button>
                       </td>
-                      <td className="px-5 py-3.5 text-gray-500">{p.dni ?? '—'}</td>
+                      <td className="px-5 py-3.5 text-text-secondary">{p.dni ?? '—'}</td>
                       <td className="px-5 py-3.5">
-                        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
+                        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-surface-elevated text-text-secondary">
                           {p.personas_tipos?.nombre ?? '—'}
                         </span>
                       </td>
-                      <td className="px-5 py-3.5 text-gray-500">{p.fecha_ingreso ? formatDate(p.fecha_ingreso) : '—'}</td>
+                      <td className="px-5 py-3.5 text-text-secondary">{p.fecha_ingreso ? formatDate(p.fecha_ingreso) : '—'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -284,20 +284,20 @@ export function StakeholdersTab({ establecimientoId, empresaId, canWrite }: Stak
         )}
       </div>
 
-      <div className="bg-white dark:bg-surface-elevated rounded-xl border border-gray-200 dark:border-border-subtle overflow-hidden">
+      <div className="bg-surface-base dark:bg-surface-elevated rounded-xl border border-border-subtle dark:border-border-subtle overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4">
           <button
             onClick={() => setOrgsOpen(o => !o)}
             className="flex items-center gap-3 hover:opacity-75 transition-opacity"
           >
-            <span className="font-semibold text-gray-900 dark:text-white">Organizaciones Externas</span>
+            <span className="font-semibold text-text-primary dark:text-white">Organizaciones Externas</span>
             {orgExternas !== null && (
-              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-surface-elevated text-text-secondary">
                 {orgExternas.length}
               </span>
             )}
             <svg
-              className={`w-4 h-4 text-gray-400 transition-transform ${orgsOpen ? 'rotate-180' : ''}`}
+              className={`w-4 h-4 text-text-tertiary transition-transform ${orgsOpen ? 'rotate-180' : ''}`}
               viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5"
             >
               <path d="M2 4l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
@@ -314,31 +314,31 @@ export function StakeholdersTab({ establecimientoId, empresaId, canWrite }: Stak
         </div>
 
         {orgsOpen && (
-          <div className="border-t border-gray-100">
-            <div className="px-5 py-2 border-b border-gray-100">
+          <div className="border-t border-border-subtle">
+            <div className="px-5 py-2 border-b border-border-subtle">
               <input
                 type="text"
                 placeholder="Buscar organización…"
                 value={orgSearch}
                 onChange={e => setOrgSearch(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
+                className="w-full border border-border-default rounded-lg px-3 py-1.5 text-sm"
               />
             </div>
 
             {orgExternas === null ? (
-              <div className="p-8 text-center text-gray-400 text-sm">Cargando…</div>
+              <div className="p-8 text-center text-text-tertiary text-sm">Cargando…</div>
             ) : orgExternas.length === 0 ? (
-              <div className="p-8 text-center text-gray-400 text-sm">
+              <div className="p-8 text-center text-text-tertiary text-sm">
                 No hay organizaciones externas vinculadas a este establecimiento.
               </div>
             ) : (
               <table className="w-full text-sm">
-                <thead className="border-b border-gray-100 dark:border-border-subtle bg-gray-50 dark:bg-surface-sunken">
+                <thead className="border-b border-border-subtle dark:border-border-subtle bg-surface-base dark:bg-surface-sunken">
                   <tr className="text-left">
-                    <th className="px-5 py-3 text-gray-500 font-medium">Nombre</th>
-                    <th className="px-5 py-3 text-gray-500 font-medium">Tipo</th>
-                    <th className="px-5 py-3 text-gray-500 font-medium">Email</th>
-                    <th className="px-5 py-3 text-gray-500 font-medium">Teléfono</th>
+                    <th className="px-5 py-3 text-text-secondary font-medium">Nombre</th>
+                    <th className="px-5 py-3 text-text-secondary font-medium">Tipo</th>
+                    <th className="px-5 py-3 text-text-secondary font-medium">Email</th>
+                    <th className="px-5 py-3 text-text-secondary font-medium">Teléfono</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50 dark:divide-border-subtle">
@@ -346,15 +346,15 @@ export function StakeholdersTab({ establecimientoId, empresaId, canWrite }: Stak
                     if (!orgSearch) return true
                     return o.nombre.toLowerCase().includes(orgSearch.toLowerCase())
                   }).map(o => (
-                    <tr key={o.id} className="hover:bg-gray-50">
-                      <td className="px-5 py-3.5 font-medium text-gray-900 dark:text-white">{o.nombre}</td>
+                    <tr key={o.id} className="hover:bg-surface-base">
+                      <td className="px-5 py-3.5 font-medium text-text-primary dark:text-white">{o.nombre}</td>
                       <td className="px-5 py-3.5">
-                        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
+                        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-surface-elevated text-text-secondary">
                           {o.organizaciones_tipos?.nombre ?? '—'}
                         </span>
                       </td>
-                      <td className="px-5 py-3.5 text-gray-500">{o.email ?? '—'}</td>
-                      <td className="px-5 py-3.5 text-gray-500">{o.telefono ?? '—'}</td>
+                      <td className="px-5 py-3.5 text-text-secondary">{o.email ?? '—'}</td>
+                      <td className="px-5 py-3.5 text-text-secondary">{o.telefono ?? '—'}</td>
                     </tr>
                   ))}
                 </tbody>
