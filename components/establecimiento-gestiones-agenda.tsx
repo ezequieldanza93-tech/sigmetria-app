@@ -24,6 +24,7 @@ import {
   createCategoriaGestion,
 } from '@/lib/actions/gestion-establecimiento'
 import { ejecutarGestion, crearObservaciones } from '@/lib/actions/registro-gestion'
+import { useShortcutAction } from '@/lib/contexts/shortcuts-context'
 
 
 const CATEGORIA_META: Record<string, { icon: React.ComponentType<{ size?: number; className?: string }>; abbr: string }> = {
@@ -847,6 +848,11 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
   const [executingFormulario, setExecutingFormulario] = useState<FullRegistro | null>(null)
   const [showPlanificarModal, setShowPlanificarModal] = useState(false)
   const [showReporteModal, setShowReporteModal] = useState(false)
+
+  // Ctrl+Shift+P → Planificar Gestión (only active while this view is mounted)
+  useShortcutAction('plan-gestion', () => setShowPlanificarModal(true))
+  // Ctrl+Shift+F → Reporte Fotográfico (camera button equivalent)
+  useShortcutAction('open-reporte-fotografico', () => setShowReporteModal(true))
 
 
   // Task 4: resizable columns with localStorage

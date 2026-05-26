@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Sun, Moon, Users, UserCog, Network, Gauge, Shield, Settings2, LogOut, Building2, BarChart2, CreditCard, Smartphone, ShieldCheck, CalendarClock, AlertTriangle, Scale, Map, ClipboardList, MessageSquare, Wifi, WifiOff, Download, GraduationCap, BookOpen } from 'lucide-react'
+import { Sun, Moon, Users, UserCog, Network, Gauge, Shield, Settings2, LogOut, Building2, BarChart2, CreditCard, Smartphone, ShieldCheck, CalendarClock, AlertTriangle, Scale, Map, ClipboardList, MessageSquare, Wifi, WifiOff, Download, GraduationCap, BookOpen, Keyboard } from 'lucide-react'
 import { SystemRole, UserRole, ROLE_LABELS, ROLE_COLORS } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 import { usePreview } from '@/lib/contexts/preview-context'
@@ -11,6 +11,8 @@ import { WeatherClock } from '@/components/weather-clock'
 import { NotificationDropdown } from '@/components/notification-dropdown'
 import { useNetworkStatus } from '@/lib/hooks/use-network-status'
 import { useInstallPrompt } from '@/components/install-pwa'
+import { useShortcutAction } from '@/lib/contexts/shortcuts-context'
+import { ShortcutTooltip } from '@/components/ui/shortcut-tooltip'
 
 interface AppHeaderProps {
   fullName: string
@@ -51,6 +53,9 @@ export function AppHeader({
   useEffect(() => {
     setIsDark(document.documentElement.getAttribute('data-theme') === 'dark')
   }, [])
+
+  // Ctrl+Shift+A → open avatar menu
+  useShortcutAction('open-avatar-menu', () => setMenuOpen(true))
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -307,16 +312,18 @@ export function AppHeader({
 
           {/* Avatar + admin menu dropdown */}
           <div className="relative" ref={menuRef}>
-            <button
-              onClick={() => setMenuOpen(prev => !prev)}
-              aria-expanded={menuOpen}
-              aria-haspopup="menu"
-              aria-controls="user-menu"
-              className="w-8 h-8 bg-surface-elevated rounded-full flex items-center justify-center text-xs font-bold text-text-secondary hover:bg-brand-muted hover:text-brand-primary transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2"
-              aria-label="Menú de usuario"
-            >
-              {initials || '?'}
-            </button>
+            <ShortcutTooltip action="open-avatar-menu" side="bottom">
+              <button
+                onClick={() => setMenuOpen(prev => !prev)}
+                aria-expanded={menuOpen}
+                aria-haspopup="menu"
+                aria-controls="user-menu"
+                className="w-8 h-8 bg-surface-elevated rounded-full flex items-center justify-center text-xs font-bold text-text-secondary hover:bg-brand-muted hover:text-brand-primary transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2"
+                aria-label="Menú de usuario"
+              >
+                {initials || '?'}
+              </button>
+            </ShortcutTooltip>
 
             {menuOpen && (
               <div 
@@ -404,6 +411,11 @@ export function AppHeader({
                       <DropdownItem href="/dashboard/admin/feedback" icon={MessageSquare} label="Feedback Admin" role="menuitem" />
                     </>
                   )}
+                </div>
+
+                {/* Atajos de teclado */}
+                <div className="py-1 border-t border-border-subtle">
+                  <DropdownItem href="/dashboard/atajos" icon={Keyboard} label="Atajos de teclado" role="menuitem" />
                 </div>
 
                 <button
