@@ -9,6 +9,7 @@ import {
   updateConfiguracionVencimiento,
   initConfiguracionVencimientos,
 } from '@/lib/actions/configuracion-vencimiento'
+import type { TipoEntidadVencimiento } from '@/lib/types'
 
 // ─── NOTIFICACIONES ───
 
@@ -78,7 +79,7 @@ export function useUpdateConfiguracionVencimiento() {
       updates,
     }: {
       id: string
-      updates: { tiene_vencimiento?: boolean; dias_aviso?: number; activo?: boolean }
+      updates: { tiene_vencimiento?: boolean; dias_aviso?: number; activo?: boolean; tipo_entidad?: TipoEntidadVencimiento }
     }) => {
       const result = await updateConfiguracionVencimiento(id, updates)
       if (!result.success) throw new Error(result.error)

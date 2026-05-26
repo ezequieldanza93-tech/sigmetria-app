@@ -21,12 +21,10 @@ import {
   ClipboardList,
   MessageSquare,
   Map,
-  Smartphone,
   ShieldCheck,
   LogOut,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { usePreview } from '@/lib/contexts/preview-context'
 import { useNavigationLevel } from '@/lib/hooks/use-navigation-level'
 import { cn } from '@/lib/utils'
 import { UserRole, SystemRole } from '@/lib/types'
@@ -49,7 +47,6 @@ export function FloatingAvatar({
   isSuperAdmin = false,
 }: FloatingAvatarProps) {
   const router = useRouter()
-  const { isOpen: isPreviewOpen, setIsOpen: setPreviewOpen } = usePreview()
   const { level } = useNavigationLevel()
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -178,22 +175,6 @@ export function FloatingAvatar({
               <MenuItem href="/dashboard/configuracion/iperc" icon={ClipboardList} label="Librería IPERC" />
               <MenuItem href="/dashboard/configuracion/feedback" icon={MessageSquare} label="Feedback" />
               <MenuItem href="/dashboard/mapas" icon={Map} label="Mapa de Riesgos" />
-              <button
-                onClick={() => {
-                  setPreviewOpen(!isPreviewOpen)
-                  setMenuOpen(false)
-                }}
-                role="menuitem"
-                className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-surface-sunken transition-colors"
-              >
-                <span className="text-text-tertiary">
-                  <Smartphone size={16} strokeWidth={1.75} />
-                </span>
-                Preview Mobile
-                {isPreviewOpen && (
-                  <span className="ml-auto text-[10px] text-brand-primary font-semibold">ON</span>
-                )}
-              </button>
               {isSuperAdmin && (
                 <>
                   <MenuItem href="/dashboard/admin" icon={ShieldCheck} label="Super Admin" />

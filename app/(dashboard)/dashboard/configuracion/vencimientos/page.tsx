@@ -48,22 +48,25 @@ export default function VencimientosConfigPage() {
   const updateMutation = useUpdateConfiguracionVencimiento()
   const [localDias, setLocalDias] = useState<Record<string, string>>({})
 
-  const handleToggleVencimiento = async (item: ConfiguracionVencimiento) => {
+  const handleToggleVencimiento = (item: ConfiguracionVencimiento) => {
     updateMutation.mutate({ id: item.id, updates: { tiene_vencimiento: !item.tiene_vencimiento } })
   }
 
-  const handleToggleActivo = async (item: ConfiguracionVencimiento) => {
+  const handleToggleActivo = (item: ConfiguracionVencimiento) => {
     updateMutation.mutate({ id: item.id, updates: { activo: !item.activo } })
   }
 
-  const handleDiasAviso = async (item: ConfiguracionVencimiento, value: string) => {
+  const handleDiasAviso = (item: ConfiguracionVencimiento, value: string) => {
     const num = parseInt(value, 10)
     if (isNaN(num) || num < 0 || num > 365) return
     setLocalDias(prev => ({ ...prev, [item.id]: value }))
     updateMutation.mutate({ id: item.id, updates: { dias_aviso: num } })
   }
 
-  // Group by tipo_entidad
+  const handleTipoEntidad = (item: ConfiguracionVencimiento, tipo: TipoEntidadVencimiento) => {
+    updateMutation.mutate({ id: item.id, updates: { tipo_entidad: tipo } })
+  }
+
   const grouped = TIPO_ENTIDAD_ORDER.map(tipo => ({
     tipo,
     label: TIPO_ENTIDAD_LABELS[tipo],
@@ -130,7 +133,8 @@ export default function VencimientosConfigPage() {
                     <thead>
                       <tr className="bg-surface-sunken text-xs font-medium text-text-tertiary uppercase tracking-wider">
                         <th className="text-left px-4 py-2.5">Nombre</th>
-                        <th className="text-center px-3 py-2.5 w-28">Tiene vencimiento</th>
+                        <th className="text-center px-3 py-2.5 w-36">Sección</th>
+                        <th className="text-center px-3 py-2.5 w-28">Notificación</th>
                         <th className="text-center px-3 py-2.5 w-24">Días aviso</th>
                         <th className="text-center px-3 py-2.5 w-20">Activo</th>
                       </tr>
@@ -142,16 +146,30 @@ export default function VencimientosConfigPage() {
                           className="border-t border-border-subtle hover:bg-surface-sunken/50 transition-colors"
                         >
                           <td className="px-4 py-2.5">
-                            <span className={`text-sm text-text-primary ${!item.activo ? 'text-text-tertiary' : ''}`}>
+                            <span className={`text-sm ${!item.activo ? 'text-text-tertiary' : 'text-text-primary'}`}>
                               {item.nombre}
                             </span>
                           </td>
                           <td className="px-3 py-2.5 text-center">
+                            <select
+                              value={item.tipo_entidad}
+                              onChange={e => handleTipoEntidad(item, e.target.value as TipoEntidadVencimiento)}
+                              disabled={updateMutation.isPending}
+                              className="text-xs bg-surface-base border border-border-subtle rounded-md px-2 py-1 text-text-secondary focus:outline-none focus:ring-2 focus:ring-brand-primary disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              {TIPO_ENTIDAD_ORDER.map(tipo => (
+                                <option key={tipo} value={tipo}>{TIPO_ENTIDAD_LABELS[tipo]}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="px-3 py-2.5 text-center">
                             <div className="flex justify-center">
-                              <ToggleSwitch
+                              <input
+                                type="checkbox"
                                 checked={item.tiene_vencimiento}
                                 onChange={() => handleToggleVencimiento(item)}
-                                loading={updateMutation.isPending}
+                                disabled={updateMutation.isPending}
+                                className="w-4 h-4 rounded border-border-strong text-brand-primary focus:ring-brand-primary focus:ring-2 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 accent-brand-primary"
                               />
                             </div>
                           </td>
@@ -165,10 +183,11 @@ export default function VencimientosConfigPage() {
                                 setLocalDias(prev => ({ ...prev, [item.id]: e.target.value }))
                               }}
                               onBlur={e => handleDiasAviso(item, e.target.value)}
-                              disabled={!item.tiene_vencimiento || !item.activo}
-                              className={`w-16 text-center text-sm bg-surface-base border border-border-subtle rounded-md px-2 py-1 text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary disabled:opacity-40 disabled:cursor-not-allowed ${
-                                !item.tiene_vencimiento || !item.activo ? 'opacity-40' : ''
-                              }`}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') e.currentTarget.blur()
+                              }}
+                              disabled={!item.tiene_vencimiento}
+                              className="w-16 text-center text-sm bg-surface-base border border-border-subtle rounded-md px-2 py-1 text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary disabled:opacity-40 disabled:cursor-not-allowed"
                             />
                           </td>
                           <td className="px-3 py-2.5 text-center">

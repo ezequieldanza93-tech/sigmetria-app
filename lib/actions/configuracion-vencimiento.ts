@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import type { ActionResult, ConfiguracionVencimiento } from '@/lib/types'
+import type { ActionResult, ConfiguracionVencimiento, TipoEntidadVencimiento } from '@/lib/types'
 
 async function getUser() {
   const supabase = await createClient()
@@ -35,7 +35,7 @@ export async function getConfiguracionVencimientos(): Promise<ConfiguracionVenci
 
 export async function updateConfiguracionVencimiento(
   id: string,
-  updates: { tiene_vencimiento?: boolean; dias_aviso?: number; activo?: boolean }
+  updates: { tiene_vencimiento?: boolean; dias_aviso?: number; activo?: boolean; tipo_entidad?: TipoEntidadVencimiento }
 ): Promise<ActionResult<null>> {
   const { supabase } = await getUser()
 
