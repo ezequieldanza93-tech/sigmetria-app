@@ -504,9 +504,17 @@ function NuevaGestionForm({
 interface ObsDraft {
   key: number
   descripcion: string
+  categoria_id: string
   clasificacion_id: string
   responsable_id: string
   fecha_subsanacion: string
+}
+
+interface CategoriaObs {
+  id: string
+  nombre: string
+  nivel: number
+  color: string
 }
 
 function EjecucionModal({
@@ -524,6 +532,7 @@ function EjecucionModal({
   const [error, setError] = useState<string | null>(null)
   const [personas, setPersonas] = useState<{ id: string; nombre: string; apellido: string }[]>([])
   const [clasificaciones, setClasificaciones] = useState<{ id: string; nombre: string }[]>([])
+  const [categorias, setCategorias] = useState<CategoriaObs[]>([])
   const [observaciones, setObservaciones] = useState<ObsDraft[]>([])
   const obsKeyRef = useRef(0)
 
@@ -550,12 +559,19 @@ function EjecucionModal({
       .eq('is_active', true)
       .order('nombre')
       .then(({ data }) => setClasificaciones((data ?? []) as { id: string; nombre: string }[]))
+    supabase
+      .from('observaciones_categorias')
+      .select('id, nombre, nivel, color')
+      .eq('is_active', true)
+      .order('nivel')
+      .then(({ data }) => setCategorias((data ?? []) as CategoriaObs[]))
   }, [establecimientoId])
 
   function addObs() {
     setObservaciones(prev => [...prev, {
       key: obsKeyRef.current++,
       descripcion: '',
+      categoria_id: '',
       clasificacion_id: '',
       responsable_id: '',
       fecha_subsanacion: '',
@@ -579,6 +595,11 @@ function EjecucionModal({
       if (!result.success) { setError(result.error); return }
 
       const validObs = observaciones.filter(o => o.descripcion.trim())
+      const sinCategoria = validObs.filter(o => !o.categoria_id)
+      if (sinCategoria.length > 0) {
+        setError('Toda observación requiere una categoría.')
+        return
+      }
       if (validObs.length > 0) {
         const obsResult = await crearObservaciones(registro.id, validObs)
         if (!obsResult.success) { setError(obsResult.error); return }
@@ -728,7 +749,24 @@ function EjecucionModal({
                       ✕
                     </button>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pl-0 sm:pl-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 pl-0 sm:pl-6">
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-0.5">
+                        Categoría <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        required
+                        value={obs.categoria_id}
+                        onChange={e => updateObs(obs.key, 'categoria_id', e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-sig-500"
+                        style={obs.categoria_id ? { backgroundColor: categorias.find(c => c.id === obs.categoria_id)?.color, color: '#000' } : {}}
+                      >
+                        <option value="">Seleccionar…</option>
+                        {categorias.map(c => (
+                          <option key={c.id} value={c.id}>{c.nombre}</option>
+                        ))}
+                      </select>
+                    </div>
                     <div>
                       <label className="text-xs text-gray-500 block mb-0.5">Tipo de riesgo</label>
                       <select

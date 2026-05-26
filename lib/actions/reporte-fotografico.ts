@@ -69,20 +69,24 @@ export async function crearReporteFotografico(
 
   if (observacionesRaw) {
     try {
-      const observaciones: Array<{ descripcion: string; clasificacion_id: string; responsable_id: string; fecha_subsanacion: string }> = JSON.parse(observacionesRaw)
-      const validas = observaciones.filter((o: { descripcion?: string }) => o.descripcion?.trim())
+      const observaciones: Array<{ descripcion: string; categoria_id: string; clasificacion_id: string; responsable_id: string; fecha_subsanacion: string; foto_url?: string | null }> = JSON.parse(observacionesRaw)
+      const validas = observaciones.filter(o => o.descripcion?.trim() && o.categoria_id)
       if (validas.length > 0) {
-        const rows = validas.map((o: { descripcion: string; clasificacion_id: string; responsable_id: string; fecha_subsanacion: string; foto_url?: string | null }) => ({
+        const rows = validas.map(o => ({
           registro_gestion_id: reg.id,
           descripcion: o.descripcion.trim(),
+          categoria_id: o.categoria_id,
           clasificacion_id: o.clasificacion_id || null,
           responsable_id: o.responsable_id || null,
           fecha_planificada: o.fecha_subsanacion || null,
           foto_url: o.foto_url || null,
         }))
-        await supabase.from('gestiones_observaciones').insert(rows)
+        const { error: obsError } = await supabase.from('gestiones_observaciones').insert(rows)
+        if (obsError) {
+          console.error('[reporteFotografico] Error al insertar gestiones_observaciones:', obsError.message)
+        }
       }
-    } catch { console.error('[reporteFotografico] Error al insertar gestiones_observaciones') }
+    } catch (e) { console.error('[reporteFotografico] Error parseando observaciones:', e) }
   }
 
   return { success: true, data: null }

@@ -18,13 +18,33 @@ interface InspeccionesTabProps {
   canWrite: boolean
 }
 
+interface CategoriaObs {
+  id: string
+  nombre: string
+  nivel: number
+  color: string
+}
+
 export function InspeccionesTab({ inspecciones, establecimientoId, empresaId, canWrite }: InspeccionesTabProps) {
   const [showModal, setShowModal] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [observacionesMap, setObservacionesMap] = useState<Record<string, { total: number; abiertas: number }>>({})
   const [obsDescriptions, setObsDescriptions] = useState<Record<string, { id: string; descripcion: string; resuelta: boolean }[]>>({})
   const [showObsModal, setShowObsModal] = useState<string | null>(null)
+  const [categorias, setCategorias] = useState<CategoriaObs[]>([])
+  const [obsCategoriaId, setObsCategoriaId] = useState('')
+  const [obsError, setObsError] = useState<string | null>(null)
   const inspeccionAction = createInspeccion.bind(null, establecimientoId, empresaId)
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase
+      .from('observaciones_categorias')
+      .select('id, nombre, nivel, color')
+      .eq('is_active', true)
+      .order('nivel')
+      .then(({ data }) => setCategorias((data ?? []) as CategoriaObs[]))
+  }, [])
 
   useEffect(() => {
     if (inspecciones.length === 0) return
@@ -179,23 +199,52 @@ export function InspeccionesTab({ inspecciones, establecimientoId, empresaId, ca
         />
       </Modal>
 
-      <Modal open={!!showObsModal} onClose={() => setShowObsModal(null)} title="Agregar observación">
+      <Modal
+        open={!!showObsModal}
+        onClose={() => { setShowObsModal(null); setObsCategoriaId(''); setObsError(null) }}
+        title="Agregar observación"
+      >
         <form
           onSubmit={async (e) => {
             e.preventDefault()
             if (!showObsModal) return
+            setObsError(null)
+            if (!obsCategoriaId) { setObsError('Categoría requerida'); return }
             const fd = new FormData(e.currentTarget)
-            await agregarObservacionInspeccion(showObsModal, establecimientoId, empresaId, null, fd)
+            fd.set('categoria_id', obsCategoriaId)
+            const res = await agregarObservacionInspeccion(showObsModal, establecimientoId, empresaId, null, fd)
+            if (!res.success) { setObsError(res.error); return }
             setShowObsModal(null)
+            setObsCategoriaId('')
           }}
           className="space-y-3"
         >
+          {obsError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg px-3 py-2">{obsError}</div>
+          )}
+          <div>
+            <label className="text-xs text-gray-600 block mb-1">
+              Categoría <span className="text-red-500">*</span>
+            </label>
+            <select
+              required
+              value={obsCategoriaId}
+              onChange={e => setObsCategoriaId(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-sig-500"
+              style={obsCategoriaId ? { backgroundColor: categorias.find(c => c.id === obsCategoriaId)?.color, color: '#000' } : {}}
+            >
+              <option value="">Seleccionar…</option>
+              {categorias.map(c => (
+                <option key={c.id} value={c.id}>{c.nombre}</option>
+              ))}
+            </select>
+          </div>
           <div>
             <label className="text-xs text-gray-600 block mb-1">Descripción *</label>
             <textarea name="descripcion" required rows={3} className="w-full border border-gray-300 rounded px-3 py-2 text-sm" />
           </div>
           <div className="flex justify-end gap-2">
-            <Button size="sm" variant="secondary" type="button" onClick={() => setShowObsModal(null)}>Cancelar</Button>
+            <Button size="sm" variant="secondary" type="button" onClick={() => { setShowObsModal(null); setObsCategoriaId(''); setObsError(null) }}>Cancelar</Button>
             <Button size="sm" type="submit">Guardar</Button>
           </div>
         </form>

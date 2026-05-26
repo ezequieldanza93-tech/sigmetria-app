@@ -17,12 +17,20 @@ import { Camera, FileSignature, CheckCircle } from 'lucide-react'
 interface ObsDraft {
   key: number
   descripcion: string
+  categoria_id: string
   clasificacion_id: string
   responsable_id: string
   fecha_subsanacion: string
   foto_preview: string | null
   foto_blob: Blob | null
   foto_editing: boolean
+}
+
+interface CategoriaObs {
+  id: string
+  nombre: string
+  nivel: number
+  color: string
 }
 
 interface FullRegistro extends RegistroGestion {
@@ -69,6 +77,7 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
   const [error, setError] = useState<string | null>(null)
   const [personas, setPersonas] = useState<{ id: string; nombre: string; apellido: string }[]>([])
   const [clasificaciones, setClasificaciones] = useState<{ id: string; nombre: string }[]>([])
+  const [categorias, setCategorias] = useState<CategoriaObs[]>([])
   const [comentariosSeccion, setComentariosSeccion] = useState<Map<string, string>>(new Map())
   const [observacionesSeccion, setObservacionesSeccion] = useState<Map<string, ObsDraft[]>>(new Map())
   const [fechaEjecutada, setFechaEjecutada] = useState(registro.fecha_ejecutada ?? new Date().toISOString().split('T')[0])
@@ -134,6 +143,13 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
       .eq('is_active', true)
       .order('nombre')
       .then(({ data }) => setClasificaciones((data ?? []) as { id: string; nombre: string }[]))
+
+    supabase
+      .from('observaciones_categorias')
+      .select('id, nombre, nivel, color')
+      .eq('is_active', true)
+      .order('nivel')
+      .then(({ data }) => setCategorias((data ?? []) as CategoriaObs[]))
   }, [registro.ge_gestion_id, establecimientoId, supabase])
 
   async function ensureRespuesta() {
@@ -214,6 +230,12 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
         allObs.push(...obsList)
       }
       const validObs = allObs.filter(o => o.descripcion.trim())
+      const sinCategoria = validObs.filter(o => !o.categoria_id)
+      if (sinCategoria.length > 0) {
+        setError('Toda observación requiere una categoría.')
+        setSaving(false)
+        return
+      }
       if (validObs.length > 0) {
         const obsConFotos = await Promise.all(validObs.map(async obs => {
           let foto_url: string | null = null
@@ -263,6 +285,7 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
       list.push({
         key: obsKeyRef.current++,
         descripcion: '',
+        categoria_id: '',
         clasificacion_id: '',
         responsable_id: '',
         fecha_subsanacion: '',
@@ -387,7 +410,24 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
                       ✕
                     </button>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pl-0 sm:pl-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 pl-0 sm:pl-6">
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-0.5">
+                        Categoría <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        required
+                        value={obs.categoria_id}
+                        onChange={e => updateObs(secId, obs.key, { categoria_id: e.target.value })}
+                        className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-sig-500"
+                        style={obs.categoria_id ? { backgroundColor: categorias.find(c => c.id === obs.categoria_id)?.color, color: '#000' } : {}}
+                      >
+                        <option value="">Seleccionar…</option>
+                        {categorias.map(c => (
+                          <option key={c.id} value={c.id}>{c.nombre}</option>
+                        ))}
+                      </select>
+                    </div>
                     <div>
                       <label className="text-xs text-gray-500 block mb-0.5">Tipo de riesgo</label>
                       <select

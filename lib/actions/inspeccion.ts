@@ -84,13 +84,16 @@ export async function agregarObservacionInspeccion(
   if (!user) return { success: false, error: 'No autenticado' }
 
   const descripcion = (formData.get('descripcion') as string)?.trim()
+  const categoriaId = (formData.get('categoria_id') as string)?.trim()
   if (!descripcion) return { success: false, error: 'La descripción es obligatoria' }
+  if (!categoriaId) return { success: false, error: 'La categoría es obligatoria' }
 
   const { error } = await supabase
     .from('inspecciones_observaciones')
     .insert({
       inspeccion_id: inspeccionId,
       descripcion,
+      categoria_id: categoriaId,
     })
 
   if (error) return { success: false, error: error.message }

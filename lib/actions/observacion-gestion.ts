@@ -13,17 +13,19 @@ export async function createObservacionGestion(
   const registroGestionId = formData.get('registro_gestion_id') as string
   const descripcion = (formData.get('descripcion') as string)?.trim()
   const fechaPlanificada = formData.get('fecha_planificada') as string
+  const categoriaId = (formData.get('categoria_id') as string)?.trim()
 
   if (!registroGestionId) return { success: false, error: 'Registro de gestión requerido' }
   if (!descripcion) return { success: false, error: 'Descripción requerida' }
   if (!fechaPlanificada) return { success: false, error: 'Fecha planificada requerida' }
+  if (!categoriaId) return { success: false, error: 'Categoría requerida' }
 
   const { error } = await supabase.from('gestiones_observaciones').insert({
     registro_gestion_id: registroGestionId,
     descripcion,
     fecha_planificada: fechaPlanificada,
     responsable_cierre_id: (formData.get('responsable_cierre_id') as string) || null,
-    categoria_id: (formData.get('categoria_id') as string) || null,
+    categoria_id: categoriaId,
   })
 
   if (error) return { success: false, error: error.message }

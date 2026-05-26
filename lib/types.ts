@@ -814,6 +814,7 @@ export interface ObservacionCategoria {
   id: string
   nombre: string
   nivel: number
+  color: string
   is_active: boolean
   created_at: string
 }

@@ -14,9 +14,17 @@ interface ReporteFotograficoModalProps {
   onSuccess: () => void
 }
 
+interface CategoriaObs {
+  id: string
+  nombre: string
+  nivel: number
+  color: string
+}
+
 interface ObsDraft {
   key: number
   descripcion: string
+  categoria_id: string
   clasificacion_id: string
   responsable_id: string
   fecha_subsanacion: string
@@ -34,6 +42,8 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
   const [observaciones, setObservaciones] = useState<ObsDraft[]>([])
   const [personas, setPersonas] = useState<{ id: string; nombre: string; apellido: string }[]>([])
   const [clasificaciones, setClasificaciones] = useState<{ id: string; nombre: string }[]>([])
+  const [categorias, setCategorias] = useState<CategoriaObs[]>([])
+  const [formError, setFormError] = useState<string | null>(null)
   const obsKeyRef = useRef(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -64,6 +74,12 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
       .eq('is_active', true)
       .order('nombre')
       .then(({ data }) => setClasificaciones((data ?? []) as { id: string; nombre: string }[]))
+    supabase
+      .from('observaciones_categorias')
+      .select('id, nombre, nivel, color')
+      .eq('is_active', true)
+      .order('nivel')
+      .then(({ data }) => setCategorias((data ?? []) as CategoriaObs[]))
   }, [establecimientoId])
 
   function handleImageSelected(e: React.ChangeEvent<HTMLInputElement>) {
@@ -83,6 +99,21 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
     setObservaciones(prev => [...prev, {
       key: obsKeyRef.current++,
       descripcion: '',
+      categoria_id: '',
+      clasificacion_id: '',
+      responsable_id: '',
+      fecha_subsanacion: '',
+      foto_preview: null,
+      foto_blob: null,
+      foto_editing: false,
+    }])
+  }
+
+  function appendObsFromEditor(descripcion: string, categoriaId: string) {
+    setObservaciones(prev => [...prev, {
+      key: obsKeyRef.current++,
+      descripcion,
+      categoria_id: categoriaId,
       clasificacion_id: '',
       responsable_id: '',
       fecha_subsanacion: '',
@@ -108,6 +139,15 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    setFormError(null)
+
+    // Validación: toda observación con descripción debe tener categoría
+    const sinCat = observaciones.filter(o => o.descripcion.trim() && !o.categoria_id)
+    if (sinCat.length > 0) {
+      setFormError('Toda observación requiere una categoría.')
+      return
+    }
+
     const fd = new FormData()
     fd.set('establecimiento_id', establecimientoId)
     fd.set('comentario', comentario)
@@ -146,7 +186,14 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
           const { data: up } = await supabase.storage.from('documentos').upload(path, file, { upsert: false })
           if (up) foto_url = supabase.storage.from('documentos').getPublicUrl(up.path).data.publicUrl
         }
-        return { descripcion: o.descripcion, clasificacion_id: o.clasificacion_id, responsable_id: o.responsable_id, fecha_subsanacion: o.fecha_subsanacion, foto_url }
+        return {
+          descripcion: o.descripcion,
+          categoria_id: o.categoria_id,
+          clasificacion_id: o.clasificacion_id,
+          responsable_id: o.responsable_id,
+          fecha_subsanacion: o.fecha_subsanacion,
+          foto_url,
+        }
       }))
       fd.set('observaciones', JSON.stringify(obsConFotos))
     }
@@ -164,6 +211,11 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
         {state && !state.success && (
           <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-3 py-2">
             {state.error}
+          </div>
+        )}
+        {formError && (
+          <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-3 py-2">
+            {formError}
           </div>
         )}
 
@@ -201,7 +253,13 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
                 Eliminar imagen
               </button>
             </div>
-            <PhotoCanvasEditor imageUrl={imagePreviewUrl} onImageChange={handleEditedBlobChange} />
+            <PhotoCanvasEditor
+              imageUrl={imagePreviewUrl}
+              onImageChange={handleEditedBlobChange}
+              enableObservacionTool
+              categorias={categorias}
+              onObservacionAdded={appendObsFromEditor}
+            />
           </div>
         )}
 
@@ -236,7 +294,7 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
           </div>
           {observaciones.length === 0 ? (
             <p className="text-xs text-gray-400 text-center py-3 border border-dashed border-gray-200 rounded-lg">
-              Sin observaciones. Hacé clic en &quot;+ Agregar&quot; para registrar una.
+              Sin observaciones. Hacé clic en &quot;+ Agregar&quot; o usá &quot;Escribir observación&quot; sobre la imagen.
             </p>
           ) : (
             <div className="space-y-2">
@@ -260,7 +318,24 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
                       ✕
                     </button>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 pl-6">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pl-6">
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-0.5">
+                        Categoría <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        required
+                        value={obs.categoria_id}
+                        onChange={e => updateObs(obs.key, 'categoria_id', e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-sig-500"
+                        style={obs.categoria_id ? { backgroundColor: categorias.find(c => c.id === obs.categoria_id)?.color, color: '#000' } : {}}
+                      >
+                        <option value="">Seleccionar…</option>
+                        {categorias.map(c => (
+                          <option key={c.id} value={c.id}>{c.nombre}</option>
+                        ))}
+                      </select>
+                    </div>
                     <div>
                       <label className="text-xs text-gray-500 block mb-0.5">Tipo de riesgo</label>
                       <select

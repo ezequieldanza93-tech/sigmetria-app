@@ -172,8 +172,10 @@ function ObservacionForm({
       <input type="hidden" name="registro_gestion_id" value={registroGestionId} />
       {state && !state.success && <p className="text-xs text-red-600">{state.error}</p>}
       <div>
-        <label className="text-xs font-medium text-gray-600 block mb-1">Categoría</label>
-        <select name="categoria_id" className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs bg-white">
+        <label className="text-xs font-medium text-gray-600 block mb-1">
+          Categoría <span className="text-red-500">*</span>
+        </label>
+        <select name="categoria_id" required className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs bg-white">
           <option value="">Seleccionar...</option>
           {categorias.map(c => (
             <option key={c.id} value={c.id}>{c.nombre}</option>

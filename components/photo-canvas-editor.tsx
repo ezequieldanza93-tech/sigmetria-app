@@ -1,6 +1,20 @@
 'use client'
 
-import { useRef, useState, useEffect, useCallback } from 'react'
+import { useRef, useState, useEffect, useCallback, useMemo } from 'react'
+import dynamic from 'next/dynamic'
+import type Konva from 'konva'
+import type { KonvaEventObject } from 'konva/lib/Node'
+
+const Stage = dynamic(() => import('react-konva').then(m => m.Stage), { ssr: false })
+const Layer = dynamic(() => import('react-konva').then(m => m.Layer), { ssr: false })
+const KonvaImage = dynamic(() => import('react-konva').then(m => m.Image), { ssr: false })
+const Line = dynamic(() => import('react-konva').then(m => m.Line), { ssr: false })
+const Rect = dynamic(() => import('react-konva').then(m => m.Rect), { ssr: false })
+const Circle = dynamic(() => import('react-konva').then(m => m.Circle), { ssr: false })
+const Arrow = dynamic(() => import('react-konva').then(m => m.Arrow), { ssr: false })
+const KonvaText = dynamic(() => import('react-konva').then(m => m.Text), { ssr: false })
+const Group = dynamic(() => import('react-konva').then(m => m.Group), { ssr: false })
+const Transformer = dynamic(() => import('react-konva').then(m => m.Transformer), { ssr: false })
 
 const COLORS = [
   { label: 'Negro', value: '#000000' },
@@ -13,203 +27,416 @@ const COLORS = [
   { label: 'Violeta', value: '#9333EA' },
 ]
 
-const BRUSH_SIZES = [2, 4, 6, 10]
+const BRUSH_SIZES = [4, 8, 12, 16] as const
+const TEXT_SIZES = [24, 36, 48, 60] as const
+const DEFAULT_COLOR = '#000000'
+const DEFAULT_BRUSH = 8
+const DEFAULT_TEXT_SIZE = 48
 
-type Tool = 'draw' | 'text'
+type Tool = 'select' | 'pen' | 'text' | 'rect' | 'circle' | 'arrow' | 'observacion'
 
-interface TextElement {
-  x: number
-  y: number
-  content: string
+interface ObservacionCategoria {
+  id: string
+  nombre: string
+  nivel: number
   color: string
-  fontSize: number
 }
 
-interface PhotoCanvasEditorProps {
+type DrawObject =
+  | { type: 'pen'; id: string; points: number[]; stroke: string; strokeWidth: number }
+  | { type: 'rect'; id: string; x: number; y: number; width: number; height: number; stroke: string; strokeWidth: number; rotation?: number }
+  | { type: 'circle'; id: string; x: number; y: number; radius: number; stroke: string; strokeWidth: number }
+  | { type: 'arrow'; id: string; points: [number, number, number, number]; stroke: string; strokeWidth: number }
+  | { type: 'text'; id: string; x: number; y: number; text: string; fontSize: number; fill: string; background: string | null; rotation?: number }
+
+export interface PhotoCanvasEditorProps {
   imageUrl: string
   onImageChange?: (blob: Blob) => void
+  /** Si está activo, expone el botón "Escribir observación" con picker de categoría. */
+  enableObservacionTool?: boolean
+  /** Lista de categorías para el picker (si no se pasa, el editor las carga vacías). */
+  categorias?: ObservacionCategoria[]
+  /** Callback cuando el usuario crea una observación desde el editor. */
+  onObservacionAdded?: (descripcion: string, categoriaId: string) => void
 }
 
-export function PhotoCanvasEditor({ imageUrl, onImageChange }: PhotoCanvasEditorProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const imageRef = useRef<HTMLImageElement | null>(null)
+function genId(): string {
+  return `obj_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+}
+
+export function PhotoCanvasEditor({
+  imageUrl,
+  onImageChange,
+  enableObservacionTool = false,
+  categorias = [],
+  onObservacionAdded,
+}: PhotoCanvasEditorProps) {
+  const stageRef = useRef<Konva.Stage | null>(null)
+  const transformerRef = useRef<Konva.Transformer | null>(null)
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const layerRef = useRef<Konva.Layer | null>(null)
+
+  const [image, setImage] = useState<HTMLImageElement | null>(null)
+  const [stageSize, setStageSize] = useState({ width: 0, height: 0 })
+  const [naturalSize, setNaturalSize] = useState({ width: 0, height: 0 })
+
+  const [objects, setObjects] = useState<DrawObject[]>([])
+  const [tool, setTool] = useState<Tool>('select')
+  const [color, setColor] = useState(DEFAULT_COLOR)
+  const [strokeWidth, setStrokeWidth] = useState<number>(DEFAULT_BRUSH)
+  const [fontSize, setFontSize] = useState<number>(DEFAULT_TEXT_SIZE)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+
   const [isDrawing, setIsDrawing] = useState(false)
-  const [tool, setTool] = useState<Tool>('draw')
-  const [color, setColor] = useState('#000000')
-  const [brushSize, setBrushSize] = useState(4)
-  const [fontSize, setFontSize] = useState(24)
-  const [, setTextElements] = useState<TextElement[]>([])
-  const [placingText, setPlacingText] = useState(false)
+  const [placingText, setPlacingText] = useState<{ x: number; y: number } | null>(null)
   const [textInput, setTextInput] = useState('')
-  const [textInputPos, setTextInputPos] = useState({ x: 0, y: 0 })
-  const textInputRef = useRef<HTMLInputElement>(null)
-  const lastPoint = useRef<{ x: number; y: number } | null>(null)
 
-  const undoStack = useRef<ImageData[]>([])
-  const redoStack = useRef<ImageData[]>([])
+  // Picker de categoría (Escribir observación)
+  const [pickingObsCat, setPickingObsCat] = useState(false)
+  const [obsDescripcion, setObsDescripcion] = useState('')
+  const [obsCatId, setObsCatId] = useState<string | null>(null)
+  const [obsPos, setObsPos] = useState<{ x: number; y: number } | null>(null)
 
-  const saveState = useCallback(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-    const state = ctx.getImageData(0, 0, canvas.width, canvas.height)
-    undoStack.current.push(state)
+  const undoStack = useRef<DrawObject[][]>([])
+  const redoStack = useRef<DrawObject[][]>([])
+
+  const pushHistory = useCallback((next: DrawObject[]) => {
+    undoStack.current.push(objects)
     redoStack.current = []
     if (undoStack.current.length > 50) undoStack.current.shift()
-  }, [])
+    setObjects(next)
+  }, [objects])
 
   function undo() {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
     if (undoStack.current.length === 0) return
-    const current = ctx.getImageData(0, 0, canvas.width, canvas.height)
-    redoStack.current.push(current)
+    redoStack.current.push(objects)
     const prev = undoStack.current.pop()!
-    ctx.putImageData(prev, 0, 0)
+    setObjects(prev)
+    setSelectedId(null)
   }
 
   function redo() {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
     if (redoStack.current.length === 0) return
-    const current = ctx.getImageData(0, 0, canvas.width, canvas.height)
-    undoStack.current.push(current)
+    undoStack.current.push(objects)
     const next = redoStack.current.pop()!
-    ctx.putImageData(next, 0, 0)
+    setObjects(next)
+    setSelectedId(null)
   }
 
+  // Cargar imagen
   useEffect(() => {
-    const img = new Image()
+    const img = new window.Image()
     img.crossOrigin = 'anonymous'
     img.onload = () => {
-      imageRef.current = img
-      const canvas = canvasRef.current
-      if (!canvas) return
-      canvas.width = img.naturalWidth
-      canvas.height = img.naturalHeight
-      const ctx = canvas.getContext('2d')
-      if (!ctx) return
-      ctx.drawImage(img, 0, 0)
-      saveState()
+      setImage(img)
+      setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight })
     }
     img.src = imageUrl
-  }, [imageUrl, saveState])
+  }, [imageUrl])
 
-  function getCanvasPos(e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>): { x: number; y: number } {
-    const canvas = canvasRef.current!
-    const rect = canvas.getBoundingClientRect()
-    const scaleX = canvas.width / rect.width
-    const scaleY = canvas.height / rect.height
-    let clientX: number, clientY: number
-    if ('touches' in e) {
-      const touch = e.touches[0] ?? (e as React.TouchEvent).changedTouches[0]
-      clientX = touch.clientX
-      clientY = touch.clientY
+  // Calcular tamaño del stage en función del contenedor (responsive)
+  useEffect(() => {
+    if (!image || !containerRef.current) return
+    function update() {
+      const el = containerRef.current
+      if (!el || !image) return
+      const containerWidth = el.clientWidth
+      const aspect = image.naturalHeight / image.naturalWidth
+      const maxHeight = Math.floor(window.innerHeight * 0.6)
+      let width = containerWidth
+      let height = width * aspect
+      if (height > maxHeight) {
+        height = maxHeight
+        width = height / aspect
+      }
+      setStageSize({ width: Math.floor(width), height: Math.floor(height) })
+    }
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [image])
+
+  // Adjuntar/desadjuntar transformer al objeto seleccionado
+  useEffect(() => {
+    const transformer = transformerRef.current
+    const stage = stageRef.current
+    if (!transformer || !stage) return
+    if (!selectedId) {
+      transformer.nodes([])
+      transformer.getLayer()?.batchDraw()
+      return
+    }
+    const node = stage.findOne(`#${selectedId}`)
+    if (node) {
+      transformer.nodes([node])
+      transformer.getLayer()?.batchDraw()
     } else {
-      clientX = e.clientX
-      clientY = e.clientY
+      transformer.nodes([])
     }
-    return {
-      x: (clientX - rect.left) * scaleX,
-      y: (clientY - rect.top) * scaleY,
-    }
-  }
+  }, [selectedId, objects])
 
-  function startDraw(e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) {
-    e.preventDefault()
-    const pos = getCanvasPos(e)
-    if (tool === 'draw') {
-      setIsDrawing(true)
-      lastPoint.current = pos
-      const canvas = canvasRef.current!
-      const ctx = canvas.getContext('2d')!
-      ctx.beginPath()
-      ctx.moveTo(pos.x, pos.y)
-    } else {
-      setPlacingText(true)
-      setTextInputPos(pos)
-      setTextInput('')
-      setTimeout(() => textInputRef.current?.focus(), 50)
-    }
-  }
-
-  function draw(e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) {
-    if (!isDrawing || tool !== 'draw') return
-    e.preventDefault()
-    const pos = getCanvasPos(e)
-    const canvas = canvasRef.current!
-    const ctx = canvas.getContext('2d')!
-    ctx.strokeStyle = color
-    ctx.lineWidth = brushSize
-    ctx.lineCap = 'round'
-    ctx.lineJoin = 'round'
-    ctx.lineTo(pos.x, pos.y)
-    ctx.stroke()
-    ctx.beginPath()
-    ctx.moveTo(pos.x, pos.y)
-  }
-
-  function endDraw(_e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) {
-    if (isDrawing) {
-      setIsDrawing(false)
-      lastPoint.current = null
-      saveState()
-    }
-  }
-
-  function confirmText() {
-    if (!textInput.trim()) { setPlacingText(false); return }
-    setTextElements(prev => [...prev, { x: textInputPos.x, y: textInputPos.y, content: textInput, color, fontSize }])
-    const canvas = canvasRef.current!
-    const ctx = canvas.getContext('2d')!
-    ctx.font = `${fontSize}px sans-serif`
-    ctx.fillStyle = color
-    ctx.fillText(textInput, textInputPos.x, textInputPos.y)
-    setPlacingText(false)
-    saveState()
-  }
+  // Export automático cada vez que cambian los objetos
+  const exportRef = useRef<number | null>(null)
+  useEffect(() => {
+    if (!onImageChange || !image || stageSize.width === 0) return
+    if (exportRef.current) window.clearTimeout(exportRef.current)
+    exportRef.current = window.setTimeout(() => {
+      exportBlob().then(blob => { if (blob) onImageChange(blob) })
+    }, 500)
+    return () => { if (exportRef.current) window.clearTimeout(exportRef.current) }
+    // exportBlob es estable a nivel de identidad de cierre (no se referencia desde el array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [objects, image, stageSize, onImageChange])
 
   async function exportBlob(): Promise<Blob | null> {
+    const stage = stageRef.current
+    if (!stage || !image) return null
+    // Deseleccionar antes de exportar para que no aparezca el transformer
+    transformerRef.current?.nodes([])
+    transformerRef.current?.getLayer()?.batchDraw()
+    // Renderizar a tamaño natural de la imagen para máxima calidad
+    const pixelRatio = naturalSize.width / stageSize.width
     return new Promise(resolve => {
-      const canvas = canvasRef.current
-      if (!canvas) { resolve(null); return }
-      canvas.toBlob(blob => resolve(blob), 'image/png')
+      stage.toBlob({
+        mimeType: 'image/png',
+        pixelRatio,
+        callback: (blob: Blob | null) => {
+          // Restaurar selección
+          if (selectedId) {
+            const node = stage.findOne(`#${selectedId}`)
+            if (node && transformerRef.current) {
+              transformerRef.current.nodes([node])
+              transformerRef.current.getLayer()?.batchDraw()
+            }
+          }
+          resolve(blob)
+        },
+      })
     })
   }
 
-  useEffect(() => {
-    if (!onImageChange) return
-    const timer = setInterval(async () => {
-      const blob = await exportBlob()
-      if (blob) onImageChange(blob)
-    }, 2000)
-    return () => clearInterval(timer)
-  }, [onImageChange])
+  function getPointer() {
+    const stage = stageRef.current
+    return stage?.getPointerPosition() ?? null
+  }
+
+  function handleStageMouseDown(e: KonvaEventObject<MouseEvent | TouchEvent>) {
+    // Click en área vacía del stage o sobre la imagen → deseleccionar
+    const target = e.target
+    const isOnEmpty = target === e.target.getStage() || target.attrs.name === 'background-image'
+    if (tool === 'select') {
+      if (isOnEmpty) setSelectedId(null)
+      return
+    }
+    const pos = getPointer()
+    if (!pos) return
+
+    if (tool === 'pen') {
+      const id = genId()
+      pushHistory([
+        ...objects,
+        { type: 'pen', id, points: [pos.x, pos.y], stroke: color, strokeWidth },
+      ])
+      setSelectedId(null)
+      setIsDrawing(true)
+    } else if (tool === 'rect') {
+      const id = genId()
+      pushHistory([
+        ...objects,
+        { type: 'rect', id, x: pos.x, y: pos.y, width: 1, height: 1, stroke: color, strokeWidth },
+      ])
+      setSelectedId(id)
+      setIsDrawing(true)
+    } else if (tool === 'circle') {
+      const id = genId()
+      pushHistory([
+        ...objects,
+        { type: 'circle', id, x: pos.x, y: pos.y, radius: 1, stroke: color, strokeWidth },
+      ])
+      setSelectedId(id)
+      setIsDrawing(true)
+    } else if (tool === 'arrow') {
+      const id = genId()
+      pushHistory([
+        ...objects,
+        { type: 'arrow', id, points: [pos.x, pos.y, pos.x, pos.y], stroke: color, strokeWidth },
+      ])
+      setSelectedId(id)
+      setIsDrawing(true)
+    } else if (tool === 'text') {
+      setPlacingText({ x: pos.x, y: pos.y })
+      setTextInput('')
+    } else if (tool === 'observacion' && enableObservacionTool) {
+      setObsPos({ x: pos.x, y: pos.y })
+      setPickingObsCat(true)
+    }
+  }
+
+  function handleStageMouseMove() {
+    if (!isDrawing) return
+    const pos = getPointer()
+    if (!pos) return
+
+    setObjects(prev => {
+      const last = prev[prev.length - 1]
+      if (!last) return prev
+      const updated = [...prev]
+      if (last.type === 'pen') {
+        updated[updated.length - 1] = { ...last, points: [...last.points, pos.x, pos.y] }
+      } else if (last.type === 'rect') {
+        updated[updated.length - 1] = { ...last, width: pos.x - last.x, height: pos.y - last.y }
+      } else if (last.type === 'circle') {
+        const dx = pos.x - last.x
+        const dy = pos.y - last.y
+        updated[updated.length - 1] = { ...last, radius: Math.sqrt(dx * dx + dy * dy) }
+      } else if (last.type === 'arrow') {
+        updated[updated.length - 1] = { ...last, points: [last.points[0], last.points[1], pos.x, pos.y] }
+      }
+      return updated
+    })
+  }
+
+  function handleStageMouseUp() {
+    if (!isDrawing) return
+    setIsDrawing(false)
+    // Normalizar rect (width/height negativos) y descartar objetos demasiado chicos
+    setObjects(prev => {
+      const last = prev[prev.length - 1]
+      if (!last) return prev
+      const updated = [...prev]
+      if (last.type === 'rect') {
+        let { x, y, width, height } = last
+        if (width < 0) { x = x + width; width = -width }
+        if (height < 0) { y = y + height; height = -height }
+        if (width < 4 || height < 4) return prev.slice(0, -1)
+        updated[updated.length - 1] = { ...last, x, y, width, height }
+      } else if (last.type === 'circle' && last.radius < 3) {
+        return prev.slice(0, -1)
+      } else if (last.type === 'arrow') {
+        const [x1, y1, x2, y2] = last.points
+        if (Math.abs(x2 - x1) < 3 && Math.abs(y2 - y1) < 3) return prev.slice(0, -1)
+      }
+      return updated
+    })
+    // Volver a select para permitir edición inmediata
+    if (tool !== 'pen') setTool('select')
+  }
+
+  function confirmText() {
+    if (!placingText) return
+    const txt = textInput.trim()
+    if (!txt) { setPlacingText(null); return }
+    const id = genId()
+    pushHistory([
+      ...objects,
+      { type: 'text', id, x: placingText.x, y: placingText.y, text: txt, fontSize, fill: color, background: null },
+    ])
+    setPlacingText(null)
+    setTextInput('')
+    setSelectedId(id)
+    setTool('select')
+  }
+
+  function confirmObservacion() {
+    const txt = obsDescripcion.trim()
+    if (!txt || !obsCatId || !obsPos) { closeObsPicker(); return }
+    const categoria = categorias.find(c => c.id === obsCatId)
+    if (!categoria) { closeObsPicker(); return }
+    const id = genId()
+    pushHistory([
+      ...objects,
+      {
+        type: 'text',
+        id,
+        x: obsPos.x,
+        y: obsPos.y,
+        text: txt,
+        fontSize,
+        fill: '#000000',
+        background: categoria.color,
+      },
+    ])
+    onObservacionAdded?.(txt, obsCatId)
+    closeObsPicker()
+    setTool('select')
+    setSelectedId(id)
+  }
+
+  function closeObsPicker() {
+    setPickingObsCat(false)
+    setObsDescripcion('')
+    setObsCatId(null)
+    setObsPos(null)
+  }
+
+  function deleteSelected() {
+    if (!selectedId) return
+    pushHistory(objects.filter(o => o.id !== selectedId))
+    setSelectedId(null)
+  }
+
+  function updateSelectedColor(newColor: string) {
+    setColor(newColor)
+    if (!selectedId) return
+    const next = objects.map(o => {
+      if (o.id !== selectedId) return o
+      if (o.type === 'text') return { ...o, fill: newColor }
+      return { ...o, stroke: newColor }
+    })
+    pushHistory(next)
+  }
+
+  function updateSelectedStrokeWidth(w: number) {
+    setStrokeWidth(w)
+    if (!selectedId) return
+    const next = objects.map(o => {
+      if (o.id !== selectedId) return o
+      if (o.type === 'text') return o
+      return { ...o, strokeWidth: w }
+    })
+    pushHistory(next)
+  }
+
+  function updateSelectedFontSize(fs: number) {
+    setFontSize(fs)
+    if (!selectedId) return
+    const next = objects.map(o => o.id === selectedId && o.type === 'text' ? { ...o, fontSize: fs } : o)
+    pushHistory(next)
+  }
+
+  function handleObjectTransform(id: string, attrs: Partial<DrawObject>) {
+    setObjects(prev => prev.map(o => o.id === id ? { ...o, ...attrs } as DrawObject : o))
+  }
+
+  const selectedObject = useMemo(() => objects.find(o => o.id === selectedId) ?? null, [objects, selectedId])
+  const selectedIsText = selectedObject?.type === 'text'
+
+  // UI helpers
+  const toolBtn = (key: Tool, label: string) => (
+    <button
+      key={key}
+      type="button"
+      onClick={() => { setTool(key); setSelectedId(null) }}
+      className={`px-2.5 py-1 text-xs rounded-lg border transition-colors ${
+        tool === key ? 'bg-sig-500 text-white border-sig-500' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+      }`}
+    >
+      {label}
+    </button>
+  )
 
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2 flex-wrap">
         <div className="flex items-center gap-1 mr-2">
           <span className="text-xs text-gray-500 mr-1">Herramienta:</span>
-          <button
-            type="button"
-            onClick={() => setTool('draw')}
-            className={`px-3 py-1 text-xs rounded-lg border ${tool === 'draw' ? 'bg-sig-500 text-white border-sig-500' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
-          >
-            Lápiz
-          </button>
-          <button
-            type="button"
-            onClick={() => setTool('text')}
-            className={`px-3 py-1 text-xs rounded-lg border ${tool === 'text' ? 'bg-sig-500 text-white border-sig-500' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
-          >
-            Texto
-          </button>
+          {toolBtn('select', 'Seleccionar')}
+          {toolBtn('pen', 'Lápiz')}
+          {toolBtn('text', 'Texto')}
+          {toolBtn('rect', '▢ Cuadrado')}
+          {toolBtn('circle', '○ Círculo')}
+          {toolBtn('arrow', '→ Flecha')}
+          {enableObservacionTool && toolBtn('observacion', '📝 Escribir observación')}
         </div>
 
         <div className="flex items-center gap-1 mr-2">
@@ -219,44 +446,55 @@ export function PhotoCanvasEditor({ imageUrl, onImageChange }: PhotoCanvasEditor
               key={c.value}
               type="button"
               title={c.label}
-              onClick={() => setColor(c.value)}
+              onClick={() => updateSelectedColor(c.value)}
               className={`w-5 h-5 rounded-full border-2 ${color === c.value ? 'border-gray-800 scale-125' : 'border-gray-200'} transition-transform`}
               style={{ backgroundColor: c.value }}
             />
           ))}
         </div>
 
-        <div className="flex items-center gap-1">
-          <span className="text-xs text-gray-500 mr-1">Tamaño:</span>
-          {BRUSH_SIZES.map(s => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => setBrushSize(s)}
-              className={`w-6 h-6 flex items-center justify-center rounded border text-[10px] ${brushSize === s ? 'bg-sig-500 text-white border-sig-500' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
+        {(tool === 'pen' || tool === 'rect' || tool === 'circle' || tool === 'arrow' || (selectedObject && !selectedIsText)) && (
+          <div className="flex items-center gap-1 mr-2">
+            <span className="text-xs text-gray-500 mr-1">Grosor:</span>
+            {BRUSH_SIZES.map(s => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => updateSelectedStrokeWidth(s)}
+                className={`w-7 h-6 flex items-center justify-center rounded border text-[11px] ${strokeWidth === s ? 'bg-sig-500 text-white border-sig-500' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
 
-        {tool === 'text' && (
-          <div className="flex items-center gap-1">
+        {(tool === 'text' || tool === 'observacion' || selectedIsText) && (
+          <div className="flex items-center gap-1 mr-2">
             <span className="text-xs text-gray-500 mr-1">Texto:</span>
-            <select
-              value={fontSize}
-              onChange={e => setFontSize(Number(e.target.value))}
-              className="text-xs border border-gray-200 rounded px-1 py-0.5"
-            >
-              <option value={16}>16</option>
-              <option value={24}>24</option>
-              <option value={32}>32</option>
-              <option value={48}>48</option>
-            </select>
+            {TEXT_SIZES.map(s => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => updateSelectedFontSize(s)}
+                className={`px-2 h-6 flex items-center justify-center rounded border text-[11px] ${fontSize === s ? 'bg-sig-500 text-white border-sig-500' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+              >
+                {s}
+              </button>
+            ))}
           </div>
         )}
 
         <div className="ml-auto flex items-center gap-1">
+          {selectedId && (
+            <button
+              type="button"
+              onClick={deleteSelected}
+              className="px-2 py-1 text-xs border border-red-200 rounded-lg text-red-600 hover:bg-red-50"
+            >
+              🗑 Eliminar
+            </button>
+          )}
           <button
             type="button"
             onClick={undo}
@@ -276,36 +514,292 @@ export function PhotoCanvasEditor({ imageUrl, onImageChange }: PhotoCanvasEditor
         </div>
       </div>
 
-      <div className="relative border border-gray-300 rounded-lg overflow-hidden bg-white">
-        <canvas
-          ref={canvasRef}
-          className="touch-none w-full h-auto"
-          style={{ maxHeight: '60vh', objectFit: 'contain' }}
-          onMouseDown={startDraw}
-          onMouseMove={draw}
-          onMouseUp={endDraw}
-          onMouseLeave={endDraw}
-          onTouchStart={startDraw}
-          onTouchMove={draw}
-          onTouchEnd={endDraw}
-        />
+      <div ref={containerRef} className="relative border border-gray-300 rounded-lg overflow-hidden bg-white touch-none">
+        {image && stageSize.width > 0 && (
+          <Stage
+            ref={stageRef}
+            width={stageSize.width}
+            height={stageSize.height}
+            onMouseDown={handleStageMouseDown}
+            onMouseMove={handleStageMouseMove}
+            onMouseUp={handleStageMouseUp}
+            onTouchStart={handleStageMouseDown}
+            onTouchMove={handleStageMouseMove}
+            onTouchEnd={handleStageMouseUp}
+          >
+            <Layer ref={layerRef}>
+              <KonvaImage
+                image={image}
+                width={stageSize.width}
+                height={stageSize.height}
+                name="background-image"
+                listening={tool === 'select'}
+              />
+              {objects.map(obj => {
+                if (obj.type === 'pen') {
+                  return (
+                    <Line
+                      key={obj.id}
+                      id={obj.id}
+                      points={obj.points}
+                      stroke={obj.stroke}
+                      strokeWidth={obj.strokeWidth}
+                      tension={0.3}
+                      lineCap="round"
+                      lineJoin="round"
+                      draggable={tool === 'select'}
+                      onClick={() => tool === 'select' && setSelectedId(obj.id)}
+                      onTap={() => tool === 'select' && setSelectedId(obj.id)}
+                      onDragEnd={e => {
+                        const node = e.target
+                        const dx = node.x()
+                        const dy = node.y()
+                        node.position({ x: 0, y: 0 })
+                        const newPoints = obj.points.map((p, i) => i % 2 === 0 ? p + dx : p + dy)
+                        handleObjectTransform(obj.id, { points: newPoints })
+                      }}
+                    />
+                  )
+                }
+                if (obj.type === 'rect') {
+                  return (
+                    <Rect
+                      key={obj.id}
+                      id={obj.id}
+                      x={obj.x}
+                      y={obj.y}
+                      width={obj.width}
+                      height={obj.height}
+                      stroke={obj.stroke}
+                      strokeWidth={obj.strokeWidth}
+                      rotation={obj.rotation ?? 0}
+                      draggable={tool === 'select'}
+                      onClick={() => tool === 'select' && setSelectedId(obj.id)}
+                      onTap={() => tool === 'select' && setSelectedId(obj.id)}
+                      onDragEnd={e => handleObjectTransform(obj.id, { x: e.target.x(), y: e.target.y() })}
+                      onTransformEnd={e => {
+                        const node = e.target as Konva.Rect
+                        const scaleX = node.scaleX()
+                        const scaleY = node.scaleY()
+                        node.scaleX(1); node.scaleY(1)
+                        handleObjectTransform(obj.id, {
+                          x: node.x(),
+                          y: node.y(),
+                          width: Math.max(4, node.width() * scaleX),
+                          height: Math.max(4, node.height() * scaleY),
+                          rotation: node.rotation(),
+                        })
+                      }}
+                    />
+                  )
+                }
+                if (obj.type === 'circle') {
+                  return (
+                    <Circle
+                      key={obj.id}
+                      id={obj.id}
+                      x={obj.x}
+                      y={obj.y}
+                      radius={obj.radius}
+                      stroke={obj.stroke}
+                      strokeWidth={obj.strokeWidth}
+                      draggable={tool === 'select'}
+                      onClick={() => tool === 'select' && setSelectedId(obj.id)}
+                      onTap={() => tool === 'select' && setSelectedId(obj.id)}
+                      onDragEnd={e => handleObjectTransform(obj.id, { x: e.target.x(), y: e.target.y() })}
+                      onTransformEnd={e => {
+                        const node = e.target as Konva.Circle
+                        const scale = Math.max(node.scaleX(), node.scaleY())
+                        node.scaleX(1); node.scaleY(1)
+                        handleObjectTransform(obj.id, {
+                          x: node.x(),
+                          y: node.y(),
+                          radius: Math.max(3, obj.radius * scale),
+                        })
+                      }}
+                    />
+                  )
+                }
+                if (obj.type === 'arrow') {
+                  return (
+                    <Arrow
+                      key={obj.id}
+                      id={obj.id}
+                      points={obj.points as unknown as number[]}
+                      stroke={obj.stroke}
+                      fill={obj.stroke}
+                      strokeWidth={obj.strokeWidth}
+                      pointerLength={obj.strokeWidth * 2.5}
+                      pointerWidth={obj.strokeWidth * 2.5}
+                      draggable={tool === 'select'}
+                      onClick={() => tool === 'select' && setSelectedId(obj.id)}
+                      onTap={() => tool === 'select' && setSelectedId(obj.id)}
+                      onDragEnd={e => {
+                        const node = e.target
+                        const dx = node.x()
+                        const dy = node.y()
+                        node.position({ x: 0, y: 0 })
+                        const [x1, y1, x2, y2] = obj.points
+                        handleObjectTransform(obj.id, { points: [x1 + dx, y1 + dy, x2 + dx, y2 + dy] })
+                      }}
+                    />
+                  )
+                }
+                if (obj.type === 'text') {
+                  const padding = Math.max(4, obj.fontSize * 0.2)
+                  return (
+                    <Group
+                      key={obj.id}
+                      id={obj.id}
+                      x={obj.x}
+                      y={obj.y}
+                      rotation={obj.rotation ?? 0}
+                      draggable={tool === 'select'}
+                      onClick={() => tool === 'select' && setSelectedId(obj.id)}
+                      onTap={() => tool === 'select' && setSelectedId(obj.id)}
+                      onDragEnd={e => handleObjectTransform(obj.id, { x: e.target.x(), y: e.target.y() })}
+                      onTransformEnd={e => {
+                        const node = e.target as Konva.Group
+                        const scale = Math.max(node.scaleX(), node.scaleY())
+                        node.scaleX(1); node.scaleY(1)
+                        handleObjectTransform(obj.id, {
+                          x: node.x(),
+                          y: node.y(),
+                          fontSize: Math.max(12, obj.fontSize * scale),
+                          rotation: node.rotation(),
+                        })
+                      }}
+                    >
+                      {obj.background && (
+                        <Rect
+                          x={-padding}
+                          y={-padding}
+                          width={obj.text.length * obj.fontSize * 0.55 + padding * 2}
+                          height={obj.fontSize * 1.2 + padding * 2}
+                          fill={obj.background}
+                          cornerRadius={4}
+                        />
+                      )}
+                      <KonvaText
+                        text={obj.text}
+                        fontSize={obj.fontSize}
+                        fill={obj.fill}
+                        fontFamily="sans-serif"
+                      />
+                    </Group>
+                  )
+                }
+                return null
+              })}
+              <Transformer
+                ref={transformerRef}
+                rotateEnabled
+                anchorSize={14}
+                borderStroke="#3b82f6"
+                anchorStroke="#3b82f6"
+                anchorFill="#ffffff"
+                boundBoxFunc={(oldBox, newBox) => {
+                  if (newBox.width < 8 || newBox.height < 8) return oldBox
+                  return newBox
+                }}
+              />
+            </Layer>
+          </Stage>
+        )}
+
+        {/* Modal de input de texto */}
         {placingText && (
-          <input
-            ref={textInputRef}
-            type="text"
-            value={textInput}
-            onChange={e => setTextInput(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); confirmText() } }}
-            onBlur={confirmText}
-            placeholder="Escribí el texto y presioná Enter..."
-            className="absolute border-2 border-sig-500 rounded px-1 py-0.5 text-sm bg-white/90 shadow-lg outline-none"
-            style={{ left: textInputPos.x / (canvasRef.current?.width ?? 1) * 100 + '%', top: textInputPos.y / (canvasRef.current?.height ?? 1) * 100 + '%' }}
-          />
+          <div className="absolute inset-0 bg-black/30 flex items-center justify-center z-10">
+            <div className="bg-white rounded-lg shadow-lg p-4 w-[90%] max-w-md space-y-3">
+              <h4 className="text-sm font-semibold text-gray-700">Escribir texto</h4>
+              <input
+                autoFocus
+                type="text"
+                value={textInput}
+                onChange={e => setTextInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); confirmText() } }}
+                placeholder="Texto…"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500"
+              />
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={() => { setPlacingText(null); setTextInput('') }} className="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-100 rounded-lg">
+                  Cancelar
+                </button>
+                <button type="button" onClick={confirmText} className="px-3 py-1.5 text-xs bg-sig-500 text-white rounded-lg hover:bg-sig-600">
+                  Agregar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Picker de categoría para Escribir observación */}
+        {pickingObsCat && (
+          <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-10">
+            <div className="bg-white rounded-lg shadow-lg p-4 w-[90%] max-w-md space-y-3 max-h-[90%] overflow-y-auto">
+              <h4 className="text-sm font-semibold text-gray-700">Escribir observación</h4>
+
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">Categoría</label>
+                <div className="grid grid-cols-1 gap-1">
+                  {categorias.length === 0 ? (
+                    <p className="text-xs text-gray-400">No hay categorías cargadas.</p>
+                  ) : categorias.map(cat => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setObsCatId(cat.id)}
+                      className={`flex items-center gap-2 text-left px-3 py-2 rounded-lg border text-sm ${
+                        obsCatId === cat.id ? 'border-sig-500 bg-sig-50' : 'border-gray-200 hover:bg-gray-50'
+                      }`}
+                    >
+                      <span
+                        className="w-5 h-5 rounded border border-gray-300"
+                        style={{ backgroundColor: cat.color }}
+                      />
+                      <span>{cat.nombre}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">Descripción</label>
+                <textarea
+                  value={obsDescripcion}
+                  onChange={e => setObsDescripcion(e.target.value)}
+                  rows={3}
+                  placeholder="Describí la observación…"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sig-500"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={closeObsPicker} className="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-100 rounded-lg">
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmObservacion}
+                  disabled={!obsDescripcion.trim() || !obsCatId}
+                  className="px-3 py-1.5 text-xs bg-sig-500 text-white rounded-lg hover:bg-sig-600 disabled:opacity-40"
+                >
+                  Agregar observación
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
 
       <p className="text-xs text-gray-400">
-        {tool === 'draw' ? 'Dibujá sobre la imagen con el mouse o el dedo.' : 'Hacé clic en la imagen para colocar texto.'}
+        {tool === 'select' && 'Tocá un objeto para seleccionarlo. Usá los handles para mover, redimensionar o rotar.'}
+        {tool === 'pen' && 'Dibujá libremente con el mouse o el dedo.'}
+        {tool === 'text' && 'Tocá la imagen para colocar texto.'}
+        {tool === 'rect' && 'Arrastrá para dibujar un cuadrado (contorno).'}
+        {tool === 'circle' && 'Arrastrá para dibujar un círculo (contorno).'}
+        {tool === 'arrow' && 'Arrastrá desde el inicio hasta la punta de la flecha.'}
+        {tool === 'observacion' && 'Tocá la imagen donde querés ubicar la observación.'}
       </p>
     </div>
   )

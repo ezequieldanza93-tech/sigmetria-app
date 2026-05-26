@@ -94,6 +94,7 @@ export async function crearObservaciones(
   registroId: string,
   observaciones: Array<{
     descripcion: string
+    categoria_id: string
     clasificacion_id: string
     responsable_id: string
     fecha_subsanacion: string
@@ -104,18 +105,24 @@ export async function crearObservaciones(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
-  const rows = observaciones
-    .filter(o => o.descripcion.trim())
-    .map(o => ({
-      registro_gestion_id: registroId,
-      descripcion: o.descripcion.trim(),
-      clasificacion_id: o.clasificacion_id || null,
-      responsable_id: o.responsable_id || null,
-      fecha_planificada: o.fecha_subsanacion || null,
-      foto_url: o.foto_url || null,
-    }))
+  const validas = observaciones.filter(o => o.descripcion.trim() && o.categoria_id)
+  if (validas.length === 0) return { success: true, data: null }
 
-  if (rows.length === 0) return { success: true, data: null }
+  // Si hay alguna observación con descripción pero sin categoría, error claro
+  const sinCategoria = observaciones.filter(o => o.descripcion.trim() && !o.categoria_id)
+  if (sinCategoria.length > 0) {
+    return { success: false, error: 'Toda observación requiere una categoría' }
+  }
+
+  const rows = validas.map(o => ({
+    registro_gestion_id: registroId,
+    descripcion: o.descripcion.trim(),
+    categoria_id: o.categoria_id,
+    clasificacion_id: o.clasificacion_id || null,
+    responsable_id: o.responsable_id || null,
+    fecha_planificada: o.fecha_subsanacion || null,
+    foto_url: o.foto_url || null,
+  }))
 
   const { error } = await supabase.from('gestiones_observaciones').insert(rows)
   if (error) return { success: false, error: error.message }
