@@ -76,6 +76,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
       )}
       <DevicePreviewPanel>{children}</DevicePreviewPanel>
       <ContextualBottomNav />
+      <div className="hidden lg:block">
+        <ChatWidget />
+      </div>
     </SidebarWrapper>
     <FloatingAvatar
       fullName={profile?.full_name ?? user.email ?? 'Usuario'}
@@ -85,9 +88,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
       consultoraNombre={consultoraNombre}
       isSuperAdmin={profile?.is_super_admin ?? false}
     />
-    <div className="hidden lg:block">
-      <ChatWidget />
-    </div>
     </PreviewProvider>
   )
 }
