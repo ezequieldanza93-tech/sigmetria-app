@@ -20,6 +20,7 @@ interface Empresa {
   is_active: boolean
   empresas_rubros: { nombre: string } | null
   localidades: { nombre: string; provincia: string } | null
+  establecimientoCount?: number
   establecimientos: Establecimiento[]
 }
 
@@ -130,7 +131,7 @@ export function EmpresasListView({
               <tbody className="divide-y divide-border-subtle">
                 {filtered.map(e => {
                   const ests = e.establecimientos ?? []
-                  const count = ests.length
+                  const count = e.establecimientoCount ?? ests.length
                   const isExpanded = expanded.has(e.id)
                   return (
                     <Fragment key={e.id}>

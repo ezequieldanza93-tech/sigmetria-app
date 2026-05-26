@@ -19,6 +19,7 @@ const establecimientoActionSchema = z.object({
   description: z.string().nullable().optional(),
   ubicacion_gmaps: z.string().nullable().optional(),
   aplica_iso_45001: z.literal('on').optional(),
+  cantidad_trabajadores: z.coerce.number().int().min(0).nullable().optional(),
 })
 
 async function parseUbicacion(raw: string | null): Promise<{ latitud: number | null; longitud: number | null }> {
@@ -160,7 +161,7 @@ export async function createEstablecimiento(
   if (!parsed.success) {
     return { success: false, error: formatZodErrors(parsed.error) }
   }
-  const { nombre, tipo_id, domicilio, localidad_id, codigo_postal, actividad_principal, description, ubicacion_gmaps, aplica_iso_45001 } = parsed.data
+  const { nombre, tipo_id, domicilio, localidad_id, codigo_postal, actividad_principal, description, ubicacion_gmaps, aplica_iso_45001, cantidad_trabajadores } = parsed.data
 
   const { latitud, longitud } = await parseUbicacion(ubicacion_gmaps ?? null)
 
@@ -178,6 +179,7 @@ export async function createEstablecimiento(
       latitud,
       longitud,
       aplica_iso_45001: aplica_iso_45001 === 'on',
+      cantidad_trabajadores: cantidad_trabajadores ?? null,
     })
     .select('id')
     .single()
@@ -246,7 +248,7 @@ export async function updateEstablecimiento(
   if (!parsed.success) {
     return { success: false, error: formatZodErrors(parsed.error) }
   }
-  const { nombre, tipo_id, domicilio, localidad_id, codigo_postal, actividad_principal, description, ubicacion_gmaps, aplica_iso_45001 } = parsed.data
+  const { nombre, tipo_id, domicilio, localidad_id, codigo_postal, actividad_principal, description, ubicacion_gmaps, aplica_iso_45001, cantidad_trabajadores } = parsed.data
 
   const { latitud, longitud } = await parseUbicacion(ubicacion_gmaps ?? null)
 
@@ -286,6 +288,7 @@ export async function updateEstablecimiento(
       latitud,
       longitud,
       aplica_iso_45001: aplica_iso_45001 === 'on',
+      cantidad_trabajadores: cantidad_trabajadores ?? null,
       ...(photo_site !== undefined && { photo_site }),
       ...(plansUpdate.floor_plan_pdf_url !== undefined && { floor_plan_pdf_url: plansUpdate.floor_plan_pdf_url }),
       ...(plansUpdate.floor_plan_cad_url !== undefined && { floor_plan_cad_url: plansUpdate.floor_plan_cad_url }),

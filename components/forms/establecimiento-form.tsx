@@ -182,6 +182,15 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
         placeholder="Manufactura de piezas metálicas"
       />
 
+      <Input
+        label="Cantidad de trabajadores (manual)"
+        name="cantidad_trabajadores"
+        type="number"
+        min="0"
+        defaultValue={establecimiento?.cantidad_trabajadores != null ? String(establecimiento.cantidad_trabajadores) : ''}
+        placeholder="Ej: 45"
+      />
+
       <div>
         <label className="text-sm font-medium text-gray-700 block mb-2">Horario por día</label>
         <div className="border border-gray-200 rounded-lg divide-y divide-gray-100">

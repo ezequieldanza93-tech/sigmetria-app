@@ -23,10 +23,10 @@ export async function crearReporteFotografico(
   const { data: gestion } = await supabase
     .from('gestiones')
     .select('id')
-    .eq('nombre', 'Reportes Fotográficos del Sitio')
+    .eq('nombre', 'Observación en recorrida de campo')
     .maybeSingle()
 
-  if (!gestion) return { success: false, error: 'No se encontró la gestión "Reportes Fotográficos del Sitio" en el catálogo' }
+  if (!gestion) return { success: false, error: 'No se encontró la gestión "Observación en recorrida de campo" en el catálogo' }
 
   // Get or create gestion_establecimiento (single query)
   let geId: string

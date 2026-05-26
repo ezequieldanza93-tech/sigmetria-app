@@ -63,7 +63,7 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
   if (tab === 'establecimientos' || tab === 'dashboard') {
     const { data } = await supabase
       .from('establecimientos')
-      .select('id, nombre, establecimientos_tipos(nombre), localidades!localidad_id(nombre, provincia), cantidad_trabajadores')
+      .select('id, nombre, establecimientos_tipos(nombre), localidades!localidad_id(nombre, provincia), cantidad_trabajadores, establecimientos_sectores(cantidad_trabajadores)')
       .eq('empresa_id', id)
       .neq('status', 'cancelled')
       .order('nombre')

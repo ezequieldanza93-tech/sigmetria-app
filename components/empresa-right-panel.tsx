@@ -10,6 +10,7 @@ interface Establecimiento {
   establecimientos_tipos: { nombre: string }[] | null
   localidades: { nombre: string; provincia: string } | null
   cantidad_trabajadores: number | null
+  establecimientos_sectores: { cantidad_trabajadores: number | null }[] | null
 }
 
 interface PersonaLink {
@@ -115,32 +116,47 @@ export function EmpresaRightPanel({
                   <tr className="text-left">
                     <th className="px-5 py-3.5 text-gray-500 font-medium">Nombre</th>
                     <th className="px-5 py-3.5 text-gray-500 font-medium">Tipo</th>
-                    <th className="px-5 py-3.5 text-gray-500 font-medium">Ubicación</th>
-                    <th className="px-5 py-3.5 text-gray-500 font-medium text-center">Trabajadores</th>
+                    <th className="px-5 py-3.5 text-gray-500 font-medium hidden lg:table-cell">Ubicación</th>
+                    <th className="px-5 py-3.5 text-gray-500 font-medium text-center">Sectores</th>
+                    <th className="px-5 py-3.5 text-gray-500 font-medium text-center">
+                      <span title="Ingresado manualmente">Trab. (Manual)</span>
+                    </th>
+                    <th className="px-5 py-3.5 text-gray-500 font-medium text-center">
+                      <span title="Calculado desde sectores → puestos → personas activas">Trab. (Auto)</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {establecimientos.map(est => (
-                    <tr key={est.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-5 py-4 font-medium text-gray-900">
-                        <Link
-                          href={`/dashboard/empresas/${empresaId}/establecimientos/${est.id}`}
-                          className="hover:text-sig-500 transition-colors"
-                        >
-                          {est.nombre}
-                        </Link>
-                      </td>
-                      <td className="px-5 py-4 text-gray-500">
-                        {est.establecimientos_tipos?.[0]?.nombre ?? '—'}
-                      </td>
-                      <td className="px-5 py-4 text-gray-500">
-                        {est.localidades ? `${est.localidades.nombre}, ${est.localidades.provincia}` : '—'}
-                      </td>
-                      <td className="px-5 py-4 text-gray-500 text-center">
-                        {est.cantidad_trabajadores ?? '—'}
-                      </td>
-                    </tr>
-                  ))}
+                  {establecimientos.map(est => {
+                    const sectores = est.establecimientos_sectores ?? []
+                    const sectoresCount = sectores.length
+                    const trabajadoresAuto = sectores.reduce((sum, s) => sum + (s.cantidad_trabajadores ?? 0), 0)
+                    return (
+                      <tr key={est.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-5 py-4 font-medium text-gray-900">
+                          <Link
+                            href={`/dashboard/empresas/${empresaId}/establecimientos/${est.id}`}
+                            className="hover:text-sig-500 transition-colors"
+                          >
+                            {est.nombre}
+                          </Link>
+                        </td>
+                        <td className="px-5 py-4 text-gray-500">
+                          {est.establecimientos_tipos?.[0]?.nombre ?? '—'}
+                        </td>
+                        <td className="px-5 py-4 text-gray-500 hidden lg:table-cell">
+                          {est.localidades ? `${est.localidades.nombre}, ${est.localidades.provincia}` : '—'}
+                        </td>
+                        <td className="px-5 py-4 text-gray-500 text-center">{sectoresCount}</td>
+                        <td className="px-5 py-4 text-gray-400 text-center">
+                          {est.cantidad_trabajadores ?? <span className="text-gray-300">—</span>}
+                        </td>
+                        <td className="px-5 py-4 text-gray-900 text-center font-medium">
+                          {trabajadoresAuto > 0 ? trabajadoresAuto : <span className="text-gray-300">0</span>}
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>

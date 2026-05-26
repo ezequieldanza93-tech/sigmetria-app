@@ -59,6 +59,7 @@ export async function EmpresasList() {
     is_active: Boolean(e.is_active),
     empresas_rubros: (e.empresas_rubros ?? null) as unknown as { nombre: string } | null,
     localidades: (e.localidades ?? null) as unknown as { nombre: string; provincia: string } | null,
+    establecimientoCount: ((e.establecimientos as unknown as { count: number }[])?.[0]?.count ?? 0),
     establecimientos: establecimientosByEmpresa[e.id as string] ?? [],
   }))
 
