@@ -3,7 +3,6 @@ import { redirect, notFound } from 'next/navigation'
 import { canWrite, UserRole } from '@/lib/types'
 import { GestionesAgenda } from '@/components/establecimiento-gestiones-agenda'
 import { EstablecimientoTabs } from '@/components/establecimiento-tabs'
-import { EstablecimientoLocation } from '@/components/establecimiento-location'
 import { ActuarView } from '@/components/actuar-view'
 import { getDocTiposAplicables } from '@/lib/actions/aplicabilidad'
 import type {
@@ -161,14 +160,6 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
 
       {section === 'ficha' && (
         <>
-          {establecimiento.latitude != null && establecimiento.longitude != null && (
-            <EstablecimientoLocation
-              lat={establecimiento.latitude}
-              lng={establecimiento.longitude}
-              nombre={establecimiento.nombre}
-              fotoUrl={establecimiento.photo_site}
-            />
-          )}
           <EstablecimientoTabs
             establecimiento={establecimiento as unknown as import('@/lib/types').Establecimiento}
             establecimientoId={estId}

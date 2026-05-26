@@ -6,7 +6,6 @@ import {
   MapPin, Building2, Users, Clock, FileText,
   CheckCircle2, XCircle, ExternalLink, Upload, Trash2, Pencil,
 } from 'lucide-react'
-import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { uploadPlanoEstablecimiento, deletePlanoEstablecimiento } from '@/lib/actions/establecimiento'
 import { WeatherPanel } from '@/components/weather-panel'
@@ -60,43 +59,25 @@ export function InfoTab({ establecimiento, canWrite, empresaId }: Props) {
   return (
     <div className="space-y-5">
 
-      {/* Hero: foto · mapa · clima */}
+      {/* Hero: mapa · clima + hora local */}
       {hasLocation && (
         <section className="bg-surface-base border border-border-subtle rounded-xl overflow-hidden">
-          <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr_200px]" style={{ minHeight: '160px' }}>
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_220px]" style={{ minHeight: '200px' }}>
 
-            {/* Foto */}
-            <div className="relative border-b sm:border-b-0 sm:border-r border-border-subtle min-h-[130px]">
-              {establecimiento.photo_site ? (
-                <Image
-                  src={establecimiento.photo_site}
-                  alt={`Foto de ${establecimiento.nombre}`}
-                  fill
-                  className="object-cover"
-                  sizes="160px"
-                />
-              ) : (
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-text-tertiary gap-1">
-                  <Building2 size={28} strokeWidth={1} />
-                  <p className="text-xs">Sin foto</p>
-                </div>
-              )}
-            </div>
-
-            {/* Mapa */}
-            <div className="relative border-b sm:border-b-0 sm:border-r border-border-subtle min-h-[130px]">
+            {/* Mapa OpenStreetMap */}
+            <div className="relative border-b sm:border-b-0 sm:border-r border-border-subtle min-h-[160px]">
               <iframe
-                src={`https://maps.google.com/maps?q=${establecimiento.latitude},${establecimiento.longitude}&z=15&output=embed`}
+                src={`https://www.openstreetmap.org/export/embed.html?bbox=${establecimiento.longitude! - 0.01},${establecimiento.latitude! - 0.01},${establecimiento.longitude! + 0.01},${establecimiento.latitude! + 0.01}&layer=mapnik&marker=${establecimiento.latitude},${establecimiento.longitude}`}
                 width="100%"
                 height="100%"
-                style={{ border: 0, display: 'block', minHeight: '160px' }}
+                style={{ border: 0, display: 'block', minHeight: '200px' }}
                 allowFullScreen
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"
                 title={`Mapa de ${establecimiento.nombre}`}
               />
               <a
-                href={`https://www.google.com/maps/@${establecimiento.latitude},${establecimiento.longitude},15z`}
+                href={`https://www.openstreetmap.org/?mlat=${establecimiento.latitude}&mlon=${establecimiento.longitude}#map=15/${establecimiento.latitude}/${establecimiento.longitude}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="absolute bottom-2 right-2 bg-surface-base/90 backdrop-blur-sm text-xs text-brand-primary font-medium px-2.5 py-1 rounded-lg shadow border border-border-subtle hover:bg-surface-base transition-colors"
@@ -105,7 +86,7 @@ export function InfoTab({ establecimiento, canWrite, empresaId }: Props) {
               </a>
             </div>
 
-            {/* Clima */}
+            {/* Clima + Hora local */}
             <WeatherPanel lat={establecimiento.latitude!} lng={establecimiento.longitude!} />
           </div>
         </section>

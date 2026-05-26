@@ -54,6 +54,7 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [confirmNoPhoto, setConfirmNoPhoto] = useState(false)
 
   // Persona combobox
   const [searchQuery, setSearchQuery] = useState('')
@@ -326,22 +327,18 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
     }
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
+  async function executeClose() {
     if (!observacion) return
-
     setSaving(true)
     setError(null)
-
+    setConfirmNoPhoto(false)
     const result = await cerrarObservacion(
       observacion.id,
       fechaCierre,
       responsableCierreId || null,
       evidenciaUrl
     )
-
     setSaving(false)
-
     if (result.success) {
       setSuccess(true)
       onSuccess()
@@ -349,6 +346,16 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
     } else {
       setError(result.error ?? 'Error al cerrar observación')
     }
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!observacion) return
+    if (!evidenciaUrl) {
+      setConfirmNoPhoto(true)
+      return
+    }
+    await executeClose()
   }
 
   async function handleEnviarComentario(e: React.FormEvent) {
@@ -376,6 +383,28 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
         {success && (
           <div className="bg-success-bg border border-green-200 text-success text-sm rounded-lg px-4 py-3">
             Observación cerrada correctamente ✓
+          </div>
+        )}
+
+        {confirmNoPhoto && (
+          <div className="bg-warning-bg border border-yellow-300 text-warning text-sm rounded-lg px-4 py-3 space-y-3">
+            <p className="font-medium">¿Estás seguro de cerrar esta observación sin evidencia de cierre?</p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmNoPhoto(false)}
+                className="flex-1 text-xs border border-yellow-400 text-warning rounded-lg px-3 py-1.5 font-medium hover:bg-yellow-100 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={executeClose}
+                className="flex-1 text-xs bg-warning text-white rounded-lg px-3 py-1.5 font-medium hover:opacity-90 transition-opacity"
+              >
+                Sí, cerrar sin evidencia
+              </button>
+            </div>
           </div>
         )}
 

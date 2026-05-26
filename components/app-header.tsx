@@ -6,7 +6,6 @@ import { usePathname, useRouter } from 'next/navigation'
 import { Sun, Moon, Users, UserCog, Network, Gauge, Shield, Settings2, LogOut, Building2, BarChart2, CreditCard, ShieldCheck, CalendarClock, AlertTriangle, Scale, Map, ClipboardList, MessageSquare, Wifi, WifiOff, Download, GraduationCap, BookOpen, Keyboard, Home, BookMarked } from 'lucide-react'
 import { SystemRole, UserRole, ROLE_LABELS, ROLE_COLORS } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
-import { WeatherClock } from '@/components/weather-clock'
 import { NotificationDropdown } from '@/components/notification-dropdown'
 import { useNetworkStatus } from '@/lib/hooks/use-network-status'
 import { useInstallPrompt } from '@/components/install-pwa'
@@ -285,8 +284,6 @@ export function AppHeader({
 
           {/* Notification bell with dropdown */}
           <NotificationDropdown />
-
-          <WeatherClock />
 
           {consultoraNombre && (
             <div className="hidden md:block text-right">

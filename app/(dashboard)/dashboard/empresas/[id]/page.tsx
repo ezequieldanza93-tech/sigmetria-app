@@ -6,6 +6,7 @@ import { formatCUIT } from '@/lib/utils'
 import { Building2, FileText, BarChart3 } from 'lucide-react'
 import { EmpresaDocumentosSection } from '@/components/empresa-documentos-section'
 import { EmpresaRightPanel } from '@/components/empresa-right-panel'
+import { EmpresaFichaHero } from '@/components/empresa-ficha-hero'
 import { AnalyticsDashboard } from '@/components/analytics/real/analytics-dashboard'
 import type { DocumentType, Documento } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -149,6 +150,23 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
 
       {tab === 'ficha' && (
         <div className="max-w-3xl">
+          {/* Mapa · Clima · Hora local */}
+          {(() => {
+            const e = empresa as typeof empresa & { latitude?: number | null; longitude?: number | null }
+            const addressParts = [
+              e.domicilio,
+              (e.localidades as { nombre: string } | null)?.nombre,
+              (e.localidades as { provincia: string } | null)?.provincia,
+            ].filter(Boolean)
+            return (
+              <EmpresaFichaHero
+                address={addressParts.length > 0 ? addressParts.join(', ') : null}
+                lat={e.latitude ?? null}
+                lng={e.longitude ?? null}
+              />
+            )
+          })()}
+
           <div className="bg-surface-elevated rounded-xl border border-border-subtle p-6 space-y-6">
             <div className="flex items-start justify-between gap-2">
               <div>

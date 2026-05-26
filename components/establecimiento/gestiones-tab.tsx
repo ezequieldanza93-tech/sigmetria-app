@@ -533,6 +533,10 @@ export function GestionesTab({ establecimientoId, canWrite }: GestionesTabProps)
                           {canWrite && estado !== 'Cerrado' && (
                             <button
                               onClick={async () => {
+                                if (!obs.evidencia_cierre_url) {
+                                  const ok = window.confirm('¿Estás seguro de cerrar esta observación sin evidencia de cierre?')
+                                  if (!ok) return
+                                }
                                 const hoyStr = new Date().toISOString().split('T')[0]
                                 await cerrarObservacion(obs.id, hoyStr, null)
                                 loadObservaciones(registros?.map(r => r.id) ?? []).then(setObservaciones)

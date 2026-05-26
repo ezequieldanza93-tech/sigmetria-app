@@ -201,6 +201,8 @@ export interface Empresa {
   domicilio: string | null
   codigo_postal: string | null
   localidad_id: string | null
+  latitude: number | null
+  longitude: number | null
   art_id: string | null
   art_numero_contrato: string | null
   logo_small_url: string | null

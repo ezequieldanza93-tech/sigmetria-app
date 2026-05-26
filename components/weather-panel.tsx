@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { LocalClock } from './local-clock'
 
 const WMO: Record<number, string> = {
   0: 'Despejado',
@@ -63,12 +64,13 @@ interface Props {
 export function WeatherPanel({ lat, lng }: Props) {
   const [weather, setWeather] = useState<Weather | null>(null)
   const [forecast, setForecast] = useState<DayForecast[]>([])
+  const [timezone, setTimezone] = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
       try {
         const res = await fetch(
-          `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code,wind_speed_10m&wind_speed_unit=kmh&timezone=America%2FArgentina%2FBuenos_Aires`
+          `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code,wind_speed_10m&wind_speed_unit=kmh&timezone=auto`
         )
         const json = await res.json()
         const c = json.current
@@ -93,6 +95,7 @@ export function WeatherPanel({ lat, lng }: Props) {
     )
       .then(r => r.json())
       .then(d => {
+        if (d.timezone) setTimezone(d.timezone as string)
         setForecast(d.daily.time.map((date: string, i: number) => ({
           date,
           weathercode: d.daily.weathercode[i],
@@ -105,6 +108,14 @@ export function WeatherPanel({ lat, lng }: Props) {
 
   return (
     <div className="bg-gradient-to-br from-sky-50 to-sky-100 p-4 flex flex-col justify-between gap-3 h-full">
+
+      {/* Hora local */}
+      {timezone && (
+        <div className="border-b border-sky-200 pb-3 mb-1">
+          <LocalClock timezone={timezone} className="text-sky-900" />
+        </div>
+      )}
+
       <div>
         <p className="text-[10px] font-medium text-sky-700/70 uppercase tracking-wider mb-2">
           Clima ahora

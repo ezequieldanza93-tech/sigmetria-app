@@ -190,6 +190,21 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
       />
 
       <div className="grid grid-cols-2 gap-4">
+        <Input
+          label="Latitud"
+          name="latitude"
+          defaultValue={fieldValue('latitude')}
+          placeholder="-34.6037"
+        />
+        <Input
+          label="Longitud"
+          name="longitude"
+          defaultValue={fieldValue('longitude')}
+          placeholder="-58.3816"
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
         <div>
           <Select
             label="ART"
