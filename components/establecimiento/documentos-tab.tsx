@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { DocumentoForm } from '@/components/forms/documento-form'
@@ -16,17 +16,20 @@ interface DocumentosTabProps {
   canWrite: boolean
 }
 
-function vencimientoClass(fecha: string | null): string {
-  if (!fecha) return 'text-text-tertiary'
-  const days = Math.ceil((new Date(fecha).getTime() - Date.now()) / 86400000)
-  if (days < 0) return 'text-danger font-medium'
-  if (days <= 30) return 'text-warning font-medium'
-  return 'text-text-secondary'
-}
-
 export function DocumentosTab({ documentos, documentTypes, establecimientoId, empresaId, canWrite }: DocumentosTabProps) {
   const [showModal, setShowModal] = useState(false)
+  const [now, setNow] = useState<number | null>(null)
   const documentoAction = createDocumento.bind(null, empresaId, establecimientoId)
+
+  useEffect(() => { setNow(Date.now()) }, [])
+
+  function vencimientoClass(fecha: string | null): string {
+    if (!fecha || now === null) return 'text-text-tertiary'
+    const days = Math.ceil((new Date(fecha).getTime() - now) / 86400000)
+    if (days < 0) return 'text-danger font-medium'
+    if (days <= 30) return 'text-warning font-medium'
+    return 'text-text-secondary'
+  }
 
   return (
     <div>

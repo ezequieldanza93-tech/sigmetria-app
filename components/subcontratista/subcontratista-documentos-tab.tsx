@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { SubcontratistaDocumentoForm } from './subcontratista-documento-form'
@@ -15,29 +15,32 @@ interface Props {
   puedeEditar: boolean
 }
 
-function vencimientoInfo(fecha: string | null): { label: string; className: string } {
-  if (!fecha) return { label: 'Sin vencimiento', className: 'text-text-tertiary' }
-  const days = Math.ceil((new Date(fecha).getTime() - Date.now()) / 86400000)
-  if (days < 0) return { label: `Vencido (${Math.abs(days)} días)`, className: 'text-danger font-medium' }
-  if (days <= 7) return { label: `Vence en ${days} día${days === 1 ? '' : 's'}`, className: 'text-danger font-medium' }
-  if (days <= 15) return { label: `Vence en ${days} días`, className: 'text-orange-500 font-medium' }
-  if (days <= 30) return { label: `Vence en ${days} días`, className: 'text-warning font-medium' }
-  return { label: 'Vigente', className: 'text-success font-medium' }
-}
-
-function estadoBadge(fecha: string | null): { label: string; className: string } {
-  if (!fecha) return { label: 'Sin vencer', className: 'bg-surface-elevated text-text-secondary' }
-  const days = Math.ceil((new Date(fecha).getTime() - Date.now()) / 86400000)
-  if (days < 0) return { label: 'Vencido', className: 'bg-danger-bg text-danger' }
-  if (days <= 7) return { label: 'Crítico', className: 'bg-danger-bg text-danger' }
-  if (days <= 15) return { label: 'Próximo', className: 'bg-orange-100 text-orange-700' }
-  if (days <= 30) return { label: 'Próximo', className: 'bg-warning-bg text-warning' }
-  return { label: 'Vigente', className: 'bg-success-bg text-success' }
-}
-
 export function SubcontratistaDocumentosTab({ documentos, documentTypes, subcontratistaId, puedeEditar }: Props) {
   const [showModal, setShowModal] = useState(false)
+  const [now, setNow] = useState<number | null>(null)
   const documentoAction = createSubcontratistaDocumento.bind(null, subcontratistaId)
+
+  useEffect(() => { setNow(Date.now()) }, [])
+
+  function vencimientoInfo(fecha: string | null): { label: string; className: string } {
+    if (!fecha || now === null) return { label: 'Sin vencimiento', className: 'text-text-tertiary' }
+    const days = Math.ceil((new Date(fecha).getTime() - now) / 86400000)
+    if (days < 0) return { label: `Vencido (${Math.abs(days)} días)`, className: 'text-danger font-medium' }
+    if (days <= 7) return { label: `Vence en ${days} día${days === 1 ? '' : 's'}`, className: 'text-danger font-medium' }
+    if (days <= 15) return { label: `Vence en ${days} días`, className: 'text-orange-500 font-medium' }
+    if (days <= 30) return { label: `Vence en ${days} días`, className: 'text-warning font-medium' }
+    return { label: 'Vigente', className: 'text-success font-medium' }
+  }
+
+  function estadoBadge(fecha: string | null): { label: string; className: string } {
+    if (!fecha || now === null) return { label: 'Sin vencer', className: 'bg-surface-elevated text-text-secondary' }
+    const days = Math.ceil((new Date(fecha).getTime() - now) / 86400000)
+    if (days < 0) return { label: 'Vencido', className: 'bg-danger-bg text-danger' }
+    if (days <= 7) return { label: 'Crítico', className: 'bg-danger-bg text-danger' }
+    if (days <= 15) return { label: 'Próximo', className: 'bg-orange-100 text-orange-700' }
+    if (days <= 30) return { label: 'Próximo', className: 'bg-warning-bg text-warning' }
+    return { label: 'Vigente', className: 'bg-success-bg text-success' }
+  }
 
   async function handleDelete(docId: string) {
     if (!confirm('¿Eliminar este documento?')) return
