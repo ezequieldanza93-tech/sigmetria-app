@@ -37,10 +37,15 @@ export function NotificationDropdown() {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const load = useCallback(async () => {
-    const data = await getNotificaciones()
-    setNotificaciones(data.slice(0, 10))
-    setNotifCount(data.filter(n => !n.leida).length)
-    setLoading(false)
+    try {
+      const data = await getNotificaciones()
+      setNotificaciones(data.slice(0, 10))
+      setNotifCount(data.filter(n => !n.leida).length)
+    } catch {
+      // Network failures during polling are non-critical
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   useEffect(() => {
