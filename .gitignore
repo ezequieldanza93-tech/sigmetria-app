@@ -1,6 +1,8 @@
 .env.local
 .env*.local
 node_modules/
+apps/mobile/node_modules/
+apps/ios/node_modules/
 .next/
 out/
 .DS_Store
