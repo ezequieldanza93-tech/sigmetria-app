@@ -18,7 +18,7 @@ interface Props {
 const TABS = [
   { id: 'establecimientos', label: 'Establecimientos', icon: Building2 },
   { id: 'ficha', label: 'Ficha', icon: FileText },
-  { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+  { id: 'dashboard', label: 'Dashboards', icon: BarChart3 },
 ] as const
 
 type Tab = (typeof TABS)[number]['id']

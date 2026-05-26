@@ -7,11 +7,11 @@ import { cn } from '@/lib/utils'
 
 type Section = 'agenda' | 'ficha' | 'dashboard' | 'seguimiento'
 
-const ITEMS: { id: Section; label: string; icon: typeof FileText }[] = [
-  { id: 'ficha', label: 'Ficha', icon: FileText },
-  { id: 'agenda', label: 'Gestiones', icon: ClipboardList },
-  { id: 'seguimiento', label: 'Seguimiento', icon: Crosshair },
-  { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+const ITEMS: { id: Section; label: string; shortLabel: string; icon: typeof FileText }[] = [
+  { id: 'ficha', label: 'Ficha', shortLabel: 'Ficha', icon: FileText },
+  { id: 'agenda', label: 'Gestiones', shortLabel: 'Gestiones', icon: ClipboardList },
+  { id: 'seguimiento', label: 'Seguimiento de Observaciones', shortLabel: 'Obs.', icon: Crosshair },
+  { id: 'dashboard', label: 'Dashboards', shortLabel: 'Dashboards', icon: BarChart3 },
 ]
 
 interface Props {
@@ -31,7 +31,7 @@ export function SeccionesBottomNav({ empresaId, establecimientoId }: Props) {
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       aria-label="Secciones del establecimiento"
     >
-      {ITEMS.map(({ id, label, icon: Icon }) => {
+      {ITEMS.map(({ id, label, shortLabel, icon: Icon }) => {
         const isActive = activeSection === id
         const href = id === 'agenda' ? baseUrl : `${baseUrl}?section=${id}`
         return (
@@ -52,7 +52,7 @@ export function SeccionesBottomNav({ empresaId, establecimientoId }: Props) {
             )}
             <Icon size={22} strokeWidth={1.75} />
             {isActive && (
-              <span className="text-[10px] font-medium mt-0.5">{label}</span>
+              <span className="text-[10px] font-medium mt-0.5">{shortLabel}</span>
             )}
           </Link>
         )

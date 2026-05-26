@@ -254,7 +254,7 @@ export function ActuarView({ establecimientoId, canWrite = true }: { establecimi
   if (observaciones.length === 0) {
     return (
       <div className="bg-surface-elevated rounded-xl border border-border-subtle p-12 text-center">
-        <p className="font-semibold text-text-primary">Actuar</p>
+        <p className="font-semibold text-text-primary">Seguimiento de Observaciones</p>
         <p className="text-sm text-text-tertiary mt-1">
           No hay observaciones de gestiones ejecutadas.
         </p>

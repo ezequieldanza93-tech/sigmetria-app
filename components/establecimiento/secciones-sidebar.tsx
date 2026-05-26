@@ -10,8 +10,8 @@ type Section = 'agenda' | 'ficha' | 'dashboard' | 'seguimiento'
 const ITEMS: { id: Section; label: string; icon: typeof FileText }[] = [
   { id: 'ficha', label: 'Ficha', icon: FileText },
   { id: 'agenda', label: 'Gestiones', icon: ClipboardList },
-  { id: 'seguimiento', label: 'Seguimiento', icon: Crosshair },
-  { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+  { id: 'seguimiento', label: 'Seguimiento de Observaciones', icon: Crosshair },
+  { id: 'dashboard', label: 'Dashboards', icon: BarChart3 },
 ]
 
 interface Props {
