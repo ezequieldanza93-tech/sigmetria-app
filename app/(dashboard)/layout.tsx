@@ -4,8 +4,10 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { AppHeader } from '@/components/app-header'
 import { SidebarWrapper } from '@/components/layout/sidebar-wrapper'
 import { DevicePreviewPanel } from '@/components/layout/device-preview-panel'
-import { BottomNav } from '@/components/layout/bottom-nav'
+import { ContextualBottomNav } from '@/components/layout/contextual-bottom-nav'
+import { FloatingAvatar } from '@/components/layout/floating-avatar'
 import { BannerPastDueWrapper } from '@/components/billing/banner-past-due-wrapper'
+import { PreviewProvider } from '@/lib/contexts/preview-context'
 import { UserRole } from '@/lib/types'
 import 'leaflet/dist/leaflet.css'
 
@@ -55,6 +57,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   return (
+    <PreviewProvider>
     <SidebarWrapper
       header={
         <AppHeader
@@ -71,7 +74,16 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <BannerPastDueWrapper graceUntil={pastDueGraceUntil} />
       )}
       <DevicePreviewPanel>{children}</DevicePreviewPanel>
-      <BottomNav />
+      <ContextualBottomNav />
     </SidebarWrapper>
+    <FloatingAvatar
+      fullName={profile?.full_name ?? user.email ?? 'Usuario'}
+      email={user.email ?? ''}
+      userRole={(membership?.role as UserRole) ?? null}
+      systemRole={profile?.system_role ?? 'user'}
+      consultoraNombre={consultoraNombre}
+      isSuperAdmin={profile?.is_super_admin ?? false}
+    />
+    </PreviewProvider>
   )
 }

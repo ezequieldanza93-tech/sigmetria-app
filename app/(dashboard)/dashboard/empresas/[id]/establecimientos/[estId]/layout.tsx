@@ -2,7 +2,6 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import { EstablecimientoProvider } from '@/lib/contexts/establecimiento-context'
 import { EstablecimientoShell } from '@/components/establecimiento/establecimiento-shell'
-import { SeccionesBottomNav } from '@/components/establecimiento/secciones-bottom-nav'
 
 interface Props {
   children: React.ReactNode
@@ -25,11 +24,7 @@ export default async function EstablecimientoLegacyLayout({ children, params }: 
 
   return (
     <EstablecimientoProvider establecimientoId={estId} nombre={establecimiento.nombre} empresaId={empresaId}>
-      <EstablecimientoShell
-        empresaId={empresaId}
-        establecimientoId={estId}
-        bottomNav={<SeccionesBottomNav empresaId={empresaId} establecimientoId={estId} />}
-      >
+      <EstablecimientoShell empresaId={empresaId} establecimientoId={estId}>
         {children}
       </EstablecimientoShell>
     </EstablecimientoProvider>
