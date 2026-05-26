@@ -303,3 +303,70 @@ export async function updateEstablecimiento(
   revalidatePath(`/dashboard/empresas/${empresaId}/establecimientos/${id}`)
   redirect(`/dashboard/empresas/${empresaId}/establecimientos/${id}`)
 }
+
+export async function uploadPlanoEstablecimiento(
+  establecimientoId: string,
+  _prev: ActionResult<{ url: string }> | null,
+  formData: FormData
+): Promise<ActionResult<{ url: string }>> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'No autenticado' }
+
+  const file = formData.get('plano') as File | null
+  if (!file || file.size === 0) return { success: false, error: 'Seleccioná un archivo' }
+
+  const { data: est } = await supabase
+    .from('establecimientos')
+    .select('empresas!inner(consultora_id)')
+    .eq('id', establecimientoId)
+    .single() as { data: { empresas: { consultora_id: string } } | null }
+
+  if (!est?.empresas?.consultora_id) return { success: false, error: 'No se encontró la consultora' }
+
+  const up = await uploadAsset({
+    bucket: 'planos',
+    consultoraId: est.empresas.consultora_id,
+    entityType: 'establecimiento',
+    entityId: establecimientoId,
+    kind: 'plano_pdf',
+    file,
+  })
+  if (!up.ok) return { success: false, error: up.error }
+
+  const { error } = await supabase
+    .from('establecimientos')
+    .update({ floor_plan_pdf_url: up.url })
+    .eq('id', establecimientoId)
+
+  if (error) return { success: false, error: error.message }
+
+  revalidatePath('/', 'layout')
+  return { success: true, data: { url: up.url } }
+}
+
+export async function deletePlanoEstablecimiento(
+  establecimientoId: string,
+  _prev: ActionResult<null> | null,
+  formData: FormData
+): Promise<ActionResult<null>> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'No autenticado' }
+
+  const currentUrl = formData.get('plano_url') as string | null
+  if (currentUrl) {
+    const path = pathFromUrl(currentUrl, 'planos')
+    if (path) await deleteAsset('planos', path)
+  }
+
+  const { error } = await supabase
+    .from('establecimientos')
+    .update({ floor_plan_pdf_url: null })
+    .eq('id', establecimientoId)
+
+  if (error) return { success: false, error: error.message }
+
+  revalidatePath('/', 'layout')
+  return { success: true, data: null }
+}

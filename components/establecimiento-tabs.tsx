@@ -11,9 +11,10 @@ import { DocumentosTab } from '@/components/establecimiento/documentos-tab'
 import { DenunciasTab } from '@/components/establecimiento/denuncias-tab'
 import { FeedbackTab } from '@/components/establecimiento/feedback-tab'
 import { LegajoTab } from '@/components/establecimiento/legajo-tab'
-import { IpercTab } from '@/components/iperc/iperc-tab'
+import { InfoTab } from '@/components/establecimiento/info-tab'
 import { MapaRiesgoTab } from '@/components/iperc/mapa-riesgo-tab'
 import type {
+  Establecimiento,
   SectorEstablecimiento,
   Siniestro,
   Inspeccion,
@@ -26,9 +27,10 @@ import type {
   LegajoGestion,
 } from '@/lib/types'
 
-type Tab = 'sectores' | 'stakeholders' | 'asistencia' | 'siniestros' | 'inspecciones' | 'documentos' | 'legajo' | 'denuncias' | 'feedback' | 'iperc' | 'mapa_riesgo'
+type Tab = 'info' | 'sectores' | 'stakeholders' | 'asistencia' | 'siniestros' | 'inspecciones' | 'documentos' | 'legajo' | 'denuncias' | 'feedback' | 'mapa_riesgo'
 
 interface EstablecimientoTabsProps {
+  establecimiento: Establecimiento
   establecimientoId: string
   empresaId: string
   canWrite: boolean
@@ -48,6 +50,7 @@ interface EstablecimientoTabsProps {
 }
 
 const TABS: { id: Tab; label: string }[] = [
+  { id: 'info', label: 'Información' },
   { id: 'sectores', label: 'Sectores' },
   { id: 'stakeholders', label: 'Stakeholders' },
   { id: 'asistencia', label: 'Asistencia' },
@@ -57,13 +60,13 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'legajo', label: 'Legajo Técnico' },
   { id: 'denuncias', label: 'Denuncias' },
   { id: 'feedback', label: 'Feedback Clientes' },
-  { id: 'iperc', label: 'IPERC' },
   { id: 'mapa_riesgo', label: 'Mapa de Riesgo' },
 ]
 
 const VALID_TABS = new Set<string>(TABS.map(t => t.id))
 
 export function EstablecimientoTabs({
+  establecimiento,
   establecimientoId,
   empresaId,
   canWrite,
@@ -77,8 +80,8 @@ export function EstablecimientoTabs({
   feedbackClientes,
   empresaDocumentos,
   gestionesLegajo,
-   trabajadorDocumentos,
-  defaultTab = 'sectores',
+  trabajadorDocumentos,
+  defaultTab = 'info',
   planoUrl,
 }: EstablecimientoTabsProps) {
   const router = useRouter()
@@ -154,6 +157,13 @@ export function EstablecimientoTabs({
         tabIndex={0}
       >
 
+      {active === 'info' && (
+        <InfoTab
+          establecimiento={establecimiento}
+          canWrite={canWrite}
+          empresaId={empresaId}
+        />
+      )}
       {active === 'sectores' && (
         <SectoresTab
           sectores={sectores}
@@ -220,12 +230,6 @@ export function EstablecimientoTabs({
       {active === 'feedback' && (
         <FeedbackTab
           feedbackClientes={feedbackClientes}
-          establecimientoId={establecimientoId}
-          canWrite={canWrite}
-        />
-      )}
-      {active === 'iperc' && (
-        <IpercTab
           establecimientoId={establecimientoId}
           canWrite={canWrite}
         />
