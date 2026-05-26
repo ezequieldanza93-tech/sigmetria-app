@@ -37,7 +37,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
     { data: establecimiento },
     { data: empresa },
   ] = await Promise.all([
-    supabase.from('profiles').select('system_role').eq('id', user.id).single(),
+    supabase.from('profiles').select('system_role, is_super_admin').eq('id', user.id).single(),
     supabase.from('consultoras_members').select('role').eq('user_id', user.id).eq('is_active', true).maybeSingle(),
     supabase.from('establecimientos').select('id, nombre, latitude, longitude, photo_site, plano_url, domicilio, codigo_postal, actividad_principal, cantidad_trabajadores, description, aplica_iso_45001, floor_plan_pdf_url, created_at, establecimientos_tipos(id, codigo, nombre), localidades!localidad_id(nombre, provincia)').eq('id', estId).single(),
     supabase.from('empresas').select('id, razon_social').eq('id', empresaId).single(),
@@ -48,7 +48,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
   const userCanWrite = canWrite(
     membership?.role as UserRole ?? null,
     profile?.system_role ?? 'user'
-  )
+  ) || profile?.is_super_admin === true
 
   // Section-specific data fetching
   let sectores: SectorEstablecimiento[] = []

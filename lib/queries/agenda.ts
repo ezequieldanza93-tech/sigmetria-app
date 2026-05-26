@@ -13,10 +13,10 @@ export function useCanWrite(establecimientoId: string | undefined) {
 
       const [{ data: membership }, { data: profile }] = await Promise.all([
         supabase.from('consultoras_members').select('role').eq('user_id', user.id).eq('is_active', true).maybeSingle(),
-        supabase.from('profiles').select('system_role').eq('id', user.id).single(),
+        supabase.from('profiles').select('system_role, is_super_admin').eq('id', user.id).single(),
       ])
 
-      if (profile?.system_role === 'developer') return true
+      if (profile?.system_role === 'developer' || profile?.is_super_admin === true) return true
       const role = membership?.role as UserRole | undefined
       return role === 'full_access_main' || role === 'full_access_branch'
     },
