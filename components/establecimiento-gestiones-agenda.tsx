@@ -856,10 +856,13 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
 
 
   // Task 4: resizable columns with localStorage
-  const [colWidths, setColWidths] = useState<Record<string, number>>(() => {
-    if (typeof window === 'undefined') return {}
-    try { return JSON.parse(localStorage.getItem(COL_WIDTHS_KEY) ?? '{}') } catch { return {} }
-  })
+  const [colWidths, setColWidths] = useState<Record<string, number>>({})
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(COL_WIDTHS_KEY)
+      if (stored) setColWidths(JSON.parse(stored))
+    } catch {}
+  }, [])
   const resizingRef = useRef<{ col: string; startX: number; startW: number } | null>(null)
 
   function colW(col: string): number {
