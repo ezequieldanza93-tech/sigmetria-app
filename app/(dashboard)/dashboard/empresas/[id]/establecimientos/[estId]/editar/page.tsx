@@ -34,21 +34,21 @@ export default async function EditarEstablecimientoPage({ params }: Props) {
   return (
     <div className="p-8 max-w-2xl mx-auto">
       <div className="mb-6">
-        <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
-          <Link href="/dashboard/empresas" className="hover:text-gray-900">Empresas</Link>
+        <div className="flex items-center gap-2 text-sm text-text-secondary mb-4">
+          <Link href="/dashboard/empresas" className="hover:text-text-primary">Empresas</Link>
           <span>/</span>
-          <Link href={`/dashboard/empresas/${id}`} className="hover:text-gray-900">{empresa.razon_social}</Link>
+          <Link href={`/dashboard/empresas/${id}`} className="hover:text-text-primary">{empresa.razon_social}</Link>
           <span>/</span>
-          <Link href={`/dashboard/empresas/${id}/establecimientos/${estId}`} className="hover:text-gray-900">
+          <Link href={`/dashboard/empresas/${id}/establecimientos/${estId}`} className="hover:text-text-primary">
             {establecimiento.nombre}
           </Link>
           <span>/</span>
-          <span className="text-gray-900">Editar</span>
+          <span className="text-text-primary">Editar</span>
         </div>
-        <h1 className="text-2xl font-bold text-gray-900">Editar Establecimiento</h1>
+        <h1 className="text-2xl font-bold text-text-primary">Editar Establecimiento</h1>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <div className="bg-surface-base rounded-xl border border-border-subtle p-6">
         <EstablecimientoForm
           action={updateAction}
           establecimiento={establecimiento}

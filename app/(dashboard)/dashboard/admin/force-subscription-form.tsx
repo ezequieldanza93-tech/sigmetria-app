@@ -107,7 +107,7 @@ export function ForceSubscriptionForm({ consultoraId, estadoActual }: ForceSubsc
               </div>
 
               {error && (
-                <p className="text-xs text-red-500">{error}</p>
+                <p className="text-xs text-danger">{error}</p>
               )}
 
               <div className="flex gap-2 pt-1">

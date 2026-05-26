@@ -103,17 +103,17 @@ export function AccessAssignment({ targetUserId, empresas, currentAccess }: Acce
   return (
     <div className="space-y-4">
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+        <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3">
           {error}
         </div>
       )}
       {success && (
-        <div className="bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-4 py-3">
+        <div className="bg-success-bg border border-green-200 text-success text-sm rounded-lg px-4 py-3">
           Accesos actualizados correctamente
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+      <div className="bg-surface-base rounded-xl border border-border-subtle divide-y divide-gray-100">
         {empresas.map(empresa => (
           <div key={empresa.id} className="p-4">
             <div className="flex items-center gap-3">
@@ -123,14 +123,14 @@ export function AccessAssignment({ targetUserId, empresas, currentAccess }: Acce
                 id={`emp-${empresa.id}`}
                 checked={isEmpresaEntera(empresa.id)}
                 onChange={() => toggleEmpresaEntera(empresa.id)}
-                className="w-4 h-4 text-sig-500 rounded border-gray-300 focus:ring-sig-500"
+                className="w-4 h-4 text-sig-500 rounded border-border-default focus:ring-sig-500"
               />
               <label
                 htmlFor={`emp-${empresa.id}`}
-                className="flex-1 font-medium text-gray-900 text-sm cursor-pointer"
+                className="flex-1 font-medium text-text-primary text-sm cursor-pointer"
               >
                 {empresa.razon_social}
-                <span className="text-gray-400 text-xs font-normal ml-2">empresa entera</span>
+                <span className="text-text-tertiary text-xs font-normal ml-2">empresa entera</span>
               </label>
 
               {empresa.establecimientos.length > 0 && (
@@ -153,16 +153,16 @@ export function AccessAssignment({ targetUserId, empresas, currentAccess }: Acce
                       id={`est-${est.id}`}
                       checked={isEstablecimientoSelected(empresa.id, est.id)}
                       onChange={() => toggleEstablecimiento(empresa.id, est.id)}
-                      className="w-4 h-4 text-sig-500 rounded border-gray-300 focus:ring-sig-500"
+                      className="w-4 h-4 text-sig-500 rounded border-border-default focus:ring-sig-500"
                     />
                     <label
                       htmlFor={`est-${est.id}`}
-                      className="text-sm text-gray-700 cursor-pointer"
+                      className="text-sm text-text-secondary cursor-pointer"
                     >
                       {est.nombre}
                       {est.localidades && (
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        <span className="text-gray-400 ml-1">— {(est.localidades as any).nombre}</span>
+                        <span className="text-text-tertiary ml-1">— {(est.localidades as any).nombre}</span>
                       )}
                     </label>
                   </div>
@@ -173,7 +173,7 @@ export function AccessAssignment({ targetUserId, empresas, currentAccess }: Acce
         ))}
 
         {empresas.length === 0 && (
-          <div className="p-8 text-center text-gray-400 text-sm">
+          <div className="p-8 text-center text-text-tertiary text-sm">
             No hay empresas disponibles en esta consultora
           </div>
         )}

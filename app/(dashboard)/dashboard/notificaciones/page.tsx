@@ -34,15 +34,15 @@ function getEntidadLabel(tipo: string): string {
 }
 
 function getVencimientoColor(dias: number): string {
-  if (dias < 0) return 'bg-red-50 border-red-200'
+  if (dias < 0) return 'bg-danger-bg border-red-200'
   if (dias <= 3) return 'bg-orange-50 border-orange-200'
-  return 'bg-yellow-50 border-yellow-200'
+  return 'bg-warning-bg border-yellow-200'
 }
 
 function getVencimientoBadge(dias: number): { label: string; cls: string } {
-  if (dias < 0) return { label: `Vencido hace ${Math.abs(dias)}d`, cls: 'bg-red-100 text-red-700' }
+  if (dias < 0) return { label: `Vencido hace ${Math.abs(dias)}d`, cls: 'bg-danger-bg text-danger' }
   if (dias === 0) return { label: 'Vence hoy', cls: 'bg-orange-100 text-orange-700' }
-  return { label: `Vence en ${dias}d`, cls: 'bg-yellow-100 text-yellow-700' }
+  return { label: `Vence en ${dias}d`, cls: 'bg-warning-bg text-warning' }
 }
 
 export default function NotificacionesPage() {
@@ -142,7 +142,7 @@ export default function NotificacionesPage() {
 
       {/* Error */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-4">
+        <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3 mb-4">
           {error}
         </div>
       )}
@@ -177,9 +177,9 @@ export default function NotificacionesPage() {
                 <div className="flex items-start gap-3">
                   {/* Icon */}
                   <div className={`p-2 rounded-lg shrink-0 ${
-                    n.dias_restantes < 0 ? 'bg-red-100' : 'bg-white/60'
+                    n.dias_restantes < 0 ? 'bg-danger-bg' : 'bg-white/60'
                   }`}>
-                    <Icon size={18} className={n.dias_restantes < 0 ? 'text-red-600' : 'text-text-secondary'} />
+                    <Icon size={18} className={n.dias_restantes < 0 ? 'text-danger' : 'text-text-secondary'} />
                   </div>
 
                   {/* Content */}

@@ -262,13 +262,13 @@ export default function ConsultoraInfoPage() {
                   <button
                     type="button"
                     onClick={() => setLogoUrl('')}
-                    className="inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-700 px-2 py-1.5 rounded-lg hover:bg-red-50"
+                    className="inline-flex items-center gap-1 text-xs text-danger hover:text-danger px-2 py-1.5 rounded-lg hover:bg-danger-bg"
                   >
                     <X size={14} /> Quitar
                   </button>
                 )}
               </div>
-              {logoError && <p className="text-xs text-red-600 mt-1.5">{logoError}</p>}
+              {logoError && <p className="text-xs text-danger mt-1.5">{logoError}</p>}
               {!logoError && (
                 <p className="text-xs text-text-tertiary mt-1.5">PNG, JPG, WEBP o SVG. Máx 2 MB. Se sube y guarda al seleccionarlo.</p>
               )}
@@ -306,7 +306,7 @@ export default function ConsultoraInfoPage() {
                   <span className="text-xs text-text-tertiary w-20 text-right shrink-0">{SOCIAL_LABELS[key] ?? key}</span>
                   <button
                     onClick={() => removeSocial(key)}
-                    className="p-1.5 rounded-lg text-text-tertiary hover:text-red-500 hover:bg-red-50 transition-colors shrink-0"
+                    className="p-1.5 rounded-lg text-text-tertiary hover:text-danger hover:bg-danger-bg transition-colors shrink-0"
                     title="Eliminar"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
@@ -320,10 +320,10 @@ export default function ConsultoraInfoPage() {
         {/* Actions */}
         <div className="flex items-center justify-between pt-2">
           {error && (
-            <p className="text-sm text-red-500">{error}</p>
+            <p className="text-sm text-danger">{error}</p>
           )}
           {saved && (
-            <div className="flex items-center gap-1.5 text-sm text-green-600">
+            <div className="flex items-center gap-1.5 text-sm text-success">
               <Check size={16} />
               Guardado correctamente
             </div>

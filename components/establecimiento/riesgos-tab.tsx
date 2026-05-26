@@ -38,14 +38,14 @@ export function RiesgosTab({ riesgos, establecimientoId, empresaId, canWrite }: 
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-900 dark:text-white">Riesgos Identificados</h3>
+        <h3 className="font-semibold text-text-primary dark:text-white">Riesgos Identificados</h3>
         {canWrite && (
           <Button size="sm" onClick={() => setShowModal(true)}>+ Nuevo Riesgo</Button>
         )}
       </div>
 
       {!riesgos.length ? (
-        <div className="bg-white dark:bg-surface-elevated rounded-xl border border-gray-200 dark:border-border-subtle p-8 text-center text-gray-400">
+        <div className="bg-surface-base dark:bg-surface-elevated rounded-xl border border-border-subtle dark:border-border-subtle p-8 text-center text-text-tertiary">
           No hay riesgos registrados
         </div>
       ) : (
@@ -55,25 +55,25 @@ export function RiesgosTab({ riesgos, establecimientoId, empresaId, canWrite }: 
             if (!items.length) return null
             return (
               <div key={nivel}>
-                <h4 className="text-sm font-semibold text-gray-600 mb-2 uppercase tracking-wider">
+                <h4 className="text-sm font-semibold text-text-secondary mb-2 uppercase tracking-wider">
                   {RIESGO_NIVEL_LABELS[nivel]}
                 </h4>
-                <div className="bg-white dark:bg-surface-elevated rounded-xl border border-gray-200 dark:border-border-subtle overflow-hidden">
+                <div className="bg-surface-base dark:bg-surface-elevated rounded-xl border border-border-subtle dark:border-border-subtle overflow-hidden">
                   <table className="w-full text-sm">
                     <tbody className="divide-y divide-gray-50 dark:divide-border-subtle">
                       {items.map(r => (
-                        <tr key={r.id} className="hover:bg-gray-50">
+                        <tr key={r.id} className="hover:bg-surface-base">
                           <td className="px-5 py-3.5">
                             <div className="flex items-start gap-3">
                               <span className={`mt-0.5 shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${RIESGO_NIVEL_COLORS[r.nivel as RiesgoNivel]}`}>
                                 {RIESGO_NIVEL_LABELS[r.nivel as RiesgoNivel]}
                               </span>
                               <div>
-                                <p className="text-gray-900 dark:text-white font-medium">{r.descripcion}</p>
+                                <p className="text-text-primary dark:text-white font-medium">{r.descripcion}</p>
                                 {r.medida_correctiva && (
-                                  <p className="text-gray-500 text-xs mt-0.5">Correctiva: {r.medida_correctiva}</p>
+                                  <p className="text-text-secondary text-xs mt-0.5">Correctiva: {r.medida_correctiva}</p>
                                 )}
-                                <p className="text-gray-400 text-xs mt-0.5">
+                                <p className="text-text-tertiary text-xs mt-0.5">
                                   Identificado: {formatDate(r.fecha_identificacion)}
                                 </p>
                               </div>
@@ -102,16 +102,16 @@ export function RiesgosTab({ riesgos, establecimientoId, empresaId, canWrite }: 
 
           {riesgos.some(r => r.resuelto) && (
             <details className="mt-2">
-              <summary className="text-sm text-gray-500 cursor-pointer hover:text-gray-700">
+              <summary className="text-sm text-text-secondary cursor-pointer hover:text-text-secondary">
                 Ver resueltos ({riesgos.filter(r => r.resuelto).length})
               </summary>
-              <div className="mt-2 bg-white dark:bg-surface-elevated rounded-xl border border-gray-200 dark:border-border-subtle overflow-hidden opacity-60">
+              <div className="mt-2 bg-surface-base dark:bg-surface-elevated rounded-xl border border-border-subtle dark:border-border-subtle overflow-hidden opacity-60">
                 <table className="w-full text-sm">
                   <tbody className="divide-y divide-gray-50 dark:divide-border-subtle">
                     {riesgos.filter(r => r.resuelto).map(r => (
                       <tr key={r.id}>
-                        <td className="px-5 py-3.5 text-gray-500 line-through">{r.descripcion}</td>
-                        <td className="px-5 py-3.5 text-gray-400 text-xs">Resuelto {formatDate(r.fecha_resolucion)}</td>
+                        <td className="px-5 py-3.5 text-text-secondary line-through">{r.descripcion}</td>
+                        <td className="px-5 py-3.5 text-text-tertiary text-xs">Resuelto {formatDate(r.fecha_resolucion)}</td>
                       </tr>
                     ))}
                   </tbody>

@@ -103,7 +103,7 @@ export function EditorCursoContenido({ cursoId, modulos, onRefresh }: EditorCurs
               <span className="text-sm font-semibold text-text-primary flex-1">{modulo.titulo}</span>
               <button
                 onClick={() => handleEliminarModulo(modulo.id)}
-                className="p-1 text-text-tertiary hover:text-red-600 transition-colors"
+                className="p-1 text-text-tertiary hover:text-danger transition-colors"
                 title="Eliminar módulo"
               >
                 <Trash2 size={16} />
@@ -122,7 +122,7 @@ export function EditorCursoContenido({ cursoId, modulos, onRefresh }: EditorCurs
                     <span className="text-xs text-text-tertiary">{tipoLabels[leccion.tipo]}</span>
                     <button
                       onClick={() => handleEliminarLeccion(leccion.id)}
-                      className="p-1 text-text-tertiary hover:text-red-600 transition-colors"
+                      className="p-1 text-text-tertiary hover:text-danger transition-colors"
                     >
                       <Trash2 size={14} />
                     </button>

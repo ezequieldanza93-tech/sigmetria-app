@@ -21,12 +21,12 @@ const ESTADO_LABELS: Record<SubscriptionEstado, string> = {
 }
 
 const ESTADO_COLORS: Record<SubscriptionEstado, string> = {
-  trialing: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-  trial_view_only: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
-  active: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+  trialing: 'bg-info-bg text-info dark:bg-blue-900/30 dark:text-blue-400',
+  trial_view_only: 'bg-warning-bg text-warning dark:bg-yellow-900/30 dark:text-yellow-400',
+  active: 'bg-success-bg text-success dark:bg-green-900/30 dark:text-green-400',
   past_due: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
   grace_period: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
-  canceled: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+  canceled: 'bg-danger-bg text-danger dark:bg-red-900/30 dark:text-red-400',
   expired: 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-white',
 }
 

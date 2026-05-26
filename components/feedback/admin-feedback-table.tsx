@@ -16,9 +16,9 @@ const STATUS_BADGE: Record<FeedbackStatus, { label: string; variant: 'default' |
 function NpsCategoriaBadge({ categoria }: { categoria: NpsCategoria | null }) {
   if (!categoria) return null
   const colors: Record<NpsCategoria, string> = {
-    promotor: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+    promotor: 'bg-success-bg text-success dark:bg-green-900/30 dark:text-green-400',
     pasivo: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-    detractor: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+    detractor: 'bg-danger-bg text-danger dark:bg-red-900/30 dark:text-red-400',
   }
   return (
     <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${colors[categoria]}`}>

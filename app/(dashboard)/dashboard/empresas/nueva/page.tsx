@@ -22,16 +22,16 @@ export default async function NuevaEmpresaPage() {
   return (
     <div className="p-8 max-w-2xl mx-auto">
       <div className="mb-6">
-        <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
-          <Link href="/dashboard/empresas" className="hover:text-gray-900">Empresas</Link>
+        <div className="flex items-center gap-2 text-sm text-text-secondary mb-4">
+          <Link href="/dashboard/empresas" className="hover:text-text-primary">Empresas</Link>
           <span>/</span>
-          <span className="text-gray-900">Nueva</span>
+          <span className="text-text-primary">Nueva</span>
         </div>
-        <h1 className="text-2xl font-bold text-gray-900">Nueva Empresa</h1>
-        <p className="text-gray-500 text-sm mt-1">Completá los datos de la empresa cliente</p>
+        <h1 className="text-2xl font-bold text-text-primary">Nueva Empresa</h1>
+        <p className="text-text-secondary text-sm mt-1">Completá los datos de la empresa cliente</p>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <div className="bg-surface-base rounded-xl border border-border-subtle p-6">
         <EmpresaForm action={createEmpresa} submitLabel="Crear Empresa" />
       </div>
     </div>

@@ -13,12 +13,12 @@ export function EstablecimientoLocation({ lat, lng, nombre, fotoUrl }: Props) {
   const mapsOpenUrl = `https://www.google.com/maps/@${lat},${lng},15z`
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden mb-6">
+    <div className="bg-surface-base rounded-xl border border-border-subtle overflow-hidden mb-6">
       <div
         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1fr_1fr_280px]"
         style={{ minHeight: '230px' }}
       >
-        <div className="relative border-r border-gray-100 bg-gray-50 min-h-[180px]">
+        <div className="relative border-r border-border-subtle bg-surface-base min-h-[180px]">
           {fotoUrl ? (
             <Image
               src={fotoUrl}
@@ -28,14 +28,14 @@ export function EstablecimientoLocation({ lat, lng, nombre, fotoUrl }: Props) {
               sizes="(max-width: 768px) 100vw, 50vw"
             />
           ) : (
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-300">
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-text-tertiary">
               <span className="text-3xl mb-1">🏭</span>
               <p className="text-xs">Sin foto</p>
             </div>
           )}
         </div>
 
-        <div className="relative border-r border-gray-100 min-h-[180px]">
+        <div className="relative border-r border-border-subtle min-h-[180px]">
           <iframe
             src={mapsEmbedUrl}
             width="100%"
@@ -50,7 +50,7 @@ export function EstablecimientoLocation({ lat, lng, nombre, fotoUrl }: Props) {
             href={mapsOpenUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="absolute bottom-3 right-3 bg-white text-xs text-sig-500 font-medium px-3 py-1.5 rounded-lg shadow-md hover:shadow-lg transition-shadow border border-gray-200"
+            className="absolute bottom-3 right-3 bg-surface-base text-xs text-sig-500 font-medium px-3 py-1.5 rounded-lg shadow-md hover:shadow-lg transition-shadow border border-border-subtle"
           >
             Abrir en Google Maps ↗
           </a>

@@ -37,7 +37,7 @@ export function ConfirmPaymentButton({ paymentId }: ConfirmPaymentButtonProps) {
 
   if (confirmed) {
     return (
-      <span className="inline-flex items-center gap-1 text-xs text-green-600">
+      <span className="inline-flex items-center gap-1 text-xs text-success">
         <CheckCircle size={12} />
         Confirmado
       </span>
@@ -49,12 +49,12 @@ export function ConfirmPaymentButton({ paymentId }: ConfirmPaymentButtonProps) {
       <button
         onClick={handleConfirm}
         disabled={isPending}
-        className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors disabled:opacity-50"
+        className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg bg-success text-white hover:bg-green-700 transition-colors disabled:opacity-50"
       >
         <CheckCircle size={12} />
         {isPending ? 'Confirmando…' : 'Confirmar pago'}
       </button>
-      {error && <span className="text-xs text-red-500">{error}</span>}
+      {error && <span className="text-xs text-danger">{error}</span>}
     </div>
   )
 }

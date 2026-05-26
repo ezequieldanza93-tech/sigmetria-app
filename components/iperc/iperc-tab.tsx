@@ -13,7 +13,7 @@ export function IpercTab({ establecimientoId, canWrite }: Props) {
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold">Matriz IPERC</h2>
       </div>
-      <p className="text-sm text-gray-500">
+      <p className="text-sm text-text-secondary">
         Gestión de Identificación de Peligros, Evaluación de Riesgos y Control organizada por sectores.
       </p>
       <IpercMatrizWizard establecimientoId={establecimientoId} canWrite={canWrite} />

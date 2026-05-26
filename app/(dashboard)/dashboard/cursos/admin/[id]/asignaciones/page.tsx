@@ -92,7 +92,7 @@ export default function AsignacionesCursoPage({ params }: { params: Promise<{ id
                     <td className="px-4 py-3">
                       <button
                         onClick={() => handleDesasignar(asig.id)}
-                        className="p-1 text-text-tertiary hover:text-red-600 transition-colors"
+                        className="p-1 text-text-tertiary hover:text-danger transition-colors"
                         title="Desasignar"
                       >
                         <XCircle size={16} />

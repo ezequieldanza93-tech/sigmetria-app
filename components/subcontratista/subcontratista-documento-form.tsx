@@ -28,7 +28,7 @@ export function SubcontratistaDocumentoForm({ action, documentTypes, onSuccess }
   return (
     <form action={formAction} className="space-y-4">
       {state && !state.success && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+        <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3">
           {state.error}
         </div>
       )}
@@ -56,11 +56,11 @@ export function SubcontratistaDocumentoForm({ action, documentTypes, onSuccess }
       </div>
 
       <div>
-        <label className="text-sm font-medium text-gray-700 block mb-1">Observaciones</label>
+        <label className="text-sm font-medium text-text-secondary block mb-1">Observaciones</label>
         <textarea
           name="observaciones"
           rows={2}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500 focus:border-transparent resize-none"
+          className="w-full border border-border-default rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500 focus:border-transparent resize-none"
           placeholder="Observaciones opcionales…"
         />
       </div>

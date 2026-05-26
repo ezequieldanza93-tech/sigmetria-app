@@ -374,13 +374,13 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
     <Modal open={true} onClose={onClose} title={isCerrado ? 'Editar cierre de observación' : 'Observación'} className="max-w-lg">
       <div className="space-y-5">
         {success && (
-          <div className="bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-4 py-3">
+          <div className="bg-success-bg border border-green-200 text-success text-sm rounded-lg px-4 py-3">
             Observación cerrada correctamente ✓
           </div>
         )}
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+          <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3">
             {error}
           </div>
         )}
@@ -391,7 +391,7 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
           <p className="text-sm font-medium text-text-primary">{obs.descripcion}</p>
           {obs.foto_url && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={obs.foto_url} alt="Foto de la observación" className="mt-3 max-w-full rounded-xl border border-gray-200 object-contain" />
+            <img src={obs.foto_url} alt="Foto de la observación" className="mt-3 max-w-full rounded-xl border border-border-subtle object-contain" />
           )}
         </div>
 
@@ -403,7 +403,7 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
             <img
               src={obs.evidencia_cierre_url}
               alt="Evidencia de cierre"
-              className="max-w-full rounded-xl border border-gray-200 object-contain cursor-pointer hover:opacity-90"
+              className="max-w-full rounded-xl border border-border-subtle object-contain cursor-pointer hover:opacity-90"
               onClick={() => window.open(obs.evidencia_cierre_url!, '_blank')}
             />
           </div>
@@ -437,7 +437,7 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
                 if (!cat) return <span className="text-sm text-text-tertiary">—</span>
                 return (
                   <span
-                    className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium border border-gray-300"
+                    className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium border border-border-default"
                     style={{ backgroundColor: cat.color, color: '#000' }}
                   >
                     {cat.nombre}
@@ -467,7 +467,7 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
                     }`}
                   >
                     <span
-                      className="w-5 h-5 rounded border border-gray-300 shrink-0"
+                      className="w-5 h-5 rounded border border-border-default shrink-0"
                       style={{ backgroundColor: cat.color }}
                     />
                     <span>{cat.nombre}</span>
@@ -530,14 +530,14 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
                       className={`max-w-[78%] px-3 pt-1.5 pb-1.5 shadow-sm text-sm cursor-pointer
                         ${isOwn
                           ? 'bg-[#d9fdd3] rounded-2xl rounded-tr-sm'
-                          : 'bg-white rounded-2xl rounded-tl-sm'
+                          : 'bg-surface-base rounded-2xl rounded-tl-sm'
                         }`}
                       onClick={() => setInfoMsgId(prev => prev === c.id ? null : c.id)}
                     >
                       {!isOwn && (
                         <p className="text-[11px] font-semibold text-[#075E54] mb-0.5 leading-tight">{name}</p>
                       )}
-                      <p className="text-gray-800 leading-snug text-sm">{c.contenido}</p>
+                      <p className="text-text-primary leading-snug text-sm">{c.contenido}</p>
                       <div className="flex items-center justify-end gap-1 mt-0.5">
                         <span className="text-[10px] text-[#667781] whitespace-nowrap">{formatTime(c.created_at)}</span>
                         {isOwn && (
@@ -569,7 +569,7 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleEnviarComentario(e) } }}
               placeholder="Escribí un mensaje…"
               maxLength={2000}
-              className="flex-1 rounded-full bg-white border-0 px-4 py-2 text-sm focus:outline-none shadow-sm"
+              className="flex-1 rounded-full bg-surface-base border-0 px-4 py-2 text-sm focus:outline-none shadow-sm"
             />
             <button
               type="submit"
@@ -592,7 +592,7 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
                   key={f.id}
                   src={f.url}
                   alt={f.categoria ?? 'Foto cliente'}
-                  className="h-20 w-auto rounded-lg border border-gray-200 object-cover cursor-pointer hover:opacity-90"
+                  className="h-20 w-auto rounded-lg border border-border-subtle object-cover cursor-pointer hover:opacity-90"
                   onClick={() => window.open(f.url, '_blank')}
                 />
               ))}
@@ -620,7 +620,7 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
             {/* Fecha de cierre */}
             <div>
               <label className="text-sm font-medium text-text-primary block mb-1">
-                Fecha de cierre <span className="text-red-500">*</span>
+                Fecha de cierre <span className="text-danger">*</span>
               </label>
               <input
                 type="date"
@@ -711,7 +711,7 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
                   )}
 
                   {dropOpen && searchResults.length === 0 && searchQuery.trim() && !searching && (
-                    <div className="absolute top-full mt-1 left-0 right-0 z-50 bg-white border border-border-default rounded-xl shadow-xl overflow-hidden">
+                    <div className="absolute top-full mt-1 left-0 right-0 z-50 bg-surface-base border border-border-default rounded-xl shadow-xl overflow-hidden">
                       <div className="px-3 py-3 text-xs text-text-tertiary text-center">
                         Sin resultados.
                       </div>
@@ -719,7 +719,7 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
                   )}
 
                   {dropOpen && searchResults.length > 0 && (
-                    <div className="absolute top-full mt-1 left-0 right-0 z-50 bg-white border border-border-default rounded-xl shadow-xl overflow-hidden">
+                    <div className="absolute top-full mt-1 left-0 right-0 z-50 bg-surface-base border border-border-default rounded-xl shadow-xl overflow-hidden">
                       {searchResults.map(p => (
                         <button
                           key={p.id}
@@ -753,7 +753,7 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
               />
               {uploading && <p className="text-xs text-brand-primary mt-1">Subiendo imagen...</p>}
               {evidenciaUrl && !uploading && (
-                <p className="text-xs text-green-600 mt-1">✓ {evidenciaName}</p>
+                <p className="text-xs text-success mt-1">✓ {evidenciaName}</p>
               )}
             </div>
 

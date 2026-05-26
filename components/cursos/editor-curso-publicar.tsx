@@ -77,7 +77,7 @@ export function EditorPublicar({ curso, modulos, quizFinal }: EditorPublicarProp
         {checklist.map((item, i) => (
           <div key={i} className="flex items-center gap-3">
             {item.ok ? (
-              <CheckCircle size={20} className="text-green-500 shrink-0" />
+              <CheckCircle size={20} className="text-success shrink-0" />
             ) : (
               <Circle size={20} className="text-text-tertiary/50 shrink-0" />
             )}
@@ -107,15 +107,15 @@ export function EditorPublicar({ curso, modulos, quizFinal }: EditorPublicarProp
       {/* Actions */}
       <div className="space-y-3">
         {curso.estado === 'publicado' ? (
-          <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 rounded-xl flex items-center gap-3">
-            <CheckCircle size={20} className="text-green-600 shrink-0" />
-            <span className="text-sm text-green-700 dark:text-green-400">Este curso ya está publicado</span>
+          <div className="p-4 bg-success-bg dark:bg-green-900/20 border border-green-200 rounded-xl flex items-center gap-3">
+            <CheckCircle size={20} className="text-success shrink-0" />
+            <span className="text-sm text-success dark:text-green-400">Este curso ya está publicado</span>
           </div>
         ) : allOk ? (
           <button
             onClick={handlePublicar}
             disabled={publishing}
-            className="w-full py-3 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 disabled:opacity-50 transition-colors"
+            className="w-full py-3 bg-success text-white rounded-xl font-semibold hover:bg-green-700 disabled:opacity-50 transition-colors"
           >
             {publishing ? 'Publicando...' : 'Publicar curso'}
           </button>

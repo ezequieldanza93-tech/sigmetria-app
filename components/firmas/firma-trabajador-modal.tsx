@@ -59,12 +59,12 @@ export function FirmaTrabajadorModal({
     <Modal open={open} onClose={onClose} title={`Firma de Trabajador — ${entidadLabel}`} size="full">
       <div className="space-y-4">
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-3 py-2">
+          <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-3 py-2">
             {error}
           </div>
         )}
 
-        <div className="bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-700">
+        <div className="bg-surface-base rounded-lg px-3 py-2 text-sm text-text-secondary">
           {entidadNombre}
         </div>
 
@@ -97,7 +97,7 @@ export function FirmaTrabajadorModal({
           </label>
           <FirmaCanvas onDataChange={setFirmaSvgData} />
           {firmaSvgData === null && (
-            <p className="text-xs text-gray-400 mt-1">Dibujá tu firma en el recuadro de arriba</p>
+            <p className="text-xs text-text-tertiary mt-1">Dibujá tu firma en el recuadro de arriba</p>
           )}
         </div>
 

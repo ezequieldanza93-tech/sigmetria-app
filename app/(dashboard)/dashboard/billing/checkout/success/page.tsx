@@ -60,7 +60,7 @@ export default function CheckoutSuccessPage() {
 
         {status === 'active' && (
           <>
-            <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto" />
+            <CheckCircle2 className="w-12 h-12 text-success mx-auto" />
             <div>
               <h1 className="text-xl font-bold text-text-primary">¡Suscripción activada!</h1>
               <p className="text-sm text-text-tertiary mt-2">

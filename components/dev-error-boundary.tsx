@@ -62,8 +62,8 @@ export class DevErrorBoundary extends Component<{ children: ReactNode }, State> 
 
           {error.stack && (
             <div className="mb-4">
-              <p className="text-gray-500 text-xs uppercase tracking-wider mb-2">Stack trace</p>
-              <pre className="bg-gray-900 border border-gray-800 rounded-lg p-4 text-xs text-gray-300 overflow-x-auto whitespace-pre-wrap leading-relaxed">
+              <p className="text-text-secondary text-xs uppercase tracking-wider mb-2">Stack trace</p>
+              <pre className="bg-gray-900 border border-gray-800 rounded-lg p-4 text-xs text-text-tertiary overflow-x-auto whitespace-pre-wrap leading-relaxed">
                 {error.stack}
               </pre>
             </div>
@@ -71,8 +71,8 @@ export class DevErrorBoundary extends Component<{ children: ReactNode }, State> 
 
           {info?.componentStack && (
             <div>
-              <p className="text-gray-500 text-xs uppercase tracking-wider mb-2">Component stack</p>
-              <pre className="bg-gray-900 border border-gray-800 rounded-lg p-4 text-xs text-gray-400 overflow-x-auto whitespace-pre-wrap leading-relaxed">
+              <p className="text-text-secondary text-xs uppercase tracking-wider mb-2">Component stack</p>
+              <pre className="bg-gray-900 border border-gray-800 rounded-lg p-4 text-xs text-text-tertiary overflow-x-auto whitespace-pre-wrap leading-relaxed">
                 {info.componentStack}
               </pre>
             </div>

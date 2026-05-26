@@ -159,10 +159,10 @@ export default async function PlanDetailPage(props: { params: Promise<{ id: stri
           <h2 className="text-base font-semibold text-text-primary">Features</h2>
           {featuresByEnabled.enabled.length > 0 && (
             <div>
-              <h3 className="text-xs font-medium text-green-600 uppercase tracking-wider mb-2">Habilitadas</h3>
+              <h3 className="text-xs font-medium text-success uppercase tracking-wider mb-2">Habilitadas</h3>
               <div className="flex flex-wrap gap-2">
                 {featuresByEnabled.enabled.map(f => (
-                  <span key={f.id} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-green-50 text-green-700 text-xs font-medium">
+                  <span key={f.id} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-success-bg text-success text-xs font-medium">
                     {getFeatureLabel(f.feature_key)}
                   </span>
                 ))}
@@ -217,8 +217,8 @@ export default async function PlanDetailPage(props: { params: Promise<{ id: stri
                     </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                        sub.estado === 'active' ? 'bg-green-100 text-green-700' :
-                        sub.estado === 'trialing' ? 'bg-blue-100 text-blue-700' :
+                        sub.estado === 'active' ? 'bg-success-bg text-success' :
+                        sub.estado === 'trialing' ? 'bg-info-bg text-info' :
                         'bg-zinc-100 text-zinc-600'
                       }`}>
                         {sub.estado}

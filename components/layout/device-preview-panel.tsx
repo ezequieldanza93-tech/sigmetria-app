@@ -109,7 +109,7 @@ export function DevicePreviewPanel({ children }: { children: React.ReactNode }) 
               </div>
 
               <div
-                className="overflow-hidden bg-white"
+                className="overflow-hidden bg-surface-base"
                 style={{
                   width: activeDevice.width,
                   height: screenHeight,
@@ -137,7 +137,7 @@ export function DevicePreviewPanel({ children }: { children: React.ReactNode }) 
                   onClick={() => setActiveDevice(d)}
                   className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
                     activeDevice.id === d.id
-                      ? 'bg-white text-gray-900'
+                      ? 'bg-surface-base text-text-primary'
                       : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'
                   }`}
                 >

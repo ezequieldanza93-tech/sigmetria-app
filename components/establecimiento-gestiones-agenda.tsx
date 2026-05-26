@@ -45,15 +45,15 @@ const CATEGORIA_META: Record<string, { icon: React.ComponentType<{ size?: number
 const CategoriaIcon = memo(function CategoriaIcon({ nombre, size = 14 }: { nombre?: string | null; size?: number }) {
   const meta = nombre ? CATEGORIA_META[nombre] : undefined
   const Icon = meta?.icon ?? HelpCircle
-  return <span title={nombre ?? ''}><Icon size={size} className="text-gray-500" /></span>
+  return <span title={nombre ?? ''}><Icon size={size} className="text-text-secondary" /></span>
 })
 
 const CategoriaAbbr = memo(function CategoriaAbbr({ nombre }: { nombre?: string | null }) {
-  if (!nombre) return <span className="text-gray-300">—</span>
+  if (!nombre) return <span className="text-text-tertiary">—</span>
   const meta = CATEGORIA_META[nombre]
   const abbr = meta?.abbr ?? nombre.slice(0, 3).toUpperCase()
   return (
-    <span title={nombre} className="text-[10px] font-semibold text-gray-500 tracking-wider">
+    <span title={nombre} className="text-[10px] font-semibold text-text-secondary tracking-wider">
       {abbr}
     </span>
   )
@@ -82,8 +82,8 @@ const COL_MIN_WIDTHS: Record<string, number> = {
 }
 
 const ROW_BG_COLORS: Record<EstadoGestion, string> = {
-  Realizado: 'bg-green-100 hover:bg-green-200',
-  Pendiente: 'bg-red-100 hover:bg-red-200',
+  Realizado: 'bg-success-bg hover:bg-green-200',
+  Pendiente: 'bg-danger-bg hover:bg-red-200',
   Planificado: 'bg-sky-100 hover:bg-sky-200',
 }
 
@@ -142,7 +142,7 @@ function InlineCreator({
           onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handle() } }}
           placeholder={placeholder}
           autoFocus
-          className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500"
+          className="flex-1 border border-border-default rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500"
         />
         <button
           type="button"
@@ -155,12 +155,12 @@ function InlineCreator({
         <button
           type="button"
           onClick={onCancel}
-          className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-50"
+          className="text-xs border border-border-subtle rounded-lg px-3 py-1.5 text-text-secondary hover:bg-surface-base"
         >
           ✕
         </button>
       </div>
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs text-danger">{error}</p>}
     </div>
   )
 }
@@ -217,14 +217,14 @@ function BibliotecaForm({
     setFilterCat('')
   }
 
-  const selectCls = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sig-500'
+  const selectCls = 'w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500'
 
   return (
     <form action={formAction} className="space-y-4">
       <input type="hidden" name="establecimiento_id" value={establecimientoId} />
 
       {state && !state.success && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-3 py-2">
+        <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-3 py-2">
           {state.error}
         </div>
       )}
@@ -237,14 +237,14 @@ function BibliotecaForm({
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-sm font-medium text-gray-700 block mb-1">Grupo</label>
+              <label className="text-sm font-medium text-text-secondary block mb-1">Grupo</label>
               <select value={filterGrupo} onChange={e => handleGrupoChange(e.target.value)} className={selectCls}>
                 <option value="">Todos</option>
                 {grupos.map(g => <option key={g} value={g}>{g}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700 block mb-1">Categoría</label>
+              <label className="text-sm font-medium text-text-secondary block mb-1">Categoría</label>
               <select value={filterCat} onChange={e => setFilterCat(e.target.value)} className={selectCls}>
                 <option value="">Todas</option>
                 {cats.map(c => <option key={c} value={c}>{c}</option>)}
@@ -253,7 +253,7 @@ function BibliotecaForm({
           </div>
 
           <div>
-            <label className="text-sm font-medium text-gray-700 block mb-1">Gestión *</label>
+            <label className="text-sm font-medium text-text-secondary block mb-1">Gestión *</label>
             <select name="gestion_id" required className={selectCls}>
               <option value="">Seleccionar gestión…</option>
               {gestionesFiltradas.map(g => (
@@ -265,23 +265,23 @@ function BibliotecaForm({
       )}
 
       <div>
-        <label className="text-sm font-medium text-gray-700 block mb-1">Fecha Planificada *</label>
+        <label className="text-sm font-medium text-text-secondary block mb-1">Fecha Planificada *</label>
         <input
           type="date"
           name="fecha_planificada"
           required
           value={fechaValue}
           onChange={e => setFechaValue(e.target.value)}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500"
+          className="w-full border border-border-default rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500"
         />
       </div>
 
       <div>
-        <label className="text-sm font-medium text-gray-700 block mb-1">Notas</label>
+        <label className="text-sm font-medium text-text-secondary block mb-1">Notas</label>
         <textarea
           name="notas"
           rows={2}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sig-500"
+          className="w-full border border-border-default rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sig-500"
         />
       </div>
 
@@ -292,7 +292,7 @@ function BibliotecaForm({
         <Button type="button" variant="secondary" onClick={onClose}>Cancelar</Button>
       </div>
 
-      <div className="border-t border-gray-100 pt-3">
+      <div className="border-t border-border-subtle pt-3">
         <button
           type="button"
           onClick={onSwitchToNueva}
@@ -385,8 +385,8 @@ function NuevaGestionForm({
     }
   }
 
-  const selectCls = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sig-500'
-  const selectErrCls = 'border-red-300 bg-red-50'
+  const selectCls = 'w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500'
+  const selectErrCls = 'border-red-300 bg-danger-bg'
   const hasSubmitError = state && !state.success
 
   return (
@@ -395,13 +395,13 @@ function NuevaGestionForm({
       <input type="hidden" name="categoria_id" value={selectedCatId} />
 
       {hasSubmitError && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-3 py-2">
+        <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-3 py-2">
           {state.error}
         </div>
       )}
 
       <div>
-        <label className="text-sm font-medium text-gray-700 block mb-1">Nombre de la gestión *</label>
+        <label className="text-sm font-medium text-text-secondary block mb-1">Nombre de la gestión *</label>
         <input
           type="text"
           name="gestion_nombre"
@@ -409,12 +409,12 @@ function NuevaGestionForm({
           placeholder="Ej: Simulacro de Evacuación"
           className={selectCls}
         />
-        <p className="text-xs text-gray-400 mt-1">Se agregará a la librería global de gestiones.</p>
+        <p className="text-xs text-text-tertiary mt-1">Se agregará a la librería global de gestiones.</p>
       </div>
 
       {/* Grupo */}
       <div>
-        <label className="text-sm font-medium text-gray-700 block mb-1">Grupo *</label>
+        <label className="text-sm font-medium text-text-secondary block mb-1">Grupo *</label>
         <select
           value={selectedGrupoId}
           onChange={handleGrupoSelect}
@@ -425,7 +425,7 @@ function NuevaGestionForm({
           <option value="__create__">+ Crear nuevo grupo</option>
         </select>
         {hasSubmitError && !selectedGrupoId && (
-          <p className="text-xs text-red-600 mt-1">Grupo requerido</p>
+          <p className="text-xs text-danger mt-1">Grupo requerido</p>
         )}
         {creandoGrupo && (
           <InlineCreator
@@ -439,7 +439,7 @@ function NuevaGestionForm({
 
       {/* Categoría */}
       <div>
-        <label className="text-sm font-medium text-gray-700 block mb-1">Categoría *</label>
+        <label className="text-sm font-medium text-text-secondary block mb-1">Categoría *</label>
         <select
           value={selectedCatId}
           onChange={handleCatSelect}
@@ -451,7 +451,7 @@ function NuevaGestionForm({
           {selectedGrupoId && <option value="__create__">+ Crear nueva categoría</option>}
         </select>
         {hasSubmitError && !selectedCatId && (
-          <p className="text-xs text-red-600 mt-1">Categoría requerida</p>
+          <p className="text-xs text-danger mt-1">Categoría requerida</p>
         )}
         {creandoCat && (
           <InlineCreator
@@ -464,7 +464,7 @@ function NuevaGestionForm({
       </div>
 
       <div>
-        <label className="text-sm font-medium text-gray-700 block mb-1">Fecha Planificada *</label>
+        <label className="text-sm font-medium text-text-secondary block mb-1">Fecha Planificada *</label>
         <input
           type="date"
           name="fecha_planificada"
@@ -476,7 +476,7 @@ function NuevaGestionForm({
       </div>
 
       <div>
-        <label className="text-sm font-medium text-gray-700 block mb-1">Notas</label>
+        <label className="text-sm font-medium text-text-secondary block mb-1">Notas</label>
         <textarea
           name="notas"
           rows={2}
@@ -537,7 +537,7 @@ function EjecucionModal({
   const [observaciones, setObservaciones] = useState<ObsDraft[]>([])
   const obsKeyRef = useRef(0)
 
-  const inputCls = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sig-500'
+  const inputCls = 'w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500'
 
   useEffect(() => {
     const supabase = createClient()
@@ -616,20 +616,20 @@ function EjecucionModal({
         <input type="hidden" name="registro_id" value={registro.id} />
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-3 py-2">
+          <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-3 py-2">
             {error}
           </div>
         )}
 
-        <div className="bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-700">
+        <div className="bg-surface-base rounded-lg px-3 py-2 text-sm text-text-secondary">
           <span className="font-medium">{registro.ge_gestion_nombre ?? '—'}</span>
           {registro.ge_categoria_nombre && (
-            <span className="text-gray-400"> · {registro.ge_categoria_nombre}</span>
+            <span className="text-text-tertiary"> · {registro.ge_categoria_nombre}</span>
           )}
         </div>
 
         <div>
-          <label className="text-sm font-medium text-gray-700 block mb-1">Fecha de Ejecución *</label>
+          <label className="text-sm font-medium text-text-secondary block mb-1">Fecha de Ejecución *</label>
           <input
             type="date"
             name="fecha_ejecutada"
@@ -641,9 +641,9 @@ function EjecucionModal({
 
         {registro.ge_tiene_entregable && (
           <div>
-            <label className="text-sm font-medium text-gray-700 block mb-1">
+            <label className="text-sm font-medium text-text-secondary block mb-1">
               Fecha de Vencimiento del Entregable
-              <span className="text-xs text-gray-400 font-normal ml-1">(opcional)</span>
+              <span className="text-xs text-text-tertiary font-normal ml-1">(opcional)</span>
             </label>
             <input
               type="date"
@@ -651,12 +651,12 @@ function EjecucionModal({
               defaultValue={registro.fecha_vencimiento ?? ''}
               className={inputCls}
             />
-            <p className="text-xs text-gray-400 mt-1">Fecha en que vence el protocolo, certificado o permiso generado.</p>
+            <p className="text-xs text-text-tertiary mt-1">Fecha en que vence el protocolo, certificado o permiso generado.</p>
           </div>
         )}
 
         <div>
-          <label className="text-sm font-medium text-gray-700 block mb-1">Índice *</label>
+          <label className="text-sm font-medium text-text-secondary block mb-1">Índice *</label>
           <input
             type="number"
             name="index"
@@ -669,7 +669,7 @@ function EjecucionModal({
         </div>
 
         <div>
-          <label className="text-sm font-medium text-gray-700 block mb-1">Responsable</label>
+          <label className="text-sm font-medium text-text-secondary block mb-1">Responsable</label>
           <select name="responsable_id" defaultValue={registro.responsable_id ?? ''} className={inputCls}>
             <option value="">Sin asignar</option>
             {personas.map(p => (
@@ -679,7 +679,7 @@ function EjecucionModal({
         </div>
 
         <div>
-          <label className="text-sm font-medium text-gray-700 block mb-1">Evidencia</label>
+          <label className="text-sm font-medium text-text-secondary block mb-1">Evidencia</label>
           {registro.evidencia_url && (
             <a
               href={registro.evidencia_url}
@@ -694,12 +694,12 @@ function EjecucionModal({
             type="file"
             name="evidencia"
             accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
-            className="w-full text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-sig-50 file:text-sig-700 hover:file:bg-sig-100 cursor-pointer"
+            className="w-full text-sm text-text-secondary file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-sig-50 file:text-sig-700 hover:file:bg-sig-100 cursor-pointer"
           />
         </div>
 
         <div>
-          <label className="text-sm font-medium text-gray-700 block mb-1">Notas</label>
+          <label className="text-sm font-medium text-text-secondary block mb-1">Notas</label>
           <textarea
             name="notas"
             rows={2}
@@ -709,12 +709,12 @@ function EjecucionModal({
         </div>
 
         {/* ── Observaciones ─────────────────────────────────────── */}
-        <div className="border-t border-gray-100 pt-4">
+        <div className="border-t border-border-subtle pt-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-gray-700">
+            <h3 className="text-sm font-semibold text-text-secondary">
               Observaciones
               {observaciones.length > 0 && (
-                <span className="ml-2 text-xs font-normal text-gray-400">({observaciones.length})</span>
+                <span className="ml-2 text-xs font-normal text-text-tertiary">({observaciones.length})</span>
               )}
             </h3>
             <button
@@ -725,26 +725,26 @@ function EjecucionModal({
               + Agregar
               </button>
             </div>
-          {observaciones.length === 0 ? (<p className="text-xs text-gray-400 text-center py-3 border border-dashed border-gray-200 rounded-lg">
+          {observaciones.length === 0 ? (<p className="text-xs text-text-tertiary text-center py-3 border border-dashed border-border-subtle rounded-lg">
               Sin observaciones. Hacé clic en &quot;+ Agregar&quot; para registrar una.
             </p>
           ) : (
             <div className="space-y-2">
               {observaciones.map((obs, idx) => (
-                <div key={obs.key} className="border border-gray-200 rounded-lg p-3 space-y-2 bg-gray-50/50">
+                <div key={obs.key} className="border border-border-subtle rounded-lg p-3 space-y-2 bg-gray-50/50">
                   <div className="flex items-start gap-2">
-                    <span className="text-xs text-gray-400 mt-2 w-4 shrink-0">{idx + 1}.</span>
+                    <span className="text-xs text-text-tertiary mt-2 w-4 shrink-0">{idx + 1}.</span>
                     <textarea
                       value={obs.descripcion}
                       onChange={e => updateObs(obs.key, 'descripcion', e.target.value)}
                       placeholder="Descripción de la observación…"
                       rows={2}
-                      className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sig-500"
+                      className="flex-1 border border-border-default rounded-lg px-3 py-1.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sig-500"
                     />
                     <button
                       type="button"
                       onClick={() => removeObs(obs.key)}
-                      className="text-gray-300 hover:text-red-400 mt-1 text-base leading-none shrink-0"
+                      className="text-text-tertiary hover:text-red-400 mt-1 text-base leading-none shrink-0"
                       title="Eliminar observación"
                     >
                       ✕
@@ -752,14 +752,14 @@ function EjecucionModal({
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 pl-0 sm:pl-6">
                     <div>
-                      <label className="text-xs text-gray-500 block mb-0.5">
-                        Categoría <span className="text-red-500">*</span>
+                      <label className="text-xs text-text-secondary block mb-0.5">
+                        Categoría <span className="text-danger">*</span>
                       </label>
                       <select
                         required
                         value={obs.categoria_id}
                         onChange={e => updateObs(obs.key, 'categoria_id', e.target.value)}
-                        className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-sig-500"
+                        className="w-full border border-border-default rounded-lg px-2 py-1.5 text-xs bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500"
                         style={obs.categoria_id ? { backgroundColor: categorias.find(c => c.id === obs.categoria_id)?.color, color: '#000' } : {}}
                       >
                         <option value="">Seleccionar…</option>
@@ -769,11 +769,11 @@ function EjecucionModal({
                       </select>
                     </div>
                     <div>
-                      <label className="text-xs text-gray-500 block mb-0.5">Tipo de riesgo</label>
+                      <label className="text-xs text-text-secondary block mb-0.5">Tipo de riesgo</label>
                       <select
                         value={obs.clasificacion_id}
                         onChange={e => updateObs(obs.key, 'clasificacion_id', e.target.value)}
-                        className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-sig-500"
+                        className="w-full border border-border-default rounded-lg px-2 py-1.5 text-xs bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500"
                       >
                         <option value="">Sin clasificar</option>
                         {clasificaciones.map(c => (
@@ -782,11 +782,11 @@ function EjecucionModal({
                       </select>
                     </div>
                     <div>
-                      <label className="text-xs text-gray-500 block mb-0.5">Responsable</label>
+                      <label className="text-xs text-text-secondary block mb-0.5">Responsable</label>
                       <select
                         value={obs.responsable_id}
                         onChange={e => updateObs(obs.key, 'responsable_id', e.target.value)}
-                        className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-sig-500"
+                        className="w-full border border-border-default rounded-lg px-2 py-1.5 text-xs bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500"
                       >
                         <option value="">Sin asignar</option>
                         {personas.map(p => (
@@ -795,12 +795,12 @@ function EjecucionModal({
                       </select>
                     </div>
                     <div>
-                      <label className="text-xs text-gray-500 block mb-0.5">Fecha subsanación</label>
+                      <label className="text-xs text-text-secondary block mb-0.5">Fecha subsanación</label>
                       <input
                         type="date"
                         value={obs.fecha_subsanacion}
                         onChange={e => updateObs(obs.key, 'fecha_subsanacion', e.target.value)}
-                        className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-sig-500"
+                        className="w-full border border-border-default rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-sig-500"
                       />
                     </div>
                   </div>
@@ -1035,18 +1035,18 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
               <CategoriaAbbr nombre={r.ge_categoria_nombre} />
             </span>
           </td>
-          <td className="px-4 py-1.5 font-medium text-gray-900" style={{ maxWidth: colW('gestion'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <td className="px-4 py-1.5 font-medium text-text-primary" style={{ maxWidth: colW('gestion'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {r.ge_gestion_nombre ?? '—'}
           </td>
-          <td className="px-4 py-1.5 text-gray-500 tabular-nums text-xs">{r.fecha_planificada}</td>
-          <td className="hidden md:table-cell px-4 py-1.5 text-gray-500 tabular-nums text-xs">
-            {r.fecha_ejecutada ?? <span className="text-gray-300">—</span>}
+          <td className="px-4 py-1.5 text-text-secondary tabular-nums text-xs">{r.fecha_planificada}</td>
+          <td className="hidden md:table-cell px-4 py-1.5 text-text-secondary tabular-nums text-xs">
+            {r.fecha_ejecutada ?? <span className="text-text-tertiary">—</span>}
           </td>
-          <td className="hidden md:table-cell px-4 py-1.5 text-gray-500 text-xs" style={{ maxWidth: colW('responsable'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {r.responsable_nombre ?? <span className="text-gray-300">—</span>}
+          <td className="hidden md:table-cell px-4 py-1.5 text-text-secondary text-xs" style={{ maxWidth: colW('responsable'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {r.responsable_nombre ?? <span className="text-text-tertiary">—</span>}
           </td>
-          <td className="px-4 py-1.5 text-center text-sm tabular-nums text-gray-700">
-            {r.index != null ? r.index : <span className="text-gray-300">—</span>}
+          <td className="px-4 py-1.5 text-center text-sm tabular-nums text-text-secondary">
+            {r.index != null ? r.index : <span className="text-text-tertiary">—</span>}
           </td>
           <td className="px-2 py-1.5" onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-1 justify-center">
@@ -1054,7 +1054,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
                 <button
                   title="Ejecutar formulario"
                   onClick={() => setExecutingFormulario(r)}
-                  className={`p-1.5 rounded-lg transition-colors ${r.fecha_ejecutada ? 'text-green-600 hover:bg-green-50' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-700'}`}
+                  className={`p-1.5 rounded-lg transition-colors ${r.fecha_ejecutada ? 'text-success hover:bg-success-bg' : 'text-text-tertiary hover:bg-surface-elevated hover:text-text-secondary'}`}
                 >
                   <Play size={14} />
                 </button>
@@ -1063,7 +1063,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
                 <button
                   title="Cargar evidencia"
                   onClick={() => setEditingRegistro(r)}
-                  className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+                  className="p-1.5 rounded-lg text-text-tertiary hover:bg-surface-elevated hover:text-text-secondary transition-colors"
                 >
                   <Upload size={14} />
                 </button>
@@ -1079,7 +1079,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
                   <Download size={14} />
                 </a>
               ) : (
-                <span className="p-1.5 text-gray-200 cursor-not-allowed" title="Sin adjunto">
+                <span className="p-1.5 text-text-tertiary cursor-not-allowed" title="Sin adjunto">
                   <Download size={14} />
                 </span>
               )}
@@ -1090,7 +1090,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
                   supabase.from('gestiones_establecimientos').update({ mostrar_lt: !r.ge_mostrar_lt }).eq('id', r.ge_id)
                   queryClient.invalidateQueries({ queryKey: ['gestiones-establecimiento', establecimientoId, year] })
                 }}
-                className={`p-1.5 rounded-lg transition-colors ${r.ge_mostrar_lt ? 'bg-amber-100 text-amber-600 hover:bg-amber-200' : 'text-gray-300 hover:bg-gray-100 hover:text-gray-600'}`}
+                className={`p-1.5 rounded-lg transition-colors ${r.ge_mostrar_lt ? 'bg-amber-100 text-amber-600 hover:bg-amber-200' : 'text-text-tertiary hover:bg-surface-elevated hover:text-text-secondary'}`}
               >
                 <BookMarked size={14} />
               </button>
@@ -1153,11 +1153,11 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
           return next
         })}
       >
-        <td colSpan={totalCols} className="bg-gray-50 px-4 py-2.5 border-y border-gray-100">
+        <td colSpan={totalCols} className="bg-surface-base px-4 py-2.5 border-y border-border-subtle">
           <div className="flex items-center gap-2">
-            <span className="text-gray-500 text-xs">{collapsed ? '▶' : '▼'}</span>
-            <span className="font-semibold text-sm text-gray-700">{MONTHS_FULL[monthIdx]}</span>
-            <span className="text-xs bg-gray-200 text-gray-600 rounded-full px-2 py-0.5">{count}</span>
+            <span className="text-text-secondary text-xs">{collapsed ? '▶' : '▼'}</span>
+            <span className="font-semibold text-sm text-text-secondary">{MONTHS_FULL[monthIdx]}</span>
+            <span className="text-xs bg-surface-sunken text-text-secondary rounded-full px-2 py-0.5">{count}</span>
           </div>
         </td>
       </tr>
@@ -1172,15 +1172,15 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
 
       {/* Year navigation */}
       <div className="bg-gray-800 text-white rounded-xl px-6 py-4 mb-4 flex items-center justify-between">
-        <button onClick={() => setYear(y => y - 1)} className="text-gray-400 hover:text-white text-sm font-medium w-12">
+        <button onClick={() => setYear(y => y - 1)} className="text-text-tertiary hover:text-white text-sm font-medium w-12">
           {year - 1}
         </button>
         <div className="flex items-center gap-3">
-          <button onClick={() => setYear(y => y - 1)} className="text-gray-300 hover:text-white text-lg leading-none">‹‹</button>
+          <button onClick={() => setYear(y => y - 1)} className="text-text-tertiary hover:text-white text-lg leading-none">‹‹</button>
           <span className="text-base font-semibold tracking-wide">Gestiones {year}</span>
-          <button onClick={() => setYear(y => y + 1)} className="text-gray-300 hover:text-white text-lg leading-none">››</button>
+          <button onClick={() => setYear(y => y + 1)} className="text-text-tertiary hover:text-white text-lg leading-none">››</button>
         </div>
-        <button onClick={() => setYear(y => y + 1)} className="text-gray-400 hover:text-white text-sm font-medium w-12 text-right">
+        <button onClick={() => setYear(y => y + 1)} className="text-text-tertiary hover:text-white text-sm font-medium w-12 text-right">
           {year + 1}
         </button>
       </div>
@@ -1199,7 +1199,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
                 return next
               })}
               className={`rounded-lg py-2 text-center transition-colors ${
-                isSelected ? 'bg-sig-500 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                isSelected ? 'bg-sig-500 text-white' : 'bg-surface-elevated text-text-secondary hover:bg-surface-sunken'
               }`}
             >
               <div className="text-xs font-medium">{m}</div>
@@ -1215,8 +1215,8 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
           onClick={() => setSelectedMonths(new Set([new Date().getMonth()]))}
           className={`text-xs border rounded-lg px-3 py-1.5 transition-colors ${
             selectedMonths.size === 1 && selectedMonths.has(new Date().getMonth())
-              ? 'bg-green-100 border-green-300 text-green-700'
-              : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+              ? 'bg-success-bg border-green-300 text-success'
+              : 'border-border-subtle text-text-secondary hover:bg-surface-base'
           }`}
         >
           Mes actual
@@ -1225,8 +1225,8 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
           onClick={() => setSelectedMonths(new Set([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]))}
           className={`text-xs border rounded-lg px-3 py-1.5 transition-colors ${
             selectedMonths.size === 12
-              ? 'bg-green-100 border-green-300 text-green-700'
-              : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+              ? 'bg-success-bg border-green-300 text-success'
+              : 'border-border-subtle text-text-secondary hover:bg-surface-base'
           }`}
         >
           Todos los meses
@@ -1235,8 +1235,8 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
           onClick={() => setSelectedMonths(new Set())}
           className={`text-xs border rounded-lg px-3 py-1.5 transition-colors ${
             selectedMonths.size === 0
-              ? 'bg-green-100 border-green-300 text-green-700'
-              : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+              ? 'bg-success-bg border-green-300 text-success'
+              : 'border-border-subtle text-text-secondary hover:bg-surface-base'
           }`}
         >
           Ninguno
@@ -1247,7 +1247,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
             const inverted = new Set(all.filter(m => !prev.has(m)))
             return inverted
           })}
-          className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-50"
+          className="text-xs border border-border-subtle rounded-lg px-3 py-1.5 text-text-secondary hover:bg-surface-base"
         >
           Invertir selección
         </button>
@@ -1260,7 +1260,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
           value={searchText}
           onChange={e => setSearchText(e.target.value)}
           placeholder="Buscar gestión..."
-          className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-600 focus:outline-none w-[140px] shrink-0"
+          className="text-xs border border-border-subtle rounded-lg px-2 py-1.5 bg-surface-base text-text-secondary focus:outline-none w-[140px] shrink-0"
         />
         {gruposFiltro.length > 0 && (
           <MultiFilter
@@ -1298,7 +1298,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
         />
         <button
           onClick={() => { setFilterEstado(null); setFilterCategoria(null); setFilterGrupo(null); setFilterResponsable(null); setOrderByCategoria(false) }}
-          className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-gray-600 hover:bg-gray-50 shrink-0"
+          className="text-xs border border-border-subtle rounded-lg px-2 py-1.5 text-text-secondary hover:bg-surface-base shrink-0"
         >
           Rest.
         </button>
@@ -1308,14 +1308,14 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
           className={`text-xs border rounded-lg px-2 py-1.5 transition-colors shrink-0 ${
             orderByCategoria
               ? 'border-sig-300 bg-sig-50 text-sig-700'
-              : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+              : 'border-border-subtle text-text-secondary hover:bg-surface-base'
           }`}
         >
           Ordenar Categoría
         </button>
 
         <div className="flex items-center gap-2 ml-auto">
-          <span className="text-xs text-gray-400">
+          <span className="text-xs text-text-tertiary">
             {registros !== null ? `${filteredRegistros.length} gestiones` : ''}
           </span>
         </div>
@@ -1323,15 +1323,15 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
 
       {/* Gestiones table */}
       {registros === null ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400 text-sm">
+        <div className="bg-surface-base rounded-xl border border-border-subtle p-8 text-center text-text-tertiary text-sm">
           Cargando…
         </div>
       ) : filteredRegistros.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400 text-sm">
+        <div className="bg-surface-base rounded-xl border border-border-subtle p-8 text-center text-text-tertiary text-sm">
           No hay gestiones para el período seleccionado.
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden mb-8">
+        <div className="bg-surface-base rounded-xl border border-border-subtle overflow-hidden mb-8">
           <div className="overflow-x-auto">
             <table className="text-sm" style={{ tableLayout: 'fixed', width: '100%', minWidth: 500 }}>
               {tableHead}

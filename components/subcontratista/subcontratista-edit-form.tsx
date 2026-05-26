@@ -28,8 +28,8 @@ interface Props {
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <div className="border-t border-gray-100 pt-5 mt-5">
-      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">{children}</h3>
+    <div className="border-t border-border-subtle pt-5 mt-5">
+      <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-4">{children}</h3>
     </div>
   )
 }
@@ -84,7 +84,7 @@ export function SubcontratistaEditForm({ action, sub, preguntas, respuestas }: P
   return (
     <form action={formAction} className="space-y-4">
       {state && !state.success && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+        <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3">
           {state.error}
         </div>
       )}
@@ -162,12 +162,12 @@ export function SubcontratistaEditForm({ action, sub, preguntas, respuestas }: P
       {/* ── Actividad ── */}
       <SectionTitle>Actividad y establecimiento</SectionTitle>
       <div>
-        <label className="text-sm font-medium text-gray-700 block mb-1">Tipo de establecimiento</label>
+        <label className="text-sm font-medium text-text-secondary block mb-1">Tipo de establecimiento</label>
         <select
           name="tipo_establecimiento_id"
           value={selectedTipoEstId}
           onChange={e => setSelectedTipoEstId(e.target.value)}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sig-500"
+          className="w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500"
         >
           <option value="">Seleccionar tipo…</option>
           {tiposEst.map((t: { id: string; nombre: string; codigo: string }) => (
@@ -191,7 +191,7 @@ export function SubcontratistaEditForm({ action, sub, preguntas, respuestas }: P
           <p className="text-xs font-semibold text-sig-700 uppercase tracking-wider">
             Condiciones del establecimiento
           </p>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-text-secondary">
             Respondé las siguientes preguntas para identificar qué requisitos legales aplican.
           </p>
           {preguntasDinamicas.map(p => (
@@ -206,9 +206,9 @@ export function SubcontratistaEditForm({ action, sub, preguntas, respuestas }: P
                   value="true"
                   checked={respuestasState[p.id] ?? false}
                   onChange={e => setRespuestasState(prev => ({ ...prev, [p.id]: e.target.checked }))}
-                  className="w-4 h-4 mt-0.5 rounded border-gray-300 text-sig-500 focus:ring-sig-400 shrink-0"
+                  className="w-4 h-4 mt-0.5 rounded border-border-default text-sig-500 focus:ring-sig-400 shrink-0"
                 />
-                <span className="text-sm text-gray-700 group-hover:text-gray-900">{p.texto}</span>
+                <span className="text-sm text-text-secondary group-hover:text-text-primary">{p.texto}</span>
               </label>
             ))}
           </div>
@@ -223,12 +223,12 @@ export function SubcontratistaEditForm({ action, sub, preguntas, respuestas }: P
       </div>
 
       <div>
-        <label className="text-sm font-medium text-gray-700 block mb-1">Información general</label>
+        <label className="text-sm font-medium text-text-secondary block mb-1">Información general</label>
         <textarea
           name="informacion_general"
           rows={3}
           defaultValue={sub.informacion_general ?? ''}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500 focus:border-transparent resize-none"
+          className="w-full border border-border-default rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500 focus:border-transparent resize-none"
           placeholder="Descripción, notas o información adicional…"
         />
       </div>

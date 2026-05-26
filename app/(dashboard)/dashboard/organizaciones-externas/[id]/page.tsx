@@ -133,7 +133,7 @@ export default async function SubcontratistaDetailPage({ params, searchParams }:
               </span>
             )}
             <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-              org.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+              org.is_active ? 'bg-success-bg text-success' : 'bg-surface-elevated text-text-secondary'
             }`}>
               {org.is_active ? 'Activo' : 'Inactivo'}
             </span>

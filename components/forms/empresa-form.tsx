@@ -114,7 +114,7 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
   return (
     <form ref={formRef} action={formAction} className="space-y-4" noValidate>
       {state && !state.success && state.error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+        <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3">
           {state.error}
         </div>
       )}
@@ -215,11 +215,11 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
                 value={newArtName}
                 onChange={e => setNewArtName(e.target.value)}
                 placeholder="Nombre de la ART..."
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500 focus:border-transparent"
+                className="w-full border border-border-default rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500 focus:border-transparent"
                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddArt() } }}
                 autoFocus
               />
-              {addArtError && <p className="text-xs text-red-600">{addArtError}</p>}
+              {addArtError && <p className="text-xs text-danger">{addArtError}</p>}
               <div className="flex gap-2">
                 <button
                   type="button"
@@ -232,7 +232,7 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
                 <button
                   type="button"
                   onClick={() => { setShowAddArt(false); setNewArtName(''); setAddArtError('') }}
-                  className="text-xs text-gray-500 hover:text-gray-700 px-3 py-1.5 rounded-lg border border-gray-200 transition-colors"
+                  className="text-xs text-text-secondary hover:text-text-secondary px-3 py-1.5 rounded-lg border border-border-subtle transition-colors"
                 >
                   Cancelar
                 </button>
@@ -270,12 +270,12 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
       </div>
 
       <div>
-        <label className="text-sm font-medium text-gray-700 block mb-1">Información general</label>
+        <label className="text-sm font-medium text-text-secondary block mb-1">Información general</label>
         <textarea
           name="informacion_general"
           defaultValue={fieldValue('informacion_general')}
           rows={3}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500 focus:border-transparent resize-none"
+          className="w-full border border-border-default rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500 focus:border-transparent resize-none"
           placeholder="Descripción, notas o información adicional de la empresa…"
         />
       </div>

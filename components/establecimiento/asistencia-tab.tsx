@@ -81,26 +81,26 @@ export function AsistenciaTab({ establecimientoId, empresaId, canWrite }: Asiste
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-900 dark:text-white">Asistencia del día</h3>
+        <h3 className="font-semibold text-text-primary dark:text-white">Asistencia del día</h3>
         {canWrite && !showForm && (
           <Button size="sm" onClick={() => setShowForm(true)}>+ Registrar</Button>
         )}
       </div>
 
       {showForm && (
-        <form action={formAction} className="bg-gray-50 rounded-xl border border-gray-200 p-4 mb-4 space-y-3">
+        <form action={formAction} className="bg-surface-base rounded-xl border border-border-subtle p-4 mb-4 space-y-3">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-gray-700 dark:text-white">Nuevo registro de asistencia</p>
+            <p className="text-sm font-medium text-text-secondary dark:text-white">Nuevo registro de asistencia</p>
             {horarioHoy && (
-              <span className="text-xs text-gray-400">
+              <span className="text-xs text-text-tertiary">
                 Horario del establecimiento: {horarioHoy.inicio} – {horarioHoy.fin}
               </span>
             )}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-gray-600 block mb-1">Persona *</label>
-              <select name="persona_id" required className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm bg-white">
+              <label className="text-xs text-text-secondary block mb-1">Persona *</label>
+              <select name="persona_id" required className="w-full border border-border-default rounded px-2 py-1.5 text-sm bg-surface-base">
                 <option value="">Seleccioná…</option>
                 {personas.map(p => (
                   <option key={p.id} value={p.id}>{p.apellido}, {p.nombre}</option>
@@ -108,26 +108,26 @@ export function AsistenciaTab({ establecimientoId, empresaId, canWrite }: Asiste
               </select>
             </div>
             <div>
-              <label className="text-xs text-gray-600 block mb-1">Fecha *</label>
-              <input name="fecha" type="date" required defaultValue={today} className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
+              <label className="text-xs text-text-secondary block mb-1">Fecha *</label>
+              <input name="fecha" type="date" required defaultValue={today} className="w-full border border-border-default rounded px-2 py-1.5 text-sm" />
             </div>
             <div>
-              <label className="text-xs text-gray-600 block mb-1">
+              <label className="text-xs text-text-secondary block mb-1">
                 Hora entrada *
-                {horarioHoy && <span className="text-gray-400 font-normal ml-1">(default: {horarioHoy.inicio})</span>}
+                {horarioHoy && <span className="text-text-tertiary font-normal ml-1">(default: {horarioHoy.inicio})</span>}
               </label>
-              <input name="hora_entrada" type="time" required defaultValue={horarioHoy?.inicio ?? ''} className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
+              <input name="hora_entrada" type="time" required defaultValue={horarioHoy?.inicio ?? ''} className="w-full border border-border-default rounded px-2 py-1.5 text-sm" />
             </div>
             <div>
-              <label className="text-xs text-gray-600 block mb-1">
+              <label className="text-xs text-text-secondary block mb-1">
                 Hora salida
-                {horarioHoy && <span className="text-gray-400 font-normal ml-1">(default: {horarioHoy.fin})</span>}
+                {horarioHoy && <span className="text-text-tertiary font-normal ml-1">(default: {horarioHoy.fin})</span>}
               </label>
-              <input name="hora_salida" type="time" defaultValue={horarioHoy?.fin ?? ''} className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
+              <input name="hora_salida" type="time" defaultValue={horarioHoy?.fin ?? ''} className="w-full border border-border-default rounded px-2 py-1.5 text-sm" />
             </div>
             <div>
-              <label className="text-xs text-gray-600 block mb-1">Tipo de hora</label>
-              <select name="tipo_hora_id" className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm bg-white">
+              <label className="text-xs text-text-secondary block mb-1">Tipo de hora</label>
+              <select name="tipo_hora_id" className="w-full border border-border-default rounded px-2 py-1.5 text-sm bg-surface-base">
                 <option value="">Default</option>
                 {tiposHora.map(th => (
                   <option key={th.id} value={th.id}>{th.nombre}</option>
@@ -136,10 +136,10 @@ export function AsistenciaTab({ establecimientoId, empresaId, canWrite }: Asiste
             </div>
           </div>
           <div>
-            <label className="text-xs text-gray-600 block mb-1">Observaciones</label>
-            <input name="observaciones" type="text" placeholder="Opcional…" className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
+            <label className="text-xs text-text-secondary block mb-1">Observaciones</label>
+            <input name="observaciones" type="text" placeholder="Opcional…" className="w-full border border-border-default rounded px-2 py-1.5 text-sm" />
           </div>
-          {state && !state.success && <p className="text-xs text-red-600">{state.error}</p>}
+          {state && !state.success && <p className="text-xs text-danger">{state.error}</p>}
           <div className="flex gap-2 justify-end">
             <Button size="sm" variant="secondary" type="button" onClick={() => setShowForm(false)}>Cancelar</Button>
             <Button size="sm" type="submit" disabled={pending}>{pending ? 'Guardando…' : 'Registrar'}</Button>
@@ -148,34 +148,34 @@ export function AsistenciaTab({ establecimientoId, empresaId, canWrite }: Asiste
       )}
 
       {registros === null ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400 text-sm">Cargando…</div>
+        <div className="bg-surface-base rounded-xl border border-border-subtle p-8 text-center text-text-tertiary text-sm">Cargando…</div>
       ) : registros.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400 text-sm">
+        <div className="bg-surface-base rounded-xl border border-border-subtle p-8 text-center text-text-tertiary text-sm">
           Sin registros para hoy.
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="bg-surface-base rounded-xl border border-border-subtle overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="border-b border-gray-100 bg-gray-50">
+            <thead className="border-b border-border-subtle bg-surface-base">
               <tr className="text-left">
-                <th className="px-5 py-3 text-gray-500 font-medium">Persona</th>
-                <th className="px-5 py-3 text-gray-500 font-medium">Fecha</th>
-                <th className="px-5 py-3 text-gray-500 font-medium">Entrada</th>
-                <th className="px-5 py-3 text-gray-500 font-medium">Salida</th>
-                <th className="px-5 py-3 text-gray-500 font-medium">Tipo</th>
+                <th className="px-5 py-3 text-text-secondary font-medium">Persona</th>
+                <th className="px-5 py-3 text-text-secondary font-medium">Fecha</th>
+                <th className="px-5 py-3 text-text-secondary font-medium">Entrada</th>
+                <th className="px-5 py-3 text-text-secondary font-medium">Salida</th>
+                <th className="px-5 py-3 text-text-secondary font-medium">Tipo</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {registros.map(r => (
-                <tr key={r.id} className="hover:bg-gray-50">
-                  <td className="px-5 py-3.5 font-medium text-gray-900">
+                <tr key={r.id} className="hover:bg-surface-base">
+                  <td className="px-5 py-3.5 font-medium text-text-primary">
                     {r.personas_directorio ? `${r.personas_directorio.apellido}, ${r.personas_directorio.nombre}` : '—'}
                   </td>
-                  <td className="px-5 py-3.5 text-gray-500">{r.fecha}</td>
-                  <td className="px-5 py-3.5 text-gray-700">
+                  <td className="px-5 py-3.5 text-text-secondary">{r.fecha}</td>
+                  <td className="px-5 py-3.5 text-text-secondary">
                     {new Date(r.hora_entrada).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', timeZone: TZ })}
                   </td>
-                  <td className="px-5 py-3.5 text-gray-500">
+                  <td className="px-5 py-3.5 text-text-secondary">
                     {r.hora_salida ? new Date(r.hora_salida).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', timeZone: TZ }) : '—'}
                   </td>
                   <td className="px-5 py-3.5">

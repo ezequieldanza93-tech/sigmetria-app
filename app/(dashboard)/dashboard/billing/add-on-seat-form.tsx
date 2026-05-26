@@ -95,10 +95,10 @@ export function AddOnSeatForm({ precioUnitarioNeto, ivaPorcentaje, seatsMax, sea
             </p>
 
             {success ? (
-              <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-center space-y-2">
-                <p className="font-semibold text-green-700">¡Solicitud registrada!</p>
-                <p className="text-sm text-green-600">Confirmamos dentro de las 24 hs hábiles y habilitamos los seats.</p>
-                <button onClick={handleClose} className="mt-2 text-sm text-green-700 underline">Cerrar</button>
+              <div className="rounded-xl border border-green-200 bg-success-bg p-4 text-center space-y-2">
+                <p className="font-semibold text-success">¡Solicitud registrada!</p>
+                <p className="text-sm text-success">Confirmamos dentro de las 24 hs hábiles y habilitamos los seats.</p>
+                <button onClick={handleClose} className="mt-2 text-sm text-success underline">Cerrar</button>
               </div>
             ) : step === 'info' ? (
               <div className="space-y-5">
@@ -191,7 +191,7 @@ export function AddOnSeatForm({ precioUnitarioNeto, ivaPorcentaje, seatsMax, sea
                   />
                 </div>
 
-                {error && <p className="text-sm text-red-500">{error}</p>}
+                {error && <p className="text-sm text-danger">{error}</p>}
 
                 <div className="flex gap-2">
                   <button

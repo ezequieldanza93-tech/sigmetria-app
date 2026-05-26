@@ -81,25 +81,25 @@ export function FirmaInternaModal({
     <Modal open={open} onClose={onClose} title="Confirmar Firma Electrónica">
       <div className="space-y-4">
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-3 py-2">
+          <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-3 py-2">
             {error}
           </div>
         )}
 
-        <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-          <div className="flex items-center gap-2 text-sm text-gray-500">
+        <div className="bg-surface-base rounded-lg p-4 space-y-3">
+          <div className="flex items-center gap-2 text-sm text-text-secondary">
             <FileText size={16} />
-            <span>Gestión: <strong className="text-gray-900">{gestionNombre}</strong></span>
+            <span>Gestión: <strong className="text-text-primary">{gestionNombre}</strong></span>
           </div>
 
-          <div className="border-t border-gray-200 pt-3 space-y-2">
+          <div className="border-t border-border-subtle pt-3 space-y-2">
             <div className="flex items-center gap-2 text-sm">
-              <PenLine size={16} className="text-gray-400" />
-              <span className="text-gray-500">Firmante:</span>
+              <PenLine size={16} className="text-text-tertiary" />
+              <span className="text-text-secondary">Firmante:</span>
               {loading ? (
-                <Loader2 size={14} className="animate-spin text-gray-400" />
+                <Loader2 size={14} className="animate-spin text-text-tertiary" />
               ) : (
-                <span className="font-medium text-gray-900">{userName}</span>
+                <span className="font-medium text-text-primary">{userName}</span>
               )}
             </div>
             {!loading && roleLabel && (
@@ -107,7 +107,7 @@ export function FirmaInternaModal({
                 <Badge variant="info" className="text-xs">{roleLabel}</Badge>
               </div>
             )}
-            <div className="flex items-center gap-2 text-sm text-gray-500">
+            <div className="flex items-center gap-2 text-sm text-text-secondary">
               <Clock size={16} />
               <span>{fechaHora}</span>
             </div>

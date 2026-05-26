@@ -30,12 +30,12 @@ export function InviteUsuarioForm({ action, onSuccess }: InviteUsuarioFormProps)
   return (
     <form action={formAction} className="space-y-4">
       {state && !state.success && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+        <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3">
           {state.error}
         </div>
       )}
       {state?.success && (
-        <div className="bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-4 py-3">
+        <div className="bg-success-bg border border-green-200 text-success text-sm rounded-lg px-4 py-3">
           Invitacion enviada correctamente
         </div>
       )}

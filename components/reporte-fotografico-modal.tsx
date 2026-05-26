@@ -201,7 +201,7 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
     formAction(fd)
   }
 
-  const inputCls = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sig-500'
+  const inputCls = 'w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500'
 
   const today = new Date().toISOString().split('T')[0]
 
@@ -209,29 +209,29 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
     <Modal open title="Reporte Fotográfico" onClose={onClose} size="full">
       <form onSubmit={handleSubmit} className="space-y-4">
         {state && !state.success && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-3 py-2">
+          <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-3 py-2">
             {state.error}
           </div>
         )}
         {formError && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-3 py-2">
+          <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-3 py-2">
             {formError}
           </div>
         )}
 
-        <div className="bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-700">
-          Reportes Fotográficos del Sitio · <span className="text-gray-400">Fecha: {today}</span>
+        <div className="bg-surface-base rounded-lg px-3 py-2 text-sm text-text-secondary">
+          Reportes Fotográficos del Sitio · <span className="text-text-tertiary">Fecha: {today}</span>
         </div>
 
         {/* Image upload */}
         {!imagePreviewUrl ? (
           <div
             onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-gray-300 rounded-xl p-12 text-center cursor-pointer hover:border-sig-400 hover:bg-sig-50/30 transition-colors"
+            className="border-2 border-dashed border-border-default rounded-xl p-12 text-center cursor-pointer hover:border-sig-400 hover:bg-sig-50/30 transition-colors"
           >
-            <Camera size={40} strokeWidth={1.5} className="mx-auto text-gray-300 mb-3" />
-            <p className="text-sm font-medium text-gray-600">Hacé clic para seleccionar una imagen</p>
-            <p className="text-xs text-gray-400 mt-1">O usá la cámara si estás en el celular</p>
+            <Camera size={40} strokeWidth={1.5} className="mx-auto text-text-tertiary mb-3" />
+            <p className="text-sm font-medium text-text-secondary">Hacé clic para seleccionar una imagen</p>
+            <p className="text-xs text-text-tertiary mt-1">O usá la cámara si estás en el celular</p>
             <input
               ref={fileInputRef}
               type="file"
@@ -244,11 +244,11 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
         ) : (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700">Imagen seleccionada</span>
+              <span className="text-sm font-medium text-text-secondary">Imagen seleccionada</span>
               <button
                 type="button"
                 onClick={() => { setImagePreviewUrl(null); setImageFile(null); setEditedBlob(null) }}
-                className="text-xs text-red-600 hover:text-red-700"
+                className="text-xs text-danger hover:text-danger"
               >
                 Eliminar imagen
               </button>
@@ -265,7 +265,7 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
 
         {/* Comentario */}
         <div>
-          <label className="text-sm font-medium text-gray-700 block mb-1">Comentario</label>
+          <label className="text-sm font-medium text-text-secondary block mb-1">Comentario</label>
           <textarea
             value={comentario}
             onChange={e => setComentario(e.target.value)}
@@ -276,12 +276,12 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
         </div>
 
         {/* Observaciones */}
-        <div className="border-t border-gray-100 pt-4">
+        <div className="border-t border-border-subtle pt-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-gray-700">
+            <h3 className="text-sm font-semibold text-text-secondary">
               Observaciones
               {observaciones.length > 0 && (
-                <span className="ml-2 text-xs font-normal text-gray-400">({observaciones.length})</span>
+                <span className="ml-2 text-xs font-normal text-text-tertiary">({observaciones.length})</span>
               )}
             </h3>
             <button
@@ -293,26 +293,26 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
             </button>
           </div>
           {observaciones.length === 0 ? (
-            <p className="text-xs text-gray-400 text-center py-3 border border-dashed border-gray-200 rounded-lg">
+            <p className="text-xs text-text-tertiary text-center py-3 border border-dashed border-border-subtle rounded-lg">
               Sin observaciones. Hacé clic en &quot;+ Agregar&quot; o usá &quot;Escribir observación&quot; sobre la imagen.
             </p>
           ) : (
             <div className="space-y-2">
               {observaciones.map((obs, idx) => (
-                <div key={obs.key} className="border border-gray-200 rounded-lg p-3 space-y-2 bg-gray-50/50">
+                <div key={obs.key} className="border border-border-subtle rounded-lg p-3 space-y-2 bg-gray-50/50">
                   <div className="flex items-start gap-2">
-                    <span className="text-xs text-gray-400 mt-2 w-4 shrink-0">{idx + 1}.</span>
+                    <span className="text-xs text-text-tertiary mt-2 w-4 shrink-0">{idx + 1}.</span>
                     <textarea
                       value={obs.descripcion}
                       onChange={e => updateObs(obs.key, 'descripcion', e.target.value)}
                       placeholder="Descripción de la observación…"
                       rows={2}
-                      className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sig-500"
+                      className="flex-1 border border-border-default rounded-lg px-3 py-1.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sig-500"
                     />
                     <button
                       type="button"
                       onClick={() => removeObs(obs.key)}
-                      className="text-gray-300 hover:text-red-400 mt-1 text-base leading-none shrink-0"
+                      className="text-text-tertiary hover:text-red-400 mt-1 text-base leading-none shrink-0"
                       title="Eliminar observación"
                     >
                       ✕
@@ -320,14 +320,14 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pl-6">
                     <div>
-                      <label className="text-xs text-gray-500 block mb-0.5">
-                        Categoría <span className="text-red-500">*</span>
+                      <label className="text-xs text-text-secondary block mb-0.5">
+                        Categoría <span className="text-danger">*</span>
                       </label>
                       <select
                         required
                         value={obs.categoria_id}
                         onChange={e => updateObs(obs.key, 'categoria_id', e.target.value)}
-                        className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-sig-500"
+                        className="w-full border border-border-default rounded-lg px-2 py-1.5 text-xs bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500"
                         style={obs.categoria_id ? { backgroundColor: categorias.find(c => c.id === obs.categoria_id)?.color, color: '#000' } : {}}
                       >
                         <option value="">Seleccionar…</option>
@@ -337,11 +337,11 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
                       </select>
                     </div>
                     <div>
-                      <label className="text-xs text-gray-500 block mb-0.5">Tipo de riesgo</label>
+                      <label className="text-xs text-text-secondary block mb-0.5">Tipo de riesgo</label>
                       <select
                         value={obs.clasificacion_id}
                         onChange={e => updateObs(obs.key, 'clasificacion_id', e.target.value)}
-                        className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-sig-500"
+                        className="w-full border border-border-default rounded-lg px-2 py-1.5 text-xs bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500"
                       >
                         <option value="">Sin clasificar</option>
                         {clasificaciones.map(c => (
@@ -350,11 +350,11 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
                       </select>
                     </div>
                     <div>
-                      <label className="text-xs text-gray-500 block mb-0.5">Responsable</label>
+                      <label className="text-xs text-text-secondary block mb-0.5">Responsable</label>
                       <select
                         value={obs.responsable_id}
                         onChange={e => updateObs(obs.key, 'responsable_id', e.target.value)}
-                        className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-sig-500"
+                        className="w-full border border-border-default rounded-lg px-2 py-1.5 text-xs bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500"
                       >
                         <option value="">Sin asignar</option>
                         {personas.map(p => (
@@ -363,12 +363,12 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
                       </select>
                     </div>
                     <div>
-                      <label className="text-xs text-gray-500 block mb-0.5">Fecha subsanación</label>
+                      <label className="text-xs text-text-secondary block mb-0.5">Fecha subsanación</label>
                       <input
                         type="date"
                         value={obs.fecha_subsanacion}
                         onChange={e => updateObs(obs.key, 'fecha_subsanacion', e.target.value)}
-                        className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-sig-500"
+                        className="w-full border border-border-default rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-sig-500"
                       />
                     </div>
                   </div>
@@ -376,7 +376,7 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
                   {/* Foto de la observación */}
                   <div className="pl-6">
                     {!obs.foto_preview ? (
-                      <label className="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-sig-600 cursor-pointer transition-colors">
+                      <label className="inline-flex items-center gap-1.5 text-xs text-text-tertiary hover:text-sig-600 cursor-pointer transition-colors">
                         <Camera size={13} />
                         Adjuntar foto
                         <input
@@ -395,7 +395,7 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
                       <div className="space-y-2">
                         <div className="flex items-center gap-3">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={obs.foto_preview} alt="Foto observación" className="w-14 h-14 object-cover rounded-lg border border-gray-200" />
+                          <img src={obs.foto_preview} alt="Foto observación" className="w-14 h-14 object-cover rounded-lg border border-border-subtle" />
                           <div className="flex flex-col gap-1">
                             <button
                               type="button"
@@ -407,7 +407,7 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
                             <button
                               type="button"
                               onClick={() => updateObsFoto(obs.key, null, null, false)}
-                              className="text-xs text-red-400 hover:text-red-500"
+                              className="text-xs text-red-400 hover:text-danger"
                             >
                               Eliminar foto
                             </button>

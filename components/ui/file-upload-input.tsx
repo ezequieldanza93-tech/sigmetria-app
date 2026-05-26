@@ -116,10 +116,10 @@ export function FileUploadInput({
               alt="Nuevo"
               width={64}
               height={64}
-              className="w-16 h-16 object-cover rounded border border-sig-200 bg-white"
+              className="w-16 h-16 object-cover rounded border border-sig-200 bg-surface-base"
             />
           ) : (
-            <div className="w-16 h-16 flex items-center justify-center rounded border border-sig-200 bg-white">
+            <div className="w-16 h-16 flex items-center justify-center rounded border border-sig-200 bg-surface-base">
               <Icon size={28} className="text-sig-500" />
             </div>
           )}

@@ -110,7 +110,7 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
   return (
     <form action={formAction} className="space-y-4">
       {state && !state.success && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+        <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3">
           {state.error}
         </div>
       )}
@@ -124,12 +124,12 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
       />
 
       <div>
-        <label className="text-sm font-medium text-gray-700 block mb-1">Tipo *</label>
+        <label className="text-sm font-medium text-text-secondary block mb-1">Tipo *</label>
         <select
           name="tipo_id"
           value={selectedTipoId}
           onChange={e => setSelectedTipoId(e.target.value)}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sig-500"
+          className="w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500"
         >
           <option value="">Seleccionar tipo...</option>
           {tipos.map(t => (
@@ -192,8 +192,8 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
       />
 
       <div>
-        <label className="text-sm font-medium text-gray-700 block mb-2">Horario por día</label>
-        <div className="border border-gray-200 rounded-lg divide-y divide-gray-100">
+        <label className="text-sm font-medium text-text-secondary block mb-2">Horario por día</label>
+        <div className="border border-border-subtle rounded-lg divide-y divide-gray-100">
           {DIAS_SEMANA.map(({ dia, label }) => {
             const cfg = semana[dia]
             return (
@@ -205,9 +205,9 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
                   onChange={e => setSemana(prev => ({ ...prev, [dia]: { ...prev[dia], activo: e.target.checked } }))}
                   value="true"
                   name={`dia_${dia}_activo`}
-                  className="w-4 h-4 rounded border-gray-300 text-sig-500 focus:ring-sig-400"
+                  className="w-4 h-4 rounded border-border-default text-sig-500 focus:ring-sig-400"
                 />
-                <label htmlFor={`dia_${dia}_activo`} className="w-24 text-sm text-gray-700 select-none cursor-pointer">{label}</label>
+                <label htmlFor={`dia_${dia}_activo`} className="w-24 text-sm text-text-secondary select-none cursor-pointer">{label}</label>
                 {cfg.activo ? (
                   <div className="flex items-center gap-2 flex-1">
                     <input
@@ -216,20 +216,20 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
                       value={cfg.inicio}
                       onChange={e => setSemana(prev => ({ ...prev, [dia]: { ...prev[dia], inicio: e.target.value } }))}
                       required
-                      className="border border-gray-300 rounded px-2 py-1 text-sm w-28 focus:outline-none focus:ring-2 focus:ring-sig-400"
+                      className="border border-border-default rounded px-2 py-1 text-sm w-28 focus:outline-none focus:ring-2 focus:ring-sig-400"
                     />
-                    <span className="text-gray-400 text-sm">a</span>
+                    <span className="text-text-tertiary text-sm">a</span>
                     <input
                       type="time"
                       name={`dia_${dia}_fin`}
                       value={cfg.fin}
                       onChange={e => setSemana(prev => ({ ...prev, [dia]: { ...prev[dia], fin: e.target.value } }))}
                       required
-                      className="border border-gray-300 rounded px-2 py-1 text-sm w-28 focus:outline-none focus:ring-2 focus:ring-sig-400"
+                      className="border border-border-default rounded px-2 py-1 text-sm w-28 focus:outline-none focus:ring-2 focus:ring-sig-400"
                     />
                   </div>
                 ) : (
-                  <span className="text-sm text-gray-400">Sin actividad</span>
+                  <span className="text-sm text-text-tertiary">Sin actividad</span>
                 )}
               </div>
             )
@@ -238,12 +238,12 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
       </div>
 
       <div>
-        <label className="text-sm font-medium text-gray-700 block mb-1">Información del establecimiento</label>
+        <label className="text-sm font-medium text-text-secondary block mb-1">Información del establecimiento</label>
         <textarea
           name="description"
           defaultValue={establecimiento?.description ?? ''}
           rows={3}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500 focus:border-transparent resize-none"
+          className="w-full border border-border-default rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500 focus:border-transparent resize-none"
           placeholder="Descripción, notas o información adicional del establecimiento…"
         />
       </div>
@@ -254,7 +254,7 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
           <p className="text-xs font-semibold text-sig-700 uppercase tracking-wider">
             Condiciones del establecimiento
           </p>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-text-secondary">
             Respondé las siguientes preguntas para identificar qué requisitos legales aplican.
           </p>
           {/* Hidden inputs to tell the server action which pregunta_ids are active */}
@@ -270,9 +270,9 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
                   value="true"
                   checked={respuestas[p.id] ?? false}
                   onChange={e => setRespuestas(prev => ({ ...prev, [p.id]: e.target.checked }))}
-                  className="w-4 h-4 mt-0.5 rounded border-gray-300 text-sig-500 focus:ring-sig-400 shrink-0"
+                  className="w-4 h-4 mt-0.5 rounded border-border-default text-sig-500 focus:ring-sig-400 shrink-0"
                 />
-                <span className="text-sm text-gray-700 group-hover:text-gray-900">{p.texto}</span>
+                <span className="text-sm text-text-secondary group-hover:text-text-primary">{p.texto}</span>
               </label>
             ))}
           </div>
@@ -280,7 +280,7 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
       )}
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Ubicación Google Maps</label>
+        <label className="block text-sm font-medium text-text-secondary mb-1">Ubicación Google Maps</label>
         <input
           name="ubicacion_gmaps"
           type="text"
@@ -290,9 +290,9 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
               : ''
           }
           placeholder="Av. Corrientes 1234, Buenos Aires · o URL de Google Maps · o -34.6037, -58.3816"
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500"
+          className="w-full border border-border-default rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500"
         />
-        <p className="text-xs text-gray-400 mt-1">
+        <p className="text-xs text-text-tertiary mt-1">
           Podés escribir una dirección, pegar una URL de Google Maps, o ingresar coordenadas.
         </p>
       </div>
@@ -303,22 +303,22 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
           name="aplica_iso_45001"
           type="checkbox"
           defaultChecked={establecimiento?.aplica_iso_45001 === true}
-          className="w-4 h-4 rounded border-gray-300 text-sig-600 focus:ring-sig-500"
+          className="w-4 h-4 rounded border-border-default text-sig-600 focus:ring-sig-500"
         />
-        <label htmlFor="aplica_iso_45001" className="text-sm font-medium text-gray-700 cursor-pointer">
+        <label htmlFor="aplica_iso_45001" className="text-sm font-medium text-text-secondary cursor-pointer">
           Aplica ISO 45001
         </label>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Foto del establecimiento</label>
+        <label className="block text-sm font-medium text-text-secondary mb-1">Foto del establecimiento</label>
         {establecimiento?.photo_site && (
           <div className="relative w-full h-40 mb-2">
             <Image
               src={establecimiento.photo_site}
               alt="Foto actual"
               fill
-              className="object-cover rounded-lg border border-gray-200"
+              className="object-cover rounded-lg border border-border-subtle"
               sizes="(max-width: 768px) 100vw, 50vw"
             />
           </div>
@@ -327,13 +327,13 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
           name="foto"
           type="file"
           accept="image/*"
-          className="w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-sig-50 file:text-sig-700 hover:file:bg-sig-100 cursor-pointer"
+          className="w-full text-sm text-text-secondary file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-sig-50 file:text-sig-700 hover:file:bg-sig-100 cursor-pointer"
         />
-        <p className="text-xs text-gray-400 mt-1">JPG, PNG o WebP. Se reemplaza la existente al guardar.</p>
+        <p className="text-xs text-text-tertiary mt-1">JPG, PNG o WebP. Se reemplaza la existente al guardar.</p>
       </div>
 
-      <div className="border-t border-gray-200 pt-4 space-y-3">
-        <p className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Planos del establecimiento</p>
+      <div className="border-t border-border-subtle pt-4 space-y-3">
+        <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Planos del establecimiento</p>
         <div className="grid grid-cols-2 gap-3">
           <FileUploadInput
             name="floor_plan_pdf"

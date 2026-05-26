@@ -160,7 +160,7 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
                   <p className="text-sm text-text-tertiary mt-0.5">{(empresa.empresas_rubros as unknown as { nombre: string }).nombre}</p>
                 )}
               </div>
-              <span className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${empresa.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+              <span className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${empresa.is_active ? 'bg-success-bg text-success' : 'bg-surface-elevated text-text-secondary'}`}>
                 {empresa.is_active ? 'Activa' : 'Inactiva'}
               </span>
             </div>

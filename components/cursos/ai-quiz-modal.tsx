@@ -159,7 +159,7 @@ export function AiQuizModal({ onAccept, onClose }: AiQuizModalProps) {
                       <div className="mt-2 space-y-1">
                         {p.opciones.map((o, oi) => (
                           <div key={oi} className={`text-sm px-2 py-1 rounded ${
-                            o.es_correcta ? 'bg-green-50 dark:bg-green-900/20 text-green-700' : 'text-text-tertiary'
+                            o.es_correcta ? 'bg-success-bg dark:bg-green-900/20 text-success' : 'text-text-tertiary'
                           }`}>
                             {o.es_correcta && '✓ '}{o.texto}
                           </div>
