@@ -27,7 +27,7 @@ interface NavButtonConfig {
 
 const NAV_BUTTONS: NavButtonConfig[] = [
   { id: 'home', label: 'Inicio', icon: Home, action: undefined },
-  { id: 'observaciones', label: 'Obs.', icon: Eye, action: 'observaciones' },
+  { id: 'observaciones', label: 'Seguimiento', icon: Eye, action: 'observaciones' },
   { id: 'nueva-gestion', label: 'Nueva Gestión', icon: Plus, isCentral: true, action: 'nueva-gestion' },
   { id: 'camara', label: 'Cámara', icon: Camera, action: 'camara' },
   { id: 'submenu', label: 'Menú', icon: Grid3X3, action: 'submenu' },

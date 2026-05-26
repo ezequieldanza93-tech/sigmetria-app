@@ -149,7 +149,8 @@ export function ErrorCapture() {
         style={{
           position: 'fixed',
           bottom: 16,
-          left: 16,
+          left: '50%',
+          transform: 'translateX(-50%)',
           zIndex: 99999,
           background: errors.length > 0 ? '#DC2626' : '#374151',
           color: '#fff',
@@ -172,7 +173,8 @@ export function ErrorCapture() {
           style={{
             position: 'fixed',
             bottom: 70,
-            left: 16,
+            left: '50%',
+            transform: 'translateX(-50%)',
             zIndex: 99999,
             width: 'min(640px, calc(100vw - 32px))',
             maxHeight: 'calc(100vh - 100px)',

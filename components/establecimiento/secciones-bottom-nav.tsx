@@ -10,7 +10,7 @@ type Section = 'agenda' | 'ficha' | 'dashboard' | 'seguimiento'
 const ITEMS: { id: Section; label: string; shortLabel: string; icon: typeof FileText }[] = [
   { id: 'ficha', label: 'Ficha', shortLabel: 'Ficha', icon: FileText },
   { id: 'agenda', label: 'Gestiones', shortLabel: 'Gestiones', icon: ClipboardList },
-  { id: 'seguimiento', label: 'Seguimiento de Observaciones', shortLabel: 'Obs.', icon: Crosshair },
+  { id: 'seguimiento', label: 'Seguimiento', shortLabel: 'Seguimiento', icon: Crosshair },
   { id: 'dashboard', label: 'Dashboards', shortLabel: 'Dashboards', icon: BarChart3 },
 ]
 
