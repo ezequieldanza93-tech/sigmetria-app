@@ -1,13 +1,15 @@
 'use client'
 
 import { useState, useEffect, useActionState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import { createTrabajadorDocumento } from '@/lib/actions/trabajador-documento'
 import { createMatricula } from '@/lib/actions/matricula'
+import { useMatriculasPersona } from '@/lib/queries/trabajador'
 import { formatDate } from '@/lib/utils'
-import type { DirectorioPersona, ActionResult, Matricula } from '@/lib/types'
+import type { DirectorioPersona, ActionResult } from '@/lib/types'
 
 interface DocumentoTipo {
   id: string
@@ -127,51 +129,40 @@ export function TrabajadorModal({
   empresaId,
   canWrite,
 }: TrabajadorModalProps) {
+  const queryClient = useQueryClient()
   const [tab, setTab] = useState<'datos' | 'documentos' | 'matriculas'>('datos')
   const [documentos, setDocumentos] = useState<PersonaDoc[] | null>(null)
   const [tiposDoc, setTiposDoc] = useState<DocumentoTipo[] | null>(null)
   const [showForm, setShowForm] = useState(false)
-  const [matriculas, setMatriculas] = useState<Matricula[] | null>(null)
   const [showMatriculaForm, setShowMatriculaForm] = useState(false)
+  const { data: matriculas = null } = useMatriculasPersona(tab === 'matriculas' ? persona.id : undefined)
 
   useEffect(() => {
     if (!open) { setTab('datos'); setShowForm(false); setShowMatriculaForm(false) }
   }, [open])
 
   useEffect(() => {
-    if (!open) return
+    if (!open || tab !== 'documentos') return
 
-    if (tab === 'documentos') {
-      const supabase = createClient()
+    const supabase = createClient()
 
-      if (documentos === null) {
-        supabase
-          .from('personas_documentos')
-          .select('id, tipo_id, archivo_url, fecha_emision, fecha_vencimiento, created_at, documentos_tipos(nombre)')
-          .eq('persona_id', persona.id)
-          .order('created_at', { ascending: false })
-          .then(({ data }) => setDocumentos((data as unknown as PersonaDoc[]) ?? []))
-      }
-
-      if (tiposDoc === null) {
-        supabase
-          .from('documentos_tipos')
-          .select('id, nombre')
-          .eq('aplica_empleado', true)
-          .eq('is_active', true)
-          .order('nombre')
-          .then(({ data }) => setTiposDoc((data as DocumentoTipo[]) ?? []))
-      }
+    if (documentos === null) {
+      supabase
+        .from('personas_documentos')
+        .select('id, tipo_id, archivo_url, fecha_emision, fecha_vencimiento, created_at, documentos_tipos(nombre)')
+        .eq('persona_id', persona.id)
+        .order('created_at', { ascending: false })
+        .then(({ data }) => setDocumentos((data as unknown as PersonaDoc[]) ?? []))
     }
 
-    if (tab === 'matriculas') {
-      const supabase = createClient()
+    if (tiposDoc === null) {
       supabase
-        .from('matriculas')
-        .select('*, organizaciones_externas(nombre)')
-        .eq('persona_id', persona.id)
-        .order('fecha_emision', { ascending: false })
-        .then(({ data }) => setMatriculas((data as unknown as Matricula[]) ?? []))
+        .from('documentos_tipos')
+        .select('id, nombre')
+        .eq('aplica_empleado', true)
+        .eq('is_active', true)
+        .order('nombre')
+        .then(({ data }) => setTiposDoc((data as DocumentoTipo[]) ?? []))
     }
   }, [tab, open, persona.id, documentos, tiposDoc])
 
@@ -316,7 +307,7 @@ export function TrabajadorModal({
               )}
               <div className="space-y-2">
                 {matriculas.map(m => {
-                  const days = Math.ceil((new Date(m.fecha_vencimiento).getTime() - Date.now()) / 86400000)
+                  const days = m.fecha_vencimiento ? Math.ceil((new Date(m.fecha_vencimiento).getTime() - Date.now()) / 86400000) : Infinity
                   const statusLabel = !m.activa ? 'Histórica' : days < 0 ? 'Vencida' : days <= 30 ? 'Próx. a vencer' : 'Vigente'
                   const statusClass = !m.activa ? 'bg-gray-100 text-gray-500' : days < 0 ? 'bg-red-100 text-red-700' : days <= 30 ? 'bg-yellow-100 text-yellow-700' : 'bg-sig-50 text-sig-700'
                   return (
@@ -346,9 +337,7 @@ export function TrabajadorModal({
                   personaId={persona.id}
                   onSuccess={() => {
                     setShowMatriculaForm(false)
-                    const supabase = createClient()
-                    supabase.from('matriculas').select('*, organizaciones_externas(nombre)').eq('persona_id', persona.id).order('fecha_emision', { ascending: false })
-                      .then(({ data }) => setMatriculas((data as unknown as Matricula[]) ?? []))
+                    queryClient.invalidateQueries({ queryKey: ['matriculas', persona.id] })
                   }}
                 />
               ) : canWrite && (

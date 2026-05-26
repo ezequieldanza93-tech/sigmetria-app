@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { AppHeader } from '@/components/app-header'
 import { SidebarWrapper } from '@/components/layout/sidebar-wrapper'
 import { DevicePreviewPanel } from '@/components/layout/device-preview-panel'
+import { ChatWidget } from '@/components/agent/chat-widget'
 import { UserRole } from '@/lib/types'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -26,19 +27,22 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const consultoraNombre = (membership?.consultoras as { nombre?: string } | null)?.nombre ?? null
 
   return (
-    <SidebarWrapper
-      isSuperAdmin={profile?.is_super_admin ?? false}
-      header={
-        <AppHeader
-          fullName={profile?.full_name ?? user.email ?? 'Usuario'}
-          email={user.email ?? ''}
-          userRole={(membership?.role as UserRole) ?? null}
-          systemRole={profile?.system_role ?? 'user'}
-          consultoraNombre={consultoraNombre}
-        />
-      }
-    >
-      <DevicePreviewPanel>{children}</DevicePreviewPanel>
-    </SidebarWrapper>
+    <>
+      <SidebarWrapper
+        isSuperAdmin={profile?.is_super_admin ?? false}
+        header={
+          <AppHeader
+            fullName={profile?.full_name ?? user.email ?? 'Usuario'}
+            email={user.email ?? ''}
+            userRole={(membership?.role as UserRole) ?? null}
+            systemRole={profile?.system_role ?? 'user'}
+            consultoraNombre={consultoraNombre}
+          />
+        }
+      >
+        <DevicePreviewPanel>{children}</DevicePreviewPanel>
+      </SidebarWrapper>
+      <ChatWidget />
+    </>
   )
 }

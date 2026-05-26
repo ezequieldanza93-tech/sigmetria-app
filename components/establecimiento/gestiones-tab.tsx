@@ -37,10 +37,18 @@ function AddGestionTree({
   }
 
   function toggleGrupo(nombre: string) {
-    setOpenGrupos(prev => { const s = new Set(prev); s.has(nombre) ? s.delete(nombre) : s.add(nombre); return s })
+    setOpenGrupos(prev => {
+      const s = new Set(prev)
+      if (s.has(nombre)) { s.delete(nombre) } else { s.add(nombre) }
+      return s
+    })
   }
   function toggleCategoria(key: string) {
-    setOpenCategorias(prev => { const s = new Set(prev); s.has(key) ? s.delete(key) : s.add(key); return s })
+    setOpenCategorias(prev => {
+      const s = new Set(prev)
+      if (s.has(key)) { s.delete(key) } else { s.add(key) }
+      return s
+    })
   }
 
   if (gestionsNotAdded.length === 0) {

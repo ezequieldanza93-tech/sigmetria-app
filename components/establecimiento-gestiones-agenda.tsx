@@ -1,10 +1,9 @@
 'use client'
 
 import { useState, useEffect, useActionState, useTransition, useRef, Fragment, memo, useMemo, type FormEvent } from 'react'
-import { useQueryClient, useQuery } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 
-import { createClient } from '@/lib/supabase/client'
-import { useCanWrite, useGestionesEstablecimiento, useRegistrosGestion, useCatalogo } from '@/lib/queries/agenda'
+import { useCanWrite, useGestionesEstablecimiento, useRegistrosGestion, useCatalogo, usePersonasEstablecimiento, useObservacionesClasificaciones, useFormulariosSecciones, useToggleMostrarLT } from '@/lib/queries/agenda'
 import { calcularEstadoGestion } from '@/lib/types'
 import type { EstadoGestion, Gestion, CategoriaGestion, GrupoGestion, RegistroGestion, Riesgo } from '@/lib/types'
 import { Button } from '@/components/ui/button'
@@ -514,33 +513,12 @@ function EjecucionModal({
 }) {
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
-  const [personas, setPersonas] = useState<{ id: string; nombre: string; apellido: string }[]>([])
-  const [clasificaciones, setClasificaciones] = useState<{ id: string; nombre: string }[]>([])
   const [observaciones, setObservaciones] = useState<ObsDraft[]>([])
   const obsKeyRef = useRef(0)
+  const { data: personas = [] } = usePersonasEstablecimiento(establecimientoId)
+  const { data: clasificaciones = [] } = useObservacionesClasificaciones()
 
   const inputCls = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sig-500'
-
-  useEffect(() => {
-    const supabase = createClient()
-    supabase
-      .from('personas_establecimientos')
-      .select('personas_directorio!persona_id(id, nombre, apellido)')
-      .eq('establecimiento_id', establecimientoId)
-      .then(({ data }) => {
-        const ps = ((data ?? []) as any[])
-          .map(pe => pe.personas_directorio)
-          .filter(Boolean)
-          .sort((a: any, b: any) => a.apellido.localeCompare(b.apellido))
-        setPersonas(ps)
-      })
-    supabase
-      .from('observaciones_clasificaciones')
-      .select('id, nombre')
-      .eq('is_active', true)
-      .order('nombre')
-      .then(({ data }) => setClasificaciones((data ?? []) as { id: string; nombre: string }[]))
-  }, [establecimientoId])
 
   function addObs() {
     setObservaciones(prev => [...prev, {
@@ -831,27 +809,12 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
   const geIds = gestionesEst?.map(g => g.id) ?? []
   const { data: rawRegistros } = useRegistrosGestion(geIds.length > 0 ? geIds : undefined, year)
   const { data: catalogo } = useCatalogo()
+  const { data: gestionesConForm } = useFormulariosSecciones(geIds)
+  const toggleMutation = useToggleMostrarLT()
 
   const todasGestiones = (catalogo?.gestiones ?? []) as unknown as Gestion[]
   const grupos = (catalogo?.grupos ?? []) as unknown as GrupoGestion[]
   const categorias = (catalogo?.categorias ?? []) as unknown as CategoriaGestion[]
-
-  const { data: gestionesConForm } = useQuery({
-    queryKey: ['formularios-secciones', geIds],
-    queryFn: async () => {
-      const supabase = createClient()
-      const gestionIds = gestionesEst
-        .map(ge => (ge as any).gestiones?.id)
-        .filter(Boolean) as string[]
-      if (gestionIds.length === 0) return new Set<string>()
-      const { data } = await supabase
-        .from('formularios_secciones')
-        .select('gestion_id')
-        .in('gestion_id', gestionIds)
-      return new Set((data ?? []).map(s => s.gestion_id))
-    },
-    enabled: geIds.length > 0,
-  })
 
   const geMap = useMemo(() => {
     const map = new Map<string, any>()
@@ -979,9 +942,11 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
               checked={r.ge_mostrar_lt ?? false}
               onChange={e => {
                 e.stopPropagation()
-                const supabase = createClient()
-                supabase.from('gestiones_establecimientos').update({ mostrar_lt: e.target.checked }).eq('id', r.ge_id)
-                queryClient.invalidateQueries({ queryKey: ['gestiones-establecimiento', establecimientoId, year] })
+                if (!r.ge_id) return
+                toggleMutation.mutate(
+                  { id: r.ge_id, mostrar_lt: e.target.checked },
+                  { onSuccess: () => queryClient.invalidateQueries({ queryKey: ['gestiones-establecimiento', establecimientoId, year] }) }
+                )
               }}
               className="accent-sig-600 cursor-pointer"
             />

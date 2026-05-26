@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, useEffect, useActionState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useQueryClient } from '@tanstack/react-query'
 import { formatDate } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { createPersona } from '@/lib/actions/persona'
 import { addOrganizacionToEstablecimiento } from '@/lib/actions/organizacion'
+import { usePersonasTipos, useOrganizacionesTipos, useStakeholderPersonas, useStakeholderOrganizaciones } from '@/lib/queries/stakeholders'
 import { TrabajadorModal } from '@/components/trabajador-modal'
-import type { DirectorioPersona, Organizacion, ActionResult } from '@/lib/types'
+import type { DirectorioPersona, ActionResult } from '@/lib/types'
 
 function AgregarPersonaStakeholderForm({
   establecimientoId,
@@ -88,52 +89,20 @@ interface StakeholdersTabProps {
 }
 
 export function StakeholdersTab({ establecimientoId, empresaId, canWrite }: StakeholdersTabProps) {
-  const [personas, setPersonas] = useState<DirectorioPersona[] | null>(null)
-  const [tiposPersona, setTiposPersona] = useState<{ id: string; nombre: string }[]>([])
-  const [tiposOrg, setTiposOrg] = useState<{ id: string; nombre: string }[]>([])
+  const queryClient = useQueryClient()
   const [activeTipo, setActiveTipo] = useState<string>('todos')
   const [selectedPersona, setSelectedPersona] = useState<DirectorioPersona | null>(null)
-  const [orgExternas, setOrgExternas] = useState<Organizacion[] | null>(null)
   const [personasOpen, setPersonasOpen] = useState(true)
   const [orgsOpen, setOrgsOpen] = useState(true)
   const [showAddPersona, setShowAddPersona] = useState(false)
   const [showAddOrg, setShowAddOrg] = useState(false)
 
-  const loadPersonas = () => {
-    return createClient()
-      .from('personas_establecimientos')
-      .select('personas_directorio(id, nombre, apellido, dni, fecha_nacimiento, fecha_ingreso, legajo, telefono, email, tipo_id, personas_tipos(nombre), organizacion_id, notas, is_active)')
-      .eq('establecimiento_id', establecimientoId)
-      .then(({ data }) => {
-        const list = ((data ?? []) as unknown as { personas_directorio: DirectorioPersona }[]).map(r => r.personas_directorio).filter(Boolean)
-        setPersonas(list)
-      })
-  }
-
-  const loadOrgs = () => {
-    return createClient()
-      .from('organizaciones_establecimientos')
-      .select('organizaciones(id, nombre, email, telefono, notas, is_active, organizaciones_tipos(nombre))')
-      .eq('establecimiento_id', establecimientoId)
-      .then(({ data }) => {
-        const list = ((data ?? []) as unknown as { organizaciones: Organizacion }[])
-          .map(r => r.organizaciones)
-          .filter(o => o?.is_active)
-        setOrgExternas(list as Organizacion[])
-      })
-  }
+  const { data: tiposPersona = [] } = usePersonasTipos()
+  const { data: tiposOrg = [] } = useOrganizacionesTipos()
+  const { data: personas = null } = useStakeholderPersonas(establecimientoId)
+  const { data: orgExternas = null } = useStakeholderOrganizaciones(establecimientoId)
 
   const orgAction = addOrganizacionToEstablecimiento.bind(null, establecimientoId, empresaId)
-
-  useEffect(() => {
-    const supabase = createClient()
-    Promise.all([
-      loadPersonas(),
-      supabase.from('personas_tipos').select('id, nombre').order('nombre').then(({ data }) => setTiposPersona(data ?? [])),
-      loadOrgs(),
-      supabase.from('organizaciones_tipos').select('id, nombre').order('nombre').then(({ data }) => setTiposOrg(data ?? [])),
-    ])
-  }, [establecimientoId])
 
   const filtered = personas === null
     ? null
@@ -239,7 +208,7 @@ export function StakeholdersTab({ establecimientoId, empresaId, canWrite }: Stak
                 <AgregarPersonaStakeholderForm
                   establecimientoId={establecimientoId}
                   tiposPersona={tiposPersona}
-                  onSuccess={() => { setShowAddPersona(false); loadPersonas() }}
+                  onSuccess={() => { setShowAddPersona(false); queryClient.invalidateQueries({ queryKey: ['stakeholder-personas', establecimientoId] }) }}
                   onCancel={() => setShowAddPersona(false)}
                 />
               </div>
@@ -327,7 +296,7 @@ export function StakeholdersTab({ establecimientoId, empresaId, canWrite }: Stak
                 <AgregarOrgStakeholderForm
                   action={orgAction}
                   tiposOrg={tiposOrg}
-                  onSuccess={() => { setShowAddOrg(false); loadOrgs() }}
+                  onSuccess={() => { setShowAddOrg(false); queryClient.invalidateQueries({ queryKey: ['stakeholder-organizaciones', establecimientoId] }) }}
                   onCancel={() => setShowAddOrg(false)}
                 />
               </div>
