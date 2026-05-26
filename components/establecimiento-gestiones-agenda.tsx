@@ -1126,13 +1126,26 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
                 </span>
               )}
               <button
-                title={r.ge_mostrar_lt ? 'Quitar del Legajo Técnico' : 'Habilitar en Legajo Técnico'}
-                onClick={() => {
+                title={
+                  !r.evidencia_url && !r.ge_mostrar_lt
+                    ? 'Se necesita un adjunto para habilitar el Legajo Técnico'
+                    : r.ge_mostrar_lt
+                      ? 'Quitar del Legajo Técnico'
+                      : 'Habilitar en Legajo Técnico'
+                }
+                disabled={!r.evidencia_url && !r.ge_mostrar_lt}
+                onClick={async () => {
                   const supabase = createClient()
-                  supabase.from('gestiones_establecimientos').update({ mostrar_lt: !r.ge_mostrar_lt }).eq('id', r.ge_id)
+                  await supabase.from('gestiones_establecimientos').update({ mostrar_lt: !r.ge_mostrar_lt }).eq('id', r.ge_id)
                   queryClient.invalidateQueries({ queryKey: ['gestiones-establecimiento', establecimientoId, year] })
                 }}
-                className={`p-1.5 rounded-lg transition-colors ${r.ge_mostrar_lt ? 'bg-amber-100 text-amber-600 hover:bg-amber-200' : 'text-text-tertiary hover:bg-surface-elevated hover:text-text-secondary'}`}
+                className={`p-1.5 rounded-lg transition-colors ${
+                  !r.evidencia_url && !r.ge_mostrar_lt
+                    ? 'text-text-tertiary opacity-30 cursor-not-allowed'
+                    : r.ge_mostrar_lt
+                      ? 'bg-amber-100 text-amber-600 hover:bg-amber-200'
+                      : 'text-text-tertiary hover:bg-surface-elevated hover:text-text-secondary'
+                }`}
               >
                 <BookMarked size={14} />
               </button>
