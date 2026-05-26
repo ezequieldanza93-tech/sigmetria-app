@@ -827,7 +827,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
   const queryClient = useQueryClient()
   const { data: canWriteData } = useCanWrite(establecimientoId)
   const canWrite = canWriteProp || (canWriteData ?? false)
-  const [year, setYear] = useState(0)
+  const [year, setYear] = useState<number | null>(null)
 
   // Task 1: default = current month
   const [selectedMonths, setSelectedMonths] = useState<Set<number>>(new Set())
@@ -904,9 +904,9 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
     document.addEventListener('mouseup', onUp)
   }
 
-  const { data: gestionesEst = [], isPending: isGestionesPending } = useGestionesEstablecimiento(establecimientoId, year)
+  const { data: gestionesEst = [], isPending: isGestionesPending } = useGestionesEstablecimiento(year !== null ? establecimientoId : undefined, year ?? 0)
   const geIds = gestionesEst?.map(g => g.id) ?? []
-  const { data: rawRegistros } = useRegistrosGestion(geIds.length > 0 ? geIds : undefined, year)
+  const { data: rawRegistros } = useRegistrosGestion(geIds.length > 0 ? geIds : undefined, year ?? 0)
   const { data: catalogo } = useCatalogo()
 
   const todasGestiones = (catalogo?.gestiones ?? []) as unknown as Gestion[]
@@ -1168,6 +1168,19 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
   }
 
   // ── Render ──────────────────────────────────────────────────────────────────
+  if (year === null) {
+    return (
+      <div className="animate-pulse space-y-4 p-4">
+        <div className="h-14 bg-gray-800 rounded-xl" />
+        <div className="grid grid-cols-12 gap-1.5">
+          {Array.from({ length: 12 }).map((_, i) => (
+            <div key={i} className="h-16 bg-surface-elevated rounded-lg" />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div>
 
@@ -1175,15 +1188,15 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
 
       {/* Year navigation */}
       <div className="bg-gray-800 text-white rounded-xl px-6 py-4 mb-4 flex items-center justify-between">
-        <button onClick={() => setYear(y => y - 1)} className="text-text-tertiary hover:text-white text-sm font-medium w-12">
+        <button onClick={() => setYear(year - 1)} className="text-text-tertiary hover:text-white text-sm font-medium w-12">
           {year - 1}
         </button>
         <div className="flex items-center gap-3">
-          <button onClick={() => setYear(y => y - 1)} className="text-text-tertiary hover:text-white text-lg leading-none">‹‹</button>
+          <button onClick={() => setYear(year - 1)} className="text-text-tertiary hover:text-white text-lg leading-none">‹‹</button>
           <span className="text-base font-semibold tracking-wide">Gestiones {year}</span>
-          <button onClick={() => setYear(y => y + 1)} className="text-text-tertiary hover:text-white text-lg leading-none">››</button>
+          <button onClick={() => setYear(year + 1)} className="text-text-tertiary hover:text-white text-lg leading-none">››</button>
         </div>
-        <button onClick={() => setYear(y => y + 1)} className="text-text-tertiary hover:text-white text-sm font-medium w-12 text-right">
+        <button onClick={() => setYear(year + 1)} className="text-text-tertiary hover:text-white text-sm font-medium w-12 text-right">
           {year + 1}
         </button>
       </div>
