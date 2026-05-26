@@ -32,6 +32,25 @@ export async function createObservacionGestion(
   return { success: true, data: null }
 }
 
+export async function actualizarCategoriaObservacion(
+  id: string,
+  categoriaId: string
+): Promise<ActionResult<null>> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'No autenticado' }
+
+  if (!categoriaId) return { success: false, error: 'Categoría requerida' }
+
+  const { error } = await supabase
+    .from('gestiones_observaciones')
+    .update({ categoria_id: categoriaId })
+    .eq('id', id)
+
+  if (error) return { success: false, error: error.message }
+  return { success: true, data: null }
+}
+
 export async function cerrarObservacion(
   id: string,
   fechaCierre: string,

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { cerrarObservacion } from '@/lib/actions/observacion-gestion'
+import { cerrarObservacion, actualizarCategoriaObservacion } from '@/lib/actions/observacion-gestion'
 import { addObservacionComentario, addObservacionFoto, marcarObservacionVista } from '@/lib/actions/observacion-comentarios'
 import { createPersonaDirectorio } from '@/lib/actions/persona-directorio'
 import { Modal } from '@/components/ui/modal'
@@ -15,6 +15,13 @@ interface Persona {
   nombre: string
   apellido: string
   dni: string | null
+}
+
+interface CategoriaObs {
+  id: string
+  nombre: string
+  nivel: number
+  color: string
 }
 
 interface Props {
@@ -76,6 +83,42 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
   // Viewer photos
   const [fotosCliente, setFotosCliente] = useState<ObservacionFotoCliente[]>([])
   const [uploadingFoto, setUploadingFoto] = useState(false)
+
+  // Edición de categoría
+  const [categorias, setCategorias] = useState<CategoriaObs[]>([])
+  const [editingCategoria, setEditingCategoria] = useState(false)
+  const [categoriaId, setCategoriaId] = useState<string | null>(null)
+  const [savingCategoria, setSavingCategoria] = useState(false)
+
+  useEffect(() => {
+    createClient()
+      .from('observaciones_categorias')
+      .select('id, nombre, nivel, color')
+      .eq('is_active', true)
+      .order('nivel')
+      .then(({ data }) => setCategorias((data ?? []) as CategoriaObs[]))
+  }, [])
+
+  useEffect(() => {
+    if (observacion) {
+      setCategoriaId(observacion.categoria_id ?? null)
+      setEditingCategoria(false)
+    }
+  }, [observacion])
+
+  async function handleSaveCategoria() {
+    if (!observacion || !categoriaId) return
+    setSavingCategoria(true)
+    setError(null)
+    const result = await actualizarCategoriaObservacion(observacion.id, categoriaId)
+    setSavingCategoria(false)
+    if (result.success) {
+      setEditingCategoria(false)
+      onSuccess()
+    } else {
+      setError(result.error ?? 'Error al actualizar categoría')
+    }
+  }
 
   useEffect(() => {
     if (observacion) {
@@ -383,6 +426,77 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
             )}
           </div>
         )}
+
+        {/* Categoría (badge + edición inline) */}
+        <div>
+          <p className="text-xs text-text-tertiary mb-1">Categoría</p>
+          {!editingCategoria ? (
+            <div className="flex items-center gap-2">
+              {(() => {
+                const cat = categorias.find(c => c.id === categoriaId)
+                if (!cat) return <span className="text-sm text-text-tertiary">—</span>
+                return (
+                  <span
+                    className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium border border-gray-300"
+                    style={{ backgroundColor: cat.color, color: '#000' }}
+                  >
+                    {cat.nombre}
+                  </span>
+                )
+              })()}
+              {canWrite && (
+                <button
+                  type="button"
+                  onClick={() => setEditingCategoria(true)}
+                  className="text-xs text-brand-primary hover:text-brand-primary/80 font-medium"
+                >
+                  Cambiar
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-2 bg-surface-sunken rounded-lg p-3 border border-border-subtle">
+              <div className="grid grid-cols-1 gap-1">
+                {categorias.map(cat => (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setCategoriaId(cat.id)}
+                    className={`flex items-center gap-2 text-left px-3 py-2 rounded-lg border text-sm ${
+                      categoriaId === cat.id ? 'border-brand-primary bg-brand-muted' : 'border-border-default hover:bg-surface-sunken'
+                    }`}
+                  >
+                    <span
+                      className="w-5 h-5 rounded border border-gray-300 shrink-0"
+                      style={{ backgroundColor: cat.color }}
+                    />
+                    <span>{cat.nombre}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-2 justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCategoriaId(observacion?.categoria_id ?? null)
+                    setEditingCategoria(false)
+                  }}
+                  className="text-xs text-text-tertiary hover:text-text-primary px-3 py-1.5"
+                >
+                  Cancelar
+                </button>
+                <Button
+                  type="button"
+                  onClick={handleSaveCategoria}
+                  disabled={savingCategoria || !categoriaId || categoriaId === observacion?.categoria_id}
+                  className="text-xs"
+                >
+                  {savingCategoria ? 'Guardando…' : 'Guardar'}
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Responsable asignado original */}
         <div>
