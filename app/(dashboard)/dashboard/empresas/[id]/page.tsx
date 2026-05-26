@@ -63,7 +63,7 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
   if (tab === 'establecimientos' || tab === 'dashboard') {
     const { data } = await supabase
       .from('establecimientos')
-      .select('id, nombre, establecimientos_tipos(nombre), localidades!localidad_id(nombre, provincia), cantidad_trabajadores, establecimientos_sectores(cantidad_trabajadores)')
+      .select('id, nombre, domicilio, establecimientos_tipos!tipo_id(nombre), localidades!localidad_id(nombre, provincia), cantidad_trabajadores, establecimientos_sectores(cantidad_trabajadores)')
       .eq('empresa_id', id)
       .neq('status', 'cancelled')
       .order('nombre')
@@ -169,7 +169,24 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
               {empresa.domicilio && (
                 <div>
                   <p className="text-text-tertiary text-xs font-medium mb-0.5">Domicilio</p>
-                  <p className="text-text-primary">{empresa.domicilio}</p>
+                  {(() => {
+                    const parts = [
+                      empresa.domicilio,
+                      (empresa.localidades as { nombre: string } | null)?.nombre,
+                      (empresa.localidades as { provincia: string } | null)?.provincia,
+                    ].filter(Boolean)
+                    const query = encodeURIComponent(parts.join(', '))
+                    return (
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${query}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-text-primary hover:text-brand-primary hover:underline transition-colors"
+                      >
+                        {empresa.domicilio}
+                      </a>
+                    )
+                  })()}
                 </div>
               )}
               {empresa.localidades && (

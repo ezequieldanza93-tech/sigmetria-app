@@ -7,6 +7,7 @@ import { EmpresaStakeholdersTab } from '@/components/empresa-stakeholders-tab'
 interface Establecimiento {
   id: string
   nombre: string
+  domicilio: string | null
   establecimientos_tipos: { nombre: string }[] | null
   localidades: { nombre: string; provincia: string } | null
   cantidad_trabajadores: number | null
@@ -145,7 +146,21 @@ export function EmpresaRightPanel({
                           {est.establecimientos_tipos?.[0]?.nombre ?? '—'}
                         </td>
                         <td className="px-5 py-4 text-text-secondary hidden lg:table-cell">
-                          {est.localidades ? `${est.localidades.nombre}, ${est.localidades.provincia}` : '—'}
+                          {(() => {
+                            const parts = [est.domicilio, est.localidades?.nombre, est.localidades?.provincia].filter(Boolean)
+                            if (!parts.length) return '—'
+                            const query = encodeURIComponent(parts.join(', '))
+                            return (
+                              <a
+                                href={`https://www.google.com/maps/search/?api=1&query=${query}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="hover:text-brand-primary hover:underline transition-colors"
+                              >
+                                {parts.join(', ')}
+                              </a>
+                            )
+                          })()}
                         </td>
                         <td className="px-5 py-4 text-text-secondary text-center">{sectoresCount}</td>
                         <td className="px-5 py-4 text-text-tertiary text-center">

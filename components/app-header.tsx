@@ -3,10 +3,9 @@
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Sun, Moon, Users, UserCog, Network, Gauge, Shield, Settings2, LogOut, Building2, BarChart2, CreditCard, Smartphone, ShieldCheck, CalendarClock, AlertTriangle, Scale, Map, ClipboardList, MessageSquare, Wifi, WifiOff, Download, GraduationCap, BookOpen, Keyboard, Home } from 'lucide-react'
+import { Sun, Moon, Users, UserCog, Network, Gauge, Shield, Settings2, LogOut, Building2, BarChart2, CreditCard, ShieldCheck, CalendarClock, AlertTriangle, Scale, Map, ClipboardList, MessageSquare, Wifi, WifiOff, Download, GraduationCap, BookOpen, Keyboard, Home } from 'lucide-react'
 import { SystemRole, UserRole, ROLE_LABELS, ROLE_COLORS } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
-import { usePreview } from '@/lib/contexts/preview-context'
 import { WeatherClock } from '@/components/weather-clock'
 import { NotificationDropdown } from '@/components/notification-dropdown'
 import { useNetworkStatus } from '@/lib/hooks/use-network-status'
@@ -38,7 +37,6 @@ export function AppHeader({
   systemRole,
   isSuperAdmin = false,
 }: AppHeaderProps) {
-  const { isOpen: isPreviewOpen, setIsOpen: setPreviewOpen } = usePreview()
   const pathname = usePathname()
   const router = useRouter()
   const [crumbs, setCrumbs] = useState<Crumb[]>([])
@@ -398,20 +396,6 @@ export function AppHeader({
                   <DropdownItem href="/dashboard/configuracion/iperc" icon={ClipboardList} label="Librería IPERC" role="menuitem" />
                   <DropdownItem href="/dashboard/configuracion/feedback" icon={MessageSquare} label="Feedback" role="menuitem" />
                   <DropdownItem href="/dashboard/mapas" icon={Map} label="Mapa de Riesgos" role="menuitem" />
-                  <button
-                    onClick={() => {
-                      setPreviewOpen(!isPreviewOpen)
-                      setMenuOpen(false)
-                    }}
-                    role="menuitem"
-                    className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-surface-sunken transition-colors"
-                  >
-                    <span className="text-text-tertiary">
-                      <Smartphone size={16} strokeWidth={1.75} />
-                    </span>
-                    Preview Mobile
-                    {isPreviewOpen && <span className="ml-auto text-[10px] text-brand-primary font-semibold">ON</span>}
-                  </button>
                   {isSuperAdmin && (
                     <>
                       <DropdownItem href="/dashboard/admin" icon={ShieldCheck} label="Super Admin" role="menuitem" />

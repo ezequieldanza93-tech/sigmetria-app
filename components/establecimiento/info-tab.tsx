@@ -6,8 +6,10 @@ import {
   MapPin, Building2, Users, Clock, FileText,
   CheckCircle2, XCircle, ExternalLink, Upload, Trash2, Pencil,
 } from 'lucide-react'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { uploadPlanoEstablecimiento, deletePlanoEstablecimiento } from '@/lib/actions/establecimiento'
+import { WeatherPanel } from '@/components/weather-panel'
 import type { Establecimiento, HorarioEstablecimiento } from '@/lib/types'
 
 const DIAS: Record<number, string> = {
@@ -53,8 +55,61 @@ export function InfoTab({ establecimiento, canWrite, empresaId }: Props) {
   const ubicacion = [establecimiento.domicilio, localidad?.nombre, localidad?.provincia, establecimiento.codigo_postal]
     .filter(Boolean).join(', ')
 
+  const hasLocation = establecimiento.latitude != null && establecimiento.longitude != null
+
   return (
     <div className="space-y-5">
+
+      {/* Hero: foto · mapa · clima */}
+      {hasLocation && (
+        <section className="bg-surface-base border border-border-subtle rounded-xl overflow-hidden">
+          <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr_200px]" style={{ minHeight: '160px' }}>
+
+            {/* Foto */}
+            <div className="relative border-b sm:border-b-0 sm:border-r border-border-subtle min-h-[130px]">
+              {establecimiento.photo_site ? (
+                <Image
+                  src={establecimiento.photo_site}
+                  alt={`Foto de ${establecimiento.nombre}`}
+                  fill
+                  className="object-cover"
+                  sizes="160px"
+                />
+              ) : (
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-text-tertiary gap-1">
+                  <Building2 size={28} strokeWidth={1} />
+                  <p className="text-xs">Sin foto</p>
+                </div>
+              )}
+            </div>
+
+            {/* Mapa */}
+            <div className="relative border-b sm:border-b-0 sm:border-r border-border-subtle min-h-[130px]">
+              <iframe
+                src={`https://maps.google.com/maps?q=${establecimiento.latitude},${establecimiento.longitude}&z=15&output=embed`}
+                width="100%"
+                height="100%"
+                style={{ border: 0, display: 'block', minHeight: '160px' }}
+                allowFullScreen
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                title={`Mapa de ${establecimiento.nombre}`}
+              />
+              <a
+                href={`https://www.google.com/maps/@${establecimiento.latitude},${establecimiento.longitude},15z`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="absolute bottom-2 right-2 bg-surface-base/90 backdrop-blur-sm text-xs text-brand-primary font-medium px-2.5 py-1 rounded-lg shadow border border-border-subtle hover:bg-surface-base transition-colors"
+              >
+                Abrir Maps ↗
+              </a>
+            </div>
+
+            {/* Clima */}
+            <WeatherPanel lat={establecimiento.latitude!} lng={establecimiento.longitude!} />
+          </div>
+        </section>
+      )}
 
       {/* Datos generales */}
       <section className="bg-surface-base border border-border-subtle rounded-xl overflow-hidden">
