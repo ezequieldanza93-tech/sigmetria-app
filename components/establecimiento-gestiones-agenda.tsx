@@ -84,9 +84,9 @@ const COL_MIN_WIDTHS: Record<string, number> = {
 }
 
 const ROW_BG_COLORS: Record<EstadoGestion, string> = {
-  Realizado: 'bg-success-bg hover:bg-green-200',
-  Pendiente: 'bg-danger-bg hover:bg-red-200',
-  Planificado: 'bg-sky-100 hover:bg-sky-200',
+  Realizado: 'bg-green-200 hover:bg-green-300',
+  Pendiente: 'bg-red-200 hover:bg-red-300',
+  Planificado: 'bg-sky-200 hover:bg-sky-300',
 }
 
 const COL_VISIBLE_KEY = 'gestiones_col_visible'
