@@ -6,7 +6,6 @@ interface Establecimiento {
   id: string
   nombre: string
   domicilio: string | null
-  is_active: boolean
 }
 
 export async function EmpresasList() {
@@ -24,7 +23,7 @@ export async function EmpresasList() {
     supabase.from('consultoras_members').select('role').eq('user_id', user.id).eq('is_active', true).maybeSingle(),
     supabase
       .from('empresas')
-      .select(`id, razon_social, cuit, is_active, empresas_rubros(nombre), localidades(nombre, provincia), establecimientos(id, nombre, domicilio, is_active)`)
+      .select(`id, razon_social, cuit, is_active, empresas_rubros(nombre), localidades(nombre, provincia), establecimientos(id, nombre, domicilio)`)
       .range(0, 99)
       .order('razon_social'),
   ])
