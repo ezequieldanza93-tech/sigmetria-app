@@ -198,11 +198,12 @@ export async function getObservacionRows(filters: AnalyticsFilters): Promise<Obs
   const geIds = (geData ?? []).map(g => g.id)
   if (!geIds.length) return []
 
-  // Step 2: get gestiones_registros ids in date range
+  // Step 2: get gestiones_registros ids — only executed gestiones, in date range
   let regQuery = supabase
     .from('gestiones_registros')
     .select('id')
     .in('gestion_establecimiento_id', geIds)
+    .not('fecha_ejecutada', 'is', null)
     .gte('fecha_planificada', `${filters.year}-01-01`)
     .lte('fecha_planificada', `${filters.year}-12-31`)
 
@@ -212,6 +213,10 @@ export async function getObservacionRows(filters: AnalyticsFilters): Promise<Obs
     regQuery = regQuery
       .gte('fecha_planificada', `${filters.year}-${m}-01`)
       .lte('fecha_planificada', `${filters.year}-${m}-${lastDay}`)
+  }
+
+  if (filters.responsableId) {
+    regQuery = regQuery.eq('responsable_id', filters.responsableId)
   }
 
   const { data: regData } = await regQuery

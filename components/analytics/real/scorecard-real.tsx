@@ -64,9 +64,9 @@ export function ScorecardReal({ gestion, siniestro, inspeccion, feedback, obs }:
         status={inspeccionStatus}
       />
       <KpiCard
-        title="Obs. abiertas"
-        value={obs.abiertas}
-        subtitle={`${obs.total} total`}
+        title="Obs. detectadas"
+        value={obs.total}
+        subtitle={`${obs.abiertas} abiertas · ${obs.cerradas} cerradas`}
         status={obsStatus}
         pulse={obs.abiertas > 8}
       />
