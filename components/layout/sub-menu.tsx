@@ -3,7 +3,7 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { LayoutDashboard, FileText, Bot, X } from 'lucide-react'
+import { LayoutDashboard, FileText, Bot, X, Crosshair } from 'lucide-react'
 
 interface SubMenuProps {
   open: boolean
@@ -83,6 +83,13 @@ export function SubMenu({ open, onClose, empresaId, establecimientoId }: SubMenu
       icon: FileText,
       href: `${baseUrl}?section=ficha`,
       description: 'Datos y sectores del establecimiento',
+    },
+    {
+      id: 'seguimiento',
+      label: 'Seguimiento',
+      icon: Crosshair,
+      href: `${baseUrl}?section=seguimiento`,
+      description: 'Seguimiento de observaciones',
     },
     {
       id: 'sigia',

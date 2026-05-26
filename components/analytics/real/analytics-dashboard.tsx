@@ -42,8 +42,8 @@ export function AnalyticsDashboard({
   establecimientos = [],
   initialYear,
 }: AnalyticsDashboardProps) {
-  const currentYear = new Date().getFullYear()
-  const [year, setYear] = useState(initialYear ?? currentYear)
+  // ── ALL hooks must be declared before any early return ──────────────────
+  const [year, setYear] = useState<number | null>(null)
   const [month, setMonth] = useState<number | null>(null)
   const [responsableId, setResponsableId] = useState<string | null>(null)
   const [selectedEstIds, setSelectedEstIds] = useState<string[]>(() => {
@@ -59,6 +59,11 @@ export function AnalyticsDashboard({
   const [obsRows, setObsRows] = useState<ObservacionRow[]>([])
   const [loading, setLoading] = useState(true)
   const [isPending, startTransition] = useTransition()
+
+  // Defer year to after hydration so server and client always agree on initial state
+  useEffect(() => {
+    setYear(initialYear ?? new Date().getFullYear())
+  }, [initialYear])
 
   // Determine actual establecimientoIds for queries
   const establecimientoIds =
@@ -76,7 +81,8 @@ export function AnalyticsDashboard({
   }, [establecimientoIds.join(',')])
 
   const fetchData = useCallback(() => {
-    if (!establecimientoIds.length) {
+    // Guard: skip fetch when year hasn't been set by the effect yet
+    if (year === null || !establecimientoIds.length) {
       setLoading(false)
       return
     }
@@ -109,6 +115,13 @@ export function AnalyticsDashboard({
   useEffect(() => {
     fetchData()
   }, [fetchData])
+
+  // ── Early return AFTER all hooks ────────────────────────────────────────
+  // On SSR and the initial client render year is null, so both sides show
+  // the skeleton. After hydration the effect sets year and analytics load.
+  if (year === null) {
+    return <AnalyticsSkeleton />
+  }
 
   const gMetrics = computeGestionMetrics(gestionRows)
   const sMetrics = computeSiniestroMetrics(siniestroRows)

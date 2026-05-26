@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { MultiFilter } from '@/components/ui/multi-filter'
 import {
-  Plus, Camera, BarChart3, FileCheck,
+  Camera, BarChart3, FileCheck,
   ClipboardCheck, GraduationCap, Heart, FileText, AlertTriangle,
   ClipboardList, UserPlus, Dumbbell, Kanban, HelpCircle,
   Play, Upload, Download, BookMarked,
@@ -1377,48 +1377,6 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
       )}
 
 
-
-      {/* FAB — Floating Action Buttons (apilados arriba del chat widget) */}
-      {canWrite && (
-        <div style={{ position: 'fixed', bottom: '6rem', right: '1rem', zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          <div
-            style={{ position: 'relative' }}
-            onMouseEnter={e => { const t = e.currentTarget.querySelector('.fab-tooltip') as HTMLElement; if (t) t.style.opacity = '1' }}
-            onMouseLeave={e => { const t = e.currentTarget.querySelector('.fab-tooltip') as HTMLElement; if (t) t.style.opacity = '0' }}
-          >
-            <button
-              type="button"
-              onClick={() => setShowReporteModal(true)}
-              style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: '#4CAF50', color: 'white', boxShadow: '0 10px 25px rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer', transition: 'transform 0.15s, background-color 0.15s' }}
-              onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#43A047'; e.currentTarget.style.transform = 'scale(1.1)' }}
-              onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#4CAF50'; e.currentTarget.style.transform = 'scale(1)' }}
-            >
-              <Camera size={20} strokeWidth={2} />
-            </button>
-            <span className="fab-tooltip" style={{ position: 'absolute', right: '64px', top: '50%', transform: 'translateY(-50%)', backgroundColor: '#111827', color: 'white', fontSize: '12px', borderRadius: '8px', padding: '6px 10px', whiteSpace: 'nowrap', opacity: 0, transition: 'opacity 0.2s', pointerEvents: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
-              Generar reporte fotográfico
-            </span>
-          </div>
-          <div
-            style={{ position: 'relative' }}
-            onMouseEnter={e => { const t = e.currentTarget.querySelector('.fab-tooltip') as HTMLElement; if (t) t.style.opacity = '1' }}
-            onMouseLeave={e => { const t = e.currentTarget.querySelector('.fab-tooltip') as HTMLElement; if (t) t.style.opacity = '0' }}
-          >
-            <button
-              type="button"
-              onClick={() => setShowPlanificarModal(true)}
-              style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: '#4CAF50', color: 'white', boxShadow: '0 10px 25px rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer', transition: 'transform 0.15s, background-color 0.15s' }}
-              onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#43A047'; e.currentTarget.style.transform = 'scale(1.1)' }}
-              onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#4CAF50'; e.currentTarget.style.transform = 'scale(1)' }}
-            >
-              <Plus size={22} strokeWidth={2.5} />
-            </button>
-            <span className="fab-tooltip" style={{ position: 'absolute', right: '64px', top: '50%', transform: 'translateY(-50%)', backgroundColor: '#111827', color: 'white', fontSize: '12px', borderRadius: '8px', padding: '6px 10px', whiteSpace: 'nowrap', opacity: 0, transition: 'opacity 0.2s', pointerEvents: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
-              Planificar nueva gestión
-            </span>
-          </div>
-        </div>
-      )}
 
       {/* Modals */}
       {executingFormulario && (

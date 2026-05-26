@@ -1,13 +1,34 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useSubcontratistasConVencimientos } from '@/lib/queries/subcontratista'
-export function SubcontratistasVencimientosWidget() {
-  const hoy = new Date()
-  const fechaDesde = hoy.toISOString().split('T')[0]
-  const fechaHasta = new Date(hoy.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
-  const { data: items = [], isLoading } = useSubcontratistasConVencimientos(fechaDesde, fechaHasta)
+export function SubcontratistasVencimientosWidget() {
+  const [fechas, setFechas] = useState<{ desde: string; hasta: string } | null>(null)
+
+  useEffect(() => {
+    const hoy = new Date()
+    setFechas({
+      desde: hoy.toISOString().split('T')[0],
+      hasta: new Date(hoy.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    })
+  }, [])
+
+  // Always call hooks — after hydration fechas will be set and query runs with real dates
+  const { data: items = [], isLoading } = useSubcontratistasConVencimientos(
+    fechas?.desde ?? '',
+    fechas?.hasta ?? '',
+  )
+
+  if (!fechas) {
+    return (
+      <div className="bg-surface-base rounded-xl border border-border-subtle p-5">
+        <h3 className="text-sm font-semibold text-text-primary mb-3">Subcontratistas — Docs por Vencer</h3>
+        <div className="text-sm text-text-tertiary">Cargando…</div>
+      </div>
+    )
+  }
 
   if (isLoading) {
     return (

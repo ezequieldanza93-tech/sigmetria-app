@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -25,10 +25,10 @@ const ICON_MAP: Record<string, LucideIcon> = {
 
 const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
-function getWidgetSubtitle(key: WidgetKey): string {
+function buildWidgetSubtitle(key: WidgetKey, month: number | null, year: number | null): string {
   switch (key) {
-    case 'siniestros_mes': return `En ${MESES[new Date().getMonth()]}`
-    case 'siniestros_acumulados': return `En ${new Date().getFullYear()}`
+    case 'siniestros_mes': return month !== null ? `En ${MESES[month]}` : ''
+    case 'siniestros_acumulados': return year !== null ? `En ${year}` : ''
     case 'documentos_vencer_7d': return 'Próximos 7 días'
     case 'documentos_vencer_15d': return 'Próximos 15 días'
     case 'documentos_vencer_30d': return 'Próximos 30 días'
@@ -51,6 +51,14 @@ type DashboardTab = 'empresas' | 'dashboard'
 export function DashboardShell({ consultoraId, establecimientos, empresasContent }: DashboardShellProps) {
   const [tab, setTab] = useState<DashboardTab>('empresas')
   const [configOpen, setConfigOpen] = useState(false)
+  const [currentMonth, setCurrentMonth] = useState<number | null>(null)
+  const [currentYear, setCurrentYear] = useState<number | null>(null)
+
+  useEffect(() => {
+    setCurrentMonth(new Date().getMonth())
+    setCurrentYear(new Date().getFullYear())
+  }, [])
+
   const { widgetKeys, isLoading: configLoading } = useVisibleWidgetKeys()
   const { data: kpiData, isLoading: kpiLoading, isError } = useDashboardKpis(widgetKeys)
 
@@ -138,7 +146,7 @@ export function DashboardShell({ consultoraId, establecimientos, empresasContent
                       key={key}
                       title={widget.label}
                       value={value}
-                      subtitle={getWidgetSubtitle(key)}
+                      subtitle={buildWidgetSubtitle(key, currentMonth, currentYear)}
                       icon={IconComp ? <IconComp size={16} /> : undefined}
                       size="md"
                       animate
