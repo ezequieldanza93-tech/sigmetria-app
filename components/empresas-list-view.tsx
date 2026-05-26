@@ -61,7 +61,7 @@ export function EmpresasListView({
   }
 
   return (
-    <div className="p-4 sm:p-8 max-w-6xl mx-auto pb-24 md:pb-8">
+    <div className="p-4 sm:p-6 pb-24 md:pb-8">
       <div className="flex items-center justify-between mb-6 gap-4">
         <div className="min-w-0">
           <h1 className="text-2xl font-bold text-text-primary font-heading">Empresas</h1>
