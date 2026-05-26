@@ -81,6 +81,16 @@ export function ErrorCapture() {
         return
       }
 
+      // Network errors from background polling/realtime subscriptions — already caught
+      // in user code but React/Next.js internals emit a secondary unhandled rejection
+      if (reason instanceof TypeError && (
+        message === 'Failed to fetch' ||
+        message === 'Load failed' ||
+        message === 'NetworkError when attempting to fetch resource.'
+      )) {
+        return
+      }
+
       saveError({
         type: 'unhandledrejection',
         message,
