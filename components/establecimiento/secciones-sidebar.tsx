@@ -14,25 +14,64 @@ const ITEMS: { id: Section; label: string; icon: typeof FileText }[] = [
   { id: 'dashboard', label: 'Dashboards', icon: BarChart3 },
 ]
 
+const COLLAPSED_WIDTH = 56
+const MIN_WIDTH = 80
+const MAX_WIDTH = 240
+
 interface Props {
   empresaId: string
   establecimientoId: string
   expanded: boolean
+  expandedWidth: number
   onToggle: () => void
+  onWidthChange: (w: number) => void
+  onResizingChange: (v: boolean) => void
 }
 
-export function SeccionesSidebar({ empresaId, establecimientoId, expanded, onToggle }: Props) {
+export function SeccionesSidebar({
+  empresaId,
+  establecimientoId,
+  expanded,
+  expandedWidth,
+  onToggle,
+  onWidthChange,
+  onResizingChange,
+}: Props) {
   const searchParams = useSearchParams()
   const activeSection = (searchParams.get('section') ?? 'agenda') as Section
 
   const baseUrl = `/dashboard/empresas/${empresaId}/establecimientos/${establecimientoId}`
 
+  function handleResizeStart(e: React.MouseEvent) {
+    e.preventDefault()
+    const startX = e.clientX
+    const startW = expandedWidth
+
+    onResizingChange(true)
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+
+    function onMove(ev: MouseEvent) {
+      const newW = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, startW + (ev.clientX - startX)))
+      onWidthChange(newW)
+    }
+
+    function onUp() {
+      onResizingChange(false)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }
+
   return (
     <aside
-      className={cn(
-        'hidden lg:flex fixed top-14 left-0 bottom-0 z-20 border-r border-border-subtle bg-surface-base flex-col transition-[width] duration-200 overflow-visible',
-        expanded ? 'w-40' : 'w-14'
-      )}
+      className="hidden lg:flex fixed top-14 left-0 bottom-0 z-20 border-r border-border-subtle bg-surface-base flex-col transition-[width] duration-200 overflow-visible"
+      style={{ width: expanded ? expandedWidth : COLLAPSED_WIDTH }}
       aria-label="Secciones del establecimiento"
     >
       <nav className="flex flex-col py-3 px-2 gap-0.5 flex-1">
@@ -90,6 +129,17 @@ export function SeccionesSidebar({ empresaId, establecimientoId, expanded, onTog
           )}
         </button>
       </div>
+
+      {/* Drag handle — only visible when expanded */}
+      {expanded && (
+        <div
+          className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-sig-400 active:bg-sig-500 transition-colors group/resize"
+          onMouseDown={handleResizeStart}
+          title="Arrastrar para ajustar ancho"
+        >
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-full bg-border-subtle opacity-0 group-hover/resize:opacity-100 transition-opacity" />
+        </div>
+      )}
     </aside>
   )
 }
