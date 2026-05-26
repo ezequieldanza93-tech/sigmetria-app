@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Home, Settings } from 'lucide-react'
+import { Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { KpiCard } from '@/components/analytics/kpi-card'
@@ -61,17 +61,6 @@ export function DashboardShell({ consultoraId, establecimientos, empresasContent
 
   return (
     <div>
-      {/* Page heading */}
-      <div className="flex items-center gap-2 mb-6">
-        <Home size={20} className="text-brand-primary" strokeWidth={1.75} aria-hidden="true" />
-        <h1
-          className="text-lg font-semibold text-text-primary"
-          style={{ fontFamily: 'var(--font-heading)' }}
-        >
-          Inicio
-        </h1>
-      </div>
-
       {/* Tab bar */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex gap-1">

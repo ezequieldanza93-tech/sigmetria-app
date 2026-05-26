@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Sun, Moon, Users, UserCog, Network, Gauge, Shield, Settings2, LogOut, Building2, BarChart2, CreditCard, Smartphone, ShieldCheck, CalendarClock, AlertTriangle, Scale, Map, ClipboardList, MessageSquare, Wifi, WifiOff, Download, GraduationCap, BookOpen, Keyboard } from 'lucide-react'
+import { Sun, Moon, Users, UserCog, Network, Gauge, Shield, Settings2, LogOut, Building2, BarChart2, CreditCard, Smartphone, ShieldCheck, CalendarClock, AlertTriangle, Scale, Map, ClipboardList, MessageSquare, Wifi, WifiOff, Download, GraduationCap, BookOpen, Keyboard, Home } from 'lucide-react'
 import { SystemRole, UserRole, ROLE_LABELS, ROLE_COLORS } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 import { usePreview } from '@/lib/contexts/preview-context'
@@ -170,11 +170,12 @@ export function AppHeader({
     <header className="sticky top-0 z-30 border-b border-border-subtle bg-surface-base">
       <div className="flex items-center h-14 px-4 gap-3">
 
-        {/* Brand: isotipo + wordmark — links home to Empresas list */}
+        {/* Brand: isotipo + wordmark — links home */}
         <Link
           href="/dashboard"
           className="flex items-center gap-2 shrink-0 group"
-          aria-label="Ir a Empresas"
+          aria-label="Inicio"
+          title="Inicio"
         >
           <svg viewBox="0 0 24 26" height="24" aria-hidden="true">
             <polygon points="12,1 1,25 12,25" fill="#4CAF50" />
@@ -191,6 +192,12 @@ export function AppHeader({
           >
             SIGMETRÍA <span className="text-text-tertiary font-normal">HyS</span>
           </span>
+          <Home
+            size={15}
+            strokeWidth={1.75}
+            className="hidden sm:inline text-text-tertiary group-hover:text-brand-primary transition-colors"
+            aria-hidden="true"
+          />
         </Link>
 
         {/* Breadcrumb + address */}

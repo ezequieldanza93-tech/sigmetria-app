@@ -24,44 +24,26 @@ export async function EmpresasList() {
     supabase.from('consultoras_members').select('role').eq('user_id', user.id).eq('is_active', true).maybeSingle(),
     supabase
       .from('empresas')
-      .select(`id, razon_social, cuit, is_active, empresas_rubros(nombre), localidades(nombre, provincia), establecimientos(count)`)
+      .select(`id, razon_social, cuit, is_active, empresas_rubros(nombre), localidades(nombre, provincia), establecimientos(id, nombre, domicilio, is_active)`)
       .range(0, 99)
       .order('razon_social'),
   ])
 
-  const empresaIds = (empresasRaw ?? []).map(e => e.id as string)
-
-  let establecimientosByEmpresa: Record<string, Establecimiento[]> = {}
-  if (empresaIds.length > 0) {
-    const { data: ests } = await supabase
-      .from('establecimientos')
-      .select('id, nombre, domicilio, is_active, empresa_id')
-      .in('empresa_id', empresaIds)
-      .order('nombre')
-
-    establecimientosByEmpresa = (ests ?? []).reduce<Record<string, Establecimiento[]>>((acc, est) => {
-      const eid = (est as { empresa_id: string }).empresa_id
-      if (!acc[eid]) acc[eid] = []
-      acc[eid].push({
-        id: est.id as string,
-        nombre: est.nombre as string,
-        domicilio: (est.domicilio ?? null) as string | null,
-        is_active: Boolean(est.is_active),
-      })
-      return acc
-    }, {})
-  }
-
-  const empresas = (empresasRaw ?? []).map(e => ({
-    id: e.id as string,
-    razon_social: e.razon_social as string,
-    cuit: (e.cuit ?? null) as string | null,
-    is_active: Boolean(e.is_active),
-    empresas_rubros: (e.empresas_rubros ?? null) as unknown as { nombre: string } | null,
-    localidades: (e.localidades ?? null) as unknown as { nombre: string; provincia: string } | null,
-    establecimientoCount: ((e.establecimientos as unknown as { count: number }[])?.[0]?.count ?? 0),
-    establecimientos: establecimientosByEmpresa[e.id as string] ?? [],
-  }))
+  const empresas = (empresasRaw ?? []).map(e => {
+    const ests = ((e.establecimientos as unknown as Establecimiento[]) ?? [])
+      .slice()
+      .sort((a, b) => a.nombre.localeCompare(b.nombre))
+    return {
+      id: e.id as string,
+      razon_social: e.razon_social as string,
+      cuit: (e.cuit ?? null) as string | null,
+      is_active: Boolean(e.is_active),
+      empresas_rubros: (e.empresas_rubros ?? null) as unknown as { nombre: string } | null,
+      localidades: (e.localidades ?? null) as unknown as { nombre: string; provincia: string } | null,
+      establecimientoCount: ests.length,
+      establecimientos: ests,
+    }
+  })
 
   const puedeCrear = canWrite(
     membership?.role as UserRole ?? null,
