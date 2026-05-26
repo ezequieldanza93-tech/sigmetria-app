@@ -10,6 +10,7 @@ import type { EstadoGestion, Gestion, CategoriaGestion, GrupoGestion, RegistroGe
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { MultiFilter } from '@/components/ui/multi-filter'
+import { ViewSelector } from '@/components/ui/view-selector'
 import {
   Plus, Camera, BarChart3, FileCheck,
   ClipboardCheck, GraduationCap, Heart, FileText, AlertTriangle,
@@ -1647,22 +1648,15 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
             )}
           </div>
 
-          <div className="hidden md:flex items-center gap-1">
-            {(['tabla', 'calendario', 'kanban'] as ViewMode[]).map(mode => (
-              <button
-                key={mode}
-                onClick={() => setViewMode(mode)}
-                className={`text-xs border rounded-lg px-2 py-1.5 flex items-center gap-1 transition-colors ${
-                  viewMode === mode ? 'border-sig-300 bg-sig-50 text-sig-700' : 'border-border-subtle text-text-secondary hover:bg-surface-base'
-                }`}
-              >
-                {mode === 'tabla' && <List size={12} />}
-                {mode === 'calendario' && <CalendarDays size={12} />}
-                {mode === 'kanban' && <Kanban size={12} />}
-                {mode.charAt(0).toUpperCase() + mode.slice(1)}
-              </button>
-            ))}
-          </div>
+          <ViewSelector
+            options={[
+              { value: 'tabla' as ViewMode,      label: 'Tabla',      icon: List },
+              { value: 'calendario' as ViewMode, label: 'Calendario', icon: CalendarDays },
+              { value: 'kanban' as ViewMode,     label: 'Kanban',     icon: Kanban },
+            ]}
+            value={viewMode}
+            onChange={setViewMode}
+          />
 
           <span className="text-xs text-text-tertiary pl-1">
             {registros !== null ? `${filteredRegistros.length} gestiones` : ''}
@@ -1728,37 +1722,6 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
 
 
 
-      {/* FAB — Floating Action Buttons (solo desktop) */}
-      {canWrite && (
-        <div className="hidden lg:flex fixed bottom-8 left-8 z-50 flex-col gap-3">
-          <div className="group relative">
-            <button
-              type="button"
-              onClick={() => setShowReporteModal(true)}
-              className="w-12 h-12 rounded-full bg-sig-600 hover:bg-sig-700 text-white shadow-lg flex items-center justify-center transition-all hover:scale-110 active:scale-95"
-              aria-label="Generar reporte fotográfico"
-            >
-              <Camera size={20} strokeWidth={2} />
-            </button>
-            <span className="absolute left-14 top-1/2 -translate-y-1/2 bg-gray-900 text-white text-xs rounded-lg px-2.5 py-1.5 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg">
-              Generar reporte fotográfico
-            </span>
-          </div>
-          <div className="group relative">
-            <button
-              type="button"
-              onClick={() => setShowPlanificarModal(true)}
-              className="w-12 h-12 rounded-full bg-sig-600 hover:bg-sig-700 text-white shadow-lg flex items-center justify-center transition-all hover:scale-110 active:scale-95"
-              aria-label="Planificar nueva gestión"
-            >
-              <Plus size={20} strokeWidth={2} />
-            </button>
-            <span className="absolute left-14 top-1/2 -translate-y-1/2 bg-gray-900 text-white text-xs rounded-lg px-2.5 py-1.5 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg">
-              Planificar nueva gestión
-            </span>
-          </div>
-        </div>
-      )}
 
       {/* Modals */}
       {executingFormulario && (
