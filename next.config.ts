@@ -58,6 +58,12 @@ const nextConfig: NextConfig = {
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=()' },
         ],
       },
+      {
+        // RSC payloads must never be cached — stale RSC after a deploy causes React #418.
+        source: '/:path*',
+        has: [{ type: 'header', key: 'RSC', value: '1' }],
+        headers: [{ key: 'Cache-Control', value: 'no-store' }],
+      },
     ]
   },
 }
