@@ -10,7 +10,6 @@ interface Establecimiento {
   id: string
   nombre: string
   domicilio: string | null
-  is_active: boolean
 }
 
 interface Empresa {
