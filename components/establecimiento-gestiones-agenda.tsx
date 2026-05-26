@@ -1594,78 +1594,77 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
           Rest.
         </button>
 
-        {selectedMonths.size > 1 && (
-          <button
-            onClick={() => setGroupByMonth(v => !v)}
-            className={`text-xs border rounded-lg px-2 py-1.5 transition-colors shrink-0 ${
-              groupByMonth
-                ? 'border-sig-300 bg-sig-50 text-sig-700'
-                : 'border-border-subtle text-text-secondary hover:bg-surface-base'
-            }`}
-          >
-            {groupByMonth ? 'Desagrupar' : 'Agrupar por mes'}
-          </button>
-        )}
-
-        {/* Column visibility picker — desktop only */}
-        <div ref={colPickerTriggerRef} className="hidden md:block shrink-0">
-          <button
-            onClick={() => {
-              if (!showColPicker && colPickerTriggerRef.current) {
-                const rect = colPickerTriggerRef.current.getBoundingClientRect()
-                setColPickerPos({ top: rect.bottom + 4, left: rect.left })
-              }
-              setShowColPicker(v => !v)
-            }}
-            className={`text-xs border rounded-lg px-2 py-1.5 flex items-center gap-1 transition-colors ${
-              showColPicker ? 'border-sig-300 bg-sig-50 text-sig-700' : 'border-border-subtle text-text-secondary hover:bg-surface-base'
-            }`}
-          >
-            <Columns size={12} />
-            Columnas
-          </button>
-          {showColPicker && colPickerPos && createPortal(
-            <div
-              ref={colPickerDropdownRef}
-              style={{ position: 'fixed', top: colPickerPos.top, left: colPickerPos.left, zIndex: 9999 }}
-              className="bg-surface-base border border-border-subtle rounded-xl shadow-lg p-1.5 min-w-[140px]"
-            >
-              {TOGGLEABLE_COLS.map(({ key, label }) => (
-                <label key={key} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-surface-elevated cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={visibleCols.has(key)}
-                    onChange={() => toggleCol(key)}
-                    className="rounded"
-                  />
-                  <span className="text-xs text-text-secondary">{label}</span>
-                </label>
-              ))}
-            </div>,
-            document.body
-          )}
-        </div>
-
-        {/* View mode toggle — desktop only */}
-        <div className="hidden md:flex items-center gap-1 shrink-0">
-          {(['tabla', 'calendario', 'kanban'] as ViewMode[]).map(mode => (
+        {/* Right-side actions — pushed to the end */}
+        <div className="flex items-center gap-1 ml-auto shrink-0">
+          {selectedMonths.size > 1 && (
             <button
-              key={mode}
-              onClick={() => setViewMode(mode)}
-              className={`text-xs border rounded-lg px-2 py-1.5 flex items-center gap-1 transition-colors ${
-                viewMode === mode ? 'border-sig-300 bg-sig-50 text-sig-700' : 'border-border-subtle text-text-secondary hover:bg-surface-base'
+              onClick={() => setGroupByMonth(v => !v)}
+              className={`text-xs border rounded-lg px-2 py-1.5 transition-colors ${
+                groupByMonth
+                  ? 'border-sig-300 bg-sig-50 text-sig-700'
+                  : 'border-border-subtle text-text-secondary hover:bg-surface-base'
               }`}
             >
-              {mode === 'tabla' && <List size={12} />}
-              {mode === 'calendario' && <CalendarDays size={12} />}
-              {mode === 'kanban' && <Kanban size={12} />}
-              {mode.charAt(0).toUpperCase() + mode.slice(1)}
+              {groupByMonth ? 'Desagrupar' : 'Agrupar por mes'}
             </button>
-          ))}
-        </div>
+          )}
 
-        <div className="flex items-center gap-2 ml-auto">
-          <span className="text-xs text-text-tertiary">
+          <div ref={colPickerTriggerRef} className="hidden md:block">
+            <button
+              onClick={() => {
+                if (!showColPicker && colPickerTriggerRef.current) {
+                  const rect = colPickerTriggerRef.current.getBoundingClientRect()
+                  setColPickerPos({ top: rect.bottom + 4, left: rect.left })
+                }
+                setShowColPicker(v => !v)
+              }}
+              className={`text-xs border rounded-lg px-2 py-1.5 flex items-center gap-1 transition-colors ${
+                showColPicker ? 'border-sig-300 bg-sig-50 text-sig-700' : 'border-border-subtle text-text-secondary hover:bg-surface-base'
+              }`}
+            >
+              <Columns size={12} />
+              Columnas
+            </button>
+            {showColPicker && colPickerPos && createPortal(
+              <div
+                ref={colPickerDropdownRef}
+                style={{ position: 'fixed', top: colPickerPos.top, left: colPickerPos.left, zIndex: 9999 }}
+                className="bg-surface-base border border-border-subtle rounded-xl shadow-lg p-1.5 min-w-[140px]"
+              >
+                {TOGGLEABLE_COLS.map(({ key, label }) => (
+                  <label key={key} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-surface-elevated cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={visibleCols.has(key)}
+                      onChange={() => toggleCol(key)}
+                      className="rounded"
+                    />
+                    <span className="text-xs text-text-secondary">{label}</span>
+                  </label>
+                ))}
+              </div>,
+              document.body
+            )}
+          </div>
+
+          <div className="hidden md:flex items-center gap-1">
+            {(['tabla', 'calendario', 'kanban'] as ViewMode[]).map(mode => (
+              <button
+                key={mode}
+                onClick={() => setViewMode(mode)}
+                className={`text-xs border rounded-lg px-2 py-1.5 flex items-center gap-1 transition-colors ${
+                  viewMode === mode ? 'border-sig-300 bg-sig-50 text-sig-700' : 'border-border-subtle text-text-secondary hover:bg-surface-base'
+                }`}
+              >
+                {mode === 'tabla' && <List size={12} />}
+                {mode === 'calendario' && <CalendarDays size={12} />}
+                {mode === 'kanban' && <Kanban size={12} />}
+                {mode.charAt(0).toUpperCase() + mode.slice(1)}
+              </button>
+            ))}
+          </div>
+
+          <span className="text-xs text-text-tertiary pl-1">
             {registros !== null ? `${filteredRegistros.length} gestiones` : ''}
           </span>
         </div>
