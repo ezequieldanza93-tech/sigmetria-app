@@ -15,7 +15,7 @@ export function BannerPastDue({ graceUntil, onActualizarMetodo }: BannerPastDueP
   if (dismissed) return null
 
   const graceDate = graceUntil
-    ? new Date(graceUntil).toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' })
+    ? new Date(graceUntil).toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'UTC' })
     : null
 
   return (

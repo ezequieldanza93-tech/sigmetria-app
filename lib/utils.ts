@@ -8,6 +8,7 @@ export function formatDate(dateStr: string | null | undefined): string {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
+    timeZone: 'UTC',
   }).format(date)
 }
 
@@ -20,6 +21,7 @@ export function formatDateTime(dateStr: string | null | undefined): string {
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
+    timeZone: 'America/Argentina/Buenos_Aires',
   }).format(date)
 }
 
