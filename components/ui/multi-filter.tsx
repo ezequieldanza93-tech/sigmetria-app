@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 
 export function MultiFilter({
   label,
@@ -13,22 +14,38 @@ export function MultiFilter({
   onChange: (v: Set<string>) => void
 }) {
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
+  const triggerRef = useRef<HTMLDivElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      const target = e.target as Node
+      if (
+        triggerRef.current && !triggerRef.current.contains(target) &&
+        dropdownRef.current && !dropdownRef.current.contains(target)
+      ) {
+        setOpen(false)
+      }
     }
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
+  function handleToggle() {
+    if (!open && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect()
+      setPos({ top: rect.bottom + 4, left: rect.left })
+    }
+    setOpen(v => !v)
+  }
+
   const allSelected = selected.size === options.length
 
   return (
-    <div className="relative" ref={ref}>
+    <div ref={triggerRef}>
       <button
-        onClick={() => setOpen(v => !v)}
+        onClick={handleToggle}
         className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium border border-border-default rounded-lg bg-surface-base text-text-secondary hover:bg-surface-elevated transition-colors whitespace-nowrap"
       >
         {label}
@@ -39,8 +56,12 @@ export function MultiFilter({
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </button>
-      {open && (
-        <div className="absolute top-full mt-1 left-0 z-50 min-w-[200px] bg-surface-elevated border border-border-default rounded-xl shadow-xl overflow-hidden">
+      {open && pos && createPortal(
+        <div
+          ref={dropdownRef}
+          style={{ position: 'fixed', top: pos.top, left: pos.left, zIndex: 9999 }}
+          className="min-w-[200px] bg-surface-elevated border border-border-default rounded-xl shadow-xl overflow-hidden"
+        >
           {options.map(opt => {
             const isOn = selected.has(opt.value)
             return (
@@ -62,7 +83,8 @@ export function MultiFilter({
               </label>
             )
           })}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

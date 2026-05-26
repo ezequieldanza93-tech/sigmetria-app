@@ -18,6 +18,7 @@ import {
   ChevronUp, ChevronDown, Columns, CalendarDays, List,
 } from 'lucide-react'
 import dynamic from 'next/dynamic'
+import { createPortal } from 'react-dom'
 import {
   planificarGestion,
   planificarGestionNueva,
@@ -862,6 +863,23 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
   const [viewMode, setViewMode] = useState<ViewMode>('tabla')
   const [visibleCols, setVisibleCols] = useState<Set<string>>(new Set(['categoria', 'gestion', 'fecha_plan', 'fecha_ejec', 'responsable', 'indice', 'acciones']))
   const [showColPicker, setShowColPicker] = useState(false)
+  const [colPickerPos, setColPickerPos] = useState<{ top: number; left: number } | null>(null)
+  const colPickerTriggerRef = useRef<HTMLDivElement>(null)
+  const colPickerDropdownRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleColPickerOutside(e: MouseEvent) {
+      const target = e.target as Node
+      if (
+        colPickerTriggerRef.current && !colPickerTriggerRef.current.contains(target) &&
+        colPickerDropdownRef.current && !colPickerDropdownRef.current.contains(target)
+      ) {
+        setShowColPicker(false)
+      }
+    }
+    document.addEventListener('mousedown', handleColPickerOutside)
+    return () => document.removeEventListener('mousedown', handleColPickerOutside)
+  }, [])
   const [editingRegistro, setEditingRegistro] = useState<FullRegistro | null>(null)
   const [executingFormulario, setExecutingFormulario] = useState<FullRegistro | null>(null)
   const [showPlanificarModal, setShowPlanificarModal] = useState(false)
@@ -1577,9 +1595,15 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
         </button>
 
         {/* Column visibility picker — desktop only */}
-        <div className="relative hidden md:block shrink-0">
+        <div ref={colPickerTriggerRef} className="hidden md:block shrink-0">
           <button
-            onClick={() => setShowColPicker(v => !v)}
+            onClick={() => {
+              if (!showColPicker && colPickerTriggerRef.current) {
+                const rect = colPickerTriggerRef.current.getBoundingClientRect()
+                setColPickerPos({ top: rect.bottom + 4, left: rect.left })
+              }
+              setShowColPicker(v => !v)
+            }}
             className={`text-xs border rounded-lg px-2 py-1.5 flex items-center gap-1 transition-colors ${
               showColPicker ? 'border-sig-300 bg-sig-50 text-sig-700' : 'border-border-subtle text-text-secondary hover:bg-surface-base'
             }`}
@@ -1587,8 +1611,12 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
             <Columns size={12} />
             Columnas
           </button>
-          {showColPicker && (
-            <div className="absolute top-full mt-1 left-0 bg-surface-base border border-border-subtle rounded-xl shadow-lg p-1.5 z-20 min-w-[140px]">
+          {showColPicker && colPickerPos && createPortal(
+            <div
+              ref={colPickerDropdownRef}
+              style={{ position: 'fixed', top: colPickerPos.top, left: colPickerPos.left, zIndex: 9999 }}
+              className="bg-surface-base border border-border-subtle rounded-xl shadow-lg p-1.5 min-w-[140px]"
+            >
               {TOGGLEABLE_COLS.map(({ key, label }) => (
                 <label key={key} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-surface-elevated cursor-pointer">
                   <input
@@ -1600,7 +1628,8 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
                   <span className="text-xs text-text-secondary">{label}</span>
                 </label>
               ))}
-            </div>
+            </div>,
+            document.body
           )}
         </div>
 
