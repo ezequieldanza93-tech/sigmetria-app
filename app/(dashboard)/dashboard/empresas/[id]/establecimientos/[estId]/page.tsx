@@ -50,7 +50,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
   ] = await Promise.all([
     supabase.from('profiles').select('system_role').eq('id', user.id).single(),
     supabase.from('consultoras_members').select('role').eq('user_id', user.id).eq('is_active', true).maybeSingle(),
-    supabase.from('establecimientos').select('id, nombre, latitude, longitude, photo_site, domicilio, created_at, establecimientos_tipos(id, codigo, nombre), localidades!localidad_id(nombre, provincia)').eq('id', estId).single(),
+    supabase.from('establecimientos').select('id, nombre, latitude, longitude, photo_site, domicilio, codigo_postal, actividad_principal, cantidad_trabajadores, description, aplica_iso_45001, floor_plan_pdf_url, floor_plan_cad_url, created_at, establecimientos_tipos(id, codigo, nombre), localidades!localidad_id(nombre, provincia)').eq('id', estId).single(),
     supabase.from('empresas').select('id, razon_social').eq('id', empresaId).single(),
   ])
 
@@ -202,6 +202,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
             />
           )}
           <EstablecimientoTabs
+            establecimiento={establecimiento as unknown as import('@/lib/types').Establecimiento}
             establecimientoId={estId}
             empresaId={empresaId}
             canWrite={userCanWrite}

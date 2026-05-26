@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { InfoTab } from '@/components/establecimiento/info-tab'
 import { SectoresTab } from '@/components/establecimiento/sectores-tab'
 import { StakeholdersTab } from '@/components/establecimiento/stakeholders-tab'
 import { AsistenciaTab } from '@/components/establecimiento/asistencia-tab'
@@ -11,6 +12,7 @@ import { DenunciasTab } from '@/components/establecimiento/denuncias-tab'
 import { FeedbackTab } from '@/components/establecimiento/feedback-tab'
 import { LegajoTab } from '@/components/establecimiento/legajo-tab'
 import type {
+  Establecimiento,
   SectorEstablecimiento,
   Siniestro,
   Inspeccion,
@@ -23,9 +25,10 @@ import type {
   LegajoGestion,
 } from '@/lib/types'
 
-type Tab = 'sectores' | 'stakeholders' | 'asistencia' | 'siniestros' | 'inspecciones' | 'documentos' | 'legajo' | 'denuncias' | 'feedback'
+type Tab = 'info' | 'sectores' | 'stakeholders' | 'asistencia' | 'siniestros' | 'inspecciones' | 'documentos' | 'legajo' | 'denuncias' | 'feedback'
 
 interface EstablecimientoTabsProps {
+  establecimiento: Establecimiento
   establecimientoId: string
   empresaId: string
   canWrite: boolean
@@ -44,6 +47,7 @@ interface EstablecimientoTabsProps {
 }
 
 const TABS: { id: Tab; label: string }[] = [
+  { id: 'info', label: 'Información' },
   { id: 'sectores', label: 'Sectores' },
   { id: 'stakeholders', label: 'Stakeholders' },
   { id: 'asistencia', label: 'Asistencia' },
@@ -56,6 +60,7 @@ const TABS: { id: Tab; label: string }[] = [
 ]
 
 export function EstablecimientoTabs({
+  establecimiento,
   establecimientoId,
   empresaId,
   canWrite,
@@ -72,7 +77,7 @@ export function EstablecimientoTabs({
   trabajadorDocumentos,
   defaultTab,
 }: EstablecimientoTabsProps) {
-  const [active, setActive] = useState<Tab>(defaultTab ?? 'sectores')
+  const [active, setActive] = useState<Tab>(defaultTab ?? 'info')
 
   return (
     <div>
@@ -94,6 +99,13 @@ export function EstablecimientoTabs({
         </div>
       </div>
 
+      {active === 'info' && (
+        <InfoTab
+          establecimiento={establecimiento}
+          canWrite={canWrite}
+          empresaId={empresaId}
+        />
+      )}
       {active === 'sectores' && (
         <SectoresTab
           sectores={sectores}
