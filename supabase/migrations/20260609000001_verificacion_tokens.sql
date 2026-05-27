@@ -1,5 +1,5 @@
 -- Art. 4.5 SRT 48/2025 — Token de verificación pública por establecimiento
-CREATE TABLE verificacion_tokens (
+CREATE TABLE IF NOT EXISTS verificacion_tokens (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   establecimiento_id uuid NOT NULL REFERENCES establecimientos(id) ON DELETE CASCADE,
   token uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -10,22 +10,25 @@ CREATE TABLE verificacion_tokens (
   CONSTRAINT verificacion_tokens_token_unique UNIQUE (token)
 );
 
-CREATE INDEX idx_verificacion_tokens_token ON verificacion_tokens(token);
-CREATE INDEX idx_verificacion_tokens_est ON verificacion_tokens(establecimiento_id);
+CREATE INDEX IF NOT EXISTS idx_verificacion_tokens_token ON verificacion_tokens(token);
+CREATE INDEX IF NOT EXISTS idx_verificacion_tokens_est ON verificacion_tokens(establecimiento_id);
 
 ALTER TABLE verificacion_tokens ENABLE ROW LEVEL SECURITY;
 
 -- SELECT público sin autenticación (anon puede leer por token)
+DROP POLICY IF EXISTS "verificacion_tokens_select_public" ON verificacion_tokens;
 CREATE POLICY "verificacion_tokens_select_public"
   ON verificacion_tokens FOR SELECT
   USING (true);
 
 -- INSERT: solo usuarios autenticados (el trigger maneja la creación automática)
+DROP POLICY IF EXISTS "verificacion_tokens_insert_auth" ON verificacion_tokens;
 CREATE POLICY "verificacion_tokens_insert_auth"
   ON verificacion_tokens FOR INSERT
   WITH CHECK (auth.uid() IS NOT NULL);
 
 -- UPDATE: solo full_access_main o full_access_branch
+DROP POLICY IF EXISTS "verificacion_tokens_update_full_access" ON verificacion_tokens;
 CREATE POLICY "verificacion_tokens_update_full_access"
   ON verificacion_tokens FOR UPDATE
   USING (
@@ -90,6 +93,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS trg_establecimiento_create_token ON establecimientos;
 CREATE TRIGGER trg_establecimiento_create_token
   AFTER INSERT ON establecimientos
   FOR EACH ROW
