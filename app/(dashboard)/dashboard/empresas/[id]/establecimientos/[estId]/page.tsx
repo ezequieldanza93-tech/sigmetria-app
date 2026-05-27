@@ -71,7 +71,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
   let legajoSiniestros: Siniestro[] = []
   let legajoInspecciones: Inspeccion[] = []
   let legajoDocumentos: Documento[] = []
-  let legajoMedicionesPorTipo: Record<string, Medicion[]> = {}
+  const legajoMedicionesPorTipo: Record<string, Medicion[]> = {}
   let verificacionToken: string | null = null
 
   if (section === 'ficha') {
