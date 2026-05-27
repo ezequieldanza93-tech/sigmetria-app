@@ -151,7 +151,12 @@ export const USER_ROLE_OPTIONS = [
   { value: 'full_viewer', label: 'Viewer Global' },
   { value: 'colaborador_viewer', label: 'Viewer Limitado' },
   { value: 'visualizador_comentarista', label: 'Visualizador Comentarista' },
+  { value: 'responsable_estandares', label: 'Resp. de Estándares' },
 ] as const
+
+export const ROLE_DESCRIPTIONS: Partial<Record<string, string>> = {
+  responsable_estandares: 'Acceso de lectura total + módulo de reportes y cumplimiento normativo (Art. 5 SRT 48/2025)',
+}
 
 export type WidgetKey =
   | 'empresas_activas'

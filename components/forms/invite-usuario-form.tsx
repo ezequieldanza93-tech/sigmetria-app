@@ -1,10 +1,10 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
-import { USER_ROLE_OPTIONS } from '@/lib/constants'
+import { USER_ROLE_OPTIONS, ROLE_DESCRIPTIONS } from '@/lib/constants'
 import type { ActionResult } from '@/lib/types'
 
 type InviteAction = (
@@ -18,6 +18,7 @@ interface InviteUsuarioFormProps {
 }
 
 export function InviteUsuarioForm({ action, onSuccess }: InviteUsuarioFormProps) {
+  const [selectedRole, setSelectedRole] = useState<string>('')
   const [state, formAction, isPending] = useActionState(
     async (prev: ActionResult<null> | null, fd: FormData) => {
       const result = await action(prev, fd)
@@ -55,13 +56,19 @@ export function InviteUsuarioForm({ action, onSuccess }: InviteUsuarioFormProps)
         placeholder="usuario@empresa.com"
       />
 
-      <Select
-        label="Rol"
-        name="role"
-        required
-        options={USER_ROLE_OPTIONS.map(o => ({ value: o.value, label: o.label }))}
-        placeholder="Seleccionar rol..."
-      />
+      <div>
+        <Select
+          label="Rol"
+          name="role"
+          required
+          options={USER_ROLE_OPTIONS.map(o => ({ value: o.value, label: o.label }))}
+          placeholder="Seleccionar rol..."
+          onChange={(e) => setSelectedRole(e.target.value)}
+        />
+        {selectedRole && ROLE_DESCRIPTIONS[selectedRole] && (
+          <p className="mt-1.5 text-xs text-text-tertiary">{ROLE_DESCRIPTIONS[selectedRole]}</p>
+        )}
+      </div>
 
       <div className="flex gap-3 pt-1">
         <Button type="submit" disabled={isPending}>

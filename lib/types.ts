@@ -6,6 +6,7 @@ export type UserRole =
   | 'full_viewer'
   | 'colaborador_viewer'
   | 'visualizador_comentarista'
+  | 'responsable_estandares'
 
 export type TipoEstablecimiento =
   | 'industria'
@@ -659,6 +660,7 @@ export const ROLE_LABELS: Record<UserRole | SystemRole, string> = {
   full_viewer: 'Viewer Global',
   colaborador_viewer: 'Viewer Limitado',
   visualizador_comentarista: 'Visualizador Comentarista',
+  responsable_estandares: 'Resp. de Estándares',
 }
 
 export const ROLE_COLORS: Record<UserRole | 'developer', string> = {
@@ -669,6 +671,7 @@ export const ROLE_COLORS: Record<UserRole | 'developer', string> = {
   full_viewer: 'bg-green-100 text-green-800',
   colaborador_viewer: 'bg-gray-100 text-gray-800',
   visualizador_comentarista: 'bg-teal-100 text-teal-800',
+  responsable_estandares: 'bg-indigo-100 text-indigo-800',
 }
 
 export const RIESGO_NIVEL_COLORS: Record<RiesgoNivel, string> = {
@@ -711,6 +714,11 @@ export function canManageUsers(role: UserRole | null, systemRole: SystemRole): b
 export function canViewAll(role: UserRole | null, systemRole: SystemRole): boolean {
   if (systemRole === 'developer') return true
   return role === 'full_access_main' || role === 'full_access_branch' || role === 'full_viewer'
+}
+
+export function canViewReportes(role: UserRole | null, systemRole: SystemRole): boolean {
+  if (systemRole === 'developer') return true
+  return role === 'full_access_main' || role === 'responsable_estandares'
 }
 
 export interface VerificacionToken {

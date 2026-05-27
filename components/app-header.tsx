@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Sun, Moon, Users, UserCog, Network, Gauge, Shield, Settings2, LogOut, Building2, BarChart2, CreditCard, ShieldCheck, CalendarClock, AlertTriangle, Scale, Map, ClipboardList, MessageSquare, Wifi, WifiOff, Download, GraduationCap, BookOpen, Keyboard, Home, BookMarked } from 'lucide-react'
+import { Sun, Moon, Users, UserCog, Network, Gauge, Shield, Settings2, LogOut, Building2, BarChart2, CreditCard, ShieldCheck, CalendarClock, AlertTriangle, Scale, Map, ClipboardList, MessageSquare, Wifi, WifiOff, Download, GraduationCap, BookOpen, Keyboard, Home, BookMarked, FileCheck } from 'lucide-react'
 import { SystemRole, UserRole, ROLE_LABELS, ROLE_COLORS } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 import { NotificationDropdown } from '@/components/notification-dropdown'
@@ -381,6 +381,16 @@ export function AppHeader({
                     </>
                   )}
                 </div>
+
+                {/* Cumplimiento */}
+                {(userRole === 'full_access_main' || userRole === 'responsable_estandares' || isSuperAdmin) && (
+                  <div className="py-1 border-b border-border-subtle">
+                    <div className="px-4 py-1.5">
+                      <p className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold">Cumplimiento</p>
+                    </div>
+                    <DropdownItem href="/dashboard/reportes" icon={FileCheck} label="Reportes" role="menuitem" />
+                  </div>
+                )}
 
                 {/* Herramientas */}
                 <div className="py-1 border-b border-border-subtle">
