@@ -2,16 +2,17 @@
 
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { ClipboardList, FileText, BarChart3, Crosshair } from 'lucide-react'
+import { ClipboardList, FileText, BarChart3, Crosshair, QrCode } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-type Section = 'agenda' | 'ficha' | 'dashboard' | 'seguimiento'
+type Section = 'agenda' | 'ficha' | 'dashboard' | 'seguimiento' | 'legajo'
 
 const ITEMS: { id: Section; label: string; shortLabel: string; icon: typeof FileText }[] = [
   { id: 'ficha', label: 'Ficha', shortLabel: 'Ficha', icon: FileText },
   { id: 'agenda', label: 'Gestiones', shortLabel: 'Gestiones', icon: ClipboardList },
   { id: 'seguimiento', label: 'Seguimiento', shortLabel: 'Seguimiento', icon: Crosshair },
   { id: 'dashboard', label: 'Dashboards', shortLabel: 'Dashboards', icon: BarChart3 },
+  { id: 'legajo', label: 'Legajo QR', shortLabel: 'QR', icon: QrCode },
 ]
 
 interface Props {

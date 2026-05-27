@@ -9,7 +9,8 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/offline') ||
     pathname.startsWith('/icons/') ||
     pathname.startsWith('/_next/') ||
-    pathname.startsWith('/verificar-certificado/')
+    pathname.startsWith('/verificar-certificado/') ||
+    pathname.startsWith('/verificar/')
   ) {
     return NextResponse.next()
   }

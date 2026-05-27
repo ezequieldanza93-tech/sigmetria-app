@@ -8,11 +8,14 @@ import { getDocTiposAplicables } from '@/lib/actions/aplicabilidad'
 import type {
   SectorEstablecimiento, Siniestro, Inspeccion, Riesgo, Documento, DocumentType,
   EstablecimientoDenuncia, FeedbackCliente, EmpresaDocumento, EmpleadoDocumentoLegajo, LegajoGestion,
+  Capacitacion, Medicion,
 } from '@/lib/types'
 import { AnalyticsDashboard } from '@/components/analytics/real/analytics-dashboard'
+import { LegajoTecnico } from '@/components/establecimiento/legajo-tecnico'
+import { QRPanel } from '@/components/establecimiento/qr-panel'
 
-type Section = 'agenda' | 'ficha' | 'dashboard' | 'seguimiento'
-const VALID_SECTIONS: Section[] = ['agenda', 'ficha', 'dashboard', 'seguimiento']
+type Section = 'agenda' | 'ficha' | 'dashboard' | 'seguimiento' | 'legajo'
+const VALID_SECTIONS: Section[] = ['agenda', 'ficha', 'dashboard', 'seguimiento', 'legajo']
 
 interface Props {
   params: Promise<{ id: string; estId: string }>
@@ -61,6 +64,15 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
   let empresaDocumentos: EmpresaDocumento[] = []
   let gestionesLegajo: LegajoGestion[] = []
   let trabajadorDocumentos: EmpleadoDocumentoLegajo[] = []
+
+  // Legajo QR section data
+  let legajoCapacitaciones: (Capacitacion & { _asistentes?: number })[] = []
+  let legajoRiesgos: Riesgo[] = []
+  let legajoSiniestros: Siniestro[] = []
+  let legajoInspecciones: Inspeccion[] = []
+  let legajoDocumentos: Documento[] = []
+  let legajoMedicionesPorTipo: Record<string, Medicion[]> = {}
+  let verificacionToken: string | null = null
 
   if (section === 'ficha') {
     const [s1, s2, s3, s4, s5] = await Promise.all([
@@ -146,6 +158,34 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
     riesgos = (data ?? []) as unknown as Riesgo[]
   }
 
+  if (section === 'legajo') {
+    const ahora12m = new Date()
+    ahora12m.setFullYear(ahora12m.getFullYear() - 1)
+    const doce = ahora12m.toISOString().split('T')[0]
+
+    const [tk, insp, docs, caps, rgs, meds, sins] = await Promise.all([
+      supabase.from('verificacion_tokens').select('token').eq('establecimiento_id', estId).single(),
+      supabase.from('inspecciones').select('*').eq('establecimiento_id', estId).in('estado', ['realizada', 'con_observaciones']).order('fecha_realizada', { ascending: false }),
+      supabase.from('establecimientos_documentos').select('*, documentos_tipos(nombre)').eq('establecimiento_id', estId).eq('legajo_tecnico', true).order('fecha_vencimiento', { ascending: true, nullsFirst: false }),
+      supabase.from('capacitaciones').select('id, titulo, fecha_realizada, capacitaciones_asistentes(id)').eq('empresa_id', empresaId).or(`establecimiento_id.eq.${estId},establecimiento_id.is.null`).eq('estado', 'realizada').gte('fecha_realizada', doce).order('fecha_realizada', { ascending: false }),
+      supabase.from('riesgos').select('*').eq('establecimiento_id', estId).eq('resuelto', false),
+      supabase.from('mediciones').select('*, unidades(nombre, simbolo)').eq('establecimiento_id', estId).order('fecha', { ascending: false }),
+      supabase.from('siniestros').select('*').eq('establecimiento_id', estId).in('estado', ['pendiente', 'en_investigacion']).order('fecha_ocurrencia', { ascending: false }),
+    ])
+
+    verificacionToken = tk.data?.token ?? null
+    legajoInspecciones = (insp.data ?? []) as unknown as Inspeccion[]
+    legajoDocumentos = (docs.data ?? []) as unknown as Documento[]
+    legajoCapacitaciones = ((caps.data ?? []) as unknown as (Capacitacion & { capacitaciones_asistentes?: { id: string }[] })[])
+      .map(c => ({ ...c, _asistentes: c.capacitaciones_asistentes?.length ?? 0 }))
+    legajoRiesgos = (rgs.data ?? []) as unknown as Riesgo[]
+    legajoSiniestros = (sins.data ?? []) as unknown as Siniestro[]
+    for (const m of (meds.data ?? []) as unknown as Medicion[]) {
+      if (!legajoMedicionesPorTipo[m.tipo]) legajoMedicionesPorTipo[m.tipo] = []
+      if (legajoMedicionesPorTipo[m.tipo].length < 3) legajoMedicionesPorTipo[m.tipo].push(m)
+    }
+  }
+
   return (
     <div className="p-0">
       {/* Content */}
@@ -192,6 +232,43 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
 
       {section === 'seguimiento' && (
         <ActuarView establecimientoId={estId} canWrite={userCanWrite} />
+      )}
+
+      {section === 'legajo' && (
+        <div className="px-6 py-6 max-w-5xl">
+          <div className="flex flex-col lg:flex-row gap-6 items-start">
+            <div className="flex-1 min-w-0">
+              <LegajoTecnico
+                establecimiento={establecimiento as unknown as import('@/lib/types').Establecimiento}
+                empresa={empresa}
+                ultimaInspeccion={legajoInspecciones[0] ?? null}
+                totalInspecciones12m={legajoInspecciones.length}
+                documentos={legajoDocumentos}
+                capacitaciones={legajoCapacitaciones}
+                riesgos={legajoRiesgos}
+                medicionesPorTipo={legajoMedicionesPorTipo}
+                siniestros={legajoSiniestros}
+                ahora={new Date()}
+              />
+            </div>
+            <div className="w-full lg:w-72 shrink-0">
+              {verificacionToken ? (
+                <QRPanel
+                  token={verificacionToken}
+                  establecimientoId={estId}
+                  empresaId={empresaId}
+                  establecimientoNombre={establecimiento.nombre}
+                />
+              ) : (
+                <div className="bg-surface-elevated border border-border-subtle rounded-xl p-5">
+                  <p className="text-sm text-text-tertiary text-center">
+                    No hay token QR generado para este establecimiento.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

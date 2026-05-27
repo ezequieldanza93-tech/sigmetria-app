@@ -713,6 +713,15 @@ export function canViewAll(role: UserRole | null, systemRole: SystemRole): boole
   return role === 'full_access_main' || role === 'full_access_branch' || role === 'full_viewer'
 }
 
+export interface VerificacionToken {
+  id: string
+  establecimiento_id: string
+  token: string
+  created_at: string
+  last_accessed_at: string | null
+  access_count: number
+}
+
 export interface TipoInstrumentoMedicion {
   id: string
   nombre: string

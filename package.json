@@ -53,6 +53,7 @@
     "react-konva": "^19.2.4",
     "react-leaflet": "^5.0.0",
     "recharts": "^2.15.4",
+    "qrcode.react": "^3.1.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {

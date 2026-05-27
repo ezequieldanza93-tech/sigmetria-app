@@ -2,16 +2,17 @@
 
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { ClipboardList, FileText, BarChart3, Crosshair, ChevronsRight, ChevronsLeft } from 'lucide-react'
+import { ClipboardList, FileText, BarChart3, Crosshair, ChevronsRight, ChevronsLeft, QrCode } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-type Section = 'agenda' | 'ficha' | 'dashboard' | 'seguimiento'
+type Section = 'agenda' | 'ficha' | 'dashboard' | 'seguimiento' | 'legajo'
 
 const ITEMS: { id: Section; label: string; icon: typeof FileText }[] = [
   { id: 'ficha', label: 'Ficha', icon: FileText },
   { id: 'agenda', label: 'Gestiones', icon: ClipboardList },
   { id: 'seguimiento', label: 'Seguimiento de Observaciones', icon: Crosshair },
   { id: 'dashboard', label: 'Dashboards', icon: BarChart3 },
+  { id: 'legajo', label: 'Legajo QR', icon: QrCode },
 ]
 
 const COLLAPSED_WIDTH = 56
