@@ -11,7 +11,7 @@
 -- 1. Tabla subcontratistas_documentos
 -- ============================================================
 
-CREATE TABLE public.subcontratistas_documentos (
+CREATE TABLE IF NOT EXISTS public.subcontratistas_documentos (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   subcontratista_id UUID NOT NULL REFERENCES public.subcontratistas(id) ON DELETE CASCADE,
   tipo_id           UUID NOT NULL REFERENCES public.documentos_tipos(id),
@@ -24,8 +24,8 @@ CREATE TABLE public.subcontratistas_documentos (
   updated_at        TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_sub_doc_subcontratista ON public.subcontratistas_documentos(subcontratista_id);
-CREATE INDEX idx_sub_doc_vencimiento ON public.subcontratistas_documentos(fecha_vencimiento)
+CREATE INDEX IF NOT EXISTS idx_sub_doc_subcontratista ON public.subcontratistas_documentos(subcontratista_id);
+CREATE INDEX IF NOT EXISTS idx_sub_doc_vencimiento ON public.subcontratistas_documentos(fecha_vencimiento)
   WHERE fecha_vencimiento IS NOT NULL;
 
 
@@ -34,7 +34,7 @@ CREATE INDEX idx_sub_doc_vencimiento ON public.subcontratistas_documentos(fecha_
 -- ============================================================
 
 ALTER TABLE public.documentos_tipos
-  ADD COLUMN aplica_subcontratista BOOLEAN NOT NULL DEFAULT false;
+  ADD COLUMN IF NOT EXISTS aplica_subcontratista BOOLEAN NOT NULL DEFAULT false;
 
 -- Tipos que aplican a subcontratistas (seed)
 UPDATE public.documentos_tipos SET aplica_subcontratista = true WHERE nombre IN (
@@ -57,15 +57,19 @@ VALUES ('subcontratistas', 'subcontratistas', false, false)
 ON CONFLICT (id) DO NOTHING;
 
 -- RLS: solo authenticated
+DROP POLICY IF EXISTS "subcontratistas: select" ON storage.objects;
 CREATE POLICY "subcontratistas: select" ON storage.objects
   FOR SELECT TO authenticated USING (bucket_id = 'subcontratistas' AND auth.role() = 'authenticated');
 
+DROP POLICY IF EXISTS "subcontratistas: insert" ON storage.objects;
 CREATE POLICY "subcontratistas: insert" ON storage.objects
   FOR INSERT TO authenticated WITH CHECK (bucket_id = 'subcontratistas' AND auth.role() = 'authenticated');
 
+DROP POLICY IF EXISTS "subcontratistas: update" ON storage.objects;
 CREATE POLICY "subcontratistas: update" ON storage.objects
   FOR UPDATE TO authenticated USING (bucket_id = 'subcontratistas' AND auth.role() = 'authenticated');
 
+DROP POLICY IF EXISTS "subcontratistas: delete" ON storage.objects;
 CREATE POLICY "subcontratistas: delete" ON storage.objects
   FOR DELETE TO authenticated USING (bucket_id = 'subcontratistas' AND auth.role() = 'authenticated');
 
@@ -76,6 +80,7 @@ CREATE POLICY "subcontratistas: delete" ON storage.objects
 
 ALTER TABLE public.subcontratistas_documentos ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "subcontratistas_documentos: select" ON public.subcontratistas_documentos;
 CREATE POLICY "subcontratistas_documentos: select" ON public.subcontratistas_documentos
   FOR SELECT TO authenticated
   USING (
@@ -90,6 +95,7 @@ CREATE POLICY "subcontratistas_documentos: select" ON public.subcontratistas_doc
     )
   );
 
+DROP POLICY IF EXISTS "subcontratistas_documentos: insert" ON public.subcontratistas_documentos;
 CREATE POLICY "subcontratistas_documentos: insert" ON public.subcontratistas_documentos
   FOR INSERT TO authenticated
   WITH CHECK (
@@ -104,6 +110,7 @@ CREATE POLICY "subcontratistas_documentos: insert" ON public.subcontratistas_doc
     )
   );
 
+DROP POLICY IF EXISTS "subcontratistas_documentos: update" ON public.subcontratistas_documentos;
 CREATE POLICY "subcontratistas_documentos: update" ON public.subcontratistas_documentos
   FOR UPDATE TO authenticated
   USING (
@@ -118,6 +125,7 @@ CREATE POLICY "subcontratistas_documentos: update" ON public.subcontratistas_doc
     )
   );
 
+DROP POLICY IF EXISTS "subcontratistas_documentos: delete" ON public.subcontratistas_documentos;
 CREATE POLICY "subcontratistas_documentos: delete" ON public.subcontratistas_documentos
   FOR DELETE TO authenticated
   USING (
