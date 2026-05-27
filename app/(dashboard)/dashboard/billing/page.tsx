@@ -42,6 +42,8 @@ function formatDate(iso: string | null) {
   return new Date(iso).toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' })
 }
 
+const ROLE_ORDER = ['full_access_main', 'full_access_branch', 'colaborador', 'full_viewer', 'colaborador_viewer']
+
 export default async function BillingPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -67,13 +69,13 @@ export default async function BillingPage() {
         id, estado, periodo, trial_ends_at, current_period_start, current_period_end, grace_period_ends_at,
         mp_preapproval_id, mp_status, mp_init_point, card_last4, card_brand,
         past_due_grace_until, plan_id_pendiente, aplicar_cambio_en, motivo_cancelacion, cancelled_at,
-        plans ( id, nombre, slug, precio_mensual_neto, precio_anual_neto, iva_porcentaje, max_colaboradores, precio_extra_seat_neto, tipo )
+        plans ( id, nombre, slug, precio_mensual_neto, precio_anual_neto, iva_porcentaje, max_colaboradores, max_viewers, precio_extra_seat_neto, tipo )
       `)
       .eq('consultora_id', membership.consultora_id)
       .single(),
     admin
       .from('plans')
-      .select('id, nombre, slug, tipo, precio_mensual_neto, precio_anual_neto, iva_porcentaje, max_colaboradores, max_empresas, max_establecimientos, max_gestiones_registros, max_horarios_registros, descripcion_corta, destacado, sort_order, precio_extra_seat_neto, mp_preapproval_plan_id, auto_billing_enabled')
+      .select('id, nombre, slug, tipo, precio_mensual_neto, precio_anual_neto, iva_porcentaje, max_colaboradores, max_viewers, max_empresas, max_establecimientos, max_gestiones_registros, max_horarios_registros, descripcion_corta, destacado, sort_order, precio_extra_seat_neto, mp_preapproval_plan_id, auto_billing_enabled')
       .eq('is_active', true)
       .eq('is_visible', true)
       .order('sort_order', { ascending: true }),
@@ -107,9 +109,23 @@ export default async function BillingPage() {
     id: string; role: string; user_id: string; profiles: { full_name?: string } | null
   }>
 
+  const currentPlan = sub?.plans as unknown as {
+    id: string; nombre: string; slug: string; tipo: string
+    precio_mensual_neto: number | null; precio_anual_neto: number | null; iva_porcentaje: number
+    max_colaboradores: number | null; max_viewers: number | null; precio_extra_seat_neto: number | null
+  } | null
+
+  // Plan seat limits per role
+  const planLimits: Record<string, number | null> = {
+    full_access_main: 1,
+    full_access_branch: null,
+    colaborador: currentPlan?.max_colaboradores ?? null,
+    full_viewer: currentPlan?.max_viewers ?? null,
+    colaborador_viewer: null,
+  }
+
   // Group members by role
   const roleGroups: Record<string, { label: string; members: { full_name: string }[] }> = {}
-  const ROLE_ORDER = ['full_access_main', 'full_access_branch', 'colaborador', 'full_viewer', 'colaborador_viewer']
   for (const m of allMembers) {
     const role = m.role
     if (!roleGroups[role]) {
@@ -123,15 +139,6 @@ export default async function BillingPage() {
     roleGroups[role].members.push({ full_name: name })
   }
 
-  // Define plan seat limits per role
-  const planLimits: Record<string, number | null> = {
-    full_access_main: 1,
-    full_access_branch: null,
-    colaborador: currentPlan?.max_colaboradores ?? 3,
-    full_viewer: 6,
-    colaborador_viewer: null,
-  }
-
   const featuresByPlan: Record<string, Record<string, boolean>> = {}
   for (const pf of planFeatures) {
     if (!featuresByPlan[pf.plan_id]) featuresByPlan[pf.plan_id] = {}
@@ -139,11 +146,6 @@ export default async function BillingPage() {
   }
 
   const estado = sub?.estado as SubscriptionEstado | undefined
-  const currentPlan = sub?.plans as unknown as {
-    id: string; nombre: string; slug: string; tipo: string
-    precio_mensual_neto: number | null; precio_anual_neto: number | null; iva_porcentaje: number
-    max_colaboradores: number | null; precio_extra_seat_neto: number | null
-  } | null
 
   const seatsMax = consultora?.seats_max ?? 0
   const seatsUsed = membersCount as unknown as number
@@ -362,24 +364,55 @@ export default async function BillingPage() {
             </p>
           </div>
 
-          {/* Usuarios por rol */}
+          {/* Usuarios del plan */}
           {currentPlan && (
             <div className="rounded-xl border border-border-subtle p-5 bg-surface-elevated space-y-4">
-              <h2 className="text-base font-semibold text-text-primary">Usuarios del plan</h2>
-              <p className="text-xs text-text-tertiary">
-                Plan <strong>{currentPlan.nombre}</strong>
-              </p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-base font-semibold text-text-primary">Usuarios del plan</h2>
+                  <p className="text-xs text-text-tertiary mt-0.5">
+                    Plan <strong>{currentPlan.nombre}</strong>
+                  </p>
+                </div>
+              </div>
+
+              {/* Summary bar */}
+              <div className="flex flex-wrap gap-3">
+                {ROLE_ORDER.map(role => {
+                  const group = roleGroups[role]
+                  const limit = planLimits[role]
+                  if (limit == null) return null
+                  const count = group?.members.length ?? 0
+                  const label = group?.label
+                    ? group.label.toLowerCase()
+                    : (ROLE_LABELS[role as UserRole] ?? role).toLowerCase()
+                  return (
+                    <div key={role} className="flex items-center gap-1.5 text-sm bg-surface-base px-3 py-1.5 rounded-full border border-border-subtle">
+                      <span className="text-text-secondary">{count}</span>
+                      <span className="text-text-tertiary">/</span>
+                      <span className="font-medium text-text-primary">{limit}</span>
+                      <span className="text-text-tertiary ml-0.5">{label}</span>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Detail per role */}
               <div className="space-y-3">
                 {ROLE_ORDER.map(role => {
                   const group = roleGroups[role]
                   if (!group) return null
                   const limit = planLimits[role]
                   const count = group.members.length
+                  const isOver = limit != null && count > limit
                   return (
                     <div key={role} className="flex items-start gap-3 pb-3 border-b border-border-subtle last:border-0 last:pb-0">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-text-primary">{group.label}</span>
+                          <span className={`text-sm font-medium ${isOver ? 'text-orange-600' : 'text-text-primary'}`}>
+                            {group.label}
+                            {isOver && <span className="ml-1.5 text-xs text-orange-500">(excede el límite)</span>}
+                          </span>
                           <span className="text-sm text-text-secondary">
                             {count}
                             {limit != null ? <span className="text-text-tertiary"> / {limit}</span> : null}
@@ -393,6 +426,9 @@ export default async function BillingPage() {
                               </span>
                             ))}
                           </div>
+                        )}
+                        {count === 0 && limit != null && (
+                          <p className="text-xs text-text-tertiary mt-1 italic">Sin ocupar</p>
                         )}
                       </div>
                     </div>
