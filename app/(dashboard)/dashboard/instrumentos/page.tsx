@@ -4,23 +4,28 @@ import { useState, useEffect, useActionState, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { createClient } from '@/lib/supabase/client'
-import { createInstrumento, deleteInstrumento } from '@/lib/actions/instrumento'
+import { createInstrumento, updateInstrumento, deleteInstrumento } from '@/lib/actions/instrumento'
 import { InstrumentoModal } from '@/components/instrumento-modal'
+import { PersonaSelector } from '@/components/persona-selector'
 import type { InstrumentoMedicion, TipoInstrumentoMedicion, Organizacion, ActionResult } from '@/lib/types'
 
 function InstrumentoForm({
   tipos,
   marcas,
+  instrumento,
   onSuccess,
 }: {
   tipos: TipoInstrumentoMedicion[]
   marcas: Organizacion[]
+  instrumento?: InstrumentoMedicion | null
   onSuccess: () => void
 }) {
+  const action = instrumento ? updateInstrumento : createInstrumento
   const [state, formAction, pending] = useActionState(
-    createInstrumento,
+    action,
     null as ActionResult<null> | null
   )
+  const [dueñoId, setDueñoId] = useState<string | null>(instrumento?.dueño_id ?? null)
   const onSuccessRef = useRef(onSuccess)
   onSuccessRef.current = onSuccess
   useEffect(() => { if (state?.success) onSuccessRef.current() }, [state])
@@ -30,27 +35,32 @@ function InstrumentoForm({
       {state && !state.success && (
         <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3">{state.error}</div>
       )}
+      {instrumento && <input type="hidden" name="id" value={instrumento.id} />}
       <div>
         <label className="text-sm font-medium text-text-secondary block mb-1">Tipo *</label>
-        <select name="tipo_id" required className="w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base">
+        <select name="tipo_id" required defaultValue={instrumento?.tipo_id ?? ''} className="w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base">
           <option value="">Seleccioná un tipo…</option>
           {tipos.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
         </select>
       </div>
       <div>
         <label className="text-sm font-medium text-text-secondary block mb-1">Modelo *</label>
-        <input name="modelo" required className="w-full border border-border-default rounded-lg px-3 py-2 text-sm" placeholder="Ej: Testo 440" />
+        <input name="modelo" required defaultValue={instrumento?.modelo ?? ''} className="w-full border border-border-default rounded-lg px-3 py-2 text-sm" placeholder="Ej: Testo 440" />
       </div>
       <div>
         <label className="text-sm font-medium text-text-secondary block mb-1">Marca</label>
-        <select name="marca_id" className="w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base">
+        <select name="marca_id" defaultValue={instrumento?.marca_id ?? ''} className="w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base">
           <option value="">Sin marca</option>
           {marcas.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
         </select>
       </div>
       <div>
         <label className="text-sm font-medium text-text-secondary block mb-1">Número de serie</label>
-        <input name="numero_serie" className="w-full border border-border-default rounded-lg px-3 py-2 text-sm" placeholder="Ej: SN-12345" />
+        <input name="numero_serie" defaultValue={instrumento?.numero_serie ?? ''} className="w-full border border-border-default rounded-lg px-3 py-2 text-sm" placeholder="Ej: SN-12345" />
+      </div>
+      <div>
+        <label className="text-sm font-medium text-text-secondary block mb-1">Dueño</label>
+        <PersonaSelector name="dueño_id" value={dueñoId} onChange={setDueñoId} placeholder="Buscar persona (dueño del instrumento)…" />
       </div>
       <div className="flex justify-end">
         <Button type="submit" disabled={pending}>{pending ? 'Guardando…' : 'Guardar'}</Button>
@@ -71,7 +81,7 @@ export default function InstrumentosPage() {
     const supabase = createClient()
     supabase
       .from('mediciones_instrumentos')
-      .select('*, mediciones_instrumentos_tipos(nombre), organizaciones_externas(nombre)')
+      .select('*, mediciones_instrumentos_tipos(nombre), organizaciones_externas(nombre), personas_directorio(nombre, apellido)')
       .eq('is_active', true)
       .range(0, 99)
       .order('modelo')
@@ -154,6 +164,7 @@ export default function InstrumentosPage() {
                 <th className="px-5 py-3 text-text-secondary font-medium">Tipo</th>
                 <th className="px-5 py-3 text-text-secondary font-medium">Marca</th>
                 <th className="px-5 py-3 text-text-secondary font-medium">Nro. de serie</th>
+                <th className="px-5 py-3 text-text-secondary font-medium">Dueño</th>
                 <th className="px-5 py-3"></th>
               </tr>
             </thead>
@@ -168,6 +179,7 @@ export default function InstrumentosPage() {
                   </td>
                   <td className="px-5 py-3.5 text-text-secondary">{i.organizaciones_externas?.nombre ?? '—'}</td>
                   <td className="px-5 py-3.5 text-text-secondary">{i.numero_serie ?? '—'}</td>
+                  <td className="px-5 py-3.5 text-text-secondary">{i.personas_directorio ? `${i.personas_directorio.apellido}, ${i.personas_directorio.nombre}` : '—'}</td>
                   <td className="px-5 py-3.5 text-right">
                     <button
                       onClick={e => { e.stopPropagation(); handleDelete(i.id) }}

@@ -98,6 +98,10 @@ export function InstrumentoModal({ instrumento, open, onClose, canWrite }: Instr
                 <p className="text-text-primary">{instrumento.numero_serie}</p>
               </div>
             )}
+            <div>
+              <p className="text-xs text-text-tertiary font-medium mb-0.5">Dueño</p>
+              <p className="text-text-primary">{instrumento.personas_directorio ? `${instrumento.personas_directorio.apellido}, ${instrumento.personas_directorio.nombre}` : '—'}</p>
+            </div>
           </div>
         </div>
       )}

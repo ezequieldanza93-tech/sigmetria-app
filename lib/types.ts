@@ -726,11 +726,13 @@ export interface InstrumentoMedicion {
   marca_id: string | null
   modelo: string
   numero_serie: string | null
+  dueño_id: string | null
   is_active: boolean
   created_at: string
   updated_at: string
   mediciones_instrumentos_tipos?: { nombre: string } | null
   organizaciones_externas?: { nombre: string } | null
+  personas_directorio?: { nombre: string; apellido: string } | null
 }
 
 export interface Matricula {
