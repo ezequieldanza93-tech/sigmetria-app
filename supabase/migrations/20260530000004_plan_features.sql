@@ -2,7 +2,7 @@
 -- Plan Features — Feature flags booleanos por plan
 -- ============================================================
 
-CREATE TABLE public.plan_features (
+CREATE TABLE IF NOT EXISTS public.plan_features (
   id          uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
   plan_id     uuid        NOT NULL REFERENCES public.plans(id) ON DELETE CASCADE,
   feature_key text        NOT NULL,
@@ -14,18 +14,20 @@ CREATE TABLE public.plan_features (
 
 ALTER TABLE public.plan_features ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "plan_features: select" ON public.plan_features;
 CREATE POLICY "plan_features: select"
   ON public.plan_features FOR SELECT
   TO authenticated
   USING (true);
 
+DROP POLICY IF EXISTS "plan_features: all (super_admin)" ON public.plan_features;
 CREATE POLICY "plan_features: all (super_admin)"
   ON public.plan_features FOR ALL
   TO authenticated
   USING (public.is_developer())
   WITH CHECK (public.is_developer());
 
-CREATE INDEX idx_plan_features_plan ON public.plan_features(plan_id);
+CREATE INDEX IF NOT EXISTS idx_plan_features_plan ON public.plan_features(plan_id);
 
 
 -- ============================================================
