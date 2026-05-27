@@ -1,7 +1,6 @@
 'use server'
 
-import { createClient as createServerClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
 import type { ActionResult, Consultora } from '@/lib/types'
 import { revalidatePath } from 'next/cache'
 import { uploadAsset, deleteAsset, pathFromUrl } from '@/lib/storage/upload'
@@ -23,7 +22,7 @@ const inviteConsultoraAdminSchema = z.object({
 })
 
 export async function createConsultora(formData: FormData): Promise<ActionResult<{ id: string }>> {
-  const supabase = await createServerClient()
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
@@ -55,7 +54,7 @@ export async function createConsultora(formData: FormData): Promise<ActionResult
 }
 
 export async function inviteConsultoraAdmin(formData: FormData): Promise<ActionResult<null>> {
-  const supabase = await createServerClient()
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
@@ -108,7 +107,7 @@ export async function updateConsultora(data: {
   logo_url: string | null
   social_links: Record<string, string> | null
 }): Promise<ActionResult<Consultora>> {
-  const supabase = await createServerClient()
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
@@ -129,8 +128,7 @@ export async function updateConsultora(data: {
     return { success: false, error: 'Solo el Admin Principal puede editar la información de la consultora' }
   }
 
-  const admin = createAdminClient()
-  const { data: updated, error } = await admin
+  const { data: updated, error } = await supabase
     .from('consultoras')
     .update({
       nombre: data.nombre,
@@ -154,7 +152,7 @@ export async function updateConsultora(data: {
 export async function uploadConsultoraLogo(
   formData: FormData,
 ): Promise<ActionResult<{ url: string }>> {
-  const supabase = await createServerClient()
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
@@ -192,8 +190,7 @@ export async function uploadConsultoraLogo(
     if (oldPath) await deleteAsset('consultora', oldPath)
   }
 
-  const admin = createAdminClient()
-  await admin
+  await supabase
     .from('consultoras')
     .update({ logo_url: result.url, updated_at: new Date().toISOString() })
     .eq('id', membership.consultora_id)
