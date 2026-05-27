@@ -17,14 +17,14 @@ export function QRPanel({ token, establecimientoId, empresaId, establecimientoNo
   const [origin, setOrigin] = useState('')
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => { setOrigin(window.location.origin) }, [])
 
   const url = origin ? `${origin}/verificar/${currentToken}` : ''
 
   function handleDownload() {
-    const canvas = canvasRef.current
+    const canvas = containerRef.current?.querySelector('canvas')
     if (!canvas) return
     const dataUrl = canvas.toDataURL('image/png')
     const a = document.createElement('a')
@@ -57,9 +57,8 @@ export function QRPanel({ token, establecimientoId, empresaId, establecimientoNo
 
       <div className="flex flex-col items-center gap-3">
         {url ? (
-          <div className="p-3 bg-white rounded-xl border border-border-subtle">
+          <div ref={containerRef} className="p-3 bg-white rounded-xl border border-border-subtle">
             <QRCodeCanvas
-              ref={canvasRef}
               value={url}
               size={180}
               level="M"
