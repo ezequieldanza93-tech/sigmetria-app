@@ -90,15 +90,13 @@ $$;
 
 
 -- ============================================================
--- 3. Triggers en las 8 tablas funcionales
+-- 3. Triggers en las tablas funcionales
 -- Nota: capacitacion_asistentes fue renombrada en 20260522000001
 --       → nombre actual: capacitaciones_asistentes
+-- Nota: empleados y documentos fueron reemplazadas por un modelo
+--       más granular (personas_directorio / establecimientos_documentos)
+--       en migraciones posteriores a 20260514000003 — no se aplican aquí.
 -- ============================================================
-
-DROP TRIGGER IF EXISTS audit_empleados ON public.empleados;
-CREATE TRIGGER audit_empleados
-  AFTER INSERT OR UPDATE OR DELETE ON public.empleados
-  FOR EACH ROW EXECUTE FUNCTION public.fn_audit_trigger();
 
 DROP TRIGGER IF EXISTS audit_siniestros ON public.siniestros;
 CREATE TRIGGER audit_siniestros
@@ -129,12 +127,6 @@ DROP TRIGGER IF EXISTS audit_mediciones ON public.mediciones;
 CREATE TRIGGER audit_mediciones
   AFTER INSERT OR UPDATE OR DELETE ON public.mediciones
   FOR EACH ROW EXECUTE FUNCTION public.fn_audit_trigger();
-
-DROP TRIGGER IF EXISTS audit_documentos ON public.documentos;
-CREATE TRIGGER audit_documentos
-  AFTER INSERT OR UPDATE OR DELETE ON public.documentos
-  FOR EACH ROW EXECUTE FUNCTION public.fn_audit_trigger();
-
 
 -- ============================================================
 -- 4. RLS policies para audit_log
