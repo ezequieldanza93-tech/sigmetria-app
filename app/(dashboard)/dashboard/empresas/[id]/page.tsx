@@ -8,6 +8,7 @@ import { EmpresaDocumentosSection } from '@/components/empresa-documentos-sectio
 import { EmpresaRightPanel } from '@/components/empresa-right-panel'
 import { EmpresaFichaHero } from '@/components/empresa-ficha-hero'
 import { AnalyticsDashboard } from '@/components/analytics/real/analytics-dashboard'
+import { ExportEmpresaButton } from '@/components/export/export-empresa-button'
 import type { DocumentType, Documento } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -227,14 +228,17 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
               )}
             </div>
 
-            {puedeEditar && (
-              <Link
-                href={`/dashboard/empresas/${id}/editar`}
-                className="inline-flex items-center gap-1.5 border border-border-default text-text-tertiary hover:bg-surface-elevated hover:text-text-primary text-xs font-medium px-3 py-2 rounded-lg transition-colors"
-              >
-                Editar información
-              </Link>
-            )}
+            <div className="flex items-center gap-2">
+              {puedeEditar && (
+                <Link
+                  href={`/dashboard/empresas/${id}/editar`}
+                  className="inline-flex items-center gap-1.5 border border-border-default text-text-tertiary hover:bg-surface-elevated hover:text-text-primary text-xs font-medium px-3 py-2 rounded-lg transition-colors"
+                >
+                  Editar información
+                </Link>
+              )}
+              {puedeEditar && <ExportEmpresaButton empresaId={id} />}
+            </div>
 
             <div className="border-t border-border-subtle pt-4">
               <EmpresaDocumentosSection
