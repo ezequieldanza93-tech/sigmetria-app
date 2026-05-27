@@ -5,6 +5,8 @@ import { isMercadoPagoConfigured } from '@/lib/mercadopago/client'
 import { ManualPaymentForm } from './manual-payment-form'
 import { AddOnSeatForm } from './add-on-seat-form'
 import { BillingClient } from './billing-client'
+import { ROLE_LABELS } from '@/lib/types'
+import type { UserRole } from '@/lib/types'
 
 type SubscriptionEstado =
   | 'trialing' | 'trial_view_only' | 'active'
@@ -58,7 +60,7 @@ export default async function BillingPage() {
 
   const admin = createAdminClient()
 
-  const [subResult, plansResult, planFeaturesResult, membersCountResult, consultoraResult] = await Promise.all([
+  const [subResult, plansResult, planFeaturesResult, membersCountResult, consultoraResult, membersResult] = await Promise.all([
     admin
       .from('subscriptions')
       .select(`
@@ -88,6 +90,12 @@ export default async function BillingPage() {
       .select('seats_max, tipo')
       .eq('id', membership.consultora_id)
       .single(),
+    admin
+      .from('consultoras_members')
+      .select('id, role, user_id, profiles(full_name)')
+      .eq('consultora_id', membership.consultora_id)
+      .eq('is_active', true)
+      .order('role'),
   ])
 
   const sub = subResult.data
@@ -95,6 +103,34 @@ export default async function BillingPage() {
   const planFeatures = planFeaturesResult.data ?? []
   const membersCount = membersCountResult.count ?? 0
   const consultora = consultoraResult.data
+  const allMembers = (membersResult.data ?? []) as unknown as Array<{
+    id: string; role: string; user_id: string; profiles: { full_name?: string } | null
+  }>
+
+  // Group members by role
+  const roleGroups: Record<string, { label: string; members: { full_name: string }[] }> = {}
+  const ROLE_ORDER = ['full_access_main', 'full_access_branch', 'colaborador', 'full_viewer', 'colaborador_viewer']
+  for (const m of allMembers) {
+    const role = m.role
+    if (!roleGroups[role]) {
+      const isDev = (m.profiles as any)?.system_role === 'developer'
+      roleGroups[role] = {
+        label: isDev ? 'Developer' : (ROLE_LABELS[m.role as UserRole] ?? m.role),
+        members: [],
+      }
+    }
+    const name = m.profiles?.full_name ?? 'Sin nombre'
+    roleGroups[role].members.push({ full_name: name })
+  }
+
+  // Define plan seat limits per role
+  const planLimits: Record<string, number | null> = {
+    full_access_main: 1,
+    full_access_branch: null,
+    colaborador: currentPlan?.max_colaboradores ?? 3,
+    full_viewer: 6,
+    colaborador_viewer: null,
+  }
 
   const featuresByPlan: Record<string, Record<string, boolean>> = {}
   for (const pf of planFeatures) {
@@ -325,6 +361,46 @@ export default async function BillingPage() {
               Confirmamos manualmente dentro de las 24 hs hábiles.
             </p>
           </div>
+
+          {/* Usuarios por rol */}
+          {currentPlan && (
+            <div className="rounded-xl border border-border-subtle p-5 bg-surface-elevated space-y-4">
+              <h2 className="text-base font-semibold text-text-primary">Usuarios del plan</h2>
+              <p className="text-xs text-text-tertiary">
+                Plan <strong>{currentPlan.nombre}</strong>
+              </p>
+              <div className="space-y-3">
+                {ROLE_ORDER.map(role => {
+                  const group = roleGroups[role]
+                  if (!group) return null
+                  const limit = planLimits[role]
+                  const count = group.members.length
+                  return (
+                    <div key={role} className="flex items-start gap-3 pb-3 border-b border-border-subtle last:border-0 last:pb-0">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-text-primary">{group.label}</span>
+                          <span className="text-sm text-text-secondary">
+                            {count}
+                            {limit != null ? <span className="text-text-tertiary"> / {limit}</span> : null}
+                          </span>
+                        </div>
+                        {count > 0 && (
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {group.members.map((m, i) => (
+                              <span key={i} className="text-xs text-text-tertiary bg-surface-base px-2 py-0.5 rounded-full">
+                                {m.full_name}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>

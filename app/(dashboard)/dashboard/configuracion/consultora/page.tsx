@@ -4,8 +4,11 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { updateConsultora, uploadConsultoraLogo } from '@/lib/actions/consultora'
+import { inviteUsuario } from '@/lib/actions/usuario'
+import { InviteUsuarioForm } from '@/components/forms/invite-usuario-form'
 import NextImage from 'next/image'
-import { Save, Loader2, Building2, Globe, Mail, Phone, Image as LucideImage, Check, Upload, X, Plus } from 'lucide-react'
+import { Save, Loader2, Building2, Globe, Mail, Phone, Image as LucideImage, Check, Upload, X, Plus, UserPlus, Users } from 'lucide-react'
+import { ROLE_LABELS, ROLE_COLORS, UserRole } from '@/lib/types'
 import type { Consultora } from '@/lib/types'
 
 function InstagramIcon() {
@@ -137,6 +140,11 @@ export default function ConsultoraInfoPage() {
   const [newSocialKey, setNewSocialKey] = useState('')
   const [newSocialCustomKey, setNewSocialCustomKey] = useState('')
 
+  const [members, setMembers] = useState<any[]>([])
+  const [showInviteModal, setShowInviteModal] = useState(false)
+  const [isMainAdmin, setIsMainAdmin] = useState(false)
+  const [consultoraId, setConsultoraId] = useState<string | null>(null)
+
   useEffect(() => {
     async function load() {
       const supabase = createClient()
@@ -145,19 +153,27 @@ export default function ConsultoraInfoPage() {
 
       const { data: membership } = await supabase
         .from('consultoras_members')
-        .select('consultora_id')
+        .select('consultora_id, role')
         .eq('user_id', user.id)
         .eq('is_active', true)
         .maybeSingle()
 
       if (!membership) { setLoading(false); return }
 
-      const { data: c } = await supabase
-        .from('consultoras')
-        .select('*')
-        .eq('id', membership.consultora_id)
-        .single()
+      setConsultoraId(membership.consultora_id)
+      setIsMainAdmin(membership.role === 'full_access_main')
 
+      const [cResult, membersResult] = await Promise.all([
+        supabase.from('consultoras').select('*').eq('id', membership.consultora_id).single(),
+        supabase
+          .from('consultoras_members')
+          .select('id, role, is_active, user_id, profiles(full_name, system_role)')
+          .eq('consultora_id', membership.consultora_id)
+          .eq('is_active', true)
+          .order('role'),
+      ])
+
+      const c = cResult.data
       if (c) {
         const consultora = c as unknown as Consultora
         setConsultora(consultora)
@@ -173,6 +189,7 @@ export default function ConsultoraInfoPage() {
         }
         setSocialLinks(merged)
       }
+      setMembers((membersResult.data ?? []) as any[])
       setLoading(false)
     }
     load()
@@ -481,6 +498,98 @@ export default function ConsultoraInfoPage() {
             )
           })()}
         </section>
+
+        {/* Nuestro Equipo */}
+        <section className="bg-surface-elevated rounded-xl border border-border-subtle overflow-hidden">
+          <div className="px-6 py-4 border-b border-border-subtle flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Users size={18} className="text-brand-primary" />
+              <div>
+                <h2 className="text-sm font-semibold text-text-primary">Nuestro Equipo</h2>
+                <p className="text-xs text-text-tertiary mt-0.5">{members.length} miembro{members.length !== 1 ? 's' : ''}</p>
+              </div>
+            </div>
+            {isMainAdmin && (
+              <button
+                onClick={() => setShowInviteModal(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-brand-primary text-white text-xs font-medium rounded-lg hover:bg-brand-primary/90 transition-colors"
+              >
+                <UserPlus size={14} />
+                Agregar miembro
+              </button>
+            )}
+          </div>
+          {members.length === 0 ? (
+            <div className="px-6 py-8 text-center text-text-tertiary text-sm">
+              No hay miembros activos.
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="border-b border-border-subtle bg-surface-sunken">
+                <tr className="text-left">
+                  <th className="px-6 py-3 text-text-tertiary font-medium">Nombre</th>
+                  <th className="px-6 py-3 text-text-tertiary font-medium">Rol</th>
+                  <th className="px-6 py-3 text-text-tertiary font-medium">Nivel sistema</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border-subtle">
+                {members.map((m: any) => {
+                  const p = m.profiles as { full_name?: string; system_role?: string } | null
+                  const isDev = p?.system_role === 'developer'
+                  const displayRole = isDev ? 'developer' : m.role
+                  return (
+                    <tr key={m.id} className="hover:bg-surface-base transition-colors">
+                      <td className="px-6 py-3.5 font-medium text-text-primary">
+                        {p?.full_name ?? 'Sin nombre'}
+                      </td>
+                      <td className="px-6 py-3.5">
+                        <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${ROLE_COLORS[displayRole as keyof typeof ROLE_COLORS] ?? 'bg-surface-elevated text-text-secondary'}`}>
+                          {ROLE_LABELS[m.role as UserRole]}
+                        </span>
+                      </td>
+                      <td className="px-6 py-3.5">
+                        {isDev ? (
+                          <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-purple-100 text-purple-800">
+                            Developer
+                          </span>
+                        ) : (
+                          <span className="text-text-tertiary">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
+        </section>
+
+        {showInviteModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="bg-surface-elevated rounded-xl border border-border-subtle p-6 w-full max-w-md shadow-xl">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-base font-semibold text-text-primary">Agregar miembro</h3>
+                <button onClick={() => setShowInviteModal(false)} className="p-1 text-text-tertiary hover:text-text-primary rounded-lg hover:bg-surface-base">
+                  <X size={16} />
+                </button>
+              </div>
+              <InviteUsuarioForm
+                action={inviteUsuario}
+                onSuccess={() => {
+                  setShowInviteModal(false)
+                  // Reload members
+                  const supabase = createClient()
+                  supabase.from('consultoras_members')
+                    .select('id, role, is_active, user_id, profiles(full_name, system_role)')
+                    .eq('consultora_id', consultoraId!)
+                    .eq('is_active', true)
+                    .order('role')
+                    .then(({ data }) => setMembers((data ?? []) as any[]))
+                }}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Actions */}
         <div className="flex items-center justify-between pt-2">

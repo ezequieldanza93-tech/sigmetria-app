@@ -85,6 +85,32 @@ export async function POST(request: NextRequest) {
     })
 
     if (memberError) return NextResponse.json({ error: memberError.message }, { status: 500 })
+
+    // Sync to personas_directorio as "Usuarios" type
+    const nameParts = full_name.trim().split(/\s+/)
+    const nombre = nameParts[0]
+    const apellido = nameParts.slice(1).join(' ') || nombre
+    const { data: usuarioTipo } = await admin
+      .from('personas_tipos')
+      .select('id')
+      .eq('nombre', 'Usuarios')
+      .maybeSingle()
+    if (usuarioTipo) {
+      const { data: existing } = await admin
+        .from('personas_directorio')
+        .select('id')
+        .eq('email', email)
+        .maybeSingle()
+      if (!existing) {
+        await admin.from('personas_directorio').insert({
+          tipo_id: usuarioTipo.id,
+          nombre,
+          apellido,
+          email,
+          is_active: true,
+        })
+      }
+    }
   }
 
   return NextResponse.json({ success: true })
