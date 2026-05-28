@@ -856,8 +856,6 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
               {saving ? 'Guardando…' : 'Guardar y continuar luego'}
             </Button>
           </div>
-        </div>
-      </div>
     </Modal>
   )
 }
