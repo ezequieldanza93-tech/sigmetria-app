@@ -55,7 +55,9 @@ export default async function ImprimirReportePage({ params }: Props) {
   // ── Datos en paralelo ─────────────────────────────────────────────────────
   const [
     { data: riesgosRaw },
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
     { data: siniestrosRaw },
+
     { data: inspeccionesRaw },
     { data: capacitacionesRaw },
     { data: estDocsRaw },
@@ -81,7 +83,6 @@ export default async function ImprimirReportePage({ params }: Props) {
   const estNombres = new Map(ests.map(e => [e.id, e.nombre]))
 
   const riesgos = (riesgosRaw ?? []) as unknown as Riesgo[]
-  const _siniestros = siniestrosRaw ?? []
   const inspecciones = (inspeccionesRaw ?? []) as unknown as Inspeccion[]
   const capacitaciones = capacitacionesRaw ?? []
 
