@@ -1,9 +1,16 @@
 declare module 'lucide-react' {
   import type { FC, SVGProps } from 'react'
-  export type Icon = FC<SVGProps<SVGSVGElement>>
+
+  interface LucideProps extends SVGProps<SVGSVGElement> {
+    size?: number
+    absoluteStrokeWidth?: boolean
+  }
+
+  export type Icon = FC<LucideProps>
   export type LucideIcon = Icon
   export const Activity: Icon
   export const AlertCircle: Icon
+  export const AlertOctagon: Icon
   export const AlertTriangle: Icon
   export const ArrowLeft: Icon
   export const ArrowRight: Icon
@@ -19,8 +26,10 @@ declare module 'lucide-react' {
   export const Briefcase: Icon
   export const Building2: Icon
   export const Calendar: Icon
+  export const CalendarCheck: Icon
   export const CalendarClock: Icon
   export const CalendarDays: Icon
+  export const CalendarX: Icon
   export const Camera: Icon
   export const Check: Icon
   export const CheckCheck: Icon
@@ -85,6 +94,7 @@ declare module 'lucide-react' {
   export const Network: Icon
   export const PenLine: Icon
   export const Pencil: Icon
+  export const Percent: Icon
   export const Phone: Icon
   export const Play: Icon
   export const Plus: Icon
@@ -118,5 +128,4 @@ declare module 'lucide-react' {
   export const X: Icon
   export const XCircle: Icon
   export const Zap: Icon
-  export const type LucideIcon: Icon
 }

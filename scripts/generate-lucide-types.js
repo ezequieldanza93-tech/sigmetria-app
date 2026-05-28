@@ -16,10 +16,11 @@ function walk(dir) {
     } else if (e.name.endsWith('.tsx') || e.name.endsWith('.ts')) {
       try {
         const content = fs.readFileSync(p, 'utf8');
-        const match = content.match(/import\s*\{([^}]+)\}\s*from\s*['"]lucide-react['"]/);
-        if (match) {
+        const matches = content.matchAll(/import\s*\{([^}]+)\}\s*from\s*['"]lucide-react['"]/g);
+        for (const match of matches) {
           match[1].split(',').forEach(n => {
-            const name = n.trim().replace(/ as \w+$/, '');
+            const raw = n.trim().replace(/ as \w+$/, '');
+            const name = raw.replace(/^type\s+/, '');
             if (name && name !== 'Icon' && name !== 'LucideIcon') {
               icons.add(name);
             }
@@ -34,7 +35,13 @@ walk(srcDir);
 const sorted = [...icons].sort();
 const decl = `declare module 'lucide-react' {
   import type { FC, SVGProps } from 'react'
-  export type Icon = FC<SVGProps<SVGSVGElement>>
+
+  interface LucideProps extends SVGProps<SVGSVGElement> {
+    size?: number
+    absoluteStrokeWidth?: boolean
+  }
+
+  export type Icon = FC<LucideProps>
   export type LucideIcon = Icon
 ${sorted.map(n => '  export const ' + n + ': Icon').join('\n')}
 }
