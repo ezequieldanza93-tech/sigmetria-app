@@ -850,11 +850,12 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
             <Button type="button" onClick={handleFinalizar} disabled={saving}>
               {saving ? 'Guardando…' : 'Finalizar y guardar'}
             </Button>
-            <Button type="button" variant="secondary" onClick={async () => { const ok = await handleSaveDraft(); if (ok) onClose() }} disabled={saving}>
+            <Button type="button" variant="secondary" onClick={handleDraftAndClose} disabled={saving}>
               {saving ? 'Guardando…' : 'Guardar y continuar luego'}
             </Button>
           </div>
         </div>
-      </Modal>
+      </div>
+    </Modal>
   )
 }
