@@ -81,7 +81,7 @@ export default async function ImprimirReportePage({ params }: Props) {
   const estNombres = new Map(ests.map(e => [e.id, e.nombre]))
 
   const riesgos = (riesgosRaw ?? []) as unknown as Riesgo[]
-  const siniestros = siniestrosRaw ?? []
+  const _siniestros = siniestrosRaw ?? []
   const inspecciones = (inspeccionesRaw ?? []) as unknown as Inspeccion[]
   const capacitaciones = capacitacionesRaw ?? []
 
