@@ -55,9 +55,6 @@ export default async function ImprimirReportePage({ params }: Props) {
   // ── Datos en paralelo ─────────────────────────────────────────────────────
   const [
     { data: riesgosRaw },
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-    { data: siniestrosRaw },
-
     { data: inspeccionesRaw },
     { data: capacitacionesRaw },
     { data: estDocsRaw },
@@ -65,9 +62,6 @@ export default async function ImprimirReportePage({ params }: Props) {
   ] = await Promise.all([
     estIds.length > 0
       ? supabase.from('riesgos').select('nivel, descripcion, establecimiento_id, resuelto, fecha_identificacion').in('establecimiento_id', estIds).eq('resuelto', false).order('fecha_identificacion', { ascending: false })
-      : Promise.resolve({ data: [] }),
-    estIds.length > 0
-      ? supabase.from('siniestros').select('estado, tipo, fecha_ocurrencia, establecimiento_id').in('establecimiento_id', estIds).in('estado', ['pendiente', 'en_investigacion']).order('fecha_ocurrencia', { ascending: false })
       : Promise.resolve({ data: [] }),
     estIds.length > 0
       ? supabase.from('inspecciones').select('estado, fecha_realizada, establecimiento_id, observaciones').in('establecimiento_id', estIds).in('estado', ['realizada', 'con_observaciones']).order('fecha_realizada', { ascending: false }).limit(5)
