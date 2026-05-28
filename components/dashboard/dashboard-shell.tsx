@@ -71,13 +71,17 @@ export function DashboardShell({ consultoraId, establecimientos, empresasContent
     <div>
       {/* Tab bar */}
       <div className="flex items-center justify-between mb-6">
-        <div className="flex gap-1">
+        <div role="tablist" aria-label="Vistas del dashboard" className="flex gap-1">
           {TABS.map(t => (
             <button
               key={t.id}
+              role="tab"
+              aria-selected={tab === t.id}
+              aria-controls={`tabpanel-${t.id}`}
+              id={`tab-${t.id}`}
               onClick={() => setTab(t.id)}
               className={cn(
-                'px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors -mb-px border-b-2',
+                'px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors -mb-px border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary',
                 tab === t.id
                   ? 'border-brand-primary text-brand-primary'
                   : 'border-transparent text-text-tertiary hover:text-text-primary hover:border-border-default',
@@ -99,7 +103,7 @@ export function DashboardShell({ consultoraId, establecimientos, empresasContent
       {tab === 'dashboard' && (
         <>
           {configLoading || kpiLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-pulse">
+            <div aria-busy="true" aria-label="Cargando indicadores del dashboard" className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-pulse">
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="h-28 rounded-xl bg-surface-elevated border border-border-subtle" />
               ))}

@@ -50,7 +50,7 @@ export function IncidenteForm({ action, empresas, establecimientos }: IncidenteF
   return (
     <form action={formAction} className="space-y-6">
       {state && !state.success && (
-        <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3">
+        <div role="alert" className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3">
           {state.error}
         </div>
       )}
@@ -144,7 +144,7 @@ export function IncidenteForm({ action, empresas, establecimientos }: IncidenteF
       />
 
       <div>
-        <label className="block text-sm font-medium text-text-secondary mb-2">
+        <label id="fotos-label-incidente" className="block text-sm font-medium text-text-secondary mb-2">
           Fotos
         </label>
         <div className="flex flex-wrap gap-2 mb-2">
@@ -158,9 +158,10 @@ export function IncidenteForm({ action, empresas, establecimientos }: IncidenteF
               <button
                 type="button"
                 onClick={() => handleRemoveFoto(i)}
-                className="absolute top-1 right-1 w-6 h-6 bg-black/50 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                aria-label={`Quitar foto ${i + 1}`}
+                className="absolute top-1 right-1 w-6 h-6 bg-black/50 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100"
               >
-                <X size={14} />
+                <X size={14} aria-hidden="true" />
               </button>
               <span className="absolute bottom-1 left-1 text-[10px] bg-black/50 text-white px-1 rounded truncate max-w-[88px]">
                 {foto.name.length > 15 ? foto.name.slice(0, 12) + '...' : foto.name}

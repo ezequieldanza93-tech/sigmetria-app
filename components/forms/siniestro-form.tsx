@@ -64,14 +64,14 @@ export function SiniestroForm({ action, onSuccess, establecimientoId }: Props) {
   return (
     <form action={formAction} className="space-y-4">
       {state && !state.success && (
-        <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3">
+        <div role="alert" className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3">
           {state.error}
         </div>
       )}
 
       <div>
-        <label className="text-xs text-text-secondary block mb-1">Tipo *</label>
-        <select name="tipo" required className="w-full border border-border-default rounded px-3 py-2 text-sm bg-surface-base">
+        <label htmlFor="siniestro-tipo" className="text-xs text-text-secondary block mb-1">Tipo *</label>
+        <select id="siniestro-tipo" name="tipo" required className="w-full border border-border-default rounded px-3 py-2 text-sm bg-surface-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]">
           <option value="">Seleccioná…</option>
           {SINIESTRO_TIPO_OPTIONS.map(o => (
             <option key={o.value} value={o.value}>{o.label}</option>
@@ -80,9 +80,9 @@ export function SiniestroForm({ action, onSuccess, establecimientoId }: Props) {
       </div>
 
       <div>
-        <label className="text-xs text-text-secondary block mb-1">Tipo de persona</label>
-        <select name="tipo_persona" value={tipoPersona} onChange={e => setTipoPersona(e.target.value)}
-          className="w-full border border-border-default rounded px-3 py-2 text-sm bg-surface-base">
+        <label htmlFor="siniestro-tipo-persona" className="text-xs text-text-secondary block mb-1">Tipo de persona</label>
+        <select id="siniestro-tipo-persona" name="tipo_persona" value={tipoPersona} onChange={e => setTipoPersona(e.target.value)}
+          className="w-full border border-border-default rounded px-3 py-2 text-sm bg-surface-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]">
           {Object.entries(TIPO_PERSONA_SINIESTRO_LABELS).map(([k, v]) => (
             <option key={k} value={k}>{v}</option>
           ))}
@@ -90,8 +90,8 @@ export function SiniestroForm({ action, onSuccess, establecimientoId }: Props) {
       </div>
 
       <div>
-        <label className="text-xs text-text-secondary block mb-1">Persona afectada</label>
-        <select name="persona_id" className="w-full border border-border-default rounded px-3 py-2 text-sm bg-surface-base">
+        <label htmlFor="siniestro-persona-id" className="text-xs text-text-secondary block mb-1">Persona afectada</label>
+        <select id="siniestro-persona-id" name="persona_id" className="w-full border border-border-default rounded px-3 py-2 text-sm bg-surface-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]">
           <option value="">Seleccioná…</option>
           {personas.map(p => (
             <option key={p.id} value={p.id}>{p.apellido}, {p.nombre} {p.dni ? `- DNI: ${p.dni}` : ''}</option>
@@ -135,8 +135,8 @@ export function SiniestroForm({ action, onSuccess, establecimientoId }: Props) {
       </div>
 
       <div>
-        <label className="text-xs text-text-secondary block mb-1">Requiere derivación</label>
-        <select name="requiere_derivacion" className="w-full border border-border-default rounded px-3 py-2 text-sm bg-surface-base">
+        <label htmlFor="siniestro-requiere-derivacion" className="text-xs text-text-secondary block mb-1">Requiere derivación</label>
+        <select id="siniestro-requiere-derivacion" name="requiere_derivacion" className="w-full border border-border-default rounded px-3 py-2 text-sm bg-surface-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]">
           <option value="">No</option>
           <option value="true">Sí</option>
         </select>

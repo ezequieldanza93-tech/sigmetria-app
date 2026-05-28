@@ -114,7 +114,7 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
   return (
     <form ref={formRef} action={formAction} className="space-y-4" noValidate>
       {state && !state.success && state.error && (
-        <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3">
+        <div role="alert" className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3">
           {state.error}
         </div>
       )}
@@ -285,8 +285,9 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
       </div>
 
       <div>
-        <label className="text-sm font-medium text-text-secondary block mb-1">Información general</label>
+        <label htmlFor="empresa-informacion-general" className="text-sm font-medium text-text-secondary block mb-1">Información general</label>
         <textarea
+          id="empresa-informacion-general"
           name="informacion_general"
           defaultValue={fieldValue('informacion_general')}
           rows={3}

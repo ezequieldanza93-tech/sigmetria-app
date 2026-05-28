@@ -76,18 +76,20 @@ export function DocumentoForm({ action, documentTypes, context, onSuccess }: Pro
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
-        <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3">
+        <div role="alert" className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3">
           {error}
         </div>
       )}
 
       <div>
-        <label className="block text-sm font-medium text-text-secondary mb-1">
-          Tipo de Documento <span className="text-danger">*</span>
+        <label htmlFor="doc-tipo" className="block text-sm font-medium text-text-secondary mb-1">
+          Tipo de Documento <span className="text-danger" aria-hidden="true">*</span>
         </label>
         <select
+          id="doc-tipo"
           name="document_type_id"
           required
+          aria-required="true"
           className="w-full border border-border-default rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500"
         >
           <option value="">Seleccionar tipo...</option>
@@ -98,10 +100,11 @@ export function DocumentoForm({ action, documentTypes, context, onSuccess }: Pro
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-text-secondary mb-1">
+        <label htmlFor="doc-fecha-vencimiento" className="block text-sm font-medium text-text-secondary mb-1">
           Fecha de Vencimiento
         </label>
         <input
+          id="doc-fecha-vencimiento"
           name="fecha_vencimiento"
           type="date"
           className="w-full border border-border-default rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500"
@@ -109,14 +112,16 @@ export function DocumentoForm({ action, documentTypes, context, onSuccess }: Pro
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-text-secondary mb-1">
+        <label htmlFor="doc-adjunto" className="block text-sm font-medium text-text-secondary mb-1">
           Adjunto
         </label>
         <input
+          id="doc-adjunto"
           type="file"
           accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp"
           onChange={handleFileChange}
           disabled={uploading}
+          aria-label="Seleccionar archivo adjunto"
           className="w-full text-sm text-text-secondary file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-sig-50 file:text-sig-700 hover:file:bg-sig-100 cursor-pointer"
         />
         {uploading && (

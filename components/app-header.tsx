@@ -427,9 +427,9 @@ export function AppHeader({
                 <button
                   onClick={handleLogout}
                   role="menuitem"
-                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-secondary hover:text-text-primary hover:bg-surface-sunken transition-colors rounded-b-xl"
+                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-secondary hover:text-text-primary hover:bg-surface-sunken transition-colors rounded-b-xl focus-visible:outline-none focus-visible:bg-surface-sunken"
                 >
-                  <LogOut size={16} strokeWidth={1.75} className="text-text-tertiary" />
+                  <LogOut size={16} strokeWidth={1.75} className="text-text-tertiary" aria-hidden="true" />
                   Cerrar sesión
                 </button>
               </div>
@@ -441,14 +441,14 @@ export function AppHeader({
   )
 }
 
-function DropdownItem({ href, icon: Icon, label, role }: { href: string; icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>; label: string; role?: string }) {
+function DropdownItem({ href, icon: Icon, label, role }: { href: string; icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string; 'aria-hidden'?: boolean | 'true' | 'false' }>; label: string; role?: string }) {
   return (
     <Link
       href={href}
       role={role}
-      className="flex items-center gap-2.5 px-4 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-surface-sunken transition-colors"
+      className="flex items-center gap-2.5 px-4 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-surface-sunken transition-colors focus-visible:outline-none focus-visible:bg-surface-sunken"
     >
-      <span className="text-text-tertiary">
+      <span className="text-text-tertiary" aria-hidden="true">
         <Icon size={16} strokeWidth={1.75} />
       </span>
       {label}

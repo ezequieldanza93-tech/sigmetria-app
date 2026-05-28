@@ -409,7 +409,7 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
         )}
 
         {error && (
-          <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3">
+          <div role="alert" className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3">
             {error}
           </div>
         )}
@@ -598,14 +598,16 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleEnviarComentario(e) } }}
               placeholder="Escribí un mensaje…"
               maxLength={2000}
+              aria-label="Escribir mensaje en conversación"
               className="flex-1 rounded-full bg-surface-base border-0 px-4 py-2 text-sm focus:outline-none shadow-sm"
             />
             <button
               type="submit"
               disabled={addingComentario || !nuevoComentario.trim()}
+              aria-label="Enviar mensaje"
               className="w-9 h-9 rounded-full bg-[#075E54] text-white flex items-center justify-center disabled:opacity-40 hover:bg-[#128C7E] transition-colors shrink-0"
             >
-              <Send size={14} />
+              <Send size={14} aria-hidden="true" />
             </button>
           </form>
         </div>
@@ -648,21 +650,23 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
 
             {/* Fecha de cierre */}
             <div>
-              <label className="text-sm font-medium text-text-primary block mb-1">
-                Fecha de cierre <span className="text-danger">*</span>
+              <label htmlFor="cierre-fecha" className="text-sm font-medium text-text-primary block mb-1">
+                Fecha de cierre <span className="text-danger" aria-hidden="true">*</span>
               </label>
               <input
+                id="cierre-fecha"
                 type="date"
                 value={fechaCierre}
                 onChange={e => setFechaCierre(e.target.value)}
                 required
+                aria-required="true"
                 className="w-full border border-border-default rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
               />
             </div>
 
             {/* Responsable de cierre — combobox con búsqueda */}
             <div>
-              <label className="text-sm font-medium text-text-primary block mb-1">
+              <label htmlFor="cierre-responsable-search" className="text-sm font-medium text-text-primary block mb-1">
                 Responsable de cierre
               </label>
 
@@ -719,11 +723,15 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
                 <div className="relative" ref={searchRef}>
                   <div className="flex gap-2">
                     <input
+                      id="cierre-responsable-search"
                       type="search"
                       value={searchQuery}
                       onChange={e => searchPersonas(e.target.value)}
                       onFocus={() => { if (searchResults.length > 0) setDropOpen(true) }}
                       placeholder="Buscá por apellido, nombre o DNI…"
+                      aria-label="Buscar responsable de cierre"
+                      aria-autocomplete="list"
+                      aria-expanded={dropOpen}
                       className="flex-1 border border-border-default rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
                     />
                     <button
@@ -770,14 +778,16 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
 
             {/* Evidencia foto */}
             <div>
-              <label className="text-sm font-medium text-text-primary block mb-1">
+              <label htmlFor="cierre-evidencia-foto" className="text-sm font-medium text-text-primary block mb-1">
                 Foto de evidencia
               </label>
               <input
+                id="cierre-evidencia-foto"
                 type="file"
                 accept=".jpg,.jpeg,.png,.webp"
                 onChange={handleFileChange}
                 disabled={uploading}
+                aria-label="Foto de evidencia de cierre"
                 className="w-full text-sm text-text-tertiary file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-brand-muted file:text-brand-primary hover:file:bg-brand-muted/80 cursor-pointer"
               />
               {uploading && <p className="text-xs text-brand-primary mt-1">Subiendo imagen...</p>}

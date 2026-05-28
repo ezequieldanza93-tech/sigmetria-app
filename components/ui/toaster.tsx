@@ -10,7 +10,10 @@ export function Toaster() {
 
   return (
     <div
-      aria-label="Notificaciones"
+      role="status"
+      aria-label="Notificaciones del sistema"
+      aria-live="polite"
+      aria-atomic="false"
       className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none"
     >
       {toasts.map((toast) => (

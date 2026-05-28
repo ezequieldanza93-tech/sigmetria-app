@@ -159,9 +159,10 @@ export function ChatPanel({ onClose, variant = 'popover', establecimientoId, emp
         {onClose && (
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-text-tertiary hover:text-text-primary hover:bg-surface-elevated transition-colors"
+            aria-label="Cerrar asistente"
+            className="p-1.5 rounded-lg text-text-tertiary hover:text-text-primary hover:bg-surface-elevated transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
           >
-            <X size={18} />
+            <X size={18} aria-hidden="true" />
           </button>
         )}
       </div>
@@ -174,8 +175,13 @@ export function ChatPanel({ onClose, variant = 'popover', establecimientoId, emp
 
         {isLoading && (
           <div className="flex justify-start">
-            <div className="bg-surface-elevated border border-border-subtle rounded-2xl rounded-bl-md px-4 py-3">
-              <Loader2 size={18} className="animate-spin text-text-tertiary" />
+            <div
+              aria-busy="true"
+              aria-label="Sigía está escribiendo"
+              role="status"
+              className="bg-surface-elevated border border-border-subtle rounded-2xl rounded-bl-md px-4 py-3"
+            >
+              <Loader2 size={18} className="animate-spin text-text-tertiary" aria-hidden="true" />
             </div>
           </div>
         )}
@@ -184,7 +190,7 @@ export function ChatPanel({ onClose, variant = 'popover', establecimientoId, emp
         {pendingActions.length > 0 && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-2">
             <div className="flex items-center gap-2 text-amber-700 text-xs font-semibold">
-              <ShieldAlert size={14} />
+              <ShieldAlert size={14} aria-hidden="true" />
               Acciones pendientes de aprobación
             </div>
             {pendingActions.map(action => (
@@ -196,17 +202,19 @@ export function ChatPanel({ onClose, variant = 'popover', establecimientoId, emp
                 <div className="flex gap-1 shrink-0">
                   <button
                     onClick={() => handleApprove(action.id)}
-                    className="p-1 rounded bg-success-bg text-success hover:bg-green-200 transition-colors"
+                    className="p-1 rounded bg-success-bg text-success hover:bg-green-200 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-success"
+                    aria-label="Aprobar acción"
                     title="Aprobar"
                   >
-                    <Check size={14} />
+                    <Check size={14} aria-hidden="true" />
                   </button>
                   <button
                     onClick={() => handleReject(action.id)}
-                    className="p-1 rounded bg-danger-bg text-danger hover:bg-red-200 transition-colors"
+                    className="p-1 rounded bg-danger-bg text-danger hover:bg-red-200 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger"
+                    aria-label="Rechazar acción"
                     title="Rechazar"
                   >
-                    <X size={14} />
+                    <X size={14} aria-hidden="true" />
                   </button>
                 </div>
               </div>
@@ -226,15 +234,17 @@ export function ChatPanel({ onClose, variant = 'popover', establecimientoId, emp
             onKeyDown={handleKeyDown}
             placeholder="Escribí tu mensaje..."
             rows={1}
+            aria-label="Mensaje al asistente"
             className="flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-tertiary resize-none outline-none max-h-32"
           />
           <AudioInput onTranscript={text => setInput(prev => prev + text)} disabled={isLoading} />
           <button
             onClick={handleSend}
             disabled={!input.trim() || isLoading}
-            className="shrink-0 rounded-lg p-2 bg-brand-primary text-white hover:bg-brand-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            aria-label="Enviar mensaje"
+            className="shrink-0 rounded-lg p-2 bg-brand-primary text-white hover:bg-brand-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
           >
-            <Send size={16} />
+            <Send size={16} aria-hidden="true" />
           </button>
         </div>
       </div>

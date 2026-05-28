@@ -19,6 +19,7 @@ const SIZE_CLASSES = {
 
 export function Modal({ open, onClose, title, children, className, size = 'default' }: ModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
+  const titleId = useRef(`modal-title-${Math.random().toString(36).slice(2, 9)}`).current
 
   useEffect(() => {
     const dialog = dialogRef.current
@@ -34,6 +35,7 @@ export function Modal({ open, onClose, title, children, className, size = 'defau
     <dialog
       ref={dialogRef}
       onClose={onClose}
+      aria-labelledby={titleId}
       className={cn(
         'rounded-2xl border border-border-subtle bg-surface-base shadow-[var(--shadow-lg)] p-0 backdrop:bg-black/40 w-[calc(100vw-1rem)]',
         SIZE_CLASSES[size],
@@ -45,10 +47,11 @@ export function Modal({ open, onClose, title, children, className, size = 'defau
     >
       <div className="p-4 sm:p-6">
         <div className="flex items-center justify-between mb-4 sm:mb-5">
-          <h2 className="text-base sm:text-lg font-semibold text-text-primary truncate pr-2">{title}</h2>
+          <h2 id={titleId} className="text-base sm:text-lg font-semibold text-text-primary truncate pr-2">{title}</h2>
           <button
             onClick={onClose}
-            className="text-text-tertiary hover:text-text-primary transition-colors text-xl leading-none"
+            aria-label="Cerrar"
+            className="text-text-tertiary hover:text-text-primary transition-colors text-xl leading-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary rounded"
           >
             &times;
           </button>

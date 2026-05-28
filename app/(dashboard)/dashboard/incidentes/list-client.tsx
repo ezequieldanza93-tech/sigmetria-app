@@ -62,9 +62,10 @@ export function IncidentesListClient({ incidentes }: Props) {
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" aria-hidden="true" />
           <input
-            type="text"
+            type="search"
+            aria-label="Buscar incidentes por título o empresa"
             placeholder="Buscar por título o empresa..."
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(1) }}
@@ -96,7 +97,7 @@ export function IncidentesListClient({ incidentes }: Props) {
       ) : (
         <>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm" aria-label="Listado de incidentes">
               <thead>
                 <tr className="border-b border-border-subtle text-text-tertiary text-xs uppercase tracking-wider">
                   <th className="text-left py-3 px-3 font-medium">Título</th>
@@ -131,8 +132,9 @@ export function IncidentesListClient({ incidentes }: Props) {
                       <Link
                         href={`/dashboard/incidentes/${inc.id}`}
                         className="inline-flex items-center gap-1 text-sm text-brand-primary hover:text-brand-hover"
+                        aria-label={`Ver incidente: ${inc.titulo}`}
                       >
-                        <Eye size={16} />
+                        <Eye size={16} aria-hidden="true" />
                         Ver
                       </Link>
                     </td>

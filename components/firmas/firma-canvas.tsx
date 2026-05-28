@@ -97,6 +97,8 @@ export function FirmaCanvas({ onDataChange, width = 500, height = 200 }: FirmaCa
           ref={canvasRef}
           width={width}
           height={height}
+          role="img"
+          aria-label="Área de firma. Dibujá tu firma con el mouse o con el dedo en dispositivos táctiles."
           onMouseDown={startDrawing}
           onMouseMove={draw}
           onMouseUp={stopDrawing}

@@ -57,9 +57,10 @@ export function DenunciasListClient({ denuncias }: Props) {
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" aria-hidden="true" />
           <input
-            type="text"
+            type="search"
+            aria-label="Buscar denuncias por título o empresa"
             placeholder="Buscar por título o empresa..."
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(1) }}

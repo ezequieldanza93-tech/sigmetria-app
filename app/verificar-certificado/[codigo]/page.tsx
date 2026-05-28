@@ -38,7 +38,7 @@ export default async function VerificarCertificadoPage({
     return (
       <div className="min-h-screen flex items-center justify-center bg-surface-base dark:bg-gray-950 p-4">
         <div className="max-w-md w-full bg-surface-base dark:bg-gray-900 rounded-2xl shadow-lg border border-border-subtle dark:border-gray-800 p-8 text-center space-y-4">
-          <XCircle size={48} className="mx-auto text-danger" />
+          <XCircle size={48} className="mx-auto text-danger" aria-hidden="true" />
           <h1 className="text-xl font-bold text-text-primary dark:text-white">Certificado no válido</h1>
           <p className="text-sm text-text-secondary">
             El código ingresado no corresponde a un certificado válido.
@@ -54,7 +54,7 @@ export default async function VerificarCertificadoPage({
     return (
       <div className="min-h-screen flex items-center justify-center bg-surface-base dark:bg-gray-950 p-4">
         <div className="max-w-md w-full bg-surface-base dark:bg-gray-900 rounded-2xl shadow-lg border border-border-subtle dark:border-gray-800 p-8 text-center space-y-4">
-          <AlertTriangle size={48} className="mx-auto text-amber-500" />
+          <AlertTriangle size={48} className="mx-auto text-amber-500" aria-hidden="true" />
           <h1 className="text-xl font-bold text-text-primary dark:text-white">Certificado no disponible</h1>
           <p className="text-sm text-text-secondary">
             Este certificado no tiene asignación asociada.
@@ -77,23 +77,24 @@ export default async function VerificarCertificadoPage({
             estaVencido ? 'bg-amber-100' : 'bg-success-bg'
           }`}>
             {estaVencido ? (
-              <AlertTriangle size={32} className="text-amber-600" />
+              <AlertTriangle size={32} className="text-amber-600" aria-hidden="true" />
             ) : (
-              <CheckCircle size={32} className="text-success" />
+              <CheckCircle size={32} className="text-success" aria-hidden="true" />
             )}
           </div>
 
           <h1 className={`text-xl font-bold ${
             estaVencido ? 'text-amber-700' : 'text-success'
           }`}>
-            {estaVencido ? '⚠ Certificado expirado' : '✓ Certificado válido'}
+            <span aria-hidden="true">{estaVencido ? '⚠ ' : '✓ '}</span>
+            {estaVencido ? 'Certificado expirado' : 'Certificado válido'}
           </h1>
         </div>
 
         {/* Data */}
         <div className="space-y-4">
           <div className="text-center">
-            <Award size={40} className="mx-auto text-brand-primary mb-2" />
+            <Award size={40} className="mx-auto text-brand-primary mb-2" aria-hidden="true" />
             <p className="text-sm text-text-secondary">Certificado otorgado a</p>
             <p className="text-lg font-bold text-text-primary dark:text-white">
               {personaData?.nombre} {personaData?.apellido}

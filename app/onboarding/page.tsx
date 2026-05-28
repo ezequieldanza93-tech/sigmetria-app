@@ -54,21 +54,29 @@ export default function OnboardingPage() {
         </div>
 
         {/* Stepper */}
-        <div className="flex items-center gap-2 mb-8">
-          <div className={`flex items-center gap-2 flex-1`}>
-            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${step >= 1 ? 'bg-sig-500 text-white' : 'bg-surface-sunken text-text-secondary'}`}>1</div>
-            <span className={`text-sm font-medium ${step === 1 ? 'text-sig-500' : step > 1 ? 'text-text-secondary' : 'text-text-tertiary'}`}>Datos de la Consultora</span>
-          </div>
-          <div className="w-6 h-px bg-gray-300 shrink-0" />
-          <div className={`flex items-center gap-2 flex-1`}>
-            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${step >= 2 ? 'bg-sig-500 text-white' : 'bg-surface-sunken text-text-secondary'}`}>2</div>
-            <span className={`text-sm font-medium ${step === 2 ? 'text-sig-500' : 'text-text-tertiary'}`}>Admin Principal</span>
-          </div>
-        </div>
+        <nav aria-label="Pasos de configuración">
+          <ol className="flex items-center gap-2 mb-8 list-none">
+            <li className="flex items-center gap-2 flex-1">
+              <div
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${step >= 1 ? 'bg-sig-500 text-white' : 'bg-surface-sunken text-text-secondary'}`}
+                aria-current={step === 1 ? 'step' : undefined}
+              >1</div>
+              <span className={`text-sm font-medium ${step === 1 ? 'text-sig-500' : step > 1 ? 'text-text-secondary' : 'text-text-tertiary'}`}>Datos de la Consultora</span>
+            </li>
+            <li className="w-6 h-px bg-gray-300 shrink-0" aria-hidden="true" />
+            <li className="flex items-center gap-2 flex-1">
+              <div
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${step >= 2 ? 'bg-sig-500 text-white' : 'bg-surface-sunken text-text-secondary'}`}
+                aria-current={step === 2 ? 'step' : undefined}
+              >2</div>
+              <span className={`text-sm font-medium ${step === 2 ? 'text-sig-500' : 'text-text-tertiary'}`}>Admin Principal</span>
+            </li>
+          </ol>
+        </nav>
 
         <div className="bg-surface-base rounded-2xl border border-border-subtle p-6">
           {error && (
-            <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3 mb-4">
+            <div role="alert" className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3 mb-4">
               {error}
             </div>
           )}

@@ -42,7 +42,7 @@ export function InspeccionForm({ action, onSuccess }: InspeccionFormProps) {
   return (
     <form action={formAction} className="space-y-4">
       {state && !state.success && (
-        <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3">
+        <div role="alert" className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3">
           {state.error}
         </div>
       )}
@@ -71,8 +71,8 @@ export function InspeccionForm({ action, onSuccess }: InspeccionFormProps) {
       />
 
       <div>
-        <label className="text-xs text-text-secondary block mb-1">Ente regulador</label>
-        <select name="ente_regulador_id" className="w-full border border-border-default rounded px-3 py-2 text-sm bg-surface-base">
+        <label htmlFor="inspeccion-ente" className="text-xs text-text-secondary block mb-1">Ente regulador</label>
+        <select id="inspeccion-ente" name="ente_regulador_id" className="w-full border border-border-default rounded px-3 py-2 text-sm bg-surface-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]">
           <option value="">Seleccioná un ente…</option>
           {entes.map(e => (
             <option key={e.id} value={e.id}>{e.nombre}</option>

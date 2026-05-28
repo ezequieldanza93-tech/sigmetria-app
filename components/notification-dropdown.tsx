@@ -106,8 +106,10 @@ export function NotificationDropdown() {
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(prev => !prev)}
-        className="relative p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors"
-        aria-label="Notificaciones"
+        className="relative p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+        aria-label={notifCount > 0 ? `Notificaciones — ${notifCount} sin leer` : 'Notificaciones'}
+        aria-expanded={open}
+        aria-haspopup="dialog"
         title="Notificaciones"
       >
         <Bell size={18} strokeWidth={1.75} />
@@ -119,7 +121,12 @@ export function NotificationDropdown() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-80 bg-surface-elevated border border-border-subtle rounded-xl shadow-[var(--shadow-lg)] z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+        <div
+          role="dialog"
+          aria-label="Panel de notificaciones"
+          aria-modal="false"
+          className="absolute right-0 top-full mt-2 w-80 bg-surface-elevated border border-border-subtle rounded-xl shadow-[var(--shadow-lg)] z-50 animate-in fade-in slide-in-from-top-2 duration-150"
+        >
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle">
             <div>
@@ -143,7 +150,7 @@ export function NotificationDropdown() {
           {/* List */}
           <div className="max-h-80 overflow-y-auto">
             {loading ? (
-              <div className="space-y-2 p-4">
+              <div aria-busy="true" aria-label="Cargando notificaciones" className="space-y-2 p-4">
                 {[1, 2, 3].map(i => (
                   <div key={i} className="animate-pulse bg-surface-sunken rounded-lg h-16" />
                 ))}
@@ -188,10 +195,11 @@ export function NotificationDropdown() {
                       {!n.leida && (
                         <button
                           onClick={() => handleMarcarLeida(n.id)}
-                          className="shrink-0 p-1 rounded text-text-tertiary hover:text-brand-primary hover:bg-brand-muted transition-colors"
+                          className="shrink-0 p-1 rounded text-text-tertiary hover:text-brand-primary hover:bg-brand-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
                           title="Marcar como leída"
+                          aria-label="Marcar notificación como leída"
                         >
-                          <CheckCheck size={14} />
+                          <CheckCheck size={14} aria-hidden="true" />
                         </button>
                       )}
                     </div>

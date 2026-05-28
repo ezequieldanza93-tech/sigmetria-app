@@ -95,7 +95,7 @@ export function FileUploadInput({
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-xs text-brand-primary hover:text-brand-hover"
             >
-              Ver actual <ExternalLink size={11} />
+              Ver actual <ExternalLink size={11} aria-hidden="true" />
             </a>
           </div>
           <button
@@ -143,7 +143,7 @@ export function FileUploadInput({
           htmlFor={`fileinp_${name}`}
           className="inline-flex items-center gap-2 px-3 py-2 bg-surface-elevated border border-border-default rounded-lg text-sm text-text-primary hover:bg-surface-sunken cursor-pointer transition-colors"
         >
-          <Upload size={16} />
+          <Upload size={16} aria-hidden="true" />
           {showCurrent || showNew ? 'Cambiar archivo' : 'Seleccionar archivo'}
         </label>
         <input

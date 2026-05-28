@@ -80,8 +80,10 @@ export function AlertasBell() {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(v => !v)}
-        className="relative p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors"
-        aria-label={`${totalCount} alertas sin resolver`}
+        className="relative p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+        aria-label={`Alertas SRT — ${totalCount} sin resolver`}
+        aria-expanded={open}
+        aria-haspopup="dialog"
         title="Alertas SRT"
       >
         <BellRing size={18} strokeWidth={1.75} />
@@ -97,7 +99,12 @@ export function AlertasBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-80 rounded-xl border border-border-default bg-surface-default shadow-lg z-50">
+        <div
+          role="dialog"
+          aria-label="Alertas SRT"
+          aria-modal="false"
+          className="absolute right-0 top-full mt-2 w-80 rounded-xl border border-border-default bg-surface-default shadow-lg z-50"
+        >
           <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle">
             <span className="text-sm font-semibold text-text-primary">Alertas SRT</span>
             {totalCount > 0 && (
@@ -115,7 +122,7 @@ export function AlertasBell() {
 
           <div className="divide-y divide-border-subtle max-h-72 overflow-y-auto">
             {loading && (
-              <div className="px-4 py-6 text-center text-sm text-text-tertiary">Cargando...</div>
+              <div aria-busy="true" aria-label="Cargando alertas" className="px-4 py-6 text-center text-sm text-text-tertiary">Cargando...</div>
             )}
             {!loading && alertas.length === 0 && (
               <div className="px-4 py-6 text-center text-sm text-text-tertiary">

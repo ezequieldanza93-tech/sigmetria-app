@@ -92,7 +92,7 @@ export function OrganizacionExternaForm({ action }: Props) {
       <input type="hidden" name="tipo_nombre" value={selectedTipoNombre} />
 
       {state && !state.success && (
-        <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3">
+        <div role="alert" className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3">
           {state.error}
         </div>
       )}
