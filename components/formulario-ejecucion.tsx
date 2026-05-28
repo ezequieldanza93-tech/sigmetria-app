@@ -843,9 +843,7 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
               )}
             </div>
           ))}
-        </div>
-
-        <div className="flex flex-wrap gap-2 sm:gap-3">
+          <div className="flex flex-wrap gap-2 sm:gap-3 pt-2 pb-4 sticky bottom-0 bg-surface-base">
             <Button type="button" variant="secondary" onClick={() => setView('edit')} disabled={saving}>
               Seguir Editando
             </Button>
@@ -856,6 +854,7 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
               {saving ? 'Guardando…' : 'Guardar y continuar luego'}
             </Button>
           </div>
-    </Modal>
+        </div>
+      </Modal>
   )
 }
