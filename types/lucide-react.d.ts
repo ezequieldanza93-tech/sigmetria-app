@@ -1,54 +1,122 @@
 declare module 'lucide-react' {
-  import { FC, SVGProps } from 'react'
+  import type { FC, SVGProps } from 'react'
   export type Icon = FC<SVGProps<SVGSVGElement>>
+  export type LucideIcon = Icon
+  export const Activity: Icon
   export const AlertCircle: Icon
   export const AlertTriangle: Icon
-  export const Info: Icon
-  export const CheckCircle2: Icon
-  export const RefreshCw: Icon
-  export const Loader2: Icon
-  export const BellRing: Icon
-  export const X: Icon
-  export const ChevronDown: Icon
-  export const ChevronUp: Icon
-  export const ChevronLeft: Icon
-  export const ChevronRight: Icon
-  export const Menu: Icon
-  export const Search: Icon
-  export const Plus: Icon
-  export const Minus: Icon
-  export const Edit: Icon
-  export const Trash2: Icon
-  export const Save: Icon
-  export const Settings: Icon
-  export const User: Icon
-  export const Users: Icon
-  export const Building2: Icon
-  export const MapPin: Icon
-  export const Calendar: Icon
-  export const Clock: Icon
-  export const FileText: Icon
-  export const Download: Icon
-  export const Upload: Icon
-  export const Mail: Icon
-  export const Phone: Icon
-  export const ExternalLink: Icon
-  export const MoreHorizontal: Icon
   export const ArrowLeft: Icon
   export const ArrowRight: Icon
+  export const Award: Icon
+  export const BarChart2: Icon
+  export const BarChart3: Icon
+  export const Bell: Icon
+  export const BellRing: Icon
+  export const BookMarked: Icon
+  export const BookOpen: Icon
+  export const Bot: Icon
+  export const Brain: Icon
+  export const Briefcase: Icon
+  export const Building2: Icon
+  export const Calendar: Icon
+  export const CalendarClock: Icon
+  export const CalendarDays: Icon
+  export const Camera: Icon
   export const Check: Icon
-  export const Copy: Icon
+  export const CheckCheck: Icon
+  export const CheckCircle: Icon
+  export const CheckCircle2: Icon
+  export const ChevronDown: Icon
+  export const ChevronLeft: Icon
+  export const ChevronRight: Icon
+  export const ChevronUp: Icon
+  export const ChevronsLeft: Icon
+  export const ChevronsRight: Icon
+  export const Circle: Icon
+  export const ClipboardCheck: Icon
+  export const ClipboardList: Icon
+  export const Clock: Icon
+  export const Code: Icon
+  export const Columns: Icon
+  export const CreditCard: Icon
+  export const Crosshair: Icon
+  export const Database: Icon
+  export const Download: Icon
+  export const Dumbbell: Icon
+  export const ExternalLink: Icon
   export const Eye: Icon
   export const EyeOff: Icon
+  export const File: Icon
+  export const FileCheck: Icon
+  export const FileSignature: Icon
+  export const FileText: Icon
+  export const Gauge: Icon
+  export const Globe: Icon
+  export const GraduationCap: Icon
+  export const Grid3X3: Icon
+  export const GripVertical: Icon
+  export const Heart: Icon
+  export const HelpCircle: Icon
+  export const History: Icon
+  export const Home: Icon
+  export const Image: Icon
+  export const Info: Icon
+  export const Kanban: Icon
+  export const KeyRound: Icon
+  export const Keyboard: Icon
+  export const Layers: Icon
+  export const LayoutDashboard: Icon
+  export const Library: Icon
+  export const Lightbulb: Icon
+  export const List: Icon
+  export const Loader2: Icon
+  export const Lock: Icon
+  export const LogOut: Icon
+  export const Mail: Icon
+  export const Map: Icon
+  export const MapPin: Icon
+  export const Menu: Icon
+  export const MessageSquare: Icon
+  export const MessageSquareWarning: Icon
+  export const Mic: Icon
+  export const MicOff: Icon
+  export const Minus: Icon
+  export const Moon: Icon
+  export const Network: Icon
+  export const PenLine: Icon
+  export const Pencil: Icon
+  export const Phone: Icon
+  export const Play: Icon
+  export const Plus: Icon
+  export const QrCode: Icon
+  export const RefreshCw: Icon
+  export const RotateCcw: Icon
+  export const Save: Icon
+  export const Scale: Icon
+  export const Search: Icon
+  export const Send: Icon
+  export const Settings: Icon
+  export const Settings2: Icon
   export const Shield: Icon
   export const ShieldAlert: Icon
-  export const Award: Icon
-  export const BarChart3: Icon
-  export const PieChart: Icon
+  export const ShieldCheck: Icon
+  export const Sparkles: Icon
+  export const Star: Icon
+  export const Sun: Icon
+  export const Target: Icon
+  export const Trash2: Icon
+  export const TrendingDown: Icon
   export const TrendingUp: Icon
-  export const Activity: Icon
-  export const AlertOctagon: Icon
-  export const AlertTriangleIcon: Icon
-  export const FileSpreadsheet: Icon
-  export const Printer: Icon
+  export const Upload: Icon
+  export const User: Icon
+  export const UserCog: Icon
+  export const UserPlus: Icon
+  export const Users: Icon
+  export const Video: Icon
+  export const Wifi: Icon
+  export const WifiOff: Icon
+  export const X: Icon
+  export const XCircle: Icon
+  export const Zap: Icon
+  export const type LucideIcon: Icon
 }
