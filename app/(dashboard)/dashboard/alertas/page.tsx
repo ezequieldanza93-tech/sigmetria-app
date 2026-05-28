@@ -85,7 +85,7 @@ export default function AlertasPage() {
       .select('id, tipo, severidad, mensaje, resuelta, resuelta_at, created_at, empresas(id, nombre), establecimientos(nombre)')
       .order('resuelta', { ascending: true })
       .order('created_at', { ascending: false })
-    setAlertas((data ?? []) as Alerta[])
+    setAlertas((data ?? []) as unknown as Alerta[])
     setLoading(false)
   }, [])
 
@@ -95,7 +95,7 @@ export default function AlertasPage() {
     async function loadEmpresas() {
       const supabase = createClient()
       const { data } = await supabase.from('empresas').select('id, nombre').order('nombre')
-      setEmpresas((data ?? []) as Empresa[])
+      setEmpresas((data ?? []) as unknown as Empresa[])
     }
     loadEmpresas()
   }, [load])
