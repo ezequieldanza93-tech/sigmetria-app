@@ -3,10 +3,11 @@
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Sun, Moon, Users, UserCog, Network, Gauge, Shield, Settings2, LogOut, Building2, BarChart2, CreditCard, ShieldCheck, CalendarClock, AlertTriangle, Scale, Map, ClipboardList, MessageSquare, Wifi, WifiOff, Download, GraduationCap, BookOpen, Keyboard, Home, BookMarked, FileCheck } from 'lucide-react'
+import { Sun, Moon, Users, UserCog, Network, Gauge, Shield, Settings2, LogOut, Building2, BarChart2, CreditCard, ShieldCheck, CalendarClock, AlertTriangle, Scale, Map, ClipboardList, MessageSquare, Wifi, WifiOff, Download, GraduationCap, BookOpen, Keyboard, Home, BookMarked, FileCheck, KeyRound } from 'lucide-react'
 import { SystemRole, UserRole, ROLE_LABELS, ROLE_COLORS } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 import { NotificationDropdown } from '@/components/notification-dropdown'
+import { AlertasBell } from '@/components/alertas/alertas-bell'
 import { useNetworkStatus } from '@/lib/hooks/use-network-status'
 import { useInstallPrompt } from '@/components/install-pwa'
 import { useShortcutAction } from '@/lib/contexts/shortcuts-context'
@@ -282,6 +283,9 @@ export function AppHeader({
             </button>
           )}
 
+          {/* Alertas SRT bell */}
+          <AlertasBell />
+
           {/* Notification bell with dropdown */}
           <NotificationDropdown />
 
@@ -347,6 +351,9 @@ export function AppHeader({
                   <DropdownItem href="/dashboard/instrumentos" icon={Gauge} label="Instrumentos" role="menuitem" />
                   <DropdownItem href="/dashboard/usuarios" icon={UserCog} label="Usuarios" role="menuitem" />
                   <DropdownItem href="/dashboard/billing" icon={CreditCard} label="Suscripción" role="menuitem" />
+                  {(userRole === 'full_access_main' || isSuperAdmin) && (
+                    <DropdownItem href="/dashboard/configuracion/api-keys" icon={KeyRound} label="API Keys" role="menuitem" />
+                  )}
                 </div>
 
                 {/* Directorio */}

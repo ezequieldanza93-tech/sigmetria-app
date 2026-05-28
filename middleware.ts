@@ -20,6 +20,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
+  // API v1: autenticada por API key (Bearer), no por cookie de sesión
+  if (pathname.startsWith('/api/v1/')) {
+    return NextResponse.next()
+  }
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
