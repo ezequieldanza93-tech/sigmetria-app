@@ -145,6 +145,10 @@ export default function ConsultoraInfoPage() {
   const [isMainAdmin, setIsMainAdmin] = useState(false)
   const [consultoraId, setConsultoraId] = useState<string | null>(null)
 
+  const [autoDownload, setAutoDownload] = useState(true)
+  const [autoDownloadSaved, setAutoDownloadSaved] = useState(false)
+  const [savingAutoDownload, setSavingAutoDownload] = useState(false)
+
   useEffect(() => {
     async function load() {
       const supabase = createClient()
@@ -190,10 +194,40 @@ export default function ConsultoraInfoPage() {
         setSocialLinks(merged)
       }
       setMembers((membersResult.data ?? []) as any[])
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('auto_download_gestion')
+        .eq('id', user.id)
+        .maybeSingle()
+      if (profile) setAutoDownload(profile.auto_download_gestion ?? true)
+
       setLoading(false)
     }
     load()
   }, [router])
+
+  async function handleSaveAutoDownload() {
+    setSavingAutoDownload(true)
+    setAutoDownloadSaved(false)
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const { error: saveErr } = await supabase
+        .from('profiles')
+        .update({ auto_download_gestion: autoDownload })
+        .eq('id', user.id)
+      if (saveErr) {
+        setError(saveErr.message)
+      } else {
+        setAutoDownloadSaved(true)
+        setTimeout(() => setAutoDownloadSaved(false), 3000)
+      }
+    } else {
+      setError('No autenticado')
+    }
+    setSavingAutoDownload(false)
+  }
 
   async function handleSave() {
     setSaving(true)
@@ -354,6 +388,43 @@ export default function ConsultoraInfoPage() {
                 className="w-full rounded-lg border border-border-subtle bg-surface-base pl-9 pr-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition-colors"
               />
             </div>
+          </div>
+        </section>
+
+        {/* Preferencias */}
+        <section className="bg-surface-elevated rounded-xl border border-border-subtle p-6 space-y-4">
+          <h2 className="text-sm font-semibold text-text-primary uppercase tracking-wider">Preferencias Personales</h2>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-text-primary">Descargar PDF automáticamente</p>
+              <p className="text-xs text-text-tertiary">Al finalizar una gestión, descarga el PDF de la evidencia sin preguntar.</p>
+            </div>
+            <div className="flex items-center gap-3">
+              {autoDownloadSaved && (
+                <span className="flex items-center gap-1 text-xs text-success"><Check size={12} />Guardado</span>
+              )}
+              <button
+                type="button"
+                role="switch"
+                aria-checked={autoDownload}
+                onClick={() => setAutoDownload(!autoDownload)}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-brand-primary/30 ${autoDownload ? 'bg-brand-primary' : 'bg-border-subtle'}`}
+              >
+                <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition-transform ${autoDownload ? 'translate-x-5' : 'translate-x-0'}`} />
+              </button>
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <button
+              onClick={handleSaveAutoDownload}
+              disabled={savingAutoDownload}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-primary px-4 py-2 text-xs font-semibold text-white hover:bg-brand-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {savingAutoDownload ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+              {savingAutoDownload ? 'Guardando...' : 'Guardar preferencia'}
+            </button>
           </div>
         </section>
 

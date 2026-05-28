@@ -9,6 +9,7 @@ import type {
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { finalizarFormulario, getOrCreateRespuesta } from '@/lib/actions/formulario-ejecucion'
+import { guardarBorrador } from '@/lib/actions/formulario-ejecucion-guardar'
 import { crearObservaciones } from '@/lib/actions/registro-gestion'
 import { PhotoCanvasEditor } from '@/components/photo-canvas-editor'
 import { FirmaInternaModal } from '@/components/firmas/firma-interna-modal'
@@ -88,6 +89,7 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
   const fotoInputRef = useRef<HTMLInputElement>(null)
   const [savedOk, setSavedOk] = useState(false)
   const [firmarAhora, setFirmarAhora] = useState(false)
+  const [autoDownload, setAutoDownload] = useState(true)
   const obsKeyRef = useRef(0)
   const reviewRef = useRef<HTMLDivElement>(null)
 
@@ -150,6 +152,13 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
       .eq('is_active', true)
       .order('nivel')
       .then(({ data }) => setCategorias((data ?? []) as CategoriaObs[]))
+
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        supabase.from('profiles').select('auto_download_gestion').eq('id', user.id).maybeSingle()
+          .then(({ data }) => setAutoDownload(data?.auto_download_gestion ?? true))
+      }
+    })
   }, [registro.ge_gestion_id, establecimientoId, supabase])
 
   async function ensureRespuesta() {
@@ -164,7 +173,7 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
   }
 
   // ── Submit ─────────────────────────────────────────────────────────
-  async function handleFinalizar(downloadPdf: boolean) {
+  async function handleFinalizar() {
     setSaving(true)
     setError(null)
     try {
@@ -251,7 +260,7 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
         if (!obsResult.success) { setError(obsResult.error); setSaving(false); return }
       }
 
-      if (downloadPdf && result.data.evidencia_url) {
+      if (autoDownload && result.data.evidencia_url) {
         const resp = await fetch(result.data.evidencia_url)
         const blob = await resp.blob()
         const url = URL.createObjectURL(blob)
@@ -271,6 +280,47 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
     } finally {
       setSaving(false)
     }
+  }
+
+  // ── Save draft ──────────────────────────────────────────────────────
+  async function handleSaveDraft(): Promise<boolean> {
+    setSaving(true)
+    setError(null)
+    try {
+      const rid = await ensureRespuesta()
+      const fd = new FormData()
+      fd.set('registro_id', registro.id)
+      fd.set('gestion_id', registro.ge_gestion_id ?? '')
+      fd.set('establecimiento_id', establecimientoId)
+      fd.set('respuesta_id', rid)
+      fd.set('fecha_ejecutada', fechaEjecutada)
+      fd.set('responsable_id', responsableId)
+      fd.set('notas', notas)
+
+      let i = 0
+      for (const [itemId, r] of respuestas) {
+        if (r.answer) {
+          fd.set(`item_${i}_id`, itemId)
+          fd.set(`item_${i}_answer`, r.answer)
+          fd.set(`item_${i}_comment`, r.comment ?? '')
+          i++
+        }
+      }
+
+      const result = await guardarBorrador(null, fd)
+      if (!result.success) { setError(result.error); setSaving(false); return false }
+      return true
+    } catch (err: any) {
+      setError(err?.message ?? 'Error inesperado')
+    } finally {
+      setSaving(false)
+    }
+    return false
+  }
+
+  async function handleSaveAndReview() {
+    await handleSaveDraft()
+    setView('review')
   }
 
   // ── Observaciones helpers per seccion ─────────────────────────────
@@ -690,10 +740,10 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
             <div className="flex flex-wrap gap-2 sm:gap-3">
               <Button
                 type="button"
-                onClick={() => setView('review')}
+                onClick={handleSaveAndReview}
                 disabled={answeredCount === 0 || saving}
               >
-                Revisar Gestion
+                {saving ? 'Guardando…' : 'Guardar y revisar'}
               </Button>
               <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>
                 Cancelar
@@ -795,21 +845,17 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
           ))}
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 pb-4 sticky bottom-0 bg-surface-base">
-          <div className="flex flex-wrap gap-2 sm:gap-3">
+        <div className="flex flex-wrap gap-2 sm:gap-3">
             <Button type="button" variant="secondary" onClick={() => setView('edit')} disabled={saving}>
               Seguir Editando
             </Button>
-            <Button type="button" onClick={() => handleFinalizar(false)} disabled={saving}>
-              {saving ? 'Guardando…' : 'Finalizar y Guardar Gestion'}
+            <Button type="button" onClick={handleFinalizar} disabled={saving}>
+              {saving ? 'Guardando…' : 'Finalizar y guardar'}
             </Button>
-            <Button type="button" variant="secondary" onClick={() => handleFinalizar(true)} disabled={saving}>
-              {saving ? 'Guardando…' : 'Guardar y Descargar'}
+            <Button type="button" variant="secondary" onClick={async () => { const ok = await handleSaveDraft(); if (ok) onClose() }} disabled={saving}>
+              {saving ? 'Guardando…' : 'Guardar y continuar luego'}
             </Button>
           </div>
-          <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>
-            Cancelar
-          </Button>
         </div>
       </div>
     </Modal>

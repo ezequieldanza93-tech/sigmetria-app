@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useActionState, useTransition, useRef, Fragment, memo, useMemo, type FormEvent } from 'react'
+import { useState, useEffect, useActionState, useTransition, useRef, Fragment, memo, useMemo } from 'react'
 import { useQueryClient, useQuery } from '@tanstack/react-query'
 
 import { createClient } from '@/lib/supabase/client'
@@ -549,6 +549,7 @@ function EjecucionModal({
   const [clasificaciones, setClasificaciones] = useState<{ id: string; nombre: string }[]>([])
   const [categorias, setCategorias] = useState<CategoriaObs[]>([])
   const [observaciones, setObservaciones] = useState<ObsDraft[]>([])
+  const [autoDownload, setAutoDownload] = useState(true)
   const obsKeyRef = useRef(0)
 
   const inputCls = 'w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500'
@@ -580,6 +581,12 @@ function EjecucionModal({
       .eq('is_active', true)
       .order('nivel')
       .then(({ data }) => setCategorias((data ?? []) as CategoriaObs[]))
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        supabase.from('profiles').select('auto_download_gestion').eq('id', user.id).maybeSingle()
+          .then(({ data }) => setAutoDownload(data?.auto_download_gestion ?? true))
+      }
+    })
   }, [establecimientoId])
 
   function addObs() {
@@ -601,10 +608,11 @@ function EjecucionModal({
     setObservaciones(prev => prev.map(o => o.key === key ? { ...o, [field]: value } : o))
   }
 
-  function handleSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault()
+  function doSave(callback: () => void) {
     setError(null)
-    const fd = new FormData(e.currentTarget)
+    const form = document.getElementById('ejecucion-form') as HTMLFormElement
+    if (!form) return
+    const fd = new FormData(form)
     startTransition(async () => {
       const result = await ejecutarGestion(null, fd)
       if (!result.success) { setError(result.error); return }
@@ -620,13 +628,35 @@ function EjecucionModal({
         if (!obsResult.success) { setError(obsResult.error); return }
       }
 
+      callback()
+    })
+  }
+
+  function handleSaveAndContinue() {
+    doSave(onSuccess)
+  }
+
+  function handleFinalizar() {
+    doSave(() => {
+      if (autoDownload && registro.evidencia_url) {
+        fetch(registro.evidencia_url).then(r => r.blob()).then(blob => {
+          const url = URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = `${registro.ge_gestion_nombre ?? 'gestion'}.pdf`
+          document.body.appendChild(a)
+          a.click()
+          document.body.removeChild(a)
+          URL.revokeObjectURL(url)
+        }).catch(() => {})
+      }
       onSuccess()
     })
   }
 
   return (
     <Modal open title={registro.ge_gestion_nombre ?? 'Cargar Evidencia'} onClose={onClose}>
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form id="ejecucion-form" className="space-y-4">
         <input type="hidden" name="registro_id" value={registro.id} />
 
         {error && (
@@ -824,15 +854,21 @@ function EjecucionModal({
           )}
         </div>
 
-        <div className="flex gap-3 pt-1">
-          <Button type="submit" disabled={isPending}>{isPending ? 'Guardando…' : 'Guardar'}</Button>
-          <Button type="button" variant="secondary" onClick={onClose}>Cancelar</Button>
+        <div className="flex flex-wrap gap-3 pt-1">
+          <Button type="button" onClick={handleFinalizar} disabled={isPending}>
+            {isPending ? 'Guardando…' : 'Finalizar y guardar'}
+          </Button>
+          <Button type="button" variant="secondary" onClick={handleSaveAndContinue} disabled={isPending}>
+            {isPending ? 'Guardando…' : 'Guardar y continuar luego'}
+          </Button>
+          <Button type="button" variant="secondary" onClick={onClose} disabled={isPending}>
+            Cancelar
+          </Button>
         </div>
       </form>
     </Modal>
   )
 }
-
 
 
 
