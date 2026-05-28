@@ -294,6 +294,7 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
         />
         <p className="text-xs text-text-tertiary mt-1">
           Podés escribir una dirección, pegar una URL de Google Maps, o ingresar coordenadas.
+          Para obtener coordenadas exactas, hacé <strong>click derecho sobre la ubicación en Google Maps</strong> y seleccioná las coordenadas que aparecen.
         </p>
       </div>
 

@@ -509,9 +509,21 @@ export default function ConsultoraInfoPage() {
                       className="w-full rounded-lg border border-border-subtle bg-surface-base pl-9 pr-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition-colors"
                     />
                   </div>
-                  <span className="text-xs text-text-tertiary w-20 text-right shrink-0 select-none">
-                    {config?.label ?? key}
-                  </span>
+                  {value.trim() ? (
+                    <a
+                      href={value.trim()}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs font-medium text-brand-primary hover:text-brand-primary/70 hover:underline w-20 text-right shrink-0 truncate transition-colors"
+                      title={`Abrir ${config?.label ?? key}`}
+                    >
+                      {config?.label ?? key}
+                    </a>
+                  ) : (
+                    <span className="text-xs text-text-tertiary w-20 text-right shrink-0 select-none">
+                      {config?.label ?? key}
+                    </span>
+                  )}
                   {!isDefault && (
                     <button
                       onClick={() => removeSocial(key)}
