@@ -323,6 +323,11 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
     setView('review')
   }
 
+  async function handleDraftAndClose() {
+    const ok = await handleSaveDraft()
+    if (ok) onClose()
+  }
+
   // ── Observaciones helpers per seccion ─────────────────────────────
   function getObs(secId: string): ObsDraft[] {
     return observacionesSeccion.get(secId) ?? []
