@@ -1,0 +1,54 @@
+declare module 'lucide-react' {
+  import { FC, SVGProps } from 'react'
+  export type Icon = FC<SVGProps<SVGSVGElement>>
+  export const AlertCircle: Icon
+  export const AlertTriangle: Icon
+  export const Info: Icon
+  export const CheckCircle2: Icon
+  export const RefreshCw: Icon
+  export const Loader2: Icon
+  export const BellRing: Icon
+  export const X: Icon
+  export const ChevronDown: Icon
+  export const ChevronUp: Icon
+  export const ChevronLeft: Icon
+  export const ChevronRight: Icon
+  export const Menu: Icon
+  export const Search: Icon
+  export const Plus: Icon
+  export const Minus: Icon
+  export const Edit: Icon
+  export const Trash2: Icon
+  export const Save: Icon
+  export const Settings: Icon
+  export const User: Icon
+  export const Users: Icon
+  export const Building2: Icon
+  export const MapPin: Icon
+  export const Calendar: Icon
+  export const Clock: Icon
+  export const FileText: Icon
+  export const Download: Icon
+  export const Upload: Icon
+  export const Mail: Icon
+  export const Phone: Icon
+  export const ExternalLink: Icon
+  export const MoreHorizontal: Icon
+  export const ArrowLeft: Icon
+  export const ArrowRight: Icon
+  export const Check: Icon
+  export const Copy: Icon
+  export const Eye: Icon
+  export const EyeOff: Icon
+  export const Shield: Icon
+  export const ShieldAlert: Icon
+  export const Award: Icon
+  export const BarChart3: Icon
+  export const PieChart: Icon
+  export const TrendingUp: Icon
+  export const Activity: Icon
+  export const AlertOctagon: Icon
+  export const AlertTriangleIcon: Icon
+  export const FileSpreadsheet: Icon
+  export const Printer: Icon
+}

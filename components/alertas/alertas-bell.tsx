@@ -42,7 +42,7 @@ export function AlertasBell() {
         .eq('resuelta', false)
         .limit(5)
 
-      const sorted = ((data ?? []) as AlertaItem[]).sort((a, b) => {
+      const sorted = ((data ?? []) as unknown as AlertaItem[]).sort((a, b) => {
         const order = { critical: 0, warning: 1, info: 2 } as Record<string, number>
         const diff = (order[a.severidad] ?? 3) - (order[b.severidad] ?? 3)
         if (diff !== 0) return diff
