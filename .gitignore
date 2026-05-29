@@ -22,7 +22,6 @@ supabase/.temp/
 auditoria_tablas.xlsx
 
 # Build artifacts
-public/sw.js
 tsconfig.tsbuildinfo
 
 # Archivos locales / sensibles

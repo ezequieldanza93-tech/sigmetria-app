@@ -1,5 +1,4 @@
 import type { NextConfig } from 'next'
-import withSerwistInit from '@serwist/next'
 import withBundleAnalyzer from '@next/bundle-analyzer'
 
 const cspDirectives = [
@@ -19,11 +18,11 @@ const cspDirectives = [
 
 const csp = cspDirectives.join('; ')
 
-const withSerwist = withSerwistInit({
-  swSrc: 'app/sw.ts',
-  swDest: 'public/sw.js',
-  reloadOnOnline: true,
-})
+// Serwist temporarily disabled — see public/sw.js (kill switch SW).
+// Previous Serwist config cached HTML navigations, causing React #418
+// after deploys. The kill switch SW purges everything and unregisters
+// itself; once all browsers have been cleaned, we can reintroduce
+// Serwist with NetworkOnly for navigations.
 
 const nextConfig: NextConfig = {
   transpilePackages: ['recharts'],
@@ -70,4 +69,4 @@ const nextConfig: NextConfig = {
 
 const bundleAnalyzer = withBundleAnalyzer({ enabled: process.env.ANALYZE === 'true' })
 
-export default bundleAnalyzer(withSerwist(nextConfig))
+export default bundleAnalyzer(nextConfig)
