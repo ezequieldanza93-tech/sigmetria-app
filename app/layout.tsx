@@ -87,10 +87,33 @@ const THEME_INIT_SCRIPT = `
 })();
 `.trim()
 
+// SW cleanup: a previous Serwist config cached HTML/JS chunks, causing React #418
+// (hydration mismatch) after deploys. Any browser that still has a SW registered
+// must be cleaned up. This runs before any React code; if a SW is found, it is
+// unregistered, caches are purged, the captured-errors log is cleared, and the
+// page is reloaded fresh.
+const SW_CLEANUP_SCRIPT = `
+(function() {
+  if (!('serviceWorker' in navigator)) return;
+  navigator.serviceWorker.getRegistrations().then(function(regs) {
+    if (!regs || regs.length === 0) return;
+    Promise.all(regs.map(function(r) { return r.unregister(); }))
+      .then(function() { return caches && caches.keys ? caches.keys() : []; })
+      .then(function(names) { return Promise.all((names || []).map(function(n) { return caches.delete(n); })); })
+      .then(function() {
+        try { localStorage.removeItem('__sig_errors__'); } catch (e) {}
+        location.reload();
+      })
+      .catch(function() { location.reload(); });
+  }).catch(function() {});
+})();
+`.trim()
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es-AR" className={`${poppins.variable} ${montserrat.variable}`} suppressHydrationWarning>
       <head suppressHydrationWarning>
+        <script dangerouslySetInnerHTML={{ __html: SW_CLEANUP_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body suppressHydrationWarning className="bg-surface-base text-text-primary antialiased font-body">
