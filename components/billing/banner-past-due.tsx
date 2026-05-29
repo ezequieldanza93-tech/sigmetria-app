@@ -1,7 +1,7 @@
 'use client'
 
 import { AlertTriangle, X } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 
 interface BannerPastDueProps {
@@ -11,12 +11,19 @@ interface BannerPastDueProps {
 
 export function BannerPastDue({ graceUntil, onActualizarMetodo }: BannerPastDueProps) {
   const [dismissed, setDismissed] = useState(false)
+  const [graceDate, setGraceDate] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (graceUntil) {
+      setGraceDate(
+        new Date(graceUntil).toLocaleDateString('es-AR', {
+          day: '2-digit', month: 'long', year: 'numeric', timeZone: 'UTC',
+        })
+      )
+    }
+  }, [graceUntil])
 
   if (dismissed) return null
-
-  const graceDate = graceUntil
-    ? new Date(graceUntil).toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'UTC' })
-    : null
 
   return (
     <div className="bg-orange-50 border-b border-orange-200 px-4 py-3">
