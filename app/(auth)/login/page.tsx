@@ -160,15 +160,14 @@ export default function LoginPage() {
                   </div>
                   <h3 className="text-lg font-semibold text-text-primary">¡Cuenta creada!</h3>
                   <p className="text-sm text-text-secondary">
-                    Te enviamos un email de confirmación. Revisá tu bandeja de entrada
-                    y hacé clic en el enlace para activar tu cuenta.
+                    Tu cuenta está lista. Ya podés iniciar sesión con tu email y contraseña.
                   </p>
                   <button
                     type="button"
                     onClick={() => setMode('login')}
-                    className="text-sm text-brand-primary hover:text-brand-hover font-medium transition-colors"
+                    className="text-sm font-medium text-white bg-brand-primary hover:bg-brand-hover px-4 py-2 rounded-lg transition-colors"
                   >
-                    Volver al inicio de sesión
+                    Iniciar sesión
                   </button>
                 </div>
               ) : (

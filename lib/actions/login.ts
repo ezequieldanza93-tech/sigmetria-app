@@ -3,6 +3,7 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
+import { createServiceClient } from '@/lib/supabase/service'
 
 function buildSupabaseClient(cookieStore: Awaited<ReturnType<typeof cookies>>) {
   return createServerClient(
@@ -33,13 +34,20 @@ export async function signup(
   const cookieStore = await cookies()
   const supabase = buildSupabaseClient(cookieStore)
 
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: { data: { full_name: fullName } },
   })
 
   if (error) return { error: error.message }
+
+  // Auto-confirmar el email — herramienta interna, no necesitamos verificación por link
+  if (data.user) {
+    const service = createServiceClient()
+    await service.auth.admin.updateUserById(data.user.id, { email_confirm: true })
+  }
+
   return { success: true }
 }
 
