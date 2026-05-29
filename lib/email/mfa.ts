@@ -1,6 +1,5 @@
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
 const FROM = 'Sigmetría Seguridad <seguridad@sigmetria.com.ar>'
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.sigmetria.com.ar'
 
@@ -17,6 +16,8 @@ export async function sendMfaCode({
     console.warn('[MFA] RESEND_API_KEY no configurado — email omitido')
     return
   }
+
+  const resend = new Resend(process.env.RESEND_API_KEY)
 
   const digits = code.split('').join(' ')
 
