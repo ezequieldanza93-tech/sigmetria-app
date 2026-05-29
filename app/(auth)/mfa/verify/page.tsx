@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect, useTransition } from 'react'
-import { Mail, Loader2, AlertCircle, RefreshCw, CheckCircle2 } from 'lucide-react'
+import { Mail, Loader2, AlertCircle, RefreshCw, CheckCircle2, LogOut } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 import { sendMfaEmailCode, verifyMfaEmailCode } from '@/lib/actions/mfa-email'
 
 export default function MfaVerifyPage() {
@@ -13,7 +14,16 @@ export default function MfaVerifyPage() {
   const [cooldown, setCooldown] = useState(0)
   const [isSending, startSend] = useTransition()
   const [isVerifying, startVerify] = useTransition()
+  const [isSigningOut, setIsSigningOut] = useState(false)
   const router = useRouter()
+
+  async function handleSignOut() {
+    setIsSigningOut(true)
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push('/login')
+    router.refresh()
+  }
 
   // Envío automático al cargar
   useEffect(() => {
@@ -159,6 +169,22 @@ export default function MfaVerifyPage() {
             </form>
           </>
         )}
+
+        <div className="mt-8 pt-6 border-t border-border-subtle text-center">
+          <button
+            type="button"
+            onClick={handleSignOut}
+            disabled={isSigningOut}
+            className="inline-flex items-center gap-1.5 text-xs text-text-tertiary hover:text-text-primary transition-colors disabled:opacity-50"
+          >
+            {isSigningOut ? (
+              <Loader2 size={12} className="animate-spin" aria-hidden="true" />
+            ) : (
+              <LogOut size={12} aria-hidden="true" />
+            )}
+            Cerrar sesión
+          </button>
+        </div>
       </div>
     </div>
   )
