@@ -14,12 +14,16 @@ function bufToBase64url(buf: ArrayBuffer | Uint8Array): string {
     .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
 }
 
-function base64urlToBuf(b64url: string): Uint8Array {
-  const b64 = b64url.replace(/-/g, '+').replace(/\//g, '/').padEnd(
+function base64urlToBuf(b64url: string): ArrayBuffer {
+  const b64 = b64url.replace(/-/g, '+').replace(/_/g, '/').padEnd(
     b64url.length + (4 - (b64url.length % 4)) % 4,
     '='
   )
-  return Uint8Array.from(atob(b64), c => c.charCodeAt(0))
+  const chars = atob(b64)
+  const buf = new ArrayBuffer(chars.length)
+  const view = new Uint8Array(buf)
+  for (let i = 0; i < chars.length; i++) view[i] = chars.charCodeAt(i)
+  return buf
 }
 
 async function getHmacKey(usage: 'sign' | 'verify'): Promise<CryptoKey> {
