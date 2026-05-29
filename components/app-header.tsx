@@ -48,14 +48,9 @@ export function AppHeader({
   const [tipoLabel, setTipoLabel] = useState<string | null>(null)
   const { isOnline } = useNetworkStatus()
   const { install, isInstalled, canInstall } = useInstallPrompt()
-  const [isDark, setIsDark] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [roleSimOpen, setRoleSimOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    setIsDark(document.documentElement.getAttribute('data-theme') === 'dark')
-  }, [])
 
   // Ctrl+Shift+A → open avatar menu
   useShortcutAction('open-avatar-menu', () => setMenuOpen(true))
@@ -71,8 +66,8 @@ export function AppHeader({
   }, [menuOpen])
 
   function toggleTheme() {
-    const next = isDark ? 'light' : 'dark'
-    setIsDark(!isDark)
+    const current = document.documentElement.getAttribute('data-theme')
+    const next = current === 'dark' ? 'light' : 'dark'
     document.documentElement.setAttribute('data-theme', next)
     document.documentElement.classList.toggle('dark', next === 'dark')
     localStorage.setItem('sigmetria.theme', next)
@@ -311,14 +306,15 @@ export function AppHeader({
             </div>
           )}
 
-          {/* Dark mode toggle */}
+          {/* Dark mode toggle — CSS-only icon swap to avoid hydration mismatch */}
           <button
             onClick={toggleTheme}
             className="p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors"
-            aria-label={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
-            title={isDark ? 'Modo claro' : 'Modo oscuro'}
+            aria-label="Cambiar tema"
+            title="Cambiar tema"
           >
-            {isDark ? <Sun size={18} strokeWidth={1.75} /> : <Moon size={18} strokeWidth={1.75} />}
+            <Sun size={18} strokeWidth={1.75} className="hidden dark:inline-block" />
+            <Moon size={18} strokeWidth={1.75} className="inline-block dark:hidden" />
           </button>
 
           {/* Avatar + admin menu dropdown */}

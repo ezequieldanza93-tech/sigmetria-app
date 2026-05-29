@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useId, useRef } from 'react'
 import { cn } from '@/lib/utils'
 
 interface ModalProps {
@@ -19,7 +19,7 @@ const SIZE_CLASSES = {
 
 export function Modal({ open, onClose, title, children, className, size = 'default' }: ModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
-  const titleId = useRef(`modal-title-${Math.random().toString(36).slice(2, 9)}`).current
+  const titleId = useId()
 
   useEffect(() => {
     const dialog = dialogRef.current
