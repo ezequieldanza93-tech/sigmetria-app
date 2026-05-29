@@ -28,6 +28,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useNavigationLevel } from '@/lib/hooks/use-navigation-level'
 import { cn } from '@/lib/utils'
 import { UserRole, SystemRole } from '@/lib/types'
+import { RoleSwitcher } from '@/components/layout/role-switcher'
 
 interface FloatingAvatarProps {
   fullName: string
@@ -43,7 +44,7 @@ export function FloatingAvatar({
   email,
   consultoraNombre,
   userRole,
-  systemRole: _systemRole,
+  systemRole,
   isSuperAdmin = false,
 }: FloatingAvatarProps) {
   const router = useRouter()
@@ -132,6 +133,12 @@ export function FloatingAvatar({
               </p>
             )}
           </div>
+
+          <RoleSwitcher
+            currentRole={userRole}
+            systemRole={systemRole}
+            isSuperAdmin={isSuperAdmin}
+          />
 
           {/* Menu items — same structure as AppHeader */}
           <div className="max-h-[60vh] overflow-y-auto">

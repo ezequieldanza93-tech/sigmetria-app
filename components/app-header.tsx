@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { Sun, Moon, Users, UserCog, Network, Gauge, Shield, Settings2, LogOut, Building2, BarChart2, CreditCard, ShieldCheck, CalendarClock, AlertTriangle, Scale, Map, ClipboardList, MessageSquare, Wifi, WifiOff, Download, GraduationCap, BookOpen, Keyboard, Home, BookMarked, FileCheck, KeyRound } from 'lucide-react'
 import { SystemRole, UserRole, ROLE_LABELS, ROLE_COLORS } from '@/lib/types'
+import { RoleSwitcher } from '@/components/layout/role-switcher'
 import { createClient } from '@/lib/supabase/client'
 import { NotificationDropdown } from '@/components/notification-dropdown'
 import { AlertasBell } from '@/components/alertas/alertas-bell'
@@ -341,6 +342,12 @@ export function AppHeader({
                   <p className="text-sm font-medium text-text-primary truncate">{fullName}</p>
                   <p className="text-xs text-text-tertiary truncate">{email}</p>
                 </div>
+
+                <RoleSwitcher
+                  currentRole={userRole}
+                  systemRole={systemRole}
+                  isSuperAdmin={isSuperAdmin}
+                />
 
                 {/* Consultora */}
                 <div className="py-1 border-b border-border-subtle">
