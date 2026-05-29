@@ -5,7 +5,7 @@ import type { UserRole } from '@/lib/types'
 
 export type SwitchableRole = UserRole | 'developer'
 
-export const ROLE_SIM_COOKIE = '__role_sim'
+const ROLE_SIM_COOKIE = '__role_sim'
 
 export async function switchRole(newRole: SwitchableRole): Promise<void> {
   const cookieStore = await cookies()
