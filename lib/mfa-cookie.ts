@@ -8,8 +8,9 @@
 export const MFA_COOKIE_NAME = 'mfa_verified'
 export const MFA_COOKIE_TTL_MS = 24 * 60 * 60 * 1000 // 24 horas
 
-function bufToBase64url(buf: ArrayBuffer): string {
-  return btoa(String.fromCharCode(...new Uint8Array(buf)))
+function bufToBase64url(buf: ArrayBuffer | Uint8Array): string {
+  const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf)
+  return btoa(String.fromCharCode(...bytes))
     .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
 }
 
