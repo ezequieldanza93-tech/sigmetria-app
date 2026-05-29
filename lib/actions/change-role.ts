@@ -7,7 +7,7 @@ import type { UserRole } from '@/lib/types'
 
 export type SwitchableRole = UserRole | 'developer'
 
-export async function switchRole(newRole: SwitchableRole) {
+export async function switchRole(newRole: SwitchableRole): Promise<{ error: string } | never> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autenticado' }
@@ -25,13 +25,38 @@ export async function switchRole(newRole: SwitchableRole) {
   const service = createServiceClient()
 
   if (newRole === 'developer') {
-    await service.from('profiles').update({ system_role: 'developer' }).eq('id', user.id)
+    const { error } = await service
+      .from('profiles')
+      .update({ system_role: 'developer' })
+      .eq('id', user.id)
+    if (error) return { error: error.message }
   } else {
-    await service.from('profiles').update({ system_role: 'user' }).eq('id', user.id)
-    await service.from('consultoras_members')
-      .update({ role: newRole })
+    // Verificar que existe una membresía activa
+    const { data: membership } = await supabase
+      .from('consultoras_members')
+      .select('id')
       .eq('user_id', user.id)
       .eq('is_active', true)
+      .maybeSingle()
+
+    if (!membership) {
+      return { error: 'No tenés una membresía activa. Pedile al administrador que te asigne a una consultora.' }
+    }
+
+    // Si era developer, volver a system_role: 'user' antes de testear el rol
+    if (profile?.system_role === 'developer') {
+      const { error } = await service
+        .from('profiles')
+        .update({ system_role: 'user' })
+        .eq('id', user.id)
+      if (error) return { error: error.message }
+    }
+
+    const { error } = await service
+      .from('consultoras_members')
+      .update({ role: newRole })
+      .eq('id', membership.id)
+    if (error) return { error: error.message }
   }
 
   redirect('/dashboard')

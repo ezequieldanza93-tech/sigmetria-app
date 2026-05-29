@@ -32,6 +32,7 @@ interface RoleSwitcherProps {
 export function RoleSwitcher({ currentRole, systemRole, isSuperAdmin }: RoleSwitcherProps) {
   const [open, setOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
+  const [switchError, setSwitchError] = useState<string | null>(null)
 
   const canSwitch = isSuperAdmin || systemRole === 'developer'
   const effectiveRole: SwitchableRole = systemRole === 'developer' ? 'developer' : (currentRole ?? 'full_viewer')
@@ -39,7 +40,11 @@ export function RoleSwitcher({ currentRole, systemRole, isSuperAdmin }: RoleSwit
 
   function handleSwitch(role: SwitchableRole) {
     if (role === effectiveRole) return
-    startTransition(async () => { await switchRole(role) })
+    setSwitchError(null)
+    startTransition(async () => {
+      const result = await switchRole(role)
+      if (result?.error) setSwitchError(result.error)
+    })
   }
 
   return (
@@ -74,6 +79,10 @@ export function RoleSwitcher({ currentRole, systemRole, isSuperAdmin }: RoleSwit
           )}
         </div>
       </button>
+
+      {switchError && (
+        <p className="px-4 pb-2 text-[11px] text-danger leading-snug">{switchError}</p>
+      )}
 
       {open && canSwitch && (
         <div className="bg-surface-sunken pb-1">
