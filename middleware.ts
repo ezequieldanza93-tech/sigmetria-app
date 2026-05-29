@@ -1,5 +1,6 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { verifyMfaCookie, MFA_COOKIE_NAME } from '@/lib/mfa-cookie'
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -46,8 +47,43 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  const isLoginPage = pathname.startsWith('/login')
+  // ── MFA enforcement por email — Art. 4.5 Res. SRT 48/2025 ───────────────
+  // Segundo factor via OTP por email. Sin app externa requerida.
+  // Roles obligatorios: full_access_main, responsable_estandares
+  // Cookie mfa_verified: HMAC firmada (MFA_COOKIE_SECRET), TTL 24h
   const isMfaPage = pathname.startsWith('/mfa/')
+
+  if (user && !pathname.startsWith('/login')) {
+    const mfaCookieValue = request.cookies.get(MFA_COOKIE_NAME)?.value
+    const isMfaVerified = mfaCookieValue
+      ? await verifyMfaCookie(mfaCookieValue, user.id).catch(() => false)
+      : false
+
+    // Ya verificado — no necesita estar en página MFA
+    if (isMfaPage && isMfaVerified) {
+      return NextResponse.redirect(new URL('/dashboard', request.url))
+    }
+
+    if (!isMfaPage && !isMfaVerified) {
+      try {
+        const { data: member } = await supabase
+          .from('consultoras_members')
+          .select('role')
+          .eq('user_id', user.id)
+          .eq('is_active', true)
+          .maybeSingle()
+
+        if (member && ['full_access_main', 'responsable_estandares'].includes(member.role)) {
+          return NextResponse.redirect(new URL('/mfa/verify', request.url))
+        }
+      } catch {
+        // Si la consulta falla, no bloqueamos el acceso
+      }
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const isLoginPage = request.nextUrl.pathname.startsWith('/login')
 
   if (!user && !isLoginPage) {
     return NextResponse.redirect(new URL('/login', request.url))
@@ -55,41 +91,6 @@ export async function middleware(request: NextRequest) {
 
   if (user && isLoginPage) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
-  }
-
-  // MFA enforcement — Control A2, Res. SRT 48/2025
-  // SETUP MANUAL: Supabase Dashboard → Authentication → MFA → Enable TOTP
-  // Roles obligatorios: full_access_main, responsable_estandares
-  if (user) {
-    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
-
-    if (aal) {
-      const { currentLevel, nextLevel } = aal
-
-      // Ya verificado en esta sesión → salir de páginas MFA
-      if (isMfaPage && currentLevel === 'aal2') {
-        return NextResponse.redirect(new URL('/dashboard', request.url))
-      }
-
-      if (!isMfaPage) {
-        // Factor TOTP enrollado pero no verificado en esta sesión → forzar verify
-        if (nextLevel === 'aal2' && currentLevel === 'aal1') {
-          return NextResponse.redirect(new URL('/mfa/verify', request.url))
-        }
-
-        // Sin factores enrollados → consultar si el rol requiere MFA → forzar setup
-        if (nextLevel === 'aal1') {
-          try {
-            const { data: mfaRequired } = await supabase.rpc('requires_mfa')
-            if (mfaRequired) {
-              return NextResponse.redirect(new URL('/mfa/setup', request.url))
-            }
-          } catch {
-            // Si la consulta falla, no bloqueamos el acceso
-          }
-        }
-      }
-    }
   }
 
   return supabaseResponse

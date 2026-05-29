@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
+import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { Shield, ShieldCheck, ShieldAlert } from 'lucide-react'
-import Link from 'next/link'
+import { Shield, ShieldCheck, Mail } from 'lucide-react'
+import { verifyMfaCookie, MFA_COOKIE_NAME } from '@/lib/mfa-cookie'
 
 export const metadata = {
   title: 'Seguridad — Sigmetría HyS',
@@ -14,8 +15,13 @@ export default async function SeguridadPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: factors }, { data: member }] = await Promise.all([
-    supabase.auth.mfa.listFactors(),
+  const cookieStore = await cookies()
+  const mfaCookieValue = cookieStore.get(MFA_COOKIE_NAME)?.value
+
+  const [isMfaVerified, { data: member }] = await Promise.all([
+    mfaCookieValue
+      ? verifyMfaCookie(mfaCookieValue, user.id).catch(() => false)
+      : Promise.resolve(false),
     supabase
       .from('consultoras_members')
       .select('role')
@@ -24,7 +30,6 @@ export default async function SeguridadPage() {
       .maybeSingle(),
   ])
 
-  const activeFactor = factors?.totp?.find(f => f.status === 'verified') ?? null
   const requiresMfa = member ? MFA_REQUIRED_ROLES.includes(member.role) : false
 
   return (
@@ -40,82 +45,68 @@ export default async function SeguridadPage() {
         <div className="px-5 py-4 border-b border-border-subtle bg-surface-elevated">
           <h2 className="text-sm font-semibold text-text-primary">Verificación en dos pasos (2FA)</h2>
           <p className="text-xs text-text-tertiary mt-0.5">
-            Protección adicional con una app autenticadora (Google Authenticator, Authy, etc.)
+            Segundo factor de autenticación via código por email. Res. SRT 48/2025 Art. 4.5.
           </p>
         </div>
 
         <div className="px-5 py-5">
-          {activeFactor ? (
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-start gap-3">
-                <div className="mt-0.5 flex-shrink-0 w-8 h-8 bg-green-100 dark:bg-green-950 rounded-full flex items-center justify-center" aria-hidden="true">
-                  <ShieldCheck size={16} className="text-green-600 dark:text-green-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-text-primary">Verificación en dos pasos activa</p>
-                  <p className="text-xs text-text-tertiary mt-0.5">
-                    Tu cuenta está protegida con autenticación TOTP.
-                  </p>
-                  {requiresMfa && (
-                    <span className="inline-flex items-center gap-1 mt-2 text-xs text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/50 px-2 py-0.5 rounded-full">
-                      <Shield size={10} aria-hidden="true" />
-                      Requerido para tu rol
-                    </span>
-                  )}
-                </div>
-              </div>
-              <Link
-                href="/mfa/setup"
-                className="text-xs font-medium text-text-tertiary hover:text-text-primary border border-border-default px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
-              >
-                Reconfigurar
-              </Link>
+          <div className="flex items-start gap-3">
+            <div
+              className={`mt-0.5 flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+                requiresMfa
+                  ? 'bg-green-100 dark:bg-green-950'
+                  : 'bg-surface-elevated'
+              }`}
+              aria-hidden="true"
+            >
+              {requiresMfa ? (
+                <ShieldCheck size={16} className="text-green-600 dark:text-green-400" />
+              ) : (
+                <Shield size={16} className="text-text-tertiary" />
+              )}
             </div>
-          ) : (
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-start gap-3">
-                <div className="mt-0.5 flex-shrink-0 w-8 h-8 bg-yellow-100 dark:bg-yellow-950 rounded-full flex items-center justify-center" aria-hidden="true">
-                  <ShieldAlert size={16} className="text-yellow-600 dark:text-yellow-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-text-primary">
-                    Verificación en dos pasos no configurada
-                  </p>
-                  <p className="text-xs text-text-tertiary mt-0.5">
-                    {requiresMfa
-                      ? 'Tu rol requiere 2FA obligatorio. Configuralo para acceder al sistema.'
-                      : 'Activar 2FA protege tu cuenta ante accesos no autorizados.'}
-                  </p>
-                  {requiresMfa && (
-                    <span className="inline-flex items-center gap-1 mt-2 text-xs text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/50 px-2 py-0.5 rounded-full">
-                      <ShieldAlert size={10} aria-hidden="true" />
-                      Obligatorio para tu rol
-                    </span>
-                  )}
-                </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-text-primary">
+                {requiresMfa
+                  ? 'Verificación en dos pasos activa'
+                  : 'Verificación en dos pasos no requerida'}
+              </p>
+              <p className="text-xs text-text-tertiary mt-0.5">
+                {requiresMfa
+                  ? 'Tu rol requiere un código de verificación por email al iniciar sesión.'
+                  : 'Tu rol actual no requiere verificación adicional.'}
+              </p>
+
+              <div className="flex flex-wrap gap-2 mt-3">
+                {requiresMfa && (
+                  <span className="inline-flex items-center gap-1 text-xs text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/50 px-2 py-0.5 rounded-full">
+                    <Shield size={10} aria-hidden="true" />
+                    Obligatorio para tu rol
+                  </span>
+                )}
+                <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${
+                  isMfaVerified
+                    ? 'text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/50'
+                    : 'text-text-tertiary bg-surface-elevated border border-border-subtle'
+                }`}>
+                  <Mail size={10} aria-hidden="true" />
+                  {isMfaVerified ? 'Sesión verificada' : 'Sin verificar en esta sesión'}
+                </span>
               </div>
-              <Link
-                href="/mfa/setup"
-                className="text-xs font-medium text-white bg-brand-primary hover:bg-brand-hover px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
-              >
-                Configurar ahora
-              </Link>
             </div>
-          )}
+          </div>
         </div>
       </div>
 
       <div className="text-xs text-text-tertiary bg-surface-elevated border border-border-subtle rounded-lg px-4 py-3 space-y-1.5">
-        <p className="font-medium text-text-secondary">¿Qué es la verificación en dos pasos?</p>
+        <p className="font-medium text-text-secondary">¿Cómo funciona?</p>
         <p>
-          Agrega una capa extra de seguridad a tu cuenta. Además de tu contraseña,
-          necesitás ingresar un código temporal generado por tu app autenticadora
-          cada vez que iniciás sesión.
+          Al iniciar sesión, el sistema te envía automáticamente un código de 6 dígitos
+          a tu email registrado. El código es válido por 10 minutos y de uso único.
         </p>
         <p>
-          Apps compatibles: <strong className="text-text-primary">Google Authenticator</strong>,{' '}
-          <strong className="text-text-primary">Authy</strong>,{' '}
-          <strong className="text-text-primary">Microsoft Authenticator</strong>.
+          Una vez verificado, la sesión queda activa por <strong className="text-text-primary">24 horas</strong>{' '}
+          sin necesidad de volver a ingresar el código.
         </p>
       </div>
     </div>
