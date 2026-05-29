@@ -46,6 +46,50 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
+  // ── MFA enforcement — Art. 4.5 Res. SRT 48/2025 ──────────────────────────
+  // SETUP MANUAL REQUERIDO: Supabase Dashboard → Authentication → MFA → Enable TOTP
+  // Roles obligatorios: full_access_main, responsable_estandares
+  const isMfaPage = pathname.startsWith('/mfa/')
+
+  if (user && !pathname.startsWith('/login')) {
+    const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+
+    if (aalData) {
+      const { currentLevel, nextLevel } = aalData
+
+      // Ya verificado en esta sesión — no necesita estar en página MFA
+      if (isMfaPage && currentLevel === 'aal2') {
+        return NextResponse.redirect(new URL('/dashboard', request.url))
+      }
+
+      if (!isMfaPage) {
+        // Tiene factor configurado pero no verificado en esta sesión
+        if (nextLevel === 'aal2' && currentLevel === 'aal1') {
+          return NextResponse.redirect(new URL('/mfa/verify', request.url))
+        }
+
+        // Sin factor configurado → verificar si el rol lo exige
+        if (currentLevel === 'aal1' && nextLevel === 'aal1') {
+          try {
+            const { data: member } = await supabase
+              .from('consultoras_members')
+              .select('role')
+              .eq('user_id', user.id)
+              .eq('is_active', true)
+              .maybeSingle()
+
+            if (member && ['full_access_main', 'responsable_estandares'].includes(member.role)) {
+              return NextResponse.redirect(new URL('/mfa/setup', request.url))
+            }
+          } catch {
+            // Si la consulta falla, no bloqueamos el acceso
+          }
+        }
+      }
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   const isLoginPage = request.nextUrl.pathname.startsWith('/login')
 
   if (!user && !isLoginPage) {

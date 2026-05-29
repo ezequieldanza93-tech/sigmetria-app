@@ -420,6 +420,7 @@ export function AppHeader({
 
                 {/* Ayuda */}
                 <div className="py-1 border-t border-border-subtle">
+                  <DropdownItem href="/dashboard/configuracion/seguridad" icon={ShieldCheck} label="Seguridad" role="menuitem" />
                   <DropdownItem href="/dashboard/tutoriales" icon={BookMarked} label="Tutoriales de Uso" role="menuitem" />
                   <DropdownItem href="/dashboard/atajos" icon={Keyboard} label="Atajos de teclado" role="menuitem" />
                 </div>
