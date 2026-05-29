@@ -29,6 +29,7 @@ import { useNavigationLevel } from '@/lib/hooks/use-navigation-level'
 import { cn } from '@/lib/utils'
 import { UserRole, SystemRole } from '@/lib/types'
 import { RoleSwitcher } from '@/components/layout/role-switcher'
+import { type SwitchableRole } from '@/lib/actions/change-role'
 
 interface FloatingAvatarProps {
   fullName: string
@@ -37,6 +38,7 @@ interface FloatingAvatarProps {
   userRole: UserRole | null
   systemRole: SystemRole
   isSuperAdmin?: boolean
+  simulatedRole?: SwitchableRole | null
 }
 
 export function FloatingAvatar({
@@ -46,10 +48,12 @@ export function FloatingAvatar({
   userRole,
   systemRole,
   isSuperAdmin = false,
+  simulatedRole = null,
 }: FloatingAvatarProps) {
   const router = useRouter()
   const { level } = useNavigationLevel()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [roleSimOpen, setRoleSimOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
   // Only show on mobile/tablet, hidden at consultora level
@@ -138,6 +142,9 @@ export function FloatingAvatar({
             currentRole={userRole}
             systemRole={systemRole}
             isSuperAdmin={isSuperAdmin}
+            simulatedRole={simulatedRole}
+            open={roleSimOpen}
+            onOpenChange={setRoleSimOpen}
           />
 
           {/* Menu items — same structure as AppHeader */}

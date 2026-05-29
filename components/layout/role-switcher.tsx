@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { ChevronDown, Check, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { type UserRole, type SystemRole } from '@/lib/types'
@@ -14,55 +15,66 @@ interface RoleEntry {
 }
 
 const ROLES: RoleEntry[] = [
-  { value: 'developer',             label: 'Developer',            description: 'Acceso total + herramientas dev',   color: 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300' },
-  { value: 'full_access_main',      label: 'Admin Principal',      description: 'Gestión completa + usuarios',        color: 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300' },
-  { value: 'full_access_branch',    label: 'Admin Branch',         description: 'Escribe y borra, sin usuarios',     color: 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300' },
-  { value: 'colaborador',           label: 'Colaborador',          description: 'Escribe, sin borrar',               color: 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300' },
-  { value: 'full_viewer',           label: 'Viewer Global',        description: 'Solo lectura, vista completa',      color: 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300' },
-  { value: 'colaborador_viewer',    label: 'Viewer Limitado',      description: 'Solo lectura, vista reducida',      color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' },
-  { value: 'responsable_estandares',label: 'Resp. Estándares',     description: 'Reportes y estándares',             color: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300' },
+  { value: 'developer',              label: 'Developer',           description: 'Acceso total + herramientas dev',  color: 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300' },
+  { value: 'full_access_main',       label: 'Admin Principal',     description: 'Gestión completa + usuarios',       color: 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300' },
+  { value: 'full_access_branch',     label: 'Admin Branch',        description: 'Escribe y borra, sin usuarios',    color: 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300' },
+  { value: 'colaborador',            label: 'Colaborador',         description: 'Escribe, sin borrar',              color: 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300' },
+  { value: 'full_viewer',            label: 'Viewer Global',       description: 'Solo lectura, vista completa',     color: 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300' },
+  { value: 'colaborador_viewer',     label: 'Viewer Limitado',     description: 'Solo lectura, vista reducida',     color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' },
+  { value: 'responsable_estandares', label: 'Resp. Estándares',    description: 'Reportes y estándares',            color: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300' },
 ]
 
 interface RoleSwitcherProps {
   currentRole: UserRole | null
   systemRole: SystemRole
   isSuperAdmin: boolean
+  simulatedRole: SwitchableRole | null
+  open: boolean
+  onOpenChange: (open: boolean) => void
 }
 
-export function RoleSwitcher({ currentRole, systemRole, isSuperAdmin }: RoleSwitcherProps) {
-  const [open, setOpen] = useState(false)
+export function RoleSwitcher({
+  systemRole,
+  isSuperAdmin,
+  simulatedRole,
+  open,
+  onOpenChange,
+}: RoleSwitcherProps) {
+  const router = useRouter()
   const [isPending, startTransition] = useTransition()
-  const [switchError, setSwitchError] = useState<string | null>(null)
 
   const canSwitch = isSuperAdmin || systemRole === 'developer'
-  const effectiveRole: SwitchableRole = systemRole === 'developer' ? 'developer' : (currentRole ?? 'full_viewer')
+  const effectiveRole: SwitchableRole = simulatedRole ?? (systemRole === 'developer' ? 'developer' : 'full_access_main')
   const current = ROLES.find(r => r.value === effectiveRole)
 
   function handleSwitch(role: SwitchableRole) {
     if (role === effectiveRole) return
-    setSwitchError(null)
     startTransition(async () => {
-      const result = await switchRole(role)
-      if (result?.error) setSwitchError(result.error)
+      await switchRole(role)
+      router.refresh()
     })
   }
+
+  if (!canSwitch) return null
 
   return (
     <div className="border-b border-border-subtle">
       <button
         type="button"
-        onClick={() => canSwitch && setOpen(o => !o)}
+        onClick={() => onOpenChange(!open)}
         disabled={isPending}
-        className={cn(
-          'w-full flex items-center justify-between px-4 py-2.5 transition-colors',
-          canSwitch ? 'hover:bg-surface-sunken cursor-pointer' : 'cursor-default',
-        )}
+        className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-surface-sunken transition-colors cursor-pointer"
       >
         <div className="flex items-center gap-1.5">
           <span className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold">
-            Rol activo
+            Rol simulado
           </span>
-          {isPending && <Loader2 size={10} className="animate-spin text-text-tertiary" aria-label="Cambiando rol…" />}
+          {simulatedRole && (
+            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 font-semibold uppercase tracking-wide">
+              activo
+            </span>
+          )}
+          {isPending && <Loader2 size={10} className="animate-spin text-text-tertiary" />}
         </div>
         <div className="flex items-center gap-1.5">
           {current && (
@@ -70,21 +82,15 @@ export function RoleSwitcher({ currentRole, systemRole, isSuperAdmin }: RoleSwit
               {current.label}
             </span>
           )}
-          {canSwitch && (
-            <ChevronDown
-              size={13}
-              className={cn('text-text-tertiary transition-transform duration-150', open && 'rotate-180')}
-              aria-hidden="true"
-            />
-          )}
+          <ChevronDown
+            size={13}
+            className={cn('text-text-tertiary transition-transform duration-150', open && 'rotate-180')}
+            aria-hidden="true"
+          />
         </div>
       </button>
 
-      {switchError && (
-        <p className="px-4 pb-2 text-[11px] text-danger leading-snug">{switchError}</p>
-      )}
-
-      {open && canSwitch && (
+      {open && (
         <div className="bg-surface-sunken pb-1">
           {ROLES.map(role => {
             const isActive = role.value === effectiveRole
@@ -96,9 +102,7 @@ export function RoleSwitcher({ currentRole, systemRole, isSuperAdmin }: RoleSwit
                 disabled={isPending || isActive}
                 className={cn(
                   'w-full flex items-center justify-between px-4 py-2 text-left transition-colors',
-                  isActive
-                    ? 'opacity-60 cursor-default'
-                    : 'hover:bg-surface-elevated cursor-pointer',
+                  isActive ? 'opacity-60 cursor-default' : 'hover:bg-surface-elevated cursor-pointer',
                 )}
               >
                 <div className="flex flex-col gap-0.5 min-w-0">
@@ -107,9 +111,7 @@ export function RoleSwitcher({ currentRole, systemRole, isSuperAdmin }: RoleSwit
                   </span>
                   <span className="text-[10px] text-text-tertiary">{role.description}</span>
                 </div>
-                {isActive && (
-                  <Check size={13} className="text-brand-primary shrink-0 ml-2" aria-label="Activo" />
-                )}
+                {isActive && <Check size={13} className="text-brand-primary shrink-0 ml-2" />}
               </button>
             )
           })}

@@ -9,7 +9,8 @@ import { FloatingAvatar } from '@/components/layout/floating-avatar'
 import { ChatWidget } from '@/components/agent/chat-widget'
 import { BannerPastDueWrapper } from '@/components/billing/banner-past-due-wrapper'
 import { PreviewProvider } from '@/lib/contexts/preview-context'
-import { UserRole } from '@/lib/types'
+import { UserRole, SystemRole } from '@/lib/types'
+import { getSimulatedRole, type SwitchableRole } from '@/lib/actions/change-role'
 import 'leaflet/dist/leaflet.css'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -31,6 +32,23 @@ export default async function DashboardLayout({ children }: { children: React.Re
   ])
 
   const consultoraNombre = (membership?.consultoras as { nombre?: string } | null)?.nombre ?? null
+
+  // Role simulation: super admins can test the app as any role via a cookie.
+  // Never changes the DB — safe to switch freely.
+  const isSuperAdmin = profile?.is_super_admin ?? false
+  const realSystemRole = (profile?.system_role ?? 'user') as SystemRole
+  const realUserRole = (membership?.role as UserRole) ?? null
+
+  const simRole: SwitchableRole | null = isSuperAdmin || realSystemRole === 'developer'
+    ? await getSimulatedRole()
+    : null
+
+  const effectiveSystemRole: SystemRole = simRole === 'developer' || (!simRole && realSystemRole === 'developer')
+    ? 'developer'
+    : 'user'
+  const effectiveUserRole: UserRole | null = simRole && simRole !== 'developer'
+    ? simRole as UserRole
+    : realUserRole
 
   // Checkear si la suscripción está en past_due para mostrar banner
   let isPastDue = false
@@ -64,10 +82,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <AppHeader
           fullName={profile?.full_name ?? user.email ?? 'Usuario'}
           email={user.email ?? ''}
-          userRole={(membership?.role as UserRole) ?? null}
-          systemRole={profile?.system_role ?? 'user'}
+          userRole={effectiveUserRole}
+          systemRole={effectiveSystemRole}
           consultoraNombre={consultoraNombre}
-          isSuperAdmin={profile?.is_super_admin ?? false}
+          isSuperAdmin={isSuperAdmin}
+          simulatedRole={simRole}
         />
       }
     >
@@ -83,10 +102,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
     <FloatingAvatar
       fullName={profile?.full_name ?? user.email ?? 'Usuario'}
       email={user.email ?? ''}
-      userRole={(membership?.role as UserRole) ?? null}
-      systemRole={profile?.system_role ?? 'user'}
+      userRole={effectiveUserRole}
+      systemRole={effectiveSystemRole}
       consultoraNombre={consultoraNombre}
-      isSuperAdmin={profile?.is_super_admin ?? false}
+      isSuperAdmin={isSuperAdmin}
+      simulatedRole={simRole}
     />
     </PreviewProvider>
   )

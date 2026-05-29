@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { Sun, Moon, Users, UserCog, Network, Gauge, Shield, Settings2, LogOut, Building2, BarChart2, CreditCard, ShieldCheck, CalendarClock, AlertTriangle, Scale, Map, ClipboardList, MessageSquare, Wifi, WifiOff, Download, GraduationCap, BookOpen, Keyboard, Home, BookMarked, FileCheck, KeyRound } from 'lucide-react'
 import { SystemRole, UserRole, ROLE_LABELS, ROLE_COLORS } from '@/lib/types'
 import { RoleSwitcher } from '@/components/layout/role-switcher'
+import { type SwitchableRole } from '@/lib/actions/change-role'
 import { createClient } from '@/lib/supabase/client'
 import { NotificationDropdown } from '@/components/notification-dropdown'
 import { AlertasBell } from '@/components/alertas/alertas-bell'
@@ -21,6 +22,7 @@ interface AppHeaderProps {
   userRole: UserRole | null
   systemRole: SystemRole
   isSuperAdmin?: boolean
+  simulatedRole?: SwitchableRole | null
 }
 
 interface Crumb {
@@ -37,6 +39,7 @@ export function AppHeader({
   userRole,
   systemRole,
   isSuperAdmin = false,
+  simulatedRole = null,
 }: AppHeaderProps) {
   const pathname = usePathname()
   const router = useRouter()
@@ -47,6 +50,7 @@ export function AppHeader({
   const { install, isInstalled, canInstall } = useInstallPrompt()
   const [isDark, setIsDark] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [roleSimOpen, setRoleSimOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -347,6 +351,9 @@ export function AppHeader({
                   currentRole={userRole}
                   systemRole={systemRole}
                   isSuperAdmin={isSuperAdmin}
+                  simulatedRole={simulatedRole}
+                  open={roleSimOpen}
+                  onOpenChange={setRoleSimOpen}
                 />
 
                 {/* Consultora */}
