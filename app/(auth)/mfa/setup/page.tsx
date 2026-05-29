@@ -45,8 +45,7 @@ export default function MfaSetupPage() {
       setLoading(false)
       return
     }
-    router.push('/dashboard')
-    router.refresh()
+    router.replace('/dashboard/empresas')
   }
 
   async function handleCopy() {

@@ -1,6 +1,7 @@
 -- Función helper para verificar si el usuario actual requiere MFA.
--- Usada por middleware (via DB query) y por la página de seguridad.
--- Roles obligatorios: full_access_main, responsable_estandares (Art. 4.5 Res. SRT 48/2025)
+-- Control A2, Res. SRT 48/2025 — Roles obligatorios: full_access_main, responsable_estandares
+--
+-- SETUP MANUAL REQUERIDO: Supabase Dashboard → Authentication → MFA → Enable TOTP
 
 CREATE OR REPLACE FUNCTION public.requires_mfa()
 RETURNS boolean
@@ -13,3 +14,6 @@ AS $$
     AND is_active = true
   LIMIT 1
 $$;
+
+REVOKE ALL ON FUNCTION public.requires_mfa() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.requires_mfa() TO authenticated;

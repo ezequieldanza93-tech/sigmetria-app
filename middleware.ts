@@ -46,39 +46,42 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  // ── MFA enforcement — Art. 4.5 Res. SRT 48/2025 ──────────────────────────
-  // SETUP MANUAL REQUERIDO: Supabase Dashboard → Authentication → MFA → Enable TOTP
-  // Roles obligatorios: full_access_main, responsable_estandares
+  const isLoginPage = pathname.startsWith('/login')
   const isMfaPage = pathname.startsWith('/mfa/')
 
-  if (user && !pathname.startsWith('/login')) {
-    const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+  if (!user && !isLoginPage) {
+    return NextResponse.redirect(new URL('/login', request.url))
+  }
 
-    if (aalData) {
-      const { currentLevel, nextLevel } = aalData
+  if (user && isLoginPage) {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
 
-      // Ya verificado en esta sesión — no necesita estar en página MFA
+  // MFA enforcement — Control A2, Res. SRT 48/2025
+  // SETUP MANUAL: Supabase Dashboard → Authentication → MFA → Enable TOTP
+  // Roles obligatorios: full_access_main, responsable_estandares
+  if (user) {
+    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+
+    if (aal) {
+      const { currentLevel, nextLevel } = aal
+
+      // Ya verificado en esta sesión → salir de páginas MFA
       if (isMfaPage && currentLevel === 'aal2') {
         return NextResponse.redirect(new URL('/dashboard', request.url))
       }
 
       if (!isMfaPage) {
-        // Tiene factor configurado pero no verificado en esta sesión
+        // Factor TOTP enrollado pero no verificado en esta sesión → forzar verify
         if (nextLevel === 'aal2' && currentLevel === 'aal1') {
           return NextResponse.redirect(new URL('/mfa/verify', request.url))
         }
 
-        // Sin factor configurado → verificar si el rol lo exige
-        if (currentLevel === 'aal1' && nextLevel === 'aal1') {
+        // Sin factores enrollados → consultar si el rol requiere MFA → forzar setup
+        if (nextLevel === 'aal1') {
           try {
-            const { data: member } = await supabase
-              .from('consultoras_members')
-              .select('role')
-              .eq('user_id', user.id)
-              .eq('is_active', true)
-              .maybeSingle()
-
-            if (member && ['full_access_main', 'responsable_estandares'].includes(member.role)) {
+            const { data: mfaRequired } = await supabase.rpc('requires_mfa')
+            if (mfaRequired) {
               return NextResponse.redirect(new URL('/mfa/setup', request.url))
             }
           } catch {
@@ -87,17 +90,6 @@ export async function middleware(request: NextRequest) {
         }
       }
     }
-  }
-  // ─────────────────────────────────────────────────────────────────────────
-
-  const isLoginPage = request.nextUrl.pathname.startsWith('/login')
-
-  if (!user && !isLoginPage) {
-    return NextResponse.redirect(new URL('/login', request.url))
-  }
-
-  if (user && isLoginPage) {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
   return supabaseResponse

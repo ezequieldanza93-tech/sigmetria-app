@@ -7,7 +7,7 @@ import { updateConsultora, uploadConsultoraLogo } from '@/lib/actions/consultora
 import { inviteUsuario } from '@/lib/actions/usuario'
 import { InviteUsuarioForm } from '@/components/forms/invite-usuario-form'
 import NextImage from 'next/image'
-import { Save, Loader2, Building2, Globe, Mail, Phone, Image as LucideImage, Check, Upload, X, Plus, UserPlus, Users } from 'lucide-react'
+import { Save, Loader2, Building2, Globe, Mail, Phone, Image as LucideImage, Check, Upload, X, Plus, UserPlus, Users, Shield, ShieldAlert } from 'lucide-react'
 import { ROLE_LABELS, ROLE_COLORS, UserRole } from '@/lib/types'
 import type { Consultora } from '@/lib/types'
 
@@ -148,12 +148,16 @@ export default function ConsultoraInfoPage() {
   const [autoDownload, setAutoDownload] = useState(true)
   const [autoDownloadSaved, setAutoDownloadSaved] = useState(false)
   const [savingAutoDownload, setSavingAutoDownload] = useState(false)
+  const [mfaActive, setMfaActive] = useState<boolean | null>(null)
 
   useEffect(() => {
     async function load() {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
+
+      const { data: factors } = await supabase.auth.mfa.listFactors()
+      setMfaActive((factors?.totp?.length ?? 0) > 0)
 
       const { data: membership } = await supabase
         .from('consultoras_members')
@@ -425,6 +429,42 @@ export default function ConsultoraInfoPage() {
               {savingAutoDownload ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
               {savingAutoDownload ? 'Guardando...' : 'Guardar preferencia'}
             </button>
+          </div>
+        </section>
+
+        {/* Seguridad */}
+        <section className="bg-surface-elevated rounded-xl border border-border-subtle p-6 space-y-4">
+          <h2 className="text-sm font-semibold text-text-primary uppercase tracking-wider">Seguridad</h2>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-text-primary">Verificación en dos pasos (MFA)</p>
+              <p className="text-xs text-text-tertiary mt-0.5">
+                Protege tu cuenta con un segundo factor de autenticación (TOTP).
+              </p>
+            </div>
+            {mfaActive === null ? (
+              <Loader2 size={16} className="animate-spin text-text-tertiary" />
+            ) : mfaActive ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-100 text-green-700 text-xs font-medium shrink-0">
+                <Shield size={13} />
+                Activa
+              </span>
+            ) : (
+              <div className="flex items-center gap-3 shrink-0">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-yellow-100 text-yellow-700 text-xs font-medium">
+                  <ShieldAlert size={13} />
+                  No configurada
+                </span>
+                <button
+                  type="button"
+                  onClick={() => router.push('/mfa/setup')}
+                  className="text-xs font-medium text-brand-primary hover:text-brand-primary/80 transition-colors whitespace-nowrap"
+                >
+                  Configurar ahora
+                </button>
+              </div>
+            )}
           </div>
         </section>
 

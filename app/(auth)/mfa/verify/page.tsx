@@ -23,7 +23,7 @@ export default function MfaVerifyPage() {
     const totp = factors?.totp?.[0]
 
     if (!totp) {
-      router.push('/mfa/setup')
+      router.replace('/mfa/setup')
       return
     }
 
@@ -57,8 +57,7 @@ export default function MfaVerifyPage() {
       return
     }
 
-    router.push('/dashboard')
-    router.refresh()
+    router.replace('/dashboard/empresas')
   }
 
   return (
