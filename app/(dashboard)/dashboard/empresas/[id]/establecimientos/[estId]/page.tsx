@@ -43,7 +43,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
   ])
 
   if (!effective) redirect('/login')
-  if (!establecimiento || !empresa) notFound()
+  if (!establecimiento || !empresa) { console.error('[page estId] notFound — estId:', estId, 'empresaId:', empresaId, 'establecimiento:', !!establecimiento, 'empresa:', !!empresa); notFound() }
 
   const userCanWrite =
     canWrite(effective.effectiveUserRole, effective.effectiveSystemRole) ||
