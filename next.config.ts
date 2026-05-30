@@ -1,9 +1,13 @@
 import type { NextConfig } from 'next'
 import withBundleAnalyzer from '@next/bundle-analyzer'
 
+// 'unsafe-eval' fuera: ninguna lib del bundle lo necesita (recharts moderno
+// no usa eval, jspdf y html2canvas tampoco). 'unsafe-inline' se mantiene
+// porque layout.tsx inyecta SW_CLEANUP_SCRIPT y THEME_INIT_SCRIPT inline;
+// migrar a nonce cuando se elimine el kill switch del service worker.
 const cspDirectives = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  "script-src 'self' 'unsafe-inline'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://*.supabase.co https://*.tile.openstreetmap.org",
   "connect-src 'self' https://*.supabase.co https://nominatim.openstreetmap.org https://api.open-meteo.com",

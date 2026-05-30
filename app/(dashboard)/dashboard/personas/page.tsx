@@ -200,20 +200,25 @@ export default function PersonasPage() {
     const supabase = createClient()
     supabase
       .from('personas_directorio')
-      .select('*, personas_tipos(nombre)')
+      .select('id, nombre, apellido, dni, legajo, telefono, tipo_id, personas_tipos(nombre)')
       .eq('is_active', true)
       .range(0, 99)
       .order('apellido')
       .then(({ data }) => setPersonas((data as unknown as DirectorioPersona[]) ?? []))
   }
 
+  // Las 3 queries del mount son independientes — Promise.all las dispara
+  // en paralelo en vez de una a una (serial).
   useEffect(() => {
     load()
     const supabase = createClient()
-    supabase.from('personas_tipos').select('*').order('nombre')
-      .then(({ data }) => setTiposPersona(data ?? []))
-    supabase.from('empresas').select('*').eq('is_active', true).order('razon_social')
-      .then(({ data }) => setEmpresas((data as unknown as Empresa[]) ?? []))
+    Promise.all([
+      supabase.from('personas_tipos').select('id, nombre').order('nombre'),
+      supabase.from('empresas').select('id, razon_social').eq('is_active', true).order('razon_social'),
+    ]).then(([tiposRes, empresasRes]) => {
+      setTiposPersona((tiposRes.data ?? []) as TipoPersona[])
+      setEmpresas((empresasRes.data as unknown as Empresa[]) ?? [])
+    })
   }, [])
 
   const filtered = personas === null
