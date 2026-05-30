@@ -92,148 +92,154 @@ export function InfoTab({ establecimiento, canWrite, empresaId }: Props) {
         </section>
       )}
 
-      {/* Datos generales */}
-      <section className="bg-surface-base border border-border-subtle rounded-xl overflow-hidden">
-        <SectionHeader icon={<Building2 size={14} />} title="Datos generales" />
-        <div className="divide-y divide-border-subtle">
-          <Row label="Tipo" value={tipo ?? '—'} />
-          <Row
-            label="Ubicación"
-            value={ubicacion || '—'}
-            icon={ubicacion ? <MapPin size={12} className="text-text-tertiary shrink-0 mt-0.5" /> : undefined}
-          />
-          <Row label="Actividad principal" value={establecimiento.actividad_principal ?? '—'} />
-          {establecimiento.description && (
-            <Row label="Notas" value={establecimiento.description} multiline />
+      {/* Two-column layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+
+        {/* Left: Datos generales + Trabajadores */}
+        <div className="space-y-5">
+          <section className="bg-surface-base border border-border-subtle rounded-xl overflow-hidden">
+            <SectionHeader icon={<Building2 size={14} />} title="Datos generales" />
+            <div className="divide-y divide-border-subtle">
+              <Row label="Tipo" value={tipo ?? '—'} />
+              <Row
+                label="Ubicación"
+                value={ubicacion || '—'}
+                icon={ubicacion ? <MapPin size={12} className="text-text-tertiary shrink-0 mt-0.5" /> : undefined}
+              />
+              <Row label="Actividad principal" value={establecimiento.actividad_principal ?? '—'} />
+              {establecimiento.description && (
+                <Row label="Notas" value={establecimiento.description} multiline />
+              )}
+            </div>
+          </section>
+
+          <section className="bg-surface-base border border-border-subtle rounded-xl overflow-hidden">
+            <SectionHeader icon={<Users size={14} />} title="Trabajadores" />
+            <div className="divide-y divide-border-subtle">
+              <Row
+                label="Cantidad declarada"
+                hint="manual"
+                value={establecimiento.cantidad_trabajadores != null
+                  ? String(establecimiento.cantidad_trabajadores)
+                  : '—'}
+              />
+              <Row
+                label="ISO 45001"
+                value={establecimiento.aplica_iso_45001
+                  ? <span className="inline-flex items-center gap-1 text-success text-xs font-medium"><CheckCircle2 size={12} /> Aplica</span>
+                  : <span className="inline-flex items-center gap-1 text-text-tertiary text-xs"><XCircle size={12} /> No aplica</span>}
+              />
+            </div>
+          </section>
+        </div>
+
+        {/* Right: Horarios + Plano */}
+        <div className="space-y-5">
+          {horarios.length > 0 && (
+            <section className="bg-surface-base border border-border-subtle rounded-xl overflow-hidden">
+              <SectionHeader icon={<Clock size={14} />} title="Horarios de actividad" />
+              <div className="divide-y divide-border-subtle">
+                {DIAS_ORDER.map(dia => {
+                  const h = horarios.find(x => x.dia_semana === dia)
+                  if (!h) return null
+                  return (
+                    <div key={dia} className="flex items-center px-5 py-2.5 gap-4">
+                      <span className="w-24 text-sm text-text-secondary shrink-0">{DIAS[dia]}</span>
+                      {h.activo && h.hora_inicio && h.hora_fin ? (
+                        <span className="text-sm text-text-primary font-mono">
+                          {h.hora_inicio.slice(0, 5)} — {h.hora_fin.slice(0, 5)}
+                        </span>
+                      ) : (
+                        <span className="text-sm text-text-tertiary">Sin actividad</span>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </section>
           )}
-        </div>
-      </section>
 
-      {/* Trabajadores */}
-      <section className="bg-surface-base border border-border-subtle rounded-xl overflow-hidden">
-        <SectionHeader icon={<Users size={14} />} title="Trabajadores" />
-        <div className="divide-y divide-border-subtle">
-          <Row
-            label="Cantidad declarada"
-            hint="manual"
-            value={establecimiento.cantidad_trabajadores != null
-              ? String(establecimiento.cantidad_trabajadores)
-              : '—'}
-          />
-          <Row
-            label="ISO 45001"
-            value={establecimiento.aplica_iso_45001
-              ? <span className="inline-flex items-center gap-1 text-success text-xs font-medium"><CheckCircle2 size={12} /> Aplica</span>
-              : <span className="inline-flex items-center gap-1 text-text-tertiary text-xs"><XCircle size={12} /> No aplica</span>}
-          />
-        </div>
-      </section>
+          <section className="bg-surface-base border border-border-subtle rounded-xl overflow-hidden">
+            <SectionHeader icon={<FileText size={14} />} title="Plano del establecimiento" />
+            <div className="px-5 py-4 space-y-3">
 
-      {/* Horarios */}
-      {horarios.length > 0 && (
-        <section className="bg-surface-base border border-border-subtle rounded-xl overflow-hidden">
-          <SectionHeader icon={<Clock size={14} />} title="Horarios de actividad" />
-          <div className="divide-y divide-border-subtle">
-            {DIAS_ORDER.map(dia => {
-              const h = horarios.find(x => x.dia_semana === dia)
-              if (!h) return null
-              return (
-                <div key={dia} className="flex items-center px-5 py-2.5 gap-4">
-                  <span className="w-24 text-sm text-text-secondary shrink-0">{DIAS[dia]}</span>
-                  {h.activo && h.hora_inicio && h.hora_fin ? (
-                    <span className="text-sm text-text-primary font-mono">
-                      {h.hora_inicio.slice(0, 5)} — {h.hora_fin.slice(0, 5)}
-                    </span>
-                  ) : (
-                    <span className="text-sm text-text-tertiary">Sin actividad</span>
+              {/* Plano existente */}
+              {planoUrl ? (
+                <div className="flex items-center justify-between gap-3 p-3 bg-surface-sunken rounded-lg border border-border-subtle">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-9 h-9 rounded-lg bg-surface-elevated border border-border-subtle flex items-center justify-center shrink-0">
+                      <FileText size={16} className="text-text-tertiary" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-text-primary">Plano cargado</p>
+                      <a
+                        href={planoUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-brand-primary hover:text-brand-primary/80 inline-flex items-center gap-1"
+                      >
+                        Ver plano <ExternalLink size={11} />
+                      </a>
+                    </div>
+                  </div>
+                  {canWrite && (
+                    <form action={deleteFormAction}>
+                      <input type="hidden" name="plano_url" value={planoUrl} />
+                      <button
+                        type="submit"
+                        disabled={pendingDelete}
+                        className="p-1.5 rounded-lg text-text-tertiary hover:text-danger hover:bg-danger-bg transition-colors disabled:opacity-50"
+                        title="Eliminar plano"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </form>
                   )}
                 </div>
-              )
-            })}
-          </div>
-        </section>
-      )}
+              ) : (
+                <p className="text-sm text-text-tertiary">No hay plano cargado.</p>
+              )}
 
-      {/* Plano del establecimiento */}
-      <section className="bg-surface-base border border-border-subtle rounded-xl overflow-hidden">
-        <SectionHeader icon={<FileText size={14} />} title="Plano del establecimiento" />
-        <div className="px-5 py-4 space-y-3">
+              {/* Error de delete */}
+              {deleteState && !deleteState.success && (
+                <p className="text-xs text-danger">{deleteState.error}</p>
+              )}
 
-          {/* Plano existente */}
-          {planoUrl ? (
-            <div className="flex items-center justify-between gap-3 p-3 bg-surface-sunken rounded-lg border border-border-subtle">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-9 h-9 rounded-lg bg-surface-elevated border border-border-subtle flex items-center justify-center shrink-0">
-                  <FileText size={16} className="text-text-tertiary" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-text-primary">Plano cargado</p>
-                  <a
-                    href={planoUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-brand-primary hover:text-brand-primary/80 inline-flex items-center gap-1"
-                  >
-                    Ver plano <ExternalLink size={11} />
-                  </a>
-                </div>
-              </div>
+              {/* Upload form */}
               {canWrite && (
-                <form action={deleteFormAction}>
-                  <input type="hidden" name="plano_url" value={planoUrl} />
-                  <button
-                    type="submit"
-                    disabled={pendingDelete}
-                    className="p-1.5 rounded-lg text-text-tertiary hover:text-danger hover:bg-danger-bg transition-colors disabled:opacity-50"
-                    title="Eliminar plano"
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                <form action={uploadFormAction} className="space-y-2">
+                  <label className="text-xs font-medium text-text-secondary block">
+                    {planoUrl ? 'Reemplazar plano' : 'Subir plano'}{' '}
+                    <span className="font-normal text-text-tertiary">(PDF, PNG o JPG · máx 20 MB)</span>
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <label className="inline-flex items-center gap-2 cursor-pointer px-3 py-2 text-sm bg-surface-elevated border border-border-default rounded-lg hover:bg-surface-sunken transition-colors text-text-primary">
+                      <Upload size={14} />
+                      Seleccionar archivo
+                      <input
+                        type="file"
+                        name="plano"
+                        accept="application/pdf,image/png,image/jpeg"
+                        className="sr-only"
+                        onChange={e => {
+                          if (e.target.form && e.target.files?.length) e.target.form.requestSubmit()
+                        }}
+                      />
+                    </label>
+                    {pendingUpload && <span className="text-xs text-text-tertiary">Subiendo…</span>}
+                  </div>
+                  {uploadState && !uploadState.success && (
+                    <p className="text-xs text-danger">{uploadState.error}</p>
+                  )}
+                  {uploadState?.success && (
+                    <p className="text-xs text-success">Plano guardado correctamente.</p>
+                  )}
                 </form>
               )}
             </div>
-          ) : (
-            <p className="text-sm text-text-tertiary">No hay plano cargado.</p>
-          )}
-
-          {/* Error de delete */}
-          {deleteState && !deleteState.success && (
-            <p className="text-xs text-danger">{deleteState.error}</p>
-          )}
-
-          {/* Upload form */}
-          {canWrite && (
-            <form action={uploadFormAction} className="space-y-2">
-              <label className="text-xs font-medium text-text-secondary block">
-                {planoUrl ? 'Reemplazar plano' : 'Subir plano'}{' '}
-                <span className="font-normal text-text-tertiary">(PDF, PNG o JPG · máx 20 MB)</span>
-              </label>
-              <div className="flex items-center gap-2">
-                <label className="inline-flex items-center gap-2 cursor-pointer px-3 py-2 text-sm bg-surface-elevated border border-border-default rounded-lg hover:bg-surface-sunken transition-colors text-text-primary">
-                  <Upload size={14} />
-                  Seleccionar archivo
-                  <input
-                    type="file"
-                    name="plano"
-                    accept="application/pdf,image/png,image/jpeg"
-                    className="sr-only"
-                    onChange={e => {
-                      if (e.target.form && e.target.files?.length) e.target.form.requestSubmit()
-                    }}
-                  />
-                </label>
-                {pendingUpload && <span className="text-xs text-text-tertiary">Subiendo…</span>}
-              </div>
-              {uploadState && !uploadState.success && (
-                <p className="text-xs text-danger">{uploadState.error}</p>
-              )}
-              {uploadState?.success && (
-                <p className="text-xs text-success">Plano guardado correctamente.</p>
-              )}
-            </form>
-          )}
+          </section>
         </div>
-      </section>
+      </div>
 
       {/* Editar */}
       {canWrite && (
