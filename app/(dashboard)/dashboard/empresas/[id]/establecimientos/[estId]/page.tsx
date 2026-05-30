@@ -34,16 +34,22 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
 
   const [
     effective,
-    { data: establecimiento },
-    { data: empresa },
+    estResult,
+    empResult,
   ] = await Promise.all([
     getEffectiveRole(),
     supabase.from('establecimientos').select('id, nombre, latitude, longitude, photo_site, plano_url, domicilio, codigo_postal, actividad_principal, cantidad_trabajadores, description, aplica_iso_45001, floor_plan_pdf_url, created_at, establecimientos_tipos(id, codigo, nombre), localidades!localidad_id(nombre, provincia)').eq('id', estId).single(),
     supabase.from('empresas').select('id, razon_social').eq('id', empresaId).single(),
   ])
 
+  const establecimiento = estResult.data
+  const empresa = empResult.data
+
   if (!effective) redirect('/login')
-  if (!establecimiento || !empresa) { console.error('[page estId] notFound — estId:', estId, 'empresaId:', empresaId, 'establecimiento:', !!establecimiento, 'empresa:', !!empresa); notFound() }
+  if (!establecimiento || !empresa) {
+    console.error('[DBG] est:', !!establecimiento, JSON.stringify(estResult.error), 'emp:', !!empresa, JSON.stringify(empResult.error), 'estId:', estId, 'empId:', empresaId)
+    notFound()
+  }
 
   const userCanWrite =
     canWrite(effective.effectiveUserRole, effective.effectiveSystemRole) ||
