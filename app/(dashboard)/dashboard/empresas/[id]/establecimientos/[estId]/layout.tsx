@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import { EstablecimientoProvider } from '@/lib/contexts/establecimiento-context'
@@ -24,9 +25,11 @@ export default async function EstablecimientoLegacyLayout({ children, params }: 
 
   return (
     <EstablecimientoProvider establecimientoId={estId} nombre={establecimiento.nombre} empresaId={empresaId}>
-      <EstablecimientoShell empresaId={empresaId} establecimientoId={estId}>
-        {children}
-      </EstablecimientoShell>
+      <Suspense fallback={<div className="lg:pl-14" />}>
+        <EstablecimientoShell empresaId={empresaId} establecimientoId={estId}>
+          {children}
+        </EstablecimientoShell>
+      </Suspense>
     </EstablecimientoProvider>
   )
 }
