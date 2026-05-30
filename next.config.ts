@@ -43,7 +43,9 @@ const nextConfig: NextConfig = {
     remotePatterns: [{ protocol: 'https', hostname: '*.supabase.co' }],
     formats: ['image/avif', 'image/webp'],
   },
-  productionBrowserSourceMaps: true,
+  // Source maps de cliente: solo cuando se piden explícitamente para diagnóstico.
+  // Habilitarlos en prod por defecto expone el código original a cualquiera.
+  productionBrowserSourceMaps: process.env.SOURCEMAPS === 'true',
   async headers() {
     return [
       {

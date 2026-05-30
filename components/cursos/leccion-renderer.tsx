@@ -1,5 +1,6 @@
 'use client'
 
+import DOMPurify from 'isomorphic-dompurify'
 import type { CursoLeccion } from '@/lib/types'
 import { Download } from 'lucide-react'
 
@@ -64,7 +65,16 @@ export function LeccionRenderer({ leccion }: LeccionRendererProps) {
       return (
         <div className="prose prose-sm dark:prose-invert max-w-none">
           {leccion.contenido_texto ? (
-            <div dangerouslySetInnerHTML={{ __html: leccion.contenido_texto }} />
+            <div
+              dangerouslySetInnerHTML={{
+                // Sanitizado: el contenido lo escriben admins de consultora, pero
+                // sin esto un autor malicioso podría inyectar <script> y robar
+                // sesión de cualquier alumno que vea la lección.
+                __html: DOMPurify.sanitize(leccion.contenido_texto, {
+                  USE_PROFILES: { html: true },
+                }),
+              }}
+            />
           ) : (
             <p className="text-text-tertiary">Sin contenido de texto</p>
           )}
