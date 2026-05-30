@@ -8,7 +8,7 @@ interface Establecimiento {
   id: string
   nombre: string
   domicilio: string | null
-  establecimientos_tipos: { nombre: string }[] | null
+  establecimientos_tipos: { nombre: string } | null
   localidades: { nombre: string; provincia: string } | null
   cantidad_trabajadores: number | null
   establecimientos_sectores: { cantidad_trabajadores: number | null }[] | null
@@ -143,7 +143,7 @@ export function EmpresaRightPanel({
                           </Link>
                         </td>
                         <td className="px-5 py-4 text-text-secondary">
-                          {est.establecimientos_tipos?.[0]?.nombre ?? '—'}
+                          {est.establecimientos_tipos?.nombre ?? '—'}
                         </td>
                         <td className="px-5 py-4 text-text-secondary hidden lg:table-cell">
                           {(() => {
