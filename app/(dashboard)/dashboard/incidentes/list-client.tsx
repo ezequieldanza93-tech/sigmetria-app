@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Select } from '@/components/ui/select'
+import { MultiFilterWithAll } from '@/components/ui/multi-filter-with-all'
 import { INCIDENTE_TIPO_LABELS, SEGUIMIENTO_ESTADO_LABELS, SEGUIMIENTO_ESTADO_BADGE, SEVERIDAD_LABELS, SEVERIDAD_BADGE } from '@/lib/constants'
 import { Search, Eye } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
@@ -19,7 +20,28 @@ export function IncidentesListClient({ incidentes }: Props) {
   const [search, setSearch] = useState('')
   const [filtroEstado, setFiltroEstado] = useState('')
   const [filtroTipo, setFiltroTipo] = useState('')
+  const [empresaSel, setEmpresaSel] = useState<Set<string>>(new Set())
+  const [estSel, setEstSel] = useState<Set<string>>(new Set())
   const [page, setPage] = useState(1)
+
+  const empresaOptions = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const i of incidentes) {
+      if (i.empresa_id && i.empresas?.razon_social) map.set(i.empresa_id, i.empresas.razon_social)
+    }
+    return Array.from(map, ([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label))
+  }, [incidentes])
+
+  const establecimientoOptions = useMemo(() => {
+    const map = new Map<string, string>()
+    const allowed = empresaSel.size === 0 ? null : empresaSel
+    for (const i of incidentes) {
+      if (!i.establecimiento_id || !i.establecimientos?.nombre) continue
+      if (allowed && i.empresa_id && !allowed.has(i.empresa_id)) continue
+      map.set(i.establecimiento_id, i.establecimientos.nombre)
+    }
+    return Array.from(map, ([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label))
+  }, [incidentes, empresaSel])
 
   const filtrados = useMemo(() => {
     let items = incidentes
@@ -40,8 +62,16 @@ export function IncidentesListClient({ incidentes }: Props) {
       items = items.filter(i => i.tipo_incidente === filtroTipo)
     }
 
+    if (empresaSel.size > 0) {
+      items = items.filter(i => i.empresa_id && empresaSel.has(i.empresa_id))
+    }
+
+    if (estSel.size > 0) {
+      items = items.filter(i => i.establecimiento_id && estSel.has(i.establecimiento_id))
+    }
+
     return items
-  }, [incidentes, search, filtroEstado, filtroTipo])
+  }, [incidentes, search, filtroEstado, filtroTipo, empresaSel, estSel])
 
   const totalPages = Math.max(1, Math.ceil(filtrados.length / ITEMS_PER_PAGE))
   const paginados = filtrados.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
@@ -84,6 +114,22 @@ export function IncidentesListClient({ incidentes }: Props) {
           onChange={e => { setFiltroTipo(e.target.value); setPage(1) }}
           className="w-full sm:w-44"
         />
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <MultiFilterWithAll
+          label="Empresa"
+          options={empresaOptions}
+          selected={empresaSel}
+          onChange={s => { setEmpresaSel(s); setPage(1) }}
+        />
+        <MultiFilterWithAll
+          label="Establecimiento"
+          options={establecimientoOptions}
+          selected={estSel}
+          onChange={s => { setEstSel(s); setPage(1) }}
+        />
+        <span className="text-xs text-text-tertiary ml-auto">{filtrados.length} de {incidentes.length}</span>
       </div>
 
       {paginados.length === 0 ? (

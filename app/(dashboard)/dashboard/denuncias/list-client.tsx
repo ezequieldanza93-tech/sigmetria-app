@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Select } from '@/components/ui/select'
+import { MultiFilterWithAll } from '@/components/ui/multi-filter-with-all'
 import { DENUNCIA_TIPO_LABELS, SEGUIMIENTO_ESTADO_LABELS, SEGUIMIENTO_ESTADO_BADGE, DENUNCIANTE_TIPO_LABELS } from '@/lib/constants'
 import { Search, Eye, Lock } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
@@ -19,7 +20,28 @@ export function DenunciasListClient({ denuncias }: Props) {
   const [search, setSearch] = useState('')
   const [filtroEstado, setFiltroEstado] = useState('')
   const [filtroTipo, setFiltroTipo] = useState('')
+  const [empresaSel, setEmpresaSel] = useState<Set<string>>(new Set())
+  const [estSel, setEstSel] = useState<Set<string>>(new Set())
   const [page, setPage] = useState(1)
+
+  const empresaOptions = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const d of denuncias) {
+      if (d.empresa_id && d.empresas?.razon_social) map.set(d.empresa_id, d.empresas.razon_social)
+    }
+    return Array.from(map, ([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label))
+  }, [denuncias])
+
+  const establecimientoOptions = useMemo(() => {
+    const map = new Map<string, string>()
+    const allowed = empresaSel.size === 0 ? null : empresaSel
+    for (const d of denuncias) {
+      if (!d.establecimiento_id || !d.establecimientos?.nombre) continue
+      if (allowed && d.empresa_id && !allowed.has(d.empresa_id)) continue
+      map.set(d.establecimiento_id, d.establecimientos.nombre)
+    }
+    return Array.from(map, ([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label))
+  }, [denuncias, empresaSel])
 
   const filtrados = useMemo(() => {
     let items = denuncias
@@ -34,9 +56,11 @@ export function DenunciasListClient({ denuncias }: Props) {
 
     if (filtroEstado) items = items.filter(d => d.estado === filtroEstado)
     if (filtroTipo) items = items.filter(d => d.tipo_denuncia === filtroTipo)
+    if (empresaSel.size > 0) items = items.filter(d => d.empresa_id && empresaSel.has(d.empresa_id))
+    if (estSel.size > 0) items = items.filter(d => d.establecimiento_id && estSel.has(d.establecimiento_id))
 
     return items
-  }, [denuncias, search, filtroEstado, filtroTipo])
+  }, [denuncias, search, filtroEstado, filtroTipo, empresaSel, estSel])
 
   const totalPages = Math.max(1, Math.ceil(filtrados.length / ITEMS_PER_PAGE))
   const paginados = filtrados.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
@@ -79,6 +103,22 @@ export function DenunciasListClient({ denuncias }: Props) {
           onChange={e => { setFiltroTipo(e.target.value); setPage(1) }}
           className="w-full sm:w-44"
         />
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <MultiFilterWithAll
+          label="Empresa"
+          options={empresaOptions}
+          selected={empresaSel}
+          onChange={s => { setEmpresaSel(s); setPage(1) }}
+        />
+        <MultiFilterWithAll
+          label="Establecimiento"
+          options={establecimientoOptions}
+          selected={estSel}
+          onChange={s => { setEstSel(s); setPage(1) }}
+        />
+        <span className="text-xs text-text-tertiary ml-auto">{filtrados.length} de {denuncias.length}</span>
       </div>
 
       {paginados.length === 0 ? (
