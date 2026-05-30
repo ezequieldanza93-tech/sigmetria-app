@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import { EmpresaProvider } from '@/lib/contexts/empresa-context'
@@ -30,9 +31,11 @@ export default async function EmpresaLegacyLayout({ children, params }: Props) {
 
   return (
     <EmpresaProvider empresaId={id} razonSocial={empresa.razon_social}>
-      <EmpresaShell empresaId={id} establecimientos={establecimientos}>
-        {children}
-      </EmpresaShell>
+      <Suspense fallback={<div className="lg:pl-14" />}>
+        <EmpresaShell empresaId={id} establecimientos={establecimientos}>
+          {children}
+        </EmpresaShell>
+      </Suspense>
     </EmpresaProvider>
   )
 }

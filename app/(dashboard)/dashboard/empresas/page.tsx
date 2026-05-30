@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { EmpresasList } from '@/components/empresas-list'
@@ -56,6 +57,7 @@ export default async function EmpresasPage({ searchParams }: Props) {
   const seguimientoRows = section === 'seguimiento' ? await getSeguimientoAggregate(estContext) : []
 
   return (
+    <Suspense fallback={<div className="lg:pl-14" />}>
     <ConsultoraShell empresas={sidebarEmpresas}>
       {section === 'empresas' && <EmpresasList />}
 
@@ -77,5 +79,6 @@ export default async function EmpresasPage({ searchParams }: Props) {
         </div>
       )}
     </ConsultoraShell>
+    </Suspense>
   )
 }
