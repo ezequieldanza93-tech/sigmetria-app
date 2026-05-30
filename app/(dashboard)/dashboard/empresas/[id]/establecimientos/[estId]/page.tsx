@@ -14,9 +14,16 @@ import type {
 import { AnalyticsDashboard } from '@/components/analytics/real/analytics-dashboard'
 import { LegajoTecnico } from '@/components/establecimiento/legajo-tecnico'
 import { QRPanel } from '@/components/establecimiento/qr-panel'
+import { IncidentesAggregate } from '@/components/aggregate/incidentes-aggregate'
+import { DenunciasAggregate } from '@/components/aggregate/denuncias-aggregate'
+import { getIncidentesAggregate, getDenunciasAggregate } from '@/lib/queries/aggregate'
+import Link from 'next/link'
+import { Plus } from 'lucide-react'
+import type { IncidenteAggregateRow } from '@/components/aggregate/incidentes-aggregate'
+import type { DenunciaAggregateRow } from '@/components/aggregate/denuncias-aggregate'
 
-type Section = 'agenda' | 'ficha' | 'dashboard' | 'seguimiento' | 'legajo'
-const VALID_SECTIONS: Section[] = ['agenda', 'ficha', 'dashboard', 'seguimiento', 'legajo']
+type Section = 'agenda' | 'ficha' | 'dashboard' | 'seguimiento' | 'legajo' | 'incidentes' | 'denuncias'
+const VALID_SECTIONS: Section[] = ['agenda', 'ficha', 'dashboard', 'seguimiento', 'legajo', 'incidentes', 'denuncias']
 
 interface Props {
   params: Promise<{ id: string; estId: string }>
@@ -70,6 +77,10 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
   let legajoDocumentos: Documento[] = []
   const legajoMedicionesPorTipo: Record<string, Medicion[]> = {}
   let verificacionToken: string | null = null
+
+  // Incidentes / Denuncias section data (scope: this establecimiento)
+  let incidentesRows: IncidenteAggregateRow[] = []
+  let denunciasRows: DenunciaAggregateRow[] = []
 
   if (section === 'ficha') {
     const [s1, s2, s3, s4, s5] = await Promise.all([
@@ -183,6 +194,20 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
     }
   }
 
+  if (section === 'incidentes' || section === 'denuncias') {
+    const estabCtx = [{
+      id: estId,
+      nombre: establecimiento.nombre,
+      empresa_id: empresaId,
+      empresa_razon_social: empresa.razon_social,
+    }]
+    if (section === 'incidentes') {
+      incidentesRows = await getIncidentesAggregate(estabCtx)
+    } else {
+      denunciasRows = await getDenunciasAggregate(estabCtx)
+    }
+  }
+
   return (
     <div className="p-0">
       {/* Content */}
@@ -265,6 +290,40 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {section === 'incidentes' && (
+        <div>
+          {userCanWrite && (
+            <div className="px-6 pt-6 flex justify-end">
+              <Link
+                href={`/dashboard/incidentes/nuevo?empresaId=${empresaId}&establecimientoId=${estId}`}
+                className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium bg-brand-primary text-white rounded-lg hover:bg-brand-primary-hover transition-colors"
+              >
+                <Plus size={16} strokeWidth={2} />
+                Nuevo incidente
+              </Link>
+            </div>
+          )}
+          <IncidentesAggregate rows={incidentesRows} showEmpresaFilter={false} showEstablecimientoFilter={false} />
+        </div>
+      )}
+
+      {section === 'denuncias' && (
+        <div>
+          {userCanWrite && (
+            <div className="px-6 pt-6 flex justify-end">
+              <Link
+                href={`/dashboard/denuncias/nueva?empresaId=${empresaId}&establecimientoId=${estId}`}
+                className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium bg-brand-primary text-white rounded-lg hover:bg-brand-primary-hover transition-colors"
+              >
+                <Plus size={16} strokeWidth={2} />
+                Nueva denuncia
+              </Link>
+            </div>
+          )}
+          <DenunciasAggregate rows={denunciasRows} showEmpresaFilter={false} showEstablecimientoFilter={false} />
         </div>
       )}
     </div>
