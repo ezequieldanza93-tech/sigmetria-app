@@ -156,14 +156,22 @@ export async function uploadConsultoraLogo(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
-  const { data: membership } = await supabase
-    .from('consultoras_members')
-    .select('consultora_id, role')
-    .eq('user_id', user.id)
-    .eq('is_active', true)
-    .maybeSingle()
+  const [{ data: profile }, { data: membership }] = await Promise.all([
+    supabase.from('profiles').select('is_super_admin').eq('id', user.id).single(),
+    supabase
+      .from('consultoras_members')
+      .select('consultora_id, role')
+      .eq('user_id', user.id)
+      .eq('is_active', true)
+      .maybeSingle(),
+  ])
 
   if (!membership) return { success: false, error: 'No pertenecés a ninguna consultora' }
+
+  const isSuperAdmin = profile?.is_super_admin === true
+  if (!isSuperAdmin && membership.role !== 'full_access_main') {
+    return { success: false, error: 'Solo el Admin Principal puede cambiar el logo de la consultora' }
+  }
 
   const file = formData.get('logo') as File | null
   if (!file || file.size === 0) return { success: false, error: 'Archivo vacío' }
@@ -190,10 +198,12 @@ export async function uploadConsultoraLogo(
     if (oldPath) await deleteAsset('consultora', oldPath)
   }
 
-  await supabase
+  const { error: updateError } = await supabase
     .from('consultoras')
     .update({ logo_url: result.url, updated_at: new Date().toISOString() })
     .eq('id', membership.consultora_id)
+
+  if (updateError) return { success: false, error: updateError.message }
 
   revalidatePath('/dashboard/configuracion/consultora')
   return { success: true, data: { url: result.url } }
