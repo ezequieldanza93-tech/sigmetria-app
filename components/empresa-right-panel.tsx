@@ -85,12 +85,20 @@ export function EmpresaRightPanel({
         </div>
 
         {puedeEditar && activeTab === 'establecimientos' && (
-          <Link
-            href={`/dashboard/empresas/${empresaId}/establecimientos/nuevo`}
-            className="inline-flex items-center gap-1.5 bg-sig-500 hover:bg-sig-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-          >
-            <span>+</span> Nuevo Establecimiento
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/dashboard/empresas/${empresaId}/editar`}
+              className="inline-flex items-center gap-1.5 border border-border-default text-text-secondary hover:bg-surface-elevated hover:text-text-primary text-sm font-medium px-3 py-2 rounded-lg transition-colors"
+            >
+              Editar empresa
+            </Link>
+            <Link
+              href={`/dashboard/empresas/${empresaId}/establecimientos/nuevo`}
+              className="inline-flex items-center gap-1.5 bg-sig-500 hover:bg-sig-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            >
+              <span>+</span> Nuevo Establecimiento
+            </Link>
+          </div>
         )}
       </div>
 
@@ -125,6 +133,7 @@ export function EmpresaRightPanel({
                     <th className="px-5 py-3.5 text-text-secondary font-medium text-center">
                       <span title="Calculado desde sectores → puestos → personas activas">Trab. (Auto)</span>
                     </th>
+                    {puedeEditar && <th className="px-5 py-3.5" />}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
@@ -169,6 +178,16 @@ export function EmpresaRightPanel({
                         <td className="px-5 py-4 text-text-primary text-center font-medium">
                           {trabajadoresAuto > 0 ? trabajadoresAuto : <span className="text-text-tertiary">0</span>}
                         </td>
+                        {puedeEditar && (
+                          <td className="px-4 py-4 text-right">
+                            <Link
+                              href={`/dashboard/empresas/${empresaId}/establecimientos/${est.id}/editar`}
+                              className="text-xs text-text-tertiary hover:text-sig-500 font-medium transition-colors"
+                            >
+                              Editar
+                            </Link>
+                          </td>
+                        )}
                       </tr>
                     )
                   })}
