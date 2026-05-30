@@ -318,6 +318,8 @@ export async function getNotificaciones(): Promise<Notificacion[]> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
 
+  // Cap razonable para evitar payloads inmanejables; el badge usa el RPC
+  // count_notificaciones_no_leidas, así que el conteo real no depende de esto.
   const { data } = await supabase
     .from('notificaciones')
     .select(`
@@ -327,6 +329,7 @@ export async function getNotificaciones(): Promise<Notificacion[]> {
     .eq('notificaciones_leidas.usuario_id', user.id)
     .order('dias_restantes', { ascending: true })
     .order('fecha_vencimiento', { ascending: true })
+    .limit(200)
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return ((data ?? []) as any[]).map(n => ({

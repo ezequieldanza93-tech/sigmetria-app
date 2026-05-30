@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import NextImage from 'next/image'
 import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -423,8 +424,8 @@ export function IncidenteDetailClient({ incidente }: Props) {
       {/* Modal: Foto ampliada */}
       <Modal open={!!fotoAmpliada} onClose={() => setFotoAmpliada(null)} title="" size="full">
         {fotoAmpliada && (
-          <div className="flex items-center justify-center">
-            <img src={fotoAmpliada} alt="Foto" className="max-w-full max-h-[70vh] object-contain rounded-lg" />
+          <div className="relative flex items-center justify-center w-full" style={{ height: '70vh' }}>
+            <NextImage src={fotoAmpliada} alt="Foto" fill sizes="100vw" className="object-contain rounded-lg" />
           </div>
         )}
       </Modal>

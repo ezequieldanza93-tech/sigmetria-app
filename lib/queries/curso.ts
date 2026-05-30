@@ -64,53 +64,48 @@ export function useCursoContenido(id: string) {
     queryFn: async () => {
       const supabase = createClient()
 
-      const { data: modulos } = await supabase
-        .from('curso_modulos')
-        .select('*')
-        .eq('curso_id', id)
-        .order('orden')
-
-      const modulosWithLecciones = await Promise.all((modulos ?? []).map(async (m) => {
-        const { data: lecciones } = await supabase
-          .from('curso_lecciones')
-          .select('*')
-          .eq('modulo_id', m.id)
-          .order('orden')
-
-        const { data: quizzes } = await supabase
+      // Antes hacíamos 1 query por curso + 2 por módulo (N+1). Un curso de 20
+      // módulos = 41 round-trips. Ahora son 2: una para módulos + sus hijos y
+      // otra para el quiz final (que no cuelga de ningún módulo).
+      const [modulosRes, finalQuizRes] = await Promise.all([
+        supabase
+          .from('curso_modulos')
+          .select(`
+            *,
+            curso_lecciones(*),
+            curso_quizzes(*, curso_preguntas(*, curso_opciones(*)))
+          `)
+          .eq('curso_id', id)
+          .order('orden'),
+        supabase
           .from('curso_quizzes')
           .select('*, curso_preguntas(*, curso_opciones(*))')
-          .eq('modulo_id', m.id)
+          .is('modulo_id', null)
+          .eq('curso_id', id)
+          .limit(1),
+      ])
 
-        return {
-          ...m,
-          lecciones: lecciones ?? [],
-          quiz: (quizzes && quizzes.length > 0) ? {
-            ...quizzes[0] as any,
-            preguntas: (quizzes[0] as any)?.curso_preguntas?.map((p: any) => ({
-              ...p,
-              opciones: p.curso_opciones ?? [],
-            })) ?? [],
-          } : null,
-        } as CursoModulo
-      }))
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const normalizeQuiz = (q: any) => q ? {
+        ...q,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        preguntas: (q.curso_preguntas ?? []).map((p: any) => ({
+          ...p,
+          opciones: p.curso_opciones ?? [],
+        })),
+      } : null
 
-      // Get final quiz
-      const { data: finalQuizzes } = await supabase
-        .from('curso_quizzes')
-        .select('*, curso_preguntas(*, curso_opciones(*))')
-        .is('modulo_id', null)
-        .eq('curso_id', id)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const modulos = ((modulosRes.data ?? []) as any[]).map((m) => ({
+        ...m,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        lecciones: (m.curso_lecciones ?? []).sort((a: any, b: any) => a.orden - b.orden),
+        quiz: m.curso_quizzes?.length ? normalizeQuiz(m.curso_quizzes[0]) : null,
+      })) as CursoModulo[]
 
       return {
-        modulos: modulosWithLecciones,
-        quizFinal: (finalQuizzes && finalQuizzes.length > 0) ? {
-          ...finalQuizzes[0] as any,
-          preguntas: (finalQuizzes[0] as any)?.curso_preguntas?.map((p: any) => ({
-            ...p,
-            opciones: p.curso_opciones ?? [],
-          })) ?? [],
-        } : null,
+        modulos,
+        quizFinal: finalQuizRes.data?.length ? normalizeQuiz(finalQuizRes.data[0]) : null,
       }
     },
     enabled: !!id,

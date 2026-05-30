@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { CierreObservacionModal } from '@/components/cierre-observacion-modal'
 import { MultiFilter } from '@/components/ui/multi-filter'
@@ -44,6 +45,9 @@ export function ActuarView({ establecimientoId, canWrite = true }: { establecimi
   useEffect(() => {
     const supabase = createClient()
 
+    // Cap defensivo: si una consultora tiene miles de gestiones ejecutadas el
+    // payload se vuelve inmanejable y la vista se cuelga. 500 cubre el caso
+    // típico; cuando se necesite ir más atrás conviene paginar con searchParams.
     supabase
       .from('gestiones_registros')
       .select(`
@@ -65,6 +69,8 @@ export function ActuarView({ establecimientoId, canWrite = true }: { establecimi
         )
       `)
       .not('fecha_ejecutada', 'is', null)
+      .order('fecha_ejecutada', { ascending: false })
+      .limit(500)
       .then(({ data: rgData }) => {
         const rgRecords = (rgData ?? []) as unknown as {
           id: string
@@ -375,8 +381,9 @@ export function ActuarView({ establecimientoId, canWrite = true }: { establecimi
             <div key={obs.id} className="bg-surface-base dark:bg-surface-elevated border border-border-default rounded-xl p-4 cursor-pointer hover:border-brand-muted transition-colors" onClick={() => setSelectedObs(obs)}>
               <div className="flex items-start justify-between gap-4">
                 {obs.foto_url && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={obs.foto_url} alt="Foto observación" className="h-[2.5cm] w-auto object-cover rounded-lg border border-border-subtle shrink-0" />
+                  <div className="relative h-[2.5cm] w-[3.3cm] shrink-0 rounded-lg overflow-hidden border border-border-subtle">
+                    <Image src={obs.foto_url} alt="Foto observación" fill sizes="125px" className="object-cover" />
+                  </div>
                 )}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-text-primary">{obs.descripcion}</p>

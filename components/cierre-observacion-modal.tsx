@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { cerrarObservacion, actualizarCategoriaObservacion } from '@/lib/actions/observacion-gestion'
 import { addObservacionComentario, addObservacionFoto, marcarObservacionVista } from '@/lib/actions/observacion-comentarios'
@@ -419,8 +420,9 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
           <p className="text-sm text-text-tertiary mb-0.5">Observación</p>
           <p className="text-sm font-medium text-text-primary">{obs.descripcion}</p>
           {obs.foto_url && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={obs.foto_url} alt="Foto de la observación" className="mt-3 max-w-full rounded-xl border border-border-subtle object-contain" />
+            <div className="relative mt-3 w-full aspect-[4/3] rounded-xl overflow-hidden border border-border-subtle">
+              <Image src={obs.foto_url} alt="Foto de la observación" fill sizes="(max-width: 768px) 100vw, 600px" className="object-contain" />
+            </div>
           )}
         </div>
 
@@ -428,13 +430,18 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
         {obs.evidencia_cierre_url && (
           <div>
             <p className="text-xs text-text-tertiary mb-1">Foto de evidencia de cierre</p>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={obs.evidencia_cierre_url}
-              alt="Evidencia de cierre"
-              className="max-w-full rounded-xl border border-border-subtle object-contain cursor-pointer hover:opacity-90"
+            <div
+              className="relative w-full aspect-[4/3] rounded-xl overflow-hidden border border-border-subtle cursor-pointer hover:opacity-90"
               onClick={() => window.open(obs.evidencia_cierre_url!, '_blank')}
-            />
+            >
+              <Image
+                src={obs.evidencia_cierre_url}
+                alt="Evidencia de cierre"
+                fill
+                sizes="(max-width: 768px) 100vw, 600px"
+                className="object-contain"
+              />
+            </div>
           </div>
         )}
 
@@ -618,14 +625,19 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
           {fotosCliente.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-2">
               {fotosCliente.map(f => (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <div
                   key={f.id}
-                  src={f.url}
-                  alt={f.categoria ?? 'Foto cliente'}
-                  className="h-20 w-auto rounded-lg border border-border-subtle object-cover cursor-pointer hover:opacity-90"
+                  className="relative h-20 w-28 rounded-lg overflow-hidden border border-border-subtle cursor-pointer hover:opacity-90"
                   onClick={() => window.open(f.url, '_blank')}
-                />
+                >
+                  <Image
+                    src={f.url}
+                    alt={f.categoria ?? 'Foto cliente'}
+                    fill
+                    sizes="112px"
+                    className="object-cover"
+                  />
+                </div>
               ))}
             </div>
           )}
