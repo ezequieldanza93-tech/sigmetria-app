@@ -1,6 +1,6 @@
 'use client'
 
-import { Building2, ClipboardList, Crosshair, BarChart3, FileText } from 'lucide-react'
+import { Building2, ClipboardList, Crosshair, BarChart3, FileText, ArrowLeft } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { SectionsShell } from '@/components/layout/sections-shell'
 import type { SectionItem } from '@/components/layout/sections-sidebar'
@@ -24,6 +24,12 @@ export function EmpresaShell({ empresaId, establecimientos, children }: EmpresaS
   const baseUrl = `/dashboard/empresas/${empresaId}`
 
   const items: SectionItem[] = [
+    {
+      id: 'empresas',
+      label: 'Empresas',
+      icon: ArrowLeft,
+      href: '/dashboard/empresas',
+    },
     {
       id: 'establecimientos',
       label: 'Establecimientos',
