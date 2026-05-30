@@ -1,5 +1,6 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextRequest, NextResponse } from 'next/server'
+import { getTestMfaBypassCookie } from '@/lib/auth/test-mfa-bypass'
 
 export async function POST(request: NextRequest) {
   try {
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest) {
       },
     )
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data: signInData, error } = await supabase.auth.signInWithPassword({ email, password })
 
     if (error) {
       console.error('[API auth/login] Supabase error:', error.message)
@@ -63,6 +64,13 @@ export async function POST(request: NextRequest) {
     setCookies.forEach(({ name, value, options }) =>
       response.cookies.set(name, value, options),
     )
+
+    // TEMP testing bypass — ver lib/auth/test-mfa-bypass.ts
+    if (signInData.user) {
+      const bypass = await getTestMfaBypassCookie(email, signInData.user.id)
+      if (bypass) response.cookies.set(bypass.name, bypass.value, bypass.options)
+    }
+
     return response
   } catch (e) {
     console.error('[API auth/login] Unhandled error:', e)

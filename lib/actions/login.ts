@@ -4,6 +4,7 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { createServiceClient } from '@/lib/supabase/service'
+import { getTestMfaBypassCookie } from '@/lib/auth/test-mfa-bypass'
 
 function buildSupabaseClient(cookieStore: Awaited<ReturnType<typeof cookies>>) {
   return createServerClient(
@@ -59,7 +60,7 @@ export async function login(
   const cookieStore = await cookies()
   const supabase = buildSupabaseClient(cookieStore)
 
-  const { error } = await supabase.auth.signInWithPassword({ email, password })
+  const { data: signInData, error } = await supabase.auth.signInWithPassword({ email, password })
 
   if (error) {
     return { error: error.message }
@@ -69,6 +70,12 @@ export async function login(
     await supabase.rpc('cache_user_permissions')
   } catch {
     // non-critical
+  }
+
+  // TEMP testing bypass — ver lib/auth/test-mfa-bypass.ts
+  if (signInData.user) {
+    const bypass = await getTestMfaBypassCookie(email, signInData.user.id)
+    if (bypass) cookieStore.set(bypass.name, bypass.value, bypass.options)
   }
 
   redirect('/dashboard/empresas')
