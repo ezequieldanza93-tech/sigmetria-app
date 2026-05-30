@@ -22,6 +22,33 @@ interface EstablecimientoFormProps {
 
 type DiaConfig = { activo: boolean; inicio: string; fin: string }
 
+function FormSection({
+  step,
+  title,
+  description,
+  children,
+}: {
+  step: number
+  title: string
+  description: string
+  children: React.ReactNode
+}) {
+  return (
+    <section className="border border-border-subtle rounded-xl bg-surface-base p-5 space-y-4">
+      <header className="flex items-start gap-3 pb-3 border-b border-border-subtle">
+        <span className="flex items-center justify-center w-8 h-8 rounded-full bg-sig-100 text-sig-700 text-sm font-semibold shrink-0">
+          {step}
+        </span>
+        <div>
+          <h3 className="text-base font-semibold text-text-primary">{title}</h3>
+          <p className="text-xs text-text-secondary mt-0.5">{description}</p>
+        </div>
+      </header>
+      <div className="space-y-4">{children}</div>
+    </section>
+  )
+}
+
 const DIAS_SEMANA = [
   { dia: 1, label: 'Lunes' },
   { dia: 2, label: 'Martes' },
@@ -54,6 +81,15 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
   const [semana, setSemana] = useState<Record<number, DiaConfig>>(HORARIO_DEFAULT)
   const formRef = useRef<HTMLFormElement>(null)
   const [tick, setTick] = useState(0)
+
+  // Derive provincia from localidad_id once localidades data arrives (edit mode safety net)
+  useEffect(() => {
+    if (selectedProvincia) return
+    if (!establecimiento?.localidad_id) return
+    if (!localidades.length) return
+    const loc = localidades.find(l => l.id === establecimiento.localidad_id)
+    if (loc?.provincia) setSelectedProvincia(loc.provincia)
+  }, [localidades, establecimiento?.localidad_id, selectedProvincia])
 
   const hasFoto = Boolean(establecimiento?.photo_site)
   const hasPlanoPdf = Boolean(establecimiento?.plano_url)
@@ -167,248 +203,267 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
         </div>
       )}
 
-      <Input
-        label="Nombre del Establecimiento"
-        name="nombre"
-        defaultValue={establecimiento?.nombre}
-        required
-        placeholder="Planta Norte"
-      />
-
-      <div>
-        <label className="text-sm font-medium text-text-secondary block mb-1">Tipo *</label>
-        <select
-          name="tipo_id"
-          value={selectedTipoId}
-          onChange={e => setSelectedTipoId(e.target.value)}
-          className="w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500"
-        >
-          <option value="">Seleccionar tipo...</option>
-          {tipos.map(t => (
-            <option key={t.id} value={t.id}>{t.nombre}</option>
-          ))}
-        </select>
-        {tipos.find(t => t.id === selectedTipoId)?.codigo === 'CONSTRUCCION' && (
-          <p className="mt-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-            Requiere aviso de inicio de obra según normativa vigente.
-          </p>
-        )}
-      </div>
-
-      <Input
-        label="Domicilio"
-        name="domicilio"
-        defaultValue={establecimiento?.domicilio ?? ''}
-        placeholder="Calle 123"
-      />
-
-      <div className="grid grid-cols-2 gap-4">
-        <Select
-          label="Provincia"
-          value={selectedProvincia}
-          onChange={e => setSelectedProvincia(e.target.value)}
-          options={provincias.map(p => ({ value: p, label: p }))}
-          placeholder="Seleccionar provincia..."
+      <FormSection
+        step={1}
+        title="Identificación del establecimiento"
+        description="Empezá con lo básico: cómo se llama, qué tipo de establecimiento es y una foto para reconocerlo."
+      >
+        <Input
+          label="Nombre del Establecimiento"
+          name="nombre"
+          defaultValue={establecimiento?.nombre}
+          required
+          placeholder="Planta Norte"
         />
-        <Select
-          label="Localidad"
-          name="localidad_id"
-          value={selectedLocalidadId}
-          onChange={e => setSelectedLocalidadId(e.target.value)}
-          options={localidadesFiltradas.map(l => ({ value: l.id, label: l.nombre }))}
-          placeholder={selectedProvincia ? 'Seleccionar localidad...' : 'Elegí provincia primero'}
-          disabled={!selectedProvincia}
-        />
-      </div>
 
-      <Input
-        label="Código Postal"
-        name="codigo_postal"
-        defaultValue={establecimiento?.codigo_postal ?? ''}
-        placeholder="2000"
-      />
-
-      <Input
-        label="Actividad Principal"
-        name="actividad_principal"
-        defaultValue={establecimiento?.actividad_principal ?? ''}
-        placeholder="Manufactura de piezas metálicas"
-      />
-
-      <Input
-        label="Cantidad de trabajadores (manual)"
-        name="cantidad_trabajadores"
-        type="number"
-        min="0"
-        defaultValue={establecimiento?.cantidad_trabajadores != null ? String(establecimiento.cantidad_trabajadores) : ''}
-        placeholder="Ej: 45"
-      />
-
-      <div>
-        <label className="text-sm font-medium text-text-secondary block mb-2">Horario por día</label>
-        <div className="border border-border-subtle rounded-lg divide-y divide-gray-100">
-          {DIAS_SEMANA.map(({ dia, label }) => {
-            const cfg = semana[dia]
-            return (
-              <div key={dia} className="flex items-center gap-3 px-3 py-2.5">
-                <input
-                  type="checkbox"
-                  id={`dia_${dia}_activo`}
-                  checked={cfg.activo}
-                  onChange={e => setSemana(prev => ({ ...prev, [dia]: { ...prev[dia], activo: e.target.checked } }))}
-                  value="true"
-                  name={`dia_${dia}_activo`}
-                  className="w-4 h-4 rounded border-border-default text-sig-500 focus:ring-sig-400"
-                />
-                <label htmlFor={`dia_${dia}_activo`} className="w-24 text-sm text-text-secondary select-none cursor-pointer">{label}</label>
-                {cfg.activo ? (
-                  <div className="flex items-center gap-2 flex-1">
-                    <input
-                      type="time"
-                      name={`dia_${dia}_inicio`}
-                      value={cfg.inicio}
-                      onChange={e => setSemana(prev => ({ ...prev, [dia]: { ...prev[dia], inicio: e.target.value } }))}
-                      required
-                      className="border border-border-default rounded px-2 py-1 text-sm w-28 focus:outline-none focus:ring-2 focus:ring-sig-400"
-                    />
-                    <span className="text-text-tertiary text-sm">a</span>
-                    <input
-                      type="time"
-                      name={`dia_${dia}_fin`}
-                      value={cfg.fin}
-                      onChange={e => setSemana(prev => ({ ...prev, [dia]: { ...prev[dia], fin: e.target.value } }))}
-                      required
-                      className="border border-border-default rounded px-2 py-1 text-sm w-28 focus:outline-none focus:ring-2 focus:ring-sig-400"
-                    />
-                  </div>
-                ) : (
-                  <span className="text-sm text-text-tertiary">Sin actividad</span>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      </div>
-
-      <div>
-        <label className="text-sm font-medium text-text-secondary block mb-1">Información del establecimiento</label>
-        <textarea
-          name="description"
-          defaultValue={establecimiento?.description ?? ''}
-          rows={3}
-          className="w-full border border-border-default rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500 focus:border-transparent resize-none"
-          placeholder="Descripción, notas o información adicional del establecimiento…"
-        />
-      </div>
-
-      {/* ── Preguntas de riesgo dinámicas ───────────────────── */}
-      {preguntas.length > 0 && (
-        <div className="border border-sig-200 rounded-xl p-4 space-y-3 bg-sig-50/30">
-          <p className="text-xs font-semibold text-sig-700 uppercase tracking-wider">
-            Condiciones del establecimiento
-          </p>
-          <p className="text-xs text-text-secondary">
-            Respondé las siguientes preguntas para identificar qué requisitos legales aplican.
-          </p>
-          {/* Hidden inputs to tell the server action which pregunta_ids are active */}
-          {preguntas.map(p => (
-            <input key={`pid_${p.id}`} type="hidden" name="pregunta_ids" value={p.id} />
-          ))}
-          <div className="space-y-2.5">
-            {preguntas.map(p => (
-              <label key={p.id} className="flex items-start gap-3 cursor-pointer select-none group">
-                <input
-                  type="checkbox"
-                  name={`resp_${p.id}`}
-                  value="true"
-                  checked={respuestas[p.id] ?? false}
-                  onChange={e => setRespuestas(prev => ({ ...prev, [p.id]: e.target.checked }))}
-                  className="w-4 h-4 mt-0.5 rounded border-border-default text-sig-500 focus:ring-sig-400 shrink-0"
-                />
-                <span className="text-sm text-text-secondary group-hover:text-text-primary">{p.texto}</span>
-              </label>
+        <div>
+          <label className="text-sm font-medium text-text-secondary block mb-1">Tipo *</label>
+          <select
+            name="tipo_id"
+            value={selectedTipoId}
+            onChange={e => setSelectedTipoId(e.target.value)}
+            className="w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500"
+          >
+            <option value="">Seleccionar tipo...</option>
+            {tipos.map(t => (
+              <option key={t.id} value={t.id}>{t.nombre}</option>
             ))}
+          </select>
+          {tipos.find(t => t.id === selectedTipoId)?.codigo === 'CONSTRUCCION' && (
+            <p className="mt-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              Requiere aviso de inicio de obra según normativa vigente.
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-secondary mb-1">Foto del establecimiento</label>
+          {establecimiento?.photo_site && (
+            <div className="relative w-full h-40 mb-2">
+              <Image
+                src={establecimiento.photo_site}
+                alt="Foto actual"
+                fill
+                className="object-cover rounded-lg border border-border-subtle"
+                sizes="(max-width: 768px) 100vw, 50vw"
+              />
+            </div>
+          )}
+          <input
+            name="foto"
+            type="file"
+            accept="image/*"
+            className="w-full text-sm text-text-secondary file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-sig-50 file:text-sig-700 hover:file:bg-sig-100 cursor-pointer"
+          />
+          <p className="text-xs text-text-tertiary mt-1">JPG, PNG o WebP. Se reemplaza la existente al guardar.</p>
+        </div>
+      </FormSection>
+
+      <FormSection
+        step={2}
+        title="Ubicación y operación"
+        description="¿Dónde está y cómo funciona? Domicilio, actividad principal, cantidad de gente y horarios de trabajo."
+      >
+        <Input
+          label="Domicilio"
+          name="domicilio"
+          defaultValue={establecimiento?.domicilio ?? ''}
+          placeholder="Calle 123"
+        />
+
+        <div className="grid grid-cols-2 gap-4">
+          <Select
+            label="Provincia"
+            value={selectedProvincia}
+            onChange={e => {
+              setSelectedProvincia(e.target.value)
+              setSelectedLocalidadId('')
+            }}
+            options={provincias.map(p => ({ value: p, label: p }))}
+            placeholder="Seleccionar provincia..."
+          />
+          <Select
+            label="Localidad"
+            name="localidad_id"
+            value={selectedLocalidadId}
+            onChange={e => setSelectedLocalidadId(e.target.value)}
+            options={localidadesFiltradas.map(l => ({ value: l.id, label: l.nombre }))}
+            placeholder={selectedProvincia ? 'Seleccionar localidad...' : 'Elegí provincia primero'}
+            disabled={!selectedProvincia}
+          />
+        </div>
+
+        <Input
+          label="Código Postal"
+          name="codigo_postal"
+          defaultValue={establecimiento?.codigo_postal ?? ''}
+          placeholder="2000"
+        />
+
+        <Input
+          label="Actividad Principal"
+          name="actividad_principal"
+          defaultValue={establecimiento?.actividad_principal ?? ''}
+          placeholder="Manufactura de piezas metálicas"
+        />
+
+        <Input
+          label="Cantidad de trabajadores (manual)"
+          name="cantidad_trabajadores"
+          type="number"
+          min="0"
+          defaultValue={establecimiento?.cantidad_trabajadores != null ? String(establecimiento.cantidad_trabajadores) : ''}
+          placeholder="Ej: 45"
+        />
+
+        <div>
+          <label className="text-sm font-medium text-text-secondary block mb-2">Horario por día</label>
+          <div className="border border-border-subtle rounded-lg divide-y divide-gray-100">
+            {DIAS_SEMANA.map(({ dia, label }) => {
+              const cfg = semana[dia]
+              return (
+                <div key={dia} className="flex items-center gap-3 px-3 py-2.5">
+                  <input
+                    type="checkbox"
+                    id={`dia_${dia}_activo`}
+                    checked={cfg.activo}
+                    onChange={e => setSemana(prev => ({ ...prev, [dia]: { ...prev[dia], activo: e.target.checked } }))}
+                    value="true"
+                    name={`dia_${dia}_activo`}
+                    className="w-4 h-4 rounded border-border-default text-sig-500 focus:ring-sig-400"
+                  />
+                  <label htmlFor={`dia_${dia}_activo`} className="w-24 text-sm text-text-secondary select-none cursor-pointer">{label}</label>
+                  {cfg.activo ? (
+                    <div className="flex items-center gap-2 flex-1">
+                      <input
+                        type="time"
+                        name={`dia_${dia}_inicio`}
+                        value={cfg.inicio}
+                        onChange={e => setSemana(prev => ({ ...prev, [dia]: { ...prev[dia], inicio: e.target.value } }))}
+                        required
+                        className="border border-border-default rounded px-2 py-1 text-sm w-28 focus:outline-none focus:ring-2 focus:ring-sig-400"
+                      />
+                      <span className="text-text-tertiary text-sm">a</span>
+                      <input
+                        type="time"
+                        name={`dia_${dia}_fin`}
+                        value={cfg.fin}
+                        onChange={e => setSemana(prev => ({ ...prev, [dia]: { ...prev[dia], fin: e.target.value } }))}
+                        required
+                        className="border border-border-default rounded px-2 py-1 text-sm w-28 focus:outline-none focus:ring-2 focus:ring-sig-400"
+                      />
+                    </div>
+                  ) : (
+                    <span className="text-sm text-text-tertiary">Sin actividad</span>
+                  )}
+                </div>
+              )
+            })}
           </div>
         </div>
-      )}
 
-      <div>
-        <label className="block text-sm font-medium text-text-secondary mb-1">Ubicación Google Maps</label>
-        <input
-          name="ubicacion_gmaps"
-          type="text"
-          defaultValue={
-            establecimiento?.latitud != null && establecimiento?.longitud != null
-              ? `${establecimiento.latitud}, ${establecimiento.longitud}`
-              : ''
-          }
-          placeholder="Av. Corrientes 1234, Buenos Aires · o URL de Google Maps · o -34.6037, -58.3816"
-          className="w-full border border-border-default rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500"
-        />
-        <p className="text-xs text-text-tertiary mt-1">
-          Podés escribir una dirección, pegar una URL de Google Maps, o ingresar coordenadas.
-          Para obtener coordenadas exactas, hacé <strong>click derecho sobre la ubicación en Google Maps</strong> y seleccioná las coordenadas que aparecen.
-        </p>
-      </div>
+        <div>
+          <label className="block text-sm font-medium text-text-secondary mb-1">Ubicación Google Maps</label>
+          <input
+            name="ubicacion_gmaps"
+            type="text"
+            defaultValue={
+              establecimiento?.latitud != null && establecimiento?.longitud != null
+                ? `${establecimiento.latitud}, ${establecimiento.longitud}`
+                : ''
+            }
+            placeholder="Av. Corrientes 1234, Buenos Aires · o URL de Google Maps · o -34.6037, -58.3816"
+            className="w-full border border-border-default rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500"
+          />
+          <p className="text-xs text-text-tertiary mt-1">
+            Podés escribir una dirección, pegar una URL de Google Maps, o ingresar coordenadas.
+            Para obtener coordenadas exactas, hacé <strong>click derecho sobre la ubicación en Google Maps</strong> y seleccioná las coordenadas que aparecen.
+          </p>
+        </div>
+      </FormSection>
 
-      <div className="flex items-center gap-2">
-        <input
-          id="aplica_iso_45001"
-          name="aplica_iso_45001"
-          type="checkbox"
-          defaultChecked={establecimiento?.aplica_iso_45001 === true}
-          className="w-4 h-4 rounded border-border-default text-sig-600 focus:ring-sig-500"
-        />
-        <label htmlFor="aplica_iso_45001" className="text-sm font-medium text-text-secondary cursor-pointer">
-          Aplica ISO 45001
-        </label>
-      </div>
+      <FormSection
+        step={3}
+        title="Documentación y condiciones"
+        description="Información extra, condiciones de riesgo, normativa aplicable y planos. Cerramos con esto."
+      >
+        <div>
+          <label className="text-sm font-medium text-text-secondary block mb-1">Información del establecimiento</label>
+          <textarea
+            name="description"
+            defaultValue={establecimiento?.description ?? ''}
+            rows={3}
+            className="w-full border border-border-default rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500 focus:border-transparent resize-none"
+            placeholder="Descripción, notas o información adicional del establecimiento…"
+          />
+        </div>
 
-      <div>
-        <label className="block text-sm font-medium text-text-secondary mb-1">Foto del establecimiento</label>
-        {establecimiento?.photo_site && (
-          <div className="relative w-full h-40 mb-2">
-            <Image
-              src={establecimiento.photo_site}
-              alt="Foto actual"
-              fill
-              className="object-cover rounded-lg border border-border-subtle"
-              sizes="(max-width: 768px) 100vw, 50vw"
+        {preguntas.length > 0 && (
+          <div className="border border-sig-200 rounded-xl p-4 space-y-3 bg-sig-50/30">
+            <p className="text-xs font-semibold text-sig-700 uppercase tracking-wider">
+              Condiciones del establecimiento
+            </p>
+            <p className="text-xs text-text-secondary">
+              Respondé las siguientes preguntas para identificar qué requisitos legales aplican.
+            </p>
+            {preguntas.map(p => (
+              <input key={`pid_${p.id}`} type="hidden" name="pregunta_ids" value={p.id} />
+            ))}
+            <div className="space-y-2.5">
+              {preguntas.map(p => (
+                <label key={p.id} className="flex items-start gap-3 cursor-pointer select-none group">
+                  <input
+                    type="checkbox"
+                    name={`resp_${p.id}`}
+                    value="true"
+                    checked={respuestas[p.id] ?? false}
+                    onChange={e => setRespuestas(prev => ({ ...prev, [p.id]: e.target.checked }))}
+                    className="w-4 h-4 mt-0.5 rounded border-border-default text-sig-500 focus:ring-sig-400 shrink-0"
+                  />
+                  <span className="text-sm text-text-secondary group-hover:text-text-primary">{p.texto}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="flex items-center gap-2">
+          <input
+            id="aplica_iso_45001"
+            name="aplica_iso_45001"
+            type="checkbox"
+            defaultChecked={establecimiento?.aplica_iso_45001 === true}
+            className="w-4 h-4 rounded border-border-default text-sig-600 focus:ring-sig-500"
+          />
+          <label htmlFor="aplica_iso_45001" className="text-sm font-medium text-text-secondary cursor-pointer">
+            Aplica ISO 45001
+          </label>
+        </div>
+
+        <div className="border-t border-border-subtle pt-4 space-y-3">
+          <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Planos del establecimiento</p>
+          <div className="grid grid-cols-2 gap-3">
+            <FileUploadInput
+              name="floor_plan_pdf"
+              label="Plano (PDF)"
+              accept="application/pdf,image/png,image/jpeg"
+              maxSizeMB={20}
+              currentUrl={establecimiento?.plano_url}
+              helpText="PDF (preferido) o imagen. Máx 20 MB."
+              kind="document"
+            />
+            <FileUploadInput
+              name="floor_plan_cad"
+              label="Plano (CAD)"
+              accept="application/pdf,image/png,image/jpeg"
+              maxSizeMB={20}
+              currentUrl={establecimiento?.floor_plan_cad_url}
+              helpText="Si tenés versión editable. Máx 20 MB."
+              kind="document"
             />
           </div>
-        )}
-        <input
-          name="foto"
-          type="file"
-          accept="image/*"
-          className="w-full text-sm text-text-secondary file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-sig-50 file:text-sig-700 hover:file:bg-sig-100 cursor-pointer"
-        />
-        <p className="text-xs text-text-tertiary mt-1">JPG, PNG o WebP. Se reemplaza la existente al guardar.</p>
-      </div>
-
-      <div className="border-t border-border-subtle pt-4 space-y-3">
-        <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Planos del establecimiento</p>
-        <div className="grid grid-cols-2 gap-3">
-          <FileUploadInput
-            name="floor_plan_pdf"
-            label="Plano (PDF)"
-            accept="application/pdf,image/png,image/jpeg"
-            maxSizeMB={20}
-            currentUrl={establecimiento?.plano_url}
-            helpText="PDF (preferido) o imagen. Máx 20 MB."
-            kind="document"
-          />
-          <FileUploadInput
-            name="floor_plan_cad"
-            label="Plano (CAD)"
-            accept="application/pdf,image/png,image/jpeg"
-            maxSizeMB={20}
-            currentUrl={establecimiento?.floor_plan_cad_url}
-            helpText="Si tenés versión editable. Máx 20 MB."
-            kind="document"
-          />
         </div>
-      </div>
+      </FormSection>
 
       <div className="flex gap-3 pt-2">
         <Button type="submit" disabled={isPending}>
