@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Sun, Moon, Users, UserCog, Network, Gauge, Shield, Settings2, LogOut, Building2, BarChart2, CreditCard, ShieldCheck, CalendarClock, AlertTriangle, Scale, Map, ClipboardList, MessageSquare, Wifi, WifiOff, Download, GraduationCap, BookOpen, Keyboard, Home, BookMarked, FileCheck, KeyRound } from 'lucide-react'
+import { Sun, Moon, Users, UserCog, Network, Gauge, Shield, Settings2, LogOut, Building2, BarChart2, CreditCard, ShieldCheck, CalendarClock, Map, ClipboardList, MessageSquare, Wifi, WifiOff, Download, GraduationCap, BookOpen, Keyboard, Home, BookMarked, FileCheck, KeyRound } from 'lucide-react'
 import { SystemRole, UserRole, ROLE_LABELS, ROLE_COLORS } from '@/lib/types'
 import { RoleSwitcher } from '@/components/layout/role-switcher'
 import { type SwitchableRole } from '@/lib/actions/change-role'
@@ -367,6 +367,9 @@ export function AppHeader({
                   {(userRole === 'full_access_main' || isSuperAdmin) && (
                     <DropdownItem href="/dashboard/configuracion/api-keys" icon={KeyRound} label="API Keys" role="menuitem" />
                   )}
+                  {(userRole === 'full_access_main' || userRole === 'responsable_estandares' || isSuperAdmin) && (
+                    <DropdownItem href="/dashboard/reportes" icon={FileCheck} label="Reportes" role="menuitem" />
+                  )}
                 </div>
 
                 {/* Directorio */}
@@ -379,20 +382,12 @@ export function AppHeader({
                   <DropdownItem href="/dashboard/productos" icon={Shield} label="Productos" role="menuitem" />
                 </div>
 
-                {/* Incidentes y Denuncias */}
+                {/* Librerías */}
                 <div className="py-1 border-b border-border-subtle">
                   <div className="px-4 py-1.5">
-                    <p className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold">Incidentes y Denuncias</p>
+                    <p className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold">Librerías</p>
                   </div>
-                  <DropdownItem href="/dashboard/incidentes" icon={AlertTriangle} label="Incidentes" role="menuitem" />
-                  <DropdownItem href="/dashboard/denuncias" icon={Scale} label="Denuncias" role="menuitem" />
-                </div>
-
-                {/* Capacitación */}
-                <div className="py-1 border-b border-border-subtle">
-                  <div className="px-4 py-1.5">
-                    <p className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold">Capacitación</p>
-                  </div>
+                  <DropdownItem href="/dashboard/configuracion/iperc" icon={ClipboardList} label="Librería IPERC" role="menuitem" />
                   <DropdownItem href="/dashboard/cursos" icon={GraduationCap} label="Mis Cursos" role="menuitem" />
                   {(userRole === 'full_access_main' || userRole === 'full_access_branch' || isSuperAdmin) && (
                     <>
@@ -402,16 +397,6 @@ export function AppHeader({
                   )}
                 </div>
 
-                {/* Cumplimiento */}
-                {(userRole === 'full_access_main' || userRole === 'responsable_estandares' || isSuperAdmin) && (
-                  <div className="py-1 border-b border-border-subtle">
-                    <div className="px-4 py-1.5">
-                      <p className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold">Cumplimiento</p>
-                    </div>
-                    <DropdownItem href="/dashboard/reportes" icon={FileCheck} label="Reportes" role="menuitem" />
-                  </div>
-                )}
-
                 {/* Herramientas */}
                 <div className="py-1 border-b border-border-subtle">
                   <div className="px-4 py-1.5">
@@ -420,7 +405,6 @@ export function AppHeader({
                   <DropdownItem href="/dashboard/analytics" icon={BarChart2} label="Analytics" role="menuitem" />
                   <DropdownItem href="/dashboard/configuracion/catalogacion" icon={Settings2} label="Catalogación" role="menuitem" />
                   <DropdownItem href="/dashboard/configuracion/vencimientos" icon={CalendarClock} label="Vencimientos" role="menuitem" />
-                  <DropdownItem href="/dashboard/configuracion/iperc" icon={ClipboardList} label="Librería IPERC" role="menuitem" />
                   <DropdownItem href="/dashboard/configuracion/feedback" icon={MessageSquare} label="Feedback" role="menuitem" />
                   <DropdownItem href="/dashboard/mapas" icon={Map} label="Mapa de Riesgos" role="menuitem" />
                   {isSuperAdmin && (
