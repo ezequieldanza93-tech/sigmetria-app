@@ -137,26 +137,35 @@ export function PhotoCanvasEditor({
     img.src = imageUrl
   }, [imageUrl])
 
-  // Calcular tamaño del stage en función del contenedor (responsive)
+  // Calcular tamaño del stage en función del contenedor (responsive).
+  // Usamos ResizeObserver porque el editor vive dentro de un Modal: el div
+  // contenedor puede tener clientWidth=0 en el primer paint (animación de
+  // apertura, layout pendiente), y entonces el Stage nunca se monta porque
+  // dependemos de stageSize.width > 0 para renderizarlo.
   useEffect(() => {
-    if (!image || !containerRef.current) return
-    function update() {
-      const el = containerRef.current
-      if (!el || !image) return
-      const containerWidth = el.clientWidth
+    if (!image) return
+    const el = containerRef.current
+    if (!el) return
+    function update(width: number) {
+      if (!image || width <= 0) return
       const aspect = image.naturalHeight / image.naturalWidth
       const maxHeight = Math.floor(window.innerHeight * 0.6)
-      let width = containerWidth
-      let height = width * aspect
-      if (height > maxHeight) {
-        height = maxHeight
-        width = height / aspect
+      let w = width
+      let h = w * aspect
+      if (h > maxHeight) {
+        h = maxHeight
+        w = h / aspect
       }
-      setStageSize({ width: Math.floor(width), height: Math.floor(height) })
+      setStageSize({ width: Math.floor(w), height: Math.floor(h) })
     }
-    update()
-    window.addEventListener('resize', update)
-    return () => window.removeEventListener('resize', update)
+    update(el.clientWidth)
+    const ro = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        update(entry.contentRect.width)
+      }
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
   }, [image])
 
   // Adjuntar/desadjuntar transformer al objeto seleccionado
