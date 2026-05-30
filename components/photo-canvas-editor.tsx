@@ -126,7 +126,10 @@ export function PhotoCanvasEditor({
   // Cargar imagen
   useEffect(() => {
     const img = new window.Image()
-    img.crossOrigin = 'anonymous'
+    // Solo activar CORS para URLs HTTP(S) externas; blob:/data: URLs no lo soportan
+    if (/^https?:\/\//i.test(imageUrl)) {
+      img.crossOrigin = 'anonymous'
+    }
     img.onload = () => {
       setImage(img)
       setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight })
