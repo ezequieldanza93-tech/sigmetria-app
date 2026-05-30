@@ -49,9 +49,24 @@ export function ErrorCapture() {
     window.addEventListener('__sig_error_captured__', refresh)
 
     const onError = (ev: ErrorEvent) => {
+      const message = ev.message ?? String(ev.error?.message ?? 'Unknown')
+
+      // Hydration errors (React #418, #419, #420, #421, #422, #423, #425) are almost
+      // always caused by browser extensions (crypto wallets, password managers,
+      // dark-mode injectors) that mutate the DOM before React hydrates. The app
+      // recovers automatically with a client-side render. Not actionable — skip.
+      if (/Minified React error #(418|419|420|421|422|423|425)/.test(message)) return
+
+      // Crypto wallet extensions (MetaMask, Phantom, Coinbase, etc.) inject scripts
+      // that emit their own errors. Not ours.
+      if (/^\[EVM\]|MetaMask|ethereum\.|web3\.|phantom\.|coinbase/i.test(message)) return
+
+      // Script-from-extension URLs (chrome-extension://, moz-extension://, etc.)
+      if (ev.filename && /^(chrome|moz|safari-web|edge)-extension:\/\//.test(ev.filename)) return
+
       saveError({
         type: 'error',
-        message: ev.message ?? String(ev.error?.message ?? 'Unknown'),
+        message,
         source: ev.filename,
         line: ev.lineno,
         col: ev.colno,
