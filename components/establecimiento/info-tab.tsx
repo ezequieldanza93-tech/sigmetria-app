@@ -25,7 +25,7 @@ interface Props {
 
 export function InfoTab({ establecimiento, canWrite, empresaId }: Props) {
   const [horarios, setHorarios] = useState<HorarioEstablecimiento[]>([])
-  const [planoUrl, setPlanoUrl] = useState(establecimiento.floor_plan_pdf_url)
+  const [planoUrl, setPlanoUrl] = useState(establecimiento.plano_url)
 
   const uploadAction = uploadPlanoEstablecimiento.bind(null, establecimiento.id)
   const deleteAction = deletePlanoEstablecimiento.bind(null, establecimiento.id)
@@ -54,7 +54,7 @@ export function InfoTab({ establecimiento, canWrite, empresaId }: Props) {
   const ubicacion = [establecimiento.domicilio, localidad?.nombre, localidad?.provincia, establecimiento.codigo_postal]
     .filter(Boolean).join(', ')
 
-  const hasLocation = establecimiento.latitude != null && establecimiento.longitude != null
+  const hasLocation = establecimiento.latitud != null && establecimiento.longitud != null
 
   return (
     <div className="space-y-5">
@@ -67,7 +67,7 @@ export function InfoTab({ establecimiento, canWrite, empresaId }: Props) {
             {/* Mapa OpenStreetMap */}
             <div className="relative border-b sm:border-b-0 sm:border-r border-border-subtle min-h-[160px]">
               <iframe
-                src={`https://www.openstreetmap.org/export/embed.html?bbox=${establecimiento.longitude! - 0.01},${establecimiento.latitude! - 0.01},${establecimiento.longitude! + 0.01},${establecimiento.latitude! + 0.01}&layer=mapnik&marker=${establecimiento.latitude},${establecimiento.longitude}`}
+                src={`https://www.openstreetmap.org/export/embed.html?bbox=${establecimiento.longitud! - 0.01},${establecimiento.latitud! - 0.01},${establecimiento.longitud! + 0.01},${establecimiento.latitud! + 0.01}&layer=mapnik&marker=${establecimiento.latitud},${establecimiento.longitud}`}
                 width="100%"
                 height="100%"
                 style={{ border: 0, display: 'block', minHeight: '200px' }}
@@ -77,7 +77,7 @@ export function InfoTab({ establecimiento, canWrite, empresaId }: Props) {
                 title={`Mapa de ${establecimiento.nombre}`}
               />
               <a
-                href={`https://www.openstreetmap.org/?mlat=${establecimiento.latitude}&mlon=${establecimiento.longitude}#map=15/${establecimiento.latitude}/${establecimiento.longitude}`}
+                href={`https://www.openstreetmap.org/?mlat=${establecimiento.latitud}&mlon=${establecimiento.longitud}#map=15/${establecimiento.latitud}/${establecimiento.longitud}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="absolute bottom-2 right-2 bg-surface-base/90 backdrop-blur-sm text-xs text-brand-primary font-medium px-2.5 py-1 rounded-lg shadow border border-border-subtle hover:bg-surface-base transition-colors"
@@ -87,7 +87,7 @@ export function InfoTab({ establecimiento, canWrite, empresaId }: Props) {
             </div>
 
             {/* Clima + Hora local */}
-            <WeatherPanel lat={establecimiento.latitude!} lng={establecimiento.longitude!} />
+            <WeatherPanel lat={establecimiento.latitud!} lng={establecimiento.longitud!} />
           </div>
         </section>
       )}

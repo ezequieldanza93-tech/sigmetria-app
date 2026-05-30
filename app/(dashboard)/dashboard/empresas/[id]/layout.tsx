@@ -25,7 +25,7 @@ export default async function EmpresaLegacyLayout({ children, params }: Props) {
       .order('nombre'),
   ])
 
-  if (!empresa) { console.error('[layout empresa/[id]] empresa not found for id:', id, '— user:', user.id); notFound() }
+  if (!empresa) notFound()
 
   const establecimientos = (estData ?? []) as { id: string; nombre: string }[]
 

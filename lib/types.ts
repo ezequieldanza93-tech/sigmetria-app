@@ -236,14 +236,13 @@ export interface Establecimiento {
   localidad_id: string | null
   actividad_principal: string | null
   cantidad_trabajadores: number | null
-  horario_trabajo: string | null
   description: string | null
-  latitude: number | null
-  longitude: number | null
+  latitud: number | null
+  longitud: number | null
   photo_site: string | null
+  plano_url: string | null
   code: string | null
   ref: string | null
-  floor_plan_pdf_url: string | null
   floor_plan_cad_url: string | null
   google_maps_url: string | null
   ac_area: number | null

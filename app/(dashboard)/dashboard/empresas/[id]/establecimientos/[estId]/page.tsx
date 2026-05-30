@@ -34,22 +34,16 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
 
   const [
     effective,
-    estResult,
-    empResult,
+    { data: establecimiento },
+    { data: empresa },
   ] = await Promise.all([
     getEffectiveRole(),
-    supabase.from('establecimientos').select('id, nombre, latitude, longitude, photo_site, plano_url, domicilio, codigo_postal, actividad_principal, cantidad_trabajadores, description, aplica_iso_45001, floor_plan_pdf_url, created_at, establecimientos_tipos!tipo_id(id, codigo, nombre), localidades!localidad_id(nombre, provincia)').eq('id', estId).single(),
+    supabase.from('establecimientos').select('id, nombre, latitud, longitud, photo_site, plano_url, domicilio, codigo_postal, actividad_principal, cantidad_trabajadores, description, aplica_iso_45001, created_at, establecimientos_tipos!tipo_id(id, codigo, nombre), localidades!localidad_id(nombre, provincia)').eq('id', estId).single(),
     supabase.from('empresas').select('id, razon_social').eq('id', empresaId).single(),
   ])
 
-  const establecimiento = estResult.data
-  const empresa = empResult.data
-
   if (!effective) redirect('/login')
-  if (!establecimiento || !empresa) {
-    console.error(`E:${!!establecimiento} ee:${estResult.error?.code} emp:${!!empresa} eme:${empResult.error?.code}`)
-    notFound()
-  }
+  if (!establecimiento || !empresa) notFound()
 
   const userCanWrite =
     canWrite(effective.effectiveUserRole, effective.effectiveSystemRole) ||

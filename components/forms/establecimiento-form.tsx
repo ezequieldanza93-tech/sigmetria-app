@@ -285,8 +285,8 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
           name="ubicacion_gmaps"
           type="text"
           defaultValue={
-            establecimiento?.latitude != null && establecimiento?.longitude != null
-              ? `${establecimiento.latitude}, ${establecimiento.longitude}`
+            establecimiento?.latitud != null && establecimiento?.longitud != null
+              ? `${establecimiento.latitud}, ${establecimiento.longitud}`
               : ''
           }
           placeholder="Av. Corrientes 1234, Buenos Aires · o URL de Google Maps · o -34.6037, -58.3816"
@@ -341,7 +341,7 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
             label="Plano (PDF)"
             accept="application/pdf,image/png,image/jpeg"
             maxSizeMB={20}
-            currentUrl={establecimiento?.floor_plan_pdf_url}
+            currentUrl={establecimiento?.plano_url}
             helpText="PDF (preferido) o imagen. Máx 20 MB."
             kind="document"
           />

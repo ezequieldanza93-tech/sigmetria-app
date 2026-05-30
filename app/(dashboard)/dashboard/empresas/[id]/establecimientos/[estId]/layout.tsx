@@ -21,7 +21,7 @@ export default async function EstablecimientoLegacyLayout({ children, params }: 
     .eq('id', estId)
     .single()
 
-  if (!establecimiento) { console.error('[layout estId] establecimiento not found — estId:', estId, 'empresaId:', empresaId, 'user:', user.id); notFound() }
+  if (!establecimiento) notFound()
 
   return (
     <EstablecimientoProvider establecimientoId={estId} nombre={establecimiento.nombre} empresaId={empresaId}>
