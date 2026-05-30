@@ -9,8 +9,8 @@ import { FloatingAvatar } from '@/components/layout/floating-avatar'
 import { ChatWidget } from '@/components/agent/chat-widget'
 import { BannerPastDueWrapper } from '@/components/billing/banner-past-due-wrapper'
 import { PreviewProvider } from '@/lib/contexts/preview-context'
-import { UserRole, SystemRole } from '@/lib/types'
-import { getSimulatedRole, type SwitchableRole } from '@/lib/actions/change-role'
+import { EffectiveRoleProvider } from '@/lib/contexts/effective-role-context'
+import { getEffectiveRole } from '@/lib/auth/effective-role'
 import 'leaflet/dist/leaflet.css'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -21,34 +21,25 @@ export default async function DashboardLayout({ children }: { children: React.Re
   } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: profile }, { data: membership }] = await Promise.all([
-    supabase.from('profiles').select('full_name, system_role, is_super_admin').eq('id', user.id).single(),
-    supabase
-      .from('consultoras_members')
-      .select('role, consultora_id, consultoras(nombre)')
-      .eq('user_id', user.id)
-      .eq('is_active', true)
-      .maybeSingle(),
+  const [{ data: profile }, effective] = await Promise.all([
+    supabase.from('profiles').select('full_name').eq('id', user.id).single(),
+    getEffectiveRole(),
   ])
 
-  const consultoraNombre = (membership?.consultoras as { nombre?: string } | null)?.nombre ?? null
+  if (!effective) redirect('/login')
 
-  // Role simulation: super admins can test the app as any role via a cookie.
-  // Never changes the DB — safe to switch freely.
-  const isSuperAdmin = profile?.is_super_admin ?? false
-  const realSystemRole = (profile?.system_role ?? 'user') as SystemRole
-  const realUserRole = (membership?.role as UserRole) ?? null
+  const {
+    isSuperAdmin,
+    canSwitchRole,
+    simulatedRole: simRole,
+    effectiveSystemRole,
+    effectiveUserRole,
+    consultoraNombre,
+    consultoraId: membershipConsultoraId,
+    email,
+  } = effective
 
-  const simRole: SwitchableRole | null = isSuperAdmin || realSystemRole === 'developer'
-    ? await getSimulatedRole()
-    : null
-
-  const effectiveSystemRole: SystemRole = simRole === 'developer' || (!simRole && realSystemRole === 'developer')
-    ? 'developer'
-    : 'user'
-  const effectiveUserRole: UserRole | null = simRole && simRole !== 'developer'
-    ? simRole as UserRole
-    : realUserRole
+  const membership = membershipConsultoraId ? { consultora_id: membershipConsultoraId } : null
 
   // Checkear si la suscripción está en past_due para mostrar banner
   let isPastDue = false
@@ -77,6 +68,16 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <PreviewProvider>
+    <EffectiveRoleProvider
+      value={{
+        userRole: effectiveUserRole,
+        systemRole: effectiveSystemRole,
+        simulatedRole: simRole,
+        isSuperAdmin,
+        canSwitchRole,
+        email,
+      }}
+    >
     <SidebarWrapper
       header={
         <AppHeader
@@ -87,6 +88,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           consultoraNombre={consultoraNombre}
           isSuperAdmin={isSuperAdmin}
           simulatedRole={simRole}
+          canSwitchRole={canSwitchRole}
         />
       }
     >
@@ -107,7 +109,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
       consultoraNombre={consultoraNombre}
       isSuperAdmin={isSuperAdmin}
       simulatedRole={simRole}
+      canSwitchRole={canSwitchRole}
     />
+    </EffectiveRoleProvider>
     </PreviewProvider>
   )
 }

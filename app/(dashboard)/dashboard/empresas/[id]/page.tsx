@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
-import { canWrite, UserRole } from '@/lib/types'
+import { canWrite } from '@/lib/types'
+import { getEffectiveRole } from '@/lib/auth/effective-role'
 import { formatCUIT } from '@/lib/utils'
 import { Building2, FileText, BarChart3 } from 'lucide-react'
 import { EmpresaDocumentosSection } from '@/components/empresa-documentos-section'
@@ -34,21 +35,15 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
 
   const supabase = await createClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const [{ data: profile }, { data: membership }, { data: empresa }] = await Promise.all([
-    supabase.from('profiles').select('system_role').eq('id', user.id).single(),
-    supabase.from('consultoras_members').select('role').eq('user_id', user.id).eq('is_active', true).maybeSingle(),
+  const [effective, { data: empresa }] = await Promise.all([
+    getEffectiveRole(),
     supabase.from('empresas').select('*, empresas_rubros(nombre), localidades(nombre, provincia), organizaciones_externas!art_id(nombre)').eq('id', id).single(),
   ])
 
+  if (!effective) redirect('/login')
   if (!empresa) notFound()
 
-  const puedeEditar = canWrite(
-    membership?.role as UserRole ?? null,
-    profile?.system_role ?? 'user'
-  )
+  const puedeEditar = canWrite(effective.effectiveUserRole, effective.effectiveSystemRole)
 
   // Fetch data by tab
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

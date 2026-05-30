@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
-import { canWrite, UserRole } from '@/lib/types'
+import { canWrite } from '@/lib/types'
+import { getEffectiveRole } from '@/lib/auth/effective-role'
 import { GestionesAgenda } from '@/components/establecimiento-gestiones-agenda'
 import { EstablecimientoTabs } from '@/components/establecimiento-tabs'
 import { ActuarView } from '@/components/actuar-view'
@@ -30,27 +31,23 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
     : 'agenda'
 
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
 
   const [
-    { data: profile },
-    { data: membership },
+    effective,
     { data: establecimiento },
     { data: empresa },
   ] = await Promise.all([
-    supabase.from('profiles').select('system_role, is_super_admin').eq('id', user.id).single(),
-    supabase.from('consultoras_members').select('role').eq('user_id', user.id).eq('is_active', true).maybeSingle(),
+    getEffectiveRole(),
     supabase.from('establecimientos').select('id, nombre, latitude, longitude, photo_site, plano_url, domicilio, codigo_postal, actividad_principal, cantidad_trabajadores, description, aplica_iso_45001, floor_plan_pdf_url, created_at, establecimientos_tipos(id, codigo, nombre), localidades!localidad_id(nombre, provincia)').eq('id', estId).single(),
     supabase.from('empresas').select('id, razon_social').eq('id', empresaId).single(),
   ])
 
+  if (!effective) redirect('/login')
   if (!establecimiento || !empresa) notFound()
 
-  const userCanWrite = canWrite(
-    membership?.role as UserRole ?? null,
-    profile?.system_role ?? 'user'
-  ) || profile?.is_super_admin === true
+  const userCanWrite =
+    canWrite(effective.effectiveUserRole, effective.effectiveSystemRole) ||
+    effective.isSuperAdmin === true
 
   // Section-specific data fetching
   let sectores: SectorEstablecimiento[] = []

@@ -39,6 +39,7 @@ interface FloatingAvatarProps {
   systemRole: SystemRole
   isSuperAdmin?: boolean
   simulatedRole?: SwitchableRole | null
+  canSwitchRole?: boolean
 }
 
 export function FloatingAvatar({
@@ -49,6 +50,7 @@ export function FloatingAvatar({
   systemRole,
   isSuperAdmin = false,
   simulatedRole = null,
+  canSwitchRole = false,
 }: FloatingAvatarProps) {
   const router = useRouter()
   const { level } = useNavigationLevel()
@@ -143,6 +145,7 @@ export function FloatingAvatar({
             systemRole={systemRole}
             isSuperAdmin={isSuperAdmin}
             simulatedRole={simulatedRole}
+            canSwitchRole={canSwitchRole}
             open={roleSimOpen}
             onOpenChange={setRoleSimOpen}
           />

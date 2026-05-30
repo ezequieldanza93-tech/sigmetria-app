@@ -23,6 +23,7 @@ interface AppHeaderProps {
   systemRole: SystemRole
   isSuperAdmin?: boolean
   simulatedRole?: SwitchableRole | null
+  canSwitchRole?: boolean
 }
 
 interface Crumb {
@@ -40,6 +41,7 @@ export function AppHeader({
   systemRole,
   isSuperAdmin = false,
   simulatedRole = null,
+  canSwitchRole = false,
 }: AppHeaderProps) {
   const pathname = usePathname()
   const router = useRouter()
@@ -348,6 +350,7 @@ export function AppHeader({
                   systemRole={systemRole}
                   isSuperAdmin={isSuperAdmin}
                   simulatedRole={simulatedRole}
+                  canSwitchRole={canSwitchRole}
                   open={roleSimOpen}
                   onOpenChange={setRoleSimOpen}
                 />

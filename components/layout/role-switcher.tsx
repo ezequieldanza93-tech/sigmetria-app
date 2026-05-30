@@ -15,13 +15,14 @@ interface RoleEntry {
 }
 
 const ROLES: RoleEntry[] = [
-  { value: 'developer',              label: 'Developer',           description: 'Acceso total + herramientas dev',  color: 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300' },
-  { value: 'full_access_main',       label: 'Admin Principal',     description: 'Gestión completa + usuarios',       color: 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300' },
-  { value: 'full_access_branch',     label: 'Admin Branch',        description: 'Escribe y borra, sin usuarios',    color: 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300' },
-  { value: 'colaborador',            label: 'Colaborador',         description: 'Escribe, sin borrar',              color: 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300' },
-  { value: 'full_viewer',            label: 'Viewer Global',       description: 'Solo lectura, vista completa',     color: 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300' },
-  { value: 'colaborador_viewer',     label: 'Viewer Limitado',     description: 'Solo lectura, vista reducida',     color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' },
-  { value: 'responsable_estandares', label: 'Resp. Estándares',    description: 'Reportes y estándares',            color: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300' },
+  { value: 'developer',                 label: 'Developer',           description: 'Acceso total + herramientas dev',  color: 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300' },
+  { value: 'full_access_main',          label: 'Admin Principal',     description: 'Gestión completa + usuarios',       color: 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300' },
+  { value: 'full_access_branch',        label: 'Admin Branch',        description: 'Escribe y borra, sin usuarios',    color: 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300' },
+  { value: 'colaborador',               label: 'Colaborador',         description: 'Escribe, sin borrar',              color: 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300' },
+  { value: 'full_viewer',               label: 'Viewer Global',       description: 'Solo lectura, vista completa',     color: 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300' },
+  { value: 'colaborador_viewer',        label: 'Viewer Limitado',     description: 'Solo lectura, vista reducida',     color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' },
+  { value: 'visualizador_comentarista', label: 'Visualiz. Comentar.', description: 'Solo lectura + comentarios',       color: 'bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300' },
+  { value: 'responsable_estandares',    label: 'Resp. Estándares',    description: 'Reportes y estándares',            color: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300' },
 ]
 
 interface RoleSwitcherProps {
@@ -29,6 +30,7 @@ interface RoleSwitcherProps {
   systemRole: SystemRole
   isSuperAdmin: boolean
   simulatedRole: SwitchableRole | null
+  canSwitchRole?: boolean
   open: boolean
   onOpenChange: (open: boolean) => void
 }
@@ -37,13 +39,14 @@ export function RoleSwitcher({
   systemRole,
   isSuperAdmin,
   simulatedRole,
+  canSwitchRole,
   open,
   onOpenChange,
 }: RoleSwitcherProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
 
-  const canSwitch = isSuperAdmin || systemRole === 'developer'
+  const canSwitch = canSwitchRole ?? (isSuperAdmin || systemRole === 'developer')
   const effectiveRole: SwitchableRole = simulatedRole ?? (systemRole === 'developer' ? 'developer' : 'full_access_main')
   const current = ROLES.find(r => r.value === effectiveRole)
 
