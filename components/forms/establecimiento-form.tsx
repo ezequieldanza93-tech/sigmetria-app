@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useState, useEffect } from 'react'
+import { useActionState, useState, useEffect, useRef, useMemo } from 'react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,6 +9,7 @@ import { FileUploadInput } from '@/components/ui/file-upload-input'
 import { createClient } from '@/lib/supabase/client'
 import { useLocalidades, useEstablecimientoTipos } from '@/lib/queries/establecimiento-form'
 import type { Establecimiento, ActionResult, PreguntaRiesgo, EstablecimientoRespuesta } from '@/lib/types'
+import { EstablecimientoProgress, type ProgressCheck } from './establecimiento-progress'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type EstablecimientoFormAction = (prevState: any, formData: FormData) => Promise<ActionResult<unknown>>
@@ -49,7 +50,14 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
   const [respuestas, setRespuestas] = useState<Record<string, boolean>>({})
   const [selectedProvincia, setSelectedProvincia] = useState(establecimiento?.localidades?.provincia ?? '')
   const [selectedTipoId, setSelectedTipoId] = useState(establecimiento?.tipo_id ?? '')
+  const [selectedLocalidadId, setSelectedLocalidadId] = useState(establecimiento?.localidad_id ?? '')
   const [semana, setSemana] = useState<Record<number, DiaConfig>>(HORARIO_DEFAULT)
+  const formRef = useRef<HTMLFormElement>(null)
+  const [tick, setTick] = useState(0)
+
+  const hasFoto = Boolean(establecimiento?.photo_site)
+  const hasPlanoPdf = Boolean(establecimiento?.plano_url)
+  const hasPlanoCad = Boolean(establecimiento?.floor_plan_cad_url)
 
   // Load horarios for existing establishment
   useEffect(() => {
@@ -85,6 +93,9 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
       })
   }, [establecimiento?.id])
 
+  // Trigger initial progress calculation after mount so defaultValues count
+  useEffect(() => { setTick(t => t + 1) }, [])
+
   // Load preguntas when tipo changes
   useEffect(() => {
     if (!selectedTipoId) { setPreguntas([]); return }
@@ -107,8 +118,49 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
   const provincias = [...new Set(localidades.map(l => l.provincia))].sort()
   const localidadesFiltradas = localidades.filter(l => l.provincia === selectedProvincia)
 
+  const fieldValue = (name: string): string => {
+    const el = formRef.current?.elements.namedItem(name) as HTMLInputElement | HTMLTextAreaElement | null
+    return el?.value?.trim() ?? ''
+  }
+
+  const checks: ProgressCheck[] = useMemo(() => {
+    // tick triggers recompute when uncontrolled inputs change
+    void tick
+
+    const algunDiaActivo = Object.values(semana).some(d => d.activo && d.inicio && d.fin)
+    const tieneRespuestas = preguntas.length > 0 && Object.keys(respuestas).length >= preguntas.length
+    const ubicacionGmaps = fieldValue('ubicacion_gmaps')
+    const yaTieneCoords = establecimiento?.latitud != null && establecimiento?.longitud != null
+
+    return [
+      { id: 'nombre',         label: 'Nombre del establecimiento', done: fieldValue('nombre').length > 0 },
+      { id: 'tipo',           label: 'Tipo de establecimiento',    done: selectedTipoId.length > 0 },
+      { id: 'domicilio',      label: 'Domicilio',                  done: fieldValue('domicilio').length > 0 },
+      { id: 'provincia',      label: 'Provincia',                  done: selectedProvincia.length > 0 },
+      { id: 'localidad',      label: 'Localidad',                  done: selectedLocalidadId.length > 0 },
+      { id: 'codigo_postal',  label: 'Código postal',              done: fieldValue('codigo_postal').length > 0 },
+      { id: 'actividad',      label: 'Actividad principal',        done: fieldValue('actividad_principal').length > 0 },
+      { id: 'trabajadores',   label: 'Cantidad de trabajadores',   done: fieldValue('cantidad_trabajadores').length > 0 },
+      { id: 'horarios',       label: 'Horarios de actividad',      done: algunDiaActivo },
+      { id: 'descripcion',    label: 'Información del establecimiento', done: fieldValue('description').length > 0 },
+      { id: 'riesgos',        label: 'Condiciones del establecimiento', done: preguntas.length === 0 ? true : tieneRespuestas },
+      { id: 'ubicacion',      label: 'Ubicación en Google Maps',   done: ubicacionGmaps.length > 0 || yaTieneCoords },
+      { id: 'foto',           label: 'Foto del establecimiento',   done: hasFoto },
+      { id: 'plano_pdf',      label: 'Plano del establecimiento',  done: hasPlanoPdf },
+      { id: 'plano_cad',      label: 'Plano CAD editable',         done: hasPlanoCad },
+    ]
+  }, [tick, selectedTipoId, selectedProvincia, selectedLocalidadId, semana, respuestas, preguntas, establecimiento?.latitud, establecimiento?.longitud, hasFoto, hasPlanoPdf, hasPlanoCad])
+
   return (
-    <form action={formAction} className="space-y-4">
+    <form
+      ref={formRef}
+      action={formAction}
+      onChange={() => setTick(t => t + 1)}
+      onInput={() => setTick(t => t + 1)}
+      className="space-y-4"
+    >
+      <EstablecimientoProgress checks={checks} />
+
       {state && !state.success && (
         <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3">
           {state.error}
@@ -161,7 +213,8 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
         <Select
           label="Localidad"
           name="localidad_id"
-          defaultValue={establecimiento?.localidad_id ?? ''}
+          value={selectedLocalidadId}
+          onChange={e => setSelectedLocalidadId(e.target.value)}
           options={localidadesFiltradas.map(l => ({ value: l.id, label: l.nombre }))}
           placeholder={selectedProvincia ? 'Seleccionar localidad...' : 'Elegí provincia primero'}
           disabled={!selectedProvincia}
