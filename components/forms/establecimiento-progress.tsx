@@ -6,6 +6,7 @@ export interface ProgressCheck {
   id: string
   label: string
   done: boolean
+  section?: 1 | 2 | 3
 }
 
 interface Props {

@@ -22,28 +22,152 @@ interface EstablecimientoFormProps {
 
 type DiaConfig = { activo: boolean; inicio: string; fin: string }
 
+type SectionId = 1 | 2 | 3
+
+interface SectionMeta {
+  id: SectionId
+  title: string
+  shortTitle: string
+  description: string
+}
+
+const SECTIONS: SectionMeta[] = [
+  {
+    id: 1,
+    title: 'Identificación del establecimiento',
+    shortTitle: 'Identificación',
+    description: 'Empezá con lo básico: cómo se llama, qué tipo de establecimiento es y una foto para reconocerlo.',
+  },
+  {
+    id: 2,
+    title: 'Ubicación y operación',
+    shortTitle: 'Ubicación',
+    description: '¿Dónde está y cómo funciona? Domicilio, actividad principal, cantidad de gente y horarios de trabajo.',
+  },
+  {
+    id: 3,
+    title: 'Documentación y condiciones',
+    shortTitle: 'Documentación',
+    description: 'Información extra, condiciones de riesgo, normativa aplicable y planos. Cerramos con esto.',
+  },
+]
+
+function Stepper({
+  current,
+  sectionStats,
+  onJump,
+}: {
+  current: SectionId
+  sectionStats: Record<SectionId, { done: number; total: number }>
+  onJump: (id: SectionId) => void
+}) {
+  return (
+    <nav aria-label="Pasos del formulario" className="flex items-center gap-2 mb-4">
+      {SECTIONS.map((s, idx) => {
+        const stats = sectionStats[s.id]
+        const isCurrent = s.id === current
+        const isComplete = stats.total > 0 && stats.done === stats.total
+        return (
+          <div key={s.id} className="flex items-center gap-2 flex-1 min-w-0">
+            <button
+              type="button"
+              onClick={() => onJump(s.id)}
+              aria-current={isCurrent ? 'step' : undefined}
+              className={[
+                'flex items-center gap-2 flex-1 min-w-0 rounded-lg px-3 py-2 text-left transition-colors',
+                isCurrent
+                  ? 'bg-sig-100 text-sig-800 ring-1 ring-sig-300'
+                  : isComplete
+                  ? 'bg-success/10 text-success hover:bg-success/15'
+                  : 'bg-surface-sunken text-text-secondary hover:bg-surface-elevated',
+              ].join(' ')}
+            >
+              <span
+                className={[
+                  'flex items-center justify-center w-6 h-6 rounded-full text-xs font-semibold shrink-0',
+                  isCurrent
+                    ? 'bg-sig-500 text-white'
+                    : isComplete
+                    ? 'bg-success text-white'
+                    : 'bg-surface-elevated text-text-tertiary border border-border-default',
+                ].join(' ')}
+              >
+                {isComplete && !isCurrent ? '✓' : s.id}
+              </span>
+              <span className="flex flex-col min-w-0">
+                <span className="text-xs font-medium truncate">{s.shortTitle}</span>
+                <span className="text-[10px] tabular-nums opacity-75">
+                  {stats.done}/{stats.total}
+                </span>
+              </span>
+            </button>
+            {idx < SECTIONS.length - 1 && (
+              <span className="text-text-tertiary text-xs hidden sm:inline">—</span>
+            )}
+          </div>
+        )
+      })}
+    </nav>
+  )
+}
+
+function SectionProgressBar({ done, total }: { done: number; total: number }) {
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0
+  const isComplete = total > 0 && done === total
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between text-xs">
+        <span className={isComplete ? 'text-success font-medium' : 'text-text-secondary'}>
+          {isComplete ? 'Sección completa' : 'Progreso de esta sección'}
+        </span>
+        <span className="text-text-tertiary tabular-nums">
+          {done}/{total} ({pct}%)
+        </span>
+      </div>
+      <div className="h-1.5 bg-surface-sunken rounded-full overflow-hidden">
+        <div
+          className={[
+            'h-full rounded-full transition-[width] duration-500 ease-out',
+            isComplete ? 'bg-success' : 'bg-sig-500',
+          ].join(' ')}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  )
+}
+
 function FormSection({
   step,
   title,
   description,
+  isActive,
+  sectionStats,
   children,
 }: {
   step: number
   title: string
   description: string
+  isActive: boolean
+  sectionStats: { done: number; total: number }
   children: React.ReactNode
 }) {
   return (
-    <section className="border border-border-subtle rounded-xl bg-surface-base p-5 space-y-4">
+    <section
+      hidden={!isActive}
+      aria-hidden={!isActive}
+      className="border border-border-subtle rounded-xl bg-surface-base p-5 space-y-4"
+    >
       <header className="flex items-start gap-3 pb-3 border-b border-border-subtle">
         <span className="flex items-center justify-center w-8 h-8 rounded-full bg-sig-100 text-sig-700 text-sm font-semibold shrink-0">
           {step}
         </span>
-        <div>
+        <div className="flex-1">
           <h3 className="text-base font-semibold text-text-primary">{title}</h3>
           <p className="text-xs text-text-secondary mt-0.5">{description}</p>
         </div>
       </header>
+      <SectionProgressBar done={sectionStats.done} total={sectionStats.total} />
       <div className="space-y-4">{children}</div>
     </section>
   )
@@ -81,6 +205,14 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
   const [semana, setSemana] = useState<Record<number, DiaConfig>>(HORARIO_DEFAULT)
   const formRef = useRef<HTMLFormElement>(null)
   const [tick, setTick] = useState(0)
+  const [currentSection, setCurrentSection] = useState<SectionId>(1)
+
+  const goToSection = (id: SectionId) => {
+    setCurrentSection(id)
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }
 
   // Derive provincia from localidad_id once localidades data arrives (edit mode safety net)
   useEffect(() => {
@@ -169,23 +301,37 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
     const yaTieneCoords = establecimiento?.latitud != null && establecimiento?.longitud != null
 
     return [
-      { id: 'nombre',         label: 'Nombre del establecimiento', done: fieldValue('nombre').length > 0 },
-      { id: 'tipo',           label: 'Tipo de establecimiento',    done: selectedTipoId.length > 0 },
-      { id: 'domicilio',      label: 'Domicilio',                  done: fieldValue('domicilio').length > 0 },
-      { id: 'provincia',      label: 'Provincia',                  done: selectedProvincia.length > 0 },
-      { id: 'localidad',      label: 'Localidad',                  done: selectedLocalidadId.length > 0 },
-      { id: 'codigo_postal',  label: 'Código postal',              done: fieldValue('codigo_postal').length > 0 },
-      { id: 'actividad',      label: 'Actividad principal',        done: fieldValue('actividad_principal').length > 0 },
-      { id: 'trabajadores',   label: 'Cantidad de trabajadores',   done: fieldValue('cantidad_trabajadores').length > 0 },
-      { id: 'horarios',       label: 'Horarios de actividad',      done: algunDiaActivo },
-      { id: 'descripcion',    label: 'Información del establecimiento', done: fieldValue('description').length > 0 },
-      { id: 'riesgos',        label: 'Condiciones del establecimiento', done: preguntas.length === 0 ? true : tieneRespuestas },
-      { id: 'ubicacion',      label: 'Ubicación en Google Maps',   done: ubicacionGmaps.length > 0 || yaTieneCoords },
-      { id: 'foto',           label: 'Foto del establecimiento',   done: hasFoto },
-      { id: 'plano_pdf',      label: 'Plano del establecimiento',  done: hasPlanoPdf },
-      { id: 'plano_cad',      label: 'Plano CAD editable',         done: hasPlanoCad },
+      { id: 'nombre',         label: 'Nombre del establecimiento', done: fieldValue('nombre').length > 0, section: 1 },
+      { id: 'tipo',           label: 'Tipo de establecimiento',    done: selectedTipoId.length > 0, section: 1 },
+      { id: 'foto',           label: 'Foto del establecimiento',   done: hasFoto, section: 1 },
+      { id: 'domicilio',      label: 'Domicilio',                  done: fieldValue('domicilio').length > 0, section: 2 },
+      { id: 'provincia',      label: 'Provincia',                  done: selectedProvincia.length > 0, section: 2 },
+      { id: 'localidad',      label: 'Localidad',                  done: selectedLocalidadId.length > 0, section: 2 },
+      { id: 'codigo_postal',  label: 'Código postal',              done: fieldValue('codigo_postal').length > 0, section: 2 },
+      { id: 'actividad',      label: 'Actividad principal',        done: fieldValue('actividad_principal').length > 0, section: 2 },
+      { id: 'trabajadores',   label: 'Cantidad de trabajadores',   done: fieldValue('cantidad_trabajadores').length > 0, section: 2 },
+      { id: 'horarios',       label: 'Horarios de actividad',      done: algunDiaActivo, section: 2 },
+      { id: 'ubicacion',      label: 'Ubicación en Google Maps',   done: ubicacionGmaps.length > 0 || yaTieneCoords, section: 2 },
+      { id: 'descripcion',    label: 'Información del establecimiento', done: fieldValue('description').length > 0, section: 3 },
+      { id: 'riesgos',        label: 'Condiciones del establecimiento', done: preguntas.length === 0 ? true : tieneRespuestas, section: 3 },
+      { id: 'plano_pdf',      label: 'Plano del establecimiento',  done: hasPlanoPdf, section: 3 },
+      { id: 'plano_cad',      label: 'Plano CAD editable',         done: hasPlanoCad, section: 3 },
     ]
   }, [tick, selectedTipoId, selectedProvincia, selectedLocalidadId, semana, respuestas, preguntas, establecimiento?.latitud, establecimiento?.longitud, hasFoto, hasPlanoPdf, hasPlanoCad])
+
+  const sectionStats = useMemo<Record<SectionId, { done: number; total: number }>>(() => {
+    const stats: Record<SectionId, { done: number; total: number }> = {
+      1: { done: 0, total: 0 },
+      2: { done: 0, total: 0 },
+      3: { done: 0, total: 0 },
+    }
+    for (const c of checks) {
+      if (!c.section) continue
+      stats[c.section].total += 1
+      if (c.done) stats[c.section].done += 1
+    }
+    return stats
+  }, [checks])
 
   return (
     <form
@@ -197,6 +343,8 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
     >
       <EstablecimientoProgress checks={checks} />
 
+      <Stepper current={currentSection} sectionStats={sectionStats} onJump={goToSection} />
+
       {state && !state.success && (
         <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3">
           {state.error}
@@ -207,6 +355,8 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
         step={1}
         title="Identificación del establecimiento"
         description="Empezá con lo básico: cómo se llama, qué tipo de establecimiento es y una foto para reconocerlo."
+        isActive={currentSection === 1}
+        sectionStats={sectionStats[1]}
       >
         <Input
           label="Nombre del Establecimiento"
@@ -263,6 +413,8 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
         step={2}
         title="Ubicación y operación"
         description="¿Dónde está y cómo funciona? Domicilio, actividad principal, cantidad de gente y horarios de trabajo."
+        isActive={currentSection === 2}
+        sectionStats={sectionStats[2]}
       >
         <Input
           label="Domicilio"
@@ -386,6 +538,8 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
         step={3}
         title="Documentación y condiciones"
         description="Información extra, condiciones de riesgo, normativa aplicable y planos. Cerramos con esto."
+        isActive={currentSection === 3}
+        sectionStats={sectionStats[3]}
       >
         <div>
           <label className="text-sm font-medium text-text-secondary block mb-1">Información del establecimiento</label>
@@ -465,13 +619,37 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
         </div>
       </FormSection>
 
-      <div className="flex gap-3 pt-2">
-        <Button type="submit" disabled={isPending}>
-          {isPending ? 'Guardando...' : submitLabel}
-        </Button>
-        <Button type="button" variant="secondary" onClick={() => history.back()}>
-          Cancelar
-        </Button>
+      <div className="flex items-center justify-between gap-3 pt-2 flex-wrap">
+        <div className="flex gap-2">
+          {currentSection > 1 ? (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => goToSection((currentSection - 1) as SectionId)}
+            >
+              ← Anterior
+            </Button>
+          ) : (
+            <Button type="button" variant="secondary" onClick={() => history.back()}>
+              Cancelar
+            </Button>
+          )}
+        </div>
+
+        <div className="flex gap-2">
+          {currentSection < 3 ? (
+            <Button
+              type="button"
+              onClick={() => goToSection((currentSection + 1) as SectionId)}
+            >
+              Siguiente →
+            </Button>
+          ) : (
+            <Button type="submit" disabled={isPending}>
+              {isPending ? 'Guardando...' : submitLabel}
+            </Button>
+          )}
+        </div>
       </div>
     </form>
   )
