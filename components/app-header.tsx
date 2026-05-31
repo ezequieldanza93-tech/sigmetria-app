@@ -379,7 +379,6 @@ export function AppHeader({
                   </div>
                   <DropdownItem href="/dashboard/personas" icon={Users} label="Personas" role="menuitem" />
                   <DropdownItem href="/dashboard/organizaciones-externas" icon={Network} label="Organizaciones" role="menuitem" />
-                  <DropdownItem href="/dashboard/productos" icon={Shield} label="Productos" role="menuitem" />
                 </div>
 
                 {/* Librerías */}
@@ -387,6 +386,7 @@ export function AppHeader({
                   <div className="px-4 py-1.5">
                     <p className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold">Librerías</p>
                   </div>
+                  <DropdownItem href="/dashboard/productos" icon={Shield} label="Elementos de Protección" role="menuitem" />
                   <DropdownItem href="/dashboard/configuracion/iperc" icon={ClipboardList} label="Librería IPERC" role="menuitem" />
                   <DropdownItem href="/dashboard/cursos" icon={GraduationCap} label="Mis Cursos" role="menuitem" />
                   {(userRole === 'full_access_main' || userRole === 'full_access_branch' || isSuperAdmin) && (
