@@ -920,7 +920,9 @@ function AgendaActionsCell({
   // Estilos compartidos (touch-friendly: min-h 36px desktop / 44px mobile)
   const primaryBtn = 'inline-flex items-center justify-center gap-1.5 px-3 min-h-[36px] sm:min-h-[36px] rounded-lg text-xs font-medium transition-colors'
   const primaryActive = 'bg-sig-600 text-white hover:bg-sig-700'
-  const secondaryIconBtn = 'inline-flex items-center justify-center w-9 h-9 rounded-lg transition-colors'
+  const toggleBtn = 'inline-flex items-center justify-center w-9 h-9 rounded-lg border transition-colors'
+  const toggleOn = 'bg-sig-600 border-sig-600 text-white hover:bg-sig-700'
+  const toggleOff = 'bg-white border-border-default text-text-tertiary hover:bg-surface-base hover:text-text-secondary'
 
   // Caso: Realizado (con evidencia)
   if (yaEjecutada && tieneEvidencia) {
@@ -937,14 +939,10 @@ function AgendaActionsCell({
           <span className="hidden sm:inline">Ver</span>
         </a>
         <button
-          title={r.ge_mostrar_lt ? 'Quitar del Legajo Técnico' : 'Habilitar en Legajo Técnico'}
+          title={r.ge_mostrar_lt ? 'En Legajo Técnico (click para quitar)' : 'Fuera del Legajo Técnico (click para agregar)'}
           onClick={onToggleLegajo}
           aria-pressed={!!r.ge_mostrar_lt}
-          className={`${secondaryIconBtn} ${
-            r.ge_mostrar_lt
-              ? 'bg-amber-100 text-amber-600 hover:bg-amber-200'
-              : 'text-text-tertiary hover:bg-surface-elevated hover:text-text-secondary'
-          }`}
+          className={`${toggleBtn} ${r.ge_mostrar_lt ? toggleOn : toggleOff}`}
         >
           <BookMarked size={14} fill={r.ge_mostrar_lt ? 'currentColor' : 'none'} />
         </button>
@@ -1044,14 +1042,10 @@ function AgendaActionsCell({
       {/* Legajo Técnico oculto hasta que haya evidencia (informativo) */}
       {legajoDisabled ? null : (
         <button
-          title={r.ge_mostrar_lt ? 'Quitar del Legajo Técnico' : 'Habilitar en Legajo Técnico'}
+          title={r.ge_mostrar_lt ? 'En Legajo Técnico (click para quitar)' : 'Fuera del Legajo Técnico (click para agregar)'}
           onClick={onToggleLegajo}
           aria-pressed={!!r.ge_mostrar_lt}
-          className={`${secondaryIconBtn} ${
-            r.ge_mostrar_lt
-              ? 'bg-amber-100 text-amber-600 hover:bg-amber-200'
-              : 'text-text-tertiary hover:bg-surface-elevated hover:text-text-secondary'
-          }`}
+          className={`${toggleBtn} ${r.ge_mostrar_lt ? toggleOn : toggleOff}`}
         >
           <BookMarked size={14} fill={r.ge_mostrar_lt ? 'currentColor' : 'none'} />
         </button>
