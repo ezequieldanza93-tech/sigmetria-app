@@ -121,9 +121,9 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
       supabase.from('empresas_documentos').select('*, documentos_tipos(nombre)').eq('empresa_id', empresaId).order('created_at', { ascending: false }),
       supabase
         .from('gestiones_registros')
-        .select('id, fecha_planificada, notas, gestiones_establecimientos!inner(mostrar_lt, establecimiento_id, gestiones!inner(nombre, gestiones_categorias(nombre)))')
+        .select('id, fecha_planificada, notas, mostrar_lt, gestiones_establecimientos!inner(establecimiento_id, gestiones!inner(nombre, gestiones_categorias(nombre)))')
         .eq('gestiones_establecimientos.establecimiento_id', estId)
-        .eq('gestiones_establecimientos.mostrar_lt', true)
+        .eq('mostrar_lt', true)
         .is('fecha_ejecutada', null)
         .gte('fecha_planificada', today)
         .order('fecha_planificada'),

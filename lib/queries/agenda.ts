@@ -36,7 +36,7 @@ export function useGestionesEstablecimiento(establecimientoId: string | undefine
 
       const { data } = await supabase
         .from('gestiones_establecimientos')
-        .select('id, mostrar_lt, firmada, gestiones!inner(id, nombre, tiene_entregable, gestiones_categorias(nombre, gestiones_grupos(nombre)))')
+        .select('id, firmada, gestiones!inner(id, nombre, tiene_entregable, gestiones_categorias(nombre, gestiones_grupos(nombre)))')
         .eq('establecimiento_id', establecimientoId)
         .gte('created_at', yearStart)
         .lt('created_at', yearEnd)
@@ -44,7 +44,6 @@ export function useGestionesEstablecimiento(establecimientoId: string | undefine
 
       return (data ?? []) as unknown as {
         id: string
-        mostrar_lt: boolean
         firmada: boolean
         gestiones: {
           id: string
@@ -70,7 +69,7 @@ export function useRegistrosGestion(geIds: string[] | undefined, year: number) {
 
       const registrosRes = await supabase
         .from('gestiones_registros')
-        .select('id, gestion_establecimiento_id, fecha_planificada, fecha_ejecutada, fecha_vencimiento, responsable_id, index, evidencia_url, created_at, responsable:personas_directorio!responsable_id(nombre, apellido), aprobado_por:personas_directorio!aprobado_por_id(nombre, apellido)')
+        .select('id, gestion_establecimiento_id, fecha_planificada, fecha_ejecutada, fecha_vencimiento, responsable_id, index, evidencia_url, mostrar_lt, created_at, responsable:personas_directorio!responsable_id(nombre, apellido), aprobado_por:personas_directorio!aprobado_por_id(nombre, apellido)')
         .in('gestion_establecimiento_id', geIds)
         .gte('fecha_planificada', yearStart)
         .lt('fecha_planificada', yearEnd)
@@ -143,10 +142,10 @@ export function useToggleMostrarLT() {
   return useMutation({
     mutationFn: async ({ id, mostrar_lt }: { id: string; mostrar_lt: boolean }) => {
       const supabase = createClient()
-      await supabase.from('gestiones_establecimientos').update({ mostrar_lt }).eq('id', id)
+      await supabase.from('gestiones_registros').update({ mostrar_lt }).eq('id', id)
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['gestiones-establecimiento'] })
+      queryClient.invalidateQueries({ queryKey: ['registros-gestion'] })
     },
   })
 }

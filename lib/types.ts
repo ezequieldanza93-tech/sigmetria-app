@@ -638,8 +638,8 @@ export interface LegajoGestion {
   id: string
   fecha_planificada: string
   notas: string | null
+  mostrar_lt: boolean
   gestiones_establecimientos: {
-    mostrar_lt: boolean
     establecimiento_id: string
     gestiones: {
       nombre: string
@@ -824,6 +824,7 @@ export interface RegistroGestion {
   evidencia_url: string | null
   observaciones: string | null
   notas: string | null
+  mostrar_lt: boolean
   created_at: string
   updated_at: string
   profiles?: { full_name: string } | null
