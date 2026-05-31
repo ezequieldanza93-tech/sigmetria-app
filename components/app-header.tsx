@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Sun, Moon, Users, UserCog, Network, Gauge, Shield, Settings2, LogOut, Building2, BarChart2, CreditCard, ShieldCheck, CalendarClock, AlertTriangle, Scale, Map, ClipboardList, MessageSquare, Wifi, WifiOff, Download, GraduationCap, BookOpen, Keyboard, Home, BookMarked, FileCheck, KeyRound } from 'lucide-react'
+import { Sun, Moon, Users, UserCog, Network, Gauge, Shield, Settings2, LogOut, Building2, BarChart2, CreditCard, ShieldCheck, CalendarClock, AlertTriangle, Map, ClipboardList, MessageSquare, Wifi, WifiOff, Download, GraduationCap, BookOpen, Keyboard, Home, BookMarked, FileCheck, KeyRound } from 'lucide-react'
 import { SystemRole, UserRole, ROLE_LABELS, ROLE_COLORS } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 import { NotificationDropdown } from '@/components/notification-dropdown'
@@ -363,16 +363,23 @@ export function AppHeader({
                   </div>
                   <DropdownItem href="/dashboard/personas" icon={Users} label="Personas" role="menuitem" />
                   <DropdownItem href="/dashboard/organizaciones-externas" icon={Network} label="Organizaciones" role="menuitem" />
-                  <DropdownItem href="/dashboard/productos" icon={Shield} label="Productos" role="menuitem" />
                 </div>
 
-                {/* Incidentes y Denuncias */}
+                {/* Librerías */}
                 <div className="py-1 border-b border-border-subtle">
                   <div className="px-4 py-1.5">
-                    <p className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold">Incidentes y Denuncias</p>
+                    <p className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold">Librerías</p>
+                  </div>
+                  <DropdownItem href="/dashboard/productos" icon={Shield} label="Elementos de Protección" role="menuitem" />
+                  <DropdownItem href="/dashboard/configuracion/iperc" icon={ClipboardList} label="Librería IPERC" role="menuitem" />
+                </div>
+
+                {/* Incidentes */}
+                <div className="py-1 border-b border-border-subtle">
+                  <div className="px-4 py-1.5">
+                    <p className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold">Incidentes</p>
                   </div>
                   <DropdownItem href="/dashboard/incidentes" icon={AlertTriangle} label="Incidentes" role="menuitem" />
-                  <DropdownItem href="/dashboard/denuncias" icon={Scale} label="Denuncias" role="menuitem" />
                 </div>
 
                 {/* Capacitación */}
@@ -407,7 +414,6 @@ export function AppHeader({
                   <DropdownItem href="/dashboard/analytics" icon={BarChart2} label="Analytics" role="menuitem" />
                   <DropdownItem href="/dashboard/configuracion/catalogacion" icon={Settings2} label="Catalogación" role="menuitem" />
                   <DropdownItem href="/dashboard/configuracion/vencimientos" icon={CalendarClock} label="Vencimientos" role="menuitem" />
-                  <DropdownItem href="/dashboard/configuracion/iperc" icon={ClipboardList} label="Librería IPERC" role="menuitem" />
                   <DropdownItem href="/dashboard/configuracion/feedback" icon={MessageSquare} label="Feedback" role="menuitem" />
                   <DropdownItem href="/dashboard/mapas" icon={Map} label="Mapa de Riesgos" role="menuitem" />
                   {isSuperAdmin && (

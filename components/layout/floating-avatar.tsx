@@ -12,7 +12,6 @@ import {
   Network,
   Shield,
   AlertTriangle,
-  Scale,
   GraduationCap,
   BookOpen,
   BarChart2,
@@ -147,13 +146,17 @@ export function FloatingAvatar({
             <MenuGroup label="Directorio">
               <MenuItem href="/dashboard/personas" icon={Users} label="Personas" />
               <MenuItem href="/dashboard/organizaciones-externas" icon={Network} label="Organizaciones" />
-              <MenuItem href="/dashboard/productos" icon={Shield} label="Productos" />
             </MenuGroup>
 
-            {/* Incidentes y Denuncias */}
-            <MenuGroup label="Incidentes y Denuncias">
+            {/* Librerías */}
+            <MenuGroup label="Librerías">
+              <MenuItem href="/dashboard/productos" icon={Shield} label="Elementos de Protección" />
+              <MenuItem href="/dashboard/configuracion/iperc" icon={ClipboardList} label="Librería IPERC" />
+            </MenuGroup>
+
+            {/* Incidentes */}
+            <MenuGroup label="Incidentes">
               <MenuItem href="/dashboard/incidentes" icon={AlertTriangle} label="Incidentes" />
-              <MenuItem href="/dashboard/denuncias" icon={Scale} label="Denuncias" />
             </MenuGroup>
 
             {/* Capacitación */}
@@ -172,7 +175,6 @@ export function FloatingAvatar({
               <MenuItem href="/dashboard/analytics" icon={BarChart2} label="Analytics" />
               <MenuItem href="/dashboard/configuracion/catalogacion" icon={Settings2} label="Catalogación" />
               <MenuItem href="/dashboard/configuracion/vencimientos" icon={CalendarClock} label="Vencimientos" />
-              <MenuItem href="/dashboard/configuracion/iperc" icon={ClipboardList} label="Librería IPERC" />
               <MenuItem href="/dashboard/configuracion/feedback" icon={MessageSquare} label="Feedback" />
               <MenuItem href="/dashboard/mapas" icon={Map} label="Mapa de Riesgos" />
               {isSuperAdmin && (

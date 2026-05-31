@@ -6,7 +6,7 @@ import { EstablecimientoTabs } from '@/components/establecimiento-tabs'
 import { ActuarView } from '@/components/actuar-view'
 import { getDocTiposAplicables } from '@/lib/actions/aplicabilidad'
 import type {
-  SectorEstablecimiento, Siniestro, Inspeccion, Riesgo, Documento, DocumentType,
+  SectorEstablecimiento, Siniestro, Incidente, Inspeccion, Riesgo, Documento, DocumentType,
   EstablecimientoDenuncia, FeedbackCliente, EmpresaDocumento, EmpleadoDocumentoLegajo, LegajoGestion,
   Capacitacion, Medicion,
 } from '@/lib/types'
@@ -54,7 +54,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
 
   // Section-specific data fetching
   let sectores: SectorEstablecimiento[] = []
-  let siniestros: Siniestro[] = []
+  let incidentes: Incidente[] = []
   let inspecciones: Inspeccion[] = []
   let riesgos: Riesgo[] = []
   let documentos: Documento[] = []
@@ -75,7 +75,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
   let verificacionToken: string | null = null
 
   if (section === 'ficha') {
-    const [s1, s2, s3, s4, s5] = await Promise.all([
+    const [s1, s3, s4, s5, s6] = await Promise.all([
       supabase
         .from('establecimientos_sectores')
         .select('*')
@@ -83,11 +83,6 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
         .eq('is_active', true)
         .order('es_custom')
         .order('nombre'),
-      supabase
-        .from('siniestros')
-        .select('*')
-        .eq('establecimiento_id', estId)
-        .order('fecha_ocurrencia', { ascending: false }),
       supabase
         .from('inspecciones')
         .select('*')
@@ -99,12 +94,17 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
         .eq('establecimiento_id', estId)
         .order('created_at', { ascending: false }),
       getDocTiposAplicables(estId),
+      supabase
+        .from('incidentes')
+        .select('*, empresas(razon_social), establecimientos(nombre)')
+        .eq('establecimiento_id', estId)
+        .order('created_at', { ascending: false }),
     ])
     sectores = (s1.data ?? []) as unknown as SectorEstablecimiento[]
-    siniestros = (s2.data ?? []) as unknown as Siniestro[]
     inspecciones = (s3.data ?? []) as unknown as Inspeccion[]
     documentos = (s4.data ?? []) as unknown as Documento[]
     documentTypes = s5
+    incidentes = (s6.data ?? []) as unknown as Incidente[]
 
     const today = new Date().toISOString().split('T')[0]
     const [d1, d2, d3, d4] = await Promise.all([
@@ -207,7 +207,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
             canWrite={userCanWrite}
             canDelete={false}
             sectores={sectores}
-            siniestros={siniestros}
+            incidentes={incidentes}
             inspecciones={inspecciones}
             documentos={documentos}
             documentTypes={documentTypes}

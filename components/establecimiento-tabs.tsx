@@ -5,7 +5,7 @@ import { useCallback } from 'react'
 import { SectoresTab } from '@/components/establecimiento/sectores-tab'
 import { StakeholdersTab } from '@/components/establecimiento/stakeholders-tab'
 import { AsistenciaTab } from '@/components/establecimiento/asistencia-tab'
-import { SiniestrosTab } from '@/components/establecimiento/siniestros-tab'
+import { IncidentesTab } from '@/components/establecimiento/incidentes-tab'
 import { InspeccionesTab } from '@/components/establecimiento/inspecciones-tab'
 import { DocumentosTab } from '@/components/establecimiento/documentos-tab'
 import { DenunciasTab } from '@/components/establecimiento/denuncias-tab'
@@ -16,7 +16,6 @@ import { MapaRiesgoTab } from '@/components/iperc/mapa-riesgo-tab'
 import type {
   Establecimiento,
   SectorEstablecimiento,
-  Siniestro,
   Inspeccion,
   Documento,
   DocumentType,
@@ -25,9 +24,10 @@ import type {
   EmpresaDocumento,
   EmpleadoDocumentoLegajo,
   LegajoGestion,
+  Incidente,
 } from '@/lib/types'
 
-type Tab = 'info' | 'sectores' | 'stakeholders' | 'asistencia' | 'siniestros' | 'inspecciones' | 'documentos' | 'legajo' | 'denuncias' | 'feedback' | 'mapa_riesgo'
+type Tab = 'info' | 'sectores' | 'stakeholders' | 'asistencia' | 'incidentes' | 'inspecciones' | 'documentos' | 'legajo' | 'denuncias' | 'feedback' | 'mapa_riesgo'
 
 interface EstablecimientoTabsProps {
   establecimiento: Establecimiento
@@ -36,7 +36,7 @@ interface EstablecimientoTabsProps {
   canWrite: boolean
   canDelete: boolean
   sectores: SectorEstablecimiento[]
-  siniestros: Siniestro[]
+  incidentes: Incidente[]
   inspecciones: Inspeccion[]
   documentos: Documento[]
   documentTypes: DocumentType[]
@@ -54,7 +54,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'sectores', label: 'Sectores' },
   { id: 'stakeholders', label: 'Stakeholders' },
   { id: 'asistencia', label: 'Asistencia' },
-  { id: 'siniestros', label: 'Siniestros' },
+  { id: 'incidentes', label: 'Incidentes' },
   { id: 'inspecciones', label: 'Inspecciones' },
   { id: 'documentos', label: 'Documentos' },
   { id: 'legajo', label: 'Legajo Técnico' },
@@ -72,7 +72,7 @@ export function EstablecimientoTabs({
   canWrite,
   canDelete,
   sectores,
-  siniestros,
+  incidentes,
   inspecciones,
   documentos,
   documentTypes,
@@ -187,13 +187,8 @@ export function EstablecimientoTabs({
           canWrite={canWrite}
         />
       )}
-      {active === 'siniestros' && (
-        <SiniestrosTab
-          siniestros={siniestros}
-          establecimientoId={establecimientoId}
-          empresaId={empresaId}
-          canWrite={canWrite}
-        />
+      {active === 'incidentes' && (
+        <IncidentesTab incidentes={incidentes} />
       )}
       {active === 'inspecciones' && (
         <InspeccionesTab
