@@ -110,7 +110,6 @@ interface FullRegistro extends RegistroGestion {
   ge_gestion_id?: string
   ge_tiene_formulario?: boolean
   ge_tiene_entregable?: boolean
-  ge_mostrar_lt?: boolean
   ge_firmada?: boolean
   responsable_nombre?: string
   aprobado_nombre?: string
@@ -915,7 +914,7 @@ function AgendaActionsCell({
 
   const yaEjecutada = !!(r.fecha_ejecutada || r.evidencia_url)
   const tieneEvidencia = !!r.evidencia_url
-  const legajoDisabled = !tieneEvidencia && !r.ge_mostrar_lt
+  const legajoDisabled = !tieneEvidencia && !r.mostrar_lt
 
   // Estilos compartidos (touch-friendly: min-h 36px desktop / 44px mobile)
   const primaryBtn = 'inline-flex items-center justify-center gap-1.5 px-3 min-h-[36px] sm:min-h-[36px] rounded-lg text-xs font-medium transition-colors'
@@ -939,12 +938,12 @@ function AgendaActionsCell({
           <span className="hidden sm:inline">Ver</span>
         </a>
         <button
-          title={r.ge_mostrar_lt ? 'En Legajo Técnico (click para quitar)' : 'Fuera del Legajo Técnico (click para agregar)'}
+          title={r.mostrar_lt ? 'En Legajo Técnico (click para quitar)' : 'Fuera del Legajo Técnico (click para agregar)'}
           onClick={onToggleLegajo}
-          aria-pressed={!!r.ge_mostrar_lt}
-          className={`${toggleBtn} ${r.ge_mostrar_lt ? toggleOn : toggleOff}`}
+          aria-pressed={!!r.mostrar_lt}
+          className={`${toggleBtn} ${r.mostrar_lt ? toggleOn : toggleOff}`}
         >
-          <BookMarked size={14} fill={r.ge_mostrar_lt ? 'currentColor' : 'none'} />
+          <BookMarked size={14} fill={r.mostrar_lt ? 'currentColor' : 'none'} />
         </button>
       </div>
     )
@@ -1042,12 +1041,12 @@ function AgendaActionsCell({
       {/* Legajo Técnico oculto hasta que haya evidencia (informativo) */}
       {legajoDisabled ? null : (
         <button
-          title={r.ge_mostrar_lt ? 'En Legajo Técnico (click para quitar)' : 'Fuera del Legajo Técnico (click para agregar)'}
+          title={r.mostrar_lt ? 'En Legajo Técnico (click para quitar)' : 'Fuera del Legajo Técnico (click para agregar)'}
           onClick={onToggleLegajo}
-          aria-pressed={!!r.ge_mostrar_lt}
-          className={`${toggleBtn} ${r.ge_mostrar_lt ? toggleOn : toggleOff}`}
+          aria-pressed={!!r.mostrar_lt}
+          className={`${toggleBtn} ${r.mostrar_lt ? toggleOn : toggleOff}`}
         >
-          <BookMarked size={14} fill={r.ge_mostrar_lt ? 'currentColor' : 'none'} />
+          <BookMarked size={14} fill={r.mostrar_lt ? 'currentColor' : 'none'} />
         </button>
       )}
     </div>
@@ -1219,7 +1218,6 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
         ge_gestion_id: ge?.gestiones?.id,
         ge_tiene_formulario: ge?.gestiones?.id ? formList.includes(ge.gestiones.id) : false,
         ge_tiene_entregable: ge?.gestiones?.tiene_entregable ?? false,
-        ge_mostrar_lt: ge?.mostrar_lt ?? false,
         ge_firmada: ge?.firmada ?? false,
         ge_gestion_nombre: ge?.gestiones?.nombre,
         ge_categoria_nombre: ge?.gestiones?.gestiones_categorias?.nombre,
@@ -1328,8 +1326,8 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
               onLoadEvidence={() => setEditingRegistro(r)}
               onToggleLegajo={async () => {
                 const supabase = createClient()
-                await supabase.from('gestiones_establecimientos').update({ mostrar_lt: !r.ge_mostrar_lt }).eq('id', r.ge_id)
-                queryClient.invalidateQueries({ queryKey: ['gestiones-establecimiento', establecimientoId, year] })
+                await supabase.from('gestiones_registros').update({ mostrar_lt: !r.mostrar_lt }).eq('id', r.id)
+                queryClient.invalidateQueries({ queryKey: ['registros-gestion'] })
               }}
             />
           </td>
