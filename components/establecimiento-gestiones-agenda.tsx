@@ -77,7 +77,7 @@ const MONTHS_FULL = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Jul
 const COL_WIDTHS_KEY = 'gestiones_col_widths'
 const DEFAULT_COL_WIDTHS: Record<string, number> = {
   categoria: 140, gestion: 180, fecha_plan: 100, fecha_ejec: 100,
-  responsable: 130, indice: 70, acciones: 130,
+  responsable: 130, indice: 70, acciones: 160,
 }
 const COL_MIN_WIDTHS: Record<string, number> = {
   categoria: 24, gestion: 24, fecha_plan: 24, fecha_ejec: 24,
@@ -872,6 +872,189 @@ function EjecucionModal({
 
 
 
+// ─── AgendaActionsCell ─────────────────────────────────────────────────────────
+// Botón contextual según estado: Pendiente/Planificado → Ejecutar | Cargar.
+// Realizado → Ver adjunto + toggle Legajo Técnico.
+function AgendaActionsCell({
+  registro: r,
+  canWrite,
+  onExecuteForm,
+  onLoadEvidence,
+  onToggleLegajo,
+}: {
+  registro: FullRegistro
+  canWrite: boolean
+  onExecuteForm: () => void
+  onLoadEvidence: () => void
+  onToggleLegajo: () => void | Promise<void>
+}) {
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
+  const triggerRef = useRef<HTMLDivElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleOutside(e: MouseEvent) {
+      const target = e.target as Node
+      if (
+        triggerRef.current && !triggerRef.current.contains(target) &&
+        dropdownRef.current && !dropdownRef.current.contains(target)
+      ) setMenuOpen(false)
+    }
+    if (menuOpen) document.addEventListener('mousedown', handleOutside)
+    return () => document.removeEventListener('mousedown', handleOutside)
+  }, [menuOpen])
+
+  function toggleMenu() {
+    if (!menuOpen && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect()
+      setMenuPos({ top: rect.bottom + 4, left: rect.right })
+    }
+    setMenuOpen(v => !v)
+  }
+
+  const yaEjecutada = !!(r.fecha_ejecutada || r.evidencia_url)
+  const tieneEvidencia = !!r.evidencia_url
+  const legajoDisabled = !tieneEvidencia && !r.ge_mostrar_lt
+
+  // Estilos compartidos (touch-friendly: min-h 36px desktop / 44px mobile)
+  const primaryBtn = 'inline-flex items-center justify-center gap-1.5 px-3 min-h-[36px] sm:min-h-[36px] rounded-lg text-xs font-medium transition-colors'
+  const primaryActive = 'bg-sig-500 text-white hover:bg-sig-700'
+  const toggleBtn = 'inline-flex items-center justify-center w-9 h-9 rounded-lg border transition-colors'
+  const toggleOn = 'bg-sig-500 border-sig-500 text-white hover:bg-sig-700'
+  const toggleOff = 'bg-white border-border-default text-text-tertiary hover:bg-surface-base hover:text-text-secondary'
+
+  // Caso: Realizado (con evidencia)
+  if (yaEjecutada && tieneEvidencia) {
+    return (
+      <div className="flex items-center gap-1.5 justify-center">
+        <a
+          href={r.evidencia_url!}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Ver/descargar adjunto"
+          className={`${primaryBtn} ${primaryActive}`}
+        >
+          <Download size={14} />
+          <span className="hidden sm:inline">Ver</span>
+        </a>
+        <button
+          title={r.ge_mostrar_lt ? 'En Legajo Técnico (click para quitar)' : 'Fuera del Legajo Técnico (click para agregar)'}
+          onClick={onToggleLegajo}
+          aria-pressed={!!r.ge_mostrar_lt}
+          className={`${toggleBtn} ${r.ge_mostrar_lt ? toggleOn : toggleOff}`}
+        >
+          <BookMarked size={14} fill={r.ge_mostrar_lt ? 'currentColor' : 'none'} />
+        </button>
+      </div>
+    )
+  }
+
+  // Caso: Realizado SIN evidencia (edge) o sin canWrite
+  if (yaEjecutada && !tieneEvidencia) {
+    if (!canWrite) {
+      return <span className="text-xs text-text-tertiary">—</span>
+    }
+    return (
+      <div className="flex items-center justify-center">
+        <button
+          title="Cargar evidencia"
+          onClick={onLoadEvidence}
+          className={`${primaryBtn} ${primaryActive}`}
+        >
+          <Upload size={14} />
+          <span className="hidden sm:inline">Cargar</span>
+        </button>
+      </div>
+    )
+  }
+
+  // Caso: Pendiente / Planificado
+  if (!canWrite) {
+    return <span className="text-xs text-text-tertiary">—</span>
+  }
+
+  // Con formulario → botón "Ejecutar ▾" con submenu
+  if (r.ge_tiene_formulario) {
+    return (
+      <div ref={triggerRef} className="flex items-center justify-center relative">
+        <div className="inline-flex rounded-lg overflow-hidden shadow-sm">
+          <button
+            title="Ejecutar formulario"
+            onClick={onExecuteForm}
+            className={`${primaryBtn} ${primaryActive} rounded-r-none pr-2.5`}
+          >
+            <Play size={14} />
+            <span className="hidden sm:inline">Ejecutar</span>
+          </button>
+          <button
+            title="Más opciones"
+            onClick={toggleMenu}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            className={`${primaryActive} px-2 min-h-[36px] border-l border-white/20 rounded-l-none ${menuOpen ? 'bg-sig-700' : ''}`}
+          >
+            <ChevronDown size={14} className={`transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+
+        {menuOpen && menuPos && createPortal(
+          <div
+            ref={dropdownRef}
+            role="menu"
+            style={{ position: 'fixed', top: menuPos.top, left: menuPos.left, transform: 'translateX(-100%)', zIndex: 9999 }}
+            className="bg-surface-base border border-border-subtle rounded-xl shadow-xl overflow-hidden min-w-[200px]"
+          >
+            <button
+              role="menuitem"
+              onClick={() => { setMenuOpen(false); onExecuteForm() }}
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-text-primary hover:bg-surface-sunken text-left"
+            >
+              <Play size={14} className="text-sig-500" />
+              Ejecutar formulario
+            </button>
+            <button
+              role="menuitem"
+              onClick={() => { setMenuOpen(false); onLoadEvidence() }}
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-text-primary hover:bg-surface-sunken text-left border-t border-border-subtle"
+            >
+              <Upload size={14} className="text-text-secondary" />
+              Cargar archivo manual
+            </button>
+          </div>,
+          document.body
+        )}
+      </div>
+    )
+  }
+
+  // Sin formulario → botón directo "Cargar"
+  return (
+    <div className="flex items-center justify-center gap-1.5">
+      <button
+        title="Cargar evidencia"
+        onClick={onLoadEvidence}
+        className={`${primaryBtn} ${primaryActive}`}
+      >
+        <Upload size={14} />
+        <span className="hidden sm:inline">Cargar</span>
+      </button>
+      {/* Legajo Técnico oculto hasta que haya evidencia (informativo) */}
+      {legajoDisabled ? null : (
+        <button
+          title={r.ge_mostrar_lt ? 'En Legajo Técnico (click para quitar)' : 'Fuera del Legajo Técnico (click para agregar)'}
+          onClick={onToggleLegajo}
+          aria-pressed={!!r.ge_mostrar_lt}
+          className={`${toggleBtn} ${r.ge_mostrar_lt ? toggleOn : toggleOff}`}
+        >
+          <BookMarked size={14} fill={r.ge_mostrar_lt ? 'currentColor' : 'none'} />
+        </button>
+      )}
+    </div>
+  )
+}
+
+
 // ─── Main component ────────────────────────────────────────────────────────────
 export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, riesgos: _riesgos }: GestionesAgendaProps) {
   const queryClient = useQueryClient()
@@ -1138,73 +1321,17 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
             {r.index != null ? r.index : <span className="text-text-tertiary">—</span>}
           </td>
           <td className="px-2 py-1.5" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center gap-1 justify-center">
-              {r.ge_tiene_formulario && (() => {
-                const blocked = !!(r.fecha_ejecutada || r.evidencia_url)
-                return (
-                  <button
-                    title={blocked ? 'Gestión ya ejecutada' : 'Ejecutar formulario'}
-                    onClick={() => { if (!blocked) setExecutingFormulario(r) }}
-                    disabled={blocked}
-                    className={`p-1.5 rounded-lg transition-colors ${
-                      blocked
-                        ? 'text-text-tertiary opacity-30 cursor-not-allowed'
-                        : 'text-text-tertiary hover:bg-surface-elevated hover:text-text-secondary'
-                    }`}
-                  >
-                    <Play size={14} />
-                  </button>
-                )
-              })()}
-              {canWrite && (
-                <button
-                  title="Cargar evidencia"
-                  onClick={() => setEditingRegistro(r)}
-                  className="p-1.5 rounded-lg text-text-tertiary hover:bg-surface-elevated hover:text-text-secondary transition-colors"
-                >
-                  <Upload size={14} />
-                </button>
-              )}
-              {r.evidencia_url ? (
-                <a
-                  href={r.evidencia_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title="Descargar adjunto"
-                  className="p-1.5 rounded-lg text-sig-600 hover:bg-sig-50 transition-colors"
-                >
-                  <Download size={14} />
-                </a>
-              ) : (
-                <span className="p-1.5 text-text-tertiary cursor-not-allowed" title="Sin adjunto">
-                  <Download size={14} />
-                </span>
-              )}
-              <button
-                title={
-                  !r.evidencia_url && !r.ge_mostrar_lt
-                    ? 'Se necesita un adjunto para habilitar el Legajo Técnico'
-                    : r.ge_mostrar_lt
-                      ? 'Quitar del Legajo Técnico'
-                      : 'Habilitar en Legajo Técnico'
-                }
-                disabled={!r.evidencia_url && !r.ge_mostrar_lt}
-                onClick={async () => {
-                  const supabase = createClient()
-                  await supabase.from('gestiones_establecimientos').update({ mostrar_lt: !r.ge_mostrar_lt }).eq('id', r.ge_id)
-                  queryClient.invalidateQueries({ queryKey: ['gestiones-establecimiento', establecimientoId, year] })
-                }}
-                className={`p-1.5 rounded-lg transition-colors ${
-                  !r.evidencia_url && !r.ge_mostrar_lt
-                    ? 'text-text-tertiary opacity-30 cursor-not-allowed'
-                    : r.ge_mostrar_lt
-                      ? 'bg-amber-100 text-amber-600 hover:bg-amber-200'
-                      : 'text-text-tertiary hover:bg-surface-elevated hover:text-text-secondary'
-                }`}
-              >
-                <BookMarked size={14} />
-              </button>
-            </div>
+            <AgendaActionsCell
+              registro={r}
+              canWrite={canWrite}
+              onExecuteForm={() => setExecutingFormulario(r)}
+              onLoadEvidence={() => setEditingRegistro(r)}
+              onToggleLegajo={async () => {
+                const supabase = createClient()
+                await supabase.from('gestiones_establecimientos').update({ mostrar_lt: !r.ge_mostrar_lt }).eq('id', r.ge_id)
+                queryClient.invalidateQueries({ queryKey: ['gestiones-establecimiento', establecimientoId, year] })
+              }}
+            />
           </td>
         </tr>
       )
