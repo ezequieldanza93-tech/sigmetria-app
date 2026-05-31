@@ -69,7 +69,7 @@ export function useRegistrosGestion(geIds: string[] | undefined, year: number) {
 
       const registrosRes = await supabase
         .from('gestiones_registros')
-        .select('id, gestion_establecimiento_id, fecha_planificada, fecha_ejecutada, fecha_vencimiento, responsable_id, index, evidencia_url, mostrar_lt, created_at, responsable:personas_directorio!responsable_id(nombre, apellido), aprobado_por:personas_directorio!aprobado_por_id(nombre, apellido)')
+        .select('id, gestion_establecimiento_id, fecha_planificada, fecha_ejecutada, fecha_vencimiento, responsable_id, index, evidencia_url, mostrar_lt, secuencia, created_at, responsable:personas_directorio!responsable_id(nombre, apellido), aprobado_por:personas_directorio!aprobado_por_id(nombre, apellido)')
         .in('gestion_establecimiento_id', geIds)
         .gte('fecha_planificada', yearStart)
         .lt('fecha_planificada', yearEnd)

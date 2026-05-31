@@ -825,6 +825,7 @@ export interface RegistroGestion {
   observaciones: string | null
   notas: string | null
   mostrar_lt: boolean
+  secuencia: number
   created_at: string
   updated_at: string
   profiles?: { full_name: string } | null

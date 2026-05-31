@@ -1232,6 +1232,21 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
     })
   }, [rawRegistros, geMap, gestionesConForm, isGestionesPending, gestionesEst])
 
+  // Cuántos registros hay por (gestion_establecimiento_id, fecha_planificada).
+  // Se usa para decidir si mostrar el #N (solo cuando hay duplicados).
+  const groupSizes = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const r of registros ?? []) {
+      const key = `${r.gestion_establecimiento_id}|${r.fecha_planificada}`
+      map.set(key, (map.get(key) ?? 0) + 1)
+    }
+    return map
+  }, [registros])
+
+  function groupSizeFor(r: FullRegistro): number {
+    return groupSizes.get(`${r.gestion_establecimiento_id}|${r.fecha_planificada}`) ?? 1
+  }
+
   // ── Filtering & sorting ─────────────────────────────────────────────────────
   const monthCounts = MONTHS.map((_, i) => {
     if (!registros) return 0
@@ -1307,6 +1322,11 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
           </td>
           <td className="px-4 py-1.5 font-medium text-text-primary" style={{ maxWidth: colW('gestion'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {r.ge_gestion_nombre ?? '—'}
+            {groupSizeFor(r) > 1 && (
+              <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-sig-100 text-sig-700 tabular-nums">
+                #{r.secuencia}
+              </span>
+            )}
           </td>
           <td className="px-4 py-1.5 text-text-secondary tabular-nums text-xs">{r.fecha_planificada}</td>
           <td className={`${visibleCols.has('fecha_ejec') ? 'hidden md:table-cell' : 'hidden'} px-4 py-1.5 text-text-secondary tabular-nums text-xs`}>
