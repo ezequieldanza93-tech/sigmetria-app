@@ -825,6 +825,7 @@ export interface RegistroGestion {
   observaciones: string | null
   notas: string | null
   mostrar_lt: boolean
+  secuencia: number
   created_at: string
   updated_at: string
   profiles?: { full_name: string } | null
@@ -959,11 +960,13 @@ export type EstadoGestion = 'Realizado' | 'Pendiente' | 'Planificado'
 
 export function calcularEstadoGestion(fechaEjecutada: string | null, fechaPlanificada: string): EstadoGestion {
   if (fechaEjecutada) return 'Realizado'
+  // Comparación string-a-string en formato ISO (YYYY-MM-DD).
+  // Evita el bug de timezone de `new Date(string)` que para fechas planas
+  // parsea como UTC midnight y se "corre" un día en zonas con offset negativo
+  // (ej. Argentina UTC-3 → '2026-05-31' termina representando el día anterior).
   const hoy = new Date()
-  hoy.setHours(0, 0, 0, 0)
-  const planificada = new Date(fechaPlanificada)
-  planificada.setHours(0, 0, 0, 0)
-  return planificada < hoy ? 'Pendiente' : 'Planificado'
+  const hoyIso = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`
+  return fechaPlanificada < hoyIso ? 'Pendiente' : 'Planificado'
 }
 
 // ---- Formularios ----
