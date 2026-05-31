@@ -87,7 +87,7 @@ const COL_MIN_WIDTHS: Record<string, number> = {
 const ROW_BG_COLORS: Record<EstadoGestion, string> = {
   Realizado: 'bg-green-200 hover:bg-green-300',
   Pendiente: 'bg-red-200 hover:bg-red-300',
-  Planificado: 'bg-sky-200 hover:bg-sky-300',
+  Planificado: 'bg-white hover:bg-gray-50',
 }
 
 const COL_VISIBLE_KEY = 'gestiones_col_visible'
@@ -1543,7 +1543,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
                         <div className="space-y-0.5">
                           {regs.map(r => {
                             const estado = calcularEstadoGestion(r.fecha_ejecutada ?? null, r.fecha_planificada)
-                            const dot = estado === 'Realizado' ? 'bg-green-500' : estado === 'Pendiente' ? 'bg-red-500' : 'bg-sky-500'
+                            const dot = estado === 'Realizado' ? 'bg-green-500' : estado === 'Pendiente' ? 'bg-red-500' : 'bg-gray-300'
                             return (
                               <div
                                 key={r.id}
