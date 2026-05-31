@@ -402,7 +402,6 @@ export function AppHeader({
                   <div className="px-4 py-1.5">
                     <p className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold">Herramientas</p>
                   </div>
-                  <DropdownItem href="/dashboard/analytics" icon={BarChart2} label="Analytics" role="menuitem" />
                   <DropdownItem href="/dashboard/configuracion/catalogacion" icon={Settings2} label="Catalogación" role="menuitem" />
                   <DropdownItem href="/dashboard/configuracion/vencimientos" icon={CalendarClock} label="Vencimientos" role="menuitem" />
                   <DropdownItem href="/dashboard/configuracion/feedback" icon={MessageSquare} label="Feedback" role="menuitem" />
