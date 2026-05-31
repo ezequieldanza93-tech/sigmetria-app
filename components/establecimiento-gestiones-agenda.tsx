@@ -919,9 +919,9 @@ function AgendaActionsCell({
 
   // Estilos compartidos (touch-friendly: min-h 36px desktop / 44px mobile)
   const primaryBtn = 'inline-flex items-center justify-center gap-1.5 px-3 min-h-[36px] sm:min-h-[36px] rounded-lg text-xs font-medium transition-colors'
-  const primaryActive = 'bg-sig-600 text-white hover:bg-sig-700'
+  const primaryActive = 'bg-sig-500 text-white hover:bg-sig-700'
   const toggleBtn = 'inline-flex items-center justify-center w-9 h-9 rounded-lg border transition-colors'
-  const toggleOn = 'bg-sig-600 border-sig-600 text-white hover:bg-sig-700'
+  const toggleOn = 'bg-sig-500 border-sig-500 text-white hover:bg-sig-700'
   const toggleOff = 'bg-white border-border-default text-text-tertiary hover:bg-surface-base hover:text-text-secondary'
 
   // Caso: Realizado (con evidencia)
@@ -1010,7 +1010,7 @@ function AgendaActionsCell({
               onClick={() => { setMenuOpen(false); onExecuteForm() }}
               className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-text-primary hover:bg-surface-sunken text-left"
             >
-              <Play size={14} className="text-sig-600" />
+              <Play size={14} className="text-sig-500" />
               Ejecutar formulario
             </button>
             <button
