@@ -920,7 +920,6 @@ function AgendaActionsCell({
   // Estilos compartidos (touch-friendly: min-h 36px desktop / 44px mobile)
   const primaryBtn = 'inline-flex items-center justify-center gap-1.5 px-3 min-h-[36px] sm:min-h-[36px] rounded-lg text-xs font-medium transition-colors'
   const primaryActive = 'bg-sig-600 text-white hover:bg-sig-700'
-  const primarySoft = 'bg-sig-50 text-sig-700 hover:bg-sig-100'
   const secondaryIconBtn = 'inline-flex items-center justify-center w-9 h-9 rounded-lg transition-colors'
 
   // Caso: Realizado (con evidencia)
@@ -932,7 +931,7 @@ function AgendaActionsCell({
           target="_blank"
           rel="noopener noreferrer"
           title="Ver/descargar adjunto"
-          className={`${primaryBtn} ${primarySoft}`}
+          className={`${primaryBtn} ${primaryActive}`}
         >
           <Download size={14} />
           <span className="hidden sm:inline">Ver</span>
@@ -963,7 +962,7 @@ function AgendaActionsCell({
         <button
           title="Cargar evidencia"
           onClick={onLoadEvidence}
-          className={`${primaryBtn} ${primarySoft}`}
+          className={`${primaryBtn} ${primaryActive}`}
         >
           <Upload size={14} />
           <span className="hidden sm:inline">Cargar</span>
