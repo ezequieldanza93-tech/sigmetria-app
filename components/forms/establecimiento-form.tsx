@@ -4,7 +4,6 @@ import { useActionState, useState, useEffect, useRef, useMemo } from 'react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Select } from '@/components/ui/select'
 import { FileUploadInput } from '@/components/ui/file-upload-input'
 import { createClient } from '@/lib/supabase/client'
 import { useLocalidades, useEstablecimientoTipos } from '@/lib/queries/establecimiento-form'
@@ -424,25 +423,46 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
         />
 
         <div className="grid grid-cols-2 gap-4">
-          <Select
-            label="Provincia"
-            value={selectedProvincia}
-            onChange={e => {
-              setSelectedProvincia(e.target.value)
-              setSelectedLocalidadId('')
-            }}
-            options={provincias.map(p => ({ value: p, label: p }))}
-            placeholder="Seleccionar provincia..."
-          />
-          <Select
-            label="Localidad"
-            name="localidad_id"
-            value={selectedLocalidadId}
-            onChange={e => setSelectedLocalidadId(e.target.value)}
-            options={localidadesFiltradas.map(l => ({ value: l.id, label: l.nombre }))}
-            placeholder={selectedProvincia ? 'Seleccionar localidad...' : 'Elegí provincia primero'}
-            disabled={!selectedProvincia}
-          />
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="provincia-select" className="text-sm font-medium text-text-secondary">
+              Provincia
+            </label>
+            <select
+              id="provincia-select"
+              value={selectedProvincia}
+              onChange={e => {
+                setSelectedProvincia(e.target.value)
+                setSelectedLocalidadId('')
+              }}
+              className="w-full border border-border-default rounded-lg px-3 py-2 text-sm text-text-primary bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500"
+            >
+              <option value="">Seleccionar provincia...</option>
+              {provincias.map(p => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="localidad-select" className="text-sm font-medium text-text-secondary">
+              Localidad
+            </label>
+            <select
+              id="localidad-select"
+              name="localidad_id"
+              value={selectedLocalidadId}
+              onChange={e => setSelectedLocalidadId(e.target.value)}
+              disabled={!selectedProvincia}
+              className="w-full border border-border-default rounded-lg px-3 py-2 text-sm text-text-primary bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500 disabled:bg-surface-sunken disabled:text-text-tertiary"
+            >
+              <option value="">
+                {selectedProvincia ? 'Seleccionar localidad...' : 'Elegí provincia primero'}
+              </option>
+              {localidadesFiltradas.map(l => (
+                <option key={l.id} value={l.id}>{l.nombre}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <Input
