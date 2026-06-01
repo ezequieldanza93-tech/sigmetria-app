@@ -12,9 +12,7 @@ import { AnalyticsDashboard } from '@/components/analytics/real/analytics-dashbo
 import { ExportEmpresaButton } from '@/components/export/export-empresa-button'
 import { GestionesAggregate } from '@/components/aggregate/gestiones-aggregate'
 import { SeguimientoAggregate } from '@/components/aggregate/seguimiento-aggregate'
-import { IncidentesAggregate } from '@/components/aggregate/incidentes-aggregate'
-import { DenunciasAggregate } from '@/components/aggregate/denuncias-aggregate'
-import { getGestionesAggregate, getSeguimientoAggregate, getIncidentesAggregate, getDenunciasAggregate } from '@/lib/queries/aggregate'
+import { getGestionesAggregate, getSeguimientoAggregate } from '@/lib/queries/aggregate'
 import type { DocumentType, Documento } from '@/lib/types'
 
 interface Props {
@@ -22,7 +20,7 @@ interface Props {
   searchParams: Promise<{ section?: string; tab?: string }>
 }
 
-const SECTIONS = ['establecimientos', 'gestiones', 'seguimiento', 'incidentes', 'denuncias', 'dashboard', 'ficha'] as const
+const SECTIONS = ['establecimientos', 'gestiones', 'seguimiento', 'dashboard', 'ficha'] as const
 type Section = (typeof SECTIONS)[number]
 
 // Map legacy ?tab= values to new ?section= names.
@@ -64,7 +62,7 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let orgsLinks: any[] = []
 
-  if (['establecimientos', 'dashboard', 'gestiones', 'seguimiento', 'incidentes', 'denuncias'].includes(section)) {
+  if (['establecimientos', 'dashboard', 'gestiones', 'seguimiento'].includes(section)) {
     const { data } = await supabase
       .from('establecimientos')
       .select('id, nombre, domicilio, establecimientos_tipos!tipo_id(nombre), localidades!localidad_id(nombre, provincia), cantidad_trabajadores, establecimientos_sectores(cantidad_trabajadores)')
@@ -122,8 +120,6 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
 
   const gestionesRows = section === 'gestiones' ? await getGestionesAggregate(estContext) : []
   const seguimientoRows = section === 'seguimiento' ? await getSeguimientoAggregate(estContext) : []
-  const incidentesRows = section === 'incidentes' ? await getIncidentesAggregate(estContext) : []
-  const denunciasRows = section === 'denuncias' ? await getDenunciasAggregate(estContext) : []
 
   const sidebarEstablecimientos = establecimientos.map(e => ({
     id: e.id as string,
@@ -151,10 +147,6 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
       {section === 'gestiones' && <GestionesAggregate rows={gestionesRows} />}
 
       {section === 'seguimiento' && <SeguimientoAggregate rows={seguimientoRows} />}
-
-      {section === 'incidentes' && <IncidentesAggregate rows={incidentesRows} showEmpresaFilter={false} showEstablecimientoFilter />}
-
-      {section === 'denuncias' && <DenunciasAggregate rows={denunciasRows} showEmpresaFilter={false} showEstablecimientoFilter />}
 
       {section === 'dashboard' && (
         <div className="p-6">

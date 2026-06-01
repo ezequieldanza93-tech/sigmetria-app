@@ -11,8 +11,6 @@ import {
   Users,
   Network,
   Shield,
-  AlertTriangle,
-  Scale,
   GraduationCap,
   BookOpen,
   BarChart2,
@@ -170,12 +168,6 @@ export function FloatingAvatar({
             <MenuGroup label="Librerías">
               <MenuItem href="/dashboard/productos" icon={Shield} label="Elementos de Protección" />
               <MenuItem href="/dashboard/configuracion/iperc" icon={ClipboardList} label="Librería IPERC" />
-            </MenuGroup>
-
-            {/* Incidentes y Denuncias */}
-            <MenuGroup label="Incidentes y Denuncias">
-              <MenuItem href="/dashboard/incidentes" icon={AlertTriangle} label="Incidentes" />
-              <MenuItem href="/dashboard/denuncias" icon={Scale} label="Denuncias" />
             </MenuGroup>
 
             {/* Capacitación */}

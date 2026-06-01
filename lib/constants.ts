@@ -7,10 +7,6 @@ import type {
   MedicionTipo,
   DocumentoTipo,
   CapacitacionEstado,
-  IncidenteTipo,
-  DenunciaTipo,
-  SeguimientoEstado,
-  Severidad,
   TipoRelacionLaboral,
   TipoPersonaSiniestro,
   InspeccionEstadoVisual,
@@ -199,114 +195,6 @@ export const ALL_WIDGETS: Record<WidgetKey, WidgetDefinition> = {
 }
 
 export const WIDGET_KEYS = Object.keys(ALL_WIDGETS) as WidgetKey[]
-
-// ---- Incidentes ----
-export const INCIDENTE_TIPO_LABELS: Record<IncidenteTipo, string> = {
-  electrico: 'Eléctrico',
-  mecanico: 'Mecánico',
-  estructural: 'Estructural',
-  quimico: 'Químico',
-  ergonomico: 'Ergonómico',
-  ambiental: 'Ambiental',
-  incendio: 'Incendio',
-  caida: 'Caída',
-  herramienta: 'Herramienta',
-  vehiculo: 'Vehículo',
-  otro: 'Otro',
-}
-
-export const INCIDENTE_TIPO_OPTIONS: { value: IncidenteTipo; label: string }[] = [
-  { value: 'electrico', label: 'Eléctrico' },
-  { value: 'mecanico', label: 'Mecánico' },
-  { value: 'estructural', label: 'Estructural' },
-  { value: 'quimico', label: 'Químico' },
-  { value: 'ergonomico', label: 'Ergonómico' },
-  { value: 'ambiental', label: 'Ambiental' },
-  { value: 'incendio', label: 'Incendio' },
-  { value: 'caida', label: 'Caída' },
-  { value: 'herramienta', label: 'Herramienta' },
-  { value: 'vehiculo', label: 'Vehículo' },
-  { value: 'otro', label: 'Otro' },
-]
-
-// ---- Denuncias ----
-export const DENUNCIA_TIPO_LABELS: Record<DenunciaTipo, string> = {
-  laboral: 'Laboral',
-  acoso: 'Acoso',
-  condiciones_inseguras: 'Condiciones Inseguras',
-  incumplimiento_normativo: 'Incumplimiento Normativo',
-  conducta: 'Conducta',
-  otro: 'Otro',
-}
-
-export const DENUNCIA_TIPO_OPTIONS: { value: DenunciaTipo; label: string }[] = [
-  { value: 'laboral', label: 'Laboral' },
-  { value: 'acoso', label: 'Acoso' },
-  { value: 'condiciones_inseguras', label: 'Condiciones Inseguras' },
-  { value: 'incumplimiento_normativo', label: 'Incumplimiento Normativo' },
-  { value: 'conducta', label: 'Conducta' },
-  { value: 'otro', label: 'Otro' },
-]
-
-// ---- Seguimiento (estados compartidos) ----
-export const SEGUIMIENTO_ESTADO_LABELS: Record<SeguimientoEstado, string> = {
-  recibida: 'Recibida',
-  en_analisis: 'En Análisis',
-  accion_planificada: 'Acción Planificada',
-  implementada: 'Implementada',
-  cerrada: 'Cerrada',
-}
-
-export const SEGUIMIENTO_ESTADO_OPTIONS: { value: SeguimientoEstado; label: string }[] = [
-  { value: 'recibida', label: 'Recibida' },
-  { value: 'en_analisis', label: 'En Análisis' },
-  { value: 'accion_planificada', label: 'Acción Planificada' },
-  { value: 'implementada', label: 'Implementada' },
-  { value: 'cerrada', label: 'Cerrada' },
-]
-
-export const SEGUIMIENTO_ESTADO_BADGE: Record<SeguimientoEstado, string> = {
-  recibida: 'bg-red-100 text-red-800',
-  en_analisis: 'bg-yellow-100 text-yellow-800',
-  accion_planificada: 'bg-blue-100 text-blue-800',
-  implementada: 'bg-orange-100 text-orange-800',
-  cerrada: 'bg-green-100 text-green-800',
-}
-
-// ---- Severidad ----
-export const SEVERIDAD_LABELS: Record<Severidad, string> = {
-  baja: 'Baja',
-  media: 'Media',
-  alta: 'Alta',
-  critica: 'Crítica',
-}
-
-export const SEVERIDAD_OPTIONS: { value: Severidad; label: string }[] = [
-  { value: 'baja', label: 'Baja' },
-  { value: 'media', label: 'Media' },
-  { value: 'alta', label: 'Alta' },
-  { value: 'critica', label: 'Crítica' },
-]
-
-export const SEVERIDAD_BADGE: Record<Severidad, string> = {
-  baja: 'bg-gray-100 text-gray-700',
-  media: 'bg-blue-100 text-blue-800',
-  alta: 'bg-orange-100 text-orange-800',
-  critica: 'bg-red-100 text-red-800',
-}
-
-// ---- Denunciante tipo ----
-export const DENUNCIANTE_TIPO_LABELS: Record<string, string> = {
-  interno: 'Interno',
-  externo: 'Externo',
-  anonimo: 'Anónimo',
-}
-
-export const DENUNCIANTE_TIPO_OPTIONS = [
-  { value: 'interno', label: 'Interno' },
-  { value: 'externo', label: 'Externo' },
-  { value: 'anonimo', label: 'Anónimo' },
-]
 
 // ---- IPERC ----
 export const IPERC_FACTORES = [
