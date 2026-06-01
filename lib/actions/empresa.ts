@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache'
 import type { ActionResult } from '@/lib/types'
 import { uploadAsset, deleteAsset, pathFromUrl } from '@/lib/storage/upload'
 import { validateFormData, formatZodErrors } from '@/lib/validation/helpers'
+import { geocodeAddress } from '@/lib/geocoding'
 
 interface EmpresaFormState {
   success: boolean
@@ -94,6 +95,55 @@ async function processLogoUploads(
   return result
 }
 
+/**
+ * Resuelve las coordenadas a persistir para una empresa.
+ *
+ * - Si el usuario cargó lat/long a mano → se respetan (no se sobreescriben).
+ * - Si NO cargó coords pero hay domicilio → se geocodifica el domicilio vía
+ *   Nominatim (domicilio + localidad + provincia + CP + "Argentina") y se usan
+ *   las coords resultantes.
+ * - Si no hay domicilio o el geocoding falla → se devuelve lo que haya (null).
+ *
+ * El geocoding nunca rompe el guardado: ante cualquier error devuelve null.
+ */
+async function resolveCoordenadas(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  fields: Record<string, string>,
+): Promise<{ latitude: number | null; longitude: number | null }> {
+  const manualLat = fields.latitude ? parseFloat(fields.latitude) : null
+  const manualLon = fields.longitude ? parseFloat(fields.longitude) : null
+
+  // El usuario cargó coords a mano → respetar.
+  if (manualLat != null && !Number.isNaN(manualLat) && manualLon != null && !Number.isNaN(manualLon)) {
+    return { latitude: manualLat, longitude: manualLon }
+  }
+
+  const domicilio = fields.domicilio?.trim()
+  if (!domicilio) {
+    return { latitude: null, longitude: null }
+  }
+
+  // Enriquecer el query con localidad/provincia si tenemos localidad_id.
+  const queryParts: string[] = [domicilio]
+  if (fields.localidad_id) {
+    const { data: loc } = await supabase
+      .from('localidades')
+      .select('nombre, provincia')
+      .eq('id', fields.localidad_id)
+      .maybeSingle()
+    if (loc?.nombre) queryParts.push(loc.nombre as string)
+    if (loc?.provincia) queryParts.push(loc.provincia as string)
+  }
+  if (fields.codigo_postal?.trim()) queryParts.push(fields.codigo_postal.trim())
+  queryParts.push('Argentina')
+
+  const coords = await geocodeAddress(queryParts.join(', '))
+  if (!coords) {
+    return { latitude: null, longitude: null }
+  }
+  return { latitude: coords.lat, longitude: coords.lon }
+}
+
 export async function createEmpresa(_prev: EmpresaFormState | null, formData: FormData): Promise<EmpresaFormState> {
   const fields = extractFields(formData)
   const supabase = await createClient()
@@ -119,6 +169,8 @@ export async function createEmpresa(_prev: EmpresaFormState | null, formData: Fo
     return { success: false, error: formatZodErrors(parsed.error), fields }
   }
 
+  const { latitude, longitude } = await resolveCoordenadas(supabase, fields)
+
   const { data: inserted, error } = await supabase
     .from('empresas')
     .insert({
@@ -130,8 +182,8 @@ export async function createEmpresa(_prev: EmpresaFormState | null, formData: Fo
       domicilio: fields.domicilio || null,
       localidad_id: fields.localidad_id || null,
       codigo_postal: fields.codigo_postal || null,
-      latitude: fields.latitude ? parseFloat(fields.latitude) : null,
-      longitude: fields.longitude ? parseFloat(fields.longitude) : null,
+      latitude,
+      longitude,
       art_id: fields.art_id || null,
       art_numero_contrato: fields.art_numero_contrato || null,
       informacion_general: fields.informacion_general || null,
@@ -189,6 +241,8 @@ export async function updateEmpresa(id: string, _prev: EmpresaFormState | null, 
   )
   if (logos.error) return { success: false, error: logos.error, fields }
 
+  const { latitude, longitude } = await resolveCoordenadas(supabase, fields)
+
   const { error } = await supabase
     .from('empresas')
     .update({
@@ -199,8 +253,8 @@ export async function updateEmpresa(id: string, _prev: EmpresaFormState | null, 
       domicilio: fields.domicilio || null,
       localidad_id: fields.localidad_id || null,
       codigo_postal: fields.codigo_postal || null,
-      latitude: fields.latitude ? parseFloat(fields.latitude) : null,
-      longitude: fields.longitude ? parseFloat(fields.longitude) : null,
+      latitude,
+      longitude,
       art_id: fields.art_id || null,
       art_numero_contrato: fields.art_numero_contrato || null,
       informacion_general: fields.informacion_general || null,
