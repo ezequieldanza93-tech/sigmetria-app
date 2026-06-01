@@ -378,6 +378,7 @@ export function AppHeader({
                     <p className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold">Directorio</p>
                   </div>
                   <DropdownItem href="/dashboard/personas" icon={Users} label="Personas" role="menuitem" />
+                  <DropdownItem href="/dashboard/personas?tipo=Auditores" icon={FileCheck} label="Auditores" role="menuitem" />
                   <DropdownItem href="/dashboard/organizaciones-externas" icon={Network} label="Organizaciones" role="menuitem" />
                 </div>
 

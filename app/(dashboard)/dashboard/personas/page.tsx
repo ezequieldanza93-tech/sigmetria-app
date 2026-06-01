@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useActionState, useRef } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { createClient } from '@/lib/supabase/client'
@@ -190,6 +191,7 @@ function PersonaForm({
 }
 
 export default function PersonasPage() {
+  const searchParams = useSearchParams()
   const [personas, setPersonas] = useState<DirectorioPersona[] | null>(null)
   const [tiposPersona, setTiposPersona] = useState<TipoPersona[]>([])
   const [empresas, setEmpresas] = useState<Empresa[]>([])
@@ -216,10 +218,17 @@ export default function PersonasPage() {
       supabase.from('personas_tipos').select('id, nombre').order('nombre'),
       supabase.from('empresas').select('id, razon_social').eq('is_active', true).order('razon_social'),
     ]).then(([tiposRes, empresasRes]) => {
-      setTiposPersona((tiposRes.data ?? []) as TipoPersona[])
+      const tipos = (tiposRes.data ?? []) as TipoPersona[]
+      setTiposPersona(tipos)
       setEmpresas((empresasRes.data as unknown as Empresa[]) ?? [])
+      // Si la URL trae ?tipo=Nombre, aplicar ese filtro por tipo al entrar
+      const tipoParam = searchParams.get('tipo')
+      if (tipoParam) {
+        const match = tipos.find(t => t.nombre.toLowerCase() === tipoParam.toLowerCase())
+        if (match) setActiveTipo(match.id)
+      }
     })
-  }, [])
+  }, [searchParams])
 
   const filtered = personas === null
     ? null
