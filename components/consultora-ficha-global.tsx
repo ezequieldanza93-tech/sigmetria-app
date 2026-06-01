@@ -15,9 +15,24 @@ import {
   ExternalLink,
   Users,
   Briefcase,
+  Gauge,
+  UserCog,
+  CreditCard,
+  FileCheck,
+  Network,
+  Shield,
+  ClipboardList,
+  GraduationCap,
+  BookOpen,
+  BarChart2,
+  Settings2,
+  CalendarClock,
+  MessageSquare,
+  Map,
 } from 'lucide-react'
 import Image from 'next/image'
-import type { Consultora } from '@/lib/types'
+import type { Consultora, UserRole } from '@/lib/types'
+import type { Icon as LucideIcon } from 'lucide-react'
 
 interface EmpresaConEstablecimientos {
   id: string
@@ -37,6 +52,19 @@ interface Props {
   empresas: EmpresaConEstablecimientos[]
   canWrite: boolean
   usuario?: UsuarioInfo | null
+  userRole?: UserRole | null
+  isSuperAdmin?: boolean
+}
+
+interface NavItem {
+  href: string
+  icon: LucideIcon
+  label: string
+}
+
+interface NavGroup {
+  label: string
+  items: NavItem[]
 }
 
 const TIPO_LABEL: Record<string, string> = {
@@ -65,7 +93,57 @@ function antiguedad(desde: string | null): string | null {
  * No embebe el contenido de las fichas: es un árbol liviano para navegar rápido
  * y abrir la ficha que corresponda a cada nivel.
  */
-export function ConsultoraFichaGlobal({ consultora, empresas, usuario }: Props) {
+export function ConsultoraFichaGlobal({ consultora, empresas, usuario, userRole, isSuperAdmin = false }: Props) {
+  const canManageCursos =
+    userRole === 'full_access_main' || userRole === 'full_access_branch' || isSuperAdmin
+  const canVerReportes =
+    userRole === 'full_access_main' || userRole === 'responsable_estandares' || isSuperAdmin
+
+  const navGroups: NavGroup[] = [
+    {
+      label: 'Consultora',
+      items: [
+        { href: '/dashboard/configuracion/consultora', icon: Building2, label: 'Información' },
+        { href: '/dashboard/instrumentos', icon: Gauge, label: 'Instrumentos' },
+        { href: '/dashboard/usuarios', icon: UserCog, label: 'Usuarios' },
+        { href: '/dashboard/billing', icon: CreditCard, label: 'Suscripción' },
+        ...(canVerReportes
+          ? [{ href: '/dashboard/reportes', icon: FileCheck, label: 'Reportes' }]
+          : []),
+      ],
+    },
+    {
+      label: 'Directorio',
+      items: [
+        { href: '/dashboard/personas', icon: Users, label: 'Personas' },
+        { href: '/dashboard/organizaciones-externas', icon: Network, label: 'Organizaciones' },
+      ],
+    },
+    {
+      label: 'Librerías',
+      items: [
+        { href: '/dashboard/productos', icon: Shield, label: 'Elementos de Protección' },
+        { href: '/dashboard/configuracion/iperc', icon: ClipboardList, label: 'Librería IPERC' },
+        { href: '/dashboard/cursos', icon: GraduationCap, label: 'Mis Cursos' },
+        ...(canManageCursos
+          ? [
+              { href: '/dashboard/cursos/admin', icon: BookOpen, label: 'Administrar Cursos' },
+              { href: '/dashboard/cursos/compliance', icon: BarChart2, label: 'Compliance' },
+            ]
+          : []),
+      ],
+    },
+    {
+      label: 'Herramientas',
+      items: [
+        { href: '/dashboard/configuracion/catalogacion', icon: Settings2, label: 'Catalogación' },
+        { href: '/dashboard/configuracion/vencimientos', icon: CalendarClock, label: 'Vencimientos' },
+        { href: '/dashboard/configuracion/feedback', icon: MessageSquare, label: 'Feedback' },
+        { href: '/dashboard/mapas', icon: Map, label: 'Mapa de Riesgos' },
+      ],
+    },
+  ]
+
   const tipoLabel = consultora.tipo ? (TIPO_LABEL[consultora.tipo] ?? consultora.tipo) : null
   const desde = antiguedad(consultora.created_at)
   const socials = consultora.social_links && typeof consultora.social_links === 'object'
@@ -226,6 +304,35 @@ export function ConsultoraFichaGlobal({ consultora, empresas, usuario }: Props) 
           </div>
         )}
       </header>
+
+      {/* Accesos directos — grupos de navegación */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {navGroups.map(group => (
+          <div
+            key={group.label}
+            className="bg-surface-base border border-border-subtle rounded-xl p-4"
+          >
+            <p className="text-xs uppercase tracking-wider text-text-tertiary font-semibold mb-2">
+              {group.label}
+            </p>
+            <nav className="space-y-0.5">
+              {group.items.map(item => {
+                const Icon = item.icon
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className="flex items-center gap-2.5 px-2 py-2 rounded-lg text-sm text-text-secondary hover:text-text-primary hover:bg-surface-sunken/60 transition-colors"
+                  >
+                    <Icon size={16} strokeWidth={1.75} className="text-text-tertiary shrink-0" aria-hidden="true" />
+                    <span className="truncate">{item.label}</span>
+                  </Link>
+                )
+              })}
+            </nav>
+          </div>
+        ))}
+      </section>
 
       {/* Nivel 1 — Empresas */}
       <section className="space-y-2">
