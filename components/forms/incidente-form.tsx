@@ -134,6 +134,36 @@ export function IncidenteForm({ action, onSuccess, establecimientoId }: Props) {
         </label>
       </div>
 
+      <div className="border-t border-border-subtle pt-4 space-y-3">
+        <p className="text-sm font-medium text-text-secondary">Adjuntos</p>
+        <div>
+          <label htmlFor="incidente-denuncia-adjuntos" className="text-xs text-text-secondary block mb-1">
+            Denuncia del accidente / enfermedad profesional
+          </label>
+          <input
+            id="incidente-denuncia-adjuntos"
+            name="denuncia_adjuntos"
+            type="file"
+            multiple
+            accept="application/pdf,image/*"
+            className="w-full text-sm text-text-secondary file:mr-3 file:rounded file:border-0 file:bg-surface-sunken file:px-3 file:py-1.5 file:text-sm file:text-text-primary hover:file:bg-surface-base"
+          />
+        </div>
+        <div>
+          <label htmlFor="incidente-investigacion-adjuntos" className="text-xs text-text-secondary block mb-1">
+            Investigación del accidente
+          </label>
+          <input
+            id="incidente-investigacion-adjuntos"
+            name="investigacion_adjuntos"
+            type="file"
+            multiple
+            accept="application/pdf,image/*"
+            className="w-full text-sm text-text-secondary file:mr-3 file:rounded file:border-0 file:bg-surface-sunken file:px-3 file:py-1.5 file:text-sm file:text-text-primary hover:file:bg-surface-base"
+          />
+        </div>
+      </div>
+
       <div>
         <label htmlFor="incidente-requiere-derivacion" className="text-xs text-text-secondary block mb-1">Requiere derivación</label>
         <select id="incidente-requiere-derivacion" name="requiere_derivacion" className="w-full border border-border-default rounded px-3 py-2 text-sm bg-surface-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]">

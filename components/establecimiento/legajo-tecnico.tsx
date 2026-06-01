@@ -39,6 +39,7 @@ const TIPO_INCIDENTE: Record<IncidenteTipo, string> = {
   accidente_leve: 'Accidente leve',
   accidente_moderado: 'Accidente moderado',
   accidente_grave: 'Accidente grave',
+  enfermedad_profesional: 'Enfermedad profesional',
 }
 
 const TIPO_MEDICION: Record<MedicionTipo, string> = {

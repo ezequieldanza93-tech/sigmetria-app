@@ -6,8 +6,8 @@
 -- Renombra físicamente la tabla `siniestros` -> `incidentes` (el nombre
 -- quedó libre tras 20260614000001) y migra el esquema al nuevo dominio:
 --   * Enums nuevos: incidente_tipo (incidente, accidente_leve,
---     accidente_moderado, accidente_grave) e incidente_estado
---     (pendiente, en_investigacion, cerrado — mismos estados).
+--     accidente_moderado, accidente_grave, enfermedad_profesional) e
+--     incidente_estado (pendiente, en_investigacion, cerrado — mismos estados).
 --   * Columna `tipo`   -> incidente_tipo
 --   * Columna `estado` -> incidente_estado
 --   * Drop de los enums viejos siniestro_tipo / siniestro_estado.
@@ -15,7 +15,7 @@
 --   * Recreación de las 4 RLS policies como "incidentes: ...".
 --
 -- La tabla está VACÍA → el cast de enum con USING es trivial (no hay
--- filas con los valores viejos accidente/casi_accidente/enfermedad_profesional).
+-- filas con los valores viejos accidente/casi_accidente).
 --
 -- COLUMNA GENERADA: `dias_perdidos_calculados` (GENERATED ALWAYS AS ...
 -- STORED) SOBREVIVE intacta al RENAME de la tabla — su expresión referencia
@@ -37,6 +37,7 @@
 --       USING (CASE tipo::text WHEN 'accidente_leve' THEN 'accidente'
 --                              WHEN 'accidente_moderado' THEN 'accidente'
 --                              WHEN 'accidente_grave' THEN 'accidente'
+--                              WHEN 'enfermedad_profesional' THEN 'enfermedad_profesional'
 --                              ELSE 'incidente' END)::public.siniestro_tipo,
 --     ALTER COLUMN estado TYPE public.siniestro_estado
 --       USING estado::text::public.siniestro_estado;
@@ -58,7 +59,7 @@ BEGIN;
 
 -- ── 1. Enums nuevos ──────────────────────────────────────────
 CREATE TYPE public.incidente_tipo AS ENUM (
-  'incidente', 'accidente_leve', 'accidente_moderado', 'accidente_grave'
+  'incidente', 'accidente_leve', 'accidente_moderado', 'accidente_grave', 'enfermedad_profesional'
 );
 CREATE TYPE public.incidente_estado AS ENUM (
   'pendiente', 'en_investigacion', 'cerrado'

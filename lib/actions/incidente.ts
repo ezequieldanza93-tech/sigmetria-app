@@ -5,8 +5,39 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import type { ActionResult, IncidenteEstado } from '@/lib/types'
 
+const MAX_ARCHIVOS = 5
+
+/**
+ * Sube los archivos al bucket `documentos` (ya existente) bajo
+ * `incidentes/{establecimientoId}/{timestamp}-{filename}` y devuelve las
+ * URLs públicas. Patrón espejo de lib/actions/establecimiento-info.ts.
+ */
+async function uploadIncidenteFiles(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  establecimientoId: string,
+  files: File[]
+): Promise<string[]> {
+  const urls: string[] = []
+  for (const file of files) {
+    if (urls.length >= MAX_ARCHIVOS) break
+    const path = `incidentes/${establecimientoId}/${Date.now()}-${file.name}`
+    const { data: upload, error } = await supabase.storage
+      .from('documentos')
+      .upload(path, file, { upsert: false })
+    if (error) continue
+    const { data: { publicUrl } } = supabase.storage.from('documentos').getPublicUrl(upload.path)
+    urls.push(publicUrl)
+  }
+  return urls
+}
+
+function collectIncidenteFiles(formData: FormData, name: string): File[] {
+  const all = formData.getAll(name) as File[]
+  return all.filter(f => f instanceof File && f.size > 0).slice(0, MAX_ARCHIVOS)
+}
+
 const createIncidenteSchema = z.object({
-  tipo: z.enum(['incidente', 'accidente_leve', 'accidente_moderado', 'accidente_grave']),
+  tipo: z.enum(['incidente', 'accidente_leve', 'accidente_moderado', 'accidente_grave', 'enfermedad_profesional']),
   tipo_persona: z.enum(['trabajador_interno', 'trabajador_externo']).optional(),
   persona_id: z.string().nullable().optional(),
   fecha_ocurrencia: z.string().min(1, { message: 'La fecha es obligatoria' }),
@@ -51,6 +82,15 @@ export async function createIncidente(
     dias_perdidos, requiere_derivacion, acciones_correctivas,
   } = parsed.data
 
+  const denunciaFiles = collectIncidenteFiles(formData, 'denuncia_adjuntos')
+  const investigacionFiles = collectIncidenteFiles(formData, 'investigacion_adjuntos')
+  const denunciaUrls = denunciaFiles.length > 0
+    ? await uploadIncidenteFiles(supabase, establecimientoId, denunciaFiles)
+    : []
+  const investigacionUrls = investigacionFiles.length > 0
+    ? await uploadIncidenteFiles(supabase, establecimientoId, investigacionFiles)
+    : []
+
   const insertData: Record<string, unknown> = {
     establecimiento_id: establecimientoId,
     persona_id: persona_id ?? null,
@@ -65,6 +105,8 @@ export async function createIncidente(
     fecha_alta_medica: fecha_alta_medica ?? null,
     tiene_denuncia_adjunta: tiene_denuncia_adjunta ?? false,
     tiene_evolucion_medica: tiene_evolucion_medica ?? false,
+    denuncia_adjuntos_urls: denunciaUrls,
+    investigacion_adjuntos_urls: investigacionUrls,
     ente_investigador: ente_investigador ?? null,
     causa_inmediata: causa_inmediata ?? null,
     causa_basica: causa_basica ?? null,
@@ -109,6 +151,15 @@ export async function updateIncidente(
     dias_perdidos, requiere_derivacion, acciones_correctivas,
   } = parsed.data
 
+  const denunciaFiles = collectIncidenteFiles(formData, 'denuncia_adjuntos')
+  const investigacionFiles = collectIncidenteFiles(formData, 'investigacion_adjuntos')
+  const denunciaUrls = denunciaFiles.length > 0
+    ? await uploadIncidenteFiles(supabase, establecimientoId, denunciaFiles)
+    : []
+  const investigacionUrls = investigacionFiles.length > 0
+    ? await uploadIncidenteFiles(supabase, establecimientoId, investigacionFiles)
+    : []
+
   const updateData: Record<string, unknown> = {
     tipo,
     tipo_persona: tipo_persona ?? null,
@@ -128,6 +179,11 @@ export async function updateIncidente(
     requiere_derivacion: requiere_derivacion === 'true',
     acciones_correctivas: acciones_correctivas ?? null,
   }
+
+  // Solo pisamos las columnas de adjuntos si se subieron archivos nuevos,
+  // para no borrar los existentes en una edición sin re-adjuntar.
+  if (denunciaUrls.length > 0) updateData.denuncia_adjuntos_urls = denunciaUrls
+  if (investigacionUrls.length > 0) updateData.investigacion_adjuntos_urls = investigacionUrls
 
   const { error } = await supabase
     .from('incidentes')

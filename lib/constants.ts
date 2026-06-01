@@ -56,6 +56,7 @@ export const INCIDENTE_TIPO_LABELS: Record<IncidenteTipo, string> = {
   accidente_leve: 'Accidente Leve',
   accidente_moderado: 'Accidente Moderado',
   accidente_grave: 'Accidente Grave',
+  enfermedad_profesional: 'Enfermedad profesional',
 }
 
 export const INCIDENTE_TIPO_OPTIONS: { value: IncidenteTipo; label: string }[] = [
@@ -63,6 +64,7 @@ export const INCIDENTE_TIPO_OPTIONS: { value: IncidenteTipo; label: string }[] =
   { value: 'accidente_leve', label: 'Accidente Leve' },
   { value: 'accidente_moderado', label: 'Accidente Moderado' },
   { value: 'accidente_grave', label: 'Accidente Grave' },
+  { value: 'enfermedad_profesional', label: 'Enfermedad profesional' },
 ]
 
 export const INCIDENTE_ESTADO_LABELS: Record<IncidenteEstado, string> = {

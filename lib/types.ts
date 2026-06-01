@@ -48,6 +48,7 @@ export type IncidenteTipo =
   | 'accidente_leve'
   | 'accidente_moderado'
   | 'accidente_grave'
+  | 'enfermedad_profesional'
 
 export type IncidenteEstado =
   | 'pendiente'
@@ -493,6 +494,8 @@ export interface Incidente {
   fecha_alta_medica: string | null
   tiene_denuncia_adjunta: boolean
   tiene_evolucion_medica: boolean
+  denuncia_adjuntos_urls: string[] | null
+  investigacion_adjuntos_urls: string[] | null
   ente_investigador: string | null
   fecha_investigacion: string | null
   causa_inmediata: string | null
