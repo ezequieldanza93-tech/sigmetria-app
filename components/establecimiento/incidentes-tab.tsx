@@ -4,35 +4,35 @@ import { useState } from 'react'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { formatDate } from '@/lib/utils'
-import { SiniestroForm } from '@/components/forms/siniestro-form'
-import { SINIESTRO_TIPO_LABELS, SINIESTRO_ESTADO_LABELS, TIPO_PERSONA_SINIESTRO_LABELS } from '@/lib/constants'
-import { SINIESTRO_ESTADO_COLORS } from '@/lib/types'
-import { createSiniestro } from '@/lib/actions/siniestro'
-import type { Siniestro } from '@/lib/types'
+import { IncidenteForm } from '@/components/forms/incidente-form'
+import { INCIDENTE_TIPO_LABELS, INCIDENTE_ESTADO_LABELS, TIPO_PERSONA_INCIDENTE_LABELS } from '@/lib/constants'
+import { INCIDENTE_ESTADO_COLORS } from '@/lib/types'
+import { createIncidente } from '@/lib/actions/incidente'
+import type { Incidente } from '@/lib/types'
 
-interface SiniestrosTabProps {
-  siniestros: Siniestro[]
+interface IncidentesTabProps {
+  incidentes: Incidente[]
   establecimientoId: string
   empresaId: string
   canWrite: boolean
 }
 
-export function SiniestrosTab({ siniestros, establecimientoId, empresaId, canWrite }: SiniestrosTabProps) {
+export function IncidentesTab({ incidentes, establecimientoId, empresaId, canWrite }: IncidentesTabProps) {
   const [showModal, setShowModal] = useState(false)
-  const siniestroAction = createSiniestro.bind(null, establecimientoId, empresaId)
+  const incidenteAction = createIncidente.bind(null, establecimientoId, empresaId)
 
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-text-primary dark:text-white">Siniestros</h3>
+        <h3 className="font-semibold text-text-primary dark:text-white">Incidentes</h3>
         {canWrite && (
-          <Button size="sm" onClick={() => setShowModal(true)}>+ Nuevo Siniestro</Button>
+          <Button size="sm" onClick={() => setShowModal(true)}>+ Nuevo Incidente</Button>
         )}
       </div>
 
-      {!siniestros.length ? (
+      {!incidentes.length ? (
         <div className="bg-surface-base dark:bg-surface-elevated rounded-xl border border-border-subtle dark:border-border-subtle p-8 text-center text-text-tertiary">
-          No hay siniestros registrados
+          No hay incidentes registrados
         </div>
       ) : (
         <div className="bg-surface-base dark:bg-surface-elevated rounded-xl border border-border-subtle dark:border-border-subtle overflow-hidden">
@@ -49,20 +49,20 @@ export function SiniestrosTab({ siniestros, establecimientoId, empresaId, canWri
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50 dark:divide-border-subtle">
-              {siniestros.map(s => (
+              {incidentes.map(s => (
                 <tr key={s.id} className="hover:bg-surface-base">
-                  <td className="px-5 py-3.5 font-medium text-text-primary">{SINIESTRO_TIPO_LABELS[s.tipo]}</td>
+                  <td className="px-5 py-3.5 font-medium text-text-primary">{INCIDENTE_TIPO_LABELS[s.tipo]}</td>
                   <td className="px-5 py-3.5 text-text-secondary">
                     {s.persona ? `${s.persona.apellido}, ${s.persona.nombre}` : '—'}
-                    {s.tipo_persona && <span className="text-xs text-text-tertiary ml-1">({TIPO_PERSONA_SINIESTRO_LABELS[s.tipo_persona]})</span>}
+                    {s.tipo_persona && <span className="text-xs text-text-tertiary ml-1">({TIPO_PERSONA_INCIDENTE_LABELS[s.tipo_persona]})</span>}
                   </td>
                   <td className="px-5 py-3.5 text-text-secondary">
                     {formatDate(s.fecha_ocurrencia)}
                     {s.hora_ocurrencia && <span className="text-xs text-text-tertiary ml-1">{s.hora_ocurrencia.slice(0, 5)}</span>}
                   </td>
                   <td className="px-5 py-3.5">
-                    <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${SINIESTRO_ESTADO_COLORS[s.estado]}`}>
-                      {SINIESTRO_ESTADO_LABELS[s.estado]}
+                    <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${INCIDENTE_ESTADO_COLORS[s.estado]}`}>
+                      {INCIDENTE_ESTADO_LABELS[s.estado]}
                     </span>
                   </td>
                   <td className="px-5 py-3.5 text-center tabular-nums">{s.dias_perdidos ?? '—'}</td>
@@ -77,9 +77,9 @@ export function SiniestrosTab({ siniestros, establecimientoId, empresaId, canWri
         </div>
       )}
 
-      <Modal open={showModal} onClose={() => setShowModal(false)} title="Registrar Siniestro">
-        <SiniestroForm
-          action={siniestroAction}
+      <Modal open={showModal} onClose={() => setShowModal(false)} title="Registrar Incidente">
+        <IncidenteForm
+          action={incidenteAction}
           onSuccess={() => setShowModal(false)}
           establecimientoId={establecimientoId}
         />

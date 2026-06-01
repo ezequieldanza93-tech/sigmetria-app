@@ -8,13 +8,13 @@ import {
 import { ChartCard } from '@/components/analytics/chart-card'
 import { VariantSwitcher } from '@/components/analytics/variant-switcher'
 import { CHART_COLORS, TOOLTIP_STYLE, AXIS_STYLE } from '@/components/analytics/chart-config'
-import type { SiniestroRow } from '@/lib/actions/analytics'
-import type { SiniestroMetrics } from '@/lib/analytics-compute'
+import type { IncidenteRow } from '@/lib/actions/analytics'
+import type { IncidenteMetrics } from '@/lib/analytics-compute'
 import { CheckCircle2 } from 'lucide-react'
 
-interface SiniestrosSectionProps {
-  rows: SiniestroRow[]
-  metrics: SiniestroMetrics
+interface IncidentesSectionProps {
+  rows: IncidenteRow[]
+  metrics: IncidenteMetrics
 }
 
 const PIE_COLORS = ['#EF4444', '#F59E0B', '#3B82F6', '#8B5CF6']
@@ -25,19 +25,19 @@ const ESTADO_LABELS: Record<string, string> = {
   cerrado: 'Cerrado',
 }
 
-export function SiniestrosSection({ rows, metrics }: SiniestrosSectionProps) {
+export function IncidentesSection({ rows, metrics }: IncidentesSectionProps) {
   const [variant, setVariant] = useState<1 | 2 | 3>(1)
 
   if (rows.length === 0 && variant !== 3) {
     return (
       <ChartCard
-        title="Siniestros e Incidentes"
-        subtitle="Accidentes, incidentes y enfermedades profesionales"
+        title="Incidentes"
+        subtitle="Incidentes y accidentes (leves, moderados y graves)"
       >
         <div className="flex flex-col items-center justify-center py-12 gap-3">
           <CheckCircle2 size={40} className="text-[#4CAF50]" />
-          <p className="font-semibold text-text-primary">Sin siniestros en el período</p>
-          <p className="text-sm text-text-tertiary">No se registraron accidentes ni incidentes.</p>
+          <p className="font-semibold text-text-primary">Sin incidentes en el período</p>
+          <p className="text-sm text-text-tertiary">No se registraron incidentes ni accidentes.</p>
         </div>
       </ChartCard>
     )
@@ -45,8 +45,8 @@ export function SiniestrosSection({ rows, metrics }: SiniestrosSectionProps) {
 
   return (
     <ChartCard
-      title="Siniestros e Incidentes"
-      subtitle="Accidentes, incidentes y enfermedades profesionales"
+      title="Incidentes"
+      subtitle="Incidentes y accidentes (leves, moderados y graves)"
       action={
         <VariantSwitcher
           current={variant}
@@ -77,9 +77,9 @@ export function SiniestrosSection({ rows, metrics }: SiniestrosSectionProps) {
           {/* KPIs */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
-              { label: 'Total siniestros', value: metrics.total },
+              { label: 'Total incidentes', value: metrics.total },
               { label: 'Días perdidos', value: metrics.diasPerdidos, color: metrics.diasPerdidos > 0 ? '#EF4444' : undefined },
-              { label: 'Accidentes', value: metrics.porTipo.find(t => t.tipo === 'Accidente')?.count ?? 0, color: '#EF4444' },
+              { label: 'Accidentes', value: metrics.porTipo.filter(t => t.tipo.startsWith('Accidente')).reduce((s, t) => s + t.count, 0), color: '#EF4444' },
               { label: 'Incidentes', value: metrics.porTipo.find(t => t.tipo === 'Incidente')?.count ?? 0, color: '#F59E0B' },
             ].map((kpi, i) => (
               <div key={i} className="rounded-lg bg-surface-sunken border border-border-subtle px-4 py-3">
@@ -115,7 +115,7 @@ export function SiniestrosSection({ rows, metrics }: SiniestrosSectionProps) {
               <YAxis {...AXIS_STYLE} />
               <Tooltip {...TOOLTIP_STYLE} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Bar dataKey="count" name="Siniestros" fill={CHART_COLORS[3]} radius={[3, 3, 0, 0]} />
+              <Bar dataKey="count" name="Incidentes" fill={CHART_COLORS[3]} radius={[3, 3, 0, 0]} />
               <Bar dataKey="diasPerdidos" name="Días perdidos" fill={CHART_COLORS[2]} radius={[3, 3, 0, 0]} opacity={0.7} />
             </BarChart>
           </ResponsiveContainer>
@@ -139,8 +139,8 @@ export function SiniestrosSection({ rows, metrics }: SiniestrosSectionProps) {
         rows.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 gap-3">
             <CheckCircle2 size={40} className="text-[#4CAF50]" />
-            <p className="font-semibold text-text-primary">Sin siniestros en el período</p>
-            <p className="text-sm text-text-tertiary">No se registraron accidentes ni incidentes.</p>
+            <p className="font-semibold text-text-primary">Sin incidentes en el período</p>
+            <p className="text-sm text-text-tertiary">No se registraron incidentes ni accidentes.</p>
           </div>
         ) : (
           <div className="space-y-4">

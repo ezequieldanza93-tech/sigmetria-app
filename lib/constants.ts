@@ -1,14 +1,14 @@
 import type {
   TipoEstablecimiento,
-  SiniestroTipo,
-  SiniestroEstado,
+  IncidenteTipo,
+  IncidenteEstado,
   InspeccionEstado,
   RiesgoNivel,
   MedicionTipo,
   DocumentoTipo,
   CapacitacionEstado,
   TipoRelacionLaboral,
-  TipoPersonaSiniestro,
+  TipoPersonaIncidente,
   InspeccionEstadoVisual,
 } from './types'
 
@@ -51,27 +51,27 @@ export const TIPO_ESTABLECIMIENTO_OPTIONS: { value: TipoEstablecimiento; label: 
   { value: 'otro', label: 'Otros tipos' },
 ]
 
-export const SINIESTRO_TIPO_LABELS: Record<SiniestroTipo, string> = {
-  accidente: 'Accidente',
+export const INCIDENTE_TIPO_LABELS: Record<IncidenteTipo, string> = {
   incidente: 'Incidente',
-  casi_accidente: 'Casi Accidente',
-  enfermedad_profesional: 'Enfermedad Profesional',
+  accidente_leve: 'Accidente Leve',
+  accidente_moderado: 'Accidente Moderado',
+  accidente_grave: 'Accidente Grave',
 }
 
-export const SINIESTRO_TIPO_OPTIONS: { value: SiniestroTipo; label: string }[] = [
-  { value: 'accidente', label: 'Accidente' },
+export const INCIDENTE_TIPO_OPTIONS: { value: IncidenteTipo; label: string }[] = [
   { value: 'incidente', label: 'Incidente' },
-  { value: 'casi_accidente', label: 'Casi Accidente' },
-  { value: 'enfermedad_profesional', label: 'Enfermedad Profesional' },
+  { value: 'accidente_leve', label: 'Accidente Leve' },
+  { value: 'accidente_moderado', label: 'Accidente Moderado' },
+  { value: 'accidente_grave', label: 'Accidente Grave' },
 ]
 
-export const SINIESTRO_ESTADO_LABELS: Record<SiniestroEstado, string> = {
+export const INCIDENTE_ESTADO_LABELS: Record<IncidenteEstado, string> = {
   pendiente: 'Pendiente',
   en_investigacion: 'En Investigación',
   cerrado: 'Cerrado',
 }
 
-export const SINIESTRO_ESTADO_OPTIONS: { value: SiniestroEstado; label: string }[] = [
+export const INCIDENTE_ESTADO_OPTIONS: { value: IncidenteEstado; label: string }[] = [
   { value: 'pendiente', label: 'Pendiente' },
   { value: 'en_investigacion', label: 'En Investigación' },
   { value: 'cerrado', label: 'Cerrado' },
@@ -158,8 +158,8 @@ export type WidgetKey =
   | 'empresas_activas'
   | 'establecimientos'
   | 'trabajadores'
-  | 'siniestros_mes'
-  | 'siniestros_acumulados'
+  | 'incidentes_mes'
+  | 'incidentes_acumulados'
   | 'documentos_vencer_7d'
   | 'documentos_vencer_15d'
   | 'documentos_vencer_30d'
@@ -168,7 +168,7 @@ export type WidgetKey =
   | 'capacitaciones_proximas'
   | 'mediciones_pendientes'
   | 'epp_vencidos'
-  | 'tasa_siniestralidad'
+  | 'tasa_incidentalidad'
 
 export interface WidgetDefinition {
   key: WidgetKey
@@ -181,8 +181,8 @@ export const ALL_WIDGETS: Record<WidgetKey, WidgetDefinition> = {
   empresas_activas: { key: 'empresas_activas', label: 'Empresas Activas', icon: 'Building2', description: 'Empresas activas habilitadas' },
   establecimientos: { key: 'establecimientos', label: 'Establecimientos', icon: 'MapPin', description: 'Total de establecimientos' },
   trabajadores: { key: 'trabajadores', label: 'Trabajadores', icon: 'Users', description: 'Suma total de trabajadores registrados' },
-  siniestros_mes: { key: 'siniestros_mes', label: 'Siniestros del Mes', icon: 'AlertTriangle', description: 'Siniestros ocurridos en el mes actual' },
-  siniestros_acumulados: { key: 'siniestros_acumulados', label: 'Siniestros Acumulados', icon: 'AlertOctagon', description: 'Siniestros acumulados en el año' },
+  incidentes_mes: { key: 'incidentes_mes', label: 'Incidentes del Mes', icon: 'AlertTriangle', description: 'Incidentes ocurridos en el mes actual' },
+  incidentes_acumulados: { key: 'incidentes_acumulados', label: 'Incidentes Acumulados', icon: 'AlertOctagon', description: 'Incidentes acumulados en el año' },
   documentos_vencer_7d: { key: 'documentos_vencer_7d', label: 'Docs por Vencer (7d)', icon: 'FileText', description: 'Documentos que vencen en los próximos 7 días' },
   documentos_vencer_15d: { key: 'documentos_vencer_15d', label: 'Docs por Vencer (15d)', icon: 'FileText', description: 'Documentos que vencen en los próximos 15 días' },
   documentos_vencer_30d: { key: 'documentos_vencer_30d', label: 'Docs por Vencer (30d)', icon: 'FileText', description: 'Documentos que vencen en los próximos 30 días' },
@@ -191,7 +191,7 @@ export const ALL_WIDGETS: Record<WidgetKey, WidgetDefinition> = {
   capacitaciones_proximas: { key: 'capacitaciones_proximas', label: 'Capacitaciones Próximas', icon: 'CalendarCheck', description: 'Capacitaciones a vencer en 30 días' },
   mediciones_pendientes: { key: 'mediciones_pendientes', label: 'Mediciones Pendientes', icon: 'Activity', description: 'Mediciones ambientales registradas en el año' },
   epp_vencidos: { key: 'epp_vencidos', label: 'EPP por Puesto', icon: 'Shield', description: 'Elementos de protección personal por puesto' },
-  tasa_siniestralidad: { key: 'tasa_siniestralidad', label: 'Tasa de Siniestralidad', icon: 'Percent', description: 'Porcentaje de siniestros sobre trabajadores' },
+  tasa_incidentalidad: { key: 'tasa_incidentalidad', label: 'Tasa de Incidentalidad', icon: 'Percent', description: 'Porcentaje de incidentes sobre trabajadores' },
 }
 
 export const WIDGET_KEYS = Object.keys(ALL_WIDGETS) as WidgetKey[]
@@ -264,7 +264,7 @@ export const TIPO_RELACION_LABORAL_LABELS: Record<TipoRelacionLaboral, string> =
   pasante: 'Pasante',
 }
 
-export const TIPO_PERSONA_SINIESTRO_LABELS: Record<TipoPersonaSiniestro, string> = {
+export const TIPO_PERSONA_INCIDENTE_LABELS: Record<TipoPersonaIncidente, string> = {
   trabajador_interno: 'Trabajador interno',
   trabajador_externo: 'Trabajador externo',
 }

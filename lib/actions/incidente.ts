@@ -3,10 +3,10 @@
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import type { ActionResult, SiniestroEstado } from '@/lib/types'
+import type { ActionResult, IncidenteEstado } from '@/lib/types'
 
-const createSiniestroSchema = z.object({
-  tipo: z.enum(['accidente', 'incidente', 'casi_accidente', 'enfermedad_profesional']),
+const createIncidenteSchema = z.object({
+  tipo: z.enum(['incidente', 'accidente_leve', 'accidente_moderado', 'accidente_grave']),
   tipo_persona: z.enum(['trabajador_interno', 'trabajador_externo']).optional(),
   persona_id: z.string().nullable().optional(),
   fecha_ocurrencia: z.string().min(1, { message: 'La fecha es obligatoria' }),
@@ -24,7 +24,7 @@ const createSiniestroSchema = z.object({
   acciones_correctivas: z.string().nullable().optional(),
 })
 
-export async function createSiniestro(
+export async function createIncidente(
   establecimientoId: string,
   empresaId: string,
   _prev: ActionResult<null> | null,
@@ -37,7 +37,7 @@ export async function createSiniestro(
   const raw: Record<string, unknown> = {}
   formData.forEach((v, k) => { raw[k] = v })
 
-  const parsed = createSiniestroSchema.safeParse(raw)
+  const parsed = createIncidenteSchema.safeParse(raw)
   if (!parsed.success) {
     const first = parsed.error.issues[0]
     return { success: false, error: first?.message ?? 'Datos inválidos' }
@@ -56,7 +56,7 @@ export async function createSiniestro(
     persona_id: persona_id ?? null,
     tipo,
     tipo_persona: tipo_persona ?? null,
-    estado: 'pendiente' as SiniestroEstado,
+    estado: 'pendiente' as IncidenteEstado,
     fecha_ocurrencia,
     hora_ocurrencia: hora_ocurrencia ?? null,
     descripcion: descripcion ?? null,
@@ -74,7 +74,7 @@ export async function createSiniestro(
   }
 
   const { error } = await supabase
-    .from('siniestros')
+    .from('incidentes')
     .insert(insertData)
 
   if (error) return { success: false, error: error.message }
@@ -83,8 +83,8 @@ export async function createSiniestro(
   return { success: true, data: null }
 }
 
-export async function updateSiniestro(
-  siniestroId: string,
+export async function updateIncidente(
+  incidenteId: string,
   establecimientoId: string,
   empresaId: string,
   formData: FormData
@@ -96,7 +96,7 @@ export async function updateSiniestro(
   const raw: Record<string, unknown> = {}
   formData.forEach((v, k) => { raw[k] = v })
 
-  const parsed = createSiniestroSchema.safeParse(raw)
+  const parsed = createIncidenteSchema.safeParse(raw)
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' }
   }
@@ -113,7 +113,7 @@ export async function updateSiniestro(
     tipo,
     tipo_persona: tipo_persona ?? null,
     persona_id: persona_id ?? null,
-    estado: (formData.get('estado') as SiniestroEstado) ?? 'pendiente',
+    estado: (formData.get('estado') as IncidenteEstado) ?? 'pendiente',
     fecha_ocurrencia,
     hora_ocurrencia: hora_ocurrencia ?? null,
     descripcion: descripcion ?? null,
@@ -130,9 +130,9 @@ export async function updateSiniestro(
   }
 
   const { error } = await supabase
-    .from('siniestros')
+    .from('incidentes')
     .update(updateData)
-    .eq('id', siniestroId)
+    .eq('id', incidenteId)
 
   if (error) return { success: false, error: error.message }
 

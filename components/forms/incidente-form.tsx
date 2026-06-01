@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { createClient } from '@/lib/supabase/client'
-import { SINIESTRO_TIPO_OPTIONS } from '@/lib/constants'
-import { TIPO_PERSONA_SINIESTRO_LABELS } from '@/lib/constants'
+import { INCIDENTE_TIPO_OPTIONS } from '@/lib/constants'
+import { TIPO_PERSONA_INCIDENTE_LABELS } from '@/lib/constants'
 import type { ActionResult, DirectorioPersona } from '@/lib/types'
 
 type Action = (
@@ -20,7 +20,7 @@ interface Props {
   establecimientoId: string
 }
 
-export function SiniestroForm({ action, onSuccess, establecimientoId }: Props) {
+export function IncidenteForm({ action, onSuccess, establecimientoId }: Props) {
   const [personas, setPersonas] = useState<DirectorioPersona[]>([])
   const [tipoPersona, setTipoPersona] = useState<string>('trabajador_interno')
   const [fechaBaja, setFechaBaja] = useState('')
@@ -70,28 +70,28 @@ export function SiniestroForm({ action, onSuccess, establecimientoId }: Props) {
       )}
 
       <div>
-        <label htmlFor="siniestro-tipo" className="text-xs text-text-secondary block mb-1">Tipo *</label>
-        <select id="siniestro-tipo" name="tipo" required className="w-full border border-border-default rounded px-3 py-2 text-sm bg-surface-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]">
+        <label htmlFor="incidente-tipo" className="text-xs text-text-secondary block mb-1">Tipo *</label>
+        <select id="incidente-tipo" name="tipo" required className="w-full border border-border-default rounded px-3 py-2 text-sm bg-surface-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]">
           <option value="">Seleccioná…</option>
-          {SINIESTRO_TIPO_OPTIONS.map(o => (
+          {INCIDENTE_TIPO_OPTIONS.map(o => (
             <option key={o.value} value={o.value}>{o.label}</option>
           ))}
         </select>
       </div>
 
       <div>
-        <label htmlFor="siniestro-tipo-persona" className="text-xs text-text-secondary block mb-1">Tipo de persona</label>
-        <select id="siniestro-tipo-persona" name="tipo_persona" value={tipoPersona} onChange={e => setTipoPersona(e.target.value)}
+        <label htmlFor="incidente-tipo-persona" className="text-xs text-text-secondary block mb-1">Tipo de persona</label>
+        <select id="incidente-tipo-persona" name="tipo_persona" value={tipoPersona} onChange={e => setTipoPersona(e.target.value)}
           className="w-full border border-border-default rounded px-3 py-2 text-sm bg-surface-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]">
-          {Object.entries(TIPO_PERSONA_SINIESTRO_LABELS).map(([k, v]) => (
+          {Object.entries(TIPO_PERSONA_INCIDENTE_LABELS).map(([k, v]) => (
             <option key={k} value={k}>{v}</option>
           ))}
         </select>
       </div>
 
       <div>
-        <label htmlFor="siniestro-persona-id" className="text-xs text-text-secondary block mb-1">Persona afectada</label>
-        <select id="siniestro-persona-id" name="persona_id" className="w-full border border-border-default rounded px-3 py-2 text-sm bg-surface-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]">
+        <label htmlFor="incidente-persona-id" className="text-xs text-text-secondary block mb-1">Persona afectada</label>
+        <select id="incidente-persona-id" name="persona_id" className="w-full border border-border-default rounded px-3 py-2 text-sm bg-surface-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]">
           <option value="">Seleccioná…</option>
           {personas.map(p => (
             <option key={p.id} value={p.id}>{p.apellido}, {p.nombre} {p.dni ? `- DNI: ${p.dni}` : ''}</option>
@@ -104,7 +104,7 @@ export function SiniestroForm({ action, onSuccess, establecimientoId }: Props) {
 
       <Input label="Hora de ocurrencia" name="hora_ocurrencia" type="time" />
 
-      <Textarea label="Descripción" name="descripcion" placeholder="Breve descripción del siniestro…" rows={3} />
+      <Textarea label="Descripción" name="descripcion" placeholder="Breve descripción del incidente…" rows={3} />
 
       <div className="border-t border-border-subtle pt-4">
         <p className="text-sm font-medium text-text-secondary mb-3">Datos médicos</p>
@@ -135,8 +135,8 @@ export function SiniestroForm({ action, onSuccess, establecimientoId }: Props) {
       </div>
 
       <div>
-        <label htmlFor="siniestro-requiere-derivacion" className="text-xs text-text-secondary block mb-1">Requiere derivación</label>
-        <select id="siniestro-requiere-derivacion" name="requiere_derivacion" className="w-full border border-border-default rounded px-3 py-2 text-sm bg-surface-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]">
+        <label htmlFor="incidente-requiere-derivacion" className="text-xs text-text-secondary block mb-1">Requiere derivación</label>
+        <select id="incidente-requiere-derivacion" name="requiere_derivacion" className="w-full border border-border-default rounded px-3 py-2 text-sm bg-surface-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]">
           <option value="">No</option>
           <option value="true">Sí</option>
         </select>
@@ -146,7 +146,7 @@ export function SiniestroForm({ action, onSuccess, establecimientoId }: Props) {
 
       <div className="flex gap-3 pt-1">
         <Button type="submit" disabled={isPending}>
-          {isPending ? 'Guardando...' : 'Registrar Siniestro'}
+          {isPending ? 'Guardando...' : 'Registrar Incidente'}
         </Button>
       </div>
     </form>

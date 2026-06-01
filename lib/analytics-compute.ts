@@ -1,4 +1,4 @@
-import type { GestionRow, SiniestroRow, InspeccionRow, FeedbackRow, ObservacionRow } from './actions/analytics'
+import type { GestionRow, IncidenteRow, InspeccionRow, FeedbackRow, ObservacionRow } from './actions/analytics'
 
 const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
@@ -88,8 +88,8 @@ export function computeGestionMetrics(rows: GestionRow[]): GestionMetrics {
   }
 }
 
-// ── Siniestro Metrics ────────────────────────────────────────────
-export interface SiniestroMetrics {
+// ── Incidente Metrics ────────────────────────────────────────────
+export interface IncidenteMetrics {
   total: number
   diasPerdidos: number
   diasSinAccidente: number
@@ -99,15 +99,18 @@ export interface SiniestroMetrics {
 }
 
 const TIPO_LABELS: Record<string, string> = {
-  accidente: 'Accidente',
   incidente: 'Incidente',
-  casi_accidente: 'Casi accidente',
-  enfermedad_profesional: 'Enf. Profesional',
+  accidente_leve: 'Accidente Leve',
+  accidente_moderado: 'Accidente Moderado',
+  accidente_grave: 'Accidente Grave',
 }
 
-export function computeSiniestroMetrics(rows: SiniestroRow[]): SiniestroMetrics {
+// Cualquier tipo que represente un accidente (todas las severidades).
+const ACCIDENTE_TIPOS = new Set(['accidente_leve', 'accidente_moderado', 'accidente_grave'])
+
+export function computeIncidenteMetrics(rows: IncidenteRow[]): IncidenteMetrics {
   const accidentes = rows
-    .filter(r => r.tipo === 'accidente')
+    .filter(r => ACCIDENTE_TIPOS.has(r.tipo))
     .sort((a, b) => new Date(b.fecha_ocurrencia).getTime() - new Date(a.fecha_ocurrencia).getTime())
   const lastAcc = accidentes[0]
   const diasSinAccidente = lastAcc

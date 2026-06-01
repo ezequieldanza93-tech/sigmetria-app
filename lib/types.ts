@@ -43,13 +43,13 @@ export interface EstablecimientoRespuesta {
   respuesta: boolean
 }
 
-export type SiniestroTipo =
-  | 'accidente'
+export type IncidenteTipo =
   | 'incidente'
-  | 'casi_accidente'
-  | 'enfermedad_profesional'
+  | 'accidente_leve'
+  | 'accidente_moderado'
+  | 'accidente_grave'
 
-export type SiniestroEstado =
+export type IncidenteEstado =
   | 'pendiente'
   | 'en_investigacion'
   | 'cerrado'
@@ -475,17 +475,17 @@ export interface TrabajadorPuesto {
   personas_directorio?: DirectorioPersona
 }
 
-export type TipoPersonaSiniestro = 'trabajador_interno' | 'trabajador_externo'
+export type TipoPersonaIncidente = 'trabajador_interno' | 'trabajador_externo'
 
-export interface Siniestro {
+export interface Incidente {
   id: string
   establecimiento_id: string
   persona_id: string | null
-  tipo: SiniestroTipo
-  estado: SiniestroEstado
+  tipo: IncidenteTipo
+  estado: IncidenteEstado
   fecha_ocurrencia: string
   hora_ocurrencia: string | null
-  tipo_persona: TipoPersonaSiniestro | null
+  tipo_persona: TipoPersonaIncidente | null
   descripcion: string | null
   dias_perdidos: number | null
   dias_perdidos_calculados: number | null
@@ -680,7 +680,7 @@ export const RIESGO_NIVEL_COLORS: Record<RiesgoNivel, string> = {
   critico: 'bg-red-100 text-red-800',
 }
 
-export const SINIESTRO_ESTADO_COLORS: Record<SiniestroEstado, string> = {
+export const INCIDENTE_ESTADO_COLORS: Record<IncidenteEstado, string> = {
   pendiente: 'bg-yellow-100 text-yellow-800',
   en_investigacion: 'bg-blue-100 text-blue-800',
   cerrado: 'bg-gray-100 text-gray-700',

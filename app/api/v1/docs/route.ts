@@ -48,7 +48,7 @@ export function GET() {
         EstadoCumplimiento: {
           type: 'string',
           enum: ['verde', 'amarillo', 'rojo'],
-          description: 'verde: sin alertas · amarillo: riesgos o siniestros menores · rojo: riesgos críticos, siniestros >30d o documentos vencidos',
+          description: 'verde: sin alertas · amarillo: riesgos o incidentes menores · rojo: riesgos críticos, incidentes >30d o documentos vencidos',
         },
         EstablecimientoCumplimiento: {
           type: 'object',
@@ -59,7 +59,8 @@ export function GET() {
             estado: { $ref: '#/components/schemas/EstadoCumplimiento' },
             riesgos_criticos: { type: 'integer' },
             riesgos_altos: { type: 'integer' },
-            siniestros_abiertos: { type: 'integer' },
+            incidentes_abiertos: { type: 'integer' },
+            siniestros_abiertos: { type: 'integer', deprecated: true, description: 'Alias deprecado de incidentes_abiertos' },
             documentos_vencidos: { type: 'integer' },
           },
         },
@@ -120,7 +121,7 @@ export function GET() {
       '/establecimientos/{id}/legajo': {
         get: {
           summary: 'Legajo técnico de establecimiento',
-          description: 'Devuelve el legajo completo: riesgos, inspecciones, documentos, capacitaciones y siniestros abiertos.',
+          description: 'Devuelve el legajo completo: riesgos, inspecciones, documentos, capacitaciones e incidentes abiertos.',
           operationId: 'getEstablecimientoLegajo',
           parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' }, description: 'UUID del establecimiento' }],
           responses: {

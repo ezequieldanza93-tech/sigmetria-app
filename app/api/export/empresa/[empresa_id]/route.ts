@@ -50,7 +50,7 @@ export async function GET(
   // ── Fetches en paralelo ──────────────────────────────────────────────────
   const [
     empresaRes,
-    siniestrosRes,
+    incidentesRes,
     inspeccionesRes,
     capacitacionesRes,
     asistentesRes,
@@ -68,8 +68,8 @@ export async function GET(
 
     establecimientoIds.length
       ? supabase
-          .from('siniestros')
-          .select('id, establecimiento_id, fecha, tipo, descripcion, gravedad, dias_perdidos, created_at')
+          .from('incidentes')
+          .select('id, establecimiento_id, fecha_ocurrencia, tipo, estado, descripcion, dias_perdidos, created_at')
           .in('establecimiento_id', establecimientoIds)
       : Promise.resolve({ data: [] }),
 
@@ -147,7 +147,7 @@ export async function GET(
     zip.file('empresa.csv', toCSV([empresa as Record<string, unknown>]))
   }
 
-  zip.file('siniestros.csv', toCSV((siniestrosRes.data ?? []) as Record<string, unknown>[]))
+  zip.file('incidentes.csv', toCSV((incidentesRes.data ?? []) as Record<string, unknown>[]))
   zip.file('inspecciones.csv', toCSV((inspeccionesRes.data ?? []) as Record<string, unknown>[]))
   zip.file('capacitaciones.csv', toCSV((capacitacionesRes.data ?? []) as Record<string, unknown>[]))
   zip.file('capacitaciones_asistentes.csv', toCSV(asistentesData))

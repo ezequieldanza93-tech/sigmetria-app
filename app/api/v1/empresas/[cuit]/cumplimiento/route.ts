@@ -36,12 +36,12 @@ export async function GET(
   const hace30d = new Date(ahora)
   hace30d.setDate(hace30d.getDate() - 30)
 
-  const [{ data: riesgosRaw }, { data: siniestrosRaw }, { data: docsRaw }] = await Promise.all([
+  const [{ data: riesgosRaw }, { data: incidentesRaw }, { data: docsRaw }] = await Promise.all([
     estIds.length > 0
       ? supabase.from('riesgos').select('establecimiento_id, nivel').in('establecimiento_id', estIds).eq('resuelto', false)
       : Promise.resolve({ data: [] }),
     estIds.length > 0
-      ? supabase.from('siniestros').select('establecimiento_id, fecha_ocurrencia').in('establecimiento_id', estIds).in('estado', ['pendiente', 'en_investigacion'])
+      ? supabase.from('incidentes').select('establecimiento_id, fecha_ocurrencia').in('establecimiento_id', estIds).in('estado', ['pendiente', 'en_investigacion'])
       : Promise.resolve({ data: [] }),
     estIds.length > 0
       ? supabase.from('establecimientos_documentos').select('establecimiento_id, fecha_vencimiento').in('establecimiento_id', estIds)
@@ -50,18 +50,18 @@ export async function GET(
 
   const establecimientos = (ests ?? []).map(est => {
     const riesgos = (riesgosRaw ?? []).filter(r => r.establecimiento_id === est.id)
-    const siniestros = (siniestrosRaw ?? []).filter(s => s.establecimiento_id === est.id)
+    const incidentes = (incidentesRaw ?? []).filter(s => s.establecimiento_id === est.id)
     const estDocs = (docsRaw ?? []).filter(d => d.establecimiento_id === est.id)
 
     const riesgosCriticos = riesgos.filter(r => r.nivel === 'critico').length
     const riesgosAltos = riesgos.filter(r => r.nivel === 'alto').length
     const docsVencidos = estDocs.filter(d => d.fecha_vencimiento && new Date(d.fecha_vencimiento).getTime() < hoyMs).length
-    const siniestrosAntiguos = siniestros.filter(s => s.fecha_ocurrencia && new Date(s.fecha_ocurrencia).getTime() < hace30d.getTime()).length
+    const incidentesAntiguos = incidentes.filter(s => s.fecha_ocurrencia && new Date(s.fecha_ocurrencia).getTime() < hace30d.getTime()).length
 
     let estado: 'rojo' | 'amarillo' | 'verde'
-    if (riesgosCriticos > 0 || siniestrosAntiguos > 0 || docsVencidos > 0) {
+    if (riesgosCriticos > 0 || incidentesAntiguos > 0 || docsVencidos > 0) {
       estado = 'rojo'
-    } else if (riesgosAltos > 0 || siniestros.length > 0) {
+    } else if (riesgosAltos > 0 || incidentes.length > 0) {
       estado = 'amarillo'
     } else {
       estado = 'verde'
@@ -74,7 +74,9 @@ export async function GET(
       estado,
       riesgos_criticos: riesgosCriticos,
       riesgos_altos: riesgosAltos,
-      siniestros_abiertos: siniestros.length,
+      incidentes_abiertos: incidentes.length,
+      // @deprecated — alias de compatibilidad. Usar `incidentes_abiertos`.
+      siniestros_abiertos: incidentes.length,
       documentos_vencidos: docsVencidos,
     }
   })

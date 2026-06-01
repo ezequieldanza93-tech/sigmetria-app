@@ -1,25 +1,25 @@
 'use client'
 
 import { KpiCard } from '@/components/analytics/kpi-card'
-import type { GestionMetrics, SiniestroMetrics, InspeccionMetrics, FeedbackMetrics, ObservacionMetrics } from '@/lib/analytics-compute'
+import type { GestionMetrics, IncidenteMetrics, InspeccionMetrics, FeedbackMetrics, ObservacionMetrics } from '@/lib/analytics-compute'
 
 interface ScorecardRealProps {
   gestion: GestionMetrics
-  siniestro: SiniestroMetrics
+  incidente: IncidenteMetrics
   inspeccion: InspeccionMetrics
   feedback: FeedbackMetrics
   obs: ObservacionMetrics
 }
 
-export function ScorecardReal({ gestion, siniestro, inspeccion, feedback, obs }: ScorecardRealProps) {
+export function ScorecardReal({ gestion, incidente, inspeccion, feedback, obs }: ScorecardRealProps) {
   const cumplimientoStatus =
     gestion.cumplimientoPct > 80 ? 'success' : gestion.cumplimientoPct >= 60 ? 'warning' : 'danger'
 
   const diasSinAccStatus =
-    siniestro.diasSinAccidente > 90 ? 'success' : siniestro.diasSinAccidente >= 30 ? 'warning' : 'danger'
+    incidente.diasSinAccidente > 90 ? 'success' : incidente.diasSinAccidente >= 30 ? 'warning' : 'danger'
 
   const accidentesStatus =
-    siniestro.total === 0 ? 'success' : siniestro.total <= 2 ? 'warning' : 'danger'
+    incidente.total === 0 ? 'success' : incidente.total <= 2 ? 'warning' : 'danger'
 
   const inspeccionStatus =
     inspeccion.promPuntaje > 80 ? 'success' : inspeccion.promPuntaje >= 60 ? 'warning' : 'danger'
@@ -46,15 +46,15 @@ export function ScorecardReal({ gestion, siniestro, inspeccion, feedback, obs }:
       />
       <KpiCard
         title="Días sin accidente"
-        value={siniestro.diasSinAccidente >= 999 ? '—' : siniestro.diasSinAccidente}
-        subtitle={siniestro.diasSinAccidente >= 999 ? 'Sin registro' : 'días consecutivos'}
+        value={incidente.diasSinAccidente >= 999 ? '—' : incidente.diasSinAccidente}
+        subtitle={incidente.diasSinAccidente >= 999 ? 'Sin registro' : 'días consecutivos'}
         status={diasSinAccStatus}
         pulse={diasSinAccStatus === 'danger'}
       />
       <KpiCard
-        title="Siniestros"
-        value={siniestro.total}
-        subtitle={`${siniestro.diasPerdidos} días perdidos`}
+        title="Incidentes"
+        value={incidente.total}
+        subtitle={`${incidente.diasPerdidos} días perdidos`}
         status={accidentesStatus}
       />
       <KpiCard

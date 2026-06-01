@@ -4,11 +4,11 @@ import { createClient } from '@/lib/supabase/server'
 const KNOWLEDGE_CHUNKS = [
   {
     category: 'general',
-    content: 'Sigmetría HyS es una plataforma SaaS de gestión de Higiene y Seguridad laboral. Permite gestionar empresas, establecimientos, empleados, siniestros, inspecciones, riesgos, documentación y reportes. Está diseñada para consultores, empresas y ART.',
+    content: 'Sigmetría HyS es una plataforma SaaS de gestión de Higiene y Seguridad laboral. Permite gestionar empresas, establecimientos, empleados, incidentes, inspecciones, riesgos, documentación y reportes. Está diseñada para consultores, empresas y ART.',
   },
   {
     category: 'general',
-    content: 'La plataforma Sigmetría HyS está compuesta por módulos: Empresas, Establecimientos, Empleados, Siniestros, Inspecciones, Riesgos, Documentos, Analytics, y Gestión de agenda.',
+    content: 'La plataforma Sigmetría HyS está compuesta por módulos: Empresas, Establecimientos, Empleados, Incidentes, Inspecciones, Riesgos, Documentos, Analytics, y Gestión de agenda.',
   },
   {
     category: 'roles',
@@ -19,12 +19,12 @@ const KNOWLEDGE_CHUNKS = [
     content: 'El Super Admin puede gestionar usuarios, roles, y acceder a todas las empresas y establecimientos del sistema. Los Consultores tienen acceso a las empresas asignadas por una consultora.',
   },
   {
-    category: 'siniestros',
-    content: 'Los siniestros se registran con: fecha de ocurrencia, descripción, tipo (accidente, enfermedad profesional, incidente), gravedad (leve, moderado, grave), establecimiento asociado, y sectores involucrados.',
+    category: 'incidentes',
+    content: 'Los incidentes se registran con: fecha de ocurrencia, descripción, tipo (incidente, accidente leve, accidente moderado, accidente grave), establecimiento asociado, y sectores involucrados. La severidad se expresa en el tipo del accidente.',
   },
   {
-    category: 'siniestros',
-    content: 'El módulo de siniestros permite llevar un historial completo, adjuntar documentación, y generar estadísticas de siniestralidad por período, establecimiento o tipo.',
+    category: 'incidentes',
+    content: 'El módulo de incidentes permite llevar un historial completo, adjuntar documentación, y generar estadísticas de incidentalidad por período, establecimiento o tipo.',
   },
   {
     category: 'inspecciones',
@@ -64,7 +64,7 @@ const KNOWLEDGE_CHUNKS = [
   },
   {
     category: 'reportes',
-    content: 'La plataforma permite generar reportes en PDF y exportar datos a Excel. Los reportes disponibles incluyen: siniestralidad, cumplimiento documental, matriz de riesgos, y agenda de inspecciones.',
+    content: 'La plataforma permite generar reportes en PDF y exportar datos a Excel. Los reportes disponibles incluyen: incidentalidad, cumplimiento documental, matriz de riesgos, y agenda de inspecciones.',
   },
   {
     category: 'agenda',
@@ -72,7 +72,7 @@ const KNOWLEDGE_CHUNKS = [
   },
   {
     category: 'analytics',
-    content: 'El módulo de Analytics muestra KPIs y métricas: tasa de siniestralidad, cumplimiento de inspecciones, evolución de riesgos, documentos vencidos/próximos a vencer, y distribución por tipo y gravedad.',
+    content: 'El módulo de Analytics muestra KPIs y métricas: tasa de incidentalidad, cumplimiento de inspecciones, evolución de riesgos, documentos vencidos/próximos a vencer, y distribución por tipo de incidente.',
   },
   {
     category: 'general',

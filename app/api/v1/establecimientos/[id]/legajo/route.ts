@@ -38,7 +38,7 @@ export async function GET(
     { data: inspecciones },
     { data: docs },
     { data: capacitaciones },
-    { data: siniestros },
+    { data: incidentes },
   ] = await Promise.all([
     supabase.from('riesgos')
       .select('nivel, descripcion, fecha_identificacion, resuelto')
@@ -60,7 +60,7 @@ export async function GET(
       .eq('estado', 'realizada')
       .order('fecha_realizada', { ascending: false })
       .limit(10),
-    supabase.from('siniestros')
+    supabase.from('incidentes')
       .select('tipo, estado, fecha_ocurrencia')
       .eq('establecimiento_id', id)
       .in('estado', ['pendiente', 'en_investigacion'])
@@ -99,7 +99,13 @@ export async function GET(
       titulo: c.titulo,
       fecha_realizada: c.fecha_realizada ?? null,
     })),
-    siniestros_abiertos: (siniestros ?? []).map(s => ({
+    incidentes_abiertos: (incidentes ?? []).map(s => ({
+      tipo: s.tipo,
+      estado: s.estado,
+      fecha_ocurrencia: s.fecha_ocurrencia ?? null,
+    })),
+    // @deprecated — alias de compatibilidad. Usar `incidentes_abiertos`.
+    siniestros_abiertos: (incidentes ?? []).map(s => ({
       tipo: s.tipo,
       estado: s.estado,
       fecha_ocurrencia: s.fecha_ocurrencia ?? null,
