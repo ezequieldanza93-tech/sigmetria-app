@@ -170,7 +170,7 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
       {section === 'ficha' && (
         <div className="p-6">
           <h1 className="text-xl font-bold text-text-primary mb-4">{empresa.razon_social}</h1>
-          <div className="max-w-3xl">
+          <div className="w-full">
             {(() => {
               const e = empresa as typeof empresa & { latitude?: number | null; longitude?: number | null }
               const addressParts = [
