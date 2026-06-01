@@ -10,6 +10,7 @@ const MapContainer = dynamic(() => import('react-leaflet').then(m => m.MapContai
 const TileLayer = dynamic(() => import('react-leaflet').then(m => m.TileLayer), { ssr: false })
 const Marker = dynamic(() => import('react-leaflet').then(m => m.Marker), { ssr: false })
 const Popup = dynamic(() => import('react-leaflet').then(m => m.Popup), { ssr: false })
+const Tooltip = dynamic(() => import('react-leaflet').then(m => m.Tooltip), { ssr: false })
 const FitBounds = dynamic(() => import('react-leaflet').then(m => {
   const { useMap } = m
   return function FitBoundsInner({ positions }: { positions: [number, number][] }) {
@@ -53,14 +54,56 @@ const FitBounds = dynamic(() => import('react-leaflet').then(m => {
 }), { ssr: false })
 
 const EMPRESA_COLOR = '#2563eb' // azul — domicilio legal
-const ESTABLECIMIENTO_COLOR = '#16a34a' // verde — establecimientos
 
+// Configuración por tipo de establecimiento: color distintivo + abreviatura
+// (letra dentro del pin). Cada uno de los 9 tipos tiene su propio color.
+const TIPO_CONFIG: Record<string, { color: string; abbr: string; label: string }> = {
+  AGRO: { color: '#65a30d', abbr: 'AG', label: 'Agropecuario' },
+  CENTRO_SALUD: { color: '#dc2626', abbr: 'CS', label: 'Centro de Salud' },
+  COMERCIO: { color: '#f59e0b', abbr: 'CO', label: 'Comercio/Retail' },
+  CONSTRUCCION: { color: '#ea580c', abbr: 'CN', label: 'Construcción' },
+  INDUSTRIA: { color: '#7c3aed', abbr: 'IN', label: 'Industria/Manufactura' },
+  LOGISTICA: { color: '#0891b2', abbr: 'LO', label: 'Logística/Depósito' },
+  MINERIA: { color: '#854d0e', abbr: 'MI', label: 'Minería' },
+  OFICINA: { color: '#0d9488', abbr: 'OF', label: 'Oficinas/Administrativo' },
+  OTRO: { color: '#16a34a', abbr: 'OT', label: 'Otro' },
+}
+
+const TIPO_FALLBACK = { color: '#16a34a', abbr: 'ES', label: 'Establecimiento' }
+
+function tipoConfig(codigo: string | null | undefined) {
+  if (codigo && TIPO_CONFIG[codigo]) return TIPO_CONFIG[codigo]
+  return TIPO_FALLBACK
+}
+
+// Pin SVG simple coloreado (usado para el marcador de la empresa).
 function createColoredIcon(color: string) {
   if (typeof window === 'undefined') return undefined
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="${color}" width="32" height="32"><path d="M12 0C7.8 0 4 3.8 4 8c0 5.3 7 13 7 13s1-1.2 1-1.3c0 .1 1 1.3 1 1.3s7-7.7 7-13c0-4.2-3.8-8-8-8zm0 11.5c-1.9 0-3.5-1.6-3.5-3.5S10.1 4.5 12 4.5s3.5 1.6 3.5 3.5S13.9 11.5 12 11.5z"/></svg>`
   const iconUrl = `data:image/svg+xml;base64,${btoa(svg)}`
   return L.icon({
     iconUrl,
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -32],
+  })
+}
+
+// Pin coloreado por tipo de establecimiento con la abreviatura del tipo dentro.
+// Usa L.divIcon (HTML inline) — NO lucide, por el allowlist de iconos.
+function createTipoIcon(codigo: string | null | undefined) {
+  if (typeof window === 'undefined') return undefined
+  const { color, abbr } = tipoConfig(codigo)
+  const html = `
+    <div style="position:relative;width:32px;height:32px;">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="${color}" width="32" height="32" style="position:absolute;top:0;left:0;filter:drop-shadow(0 1px 1px rgba(0,0,0,.4));">
+        <path d="M12 0C7.8 0 4 3.8 4 8c0 5.3 7 13 7 13s1-1.2 1-1.3c0 .1 1 1.3 1 1.3s7-7.7 7-13c0-4.2-3.8-8-8-8z"/>
+      </svg>
+      <span style="position:absolute;top:3px;left:0;width:32px;text-align:center;font-size:10px;font-weight:700;color:#fff;font-family:system-ui,sans-serif;line-height:1;">${abbr}</span>
+    </div>`
+  return L.divIcon({
+    html,
+    className: '',
     iconSize: [32, 32],
     iconAnchor: [16, 32],
     popupAnchor: [0, -32],
@@ -80,6 +123,7 @@ interface EstablecimientoInput {
   latitud: number | null
   longitud: number | null
   domicilio?: string | null
+  tipo?: { codigo: string; nombre: string } | null
 }
 
 interface Props {
@@ -110,6 +154,15 @@ export function EmpresaMapaEstablecimientos({ empresa, establecimientos }: Props
     }
     return positions
   }, [empresaPos, establecimientosConCoords])
+
+  const tiposPresentes = useMemo(() => {
+    const seen = new Map<string, { color: string; abbr: string; label: string }>()
+    for (const e of establecimientosConCoords) {
+      const cfg = tipoConfig(e.tipo?.codigo)
+      if (!seen.has(cfg.label)) seen.set(cfg.label, cfg)
+    }
+    return Array.from(seen.values())
+  }, [establecimientosConCoords])
 
   const hasLocations = allPositions.length > 0
   const center: [number, number] = allPositions[0] ?? [-38.4161, -63.6167]
@@ -146,32 +199,52 @@ export function EmpresaMapaEstablecimientos({ empresa, establecimientos }: Props
                     </Popup>
                   </Marker>
                 )}
-                {establecimientosConCoords.map(e => (
-                  <Marker
-                    key={e.id}
-                    position={[e.latitud as number, e.longitud as number]}
-                    icon={createColoredIcon(ESTABLECIMIENTO_COLOR)}
-                  >
-                    <Popup>
-                      <div className="text-sm">
-                        <p className="font-semibold">{e.nombre}</p>
-                        {e.domicilio && <p className="text-text-secondary">{e.domicilio}</p>}
-                      </div>
-                    </Popup>
-                  </Marker>
-                ))}
+                {establecimientosConCoords.map(e => {
+                  const cfg = tipoConfig(e.tipo?.codigo)
+                  const tipoNombre = e.tipo?.nombre ?? cfg.label
+                  return (
+                    <Marker
+                      key={e.id}
+                      position={[e.latitud as number, e.longitud as number]}
+                      icon={createTipoIcon(e.tipo?.codigo)}
+                    >
+                      <Tooltip>{e.nombre} — {tipoNombre}</Tooltip>
+                      <Popup>
+                        <div className="text-sm">
+                          <p className="font-semibold">{e.nombre}</p>
+                          <p className="text-text-secondary">{tipoNombre}</p>
+                          {e.domicilio && <p className="text-text-secondary">{e.domicilio}</p>}
+                        </div>
+                      </Popup>
+                    </Marker>
+                  )
+                })}
               </MapContainer>
             </div>
 
-            <div className="flex items-center gap-4 text-xs text-text-secondary">
-              <span className="inline-flex items-center gap-1.5">
-                <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: EMPRESA_COLOR }} />
-                Empresa (domicilio legal)
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: ESTABLECIMIENTO_COLOR }} />
-                Establecimientos
-              </span>
+            <div className="space-y-2 text-xs text-text-secondary">
+              <div className="flex items-center gap-4">
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: EMPRESA_COLOR }} />
+                  Empresa (domicilio legal)
+                </span>
+              </div>
+              <p className="text-text-tertiary">
+                El color y las iniciales del pin indican el tipo de establecimiento:
+              </p>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+                {tiposPresentes.map(cfg => (
+                  <span key={cfg.label} className="inline-flex items-center gap-1.5">
+                    <span
+                      className="inline-flex h-4 w-4 items-center justify-center rounded-full text-[8px] font-bold text-white"
+                      style={{ backgroundColor: cfg.color }}
+                    >
+                      {cfg.abbr}
+                    </span>
+                    {cfg.label}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
         ) : (

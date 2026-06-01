@@ -22,22 +22,40 @@ const establecimientoActionSchema = z.object({
   cantidad_trabajadores: z.coerce.number().int().min(0).nullable().optional(),
 })
 
-async function parseUbicacion(raw: string | null): Promise<{ latitud: number | null; longitud: number | null }> {
-  if (!raw?.trim()) return { latitud: null, longitud: null }
-  const s = raw.trim()
-
-  const urlMatch = s.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/) ?? s.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/)
-  if (urlMatch) return { latitud: parseFloat(urlMatch[1]), longitud: parseFloat(urlMatch[2]) }
-
-  const directMatch = s.match(/^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/)
-  if (directMatch) return { latitud: parseFloat(directMatch[1]), longitud: parseFloat(directMatch[2]) }
-
+async function geocode(query: string): Promise<{ latitud: number | null; longitud: number | null }> {
   try {
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(s)}&format=json&limit=1`
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`
     const res = await fetch(url, { headers: { 'User-Agent': 'sigmetria-hys-app/1.0' } })
     const data = await res.json()
     if (data?.[0]) return { latitud: parseFloat(data[0].lat), longitud: parseFloat(data[0].lon) }
-  } catch { console.error('[parseUbicacion] Error al geocodificar dirección'); /* fall through */ }
+  } catch { console.error('[geocode] Error al geocodificar dirección'); /* fall through */ }
+  return { latitud: null, longitud: null }
+}
+
+// Resuelve coordenadas del establecimiento. Prioridad:
+// 1) ubicacion_gmaps (link de Maps o coords pegadas) — lo que cargó el usuario.
+// 2) Fallback: geocoding del domicilio si no hay ubicacion_gmaps que resuelva.
+async function parseUbicacion(
+  raw: string | null,
+  domicilioFallback?: string | null,
+): Promise<{ latitud: number | null; longitud: number | null }> {
+  const s = raw?.trim()
+  if (s) {
+    const urlMatch = s.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/) ?? s.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/)
+    if (urlMatch) return { latitud: parseFloat(urlMatch[1]), longitud: parseFloat(urlMatch[2]) }
+
+    const directMatch = s.match(/^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/)
+    if (directMatch) return { latitud: parseFloat(directMatch[1]), longitud: parseFloat(directMatch[2]) }
+
+    const fromGmaps = await geocode(s)
+    if (fromGmaps.latitud != null) return fromGmaps
+  }
+
+  // Fallback: geocodificar el domicilio del establecimiento.
+  const dom = domicilioFallback?.trim()
+  if (dom) {
+    return geocode(`${dom}, Argentina`)
+  }
 
   return { latitud: null, longitud: null }
 }
@@ -163,7 +181,7 @@ export async function createEstablecimiento(
   }
   const { nombre, tipo_id, domicilio, localidad_id, codigo_postal, actividad_principal, description, ubicacion_gmaps, aplica_iso_45001, cantidad_trabajadores } = parsed.data
 
-  const { latitud, longitud } = await parseUbicacion(ubicacion_gmaps ?? null)
+  const { latitud, longitud } = await parseUbicacion(ubicacion_gmaps ?? null, domicilio ?? null)
 
   const { data, error } = await supabase
     .from('establecimientos')
@@ -250,7 +268,7 @@ export async function updateEstablecimiento(
   }
   const { nombre, tipo_id, domicilio, localidad_id, codigo_postal, actividad_principal, description, ubicacion_gmaps, aplica_iso_45001, cantidad_trabajadores } = parsed.data
 
-  const { latitud, longitud } = await parseUbicacion(ubicacion_gmaps ?? null)
+  const { latitud, longitud } = await parseUbicacion(ubicacion_gmaps ?? null, domicilio ?? null)
 
   const { data: existing } = await supabase
     .from('establecimientos')

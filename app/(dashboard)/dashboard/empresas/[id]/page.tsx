@@ -108,7 +108,7 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
         .order('nombre'),
       supabase
         .from('establecimientos')
-        .select('id, nombre, latitud, longitud, domicilio')
+        .select('id, nombre, latitud, longitud, domicilio, establecimientos_tipos!tipo_id(codigo, nombre)')
         .eq('empresa_id', id)
         .neq('status', 'cancelled')
         .order('nombre'),
@@ -268,13 +268,21 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
                         longitude: e.longitude ?? null,
                         domicilio: (empresa.domicilio as string | null) ?? null,
                       }}
-                      establecimientos={(establecimientos ?? []).map((est) => ({
-                        id: est.id as string,
-                        nombre: est.nombre as string,
-                        latitud: (est.latitud as number | null) ?? null,
-                        longitud: (est.longitud as number | null) ?? null,
-                        domicilio: (est.domicilio as string | null) ?? null,
-                      }))}
+                      establecimientos={(establecimientos ?? []).map((est) => {
+                        const tipoRel = Array.isArray(est.establecimientos_tipos)
+                          ? est.establecimientos_tipos[0]
+                          : est.establecimientos_tipos
+                        return {
+                          id: est.id as string,
+                          nombre: est.nombre as string,
+                          latitud: (est.latitud as number | null) ?? null,
+                          longitud: (est.longitud as number | null) ?? null,
+                          domicilio: (est.domicilio as string | null) ?? null,
+                          tipo: tipoRel
+                            ? { codigo: tipoRel.codigo as string, nombre: tipoRel.nombre as string }
+                            : null,
+                        }
+                      })}
                     />
                   )
                 })()}
