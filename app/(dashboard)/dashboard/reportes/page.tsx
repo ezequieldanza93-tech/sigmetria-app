@@ -16,8 +16,8 @@ interface EmpresaMetrica {
   capacitaciones12m: number
   riesgosCriticos: number
   riesgosAltos: number
-  siniestrosAbiertos: number
-  maxDiasSiniestroAbierto: number
+  incidentesAbiertos: number
+  maxDiasIncidenteAbierto: number
   estado: EstadoCumplimiento
 }
 
@@ -31,7 +31,8 @@ interface AuditEntry {
 }
 
 const TABLA_LABELS: Record<string, string> = {
-  siniestros: 'Siniestro',
+  incidentes: 'Incidente',
+  siniestros: 'Incidente',
   inspecciones: 'Inspección',
   capacitaciones: 'Capacitación',
   capacitaciones_asistentes: 'Asistencia',
@@ -44,8 +45,8 @@ const TABLA_LABELS: Record<string, string> = {
 }
 
 function computeEstado(m: Omit<EmpresaMetrica, 'estado'>): EstadoCumplimiento {
-  if (m.riesgosCriticos > 0 || m.maxDiasSiniestroAbierto > 30) return 'rojo'
-  if (m.riesgosAltos > 0 || m.siniestrosAbiertos > 0) return 'amarillo'
+  if (m.riesgosCriticos > 0 || m.maxDiasIncidenteAbierto > 30) return 'rojo'
+  if (m.riesgosAltos > 0 || m.incidentesAbiertos > 0) return 'amarillo'
   return 'verde'
 }
 
@@ -112,7 +113,7 @@ export default async function ReportesPage() {
   // ── Datos en paralelo ────────────────────────────────────────────────────
   const [
     { data: riesgosRaw },
-    { data: siniestrosRaw },
+    { data: incidentesRaw },
     { data: inspeccionesRaw },
     { data: capacitacionesRaw },
     { data: estDocsRaw },
@@ -123,7 +124,7 @@ export default async function ReportesPage() {
       ? supabase.from('riesgos').select('establecimiento_id, nivel, resuelto').in('establecimiento_id', estIds).eq('resuelto', false)
       : Promise.resolve({ data: [] }),
     estIds.length > 0
-      ? supabase.from('siniestros').select('establecimiento_id, estado, fecha_ocurrencia').in('establecimiento_id', estIds).in('estado', ['pendiente', 'en_investigacion'])
+      ? supabase.from('incidentes').select('establecimiento_id, estado, fecha_ocurrencia').in('establecimiento_id', estIds).in('estado', ['pendiente', 'en_investigacion'])
       : Promise.resolve({ data: [] }),
     estIds.length > 0
       ? supabase.from('inspecciones').select('establecimiento_id, estado').in('establecimiento_id', estIds).in('estado', ['realizada', 'con_observaciones']).gte('fecha_realizada', hace12mStr)
@@ -148,8 +149,8 @@ export default async function ReportesPage() {
       capacitaciones12m: 0,
       riesgosCriticos: 0,
       riesgosAltos: 0,
-      siniestrosAbiertos: 0,
-      maxDiasSiniestroAbierto: 0,
+      incidentesAbiertos: 0,
+      maxDiasIncidenteAbierto: 0,
     }])
   )
 
@@ -197,16 +198,16 @@ export default async function ReportesPage() {
     if (r.nivel === 'alto') m.riesgosAltos++
   }
 
-  // Siniestros
-  for (const s of siniestrosRaw ?? []) {
+  // Incidentes
+  for (const s of incidentesRaw ?? []) {
     const empId = estToEmpresa.get(s.establecimiento_id)
     const m = empId ? metricas.get(empId) : null
     if (!m) continue
-    m.siniestrosAbiertos++
+    m.incidentesAbiertos++
     const dias = s.fecha_ocurrencia
       ? Math.floor((hoyMs - new Date(s.fecha_ocurrencia).getTime()) / 86_400_000)
       : 0
-    if (dias > m.maxDiasSiniestroAbierto) m.maxDiasSiniestroAbierto = dias
+    if (dias > m.maxDiasIncidenteAbierto) m.maxDiasIncidenteAbierto = dias
   }
 
   const empresasConEstado: EmpresaMetrica[] = [...metricas.values()].map(m => ({
@@ -254,7 +255,7 @@ export default async function ReportesPage() {
                 <th className="text-center px-3 py-3 font-medium">Inspecciones 12m</th>
                 <th className="text-center px-3 py-3 font-medium">Capacitaciones 12m</th>
                 <th className="text-center px-3 py-3 font-medium">Riesgos críticos</th>
-                <th className="text-center px-3 py-3 font-medium">Siniestros abiertos</th>
+                <th className="text-center px-3 py-3 font-medium">Incidentes abiertos</th>
                 <th className="text-center px-3 py-3 font-medium">Estado</th>
                 <th className="px-3 py-3" />
               </tr>
@@ -283,8 +284,8 @@ export default async function ReportesPage() {
                       }
                     </td>
                     <td className="px-3 py-3 text-center">
-                      {e.siniestrosAbiertos > 0
-                        ? <span className={e.maxDiasSiniestroAbierto > 30 ? 'font-semibold text-danger' : 'text-warning'}>{e.siniestrosAbiertos}</span>
+                      {e.incidentesAbiertos > 0
+                        ? <span className={e.maxDiasIncidenteAbierto > 30 ? 'font-semibold text-danger' : 'text-warning'}>{e.incidentesAbiertos}</span>
                         : <span className="text-text-tertiary">—</span>
                       }
                     </td>

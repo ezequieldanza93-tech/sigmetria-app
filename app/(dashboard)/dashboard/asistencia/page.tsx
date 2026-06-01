@@ -22,7 +22,7 @@ export default function AsistenciaPage() {
     <div className="h-[calc(100vh-4rem)] flex flex-col">
       <div className="px-6 py-4 border-b border-border-subtle">
         <h1 className="text-xl font-bold text-text-primary">Asistente HyS</h1>
-        <p className="text-sm text-text-tertiary">Consultá sobre tus empresas, establecimientos, siniestros y más.</p>
+        <p className="text-sm text-text-tertiary">Consultá sobre tus empresas, establecimientos, incidentes y más.</p>
       </div>
       <div className="flex-1">
         <ChatPanel variant="full" />

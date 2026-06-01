@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { createServiceClient } from '@/lib/supabase/service'
 import { LegajoTecnico } from '@/components/establecimiento/legajo-tecnico'
-import type { Inspeccion, Documento, Capacitacion, Riesgo, Medicion, Siniestro } from '@/lib/types'
+import type { Inspeccion, Documento, Capacitacion, Riesgo, Medicion, Incidente } from '@/lib/types'
 
 interface Props {
   params: Promise<{ token: string }>
@@ -90,7 +90,7 @@ export default async function VerificarPage({ params }: Props) {
     { data: capacitacionesRaw },
     { data: riesgosRaw },
     { data: medicionesRaw },
-    { data: siniestrosRaw },
+    { data: incidentesRaw },
   ] = await Promise.all([
     supabase
       .from('inspecciones')
@@ -123,7 +123,7 @@ export default async function VerificarPage({ params }: Props) {
       .eq('establecimiento_id', estId)
       .order('fecha', { ascending: false }),
     supabase
-      .from('siniestros')
+      .from('incidentes')
       .select('*')
       .eq('establecimiento_id', estId)
       .in('estado', ['pendiente', 'en_investigacion'])
@@ -170,7 +170,7 @@ export default async function VerificarPage({ params }: Props) {
           capacitaciones={capacitaciones}
           riesgos={(riesgosRaw ?? []) as Riesgo[]}
           medicionesPorTipo={medicionesPorTipo}
-          siniestros={(siniestrosRaw ?? []) as Siniestro[]}
+          incidentes={(incidentesRaw ?? []) as Incidente[]}
           ahora={ahora}
         />
       </div>

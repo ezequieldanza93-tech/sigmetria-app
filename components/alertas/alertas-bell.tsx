@@ -8,8 +8,8 @@ import { createClient } from '@/lib/supabase/client'
 const TIPO_LABELS: Record<string, string> = {
   documento_por_vencer: 'Documento por vencer',
   documento_vencido: 'Documento vencido',
-  siniestro_sin_investigar: 'Siniestro sin investigar',
-  siniestro_sin_cerrar: 'Siniestro sin cerrar',
+  siniestro_sin_investigar: 'Incidente sin investigar',
+  siniestro_sin_cerrar: 'Incidente sin cerrar',
   capacitacion_no_realizada: 'Capacitación no realizada',
   riesgo_critico_activo: 'Riesgo crítico activo',
 }

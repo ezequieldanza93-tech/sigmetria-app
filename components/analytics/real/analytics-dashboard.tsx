@@ -5,20 +5,20 @@ import { AnalyticsFilters } from './analytics-filters'
 import { AnalyticsSkeleton } from './analytics-skeleton'
 import { ScorecardReal } from './scorecard-real'
 import { GestionesHys } from './gestiones-hys'
-import { SiniestrosSection } from './siniestros-section'
+import { IncidentesSection } from './incidentes-section'
 import { InspeccionesObsSection } from './inspecciones-obs-section'
 import {
   getGestionRows,
-  getSiniestroRows,
+  getIncidenteRows,
   getInspeccionRows,
   getFeedbackRows,
   getObservacionRows,
   getResponsableOptions,
 } from '@/lib/actions/analytics'
-import type { GestionRow, SiniestroRow, InspeccionRow, FeedbackRow, ObservacionRow, ResponsableOption } from '@/lib/actions/analytics'
+import type { GestionRow, IncidenteRow, InspeccionRow, FeedbackRow, ObservacionRow, ResponsableOption } from '@/lib/actions/analytics'
 import {
   computeGestionMetrics,
-  computeSiniestroMetrics,
+  computeIncidenteMetrics,
   computeInspeccionMetrics,
   computeFeedbackMetrics,
   computeObservacionMetrics,
@@ -53,7 +53,7 @@ export function AnalyticsDashboard({
 
   const [responsables, setResponsables] = useState<ResponsableOption[]>([])
   const [gestionRows, setGestionRows] = useState<GestionRow[]>([])
-  const [siniestroRows, setSiniestroRows] = useState<SiniestroRow[]>([])
+  const [incidenteRows, setIncidenteRows] = useState<IncidenteRow[]>([])
   const [inspeccionRows, setInspeccionRows] = useState<InspeccionRow[]>([])
   const [feedbackRows, setFeedbackRows] = useState<FeedbackRow[]>([])
   const [obsRows, setObsRows] = useState<ObservacionRow[]>([])
@@ -93,13 +93,13 @@ export function AnalyticsDashboard({
       try {
         const [g, s, i, f, o] = await Promise.all([
           getGestionRows(filters),
-          getSiniestroRows(filters),
+          getIncidenteRows(filters),
           getInspeccionRows(filters),
           getFeedbackRows(filters),
           getObservacionRows(filters),
         ])
         setGestionRows(g)
-        setSiniestroRows(s)
+        setIncidenteRows(s)
         setInspeccionRows(i)
         setFeedbackRows(f)
         setObsRows(o)
@@ -124,7 +124,7 @@ export function AnalyticsDashboard({
   }
 
   const gMetrics = computeGestionMetrics(gestionRows)
-  const sMetrics = computeSiniestroMetrics(siniestroRows)
+  const sMetrics = computeIncidenteMetrics(incidenteRows)
   const iMetrics = computeInspeccionMetrics(inspeccionRows)
   const fMetrics = computeFeedbackMetrics(feedbackRows)
   const oMetrics = computeObservacionMetrics(obsRows)
@@ -156,13 +156,13 @@ export function AnalyticsDashboard({
         <>
           <ScorecardReal
             gestion={gMetrics}
-            siniestro={sMetrics}
+            incidente={sMetrics}
             inspeccion={iMetrics}
             feedback={fMetrics}
             obs={oMetrics}
           />
           <GestionesHys rows={gestionRows} metrics={gMetrics} />
-          <SiniestrosSection rows={siniestroRows} metrics={sMetrics} />
+          <IncidentesSection rows={incidenteRows} metrics={sMetrics} />
           <InspeccionesObsSection iMetrics={iMetrics} oMetrics={oMetrics} />
         </>
       )}

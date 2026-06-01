@@ -34,7 +34,7 @@ export default function LoginPage() {
           </h1>
           <p className="text-lg text-white/90 max-w-md leading-relaxed">
             Plataforma integral de gestión en Higiene y Seguridad laboral.
-            Simplificá la administración de inspecciones, siniestros y documentación.
+            Simplificá la administración de inspecciones, incidentes y documentación.
           </p>
           <div className="mt-12 flex items-center gap-8 text-white/80 text-sm">
             <div className="flex items-center gap-2">
@@ -43,7 +43,7 @@ export default function LoginPage() {
             </div>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-white/80" />
-              <span>Siniestros</span>
+              <span>Incidentes</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-white/80" />

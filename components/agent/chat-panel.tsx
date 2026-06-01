@@ -20,7 +20,7 @@ export function ChatPanel({ onClose, variant = 'popover', establecimientoId, emp
     {
       id: 'welcome',
       role: 'assistant',
-      content: '¡Hola! Soy **Sigía**, la asistente virtual de Sigmetría HyS. ¿En qué puedo ayudarte hoy?\n\nPodés preguntarme sobre:\n• Empresas y establecimientos\n• Siniestros e inspecciones\n• Riesgos y documentación\n• Vencimientos\n• Y más...',
+      content: '¡Hola! Soy **Sigía**, la asistente virtual de Sigmetría HyS. ¿En qué puedo ayudarte hoy?\n\nPodés preguntarme sobre:\n• Empresas y establecimientos\n• Incidentes e inspecciones\n• Riesgos y documentación\n• Vencimientos\n• Y más...',
       createdAt: new Date().toISOString(),
     },
   ])

@@ -31,7 +31,7 @@ export class EstablecimientoDetailPage {
     if (section === 'agenda') {
       await expect(this.page.getByText(/agenda|riesgos?/i).first()).toBeVisible()
     } else if (section === 'ficha') {
-      await expect(this.page.getByText(/sectores|siniestros/i).first()).toBeVisible()
+      await expect(this.page.getByText(/sectores|incidentes/i).first()).toBeVisible()
     } else if (section === 'dashboard') {
       await expect(this.page.getByText(/dashboard|analytics/i).first()).toBeVisible()
     } else if (section === 'seguimiento') {

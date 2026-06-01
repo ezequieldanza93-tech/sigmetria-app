@@ -1,7 +1,7 @@
 import { formatDate } from '@/lib/utils'
 import type {
-  Inspeccion, Documento, Capacitacion, Riesgo, Medicion, Siniestro,
-  RiesgoNivel, SiniestroTipo, MedicionTipo,
+  Inspeccion, Documento, Capacitacion, Riesgo, Medicion, Incidente,
+  RiesgoNivel, IncidenteTipo, MedicionTipo,
 } from '@/lib/types'
 
 interface LegajoEstablecimiento {
@@ -21,7 +21,7 @@ export interface LegajoTecnicoProps {
   capacitaciones: (Capacitacion & { _asistentes?: number })[]
   riesgos: Riesgo[]
   medicionesPorTipo: Record<string, Medicion[]>
-  siniestros: Siniestro[]
+  incidentes: Incidente[]
   ahora: Date
 }
 
@@ -34,11 +34,12 @@ const NIVEL_CLASS: Record<RiesgoNivel, string> = {
   bajo: 'bg-green-100 text-green-800',
 }
 
-const TIPO_SINIESTRO: Record<SiniestroTipo, string> = {
-  accidente: 'Accidente',
+const TIPO_INCIDENTE: Record<IncidenteTipo, string> = {
   incidente: 'Incidente',
-  casi_accidente: 'Casi accidente',
-  enfermedad_profesional: 'Enf. profesional',
+  accidente_leve: 'Accidente leve',
+  accidente_moderado: 'Accidente moderado',
+  accidente_grave: 'Accidente grave',
+  enfermedad_profesional: 'Enfermedad profesional',
 }
 
 const TIPO_MEDICION: Record<MedicionTipo, string> = {
@@ -82,7 +83,7 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
 
 export function LegajoTecnico({
   establecimiento, empresa, ultimaInspeccion, totalInspecciones12m,
-  documentos, capacitaciones, riesgos, medicionesPorTipo, siniestros, ahora,
+  documentos, capacitaciones, riesgos, medicionesPorTipo, incidentes, ahora,
 }: LegajoTecnicoProps) {
   const riesgosOrdenados = [...riesgos].sort((a, b) => NIVEL_ORDER[a.nivel] - NIVEL_ORDER[b.nivel])
 
@@ -283,10 +284,10 @@ export function LegajoTecnico({
         )}
       </SeccionLT>
 
-      {/* Siniestros abiertos */}
-      <SeccionLT titulo="Siniestros abiertos">
-        {siniestros.length === 0 ? (
-          <EmptyState text="Sin siniestros abiertos." />
+      {/* Incidentes abiertos */}
+      <SeccionLT titulo="Incidentes abiertos">
+        {incidentes.length === 0 ? (
+          <EmptyState text="Sin incidentes abiertos." />
         ) : (
           <table className="w-full text-sm">
             <thead>
@@ -297,10 +298,10 @@ export function LegajoTecnico({
               </tr>
             </thead>
             <tbody className="divide-y divide-border-subtle">
-              {siniestros.map(s => (
+              {incidentes.map(s => (
                 <tr key={s.id}>
                   <td className="py-2.5 pr-4 font-medium text-text-primary">
-                    {TIPO_SINIESTRO[s.tipo]}
+                    {TIPO_INCIDENTE[s.tipo]}
                   </td>
                   <td className="py-2.5 pr-4 text-text-secondary">
                     {formatDate(s.fecha_ocurrencia)}

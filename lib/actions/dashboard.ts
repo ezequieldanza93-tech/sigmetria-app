@@ -62,11 +62,11 @@ export async function getDashboardKpis(widgetKeys: WidgetKey[]): Promise<ActionR
     return (data ?? []).map(e => e.id)
   }
 
-  const empresaIds = widgetKeys.some(k => ['establecimientos', 'trabajadores', 'siniestros_mes', 'siniestros_acumulados', 'inspecciones_pendientes', 'tasa_siniestralidad'].includes(k))
+  const empresaIds = widgetKeys.some(k => ['establecimientos', 'trabajadores', 'incidentes_mes', 'incidentes_acumulados', 'inspecciones_pendientes', 'tasa_incidentalidad'].includes(k))
     ? await getEmpresaIds()
     : []
 
-  const establecimientoIds = widgetKeys.some(k => ['siniestros_mes', 'siniestros_acumulados', 'inspecciones_pendientes', 'tasa_siniestralidad'].includes(k))
+  const establecimientoIds = widgetKeys.some(k => ['incidentes_mes', 'incidentes_acumulados', 'inspecciones_pendientes', 'tasa_incidentalidad'].includes(k))
     ? empresaIds.length > 0 ? await getEstablecimientoIds() : []
     : []
 
@@ -104,28 +104,28 @@ export async function getDashboardKpis(widgetKeys: WidgetKey[]): Promise<ActionR
     )
   }
 
-  if (widgetKeys.includes('siniestros_mes')) {
+  if (widgetKeys.includes('incidentes_mes')) {
     promises.push(
       (async () => {
-        if (establecimientoIds.length === 0) { result.siniestros_mes = 0; return }
-        const { count } = await supabase.from('siniestros').select('*', { count: 'exact', head: true })
+        if (establecimientoIds.length === 0) { result.incidentes_mes = 0; return }
+        const { count } = await supabase.from('incidentes').select('*', { count: 'exact', head: true })
           .in('establecimiento_id', establecimientoIds)
           .gte('fecha_ocurrencia', monthStart)
           .lt('fecha_ocurrencia', monthEnd)
-        result.siniestros_mes = count ?? 0
+        result.incidentes_mes = count ?? 0
       })(),
     )
   }
 
-  if (widgetKeys.includes('siniestros_acumulados')) {
+  if (widgetKeys.includes('incidentes_acumulados')) {
     promises.push(
       (async () => {
-        if (establecimientoIds.length === 0) { result.siniestros_acumulados = 0; return }
-        const { count } = await supabase.from('siniestros').select('*', { count: 'exact', head: true })
+        if (establecimientoIds.length === 0) { result.incidentes_acumulados = 0; return }
+        const { count } = await supabase.from('incidentes').select('*', { count: 'exact', head: true })
           .in('establecimiento_id', establecimientoIds)
           .gte('fecha_ocurrencia', yearStart)
           .lt('fecha_ocurrencia', yearEnd)
-        result.siniestros_acumulados = count ?? 0
+        result.incidentes_acumulados = count ?? 0
       })(),
     )
   }
@@ -232,21 +232,21 @@ export async function getDashboardKpis(widgetKeys: WidgetKey[]): Promise<ActionR
     )
   }
 
-  if (widgetKeys.includes('tasa_siniestralidad')) {
+  if (widgetKeys.includes('tasa_incidentalidad')) {
     promises.push(
       (async () => {
-        if (establecimientoIds.length === 0) { result.tasa_siniestralidad = '0%'; return }
+        if (establecimientoIds.length === 0) { result.tasa_incidentalidad = '0%'; return }
         const [{ data: estData }, { count }] = await Promise.all([
           supabase.from('establecimientos').select('cantidad_trabajadores')
             .in('empresa_id', empresaIds)
             .not('cantidad_trabajadores', 'is', null),
-          supabase.from('siniestros').select('*', { count: 'exact', head: true })
+          supabase.from('incidentes').select('*', { count: 'exact', head: true })
             .in('establecimiento_id', establecimientoIds)
             .gte('fecha_ocurrencia', yearStart)
             .lt('fecha_ocurrencia', yearEnd),
         ])
         const totalTrab = (estData ?? []).reduce((sum, e) => sum + ((e as { cantidad_trabajadores: number }).cantidad_trabajadores ?? 0), 0)
-        result.tasa_siniestralidad = totalTrab > 0 ? `${((count ?? 0) / totalTrab * 100).toFixed(1)}%` : '0%'
+        result.tasa_incidentalidad = totalTrab > 0 ? `${((count ?? 0) / totalTrab * 100).toFixed(1)}%` : '0%'
       })(),
     )
   }

@@ -83,7 +83,6 @@ export const siniestroCreateSchema = z.object({
   titulo: z.string().min(1).max(300),
   fecha_ocurrencia: z.string().min(1),
   descripcion: z.string().nullable().optional(),
-  gravedad: z.string().nullable().optional(),
   lesionados: z.coerce.number().int().min(0).nullable().optional(),
   dias_perdidos: z.coerce.number().int().min(0).nullable().optional(),
   investigacion: z.string().nullable().optional(),
