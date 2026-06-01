@@ -15,18 +15,38 @@ const FitBounds = dynamic(() => import('react-leaflet').then(m => {
   return function FitBoundsInner({ positions }: { positions: [number, number][] }) {
     const map = useMap()
     useEffect(() => {
-      // El mapa se monta dentro de un Modal; cuando Leaflet mide el contenedor
-      // éste todavía no tiene su tamaño final → renderiza solo una porción.
-      // invalidateSize() fuerza a re-medir una vez que el modal ya está visible.
-      const id = setTimeout(() => {
+      // El mapa se monta dentro de un <dialog> (showModal): cuando Leaflet mide
+      // el contenedor, éste todavía no tiene su tamaño final → renderiza solo una
+      // porción (resto gris). Un setTimeout fijo es frágil. Usamos ResizeObserver
+      // para reaccionar EN CUANTO el contenedor toma tamaño real, llamando
+      // invalidateSize() y reencuadrando los puntos. A prueba de timing.
+      const container = map.getContainer()
+
+      const refit = () => {
         map.invalidateSize()
         if (positions.length === 1) {
           map.setView(positions[0], 14)
         } else if (positions.length > 1) {
           map.fitBounds(L.latLngBounds(positions), { padding: [40, 40] })
         }
-      }, 200)
-      return () => clearTimeout(id)
+      }
+
+      // Primer intento en el próximo frame (cubre el caso normal).
+      const raf = requestAnimationFrame(refit)
+      // Respaldo por si el layout del dialog tarda más.
+      const t1 = setTimeout(refit, 150)
+      const t2 = setTimeout(refit, 400)
+
+      // Y observamos cambios de tamaño del contenedor (cubre la apertura del modal).
+      const ro = new ResizeObserver(() => refit())
+      ro.observe(container)
+
+      return () => {
+        cancelAnimationFrame(raf)
+        clearTimeout(t1)
+        clearTimeout(t2)
+        ro.disconnect()
+      }
     }, [map, positions])
     return null
   }
@@ -109,7 +129,7 @@ export function EmpresaMapaEstablecimientos({ empresa, establecimientos }: Props
         {hasLocations ? (
           <div className="space-y-3">
             <div className="h-[500px] w-full rounded-lg overflow-hidden border border-border-subtle">
-              <MapContainer center={center} zoom={11} className="h-full w-full" scrollWheelZoom={true}>
+              <MapContainer center={center} zoom={11} className="h-full w-full" style={{ height: 500, width: '100%' }} scrollWheelZoom={true}>
                 <TileLayer
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
