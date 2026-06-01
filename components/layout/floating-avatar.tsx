@@ -4,21 +4,8 @@ import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
-  Building2,
-  UserCog,
-  Gauge,
-  CreditCard,
-  Users,
-  Network,
-  Shield,
-  GraduationCap,
-  BookOpen,
   BarChart2,
-  Settings2,
-  CalendarClock,
-  ClipboardList,
   MessageSquare,
-  Map,
   ShieldCheck,
   LogOut,
 } from 'lucide-react'
@@ -150,45 +137,9 @@ export function FloatingAvatar({
 
           {/* Menu items — same structure as AppHeader */}
           <div className="max-h-[60vh] overflow-y-auto">
-            {/* Consultora */}
-            <MenuGroup label="Consultora">
-              <MenuItem href="/dashboard/configuracion/consultora" icon={Building2} label="Información" />
-              <MenuItem href="/dashboard/instrumentos" icon={Gauge} label="Instrumentos" />
-              <MenuItem href="/dashboard/usuarios" icon={UserCog} label="Usuarios" />
-              <MenuItem href="/dashboard/billing" icon={CreditCard} label="Suscripción" />
-            </MenuGroup>
-
-            {/* Directorio */}
-            <MenuGroup label="Directorio">
-              <MenuItem href="/dashboard/personas" icon={Users} label="Personas" />
-              <MenuItem href="/dashboard/personas?tipo=Auditores" icon={ShieldCheck} label="Auditores" />
-              <MenuItem href="/dashboard/organizaciones-externas" icon={Network} label="Organizaciones" />
-            </MenuGroup>
-
-            {/* Librerías */}
-            <MenuGroup label="Librerías">
-              <MenuItem href="/dashboard/productos" icon={Shield} label="Elementos de Protección" />
-              <MenuItem href="/dashboard/configuracion/iperc" icon={ClipboardList} label="Librería IPERC" />
-            </MenuGroup>
-
-            {/* Capacitación */}
-            <MenuGroup label="Capacitación">
-              <MenuItem href="/dashboard/cursos" icon={GraduationCap} label="Mis Cursos" />
-              {(userRole === 'full_access_main' || userRole === 'full_access_branch' || isSuperAdmin) && (
-                <>
-                  <MenuItem href="/dashboard/cursos/admin" icon={BookOpen} label="Administrar Cursos" />
-                  <MenuItem href="/dashboard/cursos/compliance" icon={BarChart2} label="Compliance" />
-                </>
-              )}
-            </MenuGroup>
-
             {/* Herramientas */}
             <MenuGroup label="Herramientas">
               <MenuItem href="/dashboard/analytics" icon={BarChart2} label="Analytics" />
-              <MenuItem href="/dashboard/configuracion/catalogacion" icon={Settings2} label="Catalogación" />
-              <MenuItem href="/dashboard/configuracion/vencimientos" icon={CalendarClock} label="Vencimientos" />
-              <MenuItem href="/dashboard/configuracion/feedback" icon={MessageSquare} label="Feedback" />
-              <MenuItem href="/dashboard/mapas" icon={Map} label="Mapa de Riesgos" />
               {isSuperAdmin && (
                 <>
                   <MenuItem href="/dashboard/admin" icon={ShieldCheck} label="Super Admin" />
