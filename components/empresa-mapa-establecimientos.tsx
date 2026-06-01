@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import L from 'leaflet'
 import { Map as MapIcon } from 'lucide-react'
@@ -14,11 +14,20 @@ const FitBounds = dynamic(() => import('react-leaflet').then(m => {
   const { useMap } = m
   return function FitBoundsInner({ positions }: { positions: [number, number][] }) {
     const map = useMap()
-    if (positions.length === 1) {
-      map.setView(positions[0], 14)
-    } else if (positions.length > 1) {
-      map.fitBounds(L.latLngBounds(positions), { padding: [40, 40] })
-    }
+    useEffect(() => {
+      // El mapa se monta dentro de un Modal; cuando Leaflet mide el contenedor
+      // éste todavía no tiene su tamaño final → renderiza solo una porción.
+      // invalidateSize() fuerza a re-medir una vez que el modal ya está visible.
+      const id = setTimeout(() => {
+        map.invalidateSize()
+        if (positions.length === 1) {
+          map.setView(positions[0], 14)
+        } else if (positions.length > 1) {
+          map.fitBounds(L.latLngBounds(positions), { padding: [40, 40] })
+        }
+      }, 200)
+      return () => clearTimeout(id)
+    }, [map, positions])
     return null
   }
 }), { ssr: false })
