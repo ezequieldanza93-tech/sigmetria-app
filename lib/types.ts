@@ -121,6 +121,7 @@ export interface Consultora {
   logo_url: string | null
   website: string | null
   social_links: Record<string, string> | null
+  tipo: string | null
   is_active: boolean
   seats_max: number
   trial_used_at: string | null

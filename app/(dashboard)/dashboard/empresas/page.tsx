@@ -8,7 +8,7 @@ import { SeguimientoAggregate } from '@/components/aggregate/seguimiento-aggrega
 import { AnalyticsDashboard } from '@/components/analytics/real/analytics-dashboard'
 import { getGestionesAggregate, getSeguimientoAggregate } from '@/lib/queries/aggregate'
 import { getEffectiveRole } from '@/lib/auth/effective-role'
-import { canWrite } from '@/lib/types'
+import { canWrite, ROLE_LABELS } from '@/lib/types'
 import { ConsultoraFichaGlobal } from '@/components/consultora-ficha-global'
 import type { Consultora } from '@/lib/types'
 
@@ -61,6 +61,7 @@ export default async function EmpresasPage({ searchParams }: Props) {
 
   // Ficha global: solo traemos el objeto completo de la consultora cuando hace falta.
   let consultora: Consultora | null = null
+  let fichaUsuario: { fullName: string; email: string | null; avatarUrl: string | null; rolLabel: string } | null = null
   if (section === 'ficha' && effective.consultoraId) {
     const { data } = await supabase
       .from('consultoras')
@@ -68,6 +69,21 @@ export default async function EmpresasPage({ searchParams }: Props) {
       .eq('id', effective.consultoraId)
       .single()
     consultora = (data as Consultora | null) ?? null
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name, avatar_url')
+        .eq('id', user.id)
+        .maybeSingle()
+      fichaUsuario = {
+        fullName: (profile?.full_name as string) || (user.email ?? 'Usuario'),
+        email: user.email ?? null,
+        avatarUrl: (profile?.avatar_url as string | null) ?? null,
+        rolLabel: ROLE_LABELS[effective.effectiveUserRole as keyof typeof ROLE_LABELS] ?? effective.effectiveUserRole ?? '—',
+      }
+    }
   }
   const fichaEmpresas = empresas.map(e => ({
     id: e.id,
@@ -86,6 +102,7 @@ export default async function EmpresasPage({ searchParams }: Props) {
           consultora={consultora}
           empresas={fichaEmpresas}
           canWrite={puedeEditar}
+          usuario={fichaUsuario}
         />
       )}
 
