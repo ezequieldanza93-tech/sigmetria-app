@@ -1,6 +1,8 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
+import { Play } from 'lucide-react'
 import { MultiFilterWithAll } from '@/components/ui/multi-filter-with-all'
 import { calcularEstadoGestion } from '@/lib/types'
 import type { EstadoGestion } from '@/lib/types'
@@ -28,10 +30,13 @@ interface Props {
 
 const ESTADOS: EstadoGestion[] = ['Realizado', 'Pendiente', 'Planificado']
 
-const ESTADO_BADGE: Record<EstadoGestion, string> = {
-  Realizado: 'bg-green-100 text-green-800',
-  Pendiente: 'bg-red-100 text-red-800',
-  Planificado: 'bg-sky-100 text-sky-800',
+const MONTHS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+
+// Mismo criterio que la tabla a nivel establecimiento: el estado pinta la fila.
+const ROW_BG_COLORS: Record<EstadoGestion, string> = {
+  Realizado: 'bg-green-200 hover:bg-green-300',
+  Pendiente: 'bg-red-200 hover:bg-red-300',
+  Planificado: 'bg-white hover:bg-gray-50',
 }
 
 function getEstado(row: GestionAggregateRow): EstadoGestion {
@@ -53,7 +58,14 @@ export function GestionesAggregate({
   const [empresaSel, setEmpresaSel] = useState<Set<string>>(new Set())
   const [estSel, setEstSel] = useState<Set<string>>(new Set())
   const [estadoSel, setEstadoSel] = useState<Set<string>>(new Set())
+  // Meses como Set<string> de índices "0".."11" (consistente con MultiFilterWithAll).
+  const [selectedMonths, setSelectedMonths] = useState<Set<string>>(new Set())
   const [anio, setAnio] = useState<number>(() => new Date().getFullYear())
+
+  // Default: solo el mes actual (igual que la tabla a nivel establecimiento).
+  useEffect(() => {
+    setSelectedMonths(new Set([String(new Date().getMonth())]))
+  }, [])
 
   const empresaOptions = useMemo(() => {
     const map = new Map<string, string>()
@@ -74,12 +86,15 @@ export function GestionesAggregate({
   const filtered = useMemo(() => {
     return rows.filter(r => {
       if (r.fecha_planificada && new Date(r.fecha_planificada).getFullYear() !== anio) return false
+      // Mes 0-indexed parseado del string para evitar problemas de timezone.
+      const month = parseInt(r.fecha_planificada?.split('-')[1] ?? '0') - 1
+      if (selectedMonths.size > 0 && !selectedMonths.has(String(month))) return false
       if (empresaSel.size > 0 && !empresaSel.has(r.empresa_id)) return false
       if (estSel.size > 0 && !estSel.has(r.establecimiento_id)) return false
       if (estadoSel.size > 0 && !estadoSel.has(getEstado(r))) return false
       return true
     })
-  }, [rows, anio, empresaSel, estSel, estadoSel])
+  }, [rows, anio, selectedMonths, empresaSel, estSel, estadoSel])
 
   return (
     <div className="px-6 py-6 space-y-4">
@@ -117,6 +132,12 @@ export function GestionesAggregate({
           />
         )}
         <MultiFilterWithAll
+          label="Mes"
+          options={MONTHS.map((m, i) => ({ value: String(i), label: m }))}
+          selected={selectedMonths}
+          onChange={setSelectedMonths}
+        />
+        <MultiFilterWithAll
           label="Estado"
           options={ESTADOS.map(e => ({ value: e, label: e }))}
           selected={estadoSel}
@@ -131,13 +152,13 @@ export function GestionesAggregate({
             <thead className="bg-surface-sunken text-xs uppercase tracking-wider text-text-tertiary">
               <tr>
                 <th className="px-3 py-2 text-left">Establecimiento</th>
-                <th className="px-3 py-2 text-left">Estado</th>
                 {showEmpresaFilter && <th className="px-3 py-2 text-left">Empresa</th>}
                 <th className="px-3 py-2 text-left">Categoría</th>
                 <th className="px-3 py-2 text-left">Gestión</th>
                 <th className="px-3 py-2 text-left">Fecha Plan.</th>
                 <th className="px-3 py-2 text-left">Fecha Ejec.</th>
                 <th className="px-3 py-2 text-left">Responsable</th>
+                <th className="px-3 py-2 text-left">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -151,13 +172,8 @@ export function GestionesAggregate({
                 filtered.map(r => {
                   const estado = getEstado(r)
                   return (
-                    <tr key={r.registro_id} className="border-t border-border-subtle hover:bg-surface-sunken">
+                    <tr key={r.registro_id} className={`border-t border-border-subtle transition-colors ${ROW_BG_COLORS[estado]}`}>
                       <td className="px-3 py-2 text-text-primary font-medium truncate max-w-[14rem]">{r.establecimiento_nombre}</td>
-                      <td className="px-3 py-2">
-                        <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${ESTADO_BADGE[estado]}`}>
-                          {estado}
-                        </span>
-                      </td>
                       {showEmpresaFilter && (
                         <td className="px-3 py-2 text-text-secondary truncate max-w-[14rem]">{r.empresa_razon_social}</td>
                       )}
@@ -166,6 +182,16 @@ export function GestionesAggregate({
                       <td className="px-3 py-2 text-text-tertiary text-xs">{fmt(r.fecha_planificada)}</td>
                       <td className="px-3 py-2 text-text-tertiary text-xs">{fmt(r.fecha_ejecutada)}</td>
                       <td className="px-3 py-2 text-text-tertiary text-xs">{r.responsable_nombre ?? '—'}</td>
+                      <td className="px-3 py-2">
+                        <Link
+                          href={`/dashboard/empresas/${r.empresa_id}/establecimientos/${r.establecimiento_id}?section=agenda`}
+                          className="inline-flex items-center gap-1.5 text-xs font-medium text-sig-500 hover:text-sig-700 transition-colors"
+                          title="Ir a la agenda del establecimiento para ejecutar esta gestión"
+                        >
+                          <Play size={14} />
+                          Ejecutar
+                        </Link>
+                      </td>
                     </tr>
                   )
                 })
