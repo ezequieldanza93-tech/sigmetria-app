@@ -7,6 +7,7 @@ import { formatCUIT } from '@/lib/utils'
 import { EmpresaDocumentosSection } from '@/components/empresa-documentos-section'
 import { EmpresaRightPanel } from '@/components/empresa-right-panel'
 import { EmpresaFichaHero } from '@/components/empresa-ficha-hero'
+import { EmpresaFichaEstablecimientos } from '@/components/empresa-ficha-establecimientos'
 import { EmpresaShell } from '@/components/empresa/empresa-shell'
 import { AnalyticsDashboard } from '@/components/analytics/real/analytics-dashboard'
 import { ExportEmpresaButton } from '@/components/export/export-empresa-button'
@@ -92,7 +93,7 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
   }
 
   if (section === 'ficha') {
-    const [d1, d2] = await Promise.all([
+    const [d1, d2, d3] = await Promise.all([
       supabase
         .from('empresas_documentos')
         .select('*, documentos_tipos(nombre)')
@@ -104,11 +105,19 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
         .eq('is_active', true)
         .eq('aplica_empresa', true)
         .order('nombre'),
+      supabase
+        .from('establecimientos')
+        .select('id, nombre')
+        .eq('empresa_id', id)
+        .neq('status', 'cancelled')
+        .order('nombre'),
     ])
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     documentos = (d1.data ?? []) as any[]
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     documentTypes = (d2.data ?? []) as any[]
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    establecimientos = (d3.data ?? []) as any[]
   }
 
   const estContext = establecimientos.map(e => ({
@@ -255,6 +264,14 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
                   empresaId={id}
                   documentos={(documentos ?? []) as Documento[]}
                   documentTypes={(documentTypes ?? []) as DocumentType[]}
+                  canWrite={puedeEditar}
+                />
+              </div>
+
+              <div className="border-t border-border-subtle pt-4">
+                <EmpresaFichaEstablecimientos
+                  empresaId={id}
+                  establecimientos={(establecimientos ?? []).map((e) => ({ id: e.id, nombre: e.nombre }))}
                   canWrite={puedeEditar}
                 />
               </div>
