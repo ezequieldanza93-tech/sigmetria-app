@@ -6,6 +6,8 @@ import { usePathname, useRouter } from 'next/navigation'
 import { Sun, Moon, LogOut, ShieldCheck, MessageSquare, Wifi, WifiOff, Download, Keyboard, Home, BookMarked, KeyRound } from 'lucide-react'
 import { SystemRole, UserRole, ROLE_LABELS, ROLE_COLORS } from '@/lib/types'
 import { RoleSwitcher } from '@/components/layout/role-switcher'
+import { LanguageSwitcher } from '@/components/layout/language-switcher'
+import { useTranslations } from 'next-intl'
 import { type SwitchableRole } from '@/lib/actions/change-role'
 import { createClient } from '@/lib/supabase/client'
 import { NotificationDropdown } from '@/components/notification-dropdown'
@@ -45,6 +47,7 @@ export function AppHeader({
 }: AppHeaderProps) {
   const pathname = usePathname()
   const router = useRouter()
+  const tNav = useTranslations('nav')
   const [crumbs, setCrumbs] = useState<Crumb[]>([])
   const [contextAddress, setContextAddress] = useState<string | null>(null)
   const [tipoLabel, setTipoLabel] = useState<string | null>(null)
@@ -383,13 +386,17 @@ export function AppHeader({
                   <DropdownItem href="/dashboard/atajos" icon={Keyboard} label="Atajos de teclado" role="menuitem" />
                 </div>
 
+                <div className="border-t border-border-subtle">
+                  <LanguageSwitcher />
+                </div>
+
                 <button
                   onClick={handleLogout}
                   role="menuitem"
                   className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-secondary hover:text-text-primary hover:bg-surface-sunken transition-colors rounded-b-xl focus-visible:outline-none focus-visible:bg-surface-sunken"
                 >
                   <LogOut size={16} strokeWidth={1.75} className="text-text-tertiary" aria-hidden="true" />
-                  Cerrar sesión
+                  {tNav('logout')}
                 </button>
               </div>
             )}
