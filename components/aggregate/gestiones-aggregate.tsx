@@ -130,9 +130,9 @@ export function GestionesAggregate({
           <table className="w-full text-sm">
             <thead className="bg-surface-sunken text-xs uppercase tracking-wider text-text-tertiary">
               <tr>
+                <th className="px-3 py-2 text-left">Establecimiento</th>
                 <th className="px-3 py-2 text-left">Estado</th>
                 {showEmpresaFilter && <th className="px-3 py-2 text-left">Empresa</th>}
-                <th className="px-3 py-2 text-left">Establecimiento</th>
                 <th className="px-3 py-2 text-left">Categoría</th>
                 <th className="px-3 py-2 text-left">Gestión</th>
                 <th className="px-3 py-2 text-left">Fecha Plan.</th>
@@ -152,6 +152,7 @@ export function GestionesAggregate({
                   const estado = getEstado(r)
                   return (
                     <tr key={r.registro_id} className="border-t border-border-subtle hover:bg-surface-sunken">
+                      <td className="px-3 py-2 text-text-primary font-medium truncate max-w-[14rem]">{r.establecimiento_nombre}</td>
                       <td className="px-3 py-2">
                         <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${ESTADO_BADGE[estado]}`}>
                           {estado}
@@ -160,7 +161,6 @@ export function GestionesAggregate({
                       {showEmpresaFilter && (
                         <td className="px-3 py-2 text-text-secondary truncate max-w-[14rem]">{r.empresa_razon_social}</td>
                       )}
-                      <td className="px-3 py-2 text-text-secondary truncate max-w-[14rem]">{r.establecimiento_nombre}</td>
                       <td className="px-3 py-2 text-text-tertiary text-xs">{r.categoria ?? '—'}</td>
                       <td className="px-3 py-2 text-text-primary truncate max-w-[18rem]">{r.gestion_nombre ?? '—'}</td>
                       <td className="px-3 py-2 text-text-tertiary text-xs">{fmt(r.fecha_planificada)}</td>
