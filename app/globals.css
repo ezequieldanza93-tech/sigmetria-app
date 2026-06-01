@@ -95,6 +95,9 @@ a, button, input, select, textarea, [tabindex]:not([tabindex="-1"]) {
 body {
   background-color: var(--bg-base);
   color: var(--text-primary);
+  /* Zoom global de la app a 85% — achica todo (texto, iconos, espaciado)
+     manteniendo el layout responsive. Revertir: quitar esta línea. */
+  zoom: 0.85;
 }
 
 /* ─── Scrollbar styling ──────────────────────────────── */
