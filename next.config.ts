@@ -1,5 +1,8 @@
 import type { NextConfig } from 'next'
 import withBundleAnalyzer from '@next/bundle-analyzer'
+import createNextIntlPlugin from 'next-intl/plugin'
+
+const withNextIntl = createNextIntlPlugin('./i18n/request.ts')
 
 // 'unsafe-eval' fuera: ninguna lib del bundle lo necesita (recharts moderno
 // no usa eval, jspdf y html2canvas tampoco). 'unsafe-inline' se mantiene
@@ -75,4 +78,4 @@ const nextConfig: NextConfig = {
 
 const bundleAnalyzer = withBundleAnalyzer({ enabled: process.env.ANALYZE === 'true' })
 
-export default bundleAnalyzer(nextConfig)
+export default withNextIntl(bundleAnalyzer(nextConfig))

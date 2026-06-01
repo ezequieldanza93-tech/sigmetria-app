@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
+import { LanguageSwitcher } from '@/components/layout/language-switcher'
 import {
   BarChart2,
   MessageSquare,
@@ -38,6 +40,7 @@ export function FloatingAvatar({
   canSwitchRole = false,
 }: FloatingAvatarProps) {
   const router = useRouter()
+  const tNav = useTranslations('nav')
   const { level } = useNavigationLevel()
   const [menuOpen, setMenuOpen] = useState(false)
   const [roleSimOpen, setRoleSimOpen] = useState(false)
@@ -138,15 +141,20 @@ export function FloatingAvatar({
           {/* Menu items — same structure as AppHeader */}
           <div className="max-h-[60vh] overflow-y-auto">
             {/* Herramientas */}
-            <MenuGroup label="Herramientas">
-              <MenuItem href="/dashboard/analytics" icon={BarChart2} label="Analytics" />
+            <MenuGroup label={tNav('herramientas')}>
+              <MenuItem href="/dashboard/analytics" icon={BarChart2} label={tNav('analytics')} />
               {isSuperAdmin && (
                 <>
-                  <MenuItem href="/dashboard/admin" icon={ShieldCheck} label="Super Admin" />
-                  <MenuItem href="/dashboard/admin/feedback" icon={MessageSquare} label="Feedback Admin" />
+                  <MenuItem href="/dashboard/admin" icon={ShieldCheck} label={tNav('superAdmin')} />
+                  <MenuItem href="/dashboard/admin/feedback" icon={MessageSquare} label={tNav('feedbackAdmin')} />
                 </>
               )}
             </MenuGroup>
+          </div>
+
+          {/* Idioma */}
+          <div className="border-t border-border-subtle">
+            <LanguageSwitcher />
           </div>
 
           {/* Logout */}
@@ -157,7 +165,7 @@ export function FloatingAvatar({
               className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-text-secondary hover:text-text-primary hover:bg-surface-sunken transition-colors"
             >
               <LogOut size={16} strokeWidth={1.75} className="text-text-tertiary" />
-              Cerrar sesión
+              {tNav('logout')}
             </button>
           </div>
         </div>

@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Poppins, Montserrat } from 'next/font/google'
+import { NextIntlClientProvider } from 'next-intl'
+import { getLocale, getMessages } from 'next-intl/server'
 import { DevErrorBoundary } from '@/components/dev-error-boundary'
 import { ThemeProvider } from '@/components/theme-provider'
 import { QueryProvider } from '@/components/query-provider'
@@ -109,28 +111,32 @@ const SW_CLEANUP_SCRIPT = `
 })();
 `.trim()
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const locale = await getLocale()
+  const messages = await getMessages()
   return (
-    <html lang="es-AR" className={`${poppins.variable} ${montserrat.variable}`} suppressHydrationWarning>
+    <html lang={locale} className={`${poppins.variable} ${montserrat.variable}`} suppressHydrationWarning>
       <head suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{ __html: SW_CLEANUP_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body suppressHydrationWarning className="bg-surface-base text-text-primary antialiased font-body">
-        <a
-          href="#main-content"
-          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:rounded-md focus:bg-brand-primary focus:px-3 focus:py-2 focus:text-white focus:shadow-lg"
-        >
-          Saltar al contenido
-        </a>
-        <QueryProvider>
-          <ThemeProvider>
-            <NetworkStatusBanner />
-            <DevErrorBoundary>{children}</DevErrorBoundary>
-          </ThemeProvider>
-        </QueryProvider>
-        <ErrorCapture />
-        <Toaster />
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <a
+            href="#main-content"
+            className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:rounded-md focus:bg-brand-primary focus:px-3 focus:py-2 focus:text-white focus:shadow-lg"
+          >
+            Saltar al contenido
+          </a>
+          <QueryProvider>
+            <ThemeProvider>
+              <NetworkStatusBanner />
+              <DevErrorBoundary>{children}</DevErrorBoundary>
+            </ThemeProvider>
+          </QueryProvider>
+          <ErrorCapture />
+          <Toaster />
+        </NextIntlClientProvider>
       </body>
     </html>
   )
