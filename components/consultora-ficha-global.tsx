@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
+import Link from 'next/link'
 import {
   ChevronDown,
   ChevronRight,
@@ -10,9 +11,10 @@ import {
   Phone,
   Globe,
   Hash,
+  MapPin,
+  ExternalLink,
 } from 'lucide-react'
 import Image from 'next/image'
-import { EmpresaFichaEstablecimientos } from '@/components/empresa-ficha-establecimientos'
 import type { Consultora } from '@/lib/types'
 
 interface EmpresaConEstablecimientos {
@@ -28,40 +30,26 @@ interface Props {
 }
 
 /**
- * Ficha a nivel GLOBAL / consultora con efecto cascada minimalista.
+ * Ficha a nivel GLOBAL / consultora — árbol de navegación minimalista.
  *
- * Nivel 0 — Header: card limpia con los datos de la consultora (quien paga la
- * suscripción).
- * Nivel 1 — Empresas: acordeón colapsado por defecto. Cada header muestra la
- * razón social y la cantidad de establecimientos.
- * Nivel 2 — Establecimientos: al expandir una empresa se monta (carga DIFERIDA
- * real) el componente reusado EmpresaFichaEstablecimientos, que a su vez maneja
- * el acordeón de establecimientos con sus 11 tabs lazy-load.
+ * Nivel 0 — Header: card con los datos de la consultora (quien paga la suscripción).
+ * Nivel 1 — Empresas: acordeón colapsado por defecto. Cada fila tiene un botón
+ *   "Abrir ficha" → ficha de la empresa (?section=ficha).
+ * Nivel 2 — Establecimientos: al expandir una empresa se listan SOLO los nombres
+ *   de sus establecimientos, cada uno con un botón "Abrir ficha" → ficha del
+ *   establecimiento (?section=ficha).
  *
- * Carga diferida: EmpresaFichaEstablecimientos de una empresa NO se monta hasta
- * que esa empresa se expande. Una vez montado, permanece montado para no perder
- * el estado interno (tabs/fichas ya cargadas) al colapsar/expandir de nuevo,
- * pero se oculta vía CSS.
+ * No embebe el contenido de las fichas: es un árbol liviano para navegar rápido
+ * y abrir la ficha que corresponda a cada nivel.
  */
-export function ConsultoraFichaGlobal({ consultora, empresas, canWrite }: Props) {
+export function ConsultoraFichaGlobal({ consultora, empresas }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
-  const [mounted, setMounted] = useState<Set<string>>(new Set())
 
   const toggle = useCallback((id: string) => {
     setExpanded(prev => {
       const next = new Set(prev)
-      if (next.has(id)) {
-        next.delete(id)
-      } else {
-        next.add(id)
-        // Carga diferida: marcamos la empresa como montada solo al expandirla.
-        setMounted(curr => {
-          if (curr.has(id)) return curr
-          const m = new Set(curr)
-          m.add(id)
-          return m
-        })
-      }
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
       return next
     })
   }, [])
@@ -160,7 +148,6 @@ export function ConsultoraFichaGlobal({ consultora, empresas, canWrite }: Props)
           <div className="space-y-2">
             {empresas.map(emp => {
               const isOpen = expanded.has(emp.id)
-              const isMounted = mounted.has(emp.id)
               const count = emp.establecimientos.length
 
               return (
@@ -168,36 +155,60 @@ export function ConsultoraFichaGlobal({ consultora, empresas, canWrite }: Props)
                   key={emp.id}
                   className="bg-surface-base border border-border-subtle rounded-xl overflow-hidden"
                 >
-                  <button
-                    type="button"
-                    onClick={() => toggle(emp.id)}
-                    aria-expanded={isOpen}
-                    className="w-full flex items-center gap-2 px-4 py-3 text-left hover:bg-surface-sunken/40 transition-colors"
-                  >
-                    <span className="text-text-tertiary shrink-0">
-                      {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                    </span>
-                    <Building2 size={16} className="text-sig-500 shrink-0" aria-hidden="true" />
-                    <span className="font-medium text-text-primary truncate flex-1">
-                      {emp.razon_social}
-                    </span>
-                    <span className="text-xs text-text-tertiary shrink-0">
-                      {count} {count === 1 ? 'establecimiento' : 'establecimientos'}
-                    </span>
-                  </button>
-
-                  {/* Nivel 2 — Establecimientos (carga diferida: solo se monta al expandir) */}
-                  {isMounted && (
-                    <div
-                      className={`border-t border-border-subtle bg-surface-sunken/20 p-4 pl-6 ${
-                        isOpen ? '' : 'hidden'
-                      }`}
+                  {/* Fila empresa: toggle + nombre + contador + Abrir ficha */}
+                  <div className="flex items-center gap-2 px-4 py-3 hover:bg-surface-sunken/40 transition-colors">
+                    <button
+                      type="button"
+                      onClick={() => toggle(emp.id)}
+                      aria-expanded={isOpen}
+                      aria-label={isOpen ? `Colapsar ${emp.razon_social}` : `Expandir ${emp.razon_social}`}
+                      className="flex items-center gap-2 flex-1 min-w-0 text-left"
                     >
-                      <EmpresaFichaEstablecimientos
-                        empresaId={emp.id}
-                        establecimientos={emp.establecimientos}
-                        canWrite={canWrite}
-                      />
+                      <span className="text-text-tertiary shrink-0">
+                        {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                      </span>
+                      <Building2 size={16} className="text-sig-500 shrink-0" aria-hidden="true" />
+                      <span className="font-medium text-text-primary truncate">
+                        {emp.razon_social}
+                      </span>
+                      <span className="text-xs text-text-tertiary shrink-0">
+                        {count} {count === 1 ? 'establecimiento' : 'establecimientos'}
+                      </span>
+                    </button>
+                    <Link
+                      href={`/dashboard/empresas/${emp.id}?section=ficha`}
+                      className="inline-flex items-center gap-1 text-xs font-medium text-sig-600 hover:text-sig-700 transition-colors shrink-0"
+                    >
+                      Abrir ficha <ExternalLink size={13} aria-hidden="true" />
+                    </Link>
+                  </div>
+
+                  {/* Nivel 2 — solo nombres de establecimientos + Abrir ficha */}
+                  {isOpen && (
+                    <div className="border-t border-border-subtle bg-surface-sunken/20 py-1 pl-6 pr-2">
+                      {count === 0 ? (
+                        <p className="text-xs text-text-tertiary px-2 py-3">
+                          Sin establecimientos.
+                        </p>
+                      ) : (
+                        emp.establecimientos.map(est => (
+                          <div
+                            key={est.id}
+                            className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-surface-base transition-colors"
+                          >
+                            <MapPin size={14} className="text-text-tertiary shrink-0" aria-hidden="true" />
+                            <span className="text-sm text-text-secondary truncate flex-1">
+                              {est.nombre}
+                            </span>
+                            <Link
+                              href={`/dashboard/empresas/${emp.id}/establecimientos/${est.id}?section=ficha`}
+                              className="inline-flex items-center gap-1 text-xs font-medium text-sig-600 hover:text-sig-700 transition-colors shrink-0"
+                            >
+                              Abrir ficha <ExternalLink size={13} aria-hidden="true" />
+                            </Link>
+                          </div>
+                        ))
+                      )}
                     </div>
                   )}
                 </div>
