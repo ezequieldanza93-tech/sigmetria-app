@@ -46,6 +46,7 @@ export function IncidentesTab({ incidentes, establecimientoId, empresaId, canWri
                 <th className="px-5 py-3 text-text-secondary font-medium text-center">Días Perdidos</th>
                 <th className="px-5 py-3 text-text-secondary font-medium text-center">Calc.</th>
                 <th className="px-5 py-3 text-text-secondary font-medium">Deriv.</th>
+                <th className="px-5 py-3 text-text-secondary font-medium">Adjuntos</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50 dark:divide-border-subtle">
@@ -70,6 +71,36 @@ export function IncidentesTab({ incidentes, establecimientoId, empresaId, canWri
                     {s.dias_perdidos_calculados ?? '—'}
                   </td>
                   <td className="px-5 py-3.5">{s.requiere_derivacion ? 'Sí' : 'No'}</td>
+                  <td className="px-5 py-3.5">
+                    {(s.denuncia_adjuntos_urls?.length || s.investigacion_adjuntos_urls?.length) ? (
+                      <div className="flex flex-col gap-1">
+                        {s.denuncia_adjuntos_urls && s.denuncia_adjuntos_urls.length > 0 && (
+                          <div className="flex gap-1 flex-wrap items-center">
+                            <span className="text-xs text-text-tertiary">Denuncia:</span>
+                            {s.denuncia_adjuntos_urls.map((url, i) => (
+                              <a key={i} href={url} target="_blank" rel="noopener noreferrer"
+                                className="text-xs text-sig-600 hover:text-sig-800 underline">
+                                {i + 1}
+                              </a>
+                            ))}
+                          </div>
+                        )}
+                        {s.investigacion_adjuntos_urls && s.investigacion_adjuntos_urls.length > 0 && (
+                          <div className="flex gap-1 flex-wrap items-center">
+                            <span className="text-xs text-text-tertiary">Investigación:</span>
+                            {s.investigacion_adjuntos_urls.map((url, i) => (
+                              <a key={i} href={url} target="_blank" rel="noopener noreferrer"
+                                className="text-xs text-sig-600 hover:text-sig-800 underline">
+                                {i + 1}
+                              </a>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-text-tertiary">—</span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
