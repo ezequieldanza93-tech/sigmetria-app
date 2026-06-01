@@ -53,6 +53,7 @@ export function GestionesAggregate({
   const [empresaSel, setEmpresaSel] = useState<Set<string>>(new Set())
   const [estSel, setEstSel] = useState<Set<string>>(new Set())
   const [estadoSel, setEstadoSel] = useState<Set<string>>(new Set())
+  const [anio, setAnio] = useState<number>(() => new Date().getFullYear())
 
   const empresaOptions = useMemo(() => {
     const map = new Map<string, string>()
@@ -72,17 +73,38 @@ export function GestionesAggregate({
 
   const filtered = useMemo(() => {
     return rows.filter(r => {
+      if (r.fecha_planificada && new Date(r.fecha_planificada).getFullYear() !== anio) return false
       if (empresaSel.size > 0 && !empresaSel.has(r.empresa_id)) return false
       if (estSel.size > 0 && !estSel.has(r.establecimiento_id)) return false
       if (estadoSel.size > 0 && !estadoSel.has(getEstado(r))) return false
       return true
     })
-  }, [rows, empresaSel, estSel, estadoSel])
+  }, [rows, anio, empresaSel, estSel, estadoSel])
 
   return (
     <div className="px-6 py-6 space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <h2 className="text-lg font-semibold text-text-primary mr-4">Gestiones</h2>
+        <div className="flex items-center gap-2 mr-4 select-none">
+          <span className="text-xs text-text-tertiary tabular-nums">{anio - 1}</span>
+          <button
+            type="button"
+            onClick={() => setAnio(a => a - 1)}
+            aria-label={`Ver gestiones de ${anio - 1}`}
+            className="text-text-tertiary hover:text-sig-500 transition-colors px-1"
+          >
+            «
+          </button>
+          <h2 className="text-lg font-semibold text-text-primary tabular-nums">Gestiones {anio}</h2>
+          <button
+            type="button"
+            onClick={() => setAnio(a => a + 1)}
+            aria-label={`Ver gestiones de ${anio + 1}`}
+            className="text-text-tertiary hover:text-sig-500 transition-colors px-1"
+          >
+            »
+          </button>
+          <span className="text-xs text-text-tertiary tabular-nums">{anio + 1}</span>
+        </div>
         {showEmpresaFilter && (
           <MultiFilterWithAll label="Empresa" options={empresaOptions} selected={empresaSel} onChange={setEmpresaSel} />
         )}
