@@ -103,6 +103,8 @@ export default async function EmpresasPage({ searchParams }: Props) {
           empresas={fichaEmpresas}
           canWrite={puedeEditar}
           usuario={fichaUsuario}
+          userRole={effective.effectiveUserRole}
+          isSuperAdmin={effective.isSuperAdmin}
         />
       )}
 
