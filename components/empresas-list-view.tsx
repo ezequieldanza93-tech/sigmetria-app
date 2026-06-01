@@ -184,13 +184,13 @@ export function EmpresasListView({
             <table className="w-full text-sm">
               <thead className="border-b border-border-subtle bg-surface-base">
                 <tr className="text-left">
-                  <th className="w-10 px-2 py-3.5"></th>
-                  <th className="px-5 py-3.5 text-text-secondary font-medium">Razon Social</th>
-                  <th className="px-5 py-3.5 text-text-secondary font-medium">CUIT</th>
-                  <th className="px-5 py-3.5 text-text-secondary font-medium">Rubro</th>
-                  <th className="px-5 py-3.5 text-text-secondary font-medium hidden lg:table-cell">Ubicacion</th>
-                  <th className="px-5 py-3.5 text-text-secondary font-medium text-center">Estab.</th>
-                  <th className="px-5 py-3.5 text-text-secondary font-medium">Estado</th>
+                  <th className="w-10 px-2 py-2.5"></th>
+                  <th className="px-5 py-2.5 text-text-secondary font-medium">Razon Social</th>
+                  <th className="px-5 py-2.5 text-text-secondary font-medium">CUIT</th>
+                  <th className="px-5 py-2.5 text-text-secondary font-medium">Rubro</th>
+                  <th className="px-5 py-2.5 text-text-secondary font-medium hidden lg:table-cell">Ubicacion</th>
+                  <th className="px-5 py-2.5 text-text-secondary font-medium text-center">Estab.</th>
+                  <th className="px-5 py-2.5 text-text-secondary font-medium">Estado</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-subtle">
@@ -201,7 +201,7 @@ export function EmpresasListView({
                   return (
                     <Fragment key={e.id}>
                       <tr className="hover:bg-surface-sunken/40 transition-colors">
-                        <td className="px-2 py-4 text-center align-top">
+                        <td className="px-2 py-2.5 text-center align-top">
                           {count > 0 && (
                             <button
                               type="button"
@@ -214,7 +214,7 @@ export function EmpresasListView({
                             </button>
                           )}
                         </td>
-                        <td className="px-5 py-4 align-top">
+                        <td className="px-5 py-2.5 align-top">
                           <Link
                             href={`/dashboard/empresas/${e.id}`}
                             className="font-medium text-text-primary hover:text-sig-500 transition-colors block"
@@ -231,19 +231,19 @@ export function EmpresasListView({
                             </button>
                           )}
                         </td>
-                        <td className="px-5 py-4 text-text-secondary font-mono text-xs align-top">
+                        <td className="px-5 py-2.5 text-text-secondary font-mono text-xs align-top">
                           {formatCUIT(e.cuit)}
                         </td>
-                        <td className="px-5 py-4 text-text-secondary align-top">
+                        <td className="px-5 py-2.5 text-text-secondary align-top">
                           {(e.empresas_rubros as { nombre?: string } | null)?.nombre ?? '—'}
                         </td>
-                        <td className="px-5 py-4 text-text-secondary hidden lg:table-cell align-top">
+                        <td className="px-5 py-2.5 text-text-secondary hidden lg:table-cell align-top">
                           {e.localidades
                             ? `${(e.localidades as { nombre: string }).nombre}, ${(e.localidades as { provincia: string }).provincia}`
                             : '—'}
                         </td>
-                        <td className="px-5 py-4 text-text-secondary text-center align-top">{count}</td>
-                        <td className="px-5 py-4 align-top">
+                        <td className="px-5 py-2.5 text-text-secondary text-center align-top">{count}</td>
+                        <td className="px-5 py-2.5 align-top">
                           <span
                             className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full ${
                               e.is_active
@@ -294,7 +294,7 @@ export function EmpresasListView({
                   key={e.id}
                   className="bg-surface-base rounded-xl border border-border-subtle overflow-hidden"
                 >
-                  <div className="p-4">
+                  <div className="px-4 py-2.5">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
                         <Link
