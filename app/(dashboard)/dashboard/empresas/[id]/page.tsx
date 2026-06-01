@@ -8,6 +8,7 @@ import { EmpresaDocumentosSection } from '@/components/empresa-documentos-sectio
 import { EmpresaRightPanel } from '@/components/empresa-right-panel'
 import { EmpresaFichaHero } from '@/components/empresa-ficha-hero'
 import { EmpresaFichaEstablecimientos } from '@/components/empresa-ficha-establecimientos'
+import { EmpresaMapaEstablecimientos } from '@/components/empresa-mapa-establecimientos'
 import { EmpresaShell } from '@/components/empresa/empresa-shell'
 import { AnalyticsDashboard } from '@/components/analytics/real/analytics-dashboard'
 import { ExportEmpresaButton } from '@/components/export/export-empresa-button'
@@ -107,7 +108,7 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
         .order('nombre'),
       supabase
         .from('establecimientos')
-        .select('id, nombre')
+        .select('id, nombre, latitud, longitud, domicilio')
         .eq('empresa_id', id)
         .neq('status', 'cancelled')
         .order('nombre'),
@@ -257,6 +258,26 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
                   </Link>
                 )}
                 {puedeEditar && <ExportEmpresaButton empresaId={id} />}
+                {(() => {
+                  const e = empresa as typeof empresa & { latitude?: number | null; longitude?: number | null }
+                  return (
+                    <EmpresaMapaEstablecimientos
+                      empresa={{
+                        razon_social: empresa.razon_social as string,
+                        latitude: e.latitude ?? null,
+                        longitude: e.longitude ?? null,
+                        domicilio: (empresa.domicilio as string | null) ?? null,
+                      }}
+                      establecimientos={(establecimientos ?? []).map((est) => ({
+                        id: est.id as string,
+                        nombre: est.nombre as string,
+                        latitud: (est.latitud as number | null) ?? null,
+                        longitud: (est.longitud as number | null) ?? null,
+                        domicilio: (est.domicilio as string | null) ?? null,
+                      }))}
+                    />
+                  )
+                })()}
               </div>
 
               <div className="border-t border-border-subtle pt-4">
