@@ -161,6 +161,7 @@ export function FloatingAvatar({
             {/* Directorio */}
             <MenuGroup label="Directorio">
               <MenuItem href="/dashboard/personas" icon={Users} label="Personas" />
+              <MenuItem href="/dashboard/personas?tipo=Auditores" icon={ShieldCheck} label="Auditores" />
               <MenuItem href="/dashboard/organizaciones-externas" icon={Network} label="Organizaciones" />
             </MenuGroup>
 
