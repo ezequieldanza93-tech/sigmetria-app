@@ -96,8 +96,20 @@ body {
   background-color: var(--bg-base);
   color: var(--text-primary);
   /* Zoom global de la app a 85% — achica todo (texto, iconos, espaciado)
-     manteniendo el layout responsive. Revertir: quitar esta línea. */
+     manteniendo el layout responsive. Revertir: quitar este bloque. */
   zoom: 0.85;
+  /* Compensar el alto: con zoom 0.85, 100vh "real" equivale a 100/0.85 ≈ 117.6vh
+     dentro del contexto escalado. Sin esto, las pantallas con fondo a altura
+     completa (min-h-screen / login) dejan una franja en blanco abajo. */
+  min-height: calc(100vh / 0.85);
+}
+
+/* Con el zoom global 0.85, las utilidades de alto a pantalla completa quedan
+   cortas (100vh escala al 85% del viewport real → franja en blanco abajo).
+   Compensamos para que llenen la pantalla real. Revertir junto con el zoom. */
+@layer utilities {
+  .min-h-screen { min-height: calc(100vh / 0.85); }
+  .h-screen { height: calc(100vh / 0.85); }
 }
 
 /* ─── Scrollbar styling ──────────────────────────────── */
