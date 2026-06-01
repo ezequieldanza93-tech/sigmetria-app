@@ -13,6 +13,8 @@ import {
   Hash,
   MapPin,
   ExternalLink,
+  Users,
+  Briefcase,
 } from 'lucide-react'
 import Image from 'next/image'
 import type { Consultora } from '@/lib/types'
@@ -23,10 +25,31 @@ interface EmpresaConEstablecimientos {
   establecimientos: { id: string; nombre: string }[]
 }
 
+interface UsuarioInfo {
+  fullName: string
+  email: string | null
+  avatarUrl: string | null
+  rolLabel: string
+}
+
 interface Props {
   consultora: Consultora
   empresas: EmpresaConEstablecimientos[]
   canWrite: boolean
+  usuario?: UsuarioInfo | null
+}
+
+const TIPO_LABEL: Record<string, string> = {
+  consultora: 'Consultora',
+  profesional: 'Profesional independiente',
+  profesional_independiente: 'Profesional independiente',
+}
+
+function antiguedad(desde: string | null): string | null {
+  if (!desde) return null
+  const d = new Date(desde)
+  if (Number.isNaN(d.getTime())) return null
+  return d.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
 }
 
 /**
@@ -42,7 +65,12 @@ interface Props {
  * No embebe el contenido de las fichas: es un árbol liviano para navegar rápido
  * y abrir la ficha que corresponda a cada nivel.
  */
-export function ConsultoraFichaGlobal({ consultora, empresas }: Props) {
+export function ConsultoraFichaGlobal({ consultora, empresas, usuario }: Props) {
+  const tipoLabel = consultora.tipo ? (TIPO_LABEL[consultora.tipo] ?? consultora.tipo) : null
+  const desde = antiguedad(consultora.created_at)
+  const socials = consultora.social_links && typeof consultora.social_links === 'object'
+    ? Object.entries(consultora.social_links).filter(([, v]) => typeof v === 'string' && v)
+    : []
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
   const toggle = useCallback((id: string) => {
@@ -123,9 +151,80 @@ export function ConsultoraFichaGlobal({ consultora, empresas }: Props) {
                   </dd>
                 </div>
               )}
+              {tipoLabel && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Briefcase size={14} className="text-text-tertiary shrink-0" aria-hidden="true" />
+                  <dt className="sr-only">Tipo</dt>
+                  <dd className="text-text-secondary truncate">{tipoLabel}</dd>
+                </div>
+              )}
+              {typeof consultora.seats_max === 'number' && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Users size={14} className="text-text-tertiary shrink-0" aria-hidden="true" />
+                  <dt className="sr-only">Asientos</dt>
+                  <dd className="text-text-secondary truncate">{consultora.seats_max} usuarios</dd>
+                </div>
+              )}
+              {desde && (
+                <div className="flex items-center gap-2 text-sm">
+                  <FileText size={14} className="text-text-tertiary shrink-0" aria-hidden="true" />
+                  <dt className="sr-only">Antigüedad</dt>
+                  <dd className="text-text-secondary truncate">Desde {desde}</dd>
+                </div>
+              )}
             </dl>
+
+            <div className="mt-3 flex items-center gap-2 flex-wrap">
+              <span
+                className={`inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full ${
+                  consultora.is_active
+                    ? 'bg-success-bg text-success'
+                    : 'bg-surface-sunken text-text-tertiary'
+                }`}
+              >
+                {consultora.is_active ? 'Activa' : 'Inactiva'}
+              </span>
+              {socials.map(([red, url]) => (
+                <a
+                  key={red}
+                  href={url as string}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={red}
+                  className="inline-flex items-center gap-1 text-xs text-sig-600 hover:text-sig-700 transition-colors"
+                >
+                  <Globe size={13} aria-hidden="true" />
+                  <span className="capitalize">{red}</span>
+                </a>
+              ))}
+            </div>
           </div>
         </div>
+
+        {/* Usuario actual */}
+        {usuario && (
+          <div className="mt-5 pt-4 border-t border-border-subtle flex items-center gap-3">
+            {usuario.avatarUrl ? (
+              <Image
+                src={usuario.avatarUrl}
+                alt={usuario.fullName}
+                width={40}
+                height={40}
+                className="h-10 w-10 rounded-full object-cover shrink-0"
+              />
+            ) : (
+              <div className="h-10 w-10 rounded-full bg-sig-500/10 flex items-center justify-center shrink-0 text-sm font-semibold text-sig-600">
+                {usuario.fullName.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase()}
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-text-primary truncate">{usuario.fullName}</p>
+              <p className="text-xs text-text-tertiary truncate">
+                {usuario.rolLabel}{usuario.email ? ` · ${usuario.email}` : ''}
+              </p>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Nivel 1 — Empresas */}
