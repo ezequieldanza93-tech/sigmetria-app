@@ -43,6 +43,12 @@ export function EmpresaShell({ empresaId, establecimientos, children }: EmpresaS
       })),
     },
     {
+      id: 'ficha',
+      label: 'Ficha',
+      icon: FileText,
+      href: `${baseUrl}?section=ficha`,
+    },
+    {
       id: 'gestiones',
       label: 'Gestiones',
       icon: ClipboardList,
@@ -59,12 +65,6 @@ export function EmpresaShell({ empresaId, establecimientos, children }: EmpresaS
       label: 'Dashboards',
       icon: BarChart3,
       href: `${baseUrl}?section=dashboard`,
-    },
-    {
-      id: 'ficha',
-      label: 'Ficha',
-      icon: FileText,
-      href: `${baseUrl}?section=ficha`,
     },
   ]
 

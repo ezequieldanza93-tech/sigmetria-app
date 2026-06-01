@@ -1,8 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import Link from 'next/link'
-import { ChevronDown, ChevronRight, Building2, ExternalLink } from 'lucide-react'
+import { ChevronDown, ChevronRight, Building2 } from 'lucide-react'
 import { SectoresTab } from '@/components/establecimiento/sectores-tab'
 import { StakeholdersTab } from '@/components/establecimiento/stakeholders-tab'
 import { AsistenciaTab } from '@/components/establecimiento/asistencia-tab'
@@ -150,7 +149,6 @@ export function EmpresaFichaEstablecimientos({ empresaId, establecimientos, canW
 
       {establecimientos.map(est => {
         const isOpen = expanded.has(est.id)
-        const baseUrl = `/dashboard/empresas/${empresaId}/establecimientos/${est.id}`
         const active: Tab = subTab[est.id] ?? 'info'
         const state: LoadState = loadState[est.id] ?? { status: 'idle' }
 
@@ -170,13 +168,6 @@ export function EmpresaFichaEstablecimientos({ empresaId, establecimientos, canW
               </span>
               <Building2 size={16} className="text-sig-500 shrink-0" aria-hidden="true" />
               <span className="font-medium text-text-primary truncate flex-1">{est.nombre}</span>
-              <Link
-                href={baseUrl}
-                onClick={e => e.stopPropagation()}
-                className="inline-flex items-center gap-1 text-xs text-sig-500 hover:text-sig-700 transition-colors shrink-0"
-              >
-                Abrir ficha <ExternalLink size={13} aria-hidden="true" />
-              </Link>
             </button>
 
             {isOpen && (
