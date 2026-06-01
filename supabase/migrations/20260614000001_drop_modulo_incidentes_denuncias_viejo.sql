@@ -50,6 +50,8 @@ DROP POLICY IF EXISTS "denuncias storage: insert"  ON storage.objects;
 DROP POLICY IF EXISTS "denuncias storage: delete"  ON storage.objects;
 
 -- ── Storage buckets (vacíos) ─────────────────────────────────
-DELETE FROM storage.buckets WHERE id IN ('incidentes', 'denuncias');
+-- NOTA: los buckets se eliminan vía Storage API (no por SQL directo,
+-- que Postgres bloquea con storage.protect_delete). Buckets vacíos
+-- huérfanos no afectan el funcionamiento; se limpian aparte si se desea.
 
 COMMIT;
