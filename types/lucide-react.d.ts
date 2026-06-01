@@ -25,7 +25,6 @@ declare module 'lucide-react' {
   export const Brain: Icon
   export const Briefcase: Icon
   export const Building2: Icon
-  export const Calendar: Icon
   export const CalendarCheck: Icon
   export const CalendarClock: Icon
   export const CalendarDays: Icon
@@ -49,12 +48,10 @@ declare module 'lucide-react' {
   export const Columns: Icon
   export const CreditCard: Icon
   export const Crosshair: Icon
-  export const Database: Icon
   export const Download: Icon
   export const Dumbbell: Icon
   export const ExternalLink: Icon
   export const Eye: Icon
-  export const EyeOff: Icon
   export const File: Icon
   export const FileCheck: Icon
   export const FileSignature: Icon
@@ -64,6 +61,7 @@ declare module 'lucide-react' {
   export const GraduationCap: Icon
   export const Grid3X3: Icon
   export const GripVertical: Icon
+  export const Hash: Icon
   export const Heart: Icon
   export const HelpCircle: Icon
   export const History: Icon
@@ -102,7 +100,6 @@ declare module 'lucide-react' {
   export const RefreshCw: Icon
   export const RotateCcw: Icon
   export const Save: Icon
-  export const Scale: Icon
   export const Search: Icon
   export const Send: Icon
   export const Settings: Icon
@@ -113,7 +110,6 @@ declare module 'lucide-react' {
   export const Sparkles: Icon
   export const Star: Icon
   export const Sun: Icon
-  export const Target: Icon
   export const Trash2: Icon
   export const TrendingDown: Icon
   export const TrendingUp: Icon
