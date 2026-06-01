@@ -1,10 +1,23 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import Link from 'next/link'
 import { ChevronDown, ChevronRight, Building2, ExternalLink } from 'lucide-react'
+import { SectoresTab } from '@/components/establecimiento/sectores-tab'
 import { StakeholdersTab } from '@/components/establecimiento/stakeholders-tab'
 import { AsistenciaTab } from '@/components/establecimiento/asistencia-tab'
+import { IncidentesTab } from '@/components/establecimiento/incidentes-tab'
+import { InspeccionesTab } from '@/components/establecimiento/inspecciones-tab'
+import { DocumentosTab } from '@/components/establecimiento/documentos-tab'
+import { DenunciasTab } from '@/components/establecimiento/denuncias-tab'
+import { FeedbackTab } from '@/components/establecimiento/feedback-tab'
+import { LegajoTab } from '@/components/establecimiento/legajo-tab'
+import { InfoTab } from '@/components/establecimiento/info-tab'
+import { MapaRiesgoTab } from '@/components/iperc/mapa-riesgo-tab'
+import {
+  getEstablecimientoFichaData,
+  type EstablecimientoFichaData,
+} from '@/lib/actions/establecimiento-ficha'
 
 interface EstablecimientoLite {
   id: string
@@ -17,28 +30,24 @@ interface Props {
   canWrite: boolean
 }
 
-/**
- * Ficha a nivel empresa: lista los establecimientos de la empresa como un
- * acordeón, colapsado por defecto. Al expandir cada uno se muestran sus datos
- * agrupados por establecimiento.
- *
- * Diseño: los tabs que cargan sus propios datos client-side (Directorio,
- * Asistencia — solo necesitan establecimientoId) se embeben con datos REALES.
- * Los tabs que requieren queries pesadas pre-cargadas en el server (Sectores,
- * Incidentes, Inspecciones, Documentos, Legajo, Denuncias, Feedback, Mapa)
- * se ofrecen como acceso directo a la ficha del establecimiento, para no
- * cargar decenas de queries por cada establecimiento de golpe.
- * Carga diferida: nada se monta hasta que el usuario expande el acordeón.
- */
+type Tab =
+  | 'info'
+  | 'sectores'
+  | 'stakeholders'
+  | 'asistencia'
+  | 'incidentes'
+  | 'inspecciones'
+  | 'documentos'
+  | 'legajo'
+  | 'denuncias'
+  | 'feedback'
+  | 'mapa_riesgo'
 
-const EMBEBIDOS = [
-  { id: 'stakeholders', label: 'Directorio' },
-  { id: 'asistencia', label: 'Asistencia' },
-] as const
-
-const ACCESOS = [
+const TABS: { id: Tab; label: string }[] = [
   { id: 'info', label: 'Información' },
   { id: 'sectores', label: 'Sectores' },
+  { id: 'stakeholders', label: 'Directorio' },
+  { id: 'asistencia', label: 'Asistencia' },
   { id: 'incidentes', label: 'Incidentes' },
   { id: 'inspecciones', label: 'Inspecciones' },
   { id: 'documentos', label: 'Documentos' },
@@ -48,9 +57,77 @@ const ACCESOS = [
   { id: 'mapa_riesgo', label: 'Mapa de Riesgo' },
 ]
 
+type LoadState =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'error'; message: string }
+  | { status: 'ready'; data: EstablecimientoFichaData }
+
+/**
+ * Ficha a nivel empresa: lista los establecimientos de la empresa como un
+ * acordeón, colapsado por defecto. Al expandir cada uno se cargan (de forma
+ * DIFERIDA) TODOS sus datos vía la server action getEstablecimientoFichaData
+ * y se renderizan los 11 tabs del establecimiento con DATOS REALES.
+ *
+ * Carga diferida real: la action solo se invoca cuando el usuario expande ese
+ * establecimiento puntual. El resultado se cachea por establecimientoId para
+ * no re-fetchear al colapsar/expandir de nuevo.
+ *
+ * Nota de diseño: NO se reusa el componente EstablecimientoTabs porque ese
+ * gestiona el tab activo vía el query param `?tab=` de la URL. Montar varias
+ * instancias en el acordeón las haría competir por el mismo param. Acá se
+ * renderizan los tabs individuales con estado local por establecimiento.
+ */
 export function EmpresaFichaEstablecimientos({ empresaId, establecimientos, canWrite }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
-  const [subTab, setSubTab] = useState<Record<string, string>>({})
+  const [subTab, setSubTab] = useState<Record<string, Tab>>({})
+  const [loadState, setLoadState] = useState<Record<string, LoadState>>({})
+
+  const loadFicha = useCallback(
+    async (estId: string) => {
+      setLoadState(prev => ({ ...prev, [estId]: { status: 'loading' } }))
+      try {
+        const data = await getEstablecimientoFichaData(estId, empresaId)
+        if (!data) {
+          setLoadState(prev => ({
+            ...prev,
+            [estId]: { status: 'error', message: 'No se encontró el establecimiento.' },
+          }))
+          return
+        }
+        setLoadState(prev => ({ ...prev, [estId]: { status: 'ready', data } }))
+      } catch {
+        setLoadState(prev => ({
+          ...prev,
+          [estId]: { status: 'error', message: 'No se pudieron cargar los datos.' },
+        }))
+      }
+    },
+    [empresaId]
+  )
+
+  const toggle = useCallback(
+    (id: string) => {
+      setExpanded(prev => {
+        const next = new Set(prev)
+        if (next.has(id)) {
+          next.delete(id)
+        } else {
+          next.add(id)
+          // Carga diferida: solo al expandir, y solo si no se cargó antes.
+          setLoadState(curr => {
+            const current = curr[id]
+            if (!current || current.status === 'error') {
+              void loadFicha(id)
+            }
+            return curr
+          })
+        }
+        return next
+      })
+    },
+    [loadFicha]
+  )
 
   if (establecimientos.length === 0) {
     return (
@@ -60,30 +137,28 @@ export function EmpresaFichaEstablecimientos({ empresaId, establecimientos, canW
     )
   }
 
-  const toggle = (id: string) => {
-    setExpanded(prev => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
-
   return (
     <div className="space-y-2">
       <h3 className="text-sm font-semibold text-text-secondary dark:text-white mb-1">
         Fichas de establecimientos
       </h3>
       <p className="text-xs text-text-tertiary mb-3">
-        {establecimientos.length} {establecimientos.length === 1 ? 'establecimiento' : 'establecimientos'} — clic para ver sus datos
+        {establecimientos.length}{' '}
+        {establecimientos.length === 1 ? 'establecimiento' : 'establecimientos'} — clic para ver sus
+        datos
       </p>
 
       {establecimientos.map(est => {
         const isOpen = expanded.has(est.id)
         const baseUrl = `/dashboard/empresas/${empresaId}/establecimientos/${est.id}`
-        const active = subTab[est.id] ?? 'stakeholders'
+        const active: Tab = subTab[est.id] ?? 'info'
+        const state: LoadState = loadState[est.id] ?? { status: 'idle' }
+
         return (
-          <div key={est.id} className="bg-surface-base border border-border-subtle rounded-xl overflow-hidden">
+          <div
+            key={est.id}
+            className="bg-surface-base border border-border-subtle rounded-xl overflow-hidden"
+          >
             <button
               type="button"
               onClick={() => toggle(est.id)}
@@ -106,48 +181,131 @@ export function EmpresaFichaEstablecimientos({ empresaId, establecimientos, canW
 
             {isOpen && (
               <div className="border-t border-border-subtle bg-surface-sunken/20 p-4">
-                {/* Sub-tabs internos del establecimiento */}
-                <div className="flex flex-wrap gap-1 border-b border-border-subtle mb-4">
-                  {EMBEBIDOS.map(t => (
+                {state.status === 'loading' && (
+                  <p className="text-sm text-text-tertiary py-6 text-center">Cargando…</p>
+                )}
+
+                {state.status === 'error' && (
+                  <div className="py-6 text-center">
+                    <p className="text-sm text-danger mb-2">{state.message}</p>
                     <button
-                      key={t.id}
                       type="button"
-                      onClick={() => setSubTab(prev => ({ ...prev, [est.id]: t.id }))}
-                      className={`px-3 py-1.5 text-xs font-medium rounded-t-lg -mb-px border-b-2 transition-colors ${
-                        active === t.id
-                          ? 'border-sig-500 text-sig-600'
-                          : 'border-transparent text-text-secondary hover:text-text-primary'
-                      }`}
+                      onClick={() => void loadFicha(est.id)}
+                      className="text-xs text-sig-500 hover:text-sig-700 transition-colors"
                     >
-                      {t.label}
+                      Reintentar
                     </button>
-                  ))}
-                </div>
-
-                <div className="bg-surface-base rounded-lg p-3">
-                  {active === 'stakeholders' && (
-                    <StakeholdersTab establecimientoId={est.id} empresaId={empresaId} canWrite={canWrite} />
-                  )}
-                  {active === 'asistencia' && (
-                    <AsistenciaTab establecimientoId={est.id} empresaId={empresaId} canWrite={canWrite} />
-                  )}
-                </div>
-
-                {/* Accesos directos al resto de las secciones */}
-                <div className="mt-4">
-                  <p className="text-[11px] uppercase tracking-wider text-text-tertiary mb-2">Más secciones</p>
-                  <div className="flex flex-wrap gap-2">
-                    {ACCESOS.map(tab => (
-                      <Link
-                        key={tab.id}
-                        href={`${baseUrl}?tab=${tab.id}`}
-                        className="inline-flex items-center bg-surface-base border border-border-subtle rounded-lg px-3 py-1.5 text-xs text-text-secondary hover:border-sig-500 hover:text-sig-500 transition-all"
-                      >
-                        {tab.label}
-                      </Link>
-                    ))}
                   </div>
-                </div>
+                )}
+
+                {state.status === 'ready' && (
+                  <>
+                    {/* Sub-tabs internos del establecimiento */}
+                    <div className="flex flex-wrap gap-1 border-b border-border-subtle mb-4">
+                      {TABS.map(t => (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => setSubTab(prev => ({ ...prev, [est.id]: t.id }))}
+                          className={`px-3 py-1.5 text-xs font-medium rounded-t-lg -mb-px border-b-2 transition-colors ${
+                            active === t.id
+                              ? 'border-sig-500 text-sig-600'
+                              : 'border-transparent text-text-secondary hover:text-text-primary'
+                          }`}
+                        >
+                          {t.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="bg-surface-base rounded-lg p-3">
+                      {active === 'info' && (
+                        <InfoTab
+                          establecimiento={state.data.establecimiento}
+                          canWrite={canWrite}
+                          empresaId={empresaId}
+                        />
+                      )}
+                      {active === 'sectores' && (
+                        <SectoresTab
+                          sectores={state.data.sectores}
+                          establecimientoId={est.id}
+                          empresaId={empresaId}
+                          canWrite={canWrite}
+                          canDelete={false}
+                        />
+                      )}
+                      {active === 'stakeholders' && (
+                        <StakeholdersTab
+                          establecimientoId={est.id}
+                          empresaId={empresaId}
+                          canWrite={canWrite}
+                        />
+                      )}
+                      {active === 'asistencia' && (
+                        <AsistenciaTab
+                          establecimientoId={est.id}
+                          empresaId={empresaId}
+                          canWrite={canWrite}
+                        />
+                      )}
+                      {active === 'incidentes' && (
+                        <IncidentesTab
+                          incidentes={state.data.incidentes}
+                          establecimientoId={est.id}
+                          empresaId={empresaId}
+                          canWrite={canWrite}
+                        />
+                      )}
+                      {active === 'inspecciones' && (
+                        <InspeccionesTab
+                          inspecciones={state.data.inspecciones}
+                          establecimientoId={est.id}
+                          empresaId={empresaId}
+                          canWrite={canWrite}
+                        />
+                      )}
+                      {active === 'documentos' && (
+                        <DocumentosTab
+                          documentos={state.data.documentos}
+                          documentTypes={state.data.documentTypes}
+                          establecimientoId={est.id}
+                          empresaId={empresaId}
+                          canWrite={canWrite}
+                        />
+                      )}
+                      {active === 'legajo' && (
+                        <LegajoTab
+                          empresaDocumentos={state.data.empresaDocumentos}
+                          establecimientoDocumentos={state.data.documentos}
+                          gestionesLegajo={state.data.gestionesLegajo}
+                          trabajadorDocumentos={state.data.trabajadorDocumentos}
+                        />
+                      )}
+                      {active === 'denuncias' && (
+                        <DenunciasTab
+                          denuncias={state.data.denuncias}
+                          establecimientoId={est.id}
+                          canWrite={canWrite}
+                        />
+                      )}
+                      {active === 'feedback' && (
+                        <FeedbackTab
+                          feedbackClientes={state.data.feedbackClientes}
+                          establecimientoId={est.id}
+                          canWrite={canWrite}
+                        />
+                      )}
+                      {active === 'mapa_riesgo' && (
+                        <MapaRiesgoTab
+                          establecimientoId={est.id}
+                          canWrite={canWrite}
+                          planoUrl={state.data.planoUrl}
+                        />
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>
