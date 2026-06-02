@@ -2,7 +2,13 @@
 
 import { useState } from 'react'
 import { CalendarClock, RefreshCw, Info } from 'lucide-react'
-import { useConfiguracionVencimientos, useUpdateConfiguracionVencimiento } from '@/lib/queries/notificacion'
+import {
+  useConfiguracionVencimientos,
+  useUpdateConfiguracionVencimiento,
+  usePaises,
+  useUpdatePaisDocumento,
+} from '@/lib/queries/notificacion'
+import { banderaClase } from '@/lib/paises'
 import type { ConfiguracionVencimiento, TipoEntidadVencimiento } from '@/lib/types'
 
 const TIPO_ENTIDAD_LABELS: Record<TipoEntidadVencimiento, string> = {
@@ -45,8 +51,16 @@ function ToggleSwitch({
 
 export default function VencimientosConfigPage() {
   const { data: configs, isLoading, refetch } = useConfiguracionVencimientos()
+  const { data: paises } = usePaises()
   const updateMutation = useUpdateConfiguracionVencimiento()
+  const updatePaisMutation = useUpdatePaisDocumento()
   const [localDias, setLocalDias] = useState<Record<string, string>>({})
+
+  // Países ordenados: Argentina (AR) primero, resto alfabético (ya viene ordenado por nombre).
+  const paisesOrdenados = [
+    ...(paises ?? []).filter(p => p.codigo === 'AR'),
+    ...(paises ?? []).filter(p => p.codigo !== 'AR'),
+  ]
 
   const handleToggleVencimiento = (item: ConfiguracionVencimiento) => {
     updateMutation.mutate({ id: item.id, updates: { tiene_vencimiento: !item.tiene_vencimiento } })
@@ -65,6 +79,11 @@ export default function VencimientosConfigPage() {
 
   const handleTipoEntidad = (item: ConfiguracionVencimiento, tipo: TipoEntidadVencimiento) => {
     updateMutation.mutate({ id: item.id, updates: { tipo_entidad: tipo } })
+  }
+
+  const handlePais = (item: ConfiguracionVencimiento, paisCodigo: string) => {
+    if (!item.documento_tipo_id) return
+    updatePaisMutation.mutate({ documentoTipoId: item.documento_tipo_id, paisCodigo })
   }
 
   const grouped = TIPO_ENTIDAD_ORDER.map(tipo => ({
@@ -134,6 +153,7 @@ export default function VencimientosConfigPage() {
                       <tr className="bg-surface-sunken text-xs font-medium text-text-tertiary uppercase tracking-wider">
                         <th className="text-left px-4 py-2.5">Nombre</th>
                         <th className="text-center px-3 py-2.5 w-36">Sección</th>
+                        <th className="text-center px-3 py-2.5 w-44">País</th>
                         <th className="text-center px-3 py-2.5 w-28">Notificación</th>
                         <th className="text-center px-3 py-2.5 w-24">Días aviso</th>
                         <th className="text-center px-3 py-2.5 w-20">Activo</th>
@@ -161,6 +181,28 @@ export default function VencimientosConfigPage() {
                                 <option key={tipo} value={tipo}>{TIPO_ENTIDAD_LABELS[tipo]}</option>
                               ))}
                             </select>
+                          </td>
+                          <td className="px-3 py-2.5 text-center">
+                            {item.documento_tipo_id ? (
+                              <div className="flex items-center justify-center gap-1.5">
+                                {/* Bandera SVG (flag-icons) del país seleccionado — se ve a color en todos los SO */}
+                                <span className={`${banderaClase(item.pais_id ?? 'AR')} rounded-sm shrink-0`} style={{ width: 18, height: 13 }} aria-hidden="true" />
+                                <select
+                                  value={item.pais_id ?? 'AR'}
+                                  onChange={e => handlePais(item, e.target.value)}
+                                  disabled={updatePaisMutation.isPending}
+                                  className="text-xs bg-surface-base border border-border-subtle rounded-md px-2 py-1 text-text-secondary focus:outline-none focus:ring-2 focus:ring-brand-primary disabled:opacity-40 disabled:cursor-not-allowed"
+                                >
+                                  {paisesOrdenados.map(p => (
+                                    <option key={p.codigo} value={p.codigo}>
+                                      {p.nombre}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-text-tertiary">—</span>
+                            )}
                           </td>
                           <td className="px-3 py-2.5 text-center">
                             <div className="flex justify-center">

@@ -8,6 +8,7 @@ import { QueryProvider } from '@/components/query-provider'
 import { NetworkStatusBanner } from '@/components/network-status'
 import { ErrorCapture } from '@/components/error-capture'
 import { Toaster } from '@/components/ui/toaster'
+import 'flag-icons/css/flag-icons.min.css'
 import './globals.css'
 
 const poppins = Poppins({

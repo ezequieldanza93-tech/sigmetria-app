@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import type { ActionResult, ConfiguracionVencimiento, TipoEntidadVencimiento } from '@/lib/types'
+import type { ActionResult, ConfiguracionVencimiento, Pais, TipoEntidadVencimiento } from '@/lib/types'
 
 async function getUser() {
   const supabase = await createClient()
@@ -30,7 +30,43 @@ export async function getConfiguracionVencimientos(): Promise<ConfiguracionVenci
     .order('tipo_entidad', { ascending: true })
     .order('nombre', { ascending: true })
 
-  return (data ?? []) as ConfiguracionVencimiento[]
+  const items = (data ?? []) as ConfiguracionVencimiento[]
+
+  // El item NO tiene FK a documentos_tipos: se relaciona por `nombre`.
+  // Enriquecemos cada item de tipo documento con el id + pais_id del tipo
+  // de documento correspondiente. Los items 'gestion' no tienen país.
+  const { data: tipos } = await supabase
+    .from('documentos_tipos')
+    .select('id, nombre, pais_id')
+
+  const tiposByNombre = new Map<string, { id: string; pais_id: string | null }>()
+  for (const t of (tipos ?? []) as { id: string; nombre: string; pais_id: string | null }[]) {
+    tiposByNombre.set(t.nombre, { id: t.id, pais_id: t.pais_id })
+  }
+
+  return items.map(item => {
+    if (item.tipo_entidad === 'gestion') {
+      return { ...item, documento_tipo_id: null, pais_id: null }
+    }
+    const t = tiposByNombre.get(item.nombre)
+    return {
+      ...item,
+      documento_tipo_id: t?.id ?? null,
+      pais_id: t?.pais_id ?? null,
+    }
+  })
+}
+
+export async function getPaises(): Promise<Pais[]> {
+  const { supabase } = await getUser()
+
+  const { data } = await supabase
+    .from('paises')
+    .select('codigo, nombre, activo')
+    .eq('activo', true)
+    .order('nombre', { ascending: true })
+
+  return (data ?? []) as Pais[]
 }
 
 export async function updateConfiguracionVencimiento(
@@ -43,6 +79,25 @@ export async function updateConfiguracionVencimiento(
     .from('configuracion_vencimientos')
     .update({ ...updates, updated_at: new Date().toISOString() })
     .eq('id', id)
+
+  if (error) return { success: false, error: error.message }
+  return { success: true, data: null }
+}
+
+/**
+ * Actualiza el país (catálogo) del tipo de documento. El país vive en
+ * documentos_tipos.pais_id (catálogo compartido), NO en configuracion_vencimientos.
+ */
+export async function updatePaisDocumento(
+  documentoTipoId: string,
+  paisCodigo: string
+): Promise<ActionResult<null>> {
+  const { supabase } = await getUser()
+
+  const { error } = await supabase
+    .from('documentos_tipos')
+    .update({ pais_id: paisCodigo, updated_at: new Date().toISOString() })
+    .eq('id', documentoTipoId)
 
   if (error) return { success: false, error: error.message }
   return { success: true, data: null }

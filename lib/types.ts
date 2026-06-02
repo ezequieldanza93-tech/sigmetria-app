@@ -1060,6 +1060,16 @@ export interface ConfiguracionVencimiento {
   activo: boolean
   created_at: string
   updated_at: string
+  // Derivados del documento_tipo asociado (match por nombre). Solo presentes para
+  // items de tipo documento (empresa/establecimiento/persona); null para gestión.
+  documento_tipo_id?: string | null
+  pais_id?: string | null
+}
+
+export interface Pais {
+  codigo: string
+  nombre: string
+  activo: boolean
 }
 
 // ---- Dashboard ----
