@@ -19,10 +19,12 @@ function parseRouteContext(pathname: string): { empresaId?: string; establecimie
   return { empresaId, establecimientoId }
 }
 
+// Orden de arriba hacia abajo en el speed-dial (flex-col):
+// SIGIA arriba, cámara en el medio, "+" abajo (el más cercano al botón principal).
 const MENU_ITEMS = [
-  { icon: Plus,   label: 'Planificar gestión',       action: 'plan-gestion' as const },
-  { icon: Camera, label: 'Reporte fotográfico',       action: 'open-reporte-fotografico' as const },
   { icon: Brain,  label: 'SIGIA',                    action: 'open-sigia' as const },
+  { icon: Camera, label: 'Reporte fotográfico',       action: 'open-reporte-fotografico' as const },
+  { icon: Plus,   label: 'Planificar gestión',       action: 'plan-gestion' as const },
 ]
 
 export function ChatWidget() {
@@ -82,12 +84,13 @@ export function ChatWidget() {
             <button
               key={action}
               onClick={() => handleItem(action)}
-              className="flex items-center gap-2.5"
+              className="group flex items-center gap-2.5"
             >
-              <span className="bg-gray-900/90 text-white text-xs font-medium rounded-lg px-2.5 py-1.5 whitespace-nowrap shadow-lg">
+              {/* Label visible solo al hacer hover sobre este botón */}
+              <span className="bg-gray-900/90 text-white text-xs font-medium rounded-lg px-2.5 py-1.5 whitespace-nowrap shadow-lg opacity-0 pointer-events-none transition-opacity duration-150 group-hover:opacity-100">
                 {label}
               </span>
-              <div className="w-11 h-11 rounded-full bg-sig-600 hover:bg-sig-700 text-white shadow-md flex items-center justify-center transition-all hover:scale-110 active:scale-95 shrink-0">
+              <div className="w-11 h-11 rounded-full bg-sig-500 hover:bg-sig-700 text-white shadow-md flex items-center justify-center transition-all hover:scale-110 active:scale-95 shrink-0">
                 <Icon size={18} strokeWidth={2} />
               </div>
             </button>
