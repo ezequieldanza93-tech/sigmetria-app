@@ -109,7 +109,7 @@ export default async function EmpresasPage({ searchParams }: Props) {
       )}
 
       {section === 'gestiones' && (
-        <GestionesAggregate rows={gestionesRows} showEmpresaFilter showEstablecimientoFilter />
+        <GestionesAggregate rows={gestionesRows} showEmpresaFilter showEstablecimientoFilter title="Gestiones (globales)" />
       )}
 
       {section === 'seguimiento' && (

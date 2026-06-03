@@ -120,6 +120,8 @@ interface GestionesAgendaProps {
   empresaId: string
   canWrite: boolean
   riesgos: Riesgo[]
+  /** Nombre del establecimiento, para el título "Gestiones (nombre) {año}". */
+  establecimientoNombre?: string
 }
 
 // ─── InlineCreator ─────────────────────────────────────────────────────────────
@@ -1055,7 +1057,7 @@ function AgendaActionsCell({
 
 
 // ─── Main component ────────────────────────────────────────────────────────────
-export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, riesgos: _riesgos }: GestionesAgendaProps) {
+export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, riesgos: _riesgos, establecimientoNombre }: GestionesAgendaProps) {
   const queryClient = useQueryClient()
   const { data: canWriteData } = useCanWrite(establecimientoId)
   const canWrite = canWriteProp || (canWriteData ?? false)
@@ -1650,7 +1652,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
         </button>
         <div className="flex items-center gap-3">
           <button onClick={() => setYear(year - 1)} className="text-text-tertiary hover:text-white text-lg leading-none">‹‹</button>
-          <span className="text-base font-semibold tracking-wide">Gestiones {year}</span>
+          <span className="text-base font-semibold tracking-wide">{establecimientoNombre ? `Gestiones (${establecimientoNombre})` : 'Gestiones'} {year}</span>
           <button onClick={() => setYear(year + 1)} className="text-text-tertiary hover:text-white text-lg leading-none">››</button>
         </div>
         <button onClick={() => setYear(year + 1)} className="text-text-tertiary hover:text-white text-sm font-medium w-12 text-right">
