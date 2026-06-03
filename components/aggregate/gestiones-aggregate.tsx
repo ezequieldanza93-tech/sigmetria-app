@@ -310,7 +310,43 @@ export function GestionesAggregate({
           <span className="text-xs text-text-tertiary tabular-nums">{anio + 1}</span>
         </div>
 
-        <div className="ml-auto flex items-center gap-3">
+        <div className="ml-auto">
+          <span className="text-xs text-text-tertiary whitespace-nowrap">{filtered.length} de {rows.length}</span>
+        </div>
+      </div>
+
+      {/* Filtros + Ordenar + Agrupar + selector de vista — todo en la misma fila */}
+      <div className="flex flex-wrap items-center gap-2">
+        {/* Filtros — izquierda */}
+        <div className="relative">
+          <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary" />
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Buscar gestión…"
+            className="pl-8 pr-3 py-1.5 text-xs border border-border-default rounded-lg bg-surface-base text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary/30 w-44"
+          />
+        </div>
+        {showEmpresaFilter && (
+          <MultiFilterWithAll label="Empresa" options={empresaOptions} selected={empresaSel} onChange={setEmpresaSel} />
+        )}
+        {showEstablecimientoFilter && (
+          <MultiFilterWithAll label="Establecimiento" options={establecimientoOptions} selected={estSel} onChange={setEstSel} />
+        )}
+        <MultiFilterWithAll label="Grupo" options={grupoOptions} selected={grupoSel} onChange={setGrupoSel} />
+        <MultiFilterWithAll label="Categoría" options={categoriaOptions} selected={categoriaSel} onChange={setCategoriaSel} />
+        <MultiFilterWithAll label="Responsable" options={responsableOptions} selected={responsableSel} onChange={setResponsableSel} />
+        <MultiFilterWithAll label="Estado" options={ESTADOS.map(e => ({ value: e, label: e }))} selected={estadoSel} onChange={setEstadoSel} />
+
+        {/* Ordenar + Agrupar + selector de vista — derecha */}
+        <div className="ml-auto flex items-center gap-2">
+          {viewMode === 'tabla' && (
+            <>
+              <SortPanel cols={availableCols} sorts={sorts} onChange={setSorts} open={sortOpen} onOpenChange={setSortOpen} />
+              <GroupPanel cols={availableCols} groups={groups} onChange={setGroups} open={groupOpen} onOpenChange={setGroupOpen} onCollapseAll={collapseAll} onExpandAll={expandAll} hasGroups={!!grouped} />
+            </>
+          )}
           <div className="flex items-center gap-0.5 border border-border-default rounded-lg p-0.5 bg-surface-base">
             {([
               { mode: 'tabla' as const, icon: List, label: 'Tabla' },
@@ -332,55 +368,7 @@ export function GestionesAggregate({
               </button>
             ))}
           </div>
-          <span className="text-xs text-text-tertiary whitespace-nowrap">{filtered.length} de {rows.length}</span>
         </div>
-      </div>
-
-      {/* Ordenar / Agrupar — solo en vista tabla (donde tienen sentido visual) */}
-      {viewMode === 'tabla' && (
-        <div className="flex items-center gap-2">
-          <SortPanel
-            cols={availableCols}
-            sorts={sorts}
-            onChange={setSorts}
-            open={sortOpen}
-            onOpenChange={setSortOpen}
-          />
-          <GroupPanel
-            cols={availableCols}
-            groups={groups}
-            onChange={setGroups}
-            open={groupOpen}
-            onOpenChange={setGroupOpen}
-            onCollapseAll={collapseAll}
-            onExpandAll={expandAll}
-            hasGroups={!!grouped}
-          />
-        </div>
-      )}
-
-      {/* Filtros */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative">
-          <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary" />
-          <input
-            type="text"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar gestión…"
-            className="pl-8 pr-3 py-1.5 text-xs border border-border-default rounded-lg bg-surface-base text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary/30 w-44"
-          />
-        </div>
-        {showEmpresaFilter && (
-          <MultiFilterWithAll label="Empresa" options={empresaOptions} selected={empresaSel} onChange={setEmpresaSel} />
-        )}
-        {showEstablecimientoFilter && (
-          <MultiFilterWithAll label="Establecimiento" options={establecimientoOptions} selected={estSel} onChange={setEstSel} />
-        )}
-        <MultiFilterWithAll label="Grupo" options={grupoOptions} selected={grupoSel} onChange={setGrupoSel} />
-        <MultiFilterWithAll label="Categoría" options={categoriaOptions} selected={categoriaSel} onChange={setCategoriaSel} />
-        <MultiFilterWithAll label="Responsable" options={responsableOptions} selected={responsableSel} onChange={setResponsableSel} />
-        <MultiFilterWithAll label="Estado" options={ESTADOS.map(e => ({ value: e, label: e }))} selected={estadoSel} onChange={setEstadoSel} />
       </div>
 
       {/* Tiles de meses */}
