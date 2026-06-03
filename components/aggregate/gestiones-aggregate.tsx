@@ -142,6 +142,29 @@ export function GestionesAggregate({
     })
   }, [rows, anio, selectedMonths, empresaSel, estSel, estadoSel, grupoSel, categoriaSel, responsableSel, search])
 
+  // Contador por mes — aplica todos los filtros EXCEPTO el de mes, para mostrar
+  // cuántas gestiones hay en cada tile con la selección actual.
+  const monthCounts = useMemo(() => {
+    const counts = Array.from({ length: 12 }, () => 0)
+    const q = search.trim().toLowerCase()
+    for (const r of rows) {
+      if (r.fecha_planificada && new Date(r.fecha_planificada).getFullYear() !== anio) continue
+      if (empresaSel.size > 0 && !empresaSel.has(r.empresa_id)) continue
+      if (estSel.size > 0 && !estSel.has(r.establecimiento_id)) continue
+      if (estadoSel.size > 0 && !estadoSel.has(getEstado(r))) continue
+      if (grupoSel.size > 0 && !(r.grupo && grupoSel.has(r.grupo))) continue
+      if (categoriaSel.size > 0 && !(r.categoria && categoriaSel.has(r.categoria))) continue
+      if (responsableSel.size > 0 && !(r.responsable_nombre && responsableSel.has(r.responsable_nombre))) continue
+      if (q) {
+        const haystack = `${r.gestion_nombre ?? ''} ${r.categoria ?? ''}`.toLowerCase()
+        if (!haystack.includes(q)) continue
+      }
+      const month = parseInt(r.fecha_planificada?.split('-')[1] ?? '0') - 1
+      if (month >= 0 && month < 12) counts[month]++
+    }
+    return counts
+  }, [rows, anio, empresaSel, estSel, estadoSel, grupoSel, categoriaSel, responsableSel, search])
+
   const heading = title ?? 'Gestiones'
 
   return (
@@ -225,17 +248,84 @@ export function GestionesAggregate({
         <MultiFilterWithAll label="Categoría" options={categoriaOptions} selected={categoriaSel} onChange={setCategoriaSel} />
         <MultiFilterWithAll label="Responsable" options={responsableOptions} selected={responsableSel} onChange={setResponsableSel} />
         <MultiFilterWithAll
-          label="Mes"
-          options={MONTHS.map((m, i) => ({ value: String(i), label: m }))}
-          selected={selectedMonths}
-          onChange={setSelectedMonths}
-        />
-        <MultiFilterWithAll
           label="Estado"
           options={ESTADOS.map(e => ({ value: e, label: e }))}
           selected={estadoSel}
           onChange={setEstadoSel}
         />
+      </div>
+
+      {/* Tiles de meses (Ene–Dic) con contador, como en la vista de establecimiento */}
+      <div className="grid grid-cols-6 sm:grid-cols-12 gap-1.5">
+        {MONTHS.map((m, i) => {
+          const key = String(i)
+          const isSelected = selectedMonths.has(key)
+          return (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setSelectedMonths(prev => {
+                const next = new Set(prev)
+                if (next.has(key)) next.delete(key)
+                else next.add(key)
+                return next
+              })}
+              className={`rounded-lg py-2 text-center transition-colors ${
+                isSelected ? 'bg-sig-500 text-white' : 'bg-surface-elevated text-text-secondary hover:bg-surface-sunken'
+              }`}
+            >
+              <div className="text-xs font-medium">{m}</div>
+              <div className="text-xs opacity-80 tabular-nums">{monthCounts[i]}</div>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Quick-select de meses */}
+      <div className="flex gap-2 flex-wrap">
+        <button
+          type="button"
+          onClick={() => setSelectedMonths(new Set([String(new Date().getMonth())]))}
+          className={`text-xs border rounded-lg px-3 py-1.5 transition-colors ${
+            selectedMonths.size === 1 && selectedMonths.has(String(new Date().getMonth()))
+              ? 'bg-success-bg border-green-300 text-success'
+              : 'border-border-subtle text-text-secondary hover:bg-surface-base'
+          }`}
+        >
+          Mes actual
+        </button>
+        <button
+          type="button"
+          onClick={() => setSelectedMonths(new Set(Array.from({ length: 12 }, (_, i) => String(i))))}
+          className={`text-xs border rounded-lg px-3 py-1.5 transition-colors ${
+            selectedMonths.size === 12
+              ? 'bg-success-bg border-green-300 text-success'
+              : 'border-border-subtle text-text-secondary hover:bg-surface-base'
+          }`}
+        >
+          Todos los meses
+        </button>
+        <button
+          type="button"
+          onClick={() => setSelectedMonths(new Set())}
+          className={`text-xs border rounded-lg px-3 py-1.5 transition-colors ${
+            selectedMonths.size === 0
+              ? 'bg-success-bg border-green-300 text-success'
+              : 'border-border-subtle text-text-secondary hover:bg-surface-base'
+          }`}
+        >
+          Ninguno
+        </button>
+        <button
+          type="button"
+          onClick={() => setSelectedMonths(prev => {
+            const inverted = new Set(Array.from({ length: 12 }, (_, i) => String(i)).filter(m => !prev.has(m)))
+            return inverted
+          })}
+          className="text-xs border border-border-subtle rounded-lg px-3 py-1.5 text-text-secondary hover:bg-surface-base"
+        >
+          Invertir selección
+        </button>
       </div>
 
       {viewMode === 'tabla' && (
