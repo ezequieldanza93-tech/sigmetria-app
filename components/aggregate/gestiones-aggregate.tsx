@@ -299,15 +299,15 @@ export function GestionesAggregate({
   }
 
   return (
-    <div className="px-6 py-6 space-y-4">
-      {/* Fila: título de año centrado en la fila, selector de vista a la derecha */}
-      <div className="relative flex items-center min-h-[40px]">
-        <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 select-none">
-          <span className="text-xs text-text-tertiary tabular-nums">{anio - 1}</span>
-          <button type="button" onClick={() => setAnio(a => a - 1)} aria-label={`Ver gestiones de ${anio - 1}`} className="text-text-tertiary hover:text-sig-500 transition-colors px-1">«</button>
-          <h2 className="text-lg font-semibold text-text-primary tabular-nums whitespace-nowrap">{heading} {anio}</h2>
-          <button type="button" onClick={() => setAnio(a => a + 1)} aria-label={`Ver gestiones de ${anio + 1}`} className="text-text-tertiary hover:text-sig-500 transition-colors px-1">»</button>
-          <span className="text-xs text-text-tertiary tabular-nums">{anio + 1}</span>
+    <div className="px-6 py-3 space-y-3">
+      {/* Fila: título de año centrado en la fila, contador a la derecha */}
+      <div className="relative flex items-center min-h-[32px]">
+        <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1.5 select-none bg-black rounded-lg px-4 py-1.5">
+          <span className="text-xs text-gray-400 tabular-nums">{anio - 1}</span>
+          <button type="button" onClick={() => setAnio(a => a - 1)} aria-label={`Ver gestiones de ${anio - 1}`} className="text-gray-400 hover:text-white transition-colors px-1">«</button>
+          <h2 className="text-base font-semibold text-white tabular-nums whitespace-nowrap">{heading} {anio}</h2>
+          <button type="button" onClick={() => setAnio(a => a + 1)} aria-label={`Ver gestiones de ${anio + 1}`} className="text-gray-400 hover:text-white transition-colors px-1">»</button>
+          <span className="text-xs text-gray-400 tabular-nums">{anio + 1}</span>
         </div>
 
         <div className="ml-auto">
