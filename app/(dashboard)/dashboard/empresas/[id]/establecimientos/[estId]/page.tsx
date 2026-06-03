@@ -192,6 +192,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
           empresaId={empresaId}
           canWrite={userCanWrite}
           riesgos={riesgos}
+          establecimientoNombre={establecimiento.nombre}
         />
       )}
 

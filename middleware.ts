@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { verifyMfaCookie, MFA_COOKIE_NAME } from '@/lib/mfa-cookie'
+import { isTestBypassAccount } from '@/lib/auth/test-mfa-bypass'
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -54,6 +55,20 @@ export async function middleware(request: NextRequest) {
   const isMfaPage = pathname.startsWith('/mfa/')
 
   if (user && !pathname.startsWith('/login')) {
+    // ── TESTING BYPASS — cuentas @sigmetria.app ──────────────────────────────
+    // Cuentas de prueba sin buzón real: saltean el MFA directamente en el
+    // enforcement, SIN depender de la cookie firmada ni de MFA_COOKIE_SECRET
+    // (que se configura a mano en Vercel y no siempre se hereda en Preview).
+    // Acotado ESTRICTAMENTE al sufijo @sigmetria.app — el MFA real de cuentas
+    // productivas (Res. SRT 48/2025) queda intacto.
+    if (isTestBypassAccount(user.email)) {
+      if (isMfaPage) {
+        return NextResponse.redirect(new URL('/dashboard', request.url))
+      }
+      return supabaseResponse
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     const mfaCookieValue = request.cookies.get(MFA_COOKIE_NAME)?.value
     const isMfaVerified = mfaCookieValue
       ? await verifyMfaCookie(mfaCookieValue, user.id).catch(() => false)
