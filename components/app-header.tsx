@@ -150,7 +150,6 @@ export function AppHeader({
     buildCrumbs()
   }, [pathname])
 
-  const firstName = fullName.split(' ')[0] ?? fullName
   const displayRole = systemRole === 'developer' ? 'developer' : userRole
   const roleColor = displayRole ? (ROLE_COLORS as Record<string, string>)[displayRole] ?? '' : ''
   const roleLabel = displayRole ? (ROLE_LABELS as Record<string, string>)[displayRole] ?? '' : ''
@@ -242,22 +241,22 @@ export function AppHeader({
           </div>
         )}
 
-        {/* Center: user name + role */}
-        <div className="flex-1 flex justify-center">
-          <div className="text-center hidden sm:block">
-            <p
-              className="text-sm font-semibold text-text-primary"
-              style={{ fontFamily: 'Montserrat, system-ui' }}
-            >
-              {firstName}
-            </p>
-            {displayRole && (
-              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${roleColor}`}>
-                {roleLabel}
-              </span>
-            )}
-          </div>
+        {/* Center: user name + role — centrado absoluto respecto a toda la fila */}
+        <div className="absolute left-1/2 -translate-x-1/2 hidden sm:block text-center pointer-events-none select-none">
+          <p
+            className="text-sm font-semibold text-text-primary whitespace-nowrap"
+            style={{ fontFamily: 'Montserrat, system-ui' }}
+          >
+            {fullName}
+          </p>
+          {displayRole && (
+            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${roleColor}`}>
+              {roleLabel}
+            </span>
+          )}
         </div>
+        {/* Spacer para mantener el layout flex equilibrado */}
+        <div className="flex-1" />
 
         {/* Right: notifications + weather + network + install + consultora + dark mode + avatar */}
         <div className="flex items-center gap-3 shrink-0">
