@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Sun, Moon, LogOut, ShieldCheck, MessageSquare, Wifi, WifiOff, Download, Keyboard, Home, BookMarked, KeyRound } from 'lucide-react'
+import { Sun, Moon, LogOut, ShieldCheck, MessageSquare, Wifi, WifiOff, Download, Keyboard, Home, BookMarked, KeyRound, User } from 'lucide-react'
 import { SystemRole, UserRole, ROLE_LABELS, ROLE_COLORS } from '@/lib/types'
 import { RoleSwitcher } from '@/components/layout/role-switcher'
 import { LanguageSwitcher } from '@/components/layout/language-switcher'
@@ -378,8 +378,9 @@ export function AppHeader({
                   </div>
                 )}
 
-                {/* Ayuda */}
+                {/* Perfil y ayuda */}
                 <div className="py-1 border-t border-border-subtle">
+                  <DropdownItem href="/dashboard/perfil" icon={User} label="Mi perfil" role="menuitem" />
                   <DropdownItem href="/dashboard/configuracion/seguridad" icon={ShieldCheck} label="Seguridad" role="menuitem" />
                   <DropdownItem href="/dashboard/tutoriales" icon={BookMarked} label="Tutoriales de Uso" role="menuitem" />
                   <DropdownItem href="/dashboard/atajos" icon={Keyboard} label="Atajos de teclado" role="menuitem" />
