@@ -138,6 +138,9 @@ export function GestionesAggregate({
   const [sortOpen, setSortOpen] = useState(false)
   const [groupOpen, setGroupOpen] = useState(false)
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
+  // Rango de fecha exacto (próximos N días). Cuando está activo, los tiles de
+  // mes se ignoran. null = sin rango activo.
+  const [dateRange, setDateRange] = useState<{ label: string; from: string; to: string } | null>(null)
 
   // Columnas disponibles según el nivel.
   const availableCols = useMemo(
@@ -187,9 +190,15 @@ export function GestionesAggregate({
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     return rows.filter(r => {
-      if (r.fecha_planificada && new Date(r.fecha_planificada).getFullYear() !== anio) return false
-      const month = parseInt(r.fecha_planificada?.split('-')[1] ?? '0') - 1
-      if (selectedMonths.size > 0 && !selectedMonths.has(String(month))) return false
+      if (!r.fecha_planificada) return false
+      if (dateRange) {
+        // Modo rango exacto: ignora año/tiles de mes, filtra por fecha exacta.
+        if (r.fecha_planificada < dateRange.from || r.fecha_planificada > dateRange.to) return false
+      } else {
+        if (new Date(r.fecha_planificada).getFullYear() !== anio) return false
+        const month = parseInt(r.fecha_planificada.split('-')[1] ?? '0') - 1
+        if (selectedMonths.size > 0 && !selectedMonths.has(String(month))) return false
+      }
       if (empresaSel.size > 0 && !empresaSel.has(r.empresa_id)) return false
       if (estSel.size > 0 && !estSel.has(r.establecimiento_id)) return false
       if (estadoSel.size > 0 && !estadoSel.has(getEstado(r))) return false
@@ -202,7 +211,7 @@ export function GestionesAggregate({
       }
       return true
     })
-  }, [rows, anio, selectedMonths, empresaSel, estSel, estadoSel, grupoSel, categoriaSel, responsableSel, search])
+  }, [rows, anio, selectedMonths, dateRange, empresaSel, estSel, estadoSel, grupoSel, categoriaSel, responsableSel, search])
 
   // Ordenamiento multi-columna con precedencia (sorts[0] manda, luego [1], luego [2]).
   const sorted = useMemo(() => {
@@ -252,8 +261,10 @@ export function GestionesAggregate({
   }, [sorted, groups])
 
   // Contador por mes — aplica todos los filtros EXCEPTO el de mes.
+  // Si hay rango activo los tiles están deshabilitados, se devuelven ceros.
   const monthCounts = useMemo(() => {
     const counts = Array.from({ length: 12 }, () => 0)
+    if (dateRange) return counts
     const q = search.trim().toLowerCase()
     for (const r of rows) {
       if (r.fecha_planificada && new Date(r.fecha_planificada).getFullYear() !== anio) continue
@@ -271,7 +282,19 @@ export function GestionesAggregate({
       if (month >= 0 && month < 12) counts[month]++
     }
     return counts
-  }, [rows, anio, empresaSel, estSel, estadoSel, grupoSel, categoriaSel, responsableSel, search])
+  }, [rows, anio, dateRange, empresaSel, estSel, estadoSel, grupoSel, categoriaSel, responsableSel, search])
+
+  // Helper para calcular rangos de fechas en formato YYYY-MM-DD (comparación lexicográfica).
+  function toIsoDate(d: Date): string {
+    return d.toISOString().slice(0, 10)
+  }
+  function activateRange(days: number, label: string) {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const to = new Date(today)
+    to.setDate(today.getDate() + days - 1)
+    setDateRange({ label, from: toIsoDate(today), to: toIsoDate(to) })
+  }
 
   const heading = title ?? 'Gestiones'
 
@@ -371,8 +394,8 @@ export function GestionesAggregate({
         </div>
       </div>
 
-      {/* Tiles de meses */}
-      <div className="grid grid-cols-6 sm:grid-cols-12 gap-1.5">
+      {/* Tiles de meses — se atenúan cuando hay rango activo */}
+      <div className={`grid grid-cols-6 sm:grid-cols-12 gap-1.5 transition-opacity ${dateRange ? 'opacity-40 pointer-events-none' : ''}`}>
         {MONTHS.map((m, i) => {
           const key = String(i)
           const isSelected = selectedMonths.has(key)
@@ -397,12 +420,32 @@ export function GestionesAggregate({
         })}
       </div>
 
-      {/* Quick-select de meses */}
-      <div className="flex gap-2 flex-wrap">
-        <button type="button" onClick={() => setSelectedMonths(new Set([String(new Date().getMonth())]))} className={`text-xs border rounded-lg px-3 py-1.5 transition-colors ${selectedMonths.size === 1 && selectedMonths.has(String(new Date().getMonth())) ? 'bg-success-bg border-green-300 text-success' : 'border-border-subtle text-text-secondary hover:bg-surface-base'}`}>Mes actual</button>
-        <button type="button" onClick={() => setSelectedMonths(new Set(Array.from({ length: 12 }, (_, i) => String(i))))} className={`text-xs border rounded-lg px-3 py-1.5 transition-colors ${selectedMonths.size === 12 ? 'bg-success-bg border-green-300 text-success' : 'border-border-subtle text-text-secondary hover:bg-surface-base'}`}>Todos los meses</button>
-        <button type="button" onClick={() => setSelectedMonths(new Set())} className={`text-xs border rounded-lg px-3 py-1.5 transition-colors ${selectedMonths.size === 0 ? 'bg-success-bg border-green-300 text-success' : 'border-border-subtle text-text-secondary hover:bg-surface-base'}`}>Ninguno</button>
-        <button type="button" onClick={() => setSelectedMonths(prev => new Set(Array.from({ length: 12 }, (_, i) => String(i)).filter(m => !prev.has(m))))} className="text-xs border border-border-subtle rounded-lg px-3 py-1.5 text-text-secondary hover:bg-surface-base">Invertir selección</button>
+      {/* Quick-select de meses + filtros de rango de fecha */}
+      <div className="flex gap-2 flex-wrap items-center">
+        {/* Quick-select de meses — se deshabilitan si hay rango activo */}
+        <button type="button" disabled={!!dateRange} onClick={() => setSelectedMonths(new Set([String(new Date().getMonth())]))} className={`text-xs border rounded-lg px-3 py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${!dateRange && selectedMonths.size === 1 && selectedMonths.has(String(new Date().getMonth())) ? 'bg-success-bg border-green-300 text-success' : 'border-border-subtle text-text-secondary hover:bg-surface-base'}`}>Mes actual</button>
+        <button type="button" disabled={!!dateRange} onClick={() => setSelectedMonths(new Set(Array.from({ length: 12 }, (_, i) => String(i))))} className={`text-xs border rounded-lg px-3 py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${!dateRange && selectedMonths.size === 12 ? 'bg-success-bg border-green-300 text-success' : 'border-border-subtle text-text-secondary hover:bg-surface-base'}`}>Todos los meses</button>
+        <button type="button" disabled={!!dateRange} onClick={() => setSelectedMonths(new Set())} className={`text-xs border rounded-lg px-3 py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${!dateRange && selectedMonths.size === 0 ? 'bg-success-bg border-green-300 text-success' : 'border-border-subtle text-text-secondary hover:bg-surface-base'}`}>Ninguno</button>
+        <button type="button" disabled={!!dateRange} onClick={() => setSelectedMonths(prev => new Set(Array.from({ length: 12 }, (_, i) => String(i)).filter(m => !prev.has(m))))} className="text-xs border border-border-subtle rounded-lg px-3 py-1.5 text-text-secondary hover:bg-surface-base disabled:opacity-40 disabled:cursor-not-allowed">Invertir selección</button>
+
+        {/* Separador visual */}
+        <span className="text-border-default">|</span>
+
+        {/* Filtros de rango de fecha */}
+        {dateRange ? (
+          // Badge activo con X para limpiar
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium bg-brand-muted border border-brand-primary/40 text-brand-primary rounded-lg px-3 py-1.5">
+            {dateRange.label}
+            <button type="button" onClick={() => setDateRange(null)} aria-label="Quitar filtro de rango" className="hover:text-danger transition-colors">
+              <X size={12} />
+            </button>
+          </span>
+        ) : (
+          <>
+            <button type="button" onClick={() => activateRange(7, 'Próx. 7 días')} className="text-xs border border-border-subtle rounded-lg px-3 py-1.5 text-text-secondary hover:bg-surface-base hover:border-brand-primary/40 hover:text-brand-primary transition-colors">Próximos 7 días</button>
+            <button type="button" onClick={() => activateRange(15, 'Próx. 15 días')} className="text-xs border border-border-subtle rounded-lg px-3 py-1.5 text-text-secondary hover:bg-surface-base hover:border-brand-primary/40 hover:text-brand-primary transition-colors">Próximos 15 días</button>
+          </>
+        )}
       </div>
 
       {viewMode === 'tabla' && (
