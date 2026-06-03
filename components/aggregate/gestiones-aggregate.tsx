@@ -169,9 +169,10 @@ export function GestionesAggregate({
 
   return (
     <div className="px-6 py-6 space-y-4">
-      {/* Año + título */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-2 mr-4 select-none">
+      {/* Fila: título de año centrado en la fila, selector de vista a la derecha */}
+      <div className="relative flex items-center min-h-[40px]">
+        {/* Año + título — centrado absoluto respecto a toda la fila */}
+        <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 select-none">
           <span className="text-xs text-text-tertiary tabular-nums">{anio - 1}</span>
           <button
             type="button"
@@ -181,7 +182,7 @@ export function GestionesAggregate({
           >
             «
           </button>
-          <h2 className="text-lg font-semibold text-text-primary tabular-nums">{heading} {anio}</h2>
+          <h2 className="text-lg font-semibold text-text-primary tabular-nums whitespace-nowrap">{heading} {anio}</h2>
           <button
             type="button"
             onClick={() => setAnio(a => a + 1)}
@@ -193,32 +194,33 @@ export function GestionesAggregate({
           <span className="text-xs text-text-tertiary tabular-nums">{anio + 1}</span>
         </div>
 
-        {/* Selector de vista */}
-        <div className="flex items-center gap-0.5 border border-border-default rounded-lg p-0.5 bg-surface-base">
-          {([
-            { mode: 'tabla' as const, icon: List, label: 'Tabla' },
-            { mode: 'calendario' as const, icon: CalendarDays, label: 'Calendario' },
-            { mode: 'kanban' as const, icon: Columns, label: 'Kanban' },
-          ]).map(({ mode, icon: Icon, label }) => (
-            <button
-              key={mode}
-              type="button"
-              onClick={() => setViewMode(mode)}
-              title={label}
-              aria-label={label}
-              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
-                viewMode === mode
-                  ? 'bg-brand-muted text-brand-primary'
-                  : 'text-text-tertiary hover:text-text-primary hover:bg-surface-elevated'
-              }`}
-            >
-              <Icon size={14} />
-              <span className="hidden sm:inline">{label}</span>
-            </button>
-          ))}
+        {/* Selector de vista + contador — alineados a la derecha */}
+        <div className="ml-auto flex items-center gap-3">
+          <div className="flex items-center gap-0.5 border border-border-default rounded-lg p-0.5 bg-surface-base">
+            {([
+              { mode: 'tabla' as const, icon: List, label: 'Tabla' },
+              { mode: 'calendario' as const, icon: CalendarDays, label: 'Calendario' },
+              { mode: 'kanban' as const, icon: Columns, label: 'Kanban' },
+            ]).map(({ mode, icon: Icon, label }) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setViewMode(mode)}
+                title={label}
+                aria-label={label}
+                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+                  viewMode === mode
+                    ? 'bg-brand-muted text-brand-primary'
+                    : 'text-text-tertiary hover:text-text-primary hover:bg-surface-elevated'
+                }`}
+              >
+                <Icon size={14} />
+                <span className="hidden sm:inline">{label}</span>
+              </button>
+            ))}
+          </div>
+          <span className="text-xs text-text-tertiary whitespace-nowrap">{filtered.length} de {rows.length}</span>
         </div>
-
-        <span className="text-xs text-text-tertiary ml-auto">{filtered.length} de {rows.length}</span>
       </div>
 
       {/* Filtros */}
