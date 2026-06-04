@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import {
-  Building2, CalendarClock, AlertTriangle, GraduationCap,
+  Building2, CalendarClock, GraduationCap,
   FileText, ClipboardList, BarChart2, Map, UserCog, CreditCard,
   MessageSquare, BookMarked, ArrowRight, Zap,
 } from 'lucide-react'
@@ -34,15 +34,6 @@ const MODULES = [
     color: 'text-indigo-500',
     bg: 'bg-indigo-500/10',
     topics: ['Registrar una gestión', 'Planificar visitas futuras', 'Asignar acciones correctivas', 'Seguimiento de pendientes'],
-  },
-  {
-    icon: AlertTriangle,
-    title: 'Incidentes y denuncias',
-    description: 'Canal formal para eventos adversos y reclamos. Trazabilidad desde la detección hasta el cierre.',
-    href: '/dashboard/incidentes',
-    color: 'text-amber-500',
-    bg: 'bg-amber-500/10',
-    topics: ['Diferencia entre incidente y denuncia', 'Registrar un incidente', 'Gestionar una denuncia', 'Estados y seguimiento'],
   },
   {
     icon: GraduationCap,

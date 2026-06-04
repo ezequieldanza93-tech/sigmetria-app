@@ -1,11 +1,13 @@
 'use client'
 
 import { useActionState, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { AlertCircle, Loader2, CheckCircle2 } from 'lucide-react'
 import { DemoCredentials } from '@/components/demo-credentials'
 import { login, signup } from '@/lib/actions/login'
 
 export default function LoginPage() {
+  const t = useTranslations('login')
   const [mode, setMode] = useState<'login' | 'signup'>('login')
 
   const [loginState, loginAction, loginPending] = useActionState<
@@ -34,7 +36,7 @@ export default function LoginPage() {
           </h1>
           <p className="text-lg text-white/90 max-w-md leading-relaxed">
             Plataforma integral de gestión en Higiene y Seguridad laboral.
-            Simplificá la administración de inspecciones, siniestros y documentación.
+            Simplificá la administración de inspecciones, incidentes y documentación.
           </p>
           <div className="mt-12 flex items-center gap-8 text-white/80 text-sm">
             <div className="flex items-center gap-2">
@@ -43,7 +45,7 @@ export default function LoginPage() {
             </div>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-white/80" />
-              <span>Siniestros</span>
+              <span>Incidentes</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-white/80" />
@@ -94,7 +96,7 @@ export default function LoginPage() {
 
                 <div>
                   <label htmlFor="email" className="block text-text-primary text-sm font-medium mb-2">
-                    Email
+                    {t('emailLabel')}
                   </label>
                   <input
                     id="email"
@@ -102,14 +104,14 @@ export default function LoginPage() {
                     type="email"
                     required
                     autoComplete="email"
-                    placeholder="usuario@empresa.com"
+                    placeholder={t('emailPlaceholder')}
                     className="w-full bg-surface-base border border-border-default text-text-primary rounded-lg px-4 py-3 text-sm placeholder-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent transition-shadow"
                   />
                 </div>
 
                 <div>
                   <label htmlFor="password" className="block text-text-primary text-sm font-medium mb-2">
-                    Contraseña
+                    {t('passwordLabel')}
                   </label>
                   <input
                     id="password"
@@ -117,7 +119,7 @@ export default function LoginPage() {
                     type="password"
                     required
                     autoComplete="current-password"
-                    placeholder="Ingresá tu contraseña"
+                    placeholder={t('passwordPlaceholder')}
                     className="w-full bg-surface-base border border-border-default text-text-primary rounded-lg px-4 py-3 text-sm placeholder-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent transition-shadow"
                   />
                 </div>
@@ -130,10 +132,10 @@ export default function LoginPage() {
                   {loginPending ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                      <span>Ingresando...</span>
+                      <span>{t('submitting')}</span>
                     </>
                   ) : (
-                    'Ingresar'
+                    t('submit')
                   )}
                 </button>
               </form>

@@ -1,6 +1,6 @@
 'use client'
 
-import { Building2, ClipboardList, Crosshair, BarChart3 } from 'lucide-react'
+import { Building2, ClipboardList, Crosshair, BarChart3, FileText } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { SectionsShell } from '@/components/layout/sections-shell'
 import type { SectionItem } from '@/components/layout/sections-sidebar'
@@ -10,7 +10,7 @@ interface ConsultoraShellProps {
   children: React.ReactNode
 }
 
-const SECTIONS = ['empresas', 'gestiones', 'seguimiento', 'dashboard'] as const
+const SECTIONS = ['empresas', 'ficha', 'gestiones', 'seguimiento', 'dashboard'] as const
 type Section = (typeof SECTIONS)[number]
 
 export function ConsultoraShell({ empresas, children }: ConsultoraShellProps) {
@@ -34,6 +34,12 @@ export function ConsultoraShell({ empresas, children }: ConsultoraShellProps) {
         label: e.razon_social,
         href: `${baseUrl}/${e.id}`,
       })),
+    },
+    {
+      id: 'ficha',
+      label: 'Ficha',
+      icon: FileText,
+      href: `${baseUrl}?section=ficha`,
     },
     {
       id: 'gestiones',

@@ -7,14 +7,14 @@ import { formatCUIT } from '@/lib/utils'
 import { EmpresaDocumentosSection } from '@/components/empresa-documentos-section'
 import { EmpresaRightPanel } from '@/components/empresa-right-panel'
 import { EmpresaFichaHero } from '@/components/empresa-ficha-hero'
+import { EmpresaFichaEstablecimientos } from '@/components/empresa-ficha-establecimientos'
+import { EmpresaMapaEstablecimientos } from '@/components/empresa-mapa-establecimientos'
 import { EmpresaShell } from '@/components/empresa/empresa-shell'
 import { AnalyticsDashboard } from '@/components/analytics/real/analytics-dashboard'
 import { ExportEmpresaButton } from '@/components/export/export-empresa-button'
 import { GestionesAggregate } from '@/components/aggregate/gestiones-aggregate'
 import { SeguimientoAggregate } from '@/components/aggregate/seguimiento-aggregate'
-import { IncidentesAggregate } from '@/components/aggregate/incidentes-aggregate'
-import { DenunciasAggregate } from '@/components/aggregate/denuncias-aggregate'
-import { getGestionesAggregate, getSeguimientoAggregate, getIncidentesAggregate, getDenunciasAggregate } from '@/lib/queries/aggregate'
+import { getGestionesAggregate, getSeguimientoAggregate } from '@/lib/queries/aggregate'
 import type { DocumentType, Documento } from '@/lib/types'
 
 interface Props {
@@ -22,7 +22,7 @@ interface Props {
   searchParams: Promise<{ section?: string; tab?: string }>
 }
 
-const SECTIONS = ['establecimientos', 'gestiones', 'seguimiento', 'incidentes', 'denuncias', 'dashboard', 'ficha'] as const
+const SECTIONS = ['establecimientos', 'gestiones', 'seguimiento', 'dashboard', 'ficha'] as const
 type Section = (typeof SECTIONS)[number]
 
 // Map legacy ?tab= values to new ?section= names.
@@ -64,7 +64,7 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let orgsLinks: any[] = []
 
-  if (['establecimientos', 'dashboard', 'gestiones', 'seguimiento', 'incidentes', 'denuncias'].includes(section)) {
+  if (['establecimientos', 'dashboard', 'gestiones', 'seguimiento'].includes(section)) {
     const { data } = await supabase
       .from('establecimientos')
       .select('id, nombre, domicilio, establecimientos_tipos!tipo_id(nombre), localidades!localidad_id(nombre, provincia), cantidad_trabajadores, establecimientos_sectores(cantidad_trabajadores)')
@@ -94,7 +94,7 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
   }
 
   if (section === 'ficha') {
-    const [d1, d2] = await Promise.all([
+    const [d1, d2, d3] = await Promise.all([
       supabase
         .from('empresas_documentos')
         .select('*, documentos_tipos(nombre)')
@@ -106,11 +106,19 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
         .eq('is_active', true)
         .eq('aplica_empresa', true)
         .order('nombre'),
+      supabase
+        .from('establecimientos')
+        .select('id, nombre, latitud, longitud, domicilio, establecimientos_tipos!tipo_id(codigo, nombre)')
+        .eq('empresa_id', id)
+        .neq('status', 'cancelled')
+        .order('nombre'),
     ])
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     documentos = (d1.data ?? []) as any[]
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     documentTypes = (d2.data ?? []) as any[]
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    establecimientos = (d3.data ?? []) as any[]
   }
 
   const estContext = establecimientos.map(e => ({
@@ -122,8 +130,6 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
 
   const gestionesRows = section === 'gestiones' ? await getGestionesAggregate(estContext) : []
   const seguimientoRows = section === 'seguimiento' ? await getSeguimientoAggregate(estContext) : []
-  const incidentesRows = section === 'incidentes' ? await getIncidentesAggregate(estContext) : []
-  const denunciasRows = section === 'denuncias' ? await getDenunciasAggregate(estContext) : []
 
   const sidebarEstablecimientos = establecimientos.map(e => ({
     id: e.id as string,
@@ -148,13 +154,9 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
         </div>
       )}
 
-      {section === 'gestiones' && <GestionesAggregate rows={gestionesRows} />}
+      {section === 'gestiones' && <GestionesAggregate rows={gestionesRows} title={`Gestiones (${empresa.razon_social})`} />}
 
       {section === 'seguimiento' && <SeguimientoAggregate rows={seguimientoRows} />}
-
-      {section === 'incidentes' && <IncidentesAggregate rows={incidentesRows} showEmpresaFilter={false} showEstablecimientoFilter />}
-
-      {section === 'denuncias' && <DenunciasAggregate rows={denunciasRows} showEmpresaFilter={false} showEstablecimientoFilter />}
 
       {section === 'dashboard' && (
         <div className="p-6">
@@ -169,7 +171,7 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
       {section === 'ficha' && (
         <div className="p-6">
           <h1 className="text-xl font-bold text-text-primary mb-4">{empresa.razon_social}</h1>
-          <div className="max-w-3xl">
+          <div className="w-full">
             {(() => {
               const e = empresa as typeof empresa & { latitude?: number | null; longitude?: number | null }
               const addressParts = [
@@ -256,6 +258,34 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
                   </Link>
                 )}
                 {puedeEditar && <ExportEmpresaButton empresaId={id} />}
+                {(() => {
+                  const e = empresa as typeof empresa & { latitude?: number | null; longitude?: number | null }
+                  return (
+                    <EmpresaMapaEstablecimientos
+                      empresa={{
+                        razon_social: empresa.razon_social as string,
+                        latitude: e.latitude ?? null,
+                        longitude: e.longitude ?? null,
+                        domicilio: (empresa.domicilio as string | null) ?? null,
+                      }}
+                      establecimientos={(establecimientos ?? []).map((est) => {
+                        const tipoRel = Array.isArray(est.establecimientos_tipos)
+                          ? est.establecimientos_tipos[0]
+                          : est.establecimientos_tipos
+                        return {
+                          id: est.id as string,
+                          nombre: est.nombre as string,
+                          latitud: (est.latitud as number | null) ?? null,
+                          longitud: (est.longitud as number | null) ?? null,
+                          domicilio: (est.domicilio as string | null) ?? null,
+                          tipo: tipoRel
+                            ? { codigo: tipoRel.codigo as string, nombre: tipoRel.nombre as string }
+                            : null,
+                        }
+                      })}
+                    />
+                  )
+                })()}
               </div>
 
               <div className="border-t border-border-subtle pt-4">
@@ -263,6 +293,14 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
                   empresaId={id}
                   documentos={(documentos ?? []) as Documento[]}
                   documentTypes={(documentTypes ?? []) as DocumentType[]}
+                  canWrite={puedeEditar}
+                />
+              </div>
+
+              <div className="border-t border-border-subtle pt-4">
+                <EmpresaFichaEstablecimientos
+                  empresaId={id}
+                  establecimientos={(establecimientos ?? []).map((e) => ({ id: e.id, nombre: e.nombre }))}
                   canWrite={puedeEditar}
                 />
               </div>

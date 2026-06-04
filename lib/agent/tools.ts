@@ -167,34 +167,37 @@ Esta tool NO ejecuta la acción directo, crea una solicitud pendiente que el usu
     },
   }),
 
-  // ─── SINIESTROS ──────────────────────────────────────────────
+  // ─── INCIDENTES ──────────────────────────────────────────────
   new DynamicStructuredTool({
-    name: 'listar_siniestros',
-    description: `Lista siniestros laborales de un establecimiento.
-Úsala cuando el usuario pregunte: "qué siniestros hubo", "mostrame los accidentes", "siniestros de planta sur", "accidentes laborales", "incidentes".
+    name: 'listar_incidentes',
+    description: `Lista incidentes laborales de un establecimiento.
+Úsala cuando el usuario pregunte: "qué incidentes hubo", "mostrame los accidentes", "siniestros de planta sur", "accidentes laborales", "incidentes".
 Parámetros:
 - establecimiento_id (obligatorio): UUID del establecimiento
 - limit (opcional): máximo resultados (default 10)
-- gravedad (opcional): "leve", "moderado", "grave" para filtrar`,
+- gravedad (opcional): "leve", "moderado", "grave" — se traduce al tipo accidente_leve|accidente_moderado|accidente_grave`,
     schema: z.object({ establecimiento_id: z.string().uuid(), limit: z.number().int().positive().max(50).optional(), gravedad: z.enum(['leve', 'moderado', 'grave']).optional() }),
     func: async ({ establecimiento_id, limit, gravedad }) => {
       const supabase = await getSupabase()
-      let query = supabase.from('siniestros').select('*').eq('establecimiento_id', establecimiento_id).order('fecha_ocurrencia', { ascending: false }).limit(limit ?? 10)
-      if (gravedad) query = query.eq('gravedad', gravedad)
+      let query = supabase.from('incidentes').select('*').eq('establecimiento_id', establecimiento_id).order('fecha_ocurrencia', { ascending: false }).limit(limit ?? 10)
+      // Compatibilidad: "gravedad" del usuario se mapea al enum `tipo` nuevo.
+      if (gravedad) query = query.eq('tipo', `accidente_${gravedad}`)
       const { data } = await query
       return JSON.stringify(data ?? [])
     },
   }),
 
   new DynamicStructuredTool({
-    name: 'crear_siniestro',
-    description: `Registra un nuevo siniestro/accidente laboral.
-Úsala cuando el usuario reporte: "hubo un accidente", "registrar siniestro", "reportar incidente", "nuevo accidente".
-Parámetros: establecimiento_id, fecha_ocurrencia ("YYYY-MM-DD"), descripcion, gravedad (leve|moderado|grave), tipo (opcional).`,
-    schema: z.object({ establecimiento_id: z.string().uuid(), fecha_ocurrencia: z.string(), descripcion: z.string(), gravedad: z.enum(['leve', 'moderado', 'grave']), tipo: z.string().optional() }),
+    name: 'crear_incidente',
+    description: `Registra un nuevo incidente/accidente laboral.
+Úsala cuando el usuario reporte: "hubo un accidente", "registrar incidente", "reportar incidente", "nuevo accidente".
+Parámetros: establecimiento_id, fecha_ocurrencia ("YYYY-MM-DD"), descripcion, gravedad (leve|moderado|grave — opcional, define la severidad del accidente), tipo (opcional).`,
+    schema: z.object({ establecimiento_id: z.string().uuid(), fecha_ocurrencia: z.string(), descripcion: z.string(), gravedad: z.enum(['leve', 'moderado', 'grave']).optional(), tipo: z.enum(['incidente', 'accidente_leve', 'accidente_moderado', 'accidente_grave']).optional() }),
     func: async ({ establecimiento_id, fecha_ocurrencia, descripcion, gravedad, tipo }) => {
       const supabase = await getSupabase()
-      const { data, error } = await supabase.from('siniestros').insert({ establecimiento_id, fecha_ocurrencia, descripcion, gravedad, tipo: tipo ?? 'accidente' }).select('id').single()
+      // El tipo explícito gana; si no, se deriva de gravedad; por defecto, 'incidente'.
+      const tipoFinal = tipo ?? (gravedad ? `accidente_${gravedad}` : 'incidente')
+      const { data, error } = await supabase.from('incidentes').insert({ establecimiento_id, fecha_ocurrencia, descripcion, tipo: tipoFinal }).select('id').single()
       if (error) return JSON.stringify({ success: false, error: error.message })
       return JSON.stringify({ success: true, id: data.id })
     },

@@ -163,7 +163,7 @@ export async function processMessage(
     + '• "listame los establecimientos"\n'
     + '• "cuántas gestiones tengo este mes"\n'
     + '• "cuándo es la próxima gestión"\n'
-    + '• "mostrame los siniestros"\n'
+    + '• "mostrame los incidentes"\n'
     + '• "planificar un checklist de extintores para el 15/06"\n'
     + '• "cuáles son mis riesgos"\n\n'
     + 'También podés usar Sigía desde la pestaña **Asistente HyS** dentro de un establecimiento para consultas con contexto automático.',

@@ -3,26 +3,28 @@
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
+import { LanguageSwitcher } from '@/components/layout/language-switcher'
 import {
+  BarChart2,
+  MessageSquare,
+  ShieldCheck,
+  LogOut,
   Building2,
-  UserCog,
   Gauge,
+  UserCog,
   CreditCard,
   Users,
   Network,
   Shield,
+  ClipboardList,
   AlertTriangle,
   Scale,
   GraduationCap,
   BookOpen,
-  BarChart2,
   Settings2,
   CalendarClock,
-  ClipboardList,
-  MessageSquare,
   Map,
-  ShieldCheck,
-  LogOut,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useNavigationLevel } from '@/lib/hooks/use-navigation-level'
@@ -53,6 +55,7 @@ export function FloatingAvatar({
   canSwitchRole = false,
 }: FloatingAvatarProps) {
   const router = useRouter()
+  const tNav = useTranslations('nav')
   const { level } = useNavigationLevel()
   const [menuOpen, setMenuOpen] = useState(false)
   const [roleSimOpen, setRoleSimOpen] = useState(false)
@@ -198,11 +201,16 @@ export function FloatingAvatar({
               <MenuItem href="/dashboard/mapas" icon={Map} label="Mapa de Riesgos" />
               {isSuperAdmin && (
                 <>
-                  <MenuItem href="/dashboard/admin" icon={ShieldCheck} label="Super Admin" />
-                  <MenuItem href="/dashboard/admin/feedback" icon={MessageSquare} label="Feedback Admin" />
+                  <MenuItem href="/dashboard/admin" icon={ShieldCheck} label={tNav('superAdmin')} />
+                  <MenuItem href="/dashboard/admin/feedback" icon={MessageSquare} label={tNav('feedbackAdmin')} />
                 </>
               )}
             </MenuGroup>
+          </div>
+
+          {/* Idioma */}
+          <div className="border-t border-border-subtle">
+            <LanguageSwitcher />
           </div>
 
           {/* Logout */}
@@ -213,7 +221,7 @@ export function FloatingAvatar({
               className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-text-secondary hover:text-text-primary hover:bg-surface-sunken transition-colors"
             >
               <LogOut size={16} strokeWidth={1.75} className="text-text-tertiary" />
-              Cerrar sesión
+              {tNav('logout')}
             </button>
           </div>
         </div>

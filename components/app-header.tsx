@@ -3,9 +3,11 @@
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Sun, Moon, Users, UserCog, Network, Gauge, Shield, Settings2, LogOut, Building2, BarChart2, CreditCard, ShieldCheck, CalendarClock, Map, ClipboardList, MessageSquare, Wifi, WifiOff, Download, GraduationCap, BookOpen, Keyboard, Home, BookMarked, FileCheck, KeyRound } from 'lucide-react'
+import { Sun, Moon, LogOut, ShieldCheck, MessageSquare, Wifi, WifiOff, Download, Keyboard, Home, BookMarked, KeyRound, User, Users, Network, Shield, ClipboardList, GraduationCap, BookOpen, BarChart2 } from 'lucide-react'
 import { SystemRole, UserRole, ROLE_LABELS, ROLE_COLORS } from '@/lib/types'
 import { RoleSwitcher } from '@/components/layout/role-switcher'
+import { LanguageSwitcher } from '@/components/layout/language-switcher'
+import { useTranslations } from 'next-intl'
 import { type SwitchableRole } from '@/lib/actions/change-role'
 import { createClient } from '@/lib/supabase/client'
 import { NotificationDropdown } from '@/components/notification-dropdown'
@@ -45,6 +47,7 @@ export function AppHeader({
 }: AppHeaderProps) {
   const pathname = usePathname()
   const router = useRouter()
+  const tNav = useTranslations('nav')
   const [crumbs, setCrumbs] = useState<Crumb[]>([])
   const [contextAddress, setContextAddress] = useState<string | null>(null)
   const [tipoLabel, setTipoLabel] = useState<string | null>(null)
@@ -147,7 +150,6 @@ export function AppHeader({
     buildCrumbs()
   }, [pathname])
 
-  const firstName = fullName.split(' ')[0] ?? fullName
   const displayRole = systemRole === 'developer' ? 'developer' : userRole
   const roleColor = displayRole ? (ROLE_COLORS as Record<string, string>)[displayRole] ?? '' : ''
   const roleLabel = displayRole ? (ROLE_LABELS as Record<string, string>)[displayRole] ?? '' : ''
@@ -239,22 +241,22 @@ export function AppHeader({
           </div>
         )}
 
-        {/* Center: user name + role */}
-        <div className="flex-1 flex justify-center">
-          <div className="text-center hidden sm:block">
-            <p
-              className="text-sm font-semibold text-text-primary"
-              style={{ fontFamily: 'Montserrat, system-ui' }}
-            >
-              {firstName}
-            </p>
-            {displayRole && (
-              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${roleColor}`}>
-                {roleLabel}
-              </span>
-            )}
-          </div>
+        {/* Center: user name + role — centrado absoluto respecto a toda la fila */}
+        <div className="absolute left-1/2 -translate-x-1/2 hidden sm:block text-center pointer-events-none select-none">
+          <p
+            className="text-sm font-semibold text-text-primary whitespace-nowrap"
+            style={{ fontFamily: 'Montserrat, system-ui' }}
+          >
+            {fullName}
+          </p>
+          {displayRole && (
+            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${roleColor}`}>
+              {roleLabel}
+            </span>
+          )}
         </div>
+        {/* Spacer para mantener el layout flex equilibrado */}
+        <div className="flex-1" />
 
         {/* Right: notifications + weather + network + install + consultora + dark mode + avatar */}
         <div className="flex items-center gap-3 shrink-0">
@@ -356,21 +358,14 @@ export function AppHeader({
                 />
 
                 {/* Consultora */}
-                <div className="py-1 border-b border-border-subtle">
-                  <div className="px-4 py-1.5">
-                    <p className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold">Consultora</p>
-                  </div>
-                  <DropdownItem href="/dashboard/configuracion/consultora" icon={Building2} label="Información" role="menuitem" />
-                  <DropdownItem href="/dashboard/instrumentos" icon={Gauge} label="Instrumentos" role="menuitem" />
-                  <DropdownItem href="/dashboard/usuarios" icon={UserCog} label="Usuarios" role="menuitem" />
-                  <DropdownItem href="/dashboard/billing" icon={CreditCard} label="Suscripción" role="menuitem" />
-                  {(userRole === 'full_access_main' || isSuperAdmin) && (
+                {(userRole === 'full_access_main' || isSuperAdmin) && (
+                  <div className="py-1 border-b border-border-subtle">
+                    <div className="px-4 py-1.5">
+                      <p className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold">Consultora</p>
+                    </div>
                     <DropdownItem href="/dashboard/configuracion/api-keys" icon={KeyRound} label="API Keys" role="menuitem" />
-                  )}
-                  {(userRole === 'full_access_main' || userRole === 'responsable_estandares' || isSuperAdmin) && (
-                    <DropdownItem href="/dashboard/reportes" icon={FileCheck} label="Reportes" role="menuitem" />
-                  )}
-                </div>
+                  </div>
+                )}
 
                 {/* Directorio */}
                 <div className="py-1 border-b border-border-subtle">
@@ -398,28 +393,26 @@ export function AppHeader({
                 </div>
 
                 {/* Herramientas */}
-                <div className="py-1 border-b border-border-subtle">
-                  <div className="px-4 py-1.5">
-                    <p className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold">Herramientas</p>
+                {isSuperAdmin && (
+                  <div className="py-1 border-b border-border-subtle">
+                    <div className="px-4 py-1.5">
+                      <p className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold">Herramientas</p>
+                    </div>
+                    <DropdownItem href="/dashboard/admin" icon={ShieldCheck} label="Super Admin" role="menuitem" />
+                    <DropdownItem href="/dashboard/admin/feedback" icon={MessageSquare} label="Feedback Admin" role="menuitem" />
                   </div>
-                  <DropdownItem href="/dashboard/analytics" icon={BarChart2} label="Analytics" role="menuitem" />
-                  <DropdownItem href="/dashboard/configuracion/catalogacion" icon={Settings2} label="Catalogación" role="menuitem" />
-                  <DropdownItem href="/dashboard/configuracion/vencimientos" icon={CalendarClock} label="Vencimientos" role="menuitem" />
-                  <DropdownItem href="/dashboard/configuracion/feedback" icon={MessageSquare} label="Feedback" role="menuitem" />
-                  <DropdownItem href="/dashboard/mapas" icon={Map} label="Mapa de Riesgos" role="menuitem" />
-                  {isSuperAdmin && (
-                    <>
-                      <DropdownItem href="/dashboard/admin" icon={ShieldCheck} label="Super Admin" role="menuitem" />
-                      <DropdownItem href="/dashboard/admin/feedback" icon={MessageSquare} label="Feedback Admin" role="menuitem" />
-                    </>
-                  )}
-                </div>
+                )}
 
-                {/* Ayuda */}
+                {/* Perfil y ayuda */}
                 <div className="py-1 border-t border-border-subtle">
+                  <DropdownItem href="/dashboard/perfil" icon={User} label="Mi perfil" role="menuitem" />
                   <DropdownItem href="/dashboard/configuracion/seguridad" icon={ShieldCheck} label="Seguridad" role="menuitem" />
                   <DropdownItem href="/dashboard/tutoriales" icon={BookMarked} label="Tutoriales de Uso" role="menuitem" />
                   <DropdownItem href="/dashboard/atajos" icon={Keyboard} label="Atajos de teclado" role="menuitem" />
+                </div>
+
+                <div className="border-t border-border-subtle">
+                  <LanguageSwitcher />
                 </div>
 
                 <button
@@ -428,7 +421,7 @@ export function AppHeader({
                   className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-secondary hover:text-text-primary hover:bg-surface-sunken transition-colors rounded-b-xl focus-visible:outline-none focus-visible:bg-surface-sunken"
                 >
                   <LogOut size={16} strokeWidth={1.75} className="text-text-tertiary" aria-hidden="true" />
-                  Cerrar sesión
+                  {tNav('logout')}
                 </button>
               </div>
             )}

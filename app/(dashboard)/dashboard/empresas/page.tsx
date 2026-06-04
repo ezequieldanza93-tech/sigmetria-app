@@ -8,6 +8,9 @@ import { SeguimientoAggregate } from '@/components/aggregate/seguimiento-aggrega
 import { AnalyticsDashboard } from '@/components/analytics/real/analytics-dashboard'
 import { getGestionesAggregate, getSeguimientoAggregate } from '@/lib/queries/aggregate'
 import { getEffectiveRole } from '@/lib/auth/effective-role'
+import { canWrite, ROLE_LABELS } from '@/lib/types'
+import { ConsultoraFichaGlobal } from '@/components/consultora-ficha-global'
+import type { Consultora } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,7 +18,7 @@ interface Props {
   searchParams: Promise<{ section?: string }>
 }
 
-const SECTIONS = ['empresas', 'gestiones', 'seguimiento', 'dashboard'] as const
+const SECTIONS = ['empresas', 'ficha', 'gestiones', 'seguimiento', 'dashboard'] as const
 type Section = (typeof SECTIONS)[number]
 
 export default async function EmpresasPage({ searchParams }: Props) {
@@ -56,13 +59,57 @@ export default async function EmpresasPage({ searchParams }: Props) {
   const gestionesRows = section === 'gestiones' ? await getGestionesAggregate(estContext) : []
   const seguimientoRows = section === 'seguimiento' ? await getSeguimientoAggregate(estContext) : []
 
+  // Ficha global: solo traemos el objeto completo de la consultora cuando hace falta.
+  let consultora: Consultora | null = null
+  let fichaUsuario: { fullName: string; email: string | null; avatarUrl: string | null; rolLabel: string } | null = null
+  if (section === 'ficha' && effective.consultoraId) {
+    const { data } = await supabase
+      .from('consultoras')
+      .select('*')
+      .eq('id', effective.consultoraId)
+      .single()
+    consultora = (data as Consultora | null) ?? null
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name, avatar_url')
+        .eq('id', user.id)
+        .maybeSingle()
+      fichaUsuario = {
+        fullName: (profile?.full_name as string) || (user.email ?? 'Usuario'),
+        email: user.email ?? null,
+        avatarUrl: (profile?.avatar_url as string | null) ?? null,
+        rolLabel: ROLE_LABELS[effective.effectiveUserRole as keyof typeof ROLE_LABELS] ?? effective.effectiveUserRole ?? '—',
+      }
+    }
+  }
+  const fichaEmpresas = empresas.map(e => ({
+    id: e.id,
+    razon_social: e.razon_social,
+    establecimientos: e.establecimientos ?? [],
+  }))
+  const puedeEditar = canWrite(effective.effectiveUserRole, effective.effectiveSystemRole)
+
   return (
     <Suspense fallback={<div className="lg:pl-14" />}>
     <ConsultoraShell empresas={sidebarEmpresas}>
       {section === 'empresas' && <EmpresasList />}
 
+      {section === 'ficha' && consultora && (
+        <ConsultoraFichaGlobal
+          consultora={consultora}
+          empresas={fichaEmpresas}
+          canWrite={puedeEditar}
+          usuario={fichaUsuario}
+          userRole={effective.effectiveUserRole}
+          isSuperAdmin={effective.isSuperAdmin}
+        />
+      )}
+
       {section === 'gestiones' && (
-        <GestionesAggregate rows={gestionesRows} showEmpresaFilter showEstablecimientoFilter />
+        <GestionesAggregate rows={gestionesRows} showEmpresaFilter showEstablecimientoFilter title="Gestiones (globales)" />
       )}
 
       {section === 'seguimiento' && (

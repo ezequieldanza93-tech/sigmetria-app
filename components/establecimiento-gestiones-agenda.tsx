@@ -87,7 +87,7 @@ const COL_MIN_WIDTHS: Record<string, number> = {
 const ROW_BG_COLORS: Record<EstadoGestion, string> = {
   Realizado: 'bg-green-200 hover:bg-green-300',
   Pendiente: 'bg-red-200 hover:bg-red-300',
-  Planificado: 'bg-sky-200 hover:bg-sky-300',
+  Planificado: 'bg-white hover:bg-gray-50',
 }
 
 const COL_VISIBLE_KEY = 'gestiones_col_visible'
@@ -120,6 +120,8 @@ interface GestionesAgendaProps {
   empresaId: string
   canWrite: boolean
   riesgos: Riesgo[]
+  /** Nombre del establecimiento, para el título "Gestiones (nombre) {año}". */
+  establecimientoNombre?: string
 }
 
 // ─── InlineCreator ─────────────────────────────────────────────────────────────
@@ -1055,7 +1057,7 @@ function AgendaActionsCell({
 
 
 // ─── Main component ────────────────────────────────────────────────────────────
-export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, riesgos: _riesgos }: GestionesAgendaProps) {
+export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, riesgos: _riesgos, establecimientoNombre }: GestionesAgendaProps) {
   const queryClient = useQueryClient()
   const { data: canWriteData } = useCanWrite(establecimientoId)
   const canWrite = canWriteProp || (canWriteData ?? false)
@@ -1232,6 +1234,21 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
     })
   }, [rawRegistros, geMap, gestionesConForm, isGestionesPending, gestionesEst])
 
+  // Cuántos registros hay por (gestion_establecimiento_id, fecha_planificada).
+  // Se usa para decidir si mostrar el #N (solo cuando hay duplicados).
+  const groupSizes = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const r of registros ?? []) {
+      const key = `${r.gestion_establecimiento_id}|${r.fecha_planificada}`
+      map.set(key, (map.get(key) ?? 0) + 1)
+    }
+    return map
+  }, [registros])
+
+  function groupSizeFor(r: FullRegistro): number {
+    return groupSizes.get(`${r.gestion_establecimiento_id}|${r.fecha_planificada}`) ?? 1
+  }
+
   // ── Filtering & sorting ─────────────────────────────────────────────────────
   const monthCounts = MONTHS.map((_, i) => {
     if (!registros) return 0
@@ -1307,6 +1324,11 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
           </td>
           <td className="px-4 py-1.5 font-medium text-text-primary" style={{ maxWidth: colW('gestion'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {r.ge_gestion_nombre ?? '—'}
+            {groupSizeFor(r) > 1 && (
+              <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-sig-100 text-sig-700 tabular-nums">
+                #{r.secuencia}
+              </span>
+            )}
           </td>
           <td className="px-4 py-1.5 text-text-secondary tabular-nums text-xs">{r.fecha_planificada}</td>
           <td className={`${visibleCols.has('fecha_ejec') ? 'hidden md:table-cell' : 'hidden'} px-4 py-1.5 text-text-secondary tabular-nums text-xs`}>
@@ -1523,7 +1545,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
                         <div className="space-y-0.5">
                           {regs.map(r => {
                             const estado = calcularEstadoGestion(r.fecha_ejecutada ?? null, r.fecha_planificada)
-                            const dot = estado === 'Realizado' ? 'bg-green-500' : estado === 'Pendiente' ? 'bg-red-500' : 'bg-sky-500'
+                            const dot = estado === 'Realizado' ? 'bg-green-500' : estado === 'Pendiente' ? 'bg-red-500' : 'bg-gray-300'
                             return (
                               <div
                                 key={r.id}
@@ -1630,7 +1652,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
         </button>
         <div className="flex items-center gap-3">
           <button onClick={() => setYear(year - 1)} className="text-text-tertiary hover:text-white text-lg leading-none">‹‹</button>
-          <span className="text-base font-semibold tracking-wide">Gestiones {year}</span>
+          <span className="text-base font-semibold tracking-wide">{establecimientoNombre ? `Gestiones (${establecimientoNombre})` : 'Gestiones'} {year}</span>
           <button onClick={() => setYear(year + 1)} className="text-text-tertiary hover:text-white text-lg leading-none">››</button>
         </div>
         <button onClick={() => setYear(year + 1)} className="text-text-tertiary hover:text-white text-sm font-medium w-12 text-right">

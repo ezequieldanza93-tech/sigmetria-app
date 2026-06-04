@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import {
   TIPO_ESTABLECIMIENTO_OPTIONS,
-  SINIESTRO_TIPO_OPTIONS,
-  SINIESTRO_ESTADO_OPTIONS,
+  INCIDENTE_TIPO_OPTIONS,
+  INCIDENTE_ESTADO_OPTIONS,
   INSPECCION_ESTADO_OPTIONS,
   CAPACITACION_ESTADO_OPTIONS,
   RIESGO_NIVEL_OPTIONS,
@@ -28,19 +28,19 @@ describe('TIPO_ESTABLECIMIENTO_OPTIONS', () => {
   })
 })
 
-describe('SINIESTRO_TIPO_OPTIONS', () => {
-  it('includes all siniestro types', () => {
-    const values = SINIESTRO_TIPO_OPTIONS.map(o => o.value)
-    expect(values).toContain('accidente')
+describe('INCIDENTE_TIPO_OPTIONS', () => {
+  it('includes all incidente types', () => {
+    const values = INCIDENTE_TIPO_OPTIONS.map(o => o.value)
     expect(values).toContain('incidente')
-    expect(values).toContain('casi_accidente')
-    expect(values).toContain('enfermedad_profesional')
+    expect(values).toContain('accidente_leve')
+    expect(values).toContain('accidente_moderado')
+    expect(values).toContain('accidente_grave')
   })
 })
 
-describe('SINIESTRO_ESTADO_OPTIONS', () => {
-  it('includes all siniestro states', () => {
-    const values = SINIESTRO_ESTADO_OPTIONS.map(o => o.value)
+describe('INCIDENTE_ESTADO_OPTIONS', () => {
+  it('includes all incidente states', () => {
+    const values = INCIDENTE_ESTADO_OPTIONS.map(o => o.value)
     expect(values).toEqual(['pendiente', 'en_investigacion', 'cerrado'])
   })
 })

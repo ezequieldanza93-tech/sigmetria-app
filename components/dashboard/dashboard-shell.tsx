@@ -27,12 +27,12 @@ const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'O
 
 function buildWidgetSubtitle(key: WidgetKey, month: number | null, year: number | null): string {
   switch (key) {
-    case 'siniestros_mes': return month !== null ? `En ${MESES[month]}` : ''
-    case 'siniestros_acumulados': return year !== null ? `En ${year}` : ''
+    case 'incidentes_mes': return month !== null ? `En ${MESES[month]}` : ''
+    case 'incidentes_acumulados': return year !== null ? `En ${year}` : ''
     case 'documentos_vencer_7d': return 'Próximos 7 días'
     case 'documentos_vencer_15d': return 'Próximos 15 días'
     case 'documentos_vencer_30d': return 'Próximos 30 días'
-    case 'tasa_siniestralidad': return 'Siniestros / Trabajadores'
+    case 'tasa_incidentalidad': return 'Incidentes / Trabajadores'
     case 'inspecciones_pendientes': return 'Pendientes de realizar'
     case 'capacitaciones_vencidas': return 'Vencidas sin realizar'
     case 'capacitaciones_proximas': return 'Próximos 30 días'

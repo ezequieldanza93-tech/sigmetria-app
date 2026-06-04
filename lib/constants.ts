@@ -1,18 +1,14 @@
 import type {
   TipoEstablecimiento,
-  SiniestroTipo,
-  SiniestroEstado,
+  IncidenteTipo,
+  IncidenteEstado,
   InspeccionEstado,
   RiesgoNivel,
   MedicionTipo,
   DocumentoTipo,
   CapacitacionEstado,
-  IncidenteTipo,
-  DenunciaTipo,
-  SeguimientoEstado,
-  Severidad,
   TipoRelacionLaboral,
-  TipoPersonaSiniestro,
+  TipoPersonaIncidente,
   InspeccionEstadoVisual,
 } from './types'
 
@@ -55,27 +51,29 @@ export const TIPO_ESTABLECIMIENTO_OPTIONS: { value: TipoEstablecimiento; label: 
   { value: 'otro', label: 'Otros tipos' },
 ]
 
-export const SINIESTRO_TIPO_LABELS: Record<SiniestroTipo, string> = {
-  accidente: 'Accidente',
+export const INCIDENTE_TIPO_LABELS: Record<IncidenteTipo, string> = {
   incidente: 'Incidente',
-  casi_accidente: 'Casi Accidente',
-  enfermedad_profesional: 'Enfermedad Profesional',
+  accidente_leve: 'Accidente Leve',
+  accidente_moderado: 'Accidente Moderado',
+  accidente_grave: 'Accidente Grave',
+  enfermedad_profesional: 'Enfermedad profesional',
 }
 
-export const SINIESTRO_TIPO_OPTIONS: { value: SiniestroTipo; label: string }[] = [
-  { value: 'accidente', label: 'Accidente' },
+export const INCIDENTE_TIPO_OPTIONS: { value: IncidenteTipo; label: string }[] = [
   { value: 'incidente', label: 'Incidente' },
-  { value: 'casi_accidente', label: 'Casi Accidente' },
-  { value: 'enfermedad_profesional', label: 'Enfermedad Profesional' },
+  { value: 'accidente_leve', label: 'Accidente Leve' },
+  { value: 'accidente_moderado', label: 'Accidente Moderado' },
+  { value: 'accidente_grave', label: 'Accidente Grave' },
+  { value: 'enfermedad_profesional', label: 'Enfermedad profesional' },
 ]
 
-export const SINIESTRO_ESTADO_LABELS: Record<SiniestroEstado, string> = {
+export const INCIDENTE_ESTADO_LABELS: Record<IncidenteEstado, string> = {
   pendiente: 'Pendiente',
   en_investigacion: 'En Investigación',
   cerrado: 'Cerrado',
 }
 
-export const SINIESTRO_ESTADO_OPTIONS: { value: SiniestroEstado; label: string }[] = [
+export const INCIDENTE_ESTADO_OPTIONS: { value: IncidenteEstado; label: string }[] = [
   { value: 'pendiente', label: 'Pendiente' },
   { value: 'en_investigacion', label: 'En Investigación' },
   { value: 'cerrado', label: 'Cerrado' },
@@ -162,8 +160,8 @@ export type WidgetKey =
   | 'empresas_activas'
   | 'establecimientos'
   | 'trabajadores'
-  | 'siniestros_mes'
-  | 'siniestros_acumulados'
+  | 'incidentes_mes'
+  | 'incidentes_acumulados'
   | 'documentos_vencer_7d'
   | 'documentos_vencer_15d'
   | 'documentos_vencer_30d'
@@ -172,7 +170,7 @@ export type WidgetKey =
   | 'capacitaciones_proximas'
   | 'mediciones_pendientes'
   | 'epp_vencidos'
-  | 'tasa_siniestralidad'
+  | 'tasa_incidentalidad'
 
 export interface WidgetDefinition {
   key: WidgetKey
@@ -185,8 +183,8 @@ export const ALL_WIDGETS: Record<WidgetKey, WidgetDefinition> = {
   empresas_activas: { key: 'empresas_activas', label: 'Empresas Activas', icon: 'Building2', description: 'Empresas activas habilitadas' },
   establecimientos: { key: 'establecimientos', label: 'Establecimientos', icon: 'MapPin', description: 'Total de establecimientos' },
   trabajadores: { key: 'trabajadores', label: 'Trabajadores', icon: 'Users', description: 'Suma total de trabajadores registrados' },
-  siniestros_mes: { key: 'siniestros_mes', label: 'Siniestros del Mes', icon: 'AlertTriangle', description: 'Siniestros ocurridos en el mes actual' },
-  siniestros_acumulados: { key: 'siniestros_acumulados', label: 'Siniestros Acumulados', icon: 'AlertOctagon', description: 'Siniestros acumulados en el año' },
+  incidentes_mes: { key: 'incidentes_mes', label: 'Incidentes del Mes', icon: 'AlertTriangle', description: 'Incidentes ocurridos en el mes actual' },
+  incidentes_acumulados: { key: 'incidentes_acumulados', label: 'Incidentes Acumulados', icon: 'AlertOctagon', description: 'Incidentes acumulados en el año' },
   documentos_vencer_7d: { key: 'documentos_vencer_7d', label: 'Docs por Vencer (7d)', icon: 'FileText', description: 'Documentos que vencen en los próximos 7 días' },
   documentos_vencer_15d: { key: 'documentos_vencer_15d', label: 'Docs por Vencer (15d)', icon: 'FileText', description: 'Documentos que vencen en los próximos 15 días' },
   documentos_vencer_30d: { key: 'documentos_vencer_30d', label: 'Docs por Vencer (30d)', icon: 'FileText', description: 'Documentos que vencen en los próximos 30 días' },
@@ -195,118 +193,10 @@ export const ALL_WIDGETS: Record<WidgetKey, WidgetDefinition> = {
   capacitaciones_proximas: { key: 'capacitaciones_proximas', label: 'Capacitaciones Próximas', icon: 'CalendarCheck', description: 'Capacitaciones a vencer en 30 días' },
   mediciones_pendientes: { key: 'mediciones_pendientes', label: 'Mediciones Pendientes', icon: 'Activity', description: 'Mediciones ambientales registradas en el año' },
   epp_vencidos: { key: 'epp_vencidos', label: 'EPP por Puesto', icon: 'Shield', description: 'Elementos de protección personal por puesto' },
-  tasa_siniestralidad: { key: 'tasa_siniestralidad', label: 'Tasa de Siniestralidad', icon: 'Percent', description: 'Porcentaje de siniestros sobre trabajadores' },
+  tasa_incidentalidad: { key: 'tasa_incidentalidad', label: 'Tasa de Incidentalidad', icon: 'Percent', description: 'Porcentaje de incidentes sobre trabajadores' },
 }
 
 export const WIDGET_KEYS = Object.keys(ALL_WIDGETS) as WidgetKey[]
-
-// ---- Incidentes ----
-export const INCIDENTE_TIPO_LABELS: Record<IncidenteTipo, string> = {
-  electrico: 'Eléctrico',
-  mecanico: 'Mecánico',
-  estructural: 'Estructural',
-  quimico: 'Químico',
-  ergonomico: 'Ergonómico',
-  ambiental: 'Ambiental',
-  incendio: 'Incendio',
-  caida: 'Caída',
-  herramienta: 'Herramienta',
-  vehiculo: 'Vehículo',
-  otro: 'Otro',
-}
-
-export const INCIDENTE_TIPO_OPTIONS: { value: IncidenteTipo; label: string }[] = [
-  { value: 'electrico', label: 'Eléctrico' },
-  { value: 'mecanico', label: 'Mecánico' },
-  { value: 'estructural', label: 'Estructural' },
-  { value: 'quimico', label: 'Químico' },
-  { value: 'ergonomico', label: 'Ergonómico' },
-  { value: 'ambiental', label: 'Ambiental' },
-  { value: 'incendio', label: 'Incendio' },
-  { value: 'caida', label: 'Caída' },
-  { value: 'herramienta', label: 'Herramienta' },
-  { value: 'vehiculo', label: 'Vehículo' },
-  { value: 'otro', label: 'Otro' },
-]
-
-// ---- Denuncias ----
-export const DENUNCIA_TIPO_LABELS: Record<DenunciaTipo, string> = {
-  laboral: 'Laboral',
-  acoso: 'Acoso',
-  condiciones_inseguras: 'Condiciones Inseguras',
-  incumplimiento_normativo: 'Incumplimiento Normativo',
-  conducta: 'Conducta',
-  otro: 'Otro',
-}
-
-export const DENUNCIA_TIPO_OPTIONS: { value: DenunciaTipo; label: string }[] = [
-  { value: 'laboral', label: 'Laboral' },
-  { value: 'acoso', label: 'Acoso' },
-  { value: 'condiciones_inseguras', label: 'Condiciones Inseguras' },
-  { value: 'incumplimiento_normativo', label: 'Incumplimiento Normativo' },
-  { value: 'conducta', label: 'Conducta' },
-  { value: 'otro', label: 'Otro' },
-]
-
-// ---- Seguimiento (estados compartidos) ----
-export const SEGUIMIENTO_ESTADO_LABELS: Record<SeguimientoEstado, string> = {
-  recibida: 'Recibida',
-  en_analisis: 'En Análisis',
-  accion_planificada: 'Acción Planificada',
-  implementada: 'Implementada',
-  cerrada: 'Cerrada',
-}
-
-export const SEGUIMIENTO_ESTADO_OPTIONS: { value: SeguimientoEstado; label: string }[] = [
-  { value: 'recibida', label: 'Recibida' },
-  { value: 'en_analisis', label: 'En Análisis' },
-  { value: 'accion_planificada', label: 'Acción Planificada' },
-  { value: 'implementada', label: 'Implementada' },
-  { value: 'cerrada', label: 'Cerrada' },
-]
-
-export const SEGUIMIENTO_ESTADO_BADGE: Record<SeguimientoEstado, string> = {
-  recibida: 'bg-red-100 text-red-800',
-  en_analisis: 'bg-yellow-100 text-yellow-800',
-  accion_planificada: 'bg-blue-100 text-blue-800',
-  implementada: 'bg-orange-100 text-orange-800',
-  cerrada: 'bg-green-100 text-green-800',
-}
-
-// ---- Severidad ----
-export const SEVERIDAD_LABELS: Record<Severidad, string> = {
-  baja: 'Baja',
-  media: 'Media',
-  alta: 'Alta',
-  critica: 'Crítica',
-}
-
-export const SEVERIDAD_OPTIONS: { value: Severidad; label: string }[] = [
-  { value: 'baja', label: 'Baja' },
-  { value: 'media', label: 'Media' },
-  { value: 'alta', label: 'Alta' },
-  { value: 'critica', label: 'Crítica' },
-]
-
-export const SEVERIDAD_BADGE: Record<Severidad, string> = {
-  baja: 'bg-gray-100 text-gray-700',
-  media: 'bg-blue-100 text-blue-800',
-  alta: 'bg-orange-100 text-orange-800',
-  critica: 'bg-red-100 text-red-800',
-}
-
-// ---- Denunciante tipo ----
-export const DENUNCIANTE_TIPO_LABELS: Record<string, string> = {
-  interno: 'Interno',
-  externo: 'Externo',
-  anonimo: 'Anónimo',
-}
-
-export const DENUNCIANTE_TIPO_OPTIONS = [
-  { value: 'interno', label: 'Interno' },
-  { value: 'externo', label: 'Externo' },
-  { value: 'anonimo', label: 'Anónimo' },
-]
 
 // ---- IPERC ----
 export const IPERC_FACTORES = [
@@ -376,7 +266,7 @@ export const TIPO_RELACION_LABORAL_LABELS: Record<TipoRelacionLaboral, string> =
   pasante: 'Pasante',
 }
 
-export const TIPO_PERSONA_SINIESTRO_LABELS: Record<TipoPersonaSiniestro, string> = {
+export const TIPO_PERSONA_INCIDENTE_LABELS: Record<TipoPersonaIncidente, string> = {
   trabajador_interno: 'Trabajador interno',
   trabajador_externo: 'Trabajador externo',
 }

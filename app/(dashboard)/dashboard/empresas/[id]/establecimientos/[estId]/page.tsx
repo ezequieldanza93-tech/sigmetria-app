@@ -7,23 +7,16 @@ import { EstablecimientoTabs } from '@/components/establecimiento-tabs'
 import { ActuarView } from '@/components/actuar-view'
 import { getDocTiposAplicables } from '@/lib/actions/aplicabilidad'
 import type {
-  SectorEstablecimiento, Siniestro, Inspeccion, Riesgo, Documento, DocumentType,
+  SectorEstablecimiento, Incidente, Inspeccion, Riesgo, Documento, DocumentType,
   EstablecimientoDenuncia, FeedbackCliente, EmpresaDocumento, EmpleadoDocumentoLegajo, LegajoGestion,
   Capacitacion, Medicion,
 } from '@/lib/types'
 import { AnalyticsDashboard } from '@/components/analytics/real/analytics-dashboard'
 import { LegajoTecnico } from '@/components/establecimiento/legajo-tecnico'
 import { QRPanel } from '@/components/establecimiento/qr-panel'
-import { IncidentesAggregate } from '@/components/aggregate/incidentes-aggregate'
-import { DenunciasAggregate } from '@/components/aggregate/denuncias-aggregate'
-import { getIncidentesAggregate, getDenunciasAggregate } from '@/lib/queries/aggregate'
-import Link from 'next/link'
-import { Plus } from 'lucide-react'
-import type { IncidenteAggregateRow } from '@/components/aggregate/incidentes-aggregate'
-import type { DenunciaAggregateRow } from '@/components/aggregate/denuncias-aggregate'
 
-type Section = 'agenda' | 'ficha' | 'dashboard' | 'seguimiento' | 'legajo' | 'incidentes' | 'denuncias'
-const VALID_SECTIONS: Section[] = ['agenda', 'ficha', 'dashboard', 'seguimiento', 'legajo', 'incidentes', 'denuncias']
+type Section = 'agenda' | 'ficha' | 'dashboard' | 'seguimiento' | 'legajo'
+const VALID_SECTIONS: Section[] = ['agenda', 'ficha', 'dashboard', 'seguimiento', 'legajo']
 
 interface Props {
   params: Promise<{ id: string; estId: string }>
@@ -58,7 +51,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
 
   // Section-specific data fetching
   let sectores: SectorEstablecimiento[] = []
-  let siniestros: Siniestro[] = []
+  let incidentes: Incidente[] = []
   let inspecciones: Inspeccion[] = []
   let riesgos: Riesgo[] = []
   let documentos: Documento[] = []
@@ -72,15 +65,11 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
   // Legajo QR section data
   let legajoCapacitaciones: (Capacitacion & { _asistentes?: number })[] = []
   let legajoRiesgos: Riesgo[] = []
-  let legajoSiniestros: Siniestro[] = []
+  let legajoIncidentes: Incidente[] = []
   let legajoInspecciones: Inspeccion[] = []
   let legajoDocumentos: Documento[] = []
   const legajoMedicionesPorTipo: Record<string, Medicion[]> = {}
   let verificacionToken: string | null = null
-
-  // Incidentes / Denuncias section data (scope: this establecimiento)
-  let incidentesRows: IncidenteAggregateRow[] = []
-  let denunciasRows: DenunciaAggregateRow[] = []
 
   if (section === 'ficha') {
     const [s1, s2, s3, s4, s5] = await Promise.all([
@@ -92,7 +81,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
         .order('es_custom')
         .order('nombre'),
       supabase
-        .from('siniestros')
+        .from('incidentes')
         .select('*')
         .eq('establecimiento_id', estId)
         .order('fecha_ocurrencia', { ascending: false }),
@@ -109,7 +98,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
       getDocTiposAplicables(estId),
     ])
     sectores = (s1.data ?? []) as unknown as SectorEstablecimiento[]
-    siniestros = (s2.data ?? []) as unknown as Siniestro[]
+    incidentes = (s2.data ?? []) as unknown as Incidente[]
     inspecciones = (s3.data ?? []) as unknown as Inspeccion[]
     documentos = (s4.data ?? []) as unknown as Documento[]
     documentTypes = s5
@@ -178,7 +167,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
       supabase.from('capacitaciones').select('id, titulo, fecha_realizada, capacitaciones_asistentes(id)').eq('empresa_id', empresaId).or(`establecimiento_id.eq.${estId},establecimiento_id.is.null`).eq('estado', 'realizada').gte('fecha_realizada', doce).order('fecha_realizada', { ascending: false }),
       supabase.from('riesgos').select('*').eq('establecimiento_id', estId).eq('resuelto', false),
       supabase.from('mediciones').select('*, unidades(nombre, simbolo)').eq('establecimiento_id', estId).order('fecha', { ascending: false }),
-      supabase.from('siniestros').select('*').eq('establecimiento_id', estId).in('estado', ['pendiente', 'en_investigacion']).order('fecha_ocurrencia', { ascending: false }),
+      supabase.from('incidentes').select('*').eq('establecimiento_id', estId).in('estado', ['pendiente', 'en_investigacion']).order('fecha_ocurrencia', { ascending: false }),
     ])
 
     verificacionToken = tk.data?.token ?? null
@@ -187,24 +176,10 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
     legajoCapacitaciones = ((caps.data ?? []) as unknown as (Capacitacion & { capacitaciones_asistentes?: { id: string }[] })[])
       .map(c => ({ ...c, _asistentes: c.capacitaciones_asistentes?.length ?? 0 }))
     legajoRiesgos = (rgs.data ?? []) as unknown as Riesgo[]
-    legajoSiniestros = (sins.data ?? []) as unknown as Siniestro[]
+    legajoIncidentes = (sins.data ?? []) as unknown as Incidente[]
     for (const m of (meds.data ?? []) as unknown as Medicion[]) {
       if (!legajoMedicionesPorTipo[m.tipo]) legajoMedicionesPorTipo[m.tipo] = []
       if (legajoMedicionesPorTipo[m.tipo].length < 3) legajoMedicionesPorTipo[m.tipo].push(m)
-    }
-  }
-
-  if (section === 'incidentes' || section === 'denuncias') {
-    const estabCtx = [{
-      id: estId,
-      nombre: establecimiento.nombre,
-      empresa_id: empresaId,
-      empresa_razon_social: empresa.razon_social,
-    }]
-    if (section === 'incidentes') {
-      incidentesRows = await getIncidentesAggregate(estabCtx)
-    } else {
-      denunciasRows = await getDenunciasAggregate(estabCtx)
     }
   }
 
@@ -217,6 +192,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
           empresaId={empresaId}
           canWrite={userCanWrite}
           riesgos={riesgos}
+          establecimientoNombre={establecimiento.nombre}
         />
       )}
 
@@ -229,7 +205,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
             canWrite={userCanWrite}
             canDelete={false}
             sectores={sectores}
-            siniestros={siniestros}
+            incidentes={incidentes}
             inspecciones={inspecciones}
             documentos={documentos}
             documentTypes={documentTypes}
@@ -269,7 +245,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
                 capacitaciones={legajoCapacitaciones}
                 riesgos={legajoRiesgos}
                 medicionesPorTipo={legajoMedicionesPorTipo}
-                siniestros={legajoSiniestros}
+                incidentes={legajoIncidentes}
                 ahora={new Date()}
               />
             </div>
@@ -293,39 +269,6 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
         </div>
       )}
 
-      {section === 'incidentes' && (
-        <div>
-          {userCanWrite && (
-            <div className="px-6 pt-6 flex justify-end">
-              <Link
-                href={`/dashboard/incidentes/nuevo?empresaId=${empresaId}&establecimientoId=${estId}`}
-                className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium bg-brand-primary text-white rounded-lg hover:bg-brand-primary-hover transition-colors"
-              >
-                <Plus size={16} strokeWidth={2} />
-                Nuevo incidente
-              </Link>
-            </div>
-          )}
-          <IncidentesAggregate rows={incidentesRows} showEmpresaFilter={false} showEstablecimientoFilter={false} />
-        </div>
-      )}
-
-      {section === 'denuncias' && (
-        <div>
-          {userCanWrite && (
-            <div className="px-6 pt-6 flex justify-end">
-              <Link
-                href={`/dashboard/denuncias/nueva?empresaId=${empresaId}&establecimientoId=${estId}`}
-                className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium bg-brand-primary text-white rounded-lg hover:bg-brand-primary-hover transition-colors"
-              >
-                <Plus size={16} strokeWidth={2} />
-                Nueva denuncia
-              </Link>
-            </div>
-          )}
-          <DenunciasAggregate rows={denunciasRows} showEmpresaFilter={false} showEstablecimientoFilter={false} />
-        </div>
-      )}
     </div>
   )
 }

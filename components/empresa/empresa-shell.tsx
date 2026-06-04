@@ -1,6 +1,6 @@
 'use client'
 
-import { Building2, ClipboardList, Crosshair, BarChart3, FileText, ArrowLeft, AlertTriangle, Scale } from 'lucide-react'
+import { Building2, ClipboardList, Crosshair, BarChart3, FileText, ArrowLeft } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { SectionsShell } from '@/components/layout/sections-shell'
 import type { SectionItem } from '@/components/layout/sections-sidebar'
@@ -11,7 +11,7 @@ interface EmpresaShellProps {
   children: React.ReactNode
 }
 
-const SECTIONS = ['establecimientos', 'gestiones', 'seguimiento', 'incidentes', 'denuncias', 'dashboard', 'ficha'] as const
+const SECTIONS = ['establecimientos', 'gestiones', 'seguimiento', 'dashboard', 'ficha'] as const
 type Section = (typeof SECTIONS)[number]
 
 export function EmpresaShell({ empresaId, establecimientos, children }: EmpresaShellProps) {
@@ -43,6 +43,12 @@ export function EmpresaShell({ empresaId, establecimientos, children }: EmpresaS
       })),
     },
     {
+      id: 'ficha',
+      label: 'Ficha',
+      icon: FileText,
+      href: `${baseUrl}?section=ficha`,
+    },
+    {
       id: 'gestiones',
       label: 'Gestiones',
       icon: ClipboardList,
@@ -55,28 +61,10 @@ export function EmpresaShell({ empresaId, establecimientos, children }: EmpresaS
       href: `${baseUrl}?section=seguimiento`,
     },
     {
-      id: 'incidentes',
-      label: 'Incidentes',
-      icon: AlertTriangle,
-      href: `${baseUrl}?section=incidentes`,
-    },
-    {
-      id: 'denuncias',
-      label: 'Denuncias',
-      icon: Scale,
-      href: `${baseUrl}?section=denuncias`,
-    },
-    {
       id: 'dashboard',
       label: 'Dashboards',
       icon: BarChart3,
       href: `${baseUrl}?section=dashboard`,
-    },
-    {
-      id: 'ficha',
-      label: 'Ficha',
-      icon: FileText,
-      href: `${baseUrl}?section=ficha`,
     },
   ]
 

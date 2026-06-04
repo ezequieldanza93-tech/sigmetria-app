@@ -169,7 +169,7 @@ CREATE POLICY "audit_log: select"
         FROM public.consultoras_members cm
         WHERE cm.user_id = (SELECT auth.uid())
           AND cm.is_active = true
-          AND cm.role IN (
+          AND cm.role::text IN (
             'full_access_main',
             'full_access_branch',
             'responsable_estandares',

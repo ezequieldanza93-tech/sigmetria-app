@@ -8,6 +8,8 @@ import {
   getConfiguracionVencimientos,
   updateConfiguracionVencimiento,
   initConfiguracionVencimientos,
+  getPaises,
+  updatePaisDocumento,
 } from '@/lib/actions/configuracion-vencimiento'
 import type { TipoEntidadVencimiento } from '@/lib/types'
 
@@ -82,6 +84,35 @@ export function useUpdateConfiguracionVencimiento() {
       updates: { tiene_vencimiento?: boolean; dias_aviso?: number; activo?: boolean; tipo_entidad?: TipoEntidadVencimiento }
     }) => {
       const result = await updateConfiguracionVencimiento(id, updates)
+      if (!result.success) throw new Error(result.error)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['configuracion-vencimientos'] })
+    },
+  })
+}
+
+// ─── PAÍSES ───
+
+export function usePaises() {
+  return useQuery({
+    queryKey: ['paises'],
+    queryFn: getPaises,
+    staleTime: 1000 * 60 * 60, // catálogo estable
+  })
+}
+
+export function useUpdatePaisDocumento() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      documentoTipoId,
+      paisCodigo,
+    }: {
+      documentoTipoId: string
+      paisCodigo: string
+    }) => {
+      const result = await updatePaisDocumento(documentoTipoId, paisCodigo)
       if (!result.success) throw new Error(result.error)
     },
     onSuccess: () => {

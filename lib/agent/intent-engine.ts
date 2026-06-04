@@ -132,12 +132,12 @@ export const HANDLERS: Record<string, HandlerFn> = {
     if (prevMsg) return { reply: '¡Hola de nuevo! ¿En qué más te puedo ayudar?', pendingActions: [] }
     let reply = '¡Hola! Soy **Sigía**, la asistente virtual de Sigmetría HyS.'
     if (establecimientoMatch) reply += ` Estás consultando desde **${establecimientoMatch.nombre}**.`
-    reply += ' ¿En qué puedo ayudarte hoy? Podés consultarme sobre empresas, establecimientos, siniestros, inspecciones, riesgos, gestiones y más.'
+    reply += ' ¿En qué puedo ayudarte hoy? Podés consultarme sobre empresas, establecimientos, incidentes, inspecciones, riesgos, gestiones y más.'
     return { reply, pendingActions: [] }
   },
 
   handleCapacidades: async (_supabase, _userId, _consultoraId, _message, _establecimientos, establecimientoMatch) => {
-    let caps = 'Estas son mis capacidades principales:\n\n📋 **Consultas:**\n• Empresas (cantidad, listado)\n• Establecimientos\n• Gestiones (pendientes, próximas, vencidas)\n• Siniestros, inspecciones, riesgos\n• Empleados\n• Vencimientos de documentación\n\n✍️ **Acciones con aprobación:**\n• Planificar checklist o gestión\n• Registrar gestiones\n• Actualizar estado de riesgos\n• Enviar notificaciones\n\n🔍 Podés preguntar por mes, tipo, estado o establecimiento.'
+    let caps = 'Estas son mis capacidades principales:\n\n📋 **Consultas:**\n• Empresas (cantidad, listado)\n• Establecimientos\n• Gestiones (pendientes, próximas, vencidas)\n• Incidentes, inspecciones, riesgos\n• Empleados\n• Vencimientos de documentación\n\n✍️ **Acciones con aprobación:**\n• Planificar checklist o gestión\n• Registrar gestiones\n• Actualizar estado de riesgos\n• Enviar notificaciones\n\n🔍 Podés preguntar por mes, tipo, estado o establecimiento.'
     if (establecimientoMatch) caps += `\n\n📍 Estás viendo **${establecimientoMatch.nombre}** — las consultas se filtran automáticamente.`
     return { reply: caps, pendingActions: [] }
   },
@@ -235,23 +235,23 @@ export const HANDLERS: Record<string, HandlerFn> = {
     const ids = establecimientoMatch ? [establecimientoMatch.id] : (establecimientos?.map(e => e.id) ?? [])
     if (!ids.length) return { reply: 'No hay establecimientos activos.', pendingActions: [] }
 
-    const { data: siniestros } = await supabase
-      .from('siniestros').select('id, fecha_ocurrencia, descripcion, gravedad, establecimiento_id')
+    const { data: incidentes } = await supabase
+      .from('incidentes').select('id, fecha_ocurrencia, descripcion, tipo, establecimiento_id')
       .in('establecimiento_id', ids).order('fecha_ocurrencia', { ascending: false }).limit(10)
 
-    if (!siniestros?.length) return { reply: 'No hay siniestros registrados.', pendingActions: [] }
-    const lines = siniestros.map(s => `• ${s.fecha_ocurrencia} | ${(s.descripcion ?? '').slice(0, 60) || '?'} | *${s.gravedad}*`)
-    return { reply: `Últimos ${siniestros.length} siniestros:\n\n${lines.join('\n')}`, pendingActions: [] }
+    if (!incidentes?.length) return { reply: 'No hay incidentes registrados.', pendingActions: [] }
+    const lines = incidentes.map(s => `• ${s.fecha_ocurrencia} | ${(s.descripcion ?? '').slice(0, 60) || '?'} | *${s.tipo}*`)
+    return { reply: `Últimos ${incidentes.length} incidentes:\n\n${lines.join('\n')}`, pendingActions: [] }
   },
 
   handleSiniestrosCount: async (supabase, _userId, _consultoraId, _message, establecimientos, establecimientoMatch) => {
     const ids = establecimientoMatch ? [establecimientoMatch.id] : (establecimientos?.map(e => e.id) ?? [])
     if (!ids.length) return { reply: 'No hay establecimientos activos.', pendingActions: [] }
     const { count } = await supabase
-      .from('siniestros').select('*', { count: 'exact', head: true })
+      .from('incidentes').select('*', { count: 'exact', head: true })
       .in('establecimiento_id', ids)
     const nombre = establecimientoMatch?.nombre ?? 'tus establecimientos'
-    return { reply: `Tenés **${count ?? 0} siniestros** registrados en ${nombre}.`, pendingActions: [] }
+    return { reply: `Tenés **${count ?? 0} incidentes** registrados en ${nombre}.`, pendingActions: [] }
   },
 
   handleInspeccionesList: async (supabase, _userId, _consultoraId, _message, establecimientos, establecimientoMatch) => {

@@ -43,13 +43,14 @@ export interface EstablecimientoRespuesta {
   respuesta: boolean
 }
 
-export type SiniestroTipo =
-  | 'accidente'
+export type IncidenteTipo =
   | 'incidente'
-  | 'casi_accidente'
+  | 'accidente_leve'
+  | 'accidente_moderado'
+  | 'accidente_grave'
   | 'enfermedad_profesional'
 
-export type SiniestroEstado =
+export type IncidenteEstado =
   | 'pendiente'
   | 'en_investigacion'
   | 'cerrado'
@@ -120,6 +121,7 @@ export interface Consultora {
   logo_url: string | null
   website: string | null
   social_links: Record<string, string> | null
+  tipo: string | null
   is_active: boolean
   seats_max: number
   trial_used_at: string | null
@@ -475,17 +477,17 @@ export interface TrabajadorPuesto {
   personas_directorio?: DirectorioPersona
 }
 
-export type TipoPersonaSiniestro = 'trabajador_interno' | 'trabajador_externo'
+export type TipoPersonaIncidente = 'trabajador_interno' | 'trabajador_externo'
 
-export interface Siniestro {
+export interface Incidente {
   id: string
   establecimiento_id: string
   persona_id: string | null
-  tipo: SiniestroTipo
-  estado: SiniestroEstado
+  tipo: IncidenteTipo
+  estado: IncidenteEstado
   fecha_ocurrencia: string
   hora_ocurrencia: string | null
-  tipo_persona: TipoPersonaSiniestro | null
+  tipo_persona: TipoPersonaIncidente | null
   descripcion: string | null
   dias_perdidos: number | null
   dias_perdidos_calculados: number | null
@@ -493,6 +495,8 @@ export interface Siniestro {
   fecha_alta_medica: string | null
   tiene_denuncia_adjunta: boolean
   tiene_evolucion_medica: boolean
+  denuncia_adjuntos_urls: string[] | null
+  investigacion_adjuntos_urls: string[] | null
   ente_investigador: string | null
   fecha_investigacion: string | null
   causa_inmediata: string | null
@@ -680,7 +684,7 @@ export const RIESGO_NIVEL_COLORS: Record<RiesgoNivel, string> = {
   critico: 'bg-red-100 text-red-800',
 }
 
-export const SINIESTRO_ESTADO_COLORS: Record<SiniestroEstado, string> = {
+export const INCIDENTE_ESTADO_COLORS: Record<IncidenteEstado, string> = {
   pendiente: 'bg-yellow-100 text-yellow-800',
   en_investigacion: 'bg-blue-100 text-blue-800',
   cerrado: 'bg-gray-100 text-gray-700',
@@ -825,6 +829,7 @@ export interface RegistroGestion {
   observaciones: string | null
   notas: string | null
   mostrar_lt: boolean
+  secuencia: number
   created_at: string
   updated_at: string
   profiles?: { full_name: string } | null
@@ -959,11 +964,13 @@ export type EstadoGestion = 'Realizado' | 'Pendiente' | 'Planificado'
 
 export function calcularEstadoGestion(fechaEjecutada: string | null, fechaPlanificada: string): EstadoGestion {
   if (fechaEjecutada) return 'Realizado'
+  // Comparación string-a-string en formato ISO (YYYY-MM-DD).
+  // Evita el bug de timezone de `new Date(string)` que para fechas planas
+  // parsea como UTC midnight y se "corre" un día en zonas con offset negativo
+  // (ej. Argentina UTC-3 → '2026-05-31' termina representando el día anterior).
   const hoy = new Date()
-  hoy.setHours(0, 0, 0, 0)
-  const planificada = new Date(fechaPlanificada)
-  planificada.setHours(0, 0, 0, 0)
-  return planificada < hoy ? 'Pendiente' : 'Planificado'
+  const hoyIso = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`
+  return fechaPlanificada < hoyIso ? 'Pendiente' : 'Planificado'
 }
 
 // ---- Formularios ----
@@ -1053,6 +1060,16 @@ export interface ConfiguracionVencimiento {
   activo: boolean
   created_at: string
   updated_at: string
+  // Derivados del documento_tipo asociado (match por nombre). Solo presentes para
+  // items de tipo documento (empresa/establecimiento/persona); null para gestión.
+  documento_tipo_id?: string | null
+  pais_id?: string | null
+}
+
+export interface Pais {
+  codigo: string
+  nombre: string
+  activo: boolean
 }
 
 // ---- Dashboard ----
@@ -1307,125 +1324,6 @@ export const FIRMA_ENTIDAD_LABELS: Record<FirmaEntidadTipo, string> = {
   permiso_trabajo: 'Permiso de Trabajo',
   entrega_epp: 'Entrega de EPP',
   curso_certificado: 'Certificado de Curso',
-}
-
-// ---- Incidentes y Denuncias ----
-export type IncidenteTipo =
-  | 'electrico' | 'mecanico' | 'estructural' | 'quimico'
-  | 'ergonomico' | 'ambiental' | 'incendio' | 'caida'
-  | 'herramienta' | 'vehiculo' | 'otro'
-
-export type DenunciaTipo =
-  | 'laboral' | 'acoso' | 'condiciones_inseguras'
-  | 'incumplimiento_normativo' | 'conducta' | 'otro'
-
-export type DenuncianteTipo = 'interno' | 'externo' | 'anonimo'
-
-export type SeguimientoEstado =
-  | 'recibida' | 'en_analisis' | 'accion_planificada' | 'implementada' | 'cerrada'
-
-export type Severidad = 'baja' | 'media' | 'alta' | 'critica'
-
-export interface Incidente {
-  id: string
-  consultora_id: string
-  empresa_id: string
-  establecimiento_id: string | null
-  titulo: string
-  descripcion: string
-  tipo_incidente: IncidenteTipo
-  severidad: Severidad
-  lugar_especifico: string | null
-  fecha_incidente: string
-  hora_incidente: string | null
-  involucrados: string | null
-  testigos: string | null
-  estado: SeguimientoEstado
-  responsable_asignado_id: string | null
-  acciones_tomadas: string | null
-  conclusion: string | null
-  historial_estados: SeguimientoHistorico[]
-  cerrado_por: string | null
-  fecha_cierre: string | null
-  created_at: string
-  updated_at: string
-  empresas?: { razon_social: string }
-  establecimientos?: { nombre: string }
-  profiles_responsable?: { full_name: string }
-  incidentes_fotos?: IncidenteFoto[]
-}
-
-export interface IncidenteFoto {
-  id: string
-  incidente_id: string
-  url: string
-  filename: string
-  created_at: string
-}
-
-export interface Denuncia {
-  id: string
-  consultora_id: string
-  empresa_id: string
-  establecimiento_id: string | null
-  titulo: string
-  descripcion: string
-  tipo_denuncia: DenunciaTipo
-  denunciante_tipo: DenuncianteTipo
-  denunciante_nombre: string | null
-  denunciante_dni: string | null
-  denunciante_contacto: string | null
-  fecha_denuncia: string
-  involucrados: string | null
-  estado: SeguimientoEstado
-  responsable_asignado_id: string | null
-  acciones_tomadas: string | null
-  conclusion: string | null
-  confidencial: boolean
-  historial_estados: SeguimientoHistorico[]
-  cerrado_por: string | null
-  fecha_cierre: string | null
-  created_at: string
-  updated_at: string
-  empresas?: { razon_social: string }
-  establecimientos?: { nombre: string }
-  profiles_responsable?: { full_name: string }
-  denuncias_fotos?: DenunciaFoto[]
-}
-
-export interface DenunciaFoto {
-  id: string
-  denuncia_id: string
-  url: string
-  filename: string
-  created_at: string
-}
-
-export interface SeguimientoHistorico {
-  estado: SeguimientoEstado
-  fecha: string
-  usuario_id: string
-  usuario_nombre?: string
-}
-
-export const SEGUIMIENTO_ESTADOS_ORDER: SeguimientoEstado[] = [
-  'recibida',
-  'en_analisis',
-  'accion_planificada',
-  'implementada',
-  'cerrada',
-]
-
-export function estadoSiguiente(actual: SeguimientoEstado): SeguimientoEstado | null {
-  const idx = SEGUIMIENTO_ESTADOS_ORDER.indexOf(actual)
-  if (idx === -1 || idx >= SEGUIMIENTO_ESTADOS_ORDER.length - 1) return null
-  return SEGUIMIENTO_ESTADOS_ORDER[idx + 1]
-}
-
-export function estadoAnterior(actual: SeguimientoEstado): SeguimientoEstado | null {
-  const idx = SEGUIMIENTO_ESTADOS_ORDER.indexOf(actual)
-  if (idx <= 0) return null
-  return SEGUIMIENTO_ESTADOS_ORDER[idx - 1]
 }
 
 // ---- IPERC ----

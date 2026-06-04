@@ -336,8 +336,7 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
     <form
       ref={formRef}
       action={formAction}
-      onChange={() => setTick(t => t + 1)}
-      onInput={() => setTick(t => t + 1)}
+      onBlur={() => setTick(t => t + 1)}
       className="space-y-4"
     >
       <EstablecimientoProgress checks={checks} />

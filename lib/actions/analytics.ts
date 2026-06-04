@@ -22,7 +22,7 @@ export interface GestionRow {
   responsable_nombre: string | null
 }
 
-export interface SiniestroRow {
+export interface IncidenteRow {
   id: string
   establecimiento_id: string
   tipo: string
@@ -116,12 +116,12 @@ export async function getGestionRows(filters: AnalyticsFilters): Promise<Gestion
   })
 }
 
-export async function getSiniestroRows(filters: AnalyticsFilters): Promise<SiniestroRow[]> {
+export async function getIncidenteRows(filters: AnalyticsFilters): Promise<IncidenteRow[]> {
   if (!filters.establecimientoIds.length) return []
   const supabase = await createClient()
 
   let query = supabase
-    .from('siniestros')
+    .from('incidentes')
     .select('id, establecimiento_id, tipo, estado, fecha_ocurrencia, dias_perdidos')
     .in('establecimiento_id', filters.establecimientoIds)
     .gte('fecha_ocurrencia', `${filters.year}-01-01`)
@@ -136,7 +136,7 @@ export async function getSiniestroRows(filters: AnalyticsFilters): Promise<Sinie
   }
 
   const { data } = await query
-  return (data ?? []) as SiniestroRow[]
+  return (data ?? []) as IncidenteRow[]
 }
 
 export async function getInspeccionRows(filters: AnalyticsFilters): Promise<InspeccionRow[]> {
