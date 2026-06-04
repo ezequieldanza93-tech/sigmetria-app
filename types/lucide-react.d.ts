@@ -14,6 +14,7 @@ declare module 'lucide-react' {
   export const AlertTriangle: Icon
   export const ArrowLeft: Icon
   export const ArrowRight: Icon
+  export const ArrowUpDown: Icon
   export const Award: Icon
   export const BarChart2: Icon
   export const BarChart3: Icon

@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Sun, Moon, LogOut, ShieldCheck, MessageSquare, Wifi, WifiOff, Download, Keyboard, Home, BookMarked, KeyRound } from 'lucide-react'
+import { Sun, Moon, LogOut, ShieldCheck, MessageSquare, Wifi, WifiOff, Download, Keyboard, Home, BookMarked, KeyRound, User } from 'lucide-react'
 import { SystemRole, UserRole, ROLE_LABELS, ROLE_COLORS } from '@/lib/types'
 import { RoleSwitcher } from '@/components/layout/role-switcher'
 import { LanguageSwitcher } from '@/components/layout/language-switcher'
@@ -150,7 +150,6 @@ export function AppHeader({
     buildCrumbs()
   }, [pathname])
 
-  const firstName = fullName.split(' ')[0] ?? fullName
   const displayRole = systemRole === 'developer' ? 'developer' : userRole
   const roleColor = displayRole ? (ROLE_COLORS as Record<string, string>)[displayRole] ?? '' : ''
   const roleLabel = displayRole ? (ROLE_LABELS as Record<string, string>)[displayRole] ?? '' : ''
@@ -242,22 +241,22 @@ export function AppHeader({
           </div>
         )}
 
-        {/* Center: user name + role */}
-        <div className="flex-1 flex justify-center">
-          <div className="text-center hidden sm:block">
-            <p
-              className="text-sm font-semibold text-text-primary"
-              style={{ fontFamily: 'Montserrat, system-ui' }}
-            >
-              {firstName}
-            </p>
-            {displayRole && (
-              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${roleColor}`}>
-                {roleLabel}
-              </span>
-            )}
-          </div>
+        {/* Center: user name + role — centrado absoluto respecto a toda la fila */}
+        <div className="absolute left-1/2 -translate-x-1/2 hidden sm:block text-center pointer-events-none select-none">
+          <p
+            className="text-sm font-semibold text-text-primary whitespace-nowrap"
+            style={{ fontFamily: 'Montserrat, system-ui' }}
+          >
+            {fullName}
+          </p>
+          {displayRole && (
+            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${roleColor}`}>
+              {roleLabel}
+            </span>
+          )}
         </div>
+        {/* Spacer para mantener el layout flex equilibrado */}
+        <div className="flex-1" />
 
         {/* Right: notifications + weather + network + install + consultora + dark mode + avatar */}
         <div className="flex items-center gap-3 shrink-0">
@@ -379,8 +378,9 @@ export function AppHeader({
                   </div>
                 )}
 
-                {/* Ayuda */}
+                {/* Perfil y ayuda */}
                 <div className="py-1 border-t border-border-subtle">
+                  <DropdownItem href="/dashboard/perfil" icon={User} label="Mi perfil" role="menuitem" />
                   <DropdownItem href="/dashboard/configuracion/seguridad" icon={ShieldCheck} label="Seguridad" role="menuitem" />
                   <DropdownItem href="/dashboard/tutoriales" icon={BookMarked} label="Tutoriales de Uso" role="menuitem" />
                   <DropdownItem href="/dashboard/atajos" icon={Keyboard} label="Atajos de teclado" role="menuitem" />
