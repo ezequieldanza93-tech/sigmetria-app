@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Sun, Moon, LogOut, ShieldCheck, MessageSquare, Wifi, WifiOff, Download, Keyboard, Home, BookMarked, KeyRound, User } from 'lucide-react'
+import { Sun, Moon, LogOut, ShieldCheck, MessageSquare, Wifi, WifiOff, Download, Keyboard, Home, BookMarked, KeyRound, User, Users, Network, Shield, ClipboardList, GraduationCap, BookOpen, BarChart2 } from 'lucide-react'
 import { SystemRole, UserRole, ROLE_LABELS, ROLE_COLORS } from '@/lib/types'
 import { RoleSwitcher } from '@/components/layout/role-switcher'
 import { LanguageSwitcher } from '@/components/layout/language-switcher'
@@ -366,6 +366,31 @@ export function AppHeader({
                     <DropdownItem href="/dashboard/configuracion/api-keys" icon={KeyRound} label="API Keys" role="menuitem" />
                   </div>
                 )}
+
+                {/* Directorio */}
+                <div className="py-1 border-b border-border-subtle">
+                  <div className="px-4 py-1.5">
+                    <p className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold">Directorio</p>
+                  </div>
+                  <DropdownItem href="/dashboard/personas" icon={Users} label="Personas" role="menuitem" />
+                  <DropdownItem href="/dashboard/organizaciones-externas" icon={Network} label="Organizaciones" role="menuitem" />
+                </div>
+
+                {/* Librerías */}
+                <div className="py-1 border-b border-border-subtle">
+                  <div className="px-4 py-1.5">
+                    <p className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold">Librerías</p>
+                  </div>
+                  <DropdownItem href="/dashboard/productos" icon={Shield} label="Elementos de Protección" role="menuitem" />
+                  <DropdownItem href="/dashboard/configuracion/iperc" icon={ClipboardList} label="Librería IPERC" role="menuitem" />
+                  <DropdownItem href="/dashboard/cursos" icon={GraduationCap} label="Mis Cursos" role="menuitem" />
+                  {(userRole === 'full_access_main' || userRole === 'full_access_branch' || isSuperAdmin) && (
+                    <>
+                      <DropdownItem href="/dashboard/cursos/admin" icon={BookOpen} label="Administrar Cursos" role="menuitem" />
+                      <DropdownItem href="/dashboard/cursos/compliance" icon={BarChart2} label="Compliance" role="menuitem" />
+                    </>
+                  )}
+                </div>
 
                 {/* Herramientas */}
                 {isSuperAdmin && (

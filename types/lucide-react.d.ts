@@ -53,6 +53,7 @@ declare module 'lucide-react' {
   export const Dumbbell: Icon
   export const ExternalLink: Icon
   export const Eye: Icon
+  export const EyeOff: Icon
   export const File: Icon
   export const FileCheck: Icon
   export const FileSignature: Icon
@@ -101,6 +102,7 @@ declare module 'lucide-react' {
   export const RefreshCw: Icon
   export const RotateCcw: Icon
   export const Save: Icon
+  export const Scale: Icon
   export const Search: Icon
   export const Send: Icon
   export const Settings: Icon
