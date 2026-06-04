@@ -88,7 +88,8 @@ export async function crearYVincularPersona(data: {
 
   if (!tipo) return { error: 'Tipo "Profesionales" no encontrado. Contactá al administrador.' }
 
-  // Crear la persona
+  // Crear la persona. created_in_consultora_id se setea en un paso separado
+  // para evitar el error de schema cache de PostgREST en columnas recientes.
   const { data: persona, error: insertError } = await supabase
     .from('personas_directorio')
     .insert({
@@ -99,12 +100,19 @@ export async function crearYVincularPersona(data: {
       email: data.email?.trim() || null,
       tipo_id: tipo.id,
       is_active: true,
-      created_in_consultora_id: membership?.consultora_id || null,
     })
     .select('id')
     .single()
 
   if (insertError) return { error: insertError.message }
+
+  // Asignar consultora en paso separado (columna puede estar en schema cache stale)
+  if (membership?.consultora_id) {
+    await supabase
+      .from('personas_directorio')
+      .update({ created_in_consultora_id: membership.consultora_id })
+      .eq('id', persona.id)
+  }
 
   // Vincular al perfil
   const full_name = `${nombre} ${apellido}`.trim()

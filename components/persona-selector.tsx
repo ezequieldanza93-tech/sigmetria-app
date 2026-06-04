@@ -33,7 +33,7 @@ export function PersonaSelector({ name, value, onChange, placeholder = 'Buscar p
       if (!user) return
 
       const { data: membership } = await supabase
-        .from('consultora_members')
+        .from('consultoras_members')
         .select('consultora_id')
         .eq('user_id', user.id)
         .eq('is_active', true)
