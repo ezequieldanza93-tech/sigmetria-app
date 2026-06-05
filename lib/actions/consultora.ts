@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import type { ActionResult, Consultora } from '@/lib/types'
 import { revalidatePath } from 'next/cache'
 import { uploadAsset, deleteAsset, pathFromUrl } from '@/lib/storage/upload'
@@ -182,29 +183,40 @@ export async function uploadConsultoraLogo(
     .eq('id', membership.consultora_id)
     .single()
 
-  const result = await uploadAsset({
-    bucket: 'consultora',
-    consultoraId: membership.consultora_id,
-    entityType: 'consultora',
-    entityId: membership.consultora_id,
-    kind: 'logo',
-    file,
-  })
+  const LOGO_MIMES: Record<string, string> = {
+    'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/svg+xml': 'svg',
+  }
+  if (file.size > 2 * 1024 * 1024) return { success: false, error: 'El archivo supera 2 MB' }
+  if (!LOGO_MIMES[file.type]) return { success: false, error: `Tipo no permitido (${file.type})` }
 
-  if (!result.ok) return { success: false, error: result.error }
+  const ext = LOGO_MIMES[file.type]
+  const logoPath = `${membership.consultora_id}/consultora/${membership.consultora_id}/logo.${ext}`
 
-  if (current?.logo_url && current.logo_url !== result.url) {
-    const oldPath = pathFromUrl(current.logo_url, 'consultora')
-    if (oldPath) await deleteAsset('consultora', oldPath)
+  // Service client: auth ya fue verificado arriba; evita problemas de RLS en storage desde SSR
+  const service = createServiceClient()
+  const { error: uploadError } = await service.storage
+    .from('consultora')
+    .upload(logoPath, file, { upsert: true, contentType: file.type, cacheControl: '3600' })
+
+  if (uploadError) return { success: false, error: uploadError.message }
+
+  const { data: urlData } = service.storage.from('consultora').getPublicUrl(logoPath)
+  const logoUrl = urlData.publicUrl
+
+  if (current?.logo_url) {
+    const oldPath = current.logo_url.startsWith('http')
+      ? pathFromUrl(current.logo_url, 'consultora')
+      : current.logo_url
+    if (oldPath && oldPath !== logoPath) await deleteAsset('consultora', oldPath)
   }
 
   const { error: updateError } = await supabase
     .from('consultoras')
-    .update({ logo_url: result.url, updated_at: new Date().toISOString() })
+    .update({ logo_url: logoUrl, updated_at: new Date().toISOString() })
     .eq('id', membership.consultora_id)
 
   if (updateError) return { success: false, error: updateError.message }
 
   revalidatePath('/dashboard/configuracion/consultora')
-  return { success: true, data: { url: result.url } }
+  return { success: true, data: { url: logoUrl } }
 }
