@@ -26,6 +26,7 @@ tsconfig.tsbuildinfo
 
 # Archivos locales / sensibles
 supabase/token_mcp_supa.txt
+MCP_supa_airtable.txt
 aux capturas/
 documentación_usuarios_accesos/
 supabase/Auditorías_bd/
