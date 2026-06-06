@@ -2,7 +2,6 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { consultoraIdFromEstablecimiento, tenantStoragePath } from '@/lib/storage/tenant-path'
 import type { ActionResult } from '@/lib/types'
 
 // ---- Helpers ----
