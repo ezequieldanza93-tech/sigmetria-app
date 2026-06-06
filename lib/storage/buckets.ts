@@ -55,15 +55,12 @@ export const BUCKET_IS_PUBLIC: Record<StorageBucket, boolean> = {
   consultoras: true,
   avatars: true,
   'cursos-portadas': true,
-  // ⚠️ PÚBLICOS POR EXCEPCIÓN TEMPORAL — deberían ser privados, pero tienen datos
-  // legacy guardados como URL pública absoluta y paths sin tenant. Hasta el cambio
-  // dedicado que migre esos datos, el bucket sigue público (ver migración
-  // 20260617000002). DEBE coincidir con storage.buckets.public en la DB: si acá
-  // dijera false, el código firmaría (createSignedUrl) y la firma cruzada fallaría
-  // por RLS en paths sin tenant → lectura rota entre compañeros.
-  documentos: true,
-  establecimientos: true,
-  // 🔴 PRIVADOS — datos sensibles, signed URLs
+  // 🔴 PRIVADOS — datos sensibles, signed URLs.
+  // documentos/establecimientos ya privatizados (migración 20260617000004): los
+  // datos legacy fueron migrados a paths {consultora_id}/... y se sirven firmados.
+  // DEBE coincidir con storage.buckets.public en la DB.
+  documentos: false,
+  establecimientos: false,
   firmas: false,
   matriculas: false,
   planos: false,
