@@ -9,9 +9,17 @@ interface Props {
   documentTypes: DocumentType[]
   context: 'empresa' | 'establecimiento'
   onSuccess: () => void
+  /**
+   * Si viene, el tipo de documento queda PREFIJADO y bloqueado: no se muestra el
+   * select editable, sino el nombre fijo, y el FormData manda este `tipo_id`.
+   * Se usa desde el Legajo Técnico (checklist de esperados): cargar ahí = crear
+   * una versión nueva de ESE tipo.
+   */
+  fixedTipoId?: string
+  fixedTipoNombre?: string
 }
 
-export function DocumentoForm({ action, documentTypes, context, onSuccess }: Props) {
+export function DocumentoForm({ action, documentTypes, context, onSuccess, fixedTipoId, fixedTipoNombre }: Props) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
@@ -63,18 +71,31 @@ export function DocumentoForm({ action, documentTypes, context, onSuccess }: Pro
         <label htmlFor="doc-tipo" className="block text-sm font-medium text-text-secondary mb-1">
           Tipo de Documento <span className="text-danger" aria-hidden="true">*</span>
         </label>
-        <select
-          id="doc-tipo"
-          name="document_type_id"
-          required
-          aria-required="true"
-          className="w-full border border-border-default rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500"
-        >
-          <option value="">Seleccionar tipo...</option>
-          {filteredTypes.map(dt => (
-            <option key={dt.id} value={dt.id}>{dt.nombre}</option>
-          ))}
-        </select>
+        {fixedTipoId ? (
+          <>
+            {/* Tipo PREFIJADO (desde el checklist del Legajo): no editable. */}
+            <input type="hidden" name="document_type_id" value={fixedTipoId} />
+            <div
+              id="doc-tipo"
+              className="w-full border border-border-subtle bg-surface-base rounded-lg px-3 py-2 text-sm text-text-secondary"
+            >
+              {fixedTipoNombre ?? 'Documento'}
+            </div>
+          </>
+        ) : (
+          <select
+            id="doc-tipo"
+            name="document_type_id"
+            required
+            aria-required="true"
+            className="w-full border border-border-default rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500"
+          >
+            <option value="">Seleccionar tipo...</option>
+            {filteredTypes.map(dt => (
+              <option key={dt.id} value={dt.id}>{dt.nombre}</option>
+            ))}
+          </select>
+        )}
       </div>
 
       <div>

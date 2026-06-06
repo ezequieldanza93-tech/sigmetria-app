@@ -267,10 +267,12 @@ export function EmpresaFichaEstablecimientos({ empresaId, establecimientos, canW
                       )}
                       {active === 'legajo' && (
                         <LegajoTab
-                          empresaDocumentos={state.data.empresaDocumentos}
-                          establecimientoDocumentos={state.data.documentos}
+                          legajoEsperados={state.data.legajoEsperados}
                           gestionesLegajo={state.data.gestionesLegajo}
-                          trabajadorDocumentos={state.data.trabajadorDocumentos}
+                          establecimientoId={est.id}
+                          empresaId={empresaId}
+                          documentTypes={state.data.documentTypes}
+                          canWrite={canWrite}
                         />
                       )}
                       {active === 'denuncias' && (

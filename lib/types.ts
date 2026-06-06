@@ -685,6 +685,50 @@ export interface LegajoGestion {
   } | null
 }
 
+// ---- Legajo Técnico como CHECKLIST: esperados + último + historial ----
+// El legajo se modela como una lista FIJA de documentos ESPERADOS (catálogo
+// curado de documentos_tipos con periodicidad seteada). Para cada esperado se
+// resuelve la última instancia vigente cargada (o `null` = pendiente) y todo
+// su historial (versiones cargadas, INSERT puro = historial natural).
+
+/** Una versión cargada de un documento esperado (instancia en alguna *_documentos). */
+export interface LegajoVersion {
+  id: string
+  archivo_url: string | null
+  fecha_vencimiento: string | null
+  fecha_emision: string | null
+  created_at: string
+}
+
+/** Fila ESPERADA del legajo: el tipo + su último + su historial. */
+export interface LegajoEsperadoRow {
+  tipo_id: string
+  nombre: string
+  periodicidad: PeriodicidadDoc | null
+  ultimo: LegajoVersion | null
+  historial: LegajoVersion[]
+}
+
+/** Persona con sus filas esperadas (para las categorías persona*). */
+export interface LegajoEsperadoPersona {
+  persona_id: string
+  persona: { nombre: string; apellido: string; legajo: string | null } | null
+  filas: LegajoEsperadoRow[]
+}
+
+/**
+ * Resultado del checklist de esperados del Legajo Técnico.
+ * Las 4 categorías de entidad simple traen `filas`; las 2 de persona traen
+ * `personas` (cada persona con su propio set de filas esperadas).
+ */
+export interface LegajoEsperados {
+  empresa: LegajoEsperadoRow[]
+  empresa_por_establecimiento: LegajoEsperadoRow[]
+  establecimiento: LegajoEsperadoRow[]
+  persona: LegajoEsperadoPersona[]
+  persona_por_establecimiento: LegajoEsperadoPersona[]
+}
+
 // ---- Labels & Colors ----
 
 export const ROLE_LABELS: Record<UserRole | SystemRole, string> = {

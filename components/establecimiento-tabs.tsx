@@ -25,6 +25,7 @@ import type {
   EmpresaDocumento,
   EmpleadoDocumentoLegajo,
   LegajoGestion,
+  LegajoEsperados,
 } from '@/lib/types'
 
 type Tab = 'info' | 'sectores' | 'stakeholders' | 'asistencia' | 'incidentes' | 'inspecciones' | 'documentos' | 'legajo' | 'denuncias' | 'feedback' | 'mapa_riesgo'
@@ -45,6 +46,7 @@ interface EstablecimientoTabsProps {
   empresaDocumentos: EmpresaDocumento[]
   gestionesLegajo: LegajoGestion[]
   trabajadorDocumentos: EmpleadoDocumentoLegajo[]
+  legajoEsperados: LegajoEsperados | null
   defaultTab?: Tab
   planoUrl?: string | null
 }
@@ -78,9 +80,8 @@ export function EstablecimientoTabs({
   documentTypes,
   denuncias,
   feedbackClientes,
-  empresaDocumentos,
   gestionesLegajo,
-  trabajadorDocumentos,
+  legajoEsperados,
   defaultTab = 'info',
   planoUrl,
 }: EstablecimientoTabsProps) {
@@ -214,10 +215,12 @@ export function EstablecimientoTabs({
       )}
       {active === 'legajo' && (
         <LegajoTab
-          empresaDocumentos={empresaDocumentos}
-          establecimientoDocumentos={documentos}
+          legajoEsperados={legajoEsperados}
           gestionesLegajo={gestionesLegajo}
-          trabajadorDocumentos={trabajadorDocumentos}
+          establecimientoId={establecimientoId}
+          empresaId={empresaId}
+          documentTypes={documentTypes}
+          canWrite={canWrite}
         />
       )}
       {active === 'denuncias' && (

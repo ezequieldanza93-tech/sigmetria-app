@@ -14,6 +14,12 @@ import type {
   EmpresaDocumento,
   EmpleadoDocumentoLegajo,
   LegajoGestion,
+  CategoriaLegajo,
+  PeriodicidadDoc,
+  LegajoVersion,
+  LegajoEsperadoRow,
+  LegajoEsperadoPersona,
+  LegajoEsperados,
 } from '@/lib/types'
 
 export interface EstablecimientoFichaData {
@@ -28,6 +34,7 @@ export interface EstablecimientoFichaData {
   empresaDocumentos: EmpresaDocumento[]
   gestionesLegajo: LegajoGestion[]
   trabajadorDocumentos: EmpleadoDocumentoLegajo[]
+  legajoEsperados: LegajoEsperados
   planoUrl: string | null
 }
 
@@ -120,6 +127,8 @@ export async function getEstablecimientoFichaData(
     trabajadorDocumentos = (empDocs ?? []) as unknown as EmpleadoDocumentoLegajo[]
   }
 
+  const legajoEsperados = await getLegajoEsperados(establecimientoId, empresaId)
+
   return {
     establecimiento: establecimiento as unknown as Establecimiento,
     sectores,
@@ -132,6 +141,213 @@ export async function getEstablecimientoFichaData(
     empresaDocumentos,
     gestionesLegajo,
     trabajadorDocumentos,
+    legajoEsperados,
     planoUrl: (establecimiento as unknown as Establecimiento).plano_url ?? null,
+  }
+}
+
+// ============================================================
+// Legajo Técnico como CHECKLIST de documentos ESPERADOS.
+// Construye, para las 5 categorías de DOCUMENTOS (no la de gestiones), la lista
+// FIJA de esperados (catálogo curado: documentos_tipos con periodicidad NOT NULL)
+// y, por cada uno, su última instancia vigente cargada + todo su historial.
+// ============================================================
+
+// Catálogo de esperados de UNA categoría (lista fija, igual para todos).
+type TipoEsperado = { id: string; nombre: string; periodicidad: PeriodicidadDoc | null }
+
+// Instancia cruda vigente de cualquiera de las 3 tablas *_documentos.
+type DocVigente = {
+  id: string
+  tipo_id: string | null
+  archivo_url: string | null
+  fecha_vencimiento: string | null
+  fecha_emision: string | null
+  created_at: string
+}
+
+type DocVigentePersona = DocVigente & {
+  persona_id: string
+  personas_directorio: { nombre: string; apellido: string; legajo: string | null } | null
+}
+
+const toVersion = (d: DocVigente): LegajoVersion => ({
+  id: d.id,
+  archivo_url: d.archivo_url,
+  fecha_vencimiento: d.fecha_vencimiento,
+  fecha_emision: d.fecha_emision,
+  created_at: d.created_at,
+})
+
+// Para cada esperado: arma { tipo_id, nombre, periodicidad, ultimo, historial }.
+// `instanciasPorTipo` ya viene ordenado por created_at DESC (más nueva primero).
+function buildFilas(
+  catalogo: TipoEsperado[],
+  instanciasPorTipo: Map<string, DocVigente[]>
+): LegajoEsperadoRow[] {
+  return catalogo.map(t => {
+    const versiones = (instanciasPorTipo.get(t.id) ?? []).map(toVersion)
+    return {
+      tipo_id: t.id,
+      nombre: t.nombre,
+      periodicidad: t.periodicidad,
+      ultimo: versiones[0] ?? null,
+      historial: versiones,
+    }
+  })
+}
+
+/**
+ * Devuelve el checklist de documentos ESPERADOS del Legajo Técnico de un
+ * establecimiento, con su último cargado y su historial.
+ *
+ * - Catálogo: documentos_tipos con is_active AND periodicidad IS NOT NULL,
+ *   por categoria_legajo (lista fija, misma para todos — sin reglas por ahora).
+ * - Vigentes: instancias de empresas/establecimientos/personas_documentos con
+ *   deleted_at IS NULL, ordenadas por created_at DESC. El "último" = la primera.
+ * - Las 2 categorías de persona se agrupan por persona.
+ */
+export async function getLegajoEsperados(
+  establecimientoId: string,
+  empresaId: string
+): Promise<LegajoEsperados> {
+  const supabase = await createClient()
+
+  // 1) Catálogo curado de esperados (las 5 categorías de documentos).
+  const { data: catalogoRaw } = await supabase
+    .from('documentos_tipos')
+    .select('id, nombre, categoria_legajo, periodicidad')
+    .eq('is_active', true)
+    .not('periodicidad', 'is', null)
+    .order('nombre')
+
+  const catalogoPorCat = new Map<CategoriaLegajo, TipoEsperado[]>()
+  for (const t of (catalogoRaw ?? []) as {
+    id: string; nombre: string; categoria_legajo: CategoriaLegajo | null; periodicidad: PeriodicidadDoc | null
+  }[]) {
+    if (!t.categoria_legajo) continue
+    const arr = catalogoPorCat.get(t.categoria_legajo) ?? []
+    arr.push({ id: t.id, nombre: t.nombre, periodicidad: t.periodicidad })
+    catalogoPorCat.set(t.categoria_legajo, arr)
+  }
+  const cat = (c: CategoriaLegajo): TipoEsperado[] => catalogoPorCat.get(c) ?? []
+
+  // 2) Personas del establecimiento (para las categorías persona*). Traemos
+  //    también su directorio para poder listar a TODAS (incluso sin docs → pendiente).
+  const { data: peData } = await supabase
+    .from('personas_establecimientos')
+    .select('persona_id, personas_directorio(nombre, apellido, legajo)')
+    .eq('establecimiento_id', establecimientoId)
+  const personasEstab = (peData ?? []) as unknown as {
+    persona_id: string
+    personas_directorio: { nombre: string; apellido: string; legajo: string | null } | null
+  }[]
+  const personaIds = personasEstab.map(p => p.persona_id)
+
+  // 3) Instancias vigentes (deleted_at IS NULL), ordenadas DESC por created_at.
+  const docSelect = 'id, tipo_id, archivo_url, fecha_vencimiento, fecha_emision, created_at, documentos_tipos(nombre, categoria_legajo, periodicidad)'
+  const personaSelect = 'id, tipo_id, persona_id, archivo_url, fecha_vencimiento, fecha_emision, created_at, documentos_tipos(nombre, categoria_legajo, periodicidad), personas_directorio(nombre, apellido, legajo)'
+
+  const [empRes, estRes, perRes] = await Promise.all([
+    supabase
+      .from('empresas_documentos')
+      .select(docSelect)
+      .eq('empresa_id', empresaId)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('establecimientos_documentos')
+      .select(docSelect)
+      .eq('establecimiento_id', establecimientoId)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false }),
+    personaIds.length > 0
+      ? supabase
+          .from('personas_documentos')
+          .select(personaSelect)
+          .in('persona_id', personaIds)
+          .is('deleted_at', null)
+          .order('created_at', { ascending: false })
+      : Promise.resolve({ data: [] as DocVigentePersona[] }),
+  ])
+
+  // Empresa: separar por categoria_legajo del tipo (empresa vs empresa_por_establecimiento).
+  const empresaPorTipo = new Map<string, DocVigente[]>()
+  const empresaEstabPorTipo = new Map<string, DocVigente[]>()
+  for (const d of (empRes.data ?? []) as unknown as (DocVigente & { documentos_tipos: { categoria_legajo?: CategoriaLegajo | null } | null })[]) {
+    if (!d.tipo_id) continue
+    const target = d.documentos_tipos?.categoria_legajo === 'empresa_por_establecimiento' ? empresaEstabPorTipo : empresaPorTipo
+    const arr = target.get(d.tipo_id) ?? []
+    arr.push(d)
+    target.set(d.tipo_id, arr)
+  }
+
+  // Establecimiento.
+  const estabPorTipo = new Map<string, DocVigente[]>()
+  for (const d of (estRes.data ?? []) as unknown as DocVigente[]) {
+    if (!d.tipo_id) continue
+    const arr = estabPorTipo.get(d.tipo_id) ?? []
+    arr.push(d)
+    estabPorTipo.set(d.tipo_id, arr)
+  }
+
+  // Personas: agrupar por persona_id y dentro por categoria_legajo del tipo.
+  // persona -> { categoria -> (tipo_id -> versiones) }
+  const personaData = (perRes.data ?? []) as unknown as DocVigentePersona[]
+  const porPersona = new Map<string, {
+    persona: DocVigentePersona['personas_directorio']
+    persona_legajo: Map<string, DocVigente[]>
+    persona_estab: Map<string, DocVigente[]>
+  }>()
+  // Sembrar TODAS las personas del establecimiento (aunque no tengan docs → pendiente).
+  for (const p of personasEstab) {
+    porPersona.set(p.persona_id, {
+      persona: p.personas_directorio,
+      persona_legajo: new Map(),
+      persona_estab: new Map(),
+    })
+  }
+  for (const d of personaData) {
+    if (!d.tipo_id) continue
+    const catLegajo = (d as unknown as { documentos_tipos: { categoria_legajo?: CategoriaLegajo | null } | null }).documentos_tipos?.categoria_legajo
+    let entry = porPersona.get(d.persona_id)
+    if (!entry) {
+      entry = { persona: d.personas_directorio, persona_legajo: new Map(), persona_estab: new Map() }
+      porPersona.set(d.persona_id, entry)
+    }
+    const target = catLegajo === 'persona_por_establecimiento' ? entry.persona_estab : entry.persona_legajo
+    const arr = target.get(d.tipo_id) ?? []
+    arr.push(d)
+    target.set(d.tipo_id, arr)
+  }
+
+  // 4) Construir las filas de persona: por CADA persona, el catálogo fijo de esa categoría.
+  const buildPersonas = (
+    catalogo: TipoEsperado[],
+    pick: (e: { persona_legajo: Map<string, DocVigente[]>; persona_estab: Map<string, DocVigente[]> }) => Map<string, DocVigente[]>
+  ): LegajoEsperadoPersona[] => {
+    const out: LegajoEsperadoPersona[] = []
+    for (const [persona_id, entry] of porPersona) {
+      out.push({
+        persona_id,
+        persona: entry.persona,
+        filas: buildFilas(catalogo, pick(entry)),
+      })
+    }
+    // Orden estable por apellido/nombre.
+    out.sort((a, b) => {
+      const an = `${a.persona?.apellido ?? ''} ${a.persona?.nombre ?? ''}`.trim()
+      const bn = `${b.persona?.apellido ?? ''} ${b.persona?.nombre ?? ''}`.trim()
+      return an.localeCompare(bn)
+    })
+    return out
+  }
+
+  return {
+    empresa: buildFilas(cat('empresa'), empresaPorTipo),
+    empresa_por_establecimiento: buildFilas(cat('empresa_por_establecimiento'), empresaEstabPorTipo),
+    establecimiento: buildFilas(cat('establecimiento'), estabPorTipo),
+    persona: buildPersonas(cat('persona'), e => e.persona_legajo),
+    persona_por_establecimiento: buildPersonas(cat('persona_por_establecimiento'), e => e.persona_estab),
   }
 }
