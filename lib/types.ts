@@ -601,12 +601,45 @@ export interface DocumentType {
   is_active: boolean
 }
 
+// ---- Legajo Técnico: categorías fijas + periodicidad de renovación ----
+// Espejo TS de las columnas globales documentos_tipos.categoria_legajo /
+// documentos_tipos.periodicidad (migración 20260617000005).
+
+export type CategoriaLegajo =
+  | 'empresa'
+  | 'empresa_por_establecimiento'
+  | 'empresa_gestiones'
+  | 'establecimiento'
+  | 'persona'
+  | 'persona_por_establecimiento'
+
+export type PeriodicidadDoc =
+  | 'mensual'
+  | 'semanal'
+  | 'semestral'
+  | 'anual'
+  | 'cada_6_anios'
+  | 'no_vence'
+  | 'vto_aviso_obra'
+  | 'vto_inicio_obra'
+  | 'por_gestion'
+  | 'fecha_vto'
+
+// Shape del join a documentos_tipos en las vistas del Legajo Técnico.
+// categoria_legajo / periodicidad son opcionales: solo las queries del Legajo
+// Técnico las seleccionan; el resto de las queries traen únicamente `nombre`.
+export interface DocumentoTipoLegajo {
+  nombre: string
+  categoria_legajo?: CategoriaLegajo | null
+  periodicidad?: PeriodicidadDoc | null
+}
+
 export interface Documento {
   id: string
   empresa_id: string | null
   establecimiento_id: string | null
   tipo_id: string | null
-  documentos_tipos: { nombre: string } | null
+  documentos_tipos: DocumentoTipoLegajo | null
   archivo_url: string | null
   fecha_emision: string | null
   fecha_vencimiento: string | null
@@ -619,7 +652,7 @@ export interface EmpresaDocumento {
   id: string
   empresa_id: string
   tipo_id: string | null
-  documentos_tipos: { nombre: string } | null
+  documentos_tipos: DocumentoTipoLegajo | null
   archivo_url: string | null
   fecha_emision: string | null
   fecha_vencimiento: string | null
@@ -630,7 +663,7 @@ export interface EmpleadoDocumentoLegajo {
   id: string
   persona_id: string
   tipo_id: string | null
-  documentos_tipos: { nombre: string } | null
+  documentos_tipos: DocumentoTipoLegajo | null
   archivo_url: string | null
   fecha_emision: string | null
   fecha_vencimiento: string | null

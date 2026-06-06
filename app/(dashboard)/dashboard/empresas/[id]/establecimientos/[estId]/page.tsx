@@ -92,7 +92,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
         .order('fecha_programada', { ascending: false }),
       supabase
         .from('establecimientos_documentos')
-        .select('*, documentos_tipos(nombre)')
+        .select('*, documentos_tipos(nombre, categoria_legajo, periodicidad)')
         .eq('establecimiento_id', estId)
         .order('created_at', { ascending: false }),
       getDocTiposAplicables(estId),
@@ -107,7 +107,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
     const [d1, d2, d3, d4] = await Promise.all([
       supabase.from('establecimientos_denuncias').select('*, personas_directorio(nombre, apellido)').eq('establecimiento_id', estId).order('fecha', { ascending: false }),
       supabase.from('establecimientos_feedback_clientes').select('*, personas_directorio(nombre, apellido)').eq('establecimiento_id', estId).order('fecha', { ascending: false }),
-      supabase.from('empresas_documentos').select('*, documentos_tipos(nombre)').eq('empresa_id', empresaId).order('created_at', { ascending: false }),
+      supabase.from('empresas_documentos').select('*, documentos_tipos(nombre, categoria_legajo, periodicidad)').eq('empresa_id', empresaId).order('created_at', { ascending: false }),
       supabase
         .from('gestiones_registros')
         .select('id, fecha_planificada, notas, mostrar_lt, gestiones_establecimientos!inner(establecimiento_id, gestiones!inner(nombre, gestiones_categorias(nombre)))')
@@ -130,7 +130,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
     if (personaIds.length > 0) {
       const { data: empDocs } = await supabase
         .from('personas_documentos')
-        .select('*, documentos_tipos(nombre), personas_directorio(nombre, apellido, legajo)')
+        .select('*, documentos_tipos(nombre, categoria_legajo, periodicidad), personas_directorio(nombre, apellido, legajo)')
         .in('persona_id', personaIds)
         .order('created_at', { ascending: false })
       trabajadorDocumentos = (empDocs ?? []) as unknown as EmpleadoDocumentoLegajo[]
@@ -163,7 +163,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
     const [tk, insp, docs, caps, rgs, meds, sins] = await Promise.all([
       supabase.from('verificacion_tokens').select('token').eq('establecimiento_id', estId).single(),
       supabase.from('inspecciones').select('*').eq('establecimiento_id', estId).in('estado', ['realizada', 'con_observaciones']).order('fecha_realizada', { ascending: false }),
-      supabase.from('establecimientos_documentos').select('*, documentos_tipos(nombre)').eq('establecimiento_id', estId).eq('legajo_tecnico', true).order('fecha_vencimiento', { ascending: true, nullsFirst: false }),
+      supabase.from('establecimientos_documentos').select('*, documentos_tipos(nombre, categoria_legajo, periodicidad)').eq('establecimiento_id', estId).eq('legajo_tecnico', true).order('fecha_vencimiento', { ascending: true, nullsFirst: false }),
       supabase.from('capacitaciones').select('id, titulo, fecha_realizada, capacitaciones_asistentes(id)').eq('empresa_id', empresaId).or(`establecimiento_id.eq.${estId},establecimiento_id.is.null`).eq('estado', 'realizada').gte('fecha_realizada', doce).order('fecha_realizada', { ascending: false }),
       supabase.from('riesgos').select('*').eq('establecimiento_id', estId).eq('resuelto', false),
       supabase.from('mediciones').select('*, unidades(nombre, simbolo)').eq('establecimiento_id', estId).order('fecha', { ascending: false }),

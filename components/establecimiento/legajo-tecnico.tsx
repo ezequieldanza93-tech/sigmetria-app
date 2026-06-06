@@ -1,7 +1,8 @@
 import { formatDate } from '@/lib/utils'
+import { CATEGORIAS_LEGAJO, periodicidadLabel } from '@/lib/legajo'
 import type {
   Inspeccion, Documento, Capacitacion, Riesgo, Medicion, Incidente,
-  RiesgoNivel, IncidenteTipo, MedicionTipo,
+  RiesgoNivel, IncidenteTipo, MedicionTipo, CategoriaLegajo,
 } from '@/lib/types'
 
 interface LegajoEstablecimiento {
@@ -87,6 +88,10 @@ export function LegajoTecnico({
 }: LegajoTecnicoProps) {
   const riesgosOrdenados = [...riesgos].sort((a, b) => NIVEL_ORDER[a.nivel] - NIVEL_ORDER[b.nivel])
 
+  // Documentos del legajo agrupados por las 6 categorías fijas.
+  const documentosPorCategoria = (cat: CategoriaLegajo): Documento[] =>
+    documentos.filter(d => (d.documentos_tipos?.categoria_legajo ?? null) === cat)
+
   const isVigente = (fecha: string | null) => !fecha || new Date(fecha) >= ahora
 
   const diasSinCerrar = (fechaOcurrencia: string) =>
@@ -138,47 +143,63 @@ export function LegajoTecnico({
         )}
       </SeccionLT>
 
-      {/* Documentación */}
+      {/* Documentación — agrupada por las 6 categorías fijas del Legajo Técnico */}
       <SeccionLT titulo="Documentación vigente">
-        {documentos.length === 0 ? (
-          <p className="text-sm text-text-tertiary">Sin documentos cargados en el legajo.</p>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left border-b border-border-subtle">
-                <th className="pb-2 text-xs text-text-tertiary font-medium">Tipo</th>
-                <th className="pb-2 text-xs text-text-tertiary font-medium">Vencimiento</th>
-                <th className="pb-2 text-xs text-text-tertiary font-medium">Estado</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border-subtle">
-              {documentos.map(doc => {
-                const vigente = isVigente(doc.fecha_vencimiento)
-                return (
-                  <tr key={doc.id}>
-                    <td className="py-2.5 pr-4 font-medium text-text-primary">
-                      {doc.documentos_tipos?.nombre ?? '—'}
-                    </td>
-                    <td className="py-2.5 pr-4 text-text-secondary">
-                      {doc.fecha_vencimiento ? formatDate(doc.fecha_vencimiento) : 'Sin vencimiento'}
-                    </td>
-                    <td className="py-2.5">
-                      {vigente ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          Vigente
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                          Vencido
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        )}
+        <div className="space-y-5">
+          {CATEGORIAS_LEGAJO.map(({ key, titulo }) => {
+            const docsCat = documentosPorCategoria(key)
+            return (
+              <div key={key}>
+                <p className="text-xs font-semibold text-text-secondary mb-2 uppercase tracking-wide">
+                  {titulo}
+                </p>
+                {docsCat.length === 0 ? (
+                  <p className="text-sm text-text-tertiary">—</p>
+                ) : (
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left border-b border-border-subtle">
+                        <th className="pb-2 text-xs text-text-tertiary font-medium">Tipo</th>
+                        <th className="pb-2 text-xs text-text-tertiary font-medium">Renovación</th>
+                        <th className="pb-2 text-xs text-text-tertiary font-medium">Vencimiento</th>
+                        <th className="pb-2 text-xs text-text-tertiary font-medium">Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border-subtle">
+                      {docsCat.map(doc => {
+                        const vigente = isVigente(doc.fecha_vencimiento)
+                        return (
+                          <tr key={doc.id}>
+                            <td className="py-2.5 pr-4 font-medium text-text-primary">
+                              {doc.documentos_tipos?.nombre ?? '—'}
+                            </td>
+                            <td className="py-2.5 pr-4 text-text-secondary">
+                              {periodicidadLabel(doc.documentos_tipos?.periodicidad)}
+                            </td>
+                            <td className="py-2.5 pr-4 text-text-secondary">
+                              {doc.fecha_vencimiento ? formatDate(doc.fecha_vencimiento) : 'Sin vencimiento'}
+                            </td>
+                            <td className="py-2.5">
+                              {vigente ? (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                  Vigente
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                  Vencido
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            )
+          })}
+        </div>
       </SeccionLT>
 
       {/* Capacitaciones */}
