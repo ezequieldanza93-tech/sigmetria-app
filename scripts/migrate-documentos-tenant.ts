@@ -135,7 +135,7 @@ async function run(): Promise<void> {
       .like(cfg.urlColumn, `%${MARKER}%`)
 
     if (error) { console.error(`[${cfg.table}.${cfg.urlColumn}] query error:`, error.message); errors++; continue }
-    const rows = (data ?? []) as Record<string, unknown>[]
+    const rows = (data ?? []) as unknown as Record<string, unknown>[]
     console.log(`\n--- ${cfg.table}.${cfg.urlColumn}: ${rows.length} fila(s) legacy ---`)
 
     for (const row of rows) {
