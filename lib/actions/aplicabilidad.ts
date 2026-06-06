@@ -7,14 +7,16 @@ export async function getGestionesAplicables(establecimientoId: string): Promise
   const supabase = await createClient()
 
   const [estResult, todasResult] = await Promise.all([
-    supabase.from('establecimientos').select('tipo_establecimiento_id, aplica_iso_45001').eq('id', establecimientoId).single(),
+    supabase.from('establecimientos').select('tipo_id, aplica_iso_45001').eq('id', establecimientoId).single(),
     supabase.from('gestiones').select('id, nombre, categoria_id, descripcion, created_at, aplica_por_iso, gestiones_categorias(nombre, gestiones_grupos(nombre))').order('nombre'),
   ])
 
   const establecimiento = estResult.data
   if (!establecimiento) return []
 
-  const tipoId = establecimiento.tipo_establecimiento_id
+  // La columna del tipo de establecimiento es `tipo_id` (no tipo_establecimiento_id,
+  // que es la columna FK en la tabla junction gestiones_tipos_establecimiento).
+  const tipoId = establecimiento.tipo_id
   const aplicaIso = establecimiento.aplica_iso_45001
 
   const { data: gestionIds } = await supabase
