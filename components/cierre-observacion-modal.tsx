@@ -50,8 +50,7 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
   const [fechaCierre, setFechaCierre] = useState(todayStr())
   const [responsableCierreId, setResponsableCierreId] = useState<string | ''>('')
   const [responsableLabel, setResponsableLabel] = useState('')
-  const [uploading, setUploading] = useState(false)
-  const [evidenciaUrl, setEvidenciaUrl] = useState<string | null>(null)
+  const [evidenciaFile, setEvidenciaFile] = useState<File | null>(null)
   const [evidenciaName, setEvidenciaName] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -131,7 +130,7 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
       setResponsableLabel(defaultRespId && observacion.personas_directorio
         ? `${observacion.personas_directorio.apellido}, ${observacion.personas_directorio.nombre}`
         : '')
-      setEvidenciaUrl(null)
+      setEvidenciaFile(null)
       setEvidenciaName(null)
       setError(null)
       setSuccess(false)
@@ -251,31 +250,14 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
     setResponsableLabel('')
   }
 
-  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  // El upload se hace SERVER-SIDE en cerrarObservacion (path tenant-prefijado).
+  // Acá solo retenemos el File seleccionado hasta el submit.
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-
-    setUploading(true)
     setError(null)
-
-    const supabase = createClient()
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-    const path = `evidencias/${Date.now()}_${safeName}`
-
-    const { data: up, error: uploadError } = await supabase.storage
-      .from('documentos')
-      .upload(path, file, { cacheControl: '3600', upsert: false })
-
-    if (uploadError || !up) {
-      setError('No se pudo subir la imagen. Verificá que el bucket exista.')
-      setUploading(false)
-      return
-    }
-
-    // Guardamos el PATH (no la URL). Se deriva on-read con publicAssetUrl.
-    setEvidenciaUrl(up.path)
+    setEvidenciaFile(file)
     setEvidenciaName(file.name)
-    setUploading(false)
   }
 
   async function handleFotoClienteChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -283,22 +265,10 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
     if (!file || !observacion) return
 
     setUploadingFoto(true)
-    const supabase = createClient()
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-    const path = `observaciones-cliente/${Date.now()}_${safeName}`
+    setError(null)
 
-    const { data: up, error: uploadError } = await supabase.storage
-      .from('documentos')
-      .upload(path, file, { cacheControl: '3600', upsert: false })
-
-    if (uploadError || !up) {
-      setError('No se pudo subir la foto.')
-      setUploadingFoto(false)
-      return
-    }
-
-    // Guardamos el PATH (no la URL). Se deriva on-read con publicAssetUrl.
-    const result = await addObservacionFoto(observacion.id, up.path, null)
+    // El upload se hace SERVER-SIDE en addObservacionFoto (path tenant-prefijado).
+    const result = await addObservacionFoto(observacion.id, file, null)
     if (result.success) {
       await loadFotosCliente(observacion.id)
     } else {
@@ -338,7 +308,7 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
       observacion.id,
       fechaCierre,
       responsableCierreId || null,
-      evidenciaUrl
+      evidenciaFile
     )
     setSaving(false)
     if (result.success) {
@@ -353,7 +323,7 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!observacion) return
-    if (!evidenciaUrl) {
+    if (!evidenciaFile) {
       setConfirmNoPhoto(true)
       return
     }
@@ -806,18 +776,17 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
                 type="file"
                 accept=".jpg,.jpeg,.png,.webp"
                 onChange={handleFileChange}
-                disabled={uploading}
+                disabled={saving}
                 aria-label="Foto de evidencia de cierre"
                 className="w-full text-sm text-text-tertiary file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-brand-muted file:text-brand-primary hover:file:bg-brand-muted/80 cursor-pointer"
               />
-              {uploading && <p className="text-xs text-brand-primary mt-1">Subiendo imagen...</p>}
-              {evidenciaUrl && !uploading && (
+              {evidenciaFile && (
                 <p className="text-xs text-success mt-1">✓ {evidenciaName}</p>
               )}
             </div>
 
             <div className="flex gap-3 pt-2">
-              <Button type="submit" disabled={saving || uploading}>
+              <Button type="submit" disabled={saving}>
                 {saving ? 'Guardando...' : isCerrado ? 'Actualizar cierre' : 'Cerrar observación'}
               </Button>
               <button

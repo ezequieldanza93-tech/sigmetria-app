@@ -49,6 +49,25 @@ export async function consultoraIdFromEstablecimiento(
 }
 
 /**
+ * Resuelve el `consultora_id` a partir de un `empresa_id`.
+ * Cadena: empresas.consultora_id
+ *
+ * @returns el consultora_id (UUID) o null si no se pudo resolver.
+ */
+export async function consultoraIdFromEmpresa(
+  supabase: SupabaseServerClient,
+  empresaId: string,
+): Promise<string | null> {
+  if (!empresaId) return null
+  const { data } = await supabase
+    .from('empresas')
+    .select('consultora_id')
+    .eq('id', empresaId)
+    .maybeSingle()
+  return data?.consultora_id ?? null
+}
+
+/**
  * Resuelve el `consultora_id` a partir de un `gestiones_registros.id`.
  * Cadena: gestiones_registros.gestion_establecimiento_id
  *         → gestiones_establecimientos.establecimiento_id

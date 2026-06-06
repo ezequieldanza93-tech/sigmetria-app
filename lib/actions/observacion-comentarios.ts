@@ -1,5 +1,6 @@
 'use server'
 import { createClient } from '@/lib/supabase/server'
+import { consultoraIdFromRegistroGestion, tenantStoragePath } from '@/lib/storage/tenant-path'
 import type { ActionResult } from '@/lib/types'
 
 async function isViewerRole(supabase: Awaited<ReturnType<typeof createClient>>, userId: string): Promise<boolean> {
@@ -45,19 +46,42 @@ export async function addObservacionComentario(
 
 export async function addObservacionFoto(
   observacionId: string,
-  url: string,
+  foto: File,
   categoria: string | null = null
 ): Promise<ActionResult<{ id: string }>> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
+  if (!foto || foto.size === 0) return { success: false, error: 'Foto requerida' }
+
+  // Resolvemos el registro_gestion_id de la observación para atar el path al
+  // tenant DUEÑO del dato (ver lib/storage/tenant-path.ts).
+  const { data: obs } = await supabase
+    .from('gestiones_observaciones')
+    .select('registro_gestion_id')
+    .eq('id', observacionId)
+    .maybeSingle()
+  const registroId = obs?.registro_gestion_id
+  if (!registroId) return { success: false, error: 'No se pudo resolver el registro de la observación' }
+
+  const consultoraId = await consultoraIdFromRegistroGestion(supabase, registroId)
+  if (!consultoraId) return { success: false, error: 'No se pudo resolver la consultora del registro' }
+
+  const ext = foto.name.split('.').pop()
+  const path = tenantStoragePath(consultoraId, 'observaciones-cliente', observacionId, `${Date.now()}.${ext}`)
+  const { data: upload, error: uploadError } = await supabase.storage
+    .from('documentos')
+    .upload(path, foto, { cacheControl: '3600', upsert: false, contentType: foto.type || undefined })
+  if (uploadError) return { success: false, error: 'Error al subir archivo: ' + uploadError.message }
+
+  // Persistimos el PATH (no la URL). Se deriva on-read con resolveAssetUrl('documentos', path).
   const { data, error } = await supabase
     .from('observaciones_fotos_cliente')
     .insert({
       observacion_id: observacionId,
       autor_id: user.id,
-      url,
+      url: upload.path,
       categoria,
     })
     .select('id')
