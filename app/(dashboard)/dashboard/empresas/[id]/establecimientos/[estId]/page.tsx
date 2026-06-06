@@ -6,10 +6,11 @@ import { GestionesAgenda } from '@/components/establecimiento-gestiones-agenda'
 import { EstablecimientoTabs } from '@/components/establecimiento-tabs'
 import { ActuarView } from '@/components/actuar-view'
 import { getDocTiposAplicables } from '@/lib/actions/aplicabilidad'
+import { getLegajoEsperados } from '@/lib/actions/establecimiento-ficha'
 import type {
   SectorEstablecimiento, Incidente, Inspeccion, Riesgo, Documento, DocumentType,
   EstablecimientoDenuncia, FeedbackCliente, EmpresaDocumento, EmpleadoDocumentoLegajo, LegajoGestion,
-  Capacitacion, Medicion,
+  Capacitacion, Medicion, LegajoEsperados,
 } from '@/lib/types'
 import { AnalyticsDashboard } from '@/components/analytics/real/analytics-dashboard'
 import { LegajoTecnico } from '@/components/establecimiento/legajo-tecnico'
@@ -61,6 +62,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
   let empresaDocumentos: EmpresaDocumento[] = []
   let gestionesLegajo: LegajoGestion[] = []
   let trabajadorDocumentos: EmpleadoDocumentoLegajo[] = []
+  let legajoEsperados: LegajoEsperados | null = null
 
   // Legajo QR section data
   let legajoCapacitaciones: (Capacitacion & { _asistentes?: number })[] = []
@@ -135,6 +137,9 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
         .order('created_at', { ascending: false })
       trabajadorDocumentos = (empDocs ?? []) as unknown as EmpleadoDocumentoLegajo[]
     }
+
+    // Checklist de documentos ESPERADOS del Legajo Técnico (último + historial).
+    legajoEsperados = await getLegajoEsperados(estId, empresaId)
   }
 
   if (section === 'agenda') {
@@ -214,6 +219,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
             empresaDocumentos={empresaDocumentos}
             gestionesLegajo={gestionesLegajo}
             trabajadorDocumentos={trabajadorDocumentos}
+            legajoEsperados={legajoEsperados}
             planoUrl={establecimiento.plano_url}
           />
         </>

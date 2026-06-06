@@ -89,8 +89,21 @@ export function LegajoTecnico({
   const riesgosOrdenados = [...riesgos].sort((a, b) => NIVEL_ORDER[a.nivel] - NIVEL_ORDER[b.nivel])
 
   // Documentos del legajo agrupados por las 6 categorías fijas.
-  const documentosPorCategoria = (cat: CategoriaLegajo): Documento[] =>
-    documentos.filter(d => (d.documentos_tipos?.categoria_legajo ?? null) === cat)
+  // VISTA PÚBLICA: solo lo CARGADO. Dedupe por tipo_id quedándose con el ÚLTIMO
+  // (más nuevo por created_at) — no se publica historial ni "Pendiente".
+  const documentosPorCategoria = (cat: CategoriaLegajo): Documento[] => {
+    const ultimoPorTipo = new Map<string, Documento>()
+    for (const d of documentos) {
+      if ((d.documentos_tipos?.categoria_legajo ?? null) !== cat) continue
+      // Agrupamos por tipo_id; los que no tienen tipo se mantienen por id propio.
+      const key = d.tipo_id ?? `__sin_tipo__${d.id}`
+      const prev = ultimoPorTipo.get(key)
+      if (!prev || new Date(d.created_at).getTime() > new Date(prev.created_at).getTime()) {
+        ultimoPorTipo.set(key, d)
+      }
+    }
+    return Array.from(ultimoPorTipo.values())
+  }
 
   const isVigente = (fecha: string | null) => !fecha || new Date(fecha) >= ahora
 

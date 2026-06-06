@@ -36,14 +36,14 @@ export async function getDocTiposAplicables(establecimientoId: string): Promise<
   const supabase = await createClient()
 
   const [estResult, todosResult] = await Promise.all([
-    supabase.from('establecimientos').select('tipo_establecimiento_id, aplica_iso_45001').eq('id', establecimientoId).single(),
-    supabase.from('documentos_tipos').select('id, nombre, descripcion, aplica_por_iso, aplica_empresa, aplica_establecimiento, aplica_persona, created_at, frecuencia_dias, tipo_especifico, is_active').eq('is_active', true).eq('aplica_establecimiento', true).order('nombre'),
+    supabase.from('establecimientos').select('tipo_id, aplica_iso_45001').eq('id', establecimientoId).single(),
+    supabase.from('documentos_tipos').select('id, nombre, descripcion, aplica_empresa, aplica_establecimiento, aplica_empleado, aplica_por_iso, is_active, periodicidad, categoria_legajo').eq('is_active', true).eq('aplica_establecimiento', true).order('nombre'),
   ])
 
   const establecimiento = estResult.data
   if (!establecimiento) return []
 
-  const tipoId = establecimiento.tipo_establecimiento_id
+  const tipoId = establecimiento.tipo_id
   const aplicaIso = establecimiento.aplica_iso_45001
 
   const { data: porTipo } = await supabase
