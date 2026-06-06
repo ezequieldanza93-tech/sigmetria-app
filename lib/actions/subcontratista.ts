@@ -4,8 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import type { ActionResult } from '@/lib/types'
-import { uploadAsset, deleteAsset, pathFromUrl } from '@/lib/storage/upload'
-import type { AssetBucket } from '@/lib/storage/upload'
+import { uploadAsset } from '@/lib/storage/upload'
 
 // ──────────────────────────────────────────────
 // Helpers
@@ -158,7 +157,7 @@ export async function createSubcontratistaDocumento(
     })
 
     if (!result.ok) return { success: false, error: result.error }
-    archivoUrl = result.url
+    archivoUrl = result.path
   }
 
   const { error } = await supabase.from('subcontratistas_documentos').insert({
@@ -184,27 +183,25 @@ export async function deleteSubcontratistaDocumento(
   const { user, error: authErr } = await getUserAndConsultora(supabase)
   if (!user) return { success: false, error: authErr ?? 'Error de autenticación' }
 
-  // Get documento to find storage path
+  // Leemos el subcontratista_id ANTES del soft-delete: una vez marcada la fila
+  // con deleted_at, la policy RESTRICTIVE de SELECT la oculta y ya no podríamos
+  // recuperar este dato para revalidar.
   const { data: doc } = await supabase
     .from('subcontratistas_documentos')
-    .select('archivo_url, subcontratista_id')
+    .select('subcontratista_id')
     .eq('id', documentoId)
     .single()
 
   if (!doc) return { success: false, error: 'Documento no encontrado' }
 
-  // Delete from storage if exists
-  if (doc.archivo_url) {
-    const path = pathFromUrl(doc.archivo_url, 'subcontratistas' as AssetBucket)
-    if (path) {
-      await deleteAsset('subcontratistas' as AssetBucket, path)
-    }
-  }
-
-  // Delete record
+  // Soft-delete (papelera): marcamos deleted_at en vez de borrar físicamente.
+  // NO tocamos el archivo en Storage: la fila es recuperable y debe seguir
+  // apuntando a un archivo existente; destruir el PDF dejaría la papelera rota
+  // (restaurar daría un registro sin archivo). El borrado físico definitivo
+  // (fila + archivo) queda para una limpieza/GC posterior a cargo del developer.
   const { error } = await supabase
     .from('subcontratistas_documentos')
-    .delete()
+    .update({ deleted_at: new Date().toISOString() })
     .eq('id', documentoId)
 
   if (error) return { success: false, error: error.message }

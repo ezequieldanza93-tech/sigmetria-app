@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
+import { publicAssetUrl } from '@/lib/storage/asset-url'
 import type { Curso } from '@/lib/types'
 import { CURSO_ESTADO_LABELS, CURSO_ESTADO_COLORS } from '@/lib/types'
 import { CursoProgressBar } from '@/components/cursos/curso-progress-bar'
@@ -21,7 +22,7 @@ export function CursoCard({ curso, href, progreso, estadoAsignacion, fechaLimite
       <div className="h-36 bg-surface-sunken flex items-center justify-center overflow-hidden">
         {curso.portada_url ? (
           <Image
-            src={curso.portada_url}
+            src={publicAssetUrl('cursos-portadas', curso.portada_url) ?? curso.portada_url}
             alt={curso.titulo}
             width={400}
             height={225}

@@ -65,7 +65,7 @@ export async function createMatricula(
       file: certFile,
     })
     if (!up.ok) return { success: false, error: `Certificado: ${up.error}` }
-    await supabase.from('matriculas').update({ certificado_url: up.url }).eq('id', inserted.id)
+    await supabase.from('matriculas').update({ certificado_url: up.path }).eq('id', inserted.id)
   }
 
   revalidatePath('/dashboard/equipo')

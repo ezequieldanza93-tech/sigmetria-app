@@ -7,6 +7,7 @@ import { Select } from '@/components/ui/select'
 import { FileUploadInput } from '@/components/ui/file-upload-input'
 import { createClient } from '@/lib/supabase/client'
 import { createPrivateArt } from '@/lib/actions/empresa'
+import { publicAssetUrl } from '@/lib/storage/asset-url'
 import type { Empresa, Localidad, Rubro } from '@/lib/types'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -269,7 +270,7 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
           label="Logo pequeño"
           accept="image/png,image/jpeg,image/webp,image/svg+xml"
           maxSizeMB={2}
-          currentUrl={empresa?.logo_small_url}
+          currentUrl={publicAssetUrl('logos', empresa?.logo_small_url)}
           helpText="PNG, JPG, WEBP o SVG. Máx 2 MB."
           kind="image"
         />
@@ -278,7 +279,7 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
           label="Logo destacado"
           accept="image/png,image/jpeg,image/webp,image/svg+xml"
           maxSizeMB={2}
-          currentUrl={empresa?.logo_destacado_url}
+          currentUrl={publicAssetUrl('logos', empresa?.logo_destacado_url)}
           helpText="PNG, JPG, WEBP o SVG. Máx 2 MB."
           kind="image"
         />

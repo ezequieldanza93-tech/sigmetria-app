@@ -1,6 +1,7 @@
 'use client'
 
 import DOMPurify from 'isomorphic-dompurify'
+import { useSignedUrls } from '@/lib/storage/sign-client'
 import type { CursoLeccion } from '@/lib/types'
 import { Download } from 'lucide-react'
 
@@ -9,14 +10,19 @@ interface LeccionRendererProps {
 }
 
 export function LeccionRenderer({ leccion }: LeccionRendererProps) {
+  // Bucket privado `cursos-material`: firmamos el contenido en el cliente.
+  // (El tipo `embed` usa una URL externa, no de storage, así que no se firma.)
+  const { getUrl } = useSignedUrls('cursos-material', [leccion.contenido_url])
+  const contenidoUrl = getUrl(leccion.contenido_url)
+
   switch (leccion.tipo) {
     case 'video':
       return (
         <div className="space-y-4">
           <div className="aspect-video bg-black rounded-xl overflow-hidden">
-            {leccion.contenido_url ? (
+            {leccion.contenido_url && contenidoUrl ? (
               <video
-                src={leccion.contenido_url}
+                src={contenidoUrl}
                 controls
                 className="w-full h-full"
                 controlsList="nodownload"
@@ -35,16 +41,16 @@ export function LeccionRenderer({ leccion }: LeccionRendererProps) {
     case 'pdf':
       return (
         <div className="space-y-4">
-          {leccion.contenido_url ? (
+          {leccion.contenido_url && contenidoUrl ? (
             <>
               <iframe
-                src={leccion.contenido_url}
+                src={contenidoUrl}
                 className="w-full h-[600px] rounded-xl border border-border-subtle"
                 title={leccion.titulo}
               />
               {leccion.descargable && (
                 <a
-                  href={leccion.contenido_url}
+                  href={contenidoUrl}
                   download
                   className="inline-flex items-center gap-2 px-4 py-2 bg-brand-primary text-white rounded-lg text-sm font-medium hover:bg-brand-primary/90 transition-colors"
                 >

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { SubcontratistaDocumentoForm } from './subcontratista-documento-form'
 import { formatDate } from '@/lib/utils'
 import { createSubcontratistaDocumento, deleteSubcontratistaDocumento } from '@/lib/actions/subcontratista'
+import { useSignedUrls } from '@/lib/storage/sign-client'
 import type { SubcontratistaDocumento, DocumentType } from '@/lib/types'
 
 interface Props {
@@ -19,6 +20,8 @@ export function SubcontratistaDocumentosTab({ documentos, documentTypes, subcont
   const [showModal, setShowModal] = useState(false)
   const [now, setNow] = useState<number | null>(null)
   const documentoAction = createSubcontratistaDocumento.bind(null, subcontratistaId)
+  // Bucket privado: firmamos las URLs en el cliente (batch) respetando RLS.
+  const { getUrl } = useSignedUrls('subcontratistas', documentos.map(d => d.archivo_url))
 
   useEffect(() => { setNow(Date.now()) }, [])
 
@@ -99,15 +102,17 @@ export function SubcontratistaDocumentosTab({ documentos, documentTypes, subcont
                       </span>
                     </td>
                     <td className="px-5 py-3.5">
-                      {d.archivo_url ? (
+                      {d.archivo_url && getUrl(d.archivo_url) ? (
                         <a
-                          href={d.archivo_url}
+                          href={getUrl(d.archivo_url) ?? '#'}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-sig-500 hover:underline text-xs truncate max-w-[160px] block"
                         >
                           Ver archivo
                         </a>
+                      ) : d.archivo_url ? (
+                        <span className="text-text-tertiary text-xs">Cargando…</span>
                       ) : (
                         <span className="text-text-tertiary">—</span>
                       )}

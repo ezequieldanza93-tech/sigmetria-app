@@ -14,7 +14,7 @@ interface Props {
 
 export function DocumentoForm({ action, documentTypes, context, onSuccess }: Props) {
   const [uploading, setUploading] = useState(false)
-  const [fileData, setFileData] = useState<{ url: string; name: string } | null>(null)
+  const [fileData, setFileData] = useState<{ url: string; path: string; name: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
 
@@ -48,7 +48,8 @@ export function DocumentoForm({ action, documentTypes, context, onSuccess }: Pro
     }
 
     const { data: { publicUrl } } = supabase.storage.from('documentos').getPublicUrl(data.path)
-    setFileData({ url: publicUrl, name: file.name })
+    // Guardamos el PATH (no la URL) para persistir; la URL es solo para preview.
+    setFileData({ url: publicUrl, path: data.path, name: file.name })
     setUploading(false)
   }
 
@@ -58,7 +59,9 @@ export function DocumentoForm({ action, documentTypes, context, onSuccess }: Pro
 
     const fd = new FormData(e.currentTarget)
     if (fileData) {
-      fd.set('file_url', fileData.url)
+      // Persistimos el PATH relativo; la URL se deriva on-read.
+      fd.set('file_path', fileData.path)
+      fd.set('file_url', fileData.path) // compat: el action lee file_url como path
       fd.set('file_name', fileData.name)
     }
 

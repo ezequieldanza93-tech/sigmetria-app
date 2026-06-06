@@ -184,7 +184,9 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
           const file = new File([o.foto_blob], `obs-foto-${Date.now()}-${o.key}.png`, { type: 'image/png' })
           const path = `observaciones-fotos/${establecimientoId}/${file.name}`
           const { data: up } = await supabase.storage.from('documentos').upload(path, file, { upsert: false })
-          if (up) foto_url = supabase.storage.from('documentos').getPublicUrl(up.path).data.publicUrl
+          // Guardamos el PATH (no la URL). `documentos` es PRIVADO → la URL se
+          // firma on-read con useSignedUrls/resolveAssetUrl (NO publicAssetUrl).
+          if (up) foto_url = up.path
         }
         return {
           descripcion: o.descripcion,

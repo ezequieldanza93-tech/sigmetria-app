@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { createTrabajadorDocumento } from '@/lib/actions/trabajador-documento'
 import { createMatricula } from '@/lib/actions/matricula'
 import { FileUploadInput } from '@/components/ui/file-upload-input'
+import { useSignedUrls } from '@/lib/storage/sign-client'
 import { formatDate } from '@/lib/utils'
 import type { DirectorioPersona, ActionResult, Matricula } from '@/lib/types'
 
@@ -189,6 +190,9 @@ export function TrabajadorModal({
   }, [tab, open, persona.id, documentos, tiposDoc])
 
   const docAction = createTrabajadorDocumento.bind(null, persona.id, establecimientoId, empresaId)
+  // Buckets privados: firmamos las URLs en el cliente (batch, una llamada por bucket).
+  const { getUrl: getDocUrl } = useSignedUrls('documentos', (documentos ?? []).map(d => d.archivo_url))
+  const { getUrl: getCertUrl } = useSignedUrls('certificados', (matriculas ?? []).map(m => m.certificado_url))
 
   return (
     <Modal
@@ -280,9 +284,9 @@ export function TrabajadorModal({
                       </p>
                     )}
                   </div>
-                  {d.archivo_url && (
+                  {d.archivo_url && getDocUrl(d.archivo_url) && (
                     <a
-                      href={d.archivo_url}
+                      href={getDocUrl(d.archivo_url) ?? '#'}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-xs text-sig-500 hover:underline ml-3 shrink-0"
@@ -346,8 +350,8 @@ export function TrabajadorModal({
                           {formatDate(m.fecha_emision)} → {formatDate(m.fecha_vencimiento)}
                         </p>
                       </div>
-                      {m.certificado_url && (
-                        <a href={m.certificado_url} target="_blank" rel="noopener noreferrer" className="text-xs text-sig-500 hover:underline ml-2 shrink-0">Ver</a>
+                      {m.certificado_url && getCertUrl(m.certificado_url) && (
+                        <a href={getCertUrl(m.certificado_url) ?? '#'} target="_blank" rel="noopener noreferrer" className="text-xs text-sig-500 hover:underline ml-2 shrink-0">Ver</a>
                       )}
                     </div>
                   )

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { formatDate } from '@/lib/utils'
+import { useSignedUrls } from '@/lib/storage/sign-client'
 import { IncidenteForm } from '@/components/forms/incidente-form'
 import { INCIDENTE_TIPO_LABELS, INCIDENTE_ESTADO_LABELS, TIPO_PERSONA_INCIDENTE_LABELS } from '@/lib/constants'
 import { INCIDENTE_ESTADO_COLORS } from '@/lib/types'
@@ -20,6 +21,11 @@ interface IncidentesTabProps {
 export function IncidentesTab({ incidentes, establecimientoId, empresaId, canWrite }: IncidentesTabProps) {
   const [showModal, setShowModal] = useState(false)
   const incidenteAction = createIncidente.bind(null, establecimientoId, empresaId)
+  // Bucket privado `documentos`: firmamos todos los adjuntos en el cliente (batch).
+  const { getUrl } = useSignedUrls(
+    'documentos',
+    incidentes.flatMap(s => [...(s.denuncia_adjuntos_urls ?? []), ...(s.investigacion_adjuntos_urls ?? [])]),
+  )
 
   return (
     <div>
@@ -78,7 +84,7 @@ export function IncidentesTab({ incidentes, establecimientoId, empresaId, canWri
                           <div className="flex gap-1 flex-wrap items-center">
                             <span className="text-xs text-text-tertiary">Denuncia:</span>
                             {s.denuncia_adjuntos_urls.map((url, i) => (
-                              <a key={i} href={url} target="_blank" rel="noopener noreferrer"
+                              <a key={i} href={getUrl(url) ?? '#'} target="_blank" rel="noopener noreferrer"
                                 className="text-xs text-sig-600 hover:text-sig-800 underline">
                                 {i + 1}
                               </a>
@@ -89,7 +95,7 @@ export function IncidentesTab({ incidentes, establecimientoId, empresaId, canWri
                           <div className="flex gap-1 flex-wrap items-center">
                             <span className="text-xs text-text-tertiary">Investigación:</span>
                             {s.investigacion_adjuntos_urls.map((url, i) => (
-                              <a key={i} href={url} target="_blank" rel="noopener noreferrer"
+                              <a key={i} href={getUrl(url) ?? '#'} target="_blank" rel="noopener noreferrer"
                                 className="text-xs text-sig-600 hover:text-sig-800 underline">
                                 {i + 1}
                               </a>

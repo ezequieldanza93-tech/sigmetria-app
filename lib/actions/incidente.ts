@@ -3,32 +3,36 @@
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { consultoraIdFromEstablecimiento, tenantStoragePath } from '@/lib/storage/tenant-path'
 import type { ActionResult, IncidenteEstado } from '@/lib/types'
 
 const MAX_ARCHIVOS = 5
 
 /**
- * Sube los archivos al bucket `documentos` (ya existente) bajo
- * `incidentes/{establecimientoId}/{timestamp}-{filename}` y devuelve las
- * URLs públicas. Patrón espejo de lib/actions/establecimiento-info.ts.
+ * Sube los archivos al bucket `documentos` (PRIVADO) bajo
+ * `{consultoraId}/incidentes/{establecimientoId}/{timestamp}-{filename}` y
+ * devuelve los PATHS relativos (no URLs). El prefijo consultora_id es
+ * OBLIGATORIO: la RLS de lectura por tenant extrae el consultora_id del primer
+ * segmento del path. La URL se deriva on-read con resolveAssetUrl('documentos').
+ * Patrón espejo de establecimiento-info.ts / trabajador-documento.ts.
  */
 async function uploadIncidenteFiles(
   supabase: Awaited<ReturnType<typeof createClient>>,
+  consultoraId: string,
   establecimientoId: string,
   files: File[]
 ): Promise<string[]> {
-  const urls: string[] = []
+  const paths: string[] = []
   for (const file of files) {
-    if (urls.length >= MAX_ARCHIVOS) break
-    const path = `incidentes/${establecimientoId}/${Date.now()}-${file.name}`
+    if (paths.length >= MAX_ARCHIVOS) break
+    const path = tenantStoragePath(consultoraId, 'incidentes', establecimientoId, `${Date.now()}-${file.name}`)
     const { data: upload, error } = await supabase.storage
       .from('documentos')
       .upload(path, file, { upsert: false })
     if (error) continue
-    const { data: { publicUrl } } = supabase.storage.from('documentos').getPublicUrl(upload.path)
-    urls.push(publicUrl)
+    paths.push(upload.path)
   }
-  return urls
+  return paths
 }
 
 function collectIncidenteFiles(formData: FormData, name: string): File[] {
@@ -84,12 +88,18 @@ export async function createIncidente(
 
   const denunciaFiles = collectIncidenteFiles(formData, 'denuncia_adjuntos')
   const investigacionFiles = collectIncidenteFiles(formData, 'investigacion_adjuntos')
-  const denunciaUrls = denunciaFiles.length > 0
-    ? await uploadIncidenteFiles(supabase, establecimientoId, denunciaFiles)
-    : []
-  const investigacionUrls = investigacionFiles.length > 0
-    ? await uploadIncidenteFiles(supabase, establecimientoId, investigacionFiles)
-    : []
+  let denunciaUrls: string[] = []
+  let investigacionUrls: string[] = []
+  if (denunciaFiles.length > 0 || investigacionFiles.length > 0) {
+    const consultoraId = await consultoraIdFromEstablecimiento(supabase, establecimientoId)
+    if (!consultoraId) return { success: false, error: 'No se pudo resolver la consultora del establecimiento' }
+    denunciaUrls = denunciaFiles.length > 0
+      ? await uploadIncidenteFiles(supabase, consultoraId, establecimientoId, denunciaFiles)
+      : []
+    investigacionUrls = investigacionFiles.length > 0
+      ? await uploadIncidenteFiles(supabase, consultoraId, establecimientoId, investigacionFiles)
+      : []
+  }
 
   const insertData: Record<string, unknown> = {
     establecimiento_id: establecimientoId,
@@ -153,12 +163,18 @@ export async function updateIncidente(
 
   const denunciaFiles = collectIncidenteFiles(formData, 'denuncia_adjuntos')
   const investigacionFiles = collectIncidenteFiles(formData, 'investigacion_adjuntos')
-  const denunciaUrls = denunciaFiles.length > 0
-    ? await uploadIncidenteFiles(supabase, establecimientoId, denunciaFiles)
-    : []
-  const investigacionUrls = investigacionFiles.length > 0
-    ? await uploadIncidenteFiles(supabase, establecimientoId, investigacionFiles)
-    : []
+  let denunciaUrls: string[] = []
+  let investigacionUrls: string[] = []
+  if (denunciaFiles.length > 0 || investigacionFiles.length > 0) {
+    const consultoraId = await consultoraIdFromEstablecimiento(supabase, establecimientoId)
+    if (!consultoraId) return { success: false, error: 'No se pudo resolver la consultora del establecimiento' }
+    denunciaUrls = denunciaFiles.length > 0
+      ? await uploadIncidenteFiles(supabase, consultoraId, establecimientoId, denunciaFiles)
+      : []
+    investigacionUrls = investigacionFiles.length > 0
+      ? await uploadIncidenteFiles(supabase, consultoraId, establecimientoId, investigacionFiles)
+      : []
+  }
 
   const updateData: Record<string, unknown> = {
     tipo,

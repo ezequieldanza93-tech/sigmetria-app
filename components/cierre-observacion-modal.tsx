@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
+import { useSignedUrls } from '@/lib/storage/sign-client'
 import { cerrarObservacion, actualizarCategoriaObservacion } from '@/lib/actions/observacion-gestion'
 import { addObservacionComentario, addObservacionFoto, marcarObservacionVista } from '@/lib/actions/observacion-comentarios'
 import { createPersonaDirectorio } from '@/lib/actions/persona-directorio'
@@ -261,18 +262,18 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
     const path = `evidencias/${Date.now()}_${safeName}`
 
-    const { error: uploadError } = await supabase.storage
+    const { data: up, error: uploadError } = await supabase.storage
       .from('documentos')
       .upload(path, file, { cacheControl: '3600', upsert: false })
 
-    if (uploadError) {
+    if (uploadError || !up) {
       setError('No se pudo subir la imagen. Verificá que el bucket exista.')
       setUploading(false)
       return
     }
 
-    const { data: { publicUrl } } = supabase.storage.from('documentos').getPublicUrl(path)
-    setEvidenciaUrl(publicUrl)
+    // Guardamos el PATH (no la URL). Se deriva on-read con publicAssetUrl.
+    setEvidenciaUrl(up.path)
     setEvidenciaName(file.name)
     setUploading(false)
   }
@@ -286,18 +287,18 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
     const path = `observaciones-cliente/${Date.now()}_${safeName}`
 
-    const { error: uploadError } = await supabase.storage
+    const { data: up, error: uploadError } = await supabase.storage
       .from('documentos')
       .upload(path, file, { cacheControl: '3600', upsert: false })
 
-    if (uploadError) {
+    if (uploadError || !up) {
       setError('No se pudo subir la foto.')
       setUploadingFoto(false)
       return
     }
 
-    const { data: { publicUrl } } = supabase.storage.from('documentos').getPublicUrl(path)
-    const result = await addObservacionFoto(observacion.id, publicUrl, null)
+    // Guardamos el PATH (no la URL). Se deriva on-read con publicAssetUrl.
+    const result = await addObservacionFoto(observacion.id, up.path, null)
     if (result.success) {
       await loadFotosCliente(observacion.id)
     } else {
@@ -373,6 +374,13 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
     setAddingComentario(false)
   }
 
+  // Bucket privado `documentos`: firmamos todas las fotos/evidencias en el cliente (batch).
+  const { getUrl } = useSignedUrls('documentos', [
+    observacion?.foto_url,
+    observacion?.evidencia_cierre_url,
+    ...fotosCliente.map(f => f.url),
+  ])
+
   const obs = observacion
   if (!obs) return null
 
@@ -419,23 +427,23 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
         <div>
           <p className="text-sm text-text-tertiary mb-0.5">Observación</p>
           <p className="text-sm font-medium text-text-primary">{obs.descripcion}</p>
-          {obs.foto_url && (
+          {obs.foto_url && getUrl(obs.foto_url) && (
             <div className="relative mt-3 w-full aspect-[4/3] rounded-xl overflow-hidden border border-border-subtle">
-              <Image src={obs.foto_url} alt="Foto de la observación" fill sizes="(max-width: 768px) 100vw, 600px" className="object-contain" />
+              <Image src={getUrl(obs.foto_url)!} alt="Foto de la observación" fill sizes="(max-width: 768px) 100vw, 600px" className="object-contain" />
             </div>
           )}
         </div>
 
         {/* Evidencia de cierre */}
-        {obs.evidencia_cierre_url && (
+        {obs.evidencia_cierre_url && getUrl(obs.evidencia_cierre_url) && (
           <div>
             <p className="text-xs text-text-tertiary mb-1">Foto de evidencia de cierre</p>
             <div
               className="relative w-full aspect-[4/3] rounded-xl overflow-hidden border border-border-subtle cursor-pointer hover:opacity-90"
-              onClick={() => window.open(obs.evidencia_cierre_url!, '_blank')}
+              onClick={() => window.open(getUrl(obs.evidencia_cierre_url!) ?? '#', '_blank')}
             >
               <Image
-                src={obs.evidencia_cierre_url}
+                src={getUrl(obs.evidencia_cierre_url)!}
                 alt="Evidencia de cierre"
                 fill
                 sizes="(max-width: 768px) 100vw, 600px"
@@ -624,14 +632,14 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
           <p className="text-xs font-medium text-text-tertiary mb-2">Fotos del cliente</p>
           {fotosCliente.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-2">
-              {fotosCliente.map(f => (
+              {fotosCliente.filter(f => getUrl(f.url)).map(f => (
                 <div
                   key={f.id}
                   className="relative h-20 w-28 rounded-lg overflow-hidden border border-border-subtle cursor-pointer hover:opacity-90"
-                  onClick={() => window.open(f.url, '_blank')}
+                  onClick={() => window.open(getUrl(f.url) ?? '#', '_blank')}
                 >
                   <Image
-                    src={f.url}
+                    src={getUrl(f.url)!}
                     alt={f.categoria ?? 'Foto cliente'}
                     fill
                     sizes="112px"

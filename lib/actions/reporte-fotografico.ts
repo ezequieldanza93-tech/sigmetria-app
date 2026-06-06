@@ -1,5 +1,6 @@
 'use server'
 import { createClient } from '@/lib/supabase/server'
+import { consultoraIdFromEstablecimiento, tenantStoragePath } from '@/lib/storage/tenant-path'
 import type { ActionResult } from '@/lib/types'
 
 export async function crearReporteFotografico(
@@ -50,19 +51,22 @@ export async function crearReporteFotografico(
   }
 
   const ext = file.name.split('.').pop() ?? 'png'
-  const path = `reportes-fotograficos/${establecimientoId}/${Date.now()}.${ext}`
+  // El path de un bucket PRIVADO debe empezar con el consultora_id para que la
+  // RLS de lectura por tenant matchee (ver lib/storage/tenant-path.ts).
+  const consultoraId = await consultoraIdFromEstablecimiento(supabase, establecimientoId)
+  if (!consultoraId) return { success: false, error: 'No se pudo resolver la consultora del establecimiento' }
+  const path = tenantStoragePath(consultoraId, 'reportes-fotograficos', establecimientoId, `${Date.now()}.${ext}`)
   const { data: upload, error: uploadError } = await supabase.storage
     .from('documentos')
     .upload(path, file, { upsert: false })
   if (uploadError) return { success: false, error: 'Error al subir imagen: ' + uploadError.message }
 
-  const { data: { publicUrl } } = supabase.storage.from('documentos').getPublicUrl(upload.path)
-
+  // Persistimos el PATH (no la URL). Se deriva on-read con publicAssetUrl('documentos', path).
   const { data: reg, error: registroError } = await supabase.from('gestiones_registros').insert({
     gestion_establecimiento_id: geId,
     fecha_planificada: today,
     fecha_ejecutada: today,
-    evidencia_url: publicUrl,
+    evidencia_url: upload.path,
     notas: comentario,
   }).select('id').single()
   if (registroError) return { success: false, error: registroError.message }

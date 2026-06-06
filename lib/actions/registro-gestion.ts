@@ -1,6 +1,7 @@
 'use server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { consultoraIdFromRegistroGestion, tenantStoragePath } from '@/lib/storage/tenant-path'
 import type { ActionResult } from '@/lib/types'
 import { validateFormData, formatZodErrors } from '@/lib/validation/helpers'
 
@@ -72,13 +73,17 @@ export async function ejecutarGestion(
 
   if (file && file.size > 0) {
     const ext = file.name.split('.').pop()
-    const path = `evidencias/${registroId}/${Date.now()}.${ext}`
+    // El path de un bucket PRIVADO debe empezar con el consultora_id para que la
+    // RLS de lectura por tenant matchee (ver lib/storage/tenant-path.ts).
+    const consultoraId = await consultoraIdFromRegistroGestion(supabase, registroId)
+    if (!consultoraId) return { success: false, error: 'No se pudo resolver la consultora del registro' }
+    const path = tenantStoragePath(consultoraId, 'evidencias', registroId, `${Date.now()}.${ext}`)
     const { data: upload, error: uploadError } = await supabase.storage
       .from('documentos')
       .upload(path, file, { upsert: false })
     if (uploadError) return { success: false, error: 'Error al subir archivo: ' + uploadError.message }
-    const { data: { publicUrl } } = supabase.storage.from('documentos').getPublicUrl(upload.path)
-    updates.evidencia_url = publicUrl
+    // Persistimos el PATH (no la URL). Se deriva on-read con resolveAssetUrl('documentos', path).
+    updates.evidencia_url = upload.path
   }
 
   const { error } = await supabase

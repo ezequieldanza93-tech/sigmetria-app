@@ -252,7 +252,9 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
             const fotoFile = new File([obs.foto_blob], `obs-${Date.now()}-${obs.key}.png`, { type: 'image/png' })
             const path = `observaciones-fotos/${registro.id}/${fotoFile.name}`
             const { data: up } = await supabase.storage.from('documentos').upload(path, fotoFile, { upsert: false })
-            if (up) foto_url = supabase.storage.from('documentos').getPublicUrl(up.path).data.publicUrl
+            // Guardamos el PATH (no la URL). `documentos` es PRIVADO → la URL se
+            // firma on-read con useSignedUrls/resolveAssetUrl (NO publicAssetUrl).
+            if (up) foto_url = up.path
           }
           return { ...obs, foto_url }
         }))
