@@ -21,7 +21,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { BUCKET_IS_PUBLIC, type StorageBucket } from '@/lib/storage/upload'
+import { BUCKET_IS_PUBLIC, type StorageBucket } from '@/lib/storage/buckets'
 
 /** TTL por defecto de las signed URLs de buckets privados: 1 hora. */
 export const DEFAULT_SIGNED_TTL_SECONDS = 60 * 60

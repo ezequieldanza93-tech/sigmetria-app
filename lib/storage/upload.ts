@@ -1,18 +1,11 @@
 import { createClient } from '@/lib/supabase/server'
+import type { AssetBucket } from '@/lib/storage/buckets'
 
-export type AssetBucket =
-  | 'logos'
-  | 'consultora'
-  | 'firmas'
-  | 'matriculas'
-  | 'planos'
-  | 'certificados'
-  | 'incidentes'
-  | 'denuncias'
-  | 'subcontratistas'
-  | 'cursos-material'
-  | 'cursos-portadas'
-  | 'cursos-certificados'
+// Los tipos/constantes PUROS viven en ./buckets (sin imports de server) para que
+// el cliente (sign-client.ts) los importe sin arrastrar `next/headers` al bundle.
+// Re-export para compat con los imports existentes desde '@/lib/storage/upload'.
+export type { AssetBucket, StorageBucket } from '@/lib/storage/buckets'
+export { BUCKET_IS_PUBLIC } from '@/lib/storage/buckets'
 
 export type EntityType =
   | 'empresa'
@@ -46,55 +39,6 @@ const BUCKETS: Record<AssetBucket, BucketConfig> = {
   'cursos-material':    { maxBytes: 500 * 1024 * 1024, mimes: ['video/mp4','video/webm','application/pdf','image/png','image/jpeg','image/webp'], public: false },
   'cursos-portadas':    { maxBytes: 5 * 1024 * 1024, mimes: ['image/png','image/jpeg','image/webp'],                                            public: true  },
   'cursos-certificados':{ maxBytes: 5 * 1024 * 1024, mimes: ['application/pdf'],                                                                 public: false },
-}
-
-/**
- * Nombre de cualquier bucket REAL de la app (no solo los que se suben con
- * uploadAsset). Incluye los buckets creados a mano (documentos, establecimientos,
- * consultoras, avatars) que también se LEEN on-read.
- */
-export type StorageBucket =
-  | AssetBucket
-  | 'documentos'
-  | 'establecimientos'
-  | 'consultoras'
-  | 'avatars'
-
-/**
- * Fuente de verdad público/privado por bucket. Debe estar ALINEADA con la
- * migración 20260617000002_storage_buckets_declare_and_public.sql.
- *
- * Postura: SEGURIDAD ANTE TODO. Solo branding inofensivo es público; todo bucket
- * con datos de cliente/trabajador/compliance es privado (signed URLs).
- *
- * Usado por el resolver server-side (resolve-url.ts) y por el firmador
- * client-side (sign-client.ts).
- */
-export const BUCKET_IS_PUBLIC: Record<StorageBucket, boolean> = {
-  // 🟢 PÚBLICOS — branding inofensivo
-  logos: true,
-  consultora: true,
-  consultoras: true,
-  avatars: true,
-  'cursos-portadas': true,
-  // ⚠️ PÚBLICOS POR EXCEPCIÓN TEMPORAL — deberían ser privados, pero tienen datos
-  // legacy guardados como URL pública absoluta y paths sin tenant. Hasta el cambio
-  // dedicado que migre esos datos, el bucket sigue público (ver migración
-  // 20260617000002). DEBE coincidir con storage.buckets.public en la DB: si acá
-  // dijera false, el código firmaría (createSignedUrl) y la firma cruzada fallaría
-  // por RLS en paths sin tenant → lectura rota entre compañeros.
-  documentos: true,
-  establecimientos: true,
-  // 🔴 PRIVADOS — datos sensibles, signed URLs
-  firmas: false,
-  matriculas: false,
-  planos: false,
-  certificados: false,
-  incidentes: false,
-  denuncias: false,
-  subcontratistas: false,
-  'cursos-material': false,
-  'cursos-certificados': false,
 }
 
 const EXT_BY_MIME: Record<string, string> = {

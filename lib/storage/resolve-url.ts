@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { BUCKET_IS_PUBLIC, type StorageBucket } from '@/lib/storage/upload'
+import { BUCKET_IS_PUBLIC, type StorageBucket } from '@/lib/storage/buckets'
 
 /**
  * Resolución de URLs on-read a partir del PATH relativo guardado en DB.
