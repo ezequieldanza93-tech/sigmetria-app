@@ -161,9 +161,12 @@ export function ErrorCapture() {
     <>
       <button
         onClick={() => setOpen(o => !o)}
+        // bottom-24 (96px) en mobile para quedar arriba de la barra de
+        // navegación inferior; bottom-4 (16px) en desktop donde la barra
+        // no existe. Tailwind no pisa estilos inline, por eso 'bottom' va acá.
+        className="bottom-24 lg:bottom-4"
         style={{
           position: 'fixed',
-          bottom: 16,
           left: '50%',
           transform: 'translateX(-50%)',
           zIndex: 99999,
@@ -185,9 +188,12 @@ export function ErrorCapture() {
 
       {open && (
         <div
+          // El panel se ubica por encima del botón: bottom-36 (144px) en mobile
+          // para no quedar tapado por la barra inferior, bottom-20 (80px) en
+          // desktop. 'bottom' va en className porque Tailwind no pisa inline.
+          className="bottom-36 lg:bottom-20"
           style={{
             position: 'fixed',
-            bottom: 70,
             left: '50%',
             transform: 'translateX(-50%)',
             zIndex: 99999,

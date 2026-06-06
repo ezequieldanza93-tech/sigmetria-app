@@ -28,7 +28,7 @@ import {
   createCategoriaGestion,
 } from '@/lib/actions/gestion-establecimiento'
 import { ejecutarGestion, crearObservaciones } from '@/lib/actions/registro-gestion'
-import { useShortcutAction } from '@/lib/contexts/shortcuts-context'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 
 
 const CATEGORIA_META: Record<string, { icon: React.ComponentType<{ size?: number; className?: string }>; abbr: string }> = {
@@ -1119,10 +1119,19 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
   const [showPlanificarModal, setShowPlanificarModal] = useState(false)
   const [showReporteModal, setShowReporteModal] = useState(false)
 
-  // Ctrl+Shift+P → Planificar Gestión (only active while this view is mounted)
-  useShortcutAction('plan-gestion', () => setShowPlanificarModal(true))
-  // Ctrl+Shift+F → Reporte Fotográfico (camera button equivalent)
-  useShortcutAction('open-reporte-fotografico', () => setShowReporteModal(true))
+  // El GestionLauncher global navega acá con ?action=plan-gestion |
+  // open-reporte-fotografico. Leemos el param, abrimos el modal y lo limpiamos
+  // para que no se reabra al refrescar.
+  const pathname = usePathname()
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const action = searchParams.get('action')
+  useEffect(() => {
+    if (action !== 'plan-gestion' && action !== 'open-reporte-fotografico') return
+    if (action === 'plan-gestion') setShowPlanificarModal(true)
+    else setShowReporteModal(true)
+    router.replace(`${pathname}?section=agenda`, { scroll: false })
+  }, [action, pathname, router])
 
 
   // Task 4: resizable columns with localStorage

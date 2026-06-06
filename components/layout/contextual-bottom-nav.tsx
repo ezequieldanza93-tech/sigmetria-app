@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useNavigationLevel } from '@/lib/hooks/use-navigation-level'
+import { useShortcuts } from '@/lib/contexts/shortcuts-context'
 import { SubMenu } from './sub-menu'
 
 // ─── Button configuration ──────────────────────────────────────────
@@ -37,9 +38,9 @@ const NAV_BUTTONS: NavButtonConfig[] = [
 
 export function ContextualBottomNav() {
   const router = useRouter()
+  const { emit } = useShortcuts()
   const { level, empresaId, establecimientoId } = useNavigationLevel()
   const [submenuOpen, setSubmenuOpen] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // ── Visibility ─────────────────────────────────────────────────
   // At consultora level: don't render the bottom nav at all
@@ -71,18 +72,14 @@ export function ContextualBottomNav() {
       }
 
       case 'nueva-gestion': {
-        if (isEstablecimiento && establecimientoUrl) {
-          // Navigate to agenda where the "Planificar" button is
-          router.push(establecimientoUrl)
-        }
+        // El GestionLauncher global resuelve el establecimiento según el nivel.
+        emit('plan-gestion')
         break
       }
 
       case 'camara': {
-        if (isEstablecimiento) {
-          // Use the file input as a quick camera trigger
-          fileInputRef.current?.click()
-        }
+        // El GestionLauncher global resuelve el establecimiento según el nivel.
+        emit('open-reporte-fotografico')
         break
       }
 
@@ -103,26 +100,6 @@ export function ContextualBottomNav() {
 
   return (
     <>
-      {/* Hidden file input for camera quick-access */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        className="hidden"
-        aria-hidden="true"
-        tabIndex={-1}
-        onChange={(e) => {
-          const file = e.target.files?.[0]
-          if (file && establecimientoUrl) {
-            // Navigate to agenda so the user can use the photo
-            router.push(establecimientoUrl)
-          }
-          // Reset so the same file can be selected again
-          e.target.value = ''
-        }}
-      />
-
       {/* Spacer — pushes content up so fixed nav doesn't overlap */}
       <div className="lg:hidden h-16 safe-area-pb" aria-hidden="true" />
 
@@ -140,7 +117,11 @@ export function ContextualBottomNav() {
       >
         <div className="flex items-center justify-around h-16 px-2 max-w-lg mx-auto">
           {NAV_BUTTONS.map((button) => {
-            const isDisabled = isEmpresa && button.id !== 'home'
+            // 'nueva-gestion' y 'camara' funcionan en todos los niveles (el
+            // GestionLauncher global resuelve el establecimiento destino).
+            // 'observaciones' y 'submenu' siguen siendo de establecimiento.
+            const alwaysEnabled = button.id === 'nueva-gestion' || button.id === 'camara'
+            const isDisabled = isEmpresa && button.id !== 'home' && !alwaysEnabled
 
             // ── Central "+" button ────────────────────────────────
             if (button.isCentral) {
