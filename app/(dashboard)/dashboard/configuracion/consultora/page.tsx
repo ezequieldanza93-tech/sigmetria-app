@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { updateConsultora, uploadConsultoraLogo } from '@/lib/actions/consultora'
+import { publicAssetUrl } from '@/lib/storage/asset-url'
 import { inviteUsuario } from '@/lib/actions/usuario'
 import { InviteUsuarioForm } from '@/components/forms/invite-usuario-form'
 import NextImage from 'next/image'
@@ -475,7 +476,7 @@ export default function ConsultoraInfoPage() {
           <div className="flex items-start gap-4">
             <div className="relative w-20 h-20 rounded-xl bg-surface-base border border-border-subtle flex items-center justify-center overflow-hidden shrink-0">
               {logoUrl ? (
-                <NextImage src={logoUrl} alt="Logo" fill className="object-contain" />
+                <NextImage src={publicAssetUrl('consultora', logoUrl) ?? logoUrl} alt="Logo" fill className="object-contain" />
               ) : (
                 <LucideImage size={24} className="text-text-tertiary" />
               )}

@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { consultoraIdFromEstablecimiento, consultoraIdFromEmpresa, tenantStoragePath } from '@/lib/storage/tenant-path'
 import type { ActionResult } from '@/lib/types'
 
 export async function createDocumento(
@@ -17,9 +18,36 @@ export async function createDocumento(
   const tipo_id = formData.get('document_type_id') as string
   if (!tipo_id) return { success: false, error: 'El tipo de documento es obligatorio' }
 
+  // Upload SERVER-SIDE: el cliente NO conoce el consultora_id, así que manda el
+  // File en FormData y acá resolvemos el tenant y subimos al bucket privado
+  // `documentos` con path prefijado por consultora (ver lib/storage/tenant-path.ts).
+  // Persistimos el PATH relativo (no URL); se deriva on-read con resolveAssetUrl.
+  let archivoPath: string | null = null
+  const file = formData.get('archivo') as File | null
+  if (file && file.size > 0) {
+    const consultoraId = establecimientoId
+      ? await consultoraIdFromEstablecimiento(supabase, establecimientoId)
+      : await consultoraIdFromEmpresa(supabase, empresaId)
+    if (!consultoraId) return { success: false, error: 'No se pudo resolver la consultora del documento' }
+
+    const entityId = establecimientoId ?? empresaId
+    const ext = file.name.split('.').pop() ?? 'bin'
+    const path = tenantStoragePath(consultoraId, 'documentos', entityId, `${Date.now()}.${ext}`)
+    const { data: upload, error: uploadError } = await supabase.storage
+      .from('documentos')
+      .upload(path, file, {
+        upsert: false,
+        contentType: file.type || undefined,
+        cacheControl: '3600',
+      })
+    if (uploadError) return { success: false, error: 'Error al subir archivo: ' + uploadError.message }
+    archivoPath = upload.path
+  }
+
   const commonFields = {
+    // archivo_url almacena el PATH relativo del objeto (bucket `documentos`).
     tipo_id,
-    archivo_url: (formData.get('file_url') as string) || null,
+    archivo_url: archivoPath,
     fecha_vencimiento: (formData.get('fecha_vencimiento') as string) || null,
     subido_por: user.id,
   }

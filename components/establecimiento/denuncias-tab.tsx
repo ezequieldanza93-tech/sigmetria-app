@@ -6,6 +6,7 @@ import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { formatDate } from '@/lib/utils'
 import { createDenuncia } from '@/lib/actions/establecimiento-info'
+import { useSignedUrls } from '@/lib/storage/sign-client'
 import type { EstablecimientoDenuncia, DirectorioPersona, ActionResult } from '@/lib/types'
 
 interface DenunciasTabProps {
@@ -97,6 +98,8 @@ const MAX_ARCHIVOS = 5
 export function DenunciasTab({ denuncias, establecimientoId, canWrite }: DenunciasTabProps) {
   const [showModal, setShowModal] = useState(false)
   const denunciaAction = createDenuncia.bind(null, establecimientoId)
+  // Bucket privado `documentos`: firmamos todos los adjuntos en el cliente (batch).
+  const { getUrl } = useSignedUrls('documentos', denuncias.flatMap(d => d.adjuntos_urls ?? []))
 
   return (
     <div>
@@ -138,7 +141,7 @@ export function DenunciasTab({ denuncias, establecimientoId, canWrite }: Denunci
                         {d.adjuntos_urls.map((url, i) => (
                           <a
                             key={i}
-                            href={url}
+                            href={getUrl(url) ?? '#'}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-xs text-sig-600 hover:text-sig-800 underline"

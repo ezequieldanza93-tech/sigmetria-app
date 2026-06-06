@@ -7,7 +7,7 @@ import { revalidatePath } from 'next/cache'
 import { SECTORES_PREDEFINIDOS } from '@/lib/constants'
 import type { ActionResult } from '@/lib/types'
 import { validateFormData, formatZodErrors } from '@/lib/validation/helpers'
-import { uploadAsset, deleteAsset, pathFromUrl } from '@/lib/storage/upload'
+import { uploadAsset, deleteAsset, storagePath } from '@/lib/storage/upload'
 
 const establecimientoActionSchema = z.object({
   nombre: z.string().min(1, { error: 'El nombre es obligatorio' }).transform(s => s.trim()),
@@ -114,9 +114,9 @@ async function processFloorPlans(
       file: pdfFile,
     })
     if (!up.ok) return { error: `Plano PDF: ${up.error}` }
-    result.plano_url = up.url
+    result.plano_url = up.path
   } else if (pdfRemove && current.plano_url) {
-    const path = pathFromUrl(current.plano_url, 'planos')
+    const path = storagePath(current.plano_url, 'planos')
     if (path) await deleteAsset('planos', path)
     result.plano_url = null
   }
@@ -133,9 +133,9 @@ async function processFloorPlans(
       file: cadFile,
     })
     if (!up.ok) return { error: `Plano CAD: ${up.error}` }
-    result.floor_plan_cad_url = up.url
+    result.floor_plan_cad_url = up.path
   } else if (cadRemove && current.floor_plan_cad_url) {
-    const path = pathFromUrl(current.floor_plan_cad_url, 'planos')
+    const path = storagePath(current.floor_plan_cad_url, 'planos')
     if (path) await deleteAsset('planos', path)
     result.floor_plan_cad_url = null
   }
@@ -143,6 +143,10 @@ async function processFloorPlans(
   return result
 }
 
+// Sube la foto del sitio al bucket `establecimientos` (público) y devuelve el
+// PATH relativo (no la URL). Convención por consultora:
+// {consultoraId}/establecimiento/{establecimientoId}/{timestamp}.{ext}
+// La URL se deriva on-read con resolveAssetUrl('establecimientos', path).
 async function uploadFoto(
   supabase: Awaited<ReturnType<typeof createClient>>,
   file: File,
@@ -152,14 +156,13 @@ async function uploadFoto(
   try {
     if (!file || file.size === 0) return null
     const ext = file.name.split('.').pop() ?? 'jpg'
-    const path = `${consultoraId}/fotos/${establecimientoId}/${Date.now()}.${ext}`
+    const path = `${consultoraId}/establecimiento/${establecimientoId}/${Date.now()}.${ext}`
     const { error } = await supabase.storage.from('establecimientos').upload(path, file, { upsert: true })
     if (error) {
       console.error('[uploadFoto] Storage error:', error)
       return null
     }
-    const { data: urlData } = supabase.storage.from('establecimientos').getPublicUrl(path)
-    return urlData.publicUrl
+    return path
   } catch (err) {
     console.error('[uploadFoto] Unexpected error:', err)
     return null
@@ -354,13 +357,13 @@ export async function uploadPlanoEstablecimiento(
 
   const { error } = await supabase
     .from('establecimientos')
-    .update({ plano_url: up.url })
+    .update({ plano_url: up.path })
     .eq('id', establecimientoId)
 
   if (error) return { success: false, error: error.message }
 
   revalidatePath('/', 'layout')
-  return { success: true, data: { url: up.url } }
+  return { success: true, data: { url: up.path } }
 }
 
 export async function deletePlanoEstablecimiento(
@@ -374,7 +377,7 @@ export async function deletePlanoEstablecimiento(
 
   const currentUrl = formData.get('plano_url') as string | null
   if (currentUrl) {
-    const path = pathFromUrl(currentUrl, 'planos')
+    const path = storagePath(currentUrl, 'planos')
     if (path) await deleteAsset('planos', path)
   }
 

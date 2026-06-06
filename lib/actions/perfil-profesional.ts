@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { uploadAsset, deleteAsset, pathFromUrl } from '@/lib/storage/upload'
+import { uploadAsset, deleteAsset, storagePath } from '@/lib/storage/upload'
 import type { ActionResult } from '@/lib/types'
 import type { AssetBucket, EntityType } from '@/lib/storage/upload'
 
@@ -29,11 +29,11 @@ async function processProfesionalAsset(
       file,
     })
     if (!up.ok) return { error: up.error }
-    return { url: up.url }
+    return { url: up.path }
   }
 
   if (remove && currentUrl) {
-    const path = pathFromUrl(currentUrl, bucket)
+    const path = storagePath(currentUrl, bucket)
     if (path) await deleteAsset(bucket, path)
     return { url: null }
   }
@@ -179,7 +179,7 @@ export async function addMatriculaProfesional(
       file: frenteFile,
     })
     if (!up.ok) return { success: false, error: `Foto frente: ${up.error}` }
-    updates.foto_frente_url = up.url
+    updates.foto_frente_url = up.path
   }
 
   const dorsoFile = formData.get('foto_dorso') as File | null
@@ -193,7 +193,7 @@ export async function addMatriculaProfesional(
       file: dorsoFile,
     })
     if (!up.ok) return { success: false, error: `Foto dorso: ${up.error}` }
-    updates.foto_dorso_url = up.url
+    updates.foto_dorso_url = up.path
   }
 
   if (Object.keys(updates).length > 0) {

@@ -1,6 +1,8 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { resolveAssetUrl } from '@/lib/storage/resolve-url'
+import { consultoraIdFromRegistroGestion, tenantStoragePath } from '@/lib/storage/tenant-path'
 import type { ActionResult } from '@/lib/types'
 
 export async function finalizarFormulario(
@@ -72,26 +74,39 @@ export async function finalizarFormulario(
 
   if (respUpdateError) return { success: false, error: 'Error al finalizar formulario: ' + respUpdateError.message }
 
-  // Upload form photo evidence if provided
+  // `documentos` es un bucket PRIVADO: el path DEBE empezar con el consultora_id
+  // para que la RLS de lectura por tenant matchee (ver lib/storage/tenant-path.ts).
+  // Resolvemos el consultora_id una sola vez (lo comparten foto y PDF).
   const fotoEvidencia = formData.get('foto_evidencia') as File | null
-  let fotoEvidenciaUrl: string | null = null
-  if (fotoEvidencia && fotoEvidencia.size > 0) {
-    const ext = fotoEvidencia.name.split('.').pop() ?? 'png'
-    const path = `formularios-fotos/${registroId}/${Date.now()}.${ext}`
+  const hayFoto = !!(fotoEvidencia && fotoEvidencia.size > 0)
+  let consultoraId: string | null = null
+  if (hayFoto || evidenciaB64) {
+    consultoraId = await consultoraIdFromRegistroGestion(supabase, registroId)
+    if (!consultoraId) return { success: false, error: 'No se pudo resolver la consultora del registro' }
+  }
+
+  // Upload form photo evidence if provided. Persistimos el PATH (no la URL).
+  let fotoEvidenciaPath: string | null = null
+  if (hayFoto && consultoraId) {
+    const ext = fotoEvidencia!.name.split('.').pop() ?? 'png'
+    const path = tenantStoragePath(consultoraId, 'formularios-fotos', registroId, `${Date.now()}.${ext}`)
     const { data: fotoUpload, error: fotoUploadError } = await supabase.storage
       .from('documentos')
-      .upload(path, fotoEvidencia, { upsert: false })
+      .upload(path, fotoEvidencia!, { upsert: false })
     if (!fotoUploadError) {
-      fotoEvidenciaUrl = supabase.storage.from('documentos').getPublicUrl(fotoUpload.path).data.publicUrl
+      fotoEvidenciaPath = fotoUpload.path
     }
   }
 
-  // Upload PDF to storage if provided
-  let evidenciaUrl: string | null = null
-  if (evidenciaB64) {
+  // Upload PDF to storage if provided. Persistimos el PATH; devolvemos una SIGNED
+  // URL al cliente para la descarga inmediata (auto-download). `documentos` es un
+  // bucket PRIVADO → la URL pública daría 403; firmamos on-read con resolveAssetUrl.
+  let evidenciaPath: string | null = null
+  let evidenciaSignedUrl: string | null = null
+  if (evidenciaB64 && consultoraId) {
     const base64Data = evidenciaB64.replace(/^data:application\/pdf(?:;.*?)?;base64,/, '')
     const buffer = Buffer.from(base64Data, 'base64')
-    const path = `formularios/${registroId}/${Date.now()}.pdf`
+    const path = tenantStoragePath(consultoraId, 'formularios', registroId, `${Date.now()}.pdf`)
 
     const { data: upload, error: uploadError } = await supabase.storage
       .from('documentos')
@@ -101,8 +116,8 @@ export async function finalizarFormulario(
       })
 
     if (uploadError) return { success: false, error: 'Error al subir PDF: ' + uploadError.message }
-    const { data: { publicUrl } } = supabase.storage.from('documentos').getPublicUrl(upload.path)
-    evidenciaUrl = publicUrl
+    evidenciaPath = upload.path
+    evidenciaSignedUrl = await resolveAssetUrl('documentos', upload.path)
   }
 
   // Update registro_gestiones
@@ -114,8 +129,8 @@ export async function finalizarFormulario(
   if (indexStr && !isNaN(Number(indexStr))) {
     updates.index = Number(indexStr)
   }
-  if (evidenciaUrl) updates.evidencia_url = evidenciaUrl
-  if (fotoEvidenciaUrl) updates.foto_evidencia_url = fotoEvidenciaUrl
+  if (evidenciaPath) updates.evidencia_url = evidenciaPath
+  if (fotoEvidenciaPath) updates.foto_evidencia_url = fotoEvidenciaPath
 
   const { error: regError } = await supabase
     .from('gestiones_registros')
@@ -124,7 +139,8 @@ export async function finalizarFormulario(
 
   if (regError) return { success: false, error: 'Error al actualizar registro: ' + regError.message }
 
-  return { success: true, data: { evidencia_url: evidenciaUrl ?? '' } }
+  // Devolvemos la SIGNED URL (no el path) para la descarga inmediata en el cliente.
+  return { success: true, data: { evidencia_url: evidenciaSignedUrl ?? '' } }
 }
 
 export async function getFormularioData(gestionId: string) {

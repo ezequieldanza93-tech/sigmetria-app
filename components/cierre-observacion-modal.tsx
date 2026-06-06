@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
+import { useSignedUrls } from '@/lib/storage/sign-client'
 import { cerrarObservacion, actualizarCategoriaObservacion } from '@/lib/actions/observacion-gestion'
 import { addObservacionComentario, addObservacionFoto, marcarObservacionVista } from '@/lib/actions/observacion-comentarios'
 import { createPersonaDirectorio } from '@/lib/actions/persona-directorio'
@@ -49,8 +50,7 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
   const [fechaCierre, setFechaCierre] = useState(todayStr())
   const [responsableCierreId, setResponsableCierreId] = useState<string | ''>('')
   const [responsableLabel, setResponsableLabel] = useState('')
-  const [uploading, setUploading] = useState(false)
-  const [evidenciaUrl, setEvidenciaUrl] = useState<string | null>(null)
+  const [evidenciaFile, setEvidenciaFile] = useState<File | null>(null)
   const [evidenciaName, setEvidenciaName] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -130,7 +130,7 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
       setResponsableLabel(defaultRespId && observacion.personas_directorio
         ? `${observacion.personas_directorio.apellido}, ${observacion.personas_directorio.nombre}`
         : '')
-      setEvidenciaUrl(null)
+      setEvidenciaFile(null)
       setEvidenciaName(null)
       setError(null)
       setSuccess(false)
@@ -250,31 +250,14 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
     setResponsableLabel('')
   }
 
-  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  // El upload se hace SERVER-SIDE en cerrarObservacion (path tenant-prefijado).
+  // Acá solo retenemos el File seleccionado hasta el submit.
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-
-    setUploading(true)
     setError(null)
-
-    const supabase = createClient()
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-    const path = `evidencias/${Date.now()}_${safeName}`
-
-    const { error: uploadError } = await supabase.storage
-      .from('documentos')
-      .upload(path, file, { cacheControl: '3600', upsert: false })
-
-    if (uploadError) {
-      setError('No se pudo subir la imagen. Verificá que el bucket exista.')
-      setUploading(false)
-      return
-    }
-
-    const { data: { publicUrl } } = supabase.storage.from('documentos').getPublicUrl(path)
-    setEvidenciaUrl(publicUrl)
+    setEvidenciaFile(file)
     setEvidenciaName(file.name)
-    setUploading(false)
   }
 
   async function handleFotoClienteChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -282,22 +265,10 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
     if (!file || !observacion) return
 
     setUploadingFoto(true)
-    const supabase = createClient()
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-    const path = `observaciones-cliente/${Date.now()}_${safeName}`
+    setError(null)
 
-    const { error: uploadError } = await supabase.storage
-      .from('documentos')
-      .upload(path, file, { cacheControl: '3600', upsert: false })
-
-    if (uploadError) {
-      setError('No se pudo subir la foto.')
-      setUploadingFoto(false)
-      return
-    }
-
-    const { data: { publicUrl } } = supabase.storage.from('documentos').getPublicUrl(path)
-    const result = await addObservacionFoto(observacion.id, publicUrl, null)
+    // El upload se hace SERVER-SIDE en addObservacionFoto (path tenant-prefijado).
+    const result = await addObservacionFoto(observacion.id, file, null)
     if (result.success) {
       await loadFotosCliente(observacion.id)
     } else {
@@ -337,7 +308,7 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
       observacion.id,
       fechaCierre,
       responsableCierreId || null,
-      evidenciaUrl
+      evidenciaFile
     )
     setSaving(false)
     if (result.success) {
@@ -352,7 +323,7 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!observacion) return
-    if (!evidenciaUrl) {
+    if (!evidenciaFile) {
       setConfirmNoPhoto(true)
       return
     }
@@ -372,6 +343,13 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
     }
     setAddingComentario(false)
   }
+
+  // Bucket privado `documentos`: firmamos todas las fotos/evidencias en el cliente (batch).
+  const { getUrl } = useSignedUrls('documentos', [
+    observacion?.foto_url,
+    observacion?.evidencia_cierre_url,
+    ...fotosCliente.map(f => f.url),
+  ])
 
   const obs = observacion
   if (!obs) return null
@@ -419,23 +397,23 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
         <div>
           <p className="text-sm text-text-tertiary mb-0.5">Observación</p>
           <p className="text-sm font-medium text-text-primary">{obs.descripcion}</p>
-          {obs.foto_url && (
+          {obs.foto_url && getUrl(obs.foto_url) && (
             <div className="relative mt-3 w-full aspect-[4/3] rounded-xl overflow-hidden border border-border-subtle">
-              <Image src={obs.foto_url} alt="Foto de la observación" fill sizes="(max-width: 768px) 100vw, 600px" className="object-contain" />
+              <Image src={getUrl(obs.foto_url)!} alt="Foto de la observación" fill sizes="(max-width: 768px) 100vw, 600px" className="object-contain" />
             </div>
           )}
         </div>
 
         {/* Evidencia de cierre */}
-        {obs.evidencia_cierre_url && (
+        {obs.evidencia_cierre_url && getUrl(obs.evidencia_cierre_url) && (
           <div>
             <p className="text-xs text-text-tertiary mb-1">Foto de evidencia de cierre</p>
             <div
               className="relative w-full aspect-[4/3] rounded-xl overflow-hidden border border-border-subtle cursor-pointer hover:opacity-90"
-              onClick={() => window.open(obs.evidencia_cierre_url!, '_blank')}
+              onClick={() => window.open(getUrl(obs.evidencia_cierre_url!) ?? '#', '_blank')}
             >
               <Image
-                src={obs.evidencia_cierre_url}
+                src={getUrl(obs.evidencia_cierre_url)!}
                 alt="Evidencia de cierre"
                 fill
                 sizes="(max-width: 768px) 100vw, 600px"
@@ -624,14 +602,14 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
           <p className="text-xs font-medium text-text-tertiary mb-2">Fotos del cliente</p>
           {fotosCliente.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-2">
-              {fotosCliente.map(f => (
+              {fotosCliente.filter(f => getUrl(f.url)).map(f => (
                 <div
                   key={f.id}
                   className="relative h-20 w-28 rounded-lg overflow-hidden border border-border-subtle cursor-pointer hover:opacity-90"
-                  onClick={() => window.open(f.url, '_blank')}
+                  onClick={() => window.open(getUrl(f.url) ?? '#', '_blank')}
                 >
                   <Image
-                    src={f.url}
+                    src={getUrl(f.url)!}
                     alt={f.categoria ?? 'Foto cliente'}
                     fill
                     sizes="112px"
@@ -798,18 +776,17 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
                 type="file"
                 accept=".jpg,.jpeg,.png,.webp"
                 onChange={handleFileChange}
-                disabled={uploading}
+                disabled={saving}
                 aria-label="Foto de evidencia de cierre"
                 className="w-full text-sm text-text-tertiary file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-brand-muted file:text-brand-primary hover:file:bg-brand-muted/80 cursor-pointer"
               />
-              {uploading && <p className="text-xs text-brand-primary mt-1">Subiendo imagen...</p>}
-              {evidenciaUrl && !uploading && (
+              {evidenciaFile && (
                 <p className="text-xs text-success mt-1">✓ {evidenciaName}</p>
               )}
             </div>
 
             <div className="flex gap-3 pt-2">
-              <Button type="submit" disabled={saving || uploading}>
+              <Button type="submit" disabled={saving}>
                 {saving ? 'Guardando...' : isCerrado ? 'Actualizar cierre' : 'Cerrar observación'}
               </Button>
               <button

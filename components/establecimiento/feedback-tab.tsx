@@ -6,6 +6,7 @@ import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { formatDate } from '@/lib/utils'
 import { createFeedbackCliente } from '@/lib/actions/establecimiento-info'
+import { useSignedUrls } from '@/lib/storage/sign-client'
 import type { FeedbackCliente, FeedbackTipo, DirectorioPersona, ActionResult } from '@/lib/types'
 
 interface FeedbackTabProps {
@@ -123,6 +124,8 @@ function FeedbackForm({
 export function FeedbackTab({ feedbackClientes, establecimientoId, canWrite }: FeedbackTabProps) {
   const [showModal, setShowModal] = useState(false)
   const feedbackAction = createFeedbackCliente.bind(null, establecimientoId)
+  // Bucket privado `documentos`: firmamos todos los adjuntos en el cliente (batch).
+  const { getUrl } = useSignedUrls('documentos', feedbackClientes.flatMap(f => f.adjuntos_urls ?? []))
 
   return (
     <div>
@@ -172,7 +175,7 @@ export function FeedbackTab({ feedbackClientes, establecimientoId, canWrite }: F
                         {f.adjuntos_urls.map((url, i) => (
                           <a
                             key={i}
-                            href={url}
+                            href={getUrl(url) ?? '#'}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-xs text-sig-600 hover:text-sig-800 underline"

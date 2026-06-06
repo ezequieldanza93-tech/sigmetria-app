@@ -42,25 +42,26 @@ function collectFiles(formData: FormData): File[] {
   return []
 }
 
+// Sube al bucket `documentos` con path por consultora y devuelve los PATHS
+// relativos (no URLs). La URL se deriva on-read con publicAssetUrl('documentos', path).
 async function uploadFiles(
   supabase: Awaited<ReturnType<typeof createClient>>,
   consultoraId: string,
   entity: string,
   files: File[]
 ): Promise<string[]> {
-  const urls: string[] = []
+  const paths: string[] = []
   for (const file of files) {
-    if (urls.length >= MAX_ARCHIVOS) break
+    if (paths.length >= MAX_ARCHIVOS) break
     const ext = file.name.split('.').pop() ?? 'bin'
     const path = `${consultoraId}/${entity}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`
     const { data: upload, error } = await supabase.storage
       .from('documentos')
       .upload(path, file, { upsert: false })
     if (error) continue
-    const { data: { publicUrl } } = supabase.storage.from('documentos').getPublicUrl(upload.path)
-    urls.push(publicUrl)
+    paths.push(upload.path)
   }
-  return urls
+  return paths
 }
 
 export async function createDenuncia(

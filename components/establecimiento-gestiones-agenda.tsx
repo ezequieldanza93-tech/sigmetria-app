@@ -4,6 +4,7 @@ import { useState, useEffect, useActionState, useTransition, useRef, Fragment, m
 import { useQueryClient, useQuery } from '@tanstack/react-query'
 
 import { createClient } from '@/lib/supabase/client'
+import { useSignedUrls, signBucketPaths } from '@/lib/storage/sign-client'
 import { useCanWrite, useGestionesEstablecimiento, useRegistrosGestion, useCatalogo } from '@/lib/queries/agenda'
 import { calcularEstadoGestion } from '@/lib/types'
 import type { EstadoGestion, Gestion, CategoriaGestion, GrupoGestion, RegistroGestion, Riesgo } from '@/lib/types'
@@ -552,6 +553,8 @@ function EjecucionModal({
   const [observaciones, setObservaciones] = useState<ObsDraft[]>([])
   const [autoDownload, setAutoDownload] = useState(true)
   const obsKeyRef = useRef(0)
+  // Bucket privado `documentos`: firmamos la evidencia actual para el link "Ver".
+  const { getUrl } = useSignedUrls('documentos', [registro.evidencia_url])
 
   const inputCls = 'w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500'
 
@@ -640,15 +643,21 @@ function EjecucionModal({
   function handleFinalizar() {
     doSave(() => {
       if (autoDownload && registro.evidencia_url) {
-        fetch(registro.evidencia_url).then(r => r.blob()).then(blob => {
-          const url = URL.createObjectURL(blob)
-          const a = document.createElement('a')
-          a.href = url
-          a.download = `${registro.ge_gestion_nombre ?? 'gestion'}.pdf`
-          document.body.appendChild(a)
-          a.click()
-          document.body.removeChild(a)
-          URL.revokeObjectURL(url)
+        const evidenciaPath = registro.evidencia_url
+        // Firmamos on-demand (bucket privado) antes de descargar.
+        signBucketPaths('documentos', [evidenciaPath]).then(map => {
+          const signed = map.get(evidenciaPath)
+          if (!signed) return
+          fetch(signed).then(r => r.blob()).then(blob => {
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = `${registro.ge_gestion_nombre ?? 'gestion'}.pdf`
+            document.body.appendChild(a)
+            a.click()
+            document.body.removeChild(a)
+            URL.revokeObjectURL(url)
+          }).catch(() => {})
         }).catch(() => {})
       }
       onSuccess()
@@ -725,9 +734,9 @@ function EjecucionModal({
 
         <div>
           <label className="text-sm font-medium text-text-secondary block mb-1">Evidencia</label>
-          {registro.evidencia_url && (
+          {registro.evidencia_url && getUrl(registro.evidencia_url) && (
             <a
-              href={registro.evidencia_url}
+              href={getUrl(registro.evidencia_url) ?? '#'}
               target="_blank"
               rel="noopener noreferrer"
               className="text-xs text-sig-600 hover:underline block mb-1.5"
@@ -893,6 +902,8 @@ function AgendaActionsCell({
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
   const triggerRef = useRef<HTMLDivElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  // Bucket privado `documentos`: firmamos la evidencia para el link "Ver".
+  const { getUrl } = useSignedUrls('documentos', [r.evidencia_url])
 
   useEffect(() => {
     function handleOutside(e: MouseEvent) {
@@ -930,11 +941,12 @@ function AgendaActionsCell({
     return (
       <div className="flex items-center gap-1.5 justify-center">
         <a
-          href={r.evidencia_url!}
+          href={getUrl(r.evidencia_url) ?? '#'}
           target="_blank"
           rel="noopener noreferrer"
           title="Ver/descargar adjunto"
           className={`${primaryBtn} ${primaryActive}`}
+          aria-disabled={!getUrl(r.evidencia_url)}
         >
           <Download size={14} />
           <span className="hidden sm:inline">Ver</span>

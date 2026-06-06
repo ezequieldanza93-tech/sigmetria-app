@@ -31,6 +31,7 @@ import {
   Map,
 } from 'lucide-react'
 import Image from 'next/image'
+import { publicAssetUrl } from '@/lib/storage/asset-url'
 import type { Consultora, UserRole } from '@/lib/types'
 import type { Icon as LucideIcon } from 'lucide-react'
 
@@ -167,7 +168,7 @@ export function ConsultoraFichaGlobal({ consultora, empresas, usuario, userRole,
         <div className="flex items-start gap-4">
           {consultora.logo_url ? (
             <Image
-              src={consultora.logo_url}
+              src={publicAssetUrl('consultora', consultora.logo_url) ?? consultora.logo_url}
               alt={consultora.nombre}
               width={56}
               height={56}

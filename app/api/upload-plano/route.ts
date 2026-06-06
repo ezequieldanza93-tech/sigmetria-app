@@ -30,24 +30,23 @@ export async function POST(request: NextRequest) {
   }
 
   const ext = file.name.split('.').pop()
-  const filePath = `planos/${estId}/${Date.now()}.${ext}`
+  // Unificado al bucket `planos` (mismo que lib/actions/establecimiento.ts) para
+  // que la columna plano_url sea consistente y resoluble con publicAssetUrl('planos', ...).
+  const filePath = `${estId}/${Date.now()}.${ext}`
 
-  const { error: uploadError } = await supabase.storage
-    .from('planos-establecimientos')
-    .upload(filePath, file)
+  const { data: upload, error: uploadError } = await supabase.storage
+    .from('planos')
+    .upload(filePath, file, { upsert: true })
 
-  if (uploadError) {
+  if (uploadError || !upload) {
     console.error('Upload error:', uploadError)
     return NextResponse.redirect(request.url)
   }
 
-  const { data: { publicUrl } } = supabase.storage
-    .from('planos-establecimientos')
-    .getPublicUrl(filePath)
-
+  // Persistimos el PATH (no la URL).
   await supabase
     .from('establecimientos')
-    .update({ plano_url: publicUrl })
+    .update({ plano_url: upload.path })
     .eq('id', estId)
 
   return NextResponse.redirect(request.url)

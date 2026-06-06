@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { FileUploadInput } from '@/components/ui/file-upload-input'
 import { createClient } from '@/lib/supabase/client'
+import { useSignedUrls } from '@/lib/storage/sign-client'
 import { useLocalidades, useEstablecimientoTipos } from '@/lib/queries/establecimiento-form'
 import type { Establecimiento, ActionResult, PreguntaRiesgo, EstablecimientoRespuesta } from '@/lib/types'
 import { EstablecimientoProgress, type ProgressCheck } from './establecimiento-progress'
@@ -226,6 +227,13 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
   const hasPlanoPdf = Boolean(establecimiento?.plano_url)
   const hasPlanoCad = Boolean(establecimiento?.floor_plan_cad_url)
 
+  // Buckets privados: firmamos las previsualizaciones (foto + planos) en el cliente.
+  const { getUrl: getEstUrl } = useSignedUrls('establecimientos', [establecimiento?.photo_site])
+  const { getUrl: getPlanoUrl } = useSignedUrls('planos', [
+    establecimiento?.plano_url,
+    establecimiento?.floor_plan_cad_url,
+  ])
+
   // Load horarios for existing establishment
   useEffect(() => {
     if (!establecimiento?.id) return
@@ -386,10 +394,10 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
 
         <div>
           <label className="block text-sm font-medium text-text-secondary mb-1">Foto del establecimiento</label>
-          {establecimiento?.photo_site && (
+          {establecimiento?.photo_site && getEstUrl(establecimiento.photo_site) && (
             <div className="relative w-full h-40 mb-2">
               <Image
-                src={establecimiento.photo_site}
+                src={getEstUrl(establecimiento.photo_site)!}
                 alt="Foto actual"
                 fill
                 className="object-cover rounded-lg border border-border-subtle"
@@ -621,7 +629,7 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
               label="Plano (PDF)"
               accept="application/pdf,image/png,image/jpeg"
               maxSizeMB={20}
-              currentUrl={establecimiento?.plano_url}
+              currentUrl={getPlanoUrl(establecimiento?.plano_url)}
               helpText="PDF (preferido) o imagen. Máx 20 MB."
               kind="document"
             />
@@ -630,7 +638,7 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
               label="Plano (CAD)"
               accept="application/pdf,image/png,image/jpeg"
               maxSizeMB={20}
-              currentUrl={establecimiento?.floor_plan_cad_url}
+              currentUrl={getPlanoUrl(establecimiento?.floor_plan_cad_url)}
               helpText="Si tenés versión editable. Máx 20 MB."
               kind="document"
             />

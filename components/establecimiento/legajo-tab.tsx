@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { formatDate } from '@/lib/utils'
+import { useSignedUrls } from '@/lib/storage/sign-client'
 import type {
   Documento,
   EmpresaDocumento,
@@ -83,6 +84,13 @@ export function LegajoTab({ empresaDocumentos, establecimientoDocumentos, gestio
   const [now, setNow] = useState<number | null>(null)
   useEffect(() => { setNow(Date.now()) }, [])
 
+  // Bucket privado `documentos`: firmamos todas las URLs en el cliente (batch).
+  const { getUrl } = useSignedUrls('documentos', [
+    ...empresaDocumentos.map(d => d.archivo_url),
+    ...establecimientoDocumentos.map(d => d.archivo_url),
+    ...trabajadorDocumentos.map(d => d.archivo_url),
+  ])
+
   const trabajadoresAgrupados = trabajadorDocumentos.reduce<Record<string, { persona: EmpleadoDocumentoLegajo['personas_directorio']; docs: EmpleadoDocumentoLegajo[] }>>((acc, d) => {
     const key = d.persona_id
     if (!acc[key]) acc[key] = { persona: d.personas_directorio, docs: [] }
@@ -97,7 +105,7 @@ export function LegajoTab({ empresaDocumentos, establecimientoDocumentos, gestio
           id: d.id,
           tipo: d.documentos_tipos?.nombre ?? '—',
           vencimiento: d.fecha_vencimiento,
-          url: d.archivo_url,
+          url: getUrl(d.archivo_url),
         }))} />
       </Seccion>
 
@@ -106,7 +114,7 @@ export function LegajoTab({ empresaDocumentos, establecimientoDocumentos, gestio
           id: d.id,
           tipo: d.documentos_tipos?.nombre ?? '—',
           vencimiento: d.fecha_vencimiento,
-          url: d.archivo_url,
+          url: getUrl(d.archivo_url),
         }))} />
       </Seccion>
 
@@ -152,7 +160,7 @@ export function LegajoTab({ empresaDocumentos, establecimientoDocumentos, gestio
                   id: d.id,
                   tipo: d.documentos_tipos?.nombre ?? '—',
                   vencimiento: d.fecha_vencimiento,
-                  url: d.archivo_url,
+                  url: getUrl(d.archivo_url),
                 }))} />
               </div>
             ))}

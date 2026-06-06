@@ -700,21 +700,20 @@ export async function subirPlanoEstablecimiento(
   if (!file) return { success: false, error: 'Seleccioná un archivo' }
 
   const ext = file.name.split('.').pop()
-  const filePath = `planos/${establecimientoId}/${Date.now()}.${ext}`
+  // Unificado al bucket `planos` (mismo que lib/actions/establecimiento.ts) para
+  // que plano_url sea consistente y resoluble con publicAssetUrl('planos', ...).
+  const filePath = `${establecimientoId}/${Date.now()}.${ext}`
 
-  const { error: uploadError } = await supabase.storage
-    .from('planos-establecimientos')
-    .upload(filePath, file)
+  const { data: upload, error: uploadError } = await supabase.storage
+    .from('planos')
+    .upload(filePath, file, { upsert: true })
 
-  if (uploadError) return { success: false, error: uploadError.message }
+  if (uploadError || !upload) return { success: false, error: uploadError?.message ?? 'Error al subir' }
 
-  const { data: { publicUrl } } = supabase.storage
-    .from('planos-establecimientos')
-    .getPublicUrl(filePath)
-
+  // Persistimos el PATH (no la URL).
   const { error: updateError } = await supabase
     .from('establecimientos')
-    .update({ plano_url: publicUrl })
+    .update({ plano_url: upload.path })
     .eq('id', establecimientoId)
 
   if (updateError) return { success: false, error: updateError.message }

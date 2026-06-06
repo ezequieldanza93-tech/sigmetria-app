@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { createCertificadoCalibracion } from '@/lib/actions/certificado'
 import { FileUploadInput } from '@/components/ui/file-upload-input'
 import { useCertificados } from '@/lib/queries/instrumento'
+import { useSignedUrls } from '@/lib/storage/sign-client'
 import { formatDate } from '@/lib/utils'
 import type { InstrumentoMedicion } from '@/lib/types'
 
@@ -56,6 +57,8 @@ export function InstrumentoModal({ instrumento, open, onClose, canWrite }: Instr
   const [tab, setTab] = useState<'datos' | 'calibraciones'>('datos')
   const [showForm, setShowForm] = useState(false)
   const { data: certs = null } = useCertificados(tab === 'calibraciones' ? instrumento.id : undefined)
+  // Bucket privado `certificados`: firmamos las URLs en el cliente (batch).
+  const { getUrl } = useSignedUrls('certificados', (certs ?? []).map(c => c.certificado_url))
 
   useEffect(() => {
     if (!open) { setTab('datos'); setShowForm(false) }
@@ -129,8 +132,8 @@ export function InstrumentoModal({ instrumento, open, onClose, canWrite }: Instr
                         </div>
                         <p className="text-xs text-text-tertiary mt-0.5">Vence: {formatDate(c.fecha_vencimiento)}</p>
                       </div>
-                      {c.certificado_url && (
-                        <a href={c.certificado_url} target="_blank" rel="noopener noreferrer" className="text-xs text-sig-500 hover:underline ml-2 shrink-0">Ver</a>
+                      {c.certificado_url && getUrl(c.certificado_url) && (
+                        <a href={getUrl(c.certificado_url) ?? '#'} target="_blank" rel="noopener noreferrer" className="text-xs text-sig-500 hover:underline ml-2 shrink-0">Ver</a>
                       )}
                     </div>
                   )

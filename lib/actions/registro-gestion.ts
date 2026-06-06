@@ -1,6 +1,7 @@
 'use server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { consultoraIdFromRegistroGestion, tenantStoragePath } from '@/lib/storage/tenant-path'
 import type { ActionResult } from '@/lib/types'
 import { validateFormData, formatZodErrors } from '@/lib/validation/helpers'
 
@@ -72,13 +73,17 @@ export async function ejecutarGestion(
 
   if (file && file.size > 0) {
     const ext = file.name.split('.').pop()
-    const path = `evidencias/${registroId}/${Date.now()}.${ext}`
+    // El path de un bucket PRIVADO debe empezar con el consultora_id para que la
+    // RLS de lectura por tenant matchee (ver lib/storage/tenant-path.ts).
+    const consultoraId = await consultoraIdFromRegistroGestion(supabase, registroId)
+    if (!consultoraId) return { success: false, error: 'No se pudo resolver la consultora del registro' }
+    const path = tenantStoragePath(consultoraId, 'evidencias', registroId, `${Date.now()}.${ext}`)
     const { data: upload, error: uploadError } = await supabase.storage
       .from('documentos')
       .upload(path, file, { upsert: false })
     if (uploadError) return { success: false, error: 'Error al subir archivo: ' + uploadError.message }
-    const { data: { publicUrl } } = supabase.storage.from('documentos').getPublicUrl(upload.path)
-    updates.evidencia_url = publicUrl
+    // Persistimos el PATH (no la URL). Se deriva on-read con resolveAssetUrl('documentos', path).
+    updates.evidencia_url = upload.path
   }
 
   const { error } = await supabase
@@ -98,7 +103,9 @@ export async function crearObservaciones(
     clasificacion_id: string
     responsable_id: string
     fecha_subsanacion: string
-    foto_url?: string | null
+    // La foto llega como File (server-side upload). El cliente NO sube ni arma
+    // la URL: manda el blob y acá resolvemos el path tenant-prefijado.
+    foto?: File | null
   }>
 ): Promise<ActionResult<null>> {
   const supabase = await createClient()
@@ -114,15 +121,40 @@ export async function crearObservaciones(
     return { success: false, error: 'Toda observación requiere una categoría' }
   }
 
-  const rows = validas.map(o => ({
-    registro_gestion_id: registroId,
-    descripcion: o.descripcion.trim(),
-    categoria_id: o.categoria_id,
-    clasificacion_id: o.clasificacion_id || null,
-    responsable_id: o.responsable_id || null,
-    fecha_planificada: o.fecha_subsanacion || null,
-    foto_url: o.foto_url || null,
-  }))
+  // Resolvemos el tenant una sola vez si alguna observación trae foto. El path de
+  // un bucket PRIVADO debe empezar con el consultora_id para que la RLS de lectura
+  // por tenant matchee (ver lib/storage/tenant-path.ts).
+  const tieneFotos = validas.some(o => o.foto && o.foto.size > 0)
+  let consultoraId: string | null = null
+  if (tieneFotos) {
+    consultoraId = await consultoraIdFromRegistroGestion(supabase, registroId)
+    if (!consultoraId) return { success: false, error: 'No se pudo resolver la consultora del registro' }
+  }
+
+  const rows: Array<Record<string, unknown>> = []
+  for (let i = 0; i < validas.length; i++) {
+    const o = validas[i]
+    let fotoPath: string | null = null
+    if (o.foto && o.foto.size > 0 && consultoraId) {
+      const ext = o.foto.name.split('.').pop() ?? 'png'
+      const path = tenantStoragePath(consultoraId, 'observaciones-fotos', registroId, `${Date.now()}_${i}.${ext}`)
+      const { data: upload, error: uploadError } = await supabase.storage
+        .from('documentos')
+        .upload(path, o.foto, { upsert: false })
+      if (uploadError) return { success: false, error: 'Error al subir foto: ' + uploadError.message }
+      // Persistimos el PATH (no la URL). Se firma on-read con resolveAssetUrl('documentos', path).
+      fotoPath = upload.path
+    }
+    rows.push({
+      registro_gestion_id: registroId,
+      descripcion: o.descripcion.trim(),
+      categoria_id: o.categoria_id,
+      clasificacion_id: o.clasificacion_id || null,
+      responsable_id: o.responsable_id || null,
+      fecha_planificada: o.fecha_subsanacion || null,
+      foto_url: fotoPath,
+    })
+  }
 
   const { error } = await supabase.from('gestiones_observaciones').insert(rows)
   if (error) return { success: false, error: error.message }

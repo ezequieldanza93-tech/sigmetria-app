@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { uploadPlanoEstablecimiento, deletePlanoEstablecimiento } from '@/lib/actions/establecimiento'
+import { useSignedUrls } from '@/lib/storage/sign-client'
 import { WeatherPanel } from '@/components/weather-panel'
 import type { Establecimiento, HorarioEstablecimiento } from '@/lib/types'
 
@@ -26,6 +27,8 @@ interface Props {
 export function InfoTab({ establecimiento, canWrite, empresaId }: Props) {
   const [horarios, setHorarios] = useState<HorarioEstablecimiento[]>([])
   const [planoUrl, setPlanoUrl] = useState(establecimiento.plano_url)
+  // Bucket privado `planos`: firmamos la URL del plano en el cliente.
+  const { getUrl: getPlanoUrl } = useSignedUrls('planos', [planoUrl])
 
   const uploadAction = uploadPlanoEstablecimiento.bind(null, establecimiento.id)
   const deleteAction = deletePlanoEstablecimiento.bind(null, establecimiento.id)
@@ -173,7 +176,7 @@ export function InfoTab({ establecimiento, canWrite, empresaId }: Props) {
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-text-primary">Plano cargado</p>
                       <a
-                        href={planoUrl}
+                        href={getPlanoUrl(planoUrl) ?? '#'}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-xs text-brand-primary hover:text-brand-primary/80 inline-flex items-center gap-1"

@@ -177,14 +177,16 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
 
     const validObs = observaciones.filter(o => o.descripcion.trim())
     if (validObs.length > 0) {
-      const supabase = createClient()
-      const obsConFotos = await Promise.all(validObs.map(async o => {
-        let foto_url: string | null = null
+      // Las fotos de cada observación NO se suben en el cliente: el cliente no
+      // conoce el consultora_id (tenant). Mandamos el blob como File en el
+      // FormData (clave `obs-foto-{idx}`) y la server action las sube con
+      // tenantStoragePath, igual que la foto principal del reporte. El `idx` es
+      // la posición dentro de las observaciones válidas y la action lo usa para
+      // recuperar el File correspondiente.
+      const obsMeta = validObs.map((o, idx) => {
         if (o.foto_blob) {
-          const file = new File([o.foto_blob], `obs-foto-${Date.now()}-${o.key}.png`, { type: 'image/png' })
-          const path = `observaciones-fotos/${establecimientoId}/${file.name}`
-          const { data: up } = await supabase.storage.from('documentos').upload(path, file, { upsert: false })
-          if (up) foto_url = supabase.storage.from('documentos').getPublicUrl(up.path).data.publicUrl
+          const file = new File([o.foto_blob], `obs-foto-${idx}.png`, { type: 'image/png' })
+          fd.set(`obs-foto-${idx}`, file)
         }
         return {
           descripcion: o.descripcion,
@@ -192,10 +194,10 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
           clasificacion_id: o.clasificacion_id,
           responsable_id: o.responsable_id,
           fecha_subsanacion: o.fecha_subsanacion,
-          foto_url,
+          tiene_foto: !!o.foto_blob,
         }
-      }))
-      fd.set('observaciones', JSON.stringify(obsConFotos))
+      })
+      fd.set('observaciones', JSON.stringify(obsMeta))
     }
 
     formAction(fd)

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { FileUploadInput } from '@/components/ui/file-upload-input'
 import { upsertPerfilProfesional, addMatriculaProfesional } from '@/lib/actions/perfil-profesional'
 import { usePerfil, useProvincias, useMatriculas } from '@/lib/queries/profesional'
+import { useSignedUrls } from '@/lib/storage/sign-client'
 import { formatDate } from '@/lib/utils'
 import type { PerfilProfesional, MatriculaProfesional } from '@/lib/types'
 
@@ -232,6 +233,8 @@ function MatriculaCard({ m }: { m: MatriculaProfesional }) {
     : null
   const statusLabel = !m.activa ? 'Histórico' : days === null ? 'Sin vencimiento' : days < 0 ? 'Vencida' : days <= 30 ? 'Próx. a vencer' : 'Vigente'
   const statusClass = !m.activa ? 'bg-surface-elevated text-text-secondary' : days === null ? 'bg-sig-50 text-sig-700' : days < 0 ? 'bg-danger-bg text-danger' : days <= 30 ? 'bg-warning-bg text-warning' : 'bg-sig-50 text-sig-700'
+  // Bucket privado `matriculas`: firmamos frente/dorso en el cliente (batch).
+  const { getUrl } = useSignedUrls('matriculas', [m.foto_frente_url, m.foto_dorso_url])
 
   return (
     <div className="bg-surface-base rounded-lg px-3 py-2.5 text-sm flex items-start justify-between">
@@ -245,8 +248,8 @@ function MatriculaCard({ m }: { m: MatriculaProfesional }) {
         {m.fecha_vencimiento && <p className="text-xs text-text-tertiary">Vence: {formatDate(m.fecha_vencimiento)}</p>}
       </div>
       <div className="flex gap-2 shrink-0 ml-2">
-        {m.foto_frente_url && <a href={m.foto_frente_url} target="_blank" rel="noopener noreferrer" className="text-xs text-sig-500 hover:underline">Frente</a>}
-        {m.foto_dorso_url && <a href={m.foto_dorso_url} target="_blank" rel="noopener noreferrer" className="text-xs text-sig-500 hover:underline">Dorso</a>}
+        {m.foto_frente_url && getUrl(m.foto_frente_url) && <a href={getUrl(m.foto_frente_url) ?? '#'} target="_blank" rel="noopener noreferrer" className="text-xs text-sig-500 hover:underline">Frente</a>}
+        {m.foto_dorso_url && getUrl(m.foto_dorso_url) && <a href={getUrl(m.foto_dorso_url) ?? '#'} target="_blank" rel="noopener noreferrer" className="text-xs text-sig-500 hover:underline">Dorso</a>}
       </div>
     </div>
   )

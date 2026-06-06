@@ -1,5 +1,6 @@
 'use server'
 import { createClient } from '@/lib/supabase/server'
+import { consultoraIdFromEstablecimiento, tenantStoragePath } from '@/lib/storage/tenant-path'
 import type { ActionResult } from '@/lib/types'
 
 export async function crearReporteFotografico(
@@ -50,36 +51,60 @@ export async function crearReporteFotografico(
   }
 
   const ext = file.name.split('.').pop() ?? 'png'
-  const path = `reportes-fotograficos/${establecimientoId}/${Date.now()}.${ext}`
+  // El path de un bucket PRIVADO debe empezar con el consultora_id para que la
+  // RLS de lectura por tenant matchee (ver lib/storage/tenant-path.ts).
+  const consultoraId = await consultoraIdFromEstablecimiento(supabase, establecimientoId)
+  if (!consultoraId) return { success: false, error: 'No se pudo resolver la consultora del establecimiento' }
+  const path = tenantStoragePath(consultoraId, 'reportes-fotograficos', establecimientoId, `${Date.now()}.${ext}`)
   const { data: upload, error: uploadError } = await supabase.storage
     .from('documentos')
     .upload(path, file, { upsert: false })
   if (uploadError) return { success: false, error: 'Error al subir imagen: ' + uploadError.message }
 
-  const { data: { publicUrl } } = supabase.storage.from('documentos').getPublicUrl(upload.path)
-
+  // Persistimos el PATH (no la URL). Se deriva on-read con publicAssetUrl('documentos', path).
   const { data: reg, error: registroError } = await supabase.from('gestiones_registros').insert({
     gestion_establecimiento_id: geId,
     fecha_planificada: today,
     fecha_ejecutada: today,
-    evidencia_url: publicUrl,
+    evidencia_url: upload.path,
     notas: comentario,
   }).select('id').single()
   if (registroError) return { success: false, error: registroError.message }
 
   if (observacionesRaw) {
     try {
-      const observaciones: Array<{ descripcion: string; categoria_id: string; clasificacion_id: string; responsable_id: string; fecha_subsanacion: string; foto_url?: string | null }> = JSON.parse(observacionesRaw)
+      const observaciones: Array<{ descripcion: string; categoria_id: string; clasificacion_id: string; responsable_id: string; fecha_subsanacion: string; tiene_foto?: boolean }> = JSON.parse(observacionesRaw)
       const validas = observaciones.filter(o => o.descripcion?.trim() && o.categoria_id)
       if (validas.length > 0) {
-        const rows = validas.map(o => ({
-          registro_gestion_id: reg.id,
-          descripcion: o.descripcion.trim(),
-          categoria_id: o.categoria_id,
-          clasificacion_id: o.clasificacion_id || null,
-          responsable_id: o.responsable_id || null,
-          fecha_planificada: o.fecha_subsanacion || null,
-          foto_url: o.foto_url || null,
+        // Subimos las fotos de cada observación server-side, igual que la foto
+        // principal: path prefijado por tenant para que la RLS de lectura
+        // matchee. Guardamos el PATH relativo (no la URL).
+        const rows = await Promise.all(validas.map(async (o, idx) => {
+          let foto_url: string | null = null
+          if (o.tiene_foto) {
+            const obsFile = formData.get(`obs-foto-${idx}`) as File | null
+            if (obsFile && obsFile.size > 0) {
+              const obsExt = obsFile.name.split('.').pop() ?? 'png'
+              const obsPath = tenantStoragePath(consultoraId, 'observaciones-fotos', establecimientoId, `${Date.now()}-${idx}.${obsExt}`)
+              const { data: obsUp, error: obsUploadError } = await supabase.storage
+                .from('documentos')
+                .upload(obsPath, obsFile, { upsert: false })
+              if (obsUploadError) {
+                console.error('[reporteFotografico] Error al subir foto de observación:', obsUploadError.message)
+              } else if (obsUp) {
+                foto_url = obsUp.path
+              }
+            }
+          }
+          return {
+            registro_gestion_id: reg.id,
+            descripcion: o.descripcion.trim(),
+            categoria_id: o.categoria_id,
+            clasificacion_id: o.clasificacion_id || null,
+            responsable_id: o.responsable_id || null,
+            fecha_planificada: o.fecha_subsanacion || null,
+            foto_url,
+          }
         }))
         const { error: obsError } = await supabase.from('gestiones_observaciones').insert(rows)
         if (obsError) {

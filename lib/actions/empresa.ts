@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import type { ActionResult } from '@/lib/types'
-import { uploadAsset, deleteAsset, pathFromUrl } from '@/lib/storage/upload'
+import { uploadAsset, deleteAsset, storagePath } from '@/lib/storage/upload'
 import { validateFormData, formatZodErrors } from '@/lib/validation/helpers'
 import { geocodeAddress } from '@/lib/geocoding'
 
@@ -66,9 +66,9 @@ async function processLogoUploads(
       file: smallFile,
     })
     if (!up.ok) return { error: `Logo pequeño: ${up.error}` }
-    result.logo_small_url = up.url
+    result.logo_small_url = up.path
   } else if (smallRemove && current.logo_small_url) {
-    const path = pathFromUrl(current.logo_small_url, 'logos')
+    const path = storagePath(current.logo_small_url, 'logos')
     if (path) await deleteAsset('logos', path)
     result.logo_small_url = null
   }
@@ -85,9 +85,9 @@ async function processLogoUploads(
       file: destFile,
     })
     if (!up.ok) return { error: `Logo destacado: ${up.error}` }
-    result.logo_destacado_url = up.url
+    result.logo_destacado_url = up.path
   } else if (destRemove && current.logo_destacado_url) {
-    const path = pathFromUrl(current.logo_destacado_url, 'logos')
+    const path = storagePath(current.logo_destacado_url, 'logos')
     if (path) await deleteAsset('logos', path)
     result.logo_destacado_url = null
   }

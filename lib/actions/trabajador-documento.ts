@@ -34,7 +34,8 @@ export async function createTrabajadorDocumento(
   const consultoraId = membership?.consultora_id
   if (!consultoraId) return { success: false, error: 'Sin consultora asignada' }
 
-  // Subir hasta MAX_ARCHIVOS archivos
+  // Subir hasta MAX_ARCHIVOS archivos. Persistimos PATHS (no URLs);
+  // la URL se deriva on-read con publicAssetUrl('documentos', path).
   const archivoUrls: string[] = []
   const files: File[] = []
 
@@ -67,8 +68,7 @@ export async function createTrabajadorDocumento(
 
     if (uploadError) continue
 
-    const { data: { publicUrl } } = supabase.storage.from('documentos').getPublicUrl(upload.path)
-    archivoUrls.push(publicUrl)
+    archivoUrls.push(upload.path)
   }
 
   // Si es matrícula, también actualizar la tabla matriculas
@@ -106,6 +106,12 @@ export async function createTrabajadorDocumento(
       .single()
 
     if (docInserted) {
+      // NOTA (deuda técnica preexistente): matriculas.certificado_url es
+      // polimórfica — matricula.ts la escribe con path del bucket `certificados`
+      // y acá se escribe con path del bucket `documentos`. La lectura
+      // (trabajador-modal) asume `certificados`. Para datos creados por esta vía
+      // la resolución de URL puede apuntar al bucket equivocado.
+      // TODO: agregar columna `certificado_bucket` o unificar el bucket.
       await supabase.from('matriculas').upsert({
         persona_id: trabajadorId,
         numero: formData.get('numero_matricula') as string || '—',

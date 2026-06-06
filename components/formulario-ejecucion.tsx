@@ -246,15 +246,18 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
         return
       }
       if (validObs.length > 0) {
-        const obsConFotos = await Promise.all(validObs.map(async obs => {
-          let foto_url: string | null = null
-          if (obs.foto_blob) {
-            const fotoFile = new File([obs.foto_blob], `obs-${Date.now()}-${obs.key}.png`, { type: 'image/png' })
-            const path = `observaciones-fotos/${registro.id}/${fotoFile.name}`
-            const { data: up } = await supabase.storage.from('documentos').upload(path, fotoFile, { upsert: false })
-            if (up) foto_url = supabase.storage.from('documentos').getPublicUrl(up.path).data.publicUrl
-          }
-          return { ...obs, foto_url }
+        // No subimos en el cliente: el cliente no conoce el consultora_id. Mandamos
+        // el blob como File a la server action, que resuelve el tenant y sube con
+        // path tenant-prefijado, guardando el path relativo en foto_url.
+        const obsConFotos = validObs.map(obs => ({
+          descripcion: obs.descripcion,
+          categoria_id: obs.categoria_id,
+          clasificacion_id: obs.clasificacion_id,
+          responsable_id: obs.responsable_id,
+          fecha_subsanacion: obs.fecha_subsanacion,
+          foto: obs.foto_blob
+            ? new File([obs.foto_blob], `obs-${obs.key}.png`, { type: 'image/png' })
+            : null,
         }))
         const obsResult = await crearObservaciones(registro.id, obsConFotos)
         if (!obsResult.success) { setError(obsResult.error); setSaving(false); return }

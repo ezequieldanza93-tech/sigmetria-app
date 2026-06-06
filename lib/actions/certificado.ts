@@ -64,7 +64,7 @@ export async function createCertificadoCalibracion(
     if (!up.ok) return { success: false, error: `Certificado: ${up.error}` }
     await supabase
       .from('certificados_calibracion')
-      .update({ certificado_url: up.url })
+      .update({ certificado_url: up.path })
       .eq('id', inserted.id)
   }
 

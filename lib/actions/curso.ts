@@ -90,7 +90,7 @@ export async function crearCurso(
       file: portadaFile,
     })
     if (!up.ok) return { success: false, error: up.error }
-    portadaUrl = up.url
+    portadaUrl = up.path
   }
 
   const { data, error } = await supabase
@@ -154,7 +154,7 @@ export async function actualizarCurso(
       file: portadaFile,
     })
     if (!up.ok) return { success: false, error: up.error }
-    portadaUrl = up.url
+    portadaUrl = up.path
   }
 
   const newVersion = curso.estado === 'publicado' ? curso.version + 1 : curso.version
@@ -475,11 +475,11 @@ export async function subirMaterialLeccion(
 
   const { error } = await supabase
     .from('curso_lecciones')
-    .update({ contenido_url: up.url })
+    .update({ contenido_url: up.path })
     .eq('id', leccionId)
 
   if (error) return { success: false, error: error.message }
-  return { success: true, data: { url: up.url } }
+  return { success: true, data: { url: up.path } }
 }
 
 // ============================================================
