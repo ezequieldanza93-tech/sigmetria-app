@@ -7,6 +7,7 @@ import { DevicePreviewPanel } from '@/components/layout/device-preview-panel'
 import { ContextualBottomNav } from '@/components/layout/contextual-bottom-nav'
 import { FloatingAvatar } from '@/components/layout/floating-avatar'
 import { ChatWidget } from '@/components/agent/chat-widget'
+import { GestionLauncher } from '@/components/gestion-launcher'
 import { BannerPastDueWrapper } from '@/components/billing/banner-past-due-wrapper'
 import { PreviewProvider } from '@/lib/contexts/preview-context'
 import { EffectiveRoleProvider } from '@/lib/contexts/effective-role-context'
@@ -97,6 +98,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       )}
       <DevicePreviewPanel>{children}</DevicePreviewPanel>
       <ContextualBottomNav />
+      <GestionLauncher />
       <div className="hidden lg:block">
         <ChatWidget />
       </div>
