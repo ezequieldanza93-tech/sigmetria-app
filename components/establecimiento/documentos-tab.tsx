@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { DocumentoForm } from '@/components/forms/documento-form'
 import { formatDate } from '@/lib/utils'
 import { createDocumento } from '@/lib/actions/documento'
+import { useSignedUrls } from '@/lib/storage/sign-client'
 import type { Documento, DocumentType } from '@/lib/types'
 
 interface DocumentosTabProps {
@@ -20,6 +21,8 @@ export function DocumentosTab({ documentos, documentTypes, establecimientoId, em
   const [showModal, setShowModal] = useState(false)
   const [now, setNow] = useState<number | null>(null)
   const documentoAction = createDocumento.bind(null, empresaId, establecimientoId)
+  // Bucket `documentos` es privado: firmamos los paths para poder linkear el archivo.
+  const { getUrl } = useSignedUrls('documentos', documentos.map(d => d.archivo_url))
 
   useEffect(() => { setNow(Date.now()) }, [])
 
@@ -64,10 +67,12 @@ export function DocumentosTab({ documentos, documentTypes, establecimientoId, em
                       {d.fecha_vencimiento ? formatDate(d.fecha_vencimiento) : '—'}
                     </td>
                     <td className="px-5 py-3.5">
-                      {d.archivo_url ? (
-                        <a href={d.archivo_url} target="_blank" rel="noopener noreferrer" className="text-sig-500 hover:underline text-xs truncate max-w-[160px] block">
+                      {d.archivo_url && getUrl(d.archivo_url) ? (
+                        <a href={getUrl(d.archivo_url) ?? '#'} target="_blank" rel="noopener noreferrer" className="text-sig-500 hover:underline text-xs truncate max-w-[160px] block">
                           Ver archivo
                         </a>
+                      ) : d.archivo_url ? (
+                        <span className="text-text-tertiary text-xs">Cargando…</span>
                       ) : (
                         <span className="text-text-tertiary">—</span>
                       )}
