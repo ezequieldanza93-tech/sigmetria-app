@@ -3,11 +3,14 @@
 import React, { useState, useEffect } from 'react'
 import { formatDate } from '@/lib/utils'
 import { useSignedUrls } from '@/lib/storage/sign-client'
+import { CATEGORIAS_LEGAJO, periodicidadLabel } from '@/lib/legajo'
 import type {
   Documento,
   EmpresaDocumento,
   EmpleadoDocumentoLegajo,
   LegajoGestion,
+  CategoriaLegajo,
+  PeriodicidadDoc,
 } from '@/lib/types'
 
 interface LegajoTabProps {
@@ -15,6 +18,28 @@ interface LegajoTabProps {
   establecimientoDocumentos: Documento[]
   gestionesLegajo: LegajoGestion[]
   trabajadorDocumentos: EmpleadoDocumentoLegajo[]
+}
+
+// Fila normalizada para la tabla de documentos (cualquier entidad).
+interface DocRow {
+  id: string
+  tipo: string
+  renovacion: string
+  vencimiento: string | null
+  url: string | null
+  // Solo para la categoría 'persona*': agrupar por trabajador.
+  persona?: EmpleadoDocumentoLegajo['personas_directorio']
+  personaId?: string
+}
+
+// Documento crudo que comparten las 3 entidades del legajo.
+type DocComun = {
+  id: string
+  archivo_url: string | null
+  fecha_vencimiento: string | null
+  documentos_tipos:
+    | { nombre: string; categoria_legajo?: CategoriaLegajo | null; periodicidad?: PeriodicidadDoc | null }
+    | null
 }
 
 function vencimientoClass(fecha: string | null, now: number | null): string {
@@ -36,15 +61,16 @@ function vencimientoLabel(fecha: string | null, now: number | null): string {
   return base
 }
 
-function DocTable({ rows, now }: { rows: { id: string; tipo: string; vencimiento: string | null; url: string | null }[]; now: number | null }) {
+function DocTable({ rows, now }: { rows: DocRow[]; now: number | null }) {
   if (rows.length === 0) {
-    return <p className="text-xs text-text-tertiary px-1 py-2">Sin documentos cargados.</p>
+    return <p className="text-xs text-text-tertiary px-4 py-3">Sin documentos</p>
   }
   return (
     <table className="w-full text-sm">
       <thead className="border-b border-border-subtle dark:border-border-subtle bg-surface-base dark:bg-surface-sunken">
         <tr className="text-left">
           <th className="px-4 py-2.5 text-text-secondary font-medium text-xs">Tipo</th>
+          <th className="px-4 py-2.5 text-text-secondary font-medium text-xs">Renovación</th>
           <th className="px-4 py-2.5 text-text-secondary font-medium text-xs">Vencimiento</th>
           <th className="px-4 py-2.5 text-text-secondary font-medium text-xs">Archivo</th>
         </tr>
@@ -53,6 +79,7 @@ function DocTable({ rows, now }: { rows: { id: string; tipo: string; vencimiento
         {rows.map(r => (
           <tr key={r.id} className="hover:bg-surface-base">
             <td className="px-4 py-3 font-medium text-text-primary dark:text-white text-sm">{r.tipo}</td>
+            <td className="px-4 py-3 text-xs text-text-secondary">{r.renovacion}</td>
             <td className={`px-4 py-3 text-xs ${vencimientoClass(r.vencimiento, now)}`}>{vencimientoLabel(r.vencimiento, now)}</td>
             <td className="px-4 py-3">
               {r.url ? (
@@ -91,82 +118,105 @@ export function LegajoTab({ empresaDocumentos, establecimientoDocumentos, gestio
     ...trabajadorDocumentos.map(d => d.archivo_url),
   ])
 
-  const trabajadoresAgrupados = trabajadorDocumentos.reduce<Record<string, { persona: EmpleadoDocumentoLegajo['personas_directorio']; docs: EmpleadoDocumentoLegajo[] }>>((acc, d) => {
-    const key = d.persona_id
-    if (!acc[key]) acc[key] = { persona: d.personas_directorio, docs: [] }
-    acc[key].docs.push(d)
-    return acc
-  }, {})
+  // Normaliza un documento de cualquier entidad a fila de tabla.
+  const toRow = (d: DocComun, extra?: Partial<DocRow>): DocRow => ({
+    id: d.id,
+    tipo: d.documentos_tipos?.nombre ?? '—',
+    renovacion: periodicidadLabel(d.documentos_tipos?.periodicidad),
+    vencimiento: d.fecha_vencimiento,
+    url: getUrl(d.archivo_url),
+    ...extra,
+  })
+
+  // Agrupa cualquier lista de documentos por su categoria_legajo.
+  // Devuelve solo las que matchean la categoría pedida.
+  const docsDeCategoria = (cat: CategoriaLegajo): DocRow[] => {
+    const out: DocRow[] = []
+    for (const d of empresaDocumentos) {
+      if ((d.documentos_tipos?.categoria_legajo ?? null) === cat) out.push(toRow(d))
+    }
+    for (const d of establecimientoDocumentos) {
+      if ((d.documentos_tipos?.categoria_legajo ?? null) === cat) out.push(toRow(d))
+    }
+    for (const d of trabajadorDocumentos) {
+      if ((d.documentos_tipos?.categoria_legajo ?? null) === cat) {
+        out.push(toRow(d, { persona: d.personas_directorio, personaId: d.persona_id }))
+      }
+    }
+    return out
+  }
+
+  // Las categorías 'persona*' se muestran agrupadas por trabajador.
+  const renderPersonas = (rows: DocRow[]) => {
+    if (rows.length === 0) {
+      return <p className="text-xs text-text-tertiary px-4 py-3">Sin documentos</p>
+    }
+    const agrupados = rows.reduce<Record<string, { persona: DocRow['persona']; docs: DocRow[] }>>((acc, r) => {
+      const key = r.personaId ?? '—'
+      if (!acc[key]) acc[key] = { persona: r.persona, docs: [] }
+      acc[key].docs.push(r)
+      return acc
+    }, {})
+    return (
+      <div className="divide-y divide-gray-100 dark:divide-border-subtle">
+        {Object.entries(agrupados).map(([personaId, { persona, docs }]) => (
+          <div key={personaId}>
+            <p className="px-5 py-2.5 text-xs font-semibold text-text-secondary bg-surface-base border-b border-border-subtle">
+              {persona ? `${persona.apellido}, ${persona.nombre}${persona.legajo ? ` · Leg. ${persona.legajo}` : ''}` : 'Trabajador'}
+            </p>
+            <DocTable now={now} rows={docs} />
+          </div>
+        ))}
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-4">
-      <Seccion titulo="Documentos de la Empresa" badge={empresaDocumentos.length}>
-        <DocTable now={now} rows={empresaDocumentos.map(d => ({
-          id: d.id,
-          tipo: d.documentos_tipos?.nombre ?? '—',
-          vencimiento: d.fecha_vencimiento,
-          url: getUrl(d.archivo_url),
-        }))} />
-      </Seccion>
+      {CATEGORIAS_LEGAJO.map(({ key, titulo }) => {
+        // Sección desde Gestiones de Agenda (no sale de documentos_tipos).
+        if (key === 'empresa_gestiones') {
+          return (
+            <Seccion key={key} titulo={titulo} badge={gestionesLegajo.length}>
+              {gestionesLegajo.length === 0 ? (
+                <p className="text-xs text-text-tertiary px-4 py-3">Sin documentos</p>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead className="border-b border-border-subtle dark:border-border-subtle bg-surface-base dark:bg-surface-sunken">
+                    <tr className="text-left">
+                      <th className="px-4 py-2.5 text-text-secondary font-medium text-xs">Categoría</th>
+                      <th className="px-4 py-2.5 text-text-secondary font-medium text-xs">Gestión</th>
+                      <th className="px-4 py-2.5 text-text-secondary font-medium text-xs">Renovación</th>
+                      <th className="px-4 py-2.5 text-text-secondary font-medium text-xs">Fecha planificada</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50 dark:divide-border-subtle">
+                    {gestionesLegajo.map(g => {
+                      const gestion = g.gestiones_establecimientos?.gestiones
+                      return (
+                        <tr key={g.id} className="hover:bg-surface-base">
+                          <td className="px-4 py-3 text-xs text-text-secondary">{gestion?.gestiones_categorias?.nombre ?? '—'}</td>
+                          <td className="px-4 py-3 font-medium text-text-primary dark:text-white text-sm">{gestion?.nombre ?? '—'}</td>
+                          <td className="px-4 py-3 text-xs text-text-secondary">{periodicidadLabel('por_gestion')}</td>
+                          <td className="px-4 py-3 text-xs text-text-secondary">{formatDate(g.fecha_planificada)}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </Seccion>
+          )
+        }
 
-      <Seccion titulo="Documentos del Establecimiento" badge={establecimientoDocumentos.length}>
-        <DocTable now={now} rows={establecimientoDocumentos.map(d => ({
-          id: d.id,
-          tipo: d.documentos_tipos?.nombre ?? '—',
-          vencimiento: d.fecha_vencimiento,
-          url: getUrl(d.archivo_url),
-        }))} />
-      </Seccion>
-
-      <Seccion titulo="Gestiones de Agenda" badge={gestionesLegajo.length}>
-        {gestionesLegajo.length === 0 ? (
-          <p className="text-xs text-text-tertiary px-5 py-3">Sin gestiones pendientes próximas.</p>
-        ) : (
-          <table className="w-full text-sm">
-            <thead className="border-b border-border-subtle dark:border-border-subtle bg-surface-base dark:bg-surface-sunken">
-              <tr className="text-left">
-                <th className="px-4 py-2.5 text-text-secondary font-medium text-xs">Categoría</th>
-                <th className="px-4 py-2.5 text-text-secondary font-medium text-xs">Gestión</th>
-                <th className="px-4 py-2.5 text-text-secondary font-medium text-xs">Fecha planificada</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50 dark:divide-border-subtle">
-              {gestionesLegajo.map(g => {
-                const gestion = g.gestiones_establecimientos?.gestiones
-                return (
-                  <tr key={g.id} className="hover:bg-surface-base">
-                    <td className="px-4 py-3 text-xs text-text-secondary">{gestion?.gestiones_categorias?.nombre ?? '—'}</td>
-                    <td className="px-4 py-3 font-medium text-text-primary dark:text-white text-sm">{gestion?.nombre ?? '—'}</td>
-                    <td className="px-4 py-3 text-xs text-text-secondary">{formatDate(g.fecha_planificada)}</td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        )}
-      </Seccion>
-
-      <Seccion titulo="Documentación de Trabajadores" badge={trabajadorDocumentos.length}>
-        {Object.keys(trabajadoresAgrupados).length === 0 ? (
-          <p className="text-xs text-text-tertiary px-5 py-3">Sin documentación de trabajadores cargada.</p>
-        ) : (
-          <div className="divide-y divide-gray-100">
-            {Object.entries(trabajadoresAgrupados).map(([personaId, { persona, docs }]) => (
-              <div key={personaId}>
-                <p className="px-5 py-2.5 text-xs font-semibold text-text-secondary bg-surface-base border-b border-border-subtle">
-                  {persona ? `${persona.apellido}, ${persona.nombre}${persona.legajo ? ` · Leg. ${persona.legajo}` : ''}` : 'Trabajador'}
-                </p>
-                <DocTable now={now} rows={docs.map(d => ({
-                  id: d.id,
-                  tipo: d.documentos_tipos?.nombre ?? '—',
-                  vencimiento: d.fecha_vencimiento,
-                  url: getUrl(d.archivo_url),
-                }))} />
-              </div>
-            ))}
-          </div>
-        )}
-      </Seccion>
+        const rows = docsDeCategoria(key)
+        const esPersona = key === 'persona' || key === 'persona_por_establecimiento'
+        return (
+          <Seccion key={key} titulo={titulo} badge={rows.length}>
+            {esPersona ? renderPersonas(rows) : <DocTable now={now} rows={rows} />}
+          </Seccion>
+        )
+      })}
     </div>
   )
 }

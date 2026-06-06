@@ -100,7 +100,7 @@ export default async function VerificarPage({ params }: Props) {
       .order('fecha_realizada', { ascending: false }),
     supabase
       .from('establecimientos_documentos')
-      .select('*, documentos_tipos(nombre)')
+      .select('*, documentos_tipos(nombre, categoria_legajo, periodicidad)')
       .eq('establecimiento_id', estId)
       .eq('legajo_tecnico', true)
       .order('fecha_vencimiento', { ascending: true, nullsFirst: false }),

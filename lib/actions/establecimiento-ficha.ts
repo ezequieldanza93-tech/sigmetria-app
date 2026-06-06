@@ -73,7 +73,7 @@ export async function getEstablecimientoFichaData(
       .order('fecha_programada', { ascending: false }),
     supabase
       .from('establecimientos_documentos')
-      .select('*, documentos_tipos(nombre)')
+      .select('*, documentos_tipos(nombre, categoria_legajo, periodicidad)')
       .eq('establecimiento_id', establecimientoId)
       .order('created_at', { ascending: false }),
     getDocTiposAplicables(establecimientoId),
@@ -89,7 +89,7 @@ export async function getEstablecimientoFichaData(
   const [d1, d2, d3, d4] = await Promise.all([
     supabase.from('establecimientos_denuncias').select('*, personas_directorio(nombre, apellido)').eq('establecimiento_id', establecimientoId).order('fecha', { ascending: false }),
     supabase.from('establecimientos_feedback_clientes').select('*, personas_directorio(nombre, apellido)').eq('establecimiento_id', establecimientoId).order('fecha', { ascending: false }),
-    supabase.from('empresas_documentos').select('*, documentos_tipos(nombre)').eq('empresa_id', empresaId).order('created_at', { ascending: false }),
+    supabase.from('empresas_documentos').select('*, documentos_tipos(nombre, categoria_legajo, periodicidad)').eq('empresa_id', empresaId).order('created_at', { ascending: false }),
     supabase
       .from('gestiones_registros')
       .select('id, fecha_planificada, notas, mostrar_lt, gestiones_establecimientos!inner(establecimiento_id, gestiones!inner(nombre, gestiones_categorias(nombre)))')
@@ -114,7 +114,7 @@ export async function getEstablecimientoFichaData(
   if (personaIds.length > 0) {
     const { data: empDocs } = await supabase
       .from('personas_documentos')
-      .select('*, documentos_tipos(nombre), personas_directorio(nombre, apellido, legajo)')
+      .select('*, documentos_tipos(nombre, categoria_legajo, periodicidad), personas_directorio(nombre, apellido, legajo)')
       .in('persona_id', personaIds)
       .order('created_at', { ascending: false })
     trabajadorDocumentos = (empDocs ?? []) as unknown as EmpleadoDocumentoLegajo[]
