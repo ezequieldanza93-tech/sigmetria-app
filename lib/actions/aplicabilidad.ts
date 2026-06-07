@@ -62,3 +62,35 @@ export async function getDocTiposAplicables(establecimientoId: string): Promise<
     idsPorTipo.has(dt.id) || (aplicaIso && dt.aplica_por_iso)
   )
 }
+
+/**
+ * Devuelve los `documento_tipo_id` aplicables a una EMPRESA según su rubro.
+ *
+ * Lee `empresas.rubro_id` y filtra `documentos_tipos_reglas` por
+ * `rubro_empresa_id` (dimensión empresa del CHECK exactly_one_dimension).
+ *
+ * Devuelve solo el conjunto de ids — el consumidor (getLegajoEsperados) lo
+ * intersecta con su catálogo curado por categoría y aplica el fallback.
+ *
+ * Si la empresa no tiene `rubro_id`, devuelve [] (sin rubro no hay filtro
+ * posible → el consumidor cae a la lista curada completa).
+ */
+export async function getDocTiposAplicablesEmpresa(empresaId: string): Promise<string[]> {
+  const supabase = await createClient()
+
+  const { data: empresa } = await supabase
+    .from('empresas')
+    .select('rubro_id')
+    .eq('id', empresaId)
+    .single()
+
+  const rubroId = empresa?.rubro_id
+  if (!rubroId) return []
+
+  const { data: porRubro } = await supabase
+    .from('documentos_tipos_reglas')
+    .select('documento_tipo_id')
+    .eq('rubro_empresa_id', rubroId)
+
+  return Array.from(new Set((porRubro ?? []).map(r => r.documento_tipo_id as string)))
+}
