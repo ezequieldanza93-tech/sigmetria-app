@@ -17,13 +17,13 @@ import {
   ClipboardCheck, GraduationCap, Heart, FileText, AlertTriangle,
   ClipboardList, UserPlus, Dumbbell, Kanban, HelpCircle,
   Play, Upload, Download, BookMarked,
-  ChevronUp, ChevronDown, Columns, CalendarDays, List,
+  ChevronUp, ChevronDown, Columns, CalendarDays, List, X,
 } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { createPortal } from 'react-dom'
 import {
-  planificarGestion,
   planificarGestionNueva,
+  planificarGestionLote,
   createGrupoGestion,
   createCategoriaGestion,
 } from '@/lib/actions/gestion-establecimiento'
@@ -74,6 +74,78 @@ const FormularioEjecucion = dynamic(
 
 const MONTHS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 const MONTHS_FULL = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+
+// ─── Generador de fechas en lote (puro, sin timezone) ───────────────────────────
+// Días de la semana: 0 = Lunes … 6 = Domingo (orden Lun..Dom para la UI).
+const DIAS_SEMANA = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+
+type PatronLote = 'mensual' | 'porMes' | 'diaSemana'
+
+/** Cantidad de días del mes (month 0-indexed). Construido por componentes. */
+function diasEnMes(year: number, month0: number): number {
+  // El día 0 del mes siguiente == último día de este mes.
+  return new Date(year, month0 + 1, 0).getDate()
+}
+
+/** Día de la semana 0=Lun..6=Dom para (year, month0, dia). Sin serialización a string. */
+function diaSemanaLun0(year: number, month0: number, dia: number): number {
+  const js = new Date(year, month0, dia).getDay() // 0=Dom..6=Sáb
+  return (js + 6) % 7 // 0=Lun..6=Dom
+}
+
+/** Formatea por componentes: YYYY-MM-DD con padding manual. NO usa toISOString. */
+function fmtFecha(year: number, month0: number, dia: number): string {
+  const mm = String(month0 + 1).padStart(2, '0')
+  const dd = String(dia).padStart(2, '0')
+  return `${year}-${mm}-${dd}`
+}
+
+/**
+ * Genera el set de fechas (YYYY-MM-DD) a partir del año, los meses elegidos y el patrón.
+ * - mensual: 1 ocurrencia por mes = último día del mes.
+ * - porMes: N ocurrencias por mes distribuidas parejo → dia_k = round(D * k / N), k=1..N.
+ *   (N=1 → último día; N=4, D=30 → 8,15,23,30).
+ * - diaSemana: todas las fechas del mes que caen en el día de semana elegido (0=Lun..6=Dom).
+ */
+function generarFechasLote(
+  year: number,
+  meses: number[],
+  patron: PatronLote,
+  cantidad: number,
+  diaSemana: number,
+): string[] {
+  const mesesOrdenados = [...meses].sort((a, b) => a - b)
+  const out: string[] = []
+
+  for (const m of mesesOrdenados) {
+    const D = diasEnMes(year, m)
+
+    if (patron === 'mensual') {
+      out.push(fmtFecha(year, m, D))
+    } else if (patron === 'porMes') {
+      const N = Math.max(1, Math.floor(cantidad))
+      const vistos = new Set<number>()
+      for (let k = 1; k <= N; k++) {
+        let dia = Math.round((D * k) / N)
+        if (dia < 1) dia = 1
+        if (dia > D) dia = D
+        // Evitar duplicados cuando N > D (días colisionan).
+        while (vistos.has(dia) && dia < D) dia++
+        if (vistos.has(dia)) continue
+        vistos.add(dia)
+        out.push(fmtFecha(year, m, dia))
+      }
+    } else {
+      for (let dia = 1; dia <= D; dia++) {
+        if (diaSemanaLun0(year, m, dia) === diaSemana) {
+          out.push(fmtFecha(year, m, dia))
+        }
+      }
+    }
+  }
+
+  return out
+}
 
 const COL_WIDTHS_KEY = 'gestiones_col_widths'
 const DEFAULT_COL_WIDTHS: Record<string, number> = {
@@ -181,7 +253,69 @@ function InlineCreator({
   )
 }
 
+// ─── PreviewMesGroup ─────────────────────────────────────────────────────────
+// Grupo colapsable de ocurrencias de un mes, cada una con fecha editable + quitar.
+function PreviewMesGroup({
+  month0,
+  fechas,
+  onChangeFecha,
+  onRemoveFecha,
+}: {
+  month0: number
+  fechas: { id: number; fecha: string }[]
+  onChangeFecha: (id: number, fecha: string) => void
+  onRemoveFecha: (id: number) => void
+}) {
+  const [open, setOpen] = useState(true)
+  return (
+    <div className="border border-border-subtle rounded-lg overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-3 py-2 bg-surface-base hover:bg-gray-50 text-sm font-medium text-text-secondary"
+      >
+        <span>{MONTHS_FULL[month0]} ({fechas.length})</span>
+        {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+      </button>
+      {open && (
+        <div className="p-2 space-y-1.5">
+          {fechas.map(f => (
+            <div key={f.id} className="flex items-center gap-2">
+              <input
+                type="date"
+                value={f.fecha}
+                onChange={e => onChangeFecha(f.id, e.target.value)}
+                className="flex-1 border border-border-default rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500"
+              />
+              <button
+                type="button"
+                onClick={() => onRemoveFecha(f.id)}
+                title="Quitar esta ocurrencia"
+                className="p-1 text-text-tertiary hover:text-danger rounded"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── BibliotecaForm ────────────────────────────────────────────────────────────
+// Generador de planificación EN LOTE: elegí gestión, año, meses y un patrón de
+// repetición → genera todas las ocurrencias con fechas editables y guarda en un
+// solo submit (planificarGestionLote).
+//
+// NOTA: cambiar año/meses/patrón/cantidad REGENERA el preview y pisa cualquier
+// edición manual de fechas. Las ediciones individuales (input date / quitar)
+// sobreviven hasta el próximo cambio de parámetros.
+interface OcurrenciaDraft {
+  id: number
+  fecha: string // YYYY-MM-DD
+}
+
 function BibliotecaForm({
   establecimientoId,
   todasGestiones,
@@ -195,24 +329,33 @@ function BibliotecaForm({
   onSuccess: (month?: number) => void
   onSwitchToNueva: () => void
 }) {
-  const [state, formAction, pending] = useActionState(planificarGestion, null)
   const [filterGrupo, setFilterGrupo] = useState('')
   const [filterCat, setFilterCat] = useState('')
-  const [fechaValue, setFechaValue] = useState('')
+  const [gestionId, setGestionId] = useState('')
+  const [notas, setNotas] = useState('')
 
-  const onSuccessRef = useRef(onSuccess)
-  onSuccessRef.current = onSuccess
-  useEffect(() => {
-    if (state?.success) {
-      const month = fechaValue ? new Date(fechaValue + 'T00:00:00').getMonth() : undefined
-      onSuccessRef.current(month)
-    }
-    }, [state, fechaValue, onSuccess])
-  
+  // Período
+  const anioActual = new Date().getFullYear()
+  const [anio, setAnio] = useState(anioActual)
+  const [meses, setMeses] = useState<Set<number>>(new Set())
+
+  // Patrón
+  const [patron, setPatron] = useState<PatronLote>('mensual')
+  const [cantidad, setCantidad] = useState(2)
+  const [diaSemana, setDiaSemana] = useState(5) // 5 = Sábado (0=Lun..6=Dom)
+
+  // Preview editable
+  const [ocurrencias, setOcurrencias] = useState<OcurrenciaDraft[]>([])
+  const idRef = useRef(0)
+
+  // Submit
+  const [isPending, startTransition] = useTransition()
+  const [error, setError] = useState<string | null>(null)
+
   const grupos = Array.from(
     new Set(todasGestiones.map(g => g.gestiones_categorias?.gestiones_grupos?.nombre ?? '').filter(Boolean))
   ).sort()
- 
+
   const cats = Array.from(
     new Set(
       todasGestiones
@@ -221,7 +364,7 @@ function BibliotecaForm({
         .filter(Boolean)
     )
   ).sort()
- 
+
   const gestionesFiltradas = todasGestiones.filter(g => {
     if (filterGrupo && g.gestiones_categorias?.gestiones_grupos?.nombre !== filterGrupo) return false
     if (filterCat && g.gestiones_categorias?.nombre !== filterCat) return false
@@ -233,15 +376,74 @@ function BibliotecaForm({
     setFilterCat('')
   }
 
+  function toggleMes(m: number) {
+    setMeses(prev => {
+      const next = new Set(prev)
+      if (next.has(m)) next.delete(m)
+      else next.add(m)
+      return next
+    })
+  }
+
+  const todosLosMeses = meses.size === 12
+  function toggleTodos() {
+    setMeses(todosLosMeses ? new Set() : new Set(Array.from({ length: 12 }, (_, i) => i)))
+  }
+
+  // Regenera el preview cuando cambian año/meses/patrón/cantidad/díaSemana.
+  // Pisa ediciones manuales (documentado arriba).
+  const mesesKey = Array.from(meses).sort((a, b) => a - b).join(',')
+  useEffect(() => {
+    const mesesArr = mesesKey ? mesesKey.split(',').map(Number) : []
+    if (mesesArr.length === 0) {
+      setOcurrencias([])
+      return
+    }
+    const fechas = generarFechasLote(anio, mesesArr, patron, cantidad, diaSemana)
+    setOcurrencias(fechas.map(fecha => ({ id: idRef.current++, fecha })))
+  }, [anio, mesesKey, patron, cantidad, diaSemana])
+
+  function handleChangeFecha(id: number, fecha: string) {
+    setOcurrencias(prev => prev.map(o => (o.id === id ? { ...o, fecha } : o)))
+  }
+  function handleRemoveFecha(id: number) {
+    setOcurrencias(prev => prev.filter(o => o.id !== id))
+  }
+
+  // Agrupar ocurrencias por mes para el preview (orden cronológico).
+  const fechasValidas = ocurrencias.filter(o => /^\d{4}-\d{2}-\d{2}$/.test(o.fecha))
+  const grupoPorMes = new Map<number, OcurrenciaDraft[]>()
+  for (const o of [...fechasValidas].sort((a, b) => a.fecha.localeCompare(b.fecha))) {
+    const m = Number(o.fecha.slice(5, 7)) - 1
+    const arr = grupoPorMes.get(m) ?? []
+    arr.push(o)
+    grupoPorMes.set(m, arr)
+  }
+  const mesesPreview = Array.from(grupoPorMes.keys()).sort((a, b) => a - b)
+  const total = fechasValidas.length
+
+  function handleSubmit() {
+    if (!gestionId || total === 0) return
+    setError(null)
+    const fechasFinales = fechasValidas.map(o => o.fecha)
+    startTransition(async () => {
+      const res = await planificarGestionLote(gestionId, establecimientoId, fechasFinales, null, notas.trim() || null)
+      if (!res.success) {
+        setError(res.error)
+        return
+      }
+      const primerMes = mesesPreview.length > 0 ? mesesPreview[0] : undefined
+      onSuccess(primerMes)
+    })
+  }
+
   const selectCls = 'w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500'
 
   return (
-    <form action={formAction} className="space-y-4">
-      <input type="hidden" name="establecimiento_id" value={establecimientoId} />
-
-      {state && !state.success && (
+    <div className="space-y-4">
+      {error && (
         <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-3 py-2">
-          {state.error}
+          {error}
         </div>
       )}
 
@@ -251,6 +453,7 @@ function BibliotecaForm({
         </div>
       ) : (
         <>
+          {/* Filtros + select de gestión */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-sm font-medium text-text-secondary block mb-1">Grupo</label>
@@ -270,7 +473,7 @@ function BibliotecaForm({
 
           <div>
             <label className="text-sm font-medium text-text-secondary block mb-1">Gestión *</label>
-            <select name="gestion_id" required className={selectCls}>
+            <select value={gestionId} onChange={e => setGestionId(e.target.value)} required className={selectCls}>
               <option value="">Seleccionar gestión…</option>
               {gestionesFiltradas.map(g => (
                 <option key={g.id} value={g.id}>{g.nombre}</option>
@@ -280,30 +483,147 @@ function BibliotecaForm({
         </>
       )}
 
-      <div>
-        <label className="text-sm font-medium text-text-secondary block mb-1">Fecha Planificada *</label>
-        <input
-          type="date"
-          name="fecha_planificada"
-          required
-          value={fechaValue}
-          onChange={e => setFechaValue(e.target.value)}
-          className="w-full border border-border-default rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500"
-        />
+      {/* PERÍODO */}
+      <div className="border-t border-border-subtle pt-3 space-y-2">
+        <div className="flex items-center justify-between">
+          <label className="text-sm font-medium text-text-secondary">Período</label>
+          <select
+            value={anio}
+            onChange={e => setAnio(Number(e.target.value))}
+            className="border border-border-default rounded-lg px-2 py-1 text-sm bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500"
+          >
+            <option value={anioActual}>{anioActual}</option>
+            <option value={anioActual + 1}>{anioActual + 1}</option>
+          </select>
+        </div>
+        <div className="grid grid-cols-6 gap-1.5">
+          {MONTHS.map((m, i) => {
+            const sel = meses.has(i)
+            return (
+              <button
+                key={m}
+                type="button"
+                onClick={() => toggleMes(i)}
+                className={`text-xs rounded-lg py-1.5 border transition-colors ${
+                  sel
+                    ? 'bg-sig-500 text-white border-sig-500'
+                    : 'bg-surface-base text-text-secondary border-border-default hover:bg-gray-50'
+                }`}
+              >
+                {m}
+              </button>
+            )
+          })}
+        </div>
+        <button
+          type="button"
+          onClick={toggleTodos}
+          className="text-xs text-sig-600 hover:text-sig-800 hover:underline"
+        >
+          {todosLosMeses ? 'Ninguno' : 'Todos'}
+        </button>
       </div>
 
+      {/* PATRÓN */}
+      <div className="border-t border-border-subtle pt-3 space-y-2">
+        <label className="text-sm font-medium text-text-secondary block">Patrón de repetición</label>
+        <div className="space-y-2 text-sm">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              name="patron"
+              checked={patron === 'mensual'}
+              onChange={() => setPatron('mensual')}
+              className="accent-sig-500"
+            />
+            <span>1 vez por mes (último día del mes)</span>
+          </label>
+
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              name="patron"
+              checked={patron === 'porMes'}
+              onChange={() => setPatron('porMes')}
+              className="accent-sig-500"
+            />
+            <span>N veces por mes</span>
+            {patron === 'porMes' && (
+              <input
+                type="number"
+                min={1}
+                value={cantidad}
+                onChange={e => setCantidad(Math.max(1, Number(e.target.value) || 1))}
+                className="w-16 border border-border-default rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500"
+              />
+            )}
+          </label>
+
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              name="patron"
+              checked={patron === 'diaSemana'}
+              onChange={() => setPatron('diaSemana')}
+              className="accent-sig-500"
+            />
+            <span>Por día de semana</span>
+            {patron === 'diaSemana' && (
+              <select
+                value={diaSemana}
+                onChange={e => setDiaSemana(Number(e.target.value))}
+                className="border border-border-default rounded-lg px-2 py-1 text-sm bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500"
+              >
+                {DIAS_SEMANA.map((d, i) => <option key={d} value={i}>{d}</option>)}
+              </select>
+            )}
+          </label>
+        </div>
+      </div>
+
+      {/* PREVIEW EDITABLE */}
+      {meses.size > 0 && (
+        <div className="border-t border-border-subtle pt-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium text-text-secondary">Ocurrencias generadas</label>
+            <span className="text-sm font-semibold text-sig-600">{total} gestiones a planificar</span>
+          </div>
+          {total === 0 ? (
+            <p className="text-xs text-text-tertiary">No se generaron ocurrencias para los meses elegidos.</p>
+          ) : (
+            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+              {mesesPreview.map(m => (
+                <PreviewMesGroup
+                  key={m}
+                  month0={m}
+                  fechas={(grupoPorMes.get(m) ?? []).map(o => ({ id: o.id, fecha: o.fecha }))}
+                  onChangeFecha={handleChangeFecha}
+                  onRemoveFecha={handleRemoveFecha}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* NOTAS */}
       <div>
         <label className="text-sm font-medium text-text-secondary block mb-1">Notas</label>
         <textarea
-          name="notas"
+          value={notas}
+          onChange={e => setNotas(e.target.value)}
           rows={2}
           className="w-full border border-border-default rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sig-500"
         />
       </div>
 
       <div className="flex gap-3 pt-1">
-        <Button type="submit" disabled={pending || todasGestiones.length === 0}>
-          {pending ? 'Guardando…' : 'Planificar'}
+        <Button
+          type="button"
+          onClick={handleSubmit}
+          disabled={isPending || !gestionId || total === 0}
+        >
+          {isPending ? 'Guardando…' : `Planificar ${total} ${total === 1 ? 'gestión' : 'gestiones'}`}
         </Button>
         <Button type="button" variant="secondary" onClick={onClose}>Cancelar</Button>
       </div>
@@ -317,7 +637,7 @@ function BibliotecaForm({
           ¿No encontrás la gestión? → Crear nueva gestión
         </button>
       </div>
-    </form>
+    </div>
   )
 }
 
