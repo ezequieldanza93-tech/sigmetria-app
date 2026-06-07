@@ -106,22 +106,28 @@ export async function createTrabajadorDocumento(
       .limit(1)
       .single()
 
-    if (docInserted) {
+    // matriculas.fecha_emision y fecha_vencimiento son NOT NULL: sin ambas fechas no
+    // se puede crear una matrícula válida. Antes el upsert hacía `|| null` -> violaba
+    // el NOT NULL y el error se tragaba (misma clase que el bug de fecha_planificada).
+    // Si faltan fechas, se omite el sync a matriculas; el documento queda igual en
+    // personas_documentos.
+    if (docInserted && fechaEmision && fechaVencimiento) {
       // El certificado de la matrícula vive en el bucket `certificados` (igual que
       // createMatricula y que la lectura en trabajador-modal: useSignedUrls('certificados')).
       // Antes se guardaba el path del bucket `documentos` -> la signed URL se firmaba
       // contra el bucket equivocado y el archivo no abría. Subimos a `certificados` y
       // guardamos ESE path; si no se puede subir, certificado_url queda null (mejor que
       // un link roto) y el documento sigue disponible vía personas_documentos.
-      const { data: mat } = await supabase.from('matriculas').upsert({
+      const { data: mat, error: matErr } = await supabase.from('matriculas').upsert({
         persona_id: trabajadorId,
         numero: formData.get('numero_matricula') as string || '—',
-        fecha_emision: fechaEmision || null,
-        fecha_vencimiento: fechaVencimiento || null,
+        fecha_emision: fechaEmision,
+        fecha_vencimiento: fechaVencimiento,
         activa: true,
       }, { onConflict: 'persona_id,numero', ignoreDuplicates: false })
         .select('id')
         .single()
+      if (matErr) return { success: false, error: 'Error al sincronizar la matrícula: ' + matErr.message }
 
       if (mat && files.length > 0) {
         const up = await uploadAsset({
