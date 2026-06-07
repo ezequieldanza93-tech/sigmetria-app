@@ -36,7 +36,11 @@ export async function crearReporteFotografico(
   if (!establecimientoId) return { success: false, error: 'Establecimiento requerido' }
   if (!file || file.size === 0) return { success: false, error: 'Seleccioná al menos una imagen' }
 
-  const today = new Date().toISOString().split('T')[0]
+  // Fecha local por componentes (sin drift UTC de toISOString, que de noche en
+  // AR -3 puede adelantar un día). Sirve además de fallback para fecha_planificada,
+  // que es NOT NULL y ningún trigger rellena.
+  const now = new Date()
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 
   const { data: gestion } = await supabase
     .from('gestiones')
@@ -119,7 +123,7 @@ export async function crearReporteFotografico(
             categoria_id: o.categoria_id,
             clasificacion_id: o.clasificacion_id || null,
             responsable_id: o.responsable_id || null,
-            fecha_planificada: o.fecha_subsanacion || null,
+            fecha_planificada: o.fecha_subsanacion || today,
             foto_url,
           }
         }))
