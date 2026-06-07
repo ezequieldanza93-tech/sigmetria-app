@@ -1,5 +1,6 @@
 'use server'
 import { z } from 'zod'
+import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import type { ActionResult, GrupoGestion, CategoriaGestion } from '@/lib/types'
 import { validateFormData, formatZodErrors } from '@/lib/validation/helpers'
@@ -207,27 +208,38 @@ export async function createCategoriaGestion(
   return { success: true, data: data as CategoriaGestion }
 }
 
-function lastDayOfMonth(year: number, month: number): string {
-  const d = new Date(year, month + 1, 0)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
+const MAX_FECHAS_LOTE = 366
+const FECHA_RE = /^\d{4}-\d{2}-\d{2}$/
 
-export async function planificarGestionMulti(
+/**
+ * Planificación en lote: inserta N ocurrencias de una gestión existente, una por
+ * cada fecha provista (ya generada y editada en el cliente). NO setea `secuencia`:
+ * el trigger BEFORE INSERT la auto-numera por (gestion_establecimiento_id, fecha_planificada).
+ */
+export async function planificarGestionLote(
   gestionId: string,
   establecimientoId: string,
-  months: number[],
-  year: number,
+  fechas: string[],
   responsableId: string | null,
   notas: string | null,
-  cantidad: number = 1,
 ): Promise<ActionResult<{ count: number }>> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
   if (!gestionId) return { success: false, error: 'Gestión requerida' }
-  if (!months.length) return { success: false, error: 'Seleccioná al menos un mes' }
+  if (!establecimientoId) return { success: false, error: 'Establecimiento requerido' }
 
-  // Get or create gestion_establecimiento (single query)
+  if (!Array.isArray(fechas) || fechas.length === 0) {
+    return { success: false, error: 'Seleccioná al menos una fecha' }
+  }
+  if (fechas.length > MAX_FECHAS_LOTE) {
+    return { success: false, error: `Demasiadas ocurrencias (máximo ${MAX_FECHAS_LOTE})` }
+  }
+  if (!fechas.every(f => typeof f === 'string' && FECHA_RE.test(f))) {
+    return { success: false, error: 'Hay fechas con formato inválido' }
+  }
+
+  // Get or create gestion_establecimiento (mismo patrón que planificarGestion)
   let geId: string
   const { data: existing } = await supabase
     .from('gestiones_establecimientos')
@@ -248,17 +260,17 @@ export async function planificarGestionMulti(
     geId = created.id
   }
 
-  const registros = months.flatMap(m =>
-    Array.from({ length: cantidad }, () => ({
-      gestion_establecimiento_id: geId,
-      fecha_planificada: lastDayOfMonth(year, m),
-      responsable_id: responsableId,
-      notas: notas,
-    }))
-  )
+  const registros = fechas.map(fecha => ({
+    gestion_establecimiento_id: geId,
+    fecha_planificada: fecha,
+    responsable_id: responsableId || null,
+    notas: notas || null,
+  }))
 
   const { error: insertError } = await supabase.from('gestiones_registros').insert(registros)
   if (insertError) return { success: false, error: insertError.message }
+
+  revalidatePath(`/dashboard/empresas/[id]/establecimientos/${establecimientoId}`, 'page')
 
   return { success: true, data: { count: registros.length } }
 }
