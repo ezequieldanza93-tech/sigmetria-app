@@ -684,40 +684,8 @@ export async function getEstablecimientosParaMapa(): Promise<ActionResult<any[]>
   return { success: true, data: data ?? [] }
 }
 
-// ============================================================
-// SUBIR PLANO
-// ============================================================
-
-export async function subirPlanoEstablecimiento(
-  establecimientoId: string,
-  empresaId: string,
-  _prev: ActionResult<null> | null,
-  formData: FormData
-): Promise<ActionResult<null>> {
-  const supabase = await createClient()
-
-  const file = formData.get('plano') as File | null
-  if (!file) return { success: false, error: 'Seleccioná un archivo' }
-
-  const ext = file.name.split('.').pop()
-  // Unificado al bucket `planos` (mismo que lib/actions/establecimiento.ts) para
-  // que plano_url sea consistente y resoluble con publicAssetUrl('planos', ...).
-  const filePath = `${establecimientoId}/${Date.now()}.${ext}`
-
-  const { data: upload, error: uploadError } = await supabase.storage
-    .from('planos')
-    .upload(filePath, file, { upsert: true })
-
-  if (uploadError || !upload) return { success: false, error: uploadError?.message ?? 'Error al subir' }
-
-  // Persistimos el PATH (no la URL).
-  const { error: updateError } = await supabase
-    .from('establecimientos')
-    .update({ plano_url: upload.path })
-    .eq('id', establecimientoId)
-
-  if (updateError) return { success: false, error: updateError.message }
-
-  revalidatePath(`/dashboard/empresas/${empresaId}/establecimientos/${establecimientoId}`)
-  return { success: true, data: null }
-}
+// NOTA: la subida de plano del establecimiento se hace por la server action
+// canónica en lib/actions/establecimiento.ts (processFloorPlans -> uploadAsset,
+// bucket `planos`, path tenant-prefijado) y por /api/upload-plano (mapa IPERC).
+// La acción duplicada `subirPlanoEstablecimiento` que vivía acá escribía un path
+// tenant-less ({establecimientoId}/...) y no tenía callers -> eliminada.
