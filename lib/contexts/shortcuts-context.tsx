@@ -55,6 +55,5 @@ export function useShortcutAction(action: ShortcutAction, handler: () => void) {
   useEffect(() => {
     return subscribe(action, () => handlerRef.current())
     // subscribe is stable (useCallback with no deps), action rarely changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [action, subscribe])
 }
