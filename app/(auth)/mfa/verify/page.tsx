@@ -28,7 +28,6 @@ export default function MfaVerifyPage() {
   // Envío automático al cargar
   useEffect(() => {
     handleSend()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Timer de cooldown para reenvío

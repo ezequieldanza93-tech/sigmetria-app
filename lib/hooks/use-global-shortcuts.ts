@@ -149,6 +149,5 @@ export function useGlobalShortcuts() {
     window.addEventListener('keydown', handleKeyDown, { capture: true })
     return () => window.removeEventListener('keydown', handleKeyDown, { capture: true })
     // Empty deps: runs once, uses refs for all mutable values
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 }

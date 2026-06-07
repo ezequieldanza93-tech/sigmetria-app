@@ -9,11 +9,13 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./lib/__tests__/setup.ts'],
     include: ['**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}'],
-    exclude: ['node_modules/', '.next/', 'supabase/', 'e2e/'],
+    // Globs válidos (con **/...). Los patrones viejos ('node_modules/', etc.) NO
+    // eran globs -> vitest escaneaba node_modules y .claude/worktrees (tests fantasma).
+    exclude: ['**/node_modules/**', '**/.next/**', '**/supabase/**', '**/e2e/**', '**/.claude/**', '**/.opencode/**', '**/dist/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],
-      exclude: ['node_modules/', '.next/', 'supabase/'],
+      exclude: ['**/node_modules/**', '**/.next/**', '**/supabase/**', '**/e2e/**', '**/.claude/**', '**/.opencode/**', '**/dist/**'],
     },
   },
   resolve: {
