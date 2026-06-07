@@ -166,7 +166,11 @@ export async function iniciarSuscripcionMP(
         .insert({
           consultora_id: membership.consultora_id,
           plan_id: planId,
-          estado: 'pending' as any,
+          // Estado inicial mientras MP confirma el preapproval. 'pending' NO existe
+          // en el enum subscription_estado (es de payment_estado) -> el INSERT
+          // reventaba con 'invalid input value for enum' y el alta fallaba.
+          // El webhook la pasa a 'active' al confirmarse el pago.
+          estado: 'trialing',
         })
         .select('id')
         .single()
@@ -177,7 +181,7 @@ export async function iniciarSuscripcionMP(
       // Log audit
       await admin.from('subscription_audit_log').insert({
         subscription_id: subscriptionId,
-        estado_nuevo: 'pending' as any,
+        estado_nuevo: 'trialing',
         motivo: 'Inicio de suscripción MP',
         actor_id: user.id,
       })
@@ -487,7 +491,7 @@ export async function actualizarMetodoPago(): Promise<ActionResult<{ update_url:
       return {
         success: true,
         data: {
-          update_url: `https://www.mercadopago.com.ar/suscriptions/${sub.mp_preapproval_id}/edit`,
+          update_url: `https://www.mercadopago.com.ar/subscriptions/${sub.mp_preapproval_id}/edit`,
         },
       }
     }
