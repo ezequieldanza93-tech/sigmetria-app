@@ -86,8 +86,12 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
     const file = e.target.files?.[0]
     if (!file) return
     setImageFile(file)
-    const url = URL.createObjectURL(file)
-    setImagePreviewUrl(url)
+    // Revocamos el object URL anterior antes de crear el nuevo (evita fuga al
+    // reemplazar la imagen varias veces).
+    setImagePreviewUrl(prev => {
+      if (prev) URL.revokeObjectURL(prev)
+      return URL.createObjectURL(file)
+    })
     setEditedBlob(null)
   }
 
