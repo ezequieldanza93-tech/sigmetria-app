@@ -36,7 +36,7 @@ export function useGestionesEstablecimiento(establecimientoId: string | undefine
 
       const { data } = await supabase
         .from('gestiones_establecimientos')
-        .select('id, firmada, gestiones!inner(id, nombre, tiene_entregable, gestiones_categorias(nombre, gestiones_grupos(nombre)))')
+        .select('id, firmada, gestiones!inner(id, nombre, tiene_entregable, tipo_ejecucion, gestiones_categorias(nombre, gestiones_grupos(nombre)))')
         .eq('establecimiento_id', establecimientoId)
         .gte('created_at', yearStart)
         .lt('created_at', yearEnd)
@@ -48,6 +48,7 @@ export function useGestionesEstablecimiento(establecimientoId: string | undefine
         gestiones: {
           id: string
           nombre: string
+          tipo_ejecucion: string
           gestiones_categorias: { nombre: string; gestiones_grupos: { nombre: string } | null } | null
         }
       }[]
