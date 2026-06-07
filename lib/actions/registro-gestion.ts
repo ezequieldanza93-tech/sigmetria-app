@@ -131,6 +131,13 @@ export async function crearObservaciones(
     if (!consultoraId) return { success: false, error: 'No se pudo resolver la consultora del registro' }
   }
 
+  // fecha_planificada (= fecha de subsanación comprometida) es NOT NULL y ningún
+  // trigger la rellena (trg_fill_rg_fecha_planificada solo setea rg_fecha_planificada).
+  // Fallback a HOY por componentes locales (sin drift UTC) si el técnico no la cargó,
+  // para no perder la observación con un INSERT que violaría el NOT NULL.
+  const now = new Date()
+  const hoy = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+
   const rows: Array<Record<string, unknown>> = []
   for (let i = 0; i < validas.length; i++) {
     const o = validas[i]
@@ -151,7 +158,7 @@ export async function crearObservaciones(
       categoria_id: o.categoria_id,
       clasificacion_id: o.clasificacion_id || null,
       responsable_id: o.responsable_id || null,
-      fecha_planificada: o.fecha_subsanacion || null,
+      fecha_planificada: o.fecha_subsanacion || hoy,
       foto_url: fotoPath,
     })
   }
