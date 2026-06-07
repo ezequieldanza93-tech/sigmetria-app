@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { Input } from '@/components/ui/input'
 import { NIVEL_RIESGO_BADGE, NIVEL_RIESGO_COLORS, type IpercNivelRiesgoNombre } from '@/lib/types'
+import { useSignedUrls } from '@/lib/storage/sign-client'
 
 const getBgColor = (nombre: string | undefined, opacity = 0.3): string => {
   const entry = Object.entries(NIVEL_RIESGO_COLORS).find(([k]) => k === nombre)
@@ -23,6 +24,8 @@ export function RiesgoMapaInterno({ establecimientoId, planoUrl, canWrite }: Pro
   const { data: completo } = useIpercCompleto(establecimientoId)
   const [selectedSector, setSelectedSector] = useState<any>(null)
   const [planoModal, setPlanoModal] = useState(false)
+  // El bucket `planos` es privado: plano_url guarda el PATH y se firma on-read.
+  const { getUrl } = useSignedUrls('planos', planoUrl ? [planoUrl] : [])
 
   if (!completo?.length && !planoUrl) {
     return (
@@ -59,7 +62,7 @@ export function RiesgoMapaInterno({ establecimientoId, planoUrl, canWrite }: Pro
       {planoUrl && (
         <div className="relative border rounded-lg overflow-hidden bg-surface-elevated" style={{ minHeight: 400 }}>
           <img
-            src={planoUrl}
+            src={getUrl(planoUrl) ?? ''}
             alt="Plano del establecimiento"
             className="w-full h-auto"
             style={{ maxHeight: 600, objectFit: 'contain' }}
