@@ -43,6 +43,9 @@ declare module 'lucide-react' {
   export const ChevronsRight: Icon
   export const Circle: Icon
   export const ClipboardCheck: Icon
+  export const Copy: Icon
+  export const Share2: Icon
+  export const Link2: Icon
   export const ClipboardList: Icon
   export const Clock: Icon
   export const Code: Icon

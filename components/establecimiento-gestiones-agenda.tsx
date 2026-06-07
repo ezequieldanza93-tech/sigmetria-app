@@ -72,6 +72,10 @@ const FormularioEjecucion = dynamic(
   () => import('@/components/formulario-ejecucion').then(m => m.FormularioEjecucion),
   { ssr: false }
 )
+const ReporteFotograficoEjecutorModal = dynamic(
+  () => import('@/components/reporte-fotografico-ejecutor-modal').then(m => m.ReporteFotograficoEjecutorModal),
+  { ssr: false }
+)
 
 const MONTHS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 const MONTHS_FULL = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
@@ -184,6 +188,7 @@ interface FullRegistro extends RegistroGestion {
   ge_gestion_id?: string
   ge_tiene_formulario?: boolean
   ge_tiene_entregable?: boolean
+  ge_tipo_ejecucion?: string
   ge_firmada?: boolean
   responsable_nombre?: string
   aprobado_nombre?: string
@@ -1297,12 +1302,14 @@ function AgendaActionsCell({
   registro: r,
   canWrite,
   onExecuteForm,
+  onExecuteReporte,
   onLoadEvidence,
   onToggleLegajo,
 }: {
   registro: FullRegistro
   canWrite: boolean
   onExecuteForm: () => void
+  onExecuteReporte: () => void
   onLoadEvidence: () => void
   onToggleLegajo: () => void | Promise<void>
 }) {
@@ -1395,6 +1402,22 @@ function AgendaActionsCell({
     return <span className="text-xs text-text-tertiary">—</span>
   }
 
+  // Gestión tipo reporte_fotografico → wizard multi-foto (en vez del flujo estándar).
+  if (r.ge_tipo_ejecucion === 'reporte_fotografico') {
+    return (
+      <div className="flex items-center justify-center">
+        <button
+          title="Ejecutar reporte fotográfico"
+          onClick={onExecuteReporte}
+          className={`${primaryBtn} ${primaryActive}`}
+        >
+          <Camera size={14} />
+          <span className="hidden sm:inline">Ejecutar</span>
+        </button>
+      </div>
+    )
+  }
+
   // Con formulario → botón "Ejecutar ▾" con submenu
   if (r.ge_tiene_formulario) {
     return (
@@ -1477,7 +1500,7 @@ function AgendaActionsCell({
 
 
 // ─── Main component ────────────────────────────────────────────────────────────
-export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, riesgos: _riesgos, establecimientoNombre }: GestionesAgendaProps) {
+export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWriteProp, riesgos: _riesgos, establecimientoNombre }: GestionesAgendaProps) {
   const queryClient = useQueryClient()
   const { data: canWriteData } = useCanWrite(establecimientoId)
   const canWrite = canWriteProp || (canWriteData ?? false)
@@ -1524,6 +1547,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
   }, [])
   const [editingRegistro, setEditingRegistro] = useState<FullRegistro | null>(null)
   const [executingFormulario, setExecutingFormulario] = useState<FullRegistro | null>(null)
+  const [executingReporte, setExecutingReporte] = useState<FullRegistro | null>(null)
   const [showPlanificarModal, setShowPlanificarModal] = useState(false)
   const [showReporteModal, setShowReporteModal] = useState(false)
 
@@ -1649,6 +1673,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
         ge_gestion_id: ge?.gestiones?.id,
         ge_tiene_formulario: ge?.gestiones?.id ? formList.includes(ge.gestiones.id) : false,
         ge_tiene_entregable: ge?.gestiones?.tiene_entregable ?? false,
+        ge_tipo_ejecucion: ge?.gestiones?.tipo_ejecucion ?? 'estandar',
         ge_firmada: ge?.firmada ?? false,
         ge_gestion_nombre: ge?.gestiones?.nombre,
         ge_categoria_nombre: ge?.gestiones?.gestiones_categorias?.nombre,
@@ -1738,13 +1763,25 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
 
   const totalCols = 7
 
+  // Abre el editor correcto según el tipo de gestión y su estado: una gestión
+  // reporte_fotografico AÚN no ejecutada (sin evidencia) abre el wizard multi-foto;
+  // el resto (y las ya ejecutadas) siguen con el flujo estándar (EjecucionModal).
+  function openRegistro(r: FullRegistro) {
+    const yaEjecutada = !!(r.fecha_ejecutada || r.evidencia_url)
+    if (r.ge_tipo_ejecucion === 'reporte_fotografico' && !yaEjecutada && canWrite) {
+      setExecutingReporte(r)
+    } else {
+      setEditingRegistro(r)
+    }
+  }
+
   // ── Row renderer ────────────────────────────────────────────────────────────
   function renderRows(regs: FullRegistro[]) {
     return regs.map((r, _idx) => {
       const estado = calcularEstadoGestion(r.fecha_ejecutada ?? null, r.fecha_planificada)
 
       return (
-        <tr key={r.id} className={`${ROW_BG_COLORS[estado]} cursor-pointer`} onClick={() => setEditingRegistro(r)}>
+        <tr key={r.id} className={`${ROW_BG_COLORS[estado]} cursor-pointer`} onClick={() => openRegistro(r)}>
           <td className={`${visibleCols.has('categoria') ? 'hidden md:table-cell' : 'hidden'} px-4 py-1.5`} style={{ maxWidth: colW('categoria'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             <span className="flex items-center gap-1.5">
               <CategoriaIcon nombre={r.ge_categoria_nombre} size={14} />
@@ -1774,6 +1811,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
               registro={r}
               canWrite={canWrite}
               onExecuteForm={() => setExecutingFormulario(r)}
+              onExecuteReporte={() => setExecutingReporte(r)}
               onLoadEvidence={() => setEditingRegistro(r)}
               onToggleLegajo={async () => {
                 const supabase = createClient()
@@ -1978,7 +2016,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
                             return (
                               <div
                                 key={r.id}
-                                onClick={() => setEditingRegistro(r)}
+                                onClick={() => openRegistro(r)}
                                 className="flex items-center gap-1 cursor-pointer hover:opacity-70"
                                 title={r.ge_gestion_nombre}
                               >
@@ -2025,7 +2063,7 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
                 ) : regs.map(r => (
                   <div
                     key={r.id}
-                    onClick={() => setEditingRegistro(r)}
+                    onClick={() => openRegistro(r)}
                     className="bg-white rounded-lg border border-border-subtle p-2.5 cursor-pointer hover:border-sig-300 hover:shadow-sm transition-all"
                   >
                     <div className="flex items-center gap-1 mb-1">
@@ -2350,6 +2388,20 @@ export function GestionesAgenda({ establecimientoId, canWrite: canWriteProp, rie
           establecimientoId={establecimientoId}
           onClose={() => setEditingRegistro(null)}
           onSuccess={() => { setEditingRegistro(null); queryClient.invalidateQueries({ queryKey: ['gestiones-establecimiento', establecimientoId, year] }); queryClient.invalidateQueries({ queryKey: ['registros-gestion'] }) }}
+        />
+      )}
+
+      {executingReporte && (
+        <ReporteFotograficoEjecutorModal
+          registroId={executingReporte.id}
+          gestionEstablecimientoId={executingReporte.ge_id ?? ''}
+          establecimientoId={establecimientoId}
+          empresaId={empresaId}
+          gestionNombre={executingReporte.ge_gestion_nombre ?? 'Reporte Fotográfico'}
+          rgFechaPlanificada={executingReporte.fecha_planificada}
+          establecimientoNombre={establecimientoNombre}
+          onClose={() => setExecutingReporte(null)}
+          onSuccess={() => { setExecutingReporte(null); queryClient.invalidateQueries({ queryKey: ['gestiones-establecimiento', establecimientoId, year] }); queryClient.invalidateQueries({ queryKey: ['registros-gestion'] }) }}
         />
       )}
 

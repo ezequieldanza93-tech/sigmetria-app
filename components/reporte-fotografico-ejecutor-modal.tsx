@@ -1,0 +1,807 @@
+'use client'
+
+import { useState, useEffect, useRef, useMemo } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { crearReporteFotograficoEjecucion } from '@/lib/actions/reporte-fotografico'
+import { PhotoCanvasEditor } from '@/components/photo-canvas-editor'
+import { PersonaSelector } from '@/components/persona-selector'
+import { Modal } from '@/components/ui/modal'
+import { Button } from '@/components/ui/button'
+import {
+  Camera, X, ChevronLeft, ChevronRight, ChevronUp, ChevronDown,
+  Trash2, Download, Copy, Share2, CheckCircle, Loader2,
+} from 'lucide-react'
+
+interface ReporteFotograficoEjecutorModalProps {
+  registroId: string
+  gestionEstablecimientoId: string
+  establecimientoId: string
+  empresaId: string
+  gestionNombre: string
+  rgFechaPlanificada: string
+  establecimientoNombre?: string
+  onClose: () => void
+  onSuccess: () => void
+}
+
+interface CategoriaObs {
+  id: string
+  nombre: string
+  nivel: number
+  color: string
+}
+
+interface ObsFoto {
+  key: number
+  descripcion: string
+  categoria_id: string
+  clasificacion_id: string
+  responsable_id: string | null
+  fecha_subsanacion: string
+}
+
+interface FotoItem {
+  key: number
+  /** Object URL del original (para mostrar/editar). */
+  previewUrl: string
+  /** Blob editado (PNG del editor). Si null, se usa el File original al enviar. */
+  editedBlob: Blob | null
+  /** File original seleccionado. */
+  originalFile: File
+  observaciones: ObsFoto[]
+}
+
+type Periodicidad = 'semanal' | 'mensual' | 'periodico'
+type WizardStep = 'upload' | 'periodo' | 'editor' | 'guardar' | 'listo'
+
+const STEP_ORDER: WizardStep[] = ['upload', 'periodo', 'editor', 'guardar']
+const STEP_LABELS: Record<WizardStep, string> = {
+  upload: 'Fotos',
+  periodo: 'Período',
+  editor: 'Editar',
+  guardar: 'Evaluar',
+  listo: 'Listo',
+}
+
+export function ReporteFotograficoEjecutorModal({
+  registroId,
+  gestionEstablecimientoId,
+  establecimientoId,
+  empresaId: _empresaId,
+  gestionNombre,
+  rgFechaPlanificada,
+  establecimientoNombre,
+  onClose,
+  onSuccess,
+}: ReporteFotograficoEjecutorModalProps) {
+  const [step, setStep] = useState<WizardStep>('upload')
+  const [fotos, setFotos] = useState<FotoItem[]>([])
+  const [fotoActiva, setFotoActiva] = useState(0)
+
+  const [periodicidad, setPeriodicidad] = useState<Periodicidad>('mensual')
+  const [periodoDesde, setPeriodoDesde] = useState('')
+  const [periodoHasta, setPeriodoHasta] = useState('')
+  const [comentario, setComentario] = useState('')
+
+  const [clasificaciones, setClasificaciones] = useState<{ id: string; nombre: string }[]>([])
+  const [categorias, setCategorias] = useState<CategoriaObs[]>([])
+
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [pdfSignedUrl, setPdfSignedUrl] = useState<string | null>(null)
+  const [linkCopiado, setLinkCopiado] = useState(false)
+
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const fotoKeyRef = useRef(0)
+  const obsKeyRef = useRef(0)
+  const reviewRef = useRef<HTMLDivElement>(null)
+
+  const inputCls = 'w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500'
+
+  // Catálogos de observaciones (el responsable usa PersonaSelector, que carga su
+  // propia lista de personas de la consultora).
+  useEffect(() => {
+    const supabase = createClient()
+    supabase
+      .from('observaciones_clasificaciones')
+      .select('id, nombre')
+      .eq('is_active', true)
+      .order('nombre')
+      .then(({ data }) => setClasificaciones((data ?? []) as { id: string; nombre: string }[]))
+    supabase
+      .from('observaciones_categorias')
+      .select('id, nombre, nivel, color')
+      .eq('is_active', true)
+      .order('nivel')
+      .then(({ data }) => setCategorias((data ?? []) as CategoriaObs[]))
+  }, [establecimientoId])
+
+  // Liberar object URLs al desmontar.
+  useEffect(() => {
+    return () => {
+      for (const f of fotos) URL.revokeObjectURL(f.previewUrl)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // ── Upload helpers ────────────────────────────────────────────────
+  function addFiles(files: FileList | File[]) {
+    const arr = Array.from(files).filter(f => f.type.startsWith('image/'))
+    if (arr.length === 0) return
+    setFotos(prev => [
+      ...prev,
+      ...arr.map(f => ({
+        key: fotoKeyRef.current++,
+        previewUrl: URL.createObjectURL(f),
+        editedBlob: null,
+        originalFile: f,
+        observaciones: [],
+      })),
+    ])
+  }
+
+  function handleFileInput(e: React.ChangeEvent<HTMLInputElement>) {
+    if (e.target.files) addFiles(e.target.files)
+    e.target.value = ''
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault()
+    if (e.dataTransfer.files) addFiles(e.dataTransfer.files)
+  }
+
+  function removeFoto(key: number) {
+    setFotos(prev => {
+      const target = prev.find(f => f.key === key)
+      if (target) URL.revokeObjectURL(target.previewUrl)
+      const next = prev.filter(f => f.key !== key)
+      setFotoActiva(a => Math.min(a, Math.max(0, next.length - 1)))
+      return next
+    })
+  }
+
+  function moveFoto(idx: number, dir: -1 | 1) {
+    setFotos(prev => {
+      const next = [...prev]
+      const target = idx + dir
+      if (target < 0 || target >= next.length) return prev
+      ;[next[idx], next[target]] = [next[target], next[idx]]
+      return next
+    })
+  }
+
+  // ── Editor / observaciones por foto ───────────────────────────────
+  function setEditedBlob(fotoKey: number, blob: Blob) {
+    setFotos(prev => prev.map(f => (f.key === fotoKey ? { ...f, editedBlob: blob } : f)))
+  }
+
+  function addObsFromEditor(fotoKey: number, descripcion: string, categoriaId: string) {
+    setFotos(prev => prev.map(f => f.key === fotoKey ? {
+      ...f,
+      observaciones: [...f.observaciones, {
+        key: obsKeyRef.current++,
+        descripcion,
+        categoria_id: categoriaId,
+        clasificacion_id: '',
+        responsable_id: null,
+        fecha_subsanacion: '',
+      }],
+    } : f))
+  }
+
+  function addObsManual(fotoKey: number) {
+    setFotos(prev => prev.map(f => f.key === fotoKey ? {
+      ...f,
+      observaciones: [...f.observaciones, {
+        key: obsKeyRef.current++,
+        descripcion: '',
+        categoria_id: '',
+        clasificacion_id: '',
+        responsable_id: null,
+        fecha_subsanacion: '',
+      }],
+    } : f))
+  }
+
+  function updateObs(fotoKey: number, obsKey: number, upd: Partial<ObsFoto>) {
+    setFotos(prev => prev.map(f => f.key === fotoKey ? {
+      ...f,
+      observaciones: f.observaciones.map(o => o.key === obsKey ? { ...o, ...upd } : o),
+    } : f))
+  }
+
+  function removeObs(fotoKey: number, obsKey: number) {
+    setFotos(prev => prev.map(f => f.key === fotoKey ? {
+      ...f,
+      observaciones: f.observaciones.filter(o => o.key !== obsKey),
+    } : f))
+  }
+
+  // ── Navegación wizard ─────────────────────────────────────────────
+  function goNext() {
+    setError(null)
+    if (step === 'upload') {
+      if (fotos.length === 0) { setError('Subí al menos una foto.'); return }
+      setStep('periodo')
+    } else if (step === 'periodo') {
+      setStep('editor')
+      setFotoActiva(0)
+    } else if (step === 'editor') {
+      setStep('guardar')
+    }
+  }
+
+  function goBack() {
+    setError(null)
+    const idx = STEP_ORDER.indexOf(step)
+    if (idx > 0) setStep(STEP_ORDER[idx - 1])
+  }
+
+  // Aseguramos un Blob por foto: si no se editó, rasterizamos el original a PNG.
+  async function fileToBlob(file: File): Promise<Blob> {
+    return new Promise<Blob>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => {
+        const img = new Image()
+        img.onload = () => {
+          const canvas = document.createElement('canvas')
+          canvas.width = img.naturalWidth
+          canvas.height = img.naturalHeight
+          const ctx = canvas.getContext('2d')
+          if (!ctx) { reject(new Error('No se pudo crear el contexto 2d')); return }
+          ctx.drawImage(img, 0, 0)
+          canvas.toBlob(b => (b ? resolve(b) : reject(new Error('toBlob falló'))), 'image/png')
+        }
+        img.onerror = () => reject(new Error('No se pudo leer la imagen'))
+        img.src = reader.result as string
+      }
+      reader.onerror = () => reject(new Error('No se pudo leer el archivo'))
+      reader.readAsDataURL(file)
+    })
+  }
+
+  // ── Evaluar y guardar ─────────────────────────────────────────────
+  async function handleGuardar() {
+    setError(null)
+
+    // Validación: toda observación con descripción debe tener categoría.
+    const sinCat = fotos.some(f => f.observaciones.some(o => o.descripcion.trim() && !o.categoria_id))
+    if (sinCat) {
+      setError('Toda observación requiere una categoría.')
+      return
+    }
+
+    setSaving(true)
+    try {
+      // 1. PDF del nodo de review (html2canvas + jsPDF, multipágina).
+      let pdfB64 = ''
+      const node = reviewRef.current
+      if (node) {
+        const { default: html2canvas } = await import('html2canvas')
+        const { default: jsPDF } = await import('jspdf')
+        const canvas = await html2canvas(node, { scale: 2, useCORS: true, logging: false })
+        const imgData = canvas.toDataURL('image/jpeg', 0.95)
+        const pdf = new jsPDF('p', 'mm', 'a4')
+        const pdfW = pdf.internal.pageSize.getWidth()
+        const pageH = pdf.internal.pageSize.getHeight()
+        const pdfH = (canvas.height * pdfW) / canvas.width
+        let heightLeft = pdfH
+        let position = 0
+        pdf.addImage(imgData, 'JPEG', 0, position, pdfW, pdfH)
+        heightLeft -= pageH
+        while (heightLeft > 0) {
+          position = heightLeft - pdfH
+          pdf.addPage()
+          pdf.addImage(imgData, 'JPEG', 0, position, pdfW, pdfH)
+          heightLeft -= pageH
+        }
+        pdfB64 = pdf.output('datauristring')
+      }
+
+      // 2. Armamos el FormData.
+      const fd = new FormData()
+      fd.set('registro_id', registroId)
+      fd.set('establecimiento_id', establecimientoId)
+      fd.set('gestion_establecimiento_id', gestionEstablecimientoId)
+      fd.set('rg_fecha_planificada', rgFechaPlanificada)
+      fd.set('periodicidad', periodicidad)
+      fd.set('periodo_desde', periodoDesde)
+      fd.set('periodo_hasta', periodoHasta)
+      fd.set('comentario', comentario)
+      fd.set('pdf', pdfB64)
+      fd.set('foto_count', String(fotos.length))
+
+      const observaciones: Array<{
+        foto_index: number
+        descripcion: string
+        categoria_id: string
+        clasificacion_id: string
+        responsable_id: string | null
+        fecha_subsanacion: string
+      }> = []
+
+      for (let i = 0; i < fotos.length; i++) {
+        const f = fotos[i]
+        const blob = f.editedBlob ?? (await fileToBlob(f.originalFile))
+        fd.set(`foto-${i}`, new File([blob], `foto-${i}.png`, { type: 'image/png' }))
+        for (const o of f.observaciones) {
+          if (!o.descripcion.trim()) continue
+          observaciones.push({
+            foto_index: i,
+            descripcion: o.descripcion,
+            categoria_id: o.categoria_id,
+            clasificacion_id: o.clasificacion_id,
+            responsable_id: o.responsable_id,
+            fecha_subsanacion: o.fecha_subsanacion,
+          })
+        }
+      }
+      fd.set('observaciones', JSON.stringify(observaciones))
+
+      const result = await crearReporteFotograficoEjecucion(fd)
+      if (!result.success) { setError(result.error); setSaving(false); return }
+
+      setPdfSignedUrl(result.data.pdfSignedUrl)
+      setStep('listo')
+      onSuccess()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error inesperado al generar el reporte')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // ── Post-guardado: descargar / compartir ──────────────────────────
+  async function handleDescargar() {
+    if (!pdfSignedUrl) return
+    try {
+      const resp = await fetch(pdfSignedUrl)
+      const blob = await resp.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${gestionNombre || 'reporte-fotografico'}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch {
+      // Si el fetch falla (CORS, expirado), abrimos en una pestaña como fallback.
+      window.open(pdfSignedUrl, '_blank', 'noopener,noreferrer')
+    }
+  }
+
+  function handleCopiarLink() {
+    if (!pdfSignedUrl) return
+    navigator.clipboard.writeText(pdfSignedUrl).then(() => {
+      setLinkCopiado(true)
+      setTimeout(() => setLinkCopiado(false), 2000)
+    }).catch(() => {})
+  }
+
+  const waText = encodeURIComponent(
+    `Reporte Fotográfico — ${establecimientoNombre ?? gestionNombre}\n${pdfSignedUrl ?? ''}`
+  )
+  const waHref = `https://wa.me/?text=${waText}`
+
+  const totalObs = fotos.reduce((acc, f) => acc + f.observaciones.filter(o => o.descripcion.trim()).length, 0)
+  const stepIdx = STEP_ORDER.indexOf(step)
+
+  // URL del PNG editado por foto (o el original si no se editó), para el nodo de
+  // review. Memoizado por (key, blob) para no crear un object URL nuevo en cada
+  // render; se revocan los blobs editados al cambiar/desmontar.
+  const reviewUrls = useMemo(() => {
+    const map = new Map<number, string>()
+    for (const f of fotos) {
+      map.set(f.key, f.editedBlob ? URL.createObjectURL(f.editedBlob) : f.previewUrl)
+    }
+    return map
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fotos.map(f => `${f.key}:${f.editedBlob ? 'e' : 'o'}`).join('|')])
+
+  useEffect(() => {
+    return () => {
+      for (const f of fotos) {
+        const url = reviewUrls.get(f.key)
+        if (url && f.editedBlob) URL.revokeObjectURL(url)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reviewUrls])
+
+  // ── Render: post-guardado ─────────────────────────────────────────
+  if (step === 'listo') {
+    return (
+      <Modal open title="Reporte generado" onClose={onClose} size="full">
+        <div className="space-y-5 py-2">
+          <div className="text-center py-4">
+            <div className="w-14 h-14 bg-success-bg rounded-full flex items-center justify-center mx-auto mb-3">
+              <CheckCircle size={28} className="text-success" />
+            </div>
+            <h3 className="font-semibold text-text-primary text-base">{gestionNombre}</h3>
+            <p className="text-sm text-text-secondary mt-1">
+              Reporte guardado · {fotos.length} {fotos.length === 1 ? 'foto' : 'fotos'}
+              {totalObs > 0 && ` · ${totalObs} ${totalObs === 1 ? 'observación' : 'observaciones'}`}
+            </p>
+          </div>
+
+          {pdfSignedUrl ? (
+            <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3 justify-center">
+              <Button type="button" onClick={handleDescargar}>
+                <Download size={14} className="inline mr-1.5" />
+                Descargar PDF
+              </Button>
+              <Button type="button" variant="secondary" onClick={handleCopiarLink}>
+                <Copy size={14} className="inline mr-1.5" />
+                {linkCopiado ? 'Link copiado' : 'Copiar link'}
+              </Button>
+              <a
+                href={waHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-1.5 px-4 min-h-[40px] rounded-lg text-sm font-medium border border-border-default text-text-secondary hover:bg-surface-base transition-colors"
+              >
+                <Share2 size={14} />
+                Compartir por WhatsApp
+              </a>
+            </div>
+          ) : (
+            <p className="text-sm text-amber-600 text-center">
+              El reporte se guardó, pero no se pudo generar el link de descarga del PDF.
+            </p>
+          )}
+
+          <div className="flex justify-center pt-2">
+            <Button type="button" variant="secondary" onClick={onClose}>Cerrar</Button>
+          </div>
+        </div>
+      </Modal>
+    )
+  }
+
+  const fotoEnEdicion = fotos[fotoActiva]
+
+  return (
+    <Modal open title={`Reporte Fotográfico — ${gestionNombre}`} onClose={onClose} size="full">
+      <div className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
+        {/* Stepper */}
+        <div className="flex items-center gap-1.5 text-xs">
+          {STEP_ORDER.map((s, i) => (
+            <div key={s} className="flex items-center gap-1.5">
+              <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[11px] font-semibold ${
+                i === stepIdx ? 'bg-sig-500 text-white' : i < stepIdx ? 'bg-success text-white' : 'bg-surface-sunken text-text-tertiary'
+              }`}>
+                {i + 1}
+              </span>
+              <span className={i === stepIdx ? 'font-semibold text-text-primary' : 'text-text-tertiary'}>
+                {STEP_LABELS[s]}
+              </span>
+              {i < STEP_ORDER.length - 1 && <ChevronRight size={12} className="text-text-tertiary" />}
+            </div>
+          ))}
+        </div>
+
+        {error && (
+          <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-3 py-2">{error}</div>
+        )}
+
+        {/* ── PASO 1: UPLOAD ──────────────────────────────────────── */}
+        {step === 'upload' && (
+          <div className="space-y-3">
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={e => e.preventDefault()}
+              onDrop={handleDrop}
+              className="border-2 border-dashed border-border-default rounded-xl p-8 text-center cursor-pointer hover:border-sig-400 hover:bg-sig-50/30 transition-colors"
+            >
+              <Camera size={36} strokeWidth={1.5} className="mx-auto text-text-tertiary mb-2" />
+              <p className="text-sm font-medium text-text-secondary">Hacé clic o arrastrá las fotos acá</p>
+              <p className="text-xs text-text-tertiary mt-1">Podés subir varias a la vez · En el celular se abre la cámara</p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                multiple
+                onChange={handleFileInput}
+                className="hidden"
+              />
+            </div>
+
+            {fotos.length > 0 && (
+              <div>
+                <p className="text-xs text-text-secondary mb-2">{fotos.length} {fotos.length === 1 ? 'foto' : 'fotos'} · ordená con las flechas</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                  {fotos.map((f, idx) => (
+                    <div key={f.key} className="relative group border border-border-subtle rounded-lg overflow-hidden bg-gray-50">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={f.previewUrl} alt={`Foto ${idx + 1}`} className="w-full h-28 object-cover" />
+                      <span className="absolute top-1 left-1 bg-black/60 text-white text-[10px] rounded px-1.5 py-0.5">{idx + 1}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeFoto(f.key)}
+                        title="Quitar"
+                        className="absolute top-1 right-1 bg-black/60 text-white rounded p-1 hover:bg-danger"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                      <div className="absolute bottom-1 right-1 flex gap-1">
+                        <button
+                          type="button"
+                          onClick={() => moveFoto(idx, -1)}
+                          disabled={idx === 0}
+                          title="Mover antes"
+                          className="bg-black/60 text-white rounded p-1 hover:bg-sig-500 disabled:opacity-30"
+                        >
+                          <ChevronUp size={12} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moveFoto(idx, 1)}
+                          disabled={idx === fotos.length - 1}
+                          title="Mover después"
+                          className="bg-black/60 text-white rounded p-1 hover:bg-sig-500 disabled:opacity-30"
+                        >
+                          <ChevronDown size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── PASO 2: PERÍODO ─────────────────────────────────────── */}
+        {step === 'periodo' && (
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-text-secondary block mb-1">Periodicidad</label>
+              <select
+                value={periodicidad}
+                onChange={e => setPeriodicidad(e.target.value as Periodicidad)}
+                className={inputCls}
+              >
+                <option value="semanal">Semanal</option>
+                <option value="mensual">Mensual</option>
+                <option value="periodico">Periódico</option>
+              </select>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium text-text-secondary block mb-1">Período desde</label>
+                <input type="date" value={periodoDesde} onChange={e => setPeriodoDesde(e.target.value)} className={inputCls} />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-text-secondary block mb-1">Período hasta</label>
+                <input type="date" value={periodoHasta} onChange={e => setPeriodoHasta(e.target.value)} className={inputCls} />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-text-secondary block mb-1">Comentario</label>
+              <textarea
+                value={comentario}
+                onChange={e => setComentario(e.target.value)}
+                rows={3}
+                placeholder="Comentario general del reporte…"
+                className={`${inputCls} resize-none`}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* ── PASO 3: EDITOR FOTO-POR-FOTO ────────────────────────── */}
+        {step === 'editor' && fotoEnEdicion && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setFotoActiva(a => Math.max(0, a - 1))}
+                disabled={fotoActiva === 0}
+                className="inline-flex items-center gap-1 text-sm text-sig-600 hover:text-sig-700 disabled:opacity-30"
+              >
+                <ChevronLeft size={16} /> Anterior
+              </button>
+              <span className="text-sm font-medium text-text-secondary">
+                Foto {fotoActiva + 1} de {fotos.length}
+              </span>
+              <button
+                type="button"
+                onClick={() => setFotoActiva(a => Math.min(fotos.length - 1, a + 1))}
+                disabled={fotoActiva === fotos.length - 1}
+                className="inline-flex items-center gap-1 text-sm text-sig-600 hover:text-sig-700 disabled:opacity-30"
+              >
+                Siguiente <ChevronRight size={16} />
+              </button>
+            </div>
+
+            {/* Editor de la foto activa. key fuerza remount al cambiar de foto. */}
+            <PhotoCanvasEditor
+              key={fotoEnEdicion.key}
+              imageUrl={fotoEnEdicion.previewUrl}
+              onImageChange={blob => setEditedBlob(fotoEnEdicion.key, blob)}
+              enableObservacionTool
+              categorias={categorias}
+              onObservacionAdded={(desc, catId) => addObsFromEditor(fotoEnEdicion.key, desc, catId)}
+            />
+
+            {/* Observaciones de esta foto */}
+            <div className="border-t border-border-subtle pt-3">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-sm font-semibold text-text-secondary">
+                  Observaciones de esta foto
+                  {fotoEnEdicion.observaciones.length > 0 && (
+                    <span className="ml-2 text-xs font-normal text-text-tertiary">({fotoEnEdicion.observaciones.length})</span>
+                  )}
+                </h4>
+                <button
+                  type="button"
+                  onClick={() => addObsManual(fotoEnEdicion.key)}
+                  className="text-xs text-sig-600 hover:text-sig-700 font-medium"
+                >
+                  + Agregar
+                </button>
+              </div>
+
+              {fotoEnEdicion.observaciones.length === 0 ? (
+                <p className="text-xs text-text-tertiary text-center py-2 border border-dashed border-border-subtle rounded-lg">
+                  Sin observaciones. Usá la herramienta sobre la foto o &quot;+ Agregar&quot;.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {fotoEnEdicion.observaciones.map((obs, idx) => (
+                    <div key={obs.key} className="border border-border-subtle rounded-lg p-3 space-y-2 bg-gray-50/50">
+                      <div className="flex items-start gap-2">
+                        <span className="text-xs text-text-tertiary mt-2 w-4 shrink-0">{idx + 1}.</span>
+                        <textarea
+                          value={obs.descripcion}
+                          onChange={e => updateObs(fotoEnEdicion.key, obs.key, { descripcion: e.target.value })}
+                          placeholder="Descripción de la observación…"
+                          rows={2}
+                          className="flex-1 border border-border-default rounded-lg px-3 py-1.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sig-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeObs(fotoEnEdicion.key, obs.key)}
+                          className="text-text-tertiary hover:text-red-400 mt-1 shrink-0"
+                          title="Eliminar observación"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 pl-0 sm:pl-6">
+                        <div>
+                          <label className="text-xs text-text-secondary block mb-0.5">
+                            Categoría <span className="text-danger">*</span>
+                          </label>
+                          <select
+                            required
+                            value={obs.categoria_id}
+                            onChange={e => updateObs(fotoEnEdicion.key, obs.key, { categoria_id: e.target.value })}
+                            className="w-full border border-border-default rounded-lg px-2 py-1.5 text-xs bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500"
+                            style={obs.categoria_id ? { backgroundColor: categorias.find(c => c.id === obs.categoria_id)?.color, color: '#000' } : {}}
+                          >
+                            <option value="">Seleccionar…</option>
+                            {categorias.map(c => (
+                              <option key={c.id} value={c.id}>{c.nombre}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-xs text-text-secondary block mb-0.5">Tipo de riesgo</label>
+                          <select
+                            value={obs.clasificacion_id}
+                            onChange={e => updateObs(fotoEnEdicion.key, obs.key, { clasificacion_id: e.target.value })}
+                            className="w-full border border-border-default rounded-lg px-2 py-1.5 text-xs bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500"
+                          >
+                            <option value="">Sin clasificar</option>
+                            {clasificaciones.map(c => (
+                              <option key={c.id} value={c.id}>{c.nombre}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-xs text-text-secondary block mb-0.5">Responsable</label>
+                          <PersonaSelector
+                            name={`responsable-${fotoEnEdicion.key}-${obs.key}`}
+                            value={obs.responsable_id}
+                            onChange={v => updateObs(fotoEnEdicion.key, obs.key, { responsable_id: v })}
+                            placeholder="Buscar responsable…"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-text-secondary block mb-0.5">Fecha subsanación</label>
+                          <input
+                            type="date"
+                            value={obs.fecha_subsanacion}
+                            onChange={e => updateObs(fotoEnEdicion.key, obs.key, { fecha_subsanacion: e.target.value })}
+                            className="w-full border border-border-default rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-sig-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── PASO 4: EVALUAR Y GUARDAR (nodo de review = PDF) ────── */}
+        {step === 'guardar' && (
+          <div className="space-y-3">
+            <p className="text-sm text-text-secondary">
+              Revisá el reporte antes de generarlo. Esto crea el PDF, guarda las fotos y suma las
+              observaciones al Seguimiento.
+            </p>
+
+            <div ref={reviewRef} className="bg-white space-y-4" style={{ padding: '8mm' }}>
+              {/* Portada */}
+              <div className="text-center border-b border-gray-300 pb-4 mb-2">
+                <h1 className="text-xl font-bold text-gray-900">{gestionNombre}</h1>
+                {establecimientoNombre && (
+                  <p className="text-sm text-gray-700 mt-1">{establecimientoNombre}</p>
+                )}
+                <p className="text-xs text-gray-500 mt-1">
+                  Periodicidad: {periodicidad}
+                  {periodoDesde && ` · Desde ${periodoDesde}`}
+                  {periodoHasta && ` · Hasta ${periodoHasta}`}
+                </p>
+                <p className="text-xs text-gray-500">Fecha planificada: {rgFechaPlanificada}</p>
+                {comentario && <p className="text-sm text-gray-700 italic mt-2">{comentario}</p>}
+              </div>
+
+              {/* 1 bloque por foto */}
+              {fotos.map((f, idx) => {
+                const obsValidas = f.observaciones.filter(o => o.descripcion.trim())
+                const editedUrl = reviewUrls.get(f.key) ?? f.previewUrl
+                return (
+                  <div key={f.key} className="break-inside-avoid">
+                    <h2 className="text-sm font-bold text-gray-900 mb-2">Foto {idx + 1}</h2>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={editedUrl} alt={`Foto ${idx + 1}`} className="w-full max-h-80 object-contain rounded-lg border border-gray-200" />
+                    {obsValidas.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        {obsValidas.map((o, oi) => {
+                          const cat = categorias.find(c => c.id === o.categoria_id)
+                          return (
+                            <p key={o.key} className="text-xs text-gray-700">
+                              <strong>Obs {oi + 1}:</strong> {o.descripcion}
+                              {cat && <span className="ml-1 text-gray-500">[{cat.nombre}]</span>}
+                            </p>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Footer: navegación */}
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 pt-2 pb-2 sticky bottom-0 bg-surface-base border-t border-border-subtle">
+          {step !== 'upload' && (
+            <Button type="button" variant="secondary" onClick={goBack} disabled={saving}>
+              <ChevronLeft size={14} className="inline mr-1" /> Atrás
+            </Button>
+          )}
+          {step !== 'guardar' ? (
+            <Button type="button" onClick={goNext}>
+              Continuar <ChevronRight size={14} className="inline ml-1" />
+            </Button>
+          ) : (
+            <Button type="button" onClick={handleGuardar} disabled={saving}>
+              {saving ? (
+                <><Loader2 size={14} className="inline mr-1.5 animate-spin" /> Generando…</>
+              ) : 'Evaluar y guardar'}
+            </Button>
+          )}
+          <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>Cancelar</Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
