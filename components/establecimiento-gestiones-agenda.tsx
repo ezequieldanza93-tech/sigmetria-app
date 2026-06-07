@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useActionState, useTransition, useRef, Fragment, memo, useMemo } from 'react'
+import { useState, useEffect, useTransition, useRef, Fragment, memo, useMemo } from 'react'
 import { useQueryClient, useQuery } from '@tanstack/react-query'
 
 import { createClient } from '@/lib/supabase/client'
@@ -22,12 +22,13 @@ import {
 import dynamic from 'next/dynamic'
 import { createPortal } from 'react-dom'
 import {
-  planificarGestionNueva,
+  planificarGestionNuevaLote,
   planificarGestionLote,
   createGrupoGestion,
   createCategoriaGestion,
 } from '@/lib/actions/gestion-establecimiento'
 import { ejecutarGestion, crearObservaciones } from '@/lib/actions/registro-gestion'
+import { PersonaSelector } from '@/components/persona-selector'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 
 
@@ -303,10 +304,12 @@ function PreviewMesGroup({
   )
 }
 
-// ─── BibliotecaForm ────────────────────────────────────────────────────────────
-// Generador de planificación EN LOTE: elegí gestión, año, meses y un patrón de
-// repetición → genera todas las ocurrencias con fechas editables y guarda en un
-// solo submit (planificarGestionLote).
+// ─── GeneradorFechasLote ───────────────────────────────────────────────────────
+// Sub-componente reutilizable: selector de año + grilla de 12 meses + patrón de
+// repetición + preview editable agrupado por mes. Expone las fechas finales
+// (YYYY-MM-DD ordenadas) y el primer mes con ocurrencias vía onChange. Lo usan
+// BibliotecaForm (planificar gestión existente) y NuevaGestionForm (crear +
+// planificar) para no duplicar la lógica del generador.
 //
 // NOTA: cambiar año/meses/patrón/cantidad REGENERA el preview y pisa cualquier
 // edición manual de fechas. Las ediciones individuales (input date / quitar)
@@ -316,24 +319,12 @@ interface OcurrenciaDraft {
   fecha: string // YYYY-MM-DD
 }
 
-function BibliotecaForm({
-  establecimientoId,
-  todasGestiones,
-  onClose,
-  onSuccess,
-  onSwitchToNueva,
+function GeneradorFechasLote({
+  onChange,
 }: {
-  establecimientoId: string
-  todasGestiones: Gestion[]
-  onClose: () => void
-  onSuccess: (month?: number) => void
-  onSwitchToNueva: () => void
+  /** Notifica al padre las fechas válidas (ordenadas) y el primer mes (0-indexed). */
+  onChange: (fechas: string[], primerMes?: number) => void
 }) {
-  const [filterGrupo, setFilterGrupo] = useState('')
-  const [filterCat, setFilterCat] = useState('')
-  const [gestionId, setGestionId] = useState('')
-  const [notas, setNotas] = useState('')
-
   // Período
   const anioActual = new Date().getFullYear()
   const [anio, setAnio] = useState(anioActual)
@@ -347,34 +338,6 @@ function BibliotecaForm({
   // Preview editable
   const [ocurrencias, setOcurrencias] = useState<OcurrenciaDraft[]>([])
   const idRef = useRef(0)
-
-  // Submit
-  const [isPending, startTransition] = useTransition()
-  const [error, setError] = useState<string | null>(null)
-
-  const grupos = Array.from(
-    new Set(todasGestiones.map(g => g.gestiones_categorias?.gestiones_grupos?.nombre ?? '').filter(Boolean))
-  ).sort()
-
-  const cats = Array.from(
-    new Set(
-      todasGestiones
-        .filter(g => !filterGrupo || g.gestiones_categorias?.gestiones_grupos?.nombre === filterGrupo)
-        .map(g => g.gestiones_categorias?.nombre ?? '')
-        .filter(Boolean)
-    )
-  ).sort()
-
-  const gestionesFiltradas = todasGestiones.filter(g => {
-    if (filterGrupo && g.gestiones_categorias?.gestiones_grupos?.nombre !== filterGrupo) return false
-    if (filterCat && g.gestiones_categorias?.nombre !== filterCat) return false
-    return true
-  })
-
-  function handleGrupoChange(v: string) {
-    setFilterGrupo(v)
-    setFilterCat('')
-  }
 
   function toggleMes(m: number) {
     setMeses(prev => {
@@ -412,8 +375,9 @@ function BibliotecaForm({
 
   // Agrupar ocurrencias por mes para el preview (orden cronológico).
   const fechasValidas = ocurrencias.filter(o => /^\d{4}-\d{2}-\d{2}$/.test(o.fecha))
+  const fechasOrdenadas = [...fechasValidas].sort((a, b) => a.fecha.localeCompare(b.fecha))
   const grupoPorMes = new Map<number, OcurrenciaDraft[]>()
-  for (const o of [...fechasValidas].sort((a, b) => a.fecha.localeCompare(b.fecha))) {
+  for (const o of fechasOrdenadas) {
     const m = Number(o.fecha.slice(5, 7)) - 1
     const arr = grupoPorMes.get(m) ?? []
     arr.push(o)
@@ -422,67 +386,18 @@ function BibliotecaForm({
   const mesesPreview = Array.from(grupoPorMes.keys()).sort((a, b) => a - b)
   const total = fechasValidas.length
 
-  function handleSubmit() {
-    if (!gestionId || total === 0) return
-    setError(null)
-    const fechasFinales = fechasValidas.map(o => o.fecha)
-    startTransition(async () => {
-      const res = await planificarGestionLote(gestionId, establecimientoId, fechasFinales, null, notas.trim() || null)
-      if (!res.success) {
-        setError(res.error)
-        return
-      }
-      const primerMes = mesesPreview.length > 0 ? mesesPreview[0] : undefined
-      onSuccess(primerMes)
-    })
-  }
-
-  const selectCls = 'w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500'
+  // Notificamos al padre las fechas finales cada vez que cambian.
+  const fechasFinalesKey = fechasOrdenadas.map(o => o.fecha).join(',')
+  const onChangeRef = useRef(onChange)
+  onChangeRef.current = onChange
+  useEffect(() => {
+    const fechas = fechasFinalesKey ? fechasFinalesKey.split(',') : []
+    const primerMes = fechas.length > 0 ? Number(fechas[0].slice(5, 7)) - 1 : undefined
+    onChangeRef.current(fechas, primerMes)
+  }, [fechasFinalesKey])
 
   return (
-    <div className="space-y-4">
-      {error && (
-        <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-3 py-2">
-          {error}
-        </div>
-      )}
-
-      {todasGestiones.length === 0 ? (
-        <div className="bg-amber-50 border border-amber-200 text-amber-700 text-sm rounded-lg px-3 py-2">
-          No se encontraron gestiones en la librería.
-        </div>
-      ) : (
-        <>
-          {/* Filtros + select de gestión */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="text-sm font-medium text-text-secondary block mb-1">Grupo</label>
-              <select value={filterGrupo} onChange={e => handleGrupoChange(e.target.value)} className={selectCls}>
-                <option value="">Todos</option>
-                {grupos.map(g => <option key={g} value={g}>{g}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-text-secondary block mb-1">Categoría</label>
-              <select value={filterCat} onChange={e => setFilterCat(e.target.value)} className={selectCls}>
-                <option value="">Todas</option>
-                {cats.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="text-sm font-medium text-text-secondary block mb-1">Gestión *</label>
-            <select value={gestionId} onChange={e => setGestionId(e.target.value)} required className={selectCls}>
-              <option value="">Seleccionar gestión…</option>
-              {gestionesFiltradas.map(g => (
-                <option key={g.id} value={g.id}>{g.nombre}</option>
-              ))}
-            </select>
-          </div>
-        </>
-      )}
-
+    <>
       {/* PERÍODO */}
       <div className="border-t border-border-subtle pt-3 space-y-2">
         <div className="flex items-center justify-between">
@@ -605,6 +520,144 @@ function BibliotecaForm({
           )}
         </div>
       )}
+    </>
+  )
+}
+
+// ─── BibliotecaForm ────────────────────────────────────────────────────────────
+// Generador de planificación EN LOTE: elegí gestión, año, meses y un patrón de
+// repetición (vía GeneradorFechasLote) + un responsable OPCIONAL → genera todas
+// las ocurrencias con fechas editables y guarda en un solo submit
+// (planificarGestionLote).
+function BibliotecaForm({
+  establecimientoId,
+  todasGestiones,
+  onClose,
+  onSuccess,
+  onSwitchToNueva,
+}: {
+  establecimientoId: string
+  todasGestiones: Gestion[]
+  onClose: () => void
+  onSuccess: (month?: number) => void
+  onSwitchToNueva: () => void
+}) {
+  const [filterGrupo, setFilterGrupo] = useState('')
+  const [filterCat, setFilterCat] = useState('')
+  const [gestionId, setGestionId] = useState('')
+  const [notas, setNotas] = useState('')
+  const [responsableId, setResponsableId] = useState<string | null>(null)
+
+  // Fechas finales + primer mes provistas por el generador.
+  const [fechas, setFechas] = useState<string[]>([])
+  const [primerMes, setPrimerMes] = useState<number | undefined>(undefined)
+  const handleFechasChange = (f: string[], pm?: number) => { setFechas(f); setPrimerMes(pm) }
+
+  // Submit
+  const [isPending, startTransition] = useTransition()
+  const [error, setError] = useState<string | null>(null)
+
+  const grupos = Array.from(
+    new Set(todasGestiones.map(g => g.gestiones_categorias?.gestiones_grupos?.nombre ?? '').filter(Boolean))
+  ).sort()
+
+  const cats = Array.from(
+    new Set(
+      todasGestiones
+        .filter(g => !filterGrupo || g.gestiones_categorias?.gestiones_grupos?.nombre === filterGrupo)
+        .map(g => g.gestiones_categorias?.nombre ?? '')
+        .filter(Boolean)
+    )
+  ).sort()
+
+  const gestionesFiltradas = todasGestiones.filter(g => {
+    if (filterGrupo && g.gestiones_categorias?.gestiones_grupos?.nombre !== filterGrupo) return false
+    if (filterCat && g.gestiones_categorias?.nombre !== filterCat) return false
+    return true
+  })
+
+  function handleGrupoChange(v: string) {
+    setFilterGrupo(v)
+    setFilterCat('')
+  }
+
+  const total = fechas.length
+
+  function handleSubmit() {
+    if (!gestionId || total === 0) return
+    setError(null)
+    startTransition(async () => {
+      const res = await planificarGestionLote(gestionId, establecimientoId, fechas, responsableId, notas.trim() || null)
+      if (!res.success) {
+        setError(res.error)
+        return
+      }
+      onSuccess(primerMes)
+    })
+  }
+
+  const selectCls = 'w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500'
+
+  return (
+    <div className="space-y-4">
+      {error && (
+        <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-3 py-2">
+          {error}
+        </div>
+      )}
+
+      {todasGestiones.length === 0 ? (
+        <div className="bg-amber-50 border border-amber-200 text-amber-700 text-sm rounded-lg px-3 py-2">
+          No se encontraron gestiones en la librería.
+        </div>
+      ) : (
+        <>
+          {/* Filtros + select de gestión */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-sm font-medium text-text-secondary block mb-1">Grupo</label>
+              <select value={filterGrupo} onChange={e => handleGrupoChange(e.target.value)} className={selectCls}>
+                <option value="">Todos</option>
+                {grupos.map(g => <option key={g} value={g}>{g}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-text-secondary block mb-1">Categoría</label>
+              <select value={filterCat} onChange={e => setFilterCat(e.target.value)} className={selectCls}>
+                <option value="">Todas</option>
+                {cats.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-text-secondary block mb-1">Gestión *</label>
+            <select value={gestionId} onChange={e => setGestionId(e.target.value)} required className={selectCls}>
+              <option value="">Seleccionar gestión…</option>
+              {gestionesFiltradas.map(g => (
+                <option key={g.id} value={g.id}>{g.nombre}</option>
+              ))}
+            </select>
+          </div>
+        </>
+      )}
+
+      {/* PERÍODO + PATRÓN + PREVIEW (generador reutilizable) */}
+      <GeneradorFechasLote onChange={handleFechasChange} />
+
+      {/* RESPONSABLE (opcional) */}
+      <div className="border-t border-border-subtle pt-3">
+        <label className="text-sm font-medium text-text-secondary block mb-1">
+          Responsable
+          <span className="text-xs text-text-tertiary font-normal ml-1">(opcional)</span>
+        </label>
+        <PersonaSelector
+          name="responsable_id_lote"
+          value={responsableId}
+          onChange={setResponsableId}
+          placeholder="Buscar responsable…"
+        />
+      </div>
 
       {/* NOTAS */}
       <div>
@@ -642,6 +695,9 @@ function BibliotecaForm({
 }
 
 // ─── NuevaGestionForm ──────────────────────────────────────────────────────────
+// Define una gestión nueva (nombre + grupo/categoría con creación inline) y la
+// planifica EN LOTE usando el mismo GeneradorFechasLote que BibliotecaForm:
+// al guardar crea la gestión y planifica TODAS las fechas (planificarGestionNuevaLote).
 function NuevaGestionForm({
   establecimientoId,
   grupos: gruposProp,
@@ -655,27 +711,28 @@ function NuevaGestionForm({
   onClose: () => void
   onSuccess: (month?: number) => void
 }) {
-  const [state, formAction, pending] = useActionState(planificarGestionNueva, null)
   const [localGrupos, setLocalGrupos] = useState(gruposProp)
   const [localCategorias, setLocalCategorias] = useState(categoriasProp)
   const [selectedGrupoId, setSelectedGrupoId] = useState('')
   const [selectedCatId, setSelectedCatId] = useState('')
-  const [fechaValue, setFechaValue] = useState('')
+  const [nombre, setNombre] = useState('')
+  const [notas, setNotas] = useState('')
+  const [responsableId, setResponsableId] = useState<string | null>(null)
+
+  // Fechas finales + primer mes provistas por el generador.
+  const [fechas, setFechas] = useState<string[]>([])
+  const [primerMes, setPrimerMes] = useState<number | undefined>(undefined)
+  const handleFechasChange = (f: string[], pm?: number) => { setFechas(f); setPrimerMes(pm) }
 
   const [creandoGrupo, setCreandoGrupo] = useState(false)
   const [errorGrupo, setErrorGrupo] = useState('')
   const [creandoCat, setCreandoCat] = useState(false)
   const [errorCat, setErrorCat] = useState('')
 
-  const onSuccessRef = useRef(onSuccess)
-  onSuccessRef.current = onSuccess
-  useEffect(() => {
-    if (state?.success) {
-      const month = fechaValue ? new Date(fechaValue + 'T00:00:00').getMonth() : undefined
-      onSuccessRef.current(month)
-    }
-    }, [state, fechaValue, onSuccess])
- 
+  const [isPending, startTransition] = useTransition()
+  const [error, setError] = useState<string | null>(null)
+  const [showValidation, setShowValidation] = useState(false)
+
   const catsFiltradas = selectedGrupoId
     ? localCategorias.filter(c => c.grupo_id === selectedGrupoId)
     : []
@@ -721,18 +778,37 @@ function NuevaGestionForm({
     }
   }
 
+  const total = fechas.length
+
+  function handleSubmit() {
+    setShowValidation(true)
+    setError(null)
+    if (!nombre.trim() || !selectedCatId || total === 0) return
+    startTransition(async () => {
+      const res = await planificarGestionNuevaLote(
+        nombre.trim(),
+        selectedCatId,
+        establecimientoId,
+        fechas,
+        responsableId,
+        notas.trim() || null,
+      )
+      if (!res.success) {
+        setError(res.error)
+        return
+      }
+      onSuccess(primerMes)
+    })
+  }
+
   const selectCls = 'w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500'
   const selectErrCls = 'border-red-300 bg-danger-bg'
-  const hasSubmitError = state && !state.success
 
   return (
-    <form action={formAction} className="space-y-4">
-      <input type="hidden" name="establecimiento_id" value={establecimientoId} />
-      <input type="hidden" name="categoria_id" value={selectedCatId} />
-
-      {hasSubmitError && (
+    <div className="space-y-4">
+      {error && (
         <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-3 py-2">
-          {state.error}
+          {error}
         </div>
       )}
 
@@ -740,10 +816,11 @@ function NuevaGestionForm({
         <label className="text-sm font-medium text-text-secondary block mb-1">Nombre de la gestión *</label>
         <input
           type="text"
-          name="gestion_nombre"
+          value={nombre}
+          onChange={e => setNombre(e.target.value)}
           required
           placeholder="Ej: Simulacro de Evacuación"
-          className={selectCls}
+          className={`${selectCls} ${showValidation && !nombre.trim() ? selectErrCls : ''}`}
         />
         <p className="text-xs text-text-tertiary mt-1">Se agregará a la librería global de gestiones.</p>
       </div>
@@ -754,13 +831,13 @@ function NuevaGestionForm({
         <select
           value={selectedGrupoId}
           onChange={handleGrupoSelect}
-          className={`${selectCls} ${hasSubmitError && !selectedGrupoId ? selectErrCls : ''}`}
+          className={`${selectCls} ${showValidation && !selectedGrupoId ? selectErrCls : ''}`}
         >
           <option value="">Seleccionar grupo…</option>
           {localGrupos.map(g => <option key={g.id} value={g.id}>{g.nombre}</option>)}
           <option value="__create__">+ Crear nuevo grupo</option>
         </select>
-        {hasSubmitError && !selectedGrupoId && (
+        {showValidation && !selectedGrupoId && (
           <p className="text-xs text-danger mt-1">Grupo requerido</p>
         )}
         {creandoGrupo && (
@@ -780,13 +857,13 @@ function NuevaGestionForm({
           value={selectedCatId}
           onChange={handleCatSelect}
           disabled={!selectedGrupoId}
-          className={`${selectCls} disabled:opacity-50 disabled:cursor-not-allowed ${hasSubmitError && !selectedCatId ? selectErrCls : ''}`}
+          className={`${selectCls} disabled:opacity-50 disabled:cursor-not-allowed ${showValidation && !selectedCatId ? selectErrCls : ''}`}
         >
           <option value="">{selectedGrupoId ? 'Seleccionar categoría…' : 'Seleccioná un grupo primero'}</option>
           {catsFiltradas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
           {selectedGrupoId && <option value="__create__">+ Crear nueva categoría</option>}
         </select>
-        {hasSubmitError && !selectedCatId && (
+        {showValidation && !selectedCatId && (
           <p className="text-xs text-danger mt-1">Categoría requerida</p>
         )}
         {creandoCat && (
@@ -799,30 +876,41 @@ function NuevaGestionForm({
         )}
       </div>
 
-      <div>
-        <label className="text-sm font-medium text-text-secondary block mb-1">Fecha Planificada *</label>
-        <input
-          type="date"
-          name="fecha_planificada"
-          required
-          value={fechaValue}
-          onChange={e => setFechaValue(e.target.value)}
-          className={selectCls}
+      {/* PERÍODO + PATRÓN + PREVIEW (generador reutilizable) */}
+      <GeneradorFechasLote onChange={handleFechasChange} />
+
+      {/* RESPONSABLE (opcional) */}
+      <div className="border-t border-border-subtle pt-3">
+        <label className="text-sm font-medium text-text-secondary block mb-1">
+          Responsable
+          <span className="text-xs text-text-tertiary font-normal ml-1">(opcional)</span>
+        </label>
+        <PersonaSelector
+          name="responsable_id_nueva"
+          value={responsableId}
+          onChange={setResponsableId}
+          placeholder="Buscar responsable…"
         />
       </div>
 
+      {/* NOTAS */}
       <div>
         <label className="text-sm font-medium text-text-secondary block mb-1">Notas</label>
         <textarea
-          name="notas"
+          value={notas}
+          onChange={e => setNotas(e.target.value)}
           rows={2}
           className={`${selectCls} resize-none`}
         />
       </div>
 
       <div className="flex gap-3 pt-1">
-        <Button type="submit" disabled={pending || !selectedCatId}>
-          {pending ? 'Guardando…' : 'Crear y planificar'}
+        <Button
+          type="button"
+          onClick={handleSubmit}
+          disabled={isPending || !nombre.trim() || !selectedCatId || total === 0}
+        >
+          {isPending ? 'Guardando…' : `Crear y planificar ${total} ${total === 1 ? 'gestión' : 'gestiones'}`}
         </Button>
         <Button type="button" variant="secondary" onClick={onClose}>Cancelar</Button>
       </div>
@@ -832,7 +920,7 @@ function NuevaGestionForm({
           {!selectedGrupoId ? 'Seleccioná un Grupo y una Categoría para continuar.' : 'Seleccioná una Categoría para continuar.'}
         </p>
       )}
-    </form>
+    </div>
   )
 }
 

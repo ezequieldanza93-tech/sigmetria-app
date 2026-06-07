@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { getDocTiposAplicables } from '@/lib/actions/aplicabilidad'
+import { getDocTiposAplicables, getDocTiposAplicablesEmpresa } from '@/lib/actions/aplicabilidad'
 import type {
   Establecimiento,
   SectorEstablecimiento,
@@ -202,7 +202,9 @@ function buildFilas(
  * establecimiento, con su último cargado y su historial.
  *
  * - Catálogo: documentos_tipos con is_active AND periodicidad IS NOT NULL,
- *   por categoria_legajo (lista fija, misma para todos — sin reglas por ahora).
+ *   por categoria_legajo, filtrado por reglas de aplicabilidad
+ *   (documentos_tipos_reglas) con FALLBACK a la lista curada completa cuando
+ *   faltan datos maestros o el filtro deja la categoría vacía.
  * - Vigentes: instancias de empresas/establecimientos/personas_documentos con
  *   deleted_at IS NULL, ordenadas por created_at DESC. El "último" = la primera.
  * - Las 2 categorías de persona se agrupan por persona.
@@ -231,6 +233,26 @@ export async function getLegajoEsperados(
     catalogoPorCat.set(t.categoria_legajo, arr)
   }
   const cat = (c: CategoriaLegajo): TipoEsperado[] => catalogoPorCat.get(c) ?? []
+
+  // 1.b) Sets de tipos APLICABLES por reglas de aplicabilidad (dimensiones).
+  //  - establecimiento: getDocTiposAplicables (tipo_id + tipo_establecimiento_id)
+  //  - empresa / empresa_por_establecimiento: getDocTiposAplicablesEmpresa (rubro_id + rubro_empresa_id)
+  // Las categorías persona* NO tienen dimensión en las reglas → no se filtran.
+  const [aplicablesEstabList, aplicablesEmpresaIds] = await Promise.all([
+    getDocTiposAplicables(establecimientoId),
+    getDocTiposAplicablesEmpresa(empresaId),
+  ])
+  const setEstab = new Set(aplicablesEstabList.map(dt => dt.id))
+  const setEmpresa = new Set(aplicablesEmpresaIds)
+
+  // Filtra el catálogo curado de una categoría por el set aplicable.
+  // FALLBACK: si no hay datos maestros (set vacío) o el filtro deja la categoría
+  // vacía, devuelve el catálogo curado completo (no romper UX con maestros incompletos).
+  const filtrarConFallback = (catalogo: TipoEsperado[], aplicables: Set<string>): TipoEsperado[] => {
+    if (aplicables.size === 0) return catalogo
+    const filtrado = catalogo.filter(t => aplicables.has(t.id))
+    return filtrado.length > 0 ? filtrado : catalogo
+  }
 
   // 2) Personas del establecimiento (para las categorías persona*). Traemos
   //    también su directorio para poder listar a TODAS (incluso sin docs → pendiente).
@@ -344,9 +366,9 @@ export async function getLegajoEsperados(
   }
 
   return {
-    empresa: buildFilas(cat('empresa'), empresaPorTipo),
-    empresa_por_establecimiento: buildFilas(cat('empresa_por_establecimiento'), empresaEstabPorTipo),
-    establecimiento: buildFilas(cat('establecimiento'), estabPorTipo),
+    empresa: buildFilas(filtrarConFallback(cat('empresa'), setEmpresa), empresaPorTipo),
+    empresa_por_establecimiento: buildFilas(filtrarConFallback(cat('empresa_por_establecimiento'), setEmpresa), empresaEstabPorTipo),
+    establecimiento: buildFilas(filtrarConFallback(cat('establecimiento'), setEstab), estabPorTipo),
     persona: buildPersonas(cat('persona'), e => e.persona_legajo),
     persona_por_establecimiento: buildPersonas(cat('persona_por_establecimiento'), e => e.persona_estab),
   }

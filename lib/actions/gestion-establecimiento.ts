@@ -274,3 +274,75 @@ export async function planificarGestionLote(
 
   return { success: true, data: { count: registros.length } }
 }
+
+/**
+ * Planificación en lote de una gestión NUEVA: crea la gestión en la librería,
+ * la vincula al establecimiento (get-or-create gestiones_establecimientos) e
+ * inserta una fila por cada fecha provista (espejo de planificarGestionNueva,
+ * pero N fechas en vez de una). NO setea `secuencia`: la auto-numera el trigger.
+ */
+export async function planificarGestionNuevaLote(
+  gestionNombre: string,
+  categoriaId: string,
+  establecimientoId: string,
+  fechas: string[],
+  responsableId: string | null,
+  notas: string | null,
+): Promise<ActionResult<{ count: number }>> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'No autenticado' }
+
+  const nombre = gestionNombre.trim()
+  if (!nombre) return { success: false, error: 'Nombre de gestión requerido' }
+  if (!categoriaId) return { success: false, error: 'Categoría requerida' }
+  if (!establecimientoId) return { success: false, error: 'Establecimiento requerido' }
+
+  if (!Array.isArray(fechas) || fechas.length === 0) {
+    return { success: false, error: 'Seleccioná al menos una fecha' }
+  }
+  if (fechas.length > MAX_FECHAS_LOTE) {
+    return { success: false, error: `Demasiadas ocurrencias (máximo ${MAX_FECHAS_LOTE})` }
+  }
+  if (!fechas.every(f => typeof f === 'string' && FECHA_RE.test(f))) {
+    return { success: false, error: 'Hay fechas con formato inválido' }
+  }
+
+  // Crear la gestión en la librería global.
+  const { data: nuevaGestion, error: gestionError } = await supabase
+    .from('gestiones')
+    .insert({ nombre, categoria_id: categoriaId })
+    .select('id')
+    .single()
+
+  if (gestionError) {
+    if (gestionError.code === '23505') return { success: false, error: 'Ya existe una gestión con ese nombre en la librería' }
+    return { success: false, error: gestionError.message }
+  }
+
+  // Get or create gestion_establecimiento (mismo patrón que planificarGestionNueva).
+  const { data: ge, error: upsertError } = await supabase
+    .from('gestiones_establecimientos')
+    .upsert(
+      { gestion_id: nuevaGestion.id, establecimiento_id: establecimientoId },
+      { onConflict: 'gestion_id,establecimiento_id', ignoreDuplicates: true }
+    )
+    .select('id')
+    .single()
+  if (upsertError) return { success: false, error: upsertError.message }
+  if (!ge) return { success: false, error: 'No se pudo vincular la gestión al establecimiento' }
+
+  const registros = fechas.map(fecha => ({
+    gestion_establecimiento_id: ge.id,
+    fecha_planificada: fecha,
+    responsable_id: responsableId || null,
+    notas: notas || null,
+  }))
+
+  const { error: insertError } = await supabase.from('gestiones_registros').insert(registros)
+  if (insertError) return { success: false, error: insertError.message }
+
+  revalidatePath(`/dashboard/empresas/[id]/establecimientos/${establecimientoId}`, 'page')
+
+  return { success: true, data: { count: registros.length } }
+}
