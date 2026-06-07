@@ -25,10 +25,14 @@ const COLORS = [
 const BRUSH_SIZES = [4, 8, 12, 16] as const
 const TEXT_SIZES = [24, 36, 48, 60] as const
 const DEFAULT_COLOR = '#000000'
-const DEFAULT_BRUSH = 8
-const DEFAULT_TEXT_SIZE = 48
+const DEFAULT_BRUSH = 4
+const DEFAULT_TEXT_SIZE = 24
+// Stamps de un click: tilde verde / cruz roja, fondo transparente.
+const STAMP_SIZE = 48
+const STAMP_VERDE = '#16A34A'
+const STAMP_ROJO = '#DC2626'
 
-type Tool = 'select' | 'pen' | 'text' | 'rect' | 'circle' | 'arrow' | 'observacion'
+type Tool = 'select' | 'pen' | 'text' | 'rect' | 'circle' | 'arrow' | 'observacion' | 'tilde' | 'cruz'
 
 interface ObservacionCategoria {
   id: string
@@ -276,6 +280,21 @@ export default function PhotoCanvasEditorInner({
     } else if (tool === 'observacion' && enableObservacionTool) {
       setObsPos({ x: pos.x, y: pos.y })
       setPickingObsCat(true)
+    } else if (tool === 'tilde' || tool === 'cruz') {
+      // Stamp de un click: ✓ verde o ✗ roja, fondo transparente. Movible/escalable.
+      const id = genId()
+      pushHistory([
+        ...objects,
+        {
+          type: 'text', id, x: pos.x, y: pos.y,
+          text: tool === 'tilde' ? '✓' : '✗',
+          fontSize: STAMP_SIZE,
+          fill: tool === 'tilde' ? STAMP_VERDE : STAMP_ROJO,
+          background: null,
+        },
+      ])
+      setSelectedId(id)
+      setTool('select')
     }
   }
 
@@ -437,13 +456,15 @@ export default function PhotoCanvasEditorInner({
       <div className="flex items-center gap-2 flex-wrap">
         <div className="flex items-center gap-1 mr-2">
           <span className="text-xs text-text-secondary mr-1">Herramienta:</span>
+          {enableObservacionTool && toolBtn('observacion', '📝 Escribir observación')}
+          {toolBtn('arrow', '→ Flecha')}
+          {toolBtn('tilde', '✓ Tilde')}
+          {toolBtn('cruz', '✗ Cruz')}
           {toolBtn('select', 'Seleccionar')}
           {toolBtn('pen', 'Lápiz')}
           {toolBtn('text', 'Texto')}
           {toolBtn('rect', '▢ Cuadrado')}
           {toolBtn('circle', '○ Círculo')}
-          {toolBtn('arrow', '→ Flecha')}
-          {enableObservacionTool && toolBtn('observacion', '📝 Escribir observación')}
         </div>
 
         <div className="flex items-center gap-1 mr-2">
