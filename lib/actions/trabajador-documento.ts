@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { uploadAsset } from '@/lib/storage/upload'
 import type { ActionResult } from '@/lib/types'
 
 const MAX_ARCHIVOS = 5
@@ -106,20 +107,35 @@ export async function createTrabajadorDocumento(
       .single()
 
     if (docInserted) {
-      // NOTA (deuda técnica preexistente): matriculas.certificado_url es
-      // polimórfica — matricula.ts la escribe con path del bucket `certificados`
-      // y acá se escribe con path del bucket `documentos`. La lectura
-      // (trabajador-modal) asume `certificados`. Para datos creados por esta vía
-      // la resolución de URL puede apuntar al bucket equivocado.
-      // TODO: agregar columna `certificado_bucket` o unificar el bucket.
-      await supabase.from('matriculas').upsert({
+      // El certificado de la matrícula vive en el bucket `certificados` (igual que
+      // createMatricula y que la lectura en trabajador-modal: useSignedUrls('certificados')).
+      // Antes se guardaba el path del bucket `documentos` -> la signed URL se firmaba
+      // contra el bucket equivocado y el archivo no abría. Subimos a `certificados` y
+      // guardamos ESE path; si no se puede subir, certificado_url queda null (mejor que
+      // un link roto) y el documento sigue disponible vía personas_documentos.
+      const { data: mat } = await supabase.from('matriculas').upsert({
         persona_id: trabajadorId,
         numero: formData.get('numero_matricula') as string || '—',
         fecha_emision: fechaEmision || null,
         fecha_vencimiento: fechaVencimiento || null,
-        certificado_url: archivoUrls[0],
         activa: true,
       }, { onConflict: 'persona_id,numero', ignoreDuplicates: false })
+        .select('id')
+        .single()
+
+      if (mat && files.length > 0) {
+        const up = await uploadAsset({
+          bucket: 'certificados',
+          consultoraId,
+          entityType: 'matricula',
+          entityId: mat.id,
+          kind: 'certificado',
+          file: files[0],
+        })
+        if (up.ok) {
+          await supabase.from('matriculas').update({ certificado_url: up.path }).eq('id', mat.id)
+        }
+      }
     }
   }
 
