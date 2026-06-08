@@ -1,0 +1,1101 @@
+'use client'
+
+import { useState, useEffect, useMemo } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import {
+  crearMedicionRuido,
+  getInstrumentosRuido,
+  getSectoresYPuestos,
+  type InstrumentoRuido,
+  type SectorConPuestos,
+} from '@/lib/actions/medicion-ruido'
+import {
+  tiempoMaxPermitido,
+  dosis,
+  dosisPct,
+  cumpleDosis,
+  cumplePico,
+} from '@/lib/medicion-ruido/calculos'
+import { Modal } from '@/components/ui/modal'
+import { Button } from '@/components/ui/button'
+import {
+  Building2, FileText, Plus, Trash2,
+  ChevronLeft, ChevronRight, CheckCircle, XCircle, Loader2,
+  Info, ArrowRight, Check, Sparkles, MapPin, Gauge, AlertTriangle,
+} from 'lucide-react'
+
+// ── Props ────────────────────────────────────────────────────────────
+interface MedicionRuidoEjecutorModalProps {
+  establecimientoId: string
+  registroId: string
+  rgFechaPlanificada: string
+  gestionEstablecimientoId?: string
+  onClose: () => void
+  onSuccess: () => void
+}
+
+// ── Modelo de estado del wizard ───────────────────────────────────────
+
+type TipoPuesto = 'puesto' | 'puesto_tipo' | 'movil'
+type CaracteristicasRuido = 'continuo' | 'intermitente' | 'impacto'
+type Metodo = 'dosimetro' | 'sonometro'
+
+interface PeriodoState {
+  key: number
+  laeq_dba: string
+  tiempo_exposicion_horas: string
+}
+
+interface PuntoState {
+  key: number
+  sector_id: string
+  puesto_id: string
+  tipo_puesto: TipoPuesto
+  caracteristicas_ruido: CaracteristicasRuido
+  te_horas: string
+  tiempo_integracion: string
+  lcpico_dbc: string
+  metodo: Metodo
+  /** Método dosímetro: dosis leída del equipo en %. */
+  dosis_pct: string
+  /** Método sonómetro: períodos LAeq + tiempo de exposición. */
+  periodos: PeriodoState[]
+  info_adicional: string
+}
+
+type WizardStep = 'datos' | 'puntos' | 'analisis' | 'revisar' | 'listo'
+
+const STEP_ORDER: WizardStep[] = ['datos', 'puntos', 'analisis', 'revisar']
+const STEP_LABELS: Record<WizardStep, string> = {
+  datos: 'Datos',
+  puntos: 'Puntos',
+  analisis: 'Análisis',
+  revisar: 'Revisar',
+  listo: 'Listo',
+}
+
+// ── Contexto read-only del establecimiento / empresa ──────────────────
+interface EstablecimientoCtx {
+  nombre: string
+  domicilio: string | null
+  codigo_postal: string | null
+  localidad: string | null
+  provincia: string | null
+  empresa_razon_social: string | null
+  empresa_cuit: string | null
+  empresa_domicilio: string | null
+}
+
+let puntoKeySeq = 0
+let periodoKeySeq = 0
+
+function nuevoPeriodo(): PeriodoState {
+  return { key: periodoKeySeq++, laeq_dba: '', tiempo_exposicion_horas: '' }
+}
+
+function nuevoPunto(): PuntoState {
+  return {
+    key: puntoKeySeq++,
+    sector_id: '',
+    puesto_id: '',
+    tipo_puesto: 'puesto',
+    caracteristicas_ruido: 'continuo',
+    te_horas: '',
+    tiempo_integracion: '',
+    lcpico_dbc: '',
+    metodo: 'sonometro',
+    dosis_pct: '',
+    periodos: [nuevoPeriodo()],
+    info_adicional: '',
+  }
+}
+
+// Helper de parseo numérico tolerante (campo de texto → number | null).
+function num(v: string): number | null {
+  if (v.trim() === '') return null
+  const n = Number(v)
+  return Number.isFinite(n) ? n : null
+}
+
+/** Períodos válidos (LAeq + tiempo cargados y numéricos) de un punto. */
+function periodosValidos(punto: PuntoState): Array<{ laeq_dba: number; tiempo_exposicion_horas: number }> {
+  const out: Array<{ laeq_dba: number; tiempo_exposicion_horas: number }> = []
+  for (const p of punto.periodos) {
+    const laeq = num(p.laeq_dba)
+    const te = num(p.tiempo_exposicion_horas)
+    if (laeq == null || te == null) continue
+    out.push({ laeq_dba: laeq, tiempo_exposicion_horas: te })
+  }
+  return out
+}
+
+/** Resumen de cumplimiento de un punto (para vivo + análisis). */
+interface PuntoResumen {
+  k: number
+  /** Dosis acumulada (adimensional, D=1 ⇔ 100%). null si no hay datos suficientes. */
+  D: number | null
+  /** Dosis en %. */
+  pct: number | null
+  /** Cumple dosis (D ≤ 1). null si no hay datos. */
+  dosisOk: boolean | null
+  /** Cumple pico (Lcpico ≤ 140 dBC). */
+  picoOk: boolean
+  /** Tiene datos cargados (períodos válidos o dosis_pct). */
+  tieneDatos: boolean
+}
+
+function resumenPunto(punto: PuntoState): PuntoResumen {
+  const lcpico = num(punto.lcpico_dbc)
+  const picoOk = cumplePico(lcpico)
+
+  if (punto.metodo === 'dosimetro') {
+    const pctRaw = num(punto.dosis_pct)
+    if (pctRaw == null) {
+      return { k: 0, D: null, pct: null, dosisOk: null, picoOk, tieneDatos: false }
+    }
+    const D = pctRaw / 100
+    return { k: 0, D, pct: pctRaw, dosisOk: cumpleDosis(D), picoOk, tieneDatos: true }
+  }
+
+  // Método sonómetro: dosis a partir de los períodos.
+  const periodos = periodosValidos(punto)
+  if (periodos.length === 0) {
+    return { k: 0, D: null, pct: null, dosisOk: null, picoOk, tieneDatos: false }
+  }
+  const D = dosis(periodos)
+  return { k: 0, D, pct: dosisPct(D), dosisOk: cumpleDosis(D), picoOk, tieneDatos: true }
+}
+
+export function MedicionRuidoEjecutorModal({
+  establecimientoId,
+  registroId,
+  rgFechaPlanificada,
+  gestionEstablecimientoId,
+  onClose,
+  onSuccess,
+}: MedicionRuidoEjecutorModalProps) {
+  const [step, setStep] = useState<WizardStep>('datos')
+  const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  // ── Catálogos ───────────────────────────────────────────────────────
+  const [estCtx, setEstCtx] = useState<EstablecimientoCtx | null>(null)
+  const [instrumentos, setInstrumentos] = useState<InstrumentoRuido[]>([])
+  const [sectores, setSectores] = useState<SectorConPuestos[]>([])
+  const [certificados, setCertificados] = useState<
+    Array<{ id: string; fecha_emision: string; fecha_vencimiento: string; activo: boolean }>
+  >([])
+
+  // ── Hoja 1: datos ───────────────────────────────────────────────────
+  const [instrumentoId, setInstrumentoId] = useState('')
+  const [certificadoId, setCertificadoId] = useState('')
+  const [firmante, setFirmante] = useState('')
+  const [fechaMedicion, setFechaMedicion] = useState(rgFechaPlanificada || '')
+  const [fechaMedicionFin, setFechaMedicionFin] = useState('')
+  const [horaInicio, setHoraInicio] = useState('')
+  const [horaFin, setHoraFin] = useState('')
+  const [jornadaHoras, setJornadaHoras] = useState('')
+  const [turnos, setTurnos] = useState('')
+  const [condicionesNormales, setCondicionesNormales] = useState('')
+  const [condicionesMedicion, setCondicionesMedicion] = useState('')
+  const [observacionesGenerales, setObservacionesGenerales] = useState('')
+  const [certificadoFile, setCertificadoFile] = useState<File | null>(null)
+  const [planoFile, setPlanoFile] = useState<File | null>(null)
+
+  // ── Hoja 2: puntos ──────────────────────────────────────────────────
+  const [puntos, setPuntos] = useState<PuntoState[]>([nuevoPunto()])
+  const [puntoActivo, setPuntoActivo] = useState(0)
+
+  // ── Hoja 3: análisis ────────────────────────────────────────────────
+  const [conclusiones, setConclusiones] = useState('')
+  const [recomendaciones, setRecomendaciones] = useState('')
+
+  const inputCls = 'w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500'
+  const labelCls = 'text-sm font-medium text-text-secondary block mb-1'
+
+  // ── Carga de catálogos ──────────────────────────────────────────────
+  useEffect(() => {
+    let activo = true
+    const supabase = createClient()
+
+    // Contexto del establecimiento + empresa (read-only, reusado de otras vistas).
+    supabase
+      .from('establecimientos')
+      .select('nombre, domicilio, codigo_postal, localidades!localidad_id(nombre, provincia), empresas!inner(razon_social, cuit, domicilio)')
+      .eq('id', establecimientoId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!activo || !data) return
+        const loc = data.localidades as { nombre: string | null; provincia: string | null } | { nombre: string | null; provincia: string | null }[] | null
+        const locRow = Array.isArray(loc) ? loc[0] : loc
+        const emp = data.empresas as { razon_social: string | null; cuit: string | null; domicilio: string | null } | { razon_social: string | null; cuit: string | null; domicilio: string | null }[] | null
+        const empRow = Array.isArray(emp) ? emp[0] : emp
+        setEstCtx({
+          nombre: (data.nombre as string) ?? '',
+          domicilio: (data.domicilio as string | null) ?? null,
+          codigo_postal: (data.codigo_postal as string | null) ?? null,
+          localidad: locRow?.nombre ?? null,
+          provincia: locRow?.provincia ?? null,
+          empresa_razon_social: empRow?.razon_social ?? null,
+          empresa_cuit: empRow?.cuit ?? null,
+          empresa_domicilio: empRow?.domicilio ?? null,
+        })
+      })
+
+    getInstrumentosRuido().then(r => { if (activo && r.success) setInstrumentos(r.data) })
+    getSectoresYPuestos(establecimientoId).then(r => { if (activo && r.success) setSectores(r.data) })
+
+    return () => { activo = false }
+  }, [establecimientoId])
+
+  // Certificados de calibración del instrumento elegido (asociación instrumento → cert).
+  useEffect(() => {
+    if (!instrumentoId) { setCertificados([]); setCertificadoId(''); return }
+    let activo = true
+    const supabase = createClient()
+    supabase
+      .from('certificados_calibracion')
+      .select('id, fecha_emision, fecha_vencimiento, activo')
+      .eq('instrumento_id', instrumentoId)
+      .order('fecha_emision', { ascending: false })
+      .then(({ data }) => {
+        if (!activo) return
+        const rows = (data ?? []) as Array<{ id: string; fecha_emision: string; fecha_vencimiento: string; activo: boolean }>
+        setCertificados(rows)
+        // Auto-seleccionar el certificado activo (o el más reciente) si hay uno solo.
+        const activoRow = rows.find(c => c.activo) ?? rows[0]
+        setCertificadoId(activoRow?.id ?? '')
+      })
+    return () => { activo = false }
+  }, [instrumentoId])
+
+  // ── Mutadores de puntos ─────────────────────────────────────────────
+  function updatePunto(key: number, patch: Partial<PuntoState>) {
+    setPuntos(prev => prev.map(p => (p.key === key ? { ...p, ...patch } : p)))
+  }
+
+  function addPunto() {
+    setPuntos(prev => {
+      const next = [...prev, nuevoPunto()]
+      setPuntoActivo(next.length - 1)
+      return next
+    })
+  }
+
+  function removePunto(key: number) {
+    setPuntos(prev => {
+      if (prev.length === 1) return prev // siempre queda al menos uno
+      const next = prev.filter(p => p.key !== key)
+      setPuntoActivo(a => Math.min(a, next.length - 1))
+      return next
+    })
+  }
+
+  // ── Mutadores de períodos (método sonómetro) ────────────────────────
+  function addPeriodo(puntoKey: number) {
+    setPuntos(prev => prev.map(p => p.key === puntoKey ? { ...p, periodos: [...p.periodos, nuevoPeriodo()] } : p))
+  }
+
+  function removePeriodo(puntoKey: number, periodoKey: number) {
+    setPuntos(prev => prev.map(p => {
+      if (p.key !== puntoKey) return p
+      if (p.periodos.length === 1) return p // siempre queda al menos uno
+      return { ...p, periodos: p.periodos.filter(per => per.key !== periodoKey) }
+    }))
+  }
+
+  function updatePeriodo(puntoKey: number, periodoKey: number, patch: Partial<PeriodoState>) {
+    setPuntos(prev => prev.map(p => {
+      if (p.key !== puntoKey) return p
+      return { ...p, periodos: p.periodos.map(per => per.key === periodoKey ? { ...per, ...patch } : per) }
+    }))
+  }
+
+  // ── Resúmenes derivados ─────────────────────────────────────────────
+  const resumenes = useMemo(() => puntos.map(resumenPunto), [puntos])
+
+  const totalesAnalisis = useMemo(() => {
+    let cumplen = 0, noCumplen = 0, conDatos = 0
+    for (const r of resumenes) {
+      if (!r.tieneDatos) continue
+      conDatos++
+      // Un punto "cumple" si pasa dosis Y pico.
+      const ok = (r.dosisOk ?? true) && r.picoOk
+      if (ok) cumplen++
+      else noCumplen++
+    }
+    return { cumplen, noCumplen, conDatos, total: puntos.length }
+  }, [resumenes, puntos.length])
+
+  // ── Gamificación: checks por hoja ───────────────────────────────────
+  interface Check { id: string; label: string; done: boolean; section: 1 | 2 | 3 }
+  const checks: Check[] = useMemo(() => {
+    const algunPuntoConDatos = puntos.some(p => resumenPunto(p).tieneDatos)
+    const algunPuntoConSector = puntos.some(p => p.sector_id)
+    return [
+      // Hoja 1
+      { id: 'instrumento', label: 'Elegí el instrumento usado', done: !!instrumentoId, section: 1 },
+      { id: 'profesional', label: 'Cargá el profesional firmante', done: !!firmante.trim(), section: 1 },
+      { id: 'fecha', label: 'Cargá la fecha de medición', done: !!fechaMedicion, section: 1 },
+      { id: 'horario', label: 'Cargá el horario (inicio/fin)', done: !!horaInicio && !!horaFin, section: 1 },
+      // Hoja 2
+      { id: 'sector', label: 'Asociá el punto a un sector', done: algunPuntoConSector, section: 2 },
+      { id: 'medicion', label: 'Cargá dosis o períodos del punto', done: algunPuntoConDatos, section: 2 },
+      // Hoja 3
+      { id: 'conclusiones', label: 'Redactá las conclusiones', done: !!conclusiones.trim(), section: 3 },
+      { id: 'recomendaciones', label: 'Redactá las recomendaciones', done: !!recomendaciones.trim(), section: 3 },
+    ]
+  }, [instrumentoId, firmante, fechaMedicion, horaInicio, horaFin, puntos, conclusiones, recomendaciones])
+
+  const doneCount = checks.filter(c => c.done).length
+  const totalChecks = checks.length || 1
+  const pct = Math.round((doneCount / totalChecks) * 100)
+  const proximoPaso = checks.find(c => !c.done)
+  const level = levelFromPercent(pct)
+
+  // ── Navegación ──────────────────────────────────────────────────────
+  function goNext() {
+    setError(null)
+    if (step === 'datos') {
+      // Mínimo de la hoja 1: instrumento + profesional + fecha.
+      if (!instrumentoId) { setError('Elegí el instrumento usado en la medición.'); return }
+      if (!firmante.trim()) { setError('Cargá el profesional firmante del protocolo.'); return }
+      if (!fechaMedicion) { setError('Cargá la fecha de medición.'); return }
+      setStep('puntos')
+    } else if (step === 'puntos') {
+      // Mínimo de la hoja 2: al menos un punto con datos cargados.
+      const algunoConDatos = puntos.some(p => resumenPunto(p).tieneDatos)
+      if (!algunoConDatos) { setError('Cargá al menos un punto con su dosis (dosímetro) o sus períodos (sonómetro).'); return }
+      setStep('analisis')
+    } else if (step === 'analisis') {
+      setStep('revisar')
+    }
+  }
+
+  function goBack() {
+    setError(null)
+    const idx = STEP_ORDER.indexOf(step)
+    if (idx > 0) setStep(STEP_ORDER[idx - 1])
+  }
+
+  // ── Guardar ─────────────────────────────────────────────────────────
+  async function handleGuardar() {
+    setError(null)
+    setSaving(true)
+    try {
+      const fd = new FormData()
+      fd.set('registro_id', registroId)
+      fd.set('rg_fecha_planificada', rgFechaPlanificada)
+      fd.set('establecimiento_id', establecimientoId)
+      if (gestionEstablecimientoId) fd.set('gestion_establecimiento_id', gestionEstablecimientoId)
+      if (instrumentoId) fd.set('instrumento_id', instrumentoId)
+      if (certificadoId) fd.set('certificado_id', certificadoId)
+      fd.set('firmante', firmante)
+      fd.set('fecha_medicion', fechaMedicion)
+      if (fechaMedicionFin) fd.set('fecha_medicion_fin', fechaMedicionFin)
+      fd.set('hora_inicio', horaInicio)
+      fd.set('hora_fin', horaFin)
+      fd.set('jornada_horas', jornadaHoras)
+      fd.set('turnos', turnos)
+      fd.set('condiciones_normales', condicionesNormales)
+      fd.set('condiciones_medicion', condicionesMedicion)
+      fd.set('conclusiones', conclusiones)
+      fd.set('recomendaciones', recomendaciones)
+      fd.set('observaciones', observacionesGenerales)
+      if (certificadoFile) fd.set('certificado', certificadoFile)
+      if (planoFile) fd.set('plano', planoFile)
+
+      // Puntos → contrato del server action. Cada punto lleva sus períodos
+      // (método sonómetro) o su dosis_pct (método dosímetro).
+      const puntosPayload = puntos.map((p, idx) => {
+        const r = resumenPunto(p)
+        const lcpico = p.caracteristicas_ruido === 'impacto' ? num(p.lcpico_dbc) : null
+        const esSonometro = p.metodo === 'sonometro'
+
+        // periodos.laeq_dba y tiempo_exposicion_horas son NOT NULL → solo mandamos
+        // períodos completos (válidos). En método dosímetro no se mandan períodos.
+        const periodos = esSonometro
+          ? periodosValidos(p).map((per, j) => ({
+              laeq_dba: per.laeq_dba,
+              tiempo_exposicion_horas: per.tiempo_exposicion_horas,
+              orden: j,
+            }))
+          : []
+
+        return {
+          sector_id: p.sector_id || null,
+          puesto_id: p.puesto_id || null,
+          tipo_puesto: p.tipo_puesto,
+          te_horas: num(p.te_horas),
+          tiempo_integracion: p.tiempo_integracion || null,
+          caracteristicas_ruido: p.caracteristicas_ruido,
+          lcpico_dbc: lcpico,
+          metodo: p.metodo,
+          dosis_pct: p.metodo === 'dosimetro' ? num(p.dosis_pct) : (r.pct ?? null),
+          laeq_dba: null,
+          // suma_fracciones = dosis acumulada D (método sonómetro).
+          suma_fracciones: esSonometro ? (r.D ?? null) : null,
+          cumple: r.tieneDatos ? ((r.dosisOk ?? true) && r.picoOk) : null,
+          info_adicional: p.info_adicional || null,
+          orden: idx,
+          periodos,
+        }
+      })
+      fd.set('puntos', JSON.stringify(puntosPayload))
+
+      const result = await crearMedicionRuido(fd)
+      if (!result.success) { setError(result.error); setSaving(false); return }
+
+      setStep('listo')
+      onSuccess()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error inesperado al guardar la medición')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const stepIdx = STEP_ORDER.indexOf(step)
+  const punto = puntos[puntoActivo]
+  const resumenActivo = punto ? resumenPunto(punto) : null
+  const sectorActivo = punto ? sectores.find(s => s.id === punto.sector_id) : undefined
+  const lcpicoActivo = punto ? num(punto.lcpico_dbc) : null
+
+  // ── Render: post-guardado ───────────────────────────────────────────
+  if (step === 'listo') {
+    return (
+      <Modal open title="Medición de ruido guardada" onClose={onClose} size="full">
+        <div className="space-y-5 py-2">
+          <div className="text-center py-4">
+            <div className="w-14 h-14 bg-success-bg rounded-full flex items-center justify-center mx-auto mb-3">
+              <CheckCircle size={28} className="text-success" />
+            </div>
+            <h3 className="font-semibold text-text-primary text-base">Protocolo registrado</h3>
+            <p className="text-sm text-text-secondary mt-1">
+              {puntos.length} {puntos.length === 1 ? 'punto medido' : 'puntos medidos'}
+              {totalesAnalisis.conDatos > 0 && (
+                <> · {totalesAnalisis.cumplen} cumplen · {totalesAnalisis.noCumplen} no cumplen</>
+              )}
+            </p>
+          </div>
+          <p className="text-xs text-text-tertiary text-center">
+            La descarga del PDF oficial estará disponible próximamente.
+          </p>
+          <div className="flex justify-center pt-2">
+            <Button type="button" variant="secondary" onClick={onClose}>Cerrar</Button>
+          </div>
+        </div>
+      </Modal>
+    )
+  }
+
+  return (
+    <Modal open title="Protocolo de Medición de Ruido" onClose={onClose} size="full">
+      <div className="space-y-4 max-h-[86vh] overflow-y-auto pr-1">
+        {/* ── Gamificación: anillo de progreso sticky ──────────────── */}
+        <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 bg-surface-base/90 backdrop-blur-md border-b border-border-subtle">
+          <div className="flex items-center gap-4">
+            <ProgressRing pct={pct} level={level} />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={`text-xs font-semibold uppercase tracking-wider ${level.color}`}>{level.label}</span>
+                <span className="text-xs text-text-tertiary">·</span>
+                <span className="text-xs text-text-tertiary tabular-nums">{doneCount}/{totalChecks} campos clave</span>
+              </div>
+              {proximoPaso ? (
+                <div className="flex items-center gap-1.5 mt-0.5 text-sm text-text-primary truncate">
+                  <ArrowRight size={13} className="text-sig-500 shrink-0" />
+                  <span className="text-text-tertiary">Próximo paso:</span>
+                  <span className="font-medium truncate">{proximoPaso.label}</span>
+                </div>
+              ) : (
+                <p className="mt-0.5 text-sm text-success font-medium flex items-center gap-1.5">
+                  <Sparkles size={14} /> Protocolo completo. Revisá y guardá.
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Stepper */}
+          <div className="flex items-center gap-1.5 text-xs mt-3 flex-wrap">
+            {STEP_ORDER.map((s, i) => (
+              <div key={s} className="flex items-center gap-1.5">
+                <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[11px] font-semibold ${
+                  i === stepIdx ? 'bg-sig-500 text-white' : i < stepIdx ? 'bg-success text-white' : 'bg-surface-sunken text-text-tertiary'
+                }`}>
+                  {i < stepIdx ? <Check size={12} /> : i + 1}
+                </span>
+                <span className={i === stepIdx ? 'font-semibold text-text-primary' : 'text-text-tertiary'}>
+                  {STEP_LABELS[s]}
+                </span>
+                {i < STEP_ORDER.length - 1 && <ChevronRight size={12} className="text-text-tertiary" />}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {error && (
+          <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-3 py-2">{error}</div>
+        )}
+
+        {/* ══ HOJA 1: DATOS ═══════════════════════════════════════════ */}
+        {step === 'datos' && (
+          <div className="space-y-5">
+            {/* Contexto read-only del establecimiento / empresa */}
+            <section className="rounded-xl border border-border-subtle bg-surface-elevated/40 p-4">
+              <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2 mb-3">
+                <Building2 size={16} className="text-sig-500" /> Establecimiento y empresa
+                <span className="text-xs font-normal text-text-tertiary">(datos reusados, solo lectura)</span>
+              </h3>
+              {estCtx ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2 text-sm">
+                  <ReadOnly label="Razón social" value={estCtx.empresa_razon_social} />
+                  <ReadOnly label="CUIT" value={estCtx.empresa_cuit} />
+                  <ReadOnly label="Establecimiento" value={estCtx.nombre} />
+                  <ReadOnly label="Domicilio" value={estCtx.domicilio ?? estCtx.empresa_domicilio} />
+                  <ReadOnly label="Localidad" value={estCtx.localidad} />
+                  <ReadOnly label="Provincia" value={estCtx.provincia} />
+                </div>
+              ) : (
+                <p className="text-xs text-text-tertiary flex items-center gap-2"><Loader2 size={14} className="animate-spin" /> Cargando datos…</p>
+              )}
+            </section>
+
+            {/* Instrumental + firmante */}
+            <section className="space-y-4">
+              <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2">
+                <Gauge size={16} className="text-sig-500" /> Instrumental y responsable
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className={labelCls}>Instrumento (sonómetro / dosímetro) <span className="text-danger">*</span></label>
+                  <select className={inputCls} value={instrumentoId} onChange={e => setInstrumentoId(e.target.value)}>
+                    <option value="">Seleccionar instrumento…</option>
+                    {instrumentos.map(i => (
+                      <option key={i.id} value={i.id}>
+                        {[i.marca, i.modelo].filter(Boolean).join(' ')}{i.tipo ? ` · ${i.tipo}` : ''}{i.numero_serie ? ` · N° ${i.numero_serie}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  {instrumentos.length === 0 && (
+                    <p className="text-xs text-text-tertiary mt-1">No hay sonómetros/dosímetros activos cargados.</p>
+                  )}
+                </div>
+                <div>
+                  <label className={labelCls}>Certificado de calibración</label>
+                  <select
+                    className={inputCls}
+                    value={certificadoId}
+                    onChange={e => setCertificadoId(e.target.value)}
+                    disabled={!instrumentoId}
+                  >
+                    <option value="">{instrumentoId ? 'Sin certificado asociado' : 'Elegí un instrumento primero'}</option>
+                    {certificados.map(c => (
+                      <option key={c.id} value={c.id}>
+                        Emitido {c.fecha_emision} · vence {c.fecha_vencimiento}{c.activo ? ' (activo)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="sm:col-span-2">
+                  <label className={labelCls}>Profesional firmante (nombre y matrícula) <span className="text-danger">*</span></label>
+                  <input
+                    type="text"
+                    className={inputCls}
+                    value={firmante}
+                    onChange={e => setFirmante(e.target.value)}
+                    placeholder="Ing. Juan Pérez — Mat. 1234"
+                  />
+                </div>
+              </div>
+            </section>
+
+            {/* Fecha, horario y jornada */}
+            <section className="space-y-4">
+              <h3 className="text-sm font-semibold text-text-primary">Fecha, horario y jornada</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className={labelCls}>Fecha de medición <span className="text-danger">*</span></label>
+                  <input type="date" className={inputCls} value={fechaMedicion} onChange={e => setFechaMedicion(e.target.value)} />
+                </div>
+                <div>
+                  <label className={labelCls}>Fecha de fin (si abarca varios días)</label>
+                  <input type="date" className={inputCls} value={fechaMedicionFin} onChange={e => setFechaMedicionFin(e.target.value)} />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                <div>
+                  <label className={labelCls}>Hora inicio</label>
+                  <input type="time" className={inputCls} value={horaInicio} onChange={e => setHoraInicio(e.target.value)} />
+                </div>
+                <div>
+                  <label className={labelCls}>Hora fin</label>
+                  <input type="time" className={inputCls} value={horaFin} onChange={e => setHoraFin(e.target.value)} />
+                </div>
+                <div>
+                  <label className={labelCls}>Jornada (horas)</label>
+                  <input type="number" className={inputCls} value={jornadaHoras} onChange={e => setJornadaHoras(e.target.value)} placeholder="Ej: 8" />
+                </div>
+                <div>
+                  <label className={labelCls}>Turnos</label>
+                  <input type="text" className={inputCls} value={turnos} onChange={e => setTurnos(e.target.value)} placeholder="Ej: mañana, tarde" />
+                </div>
+              </div>
+            </section>
+
+            {/* Condiciones */}
+            <section className="space-y-4">
+              <h3 className="text-sm font-semibold text-text-primary">Condiciones del relevamiento</h3>
+              <div>
+                <label className={labelCls}>Condiciones normales de trabajo</label>
+                <textarea className={`${inputCls} resize-none`} rows={2} value={condicionesNormales} onChange={e => setCondicionesNormales(e.target.value)} placeholder="Fuentes de ruido presentes y funcionamiento habitual del proceso…" />
+              </div>
+              <div>
+                <label className={labelCls}>Condiciones durante la medición</label>
+                <textarea className={`${inputCls} resize-none`} rows={2} value={condicionesMedicion} onChange={e => setCondicionesMedicion(e.target.value)} placeholder="Estado del proceso, maquinaria en marcha, novedades durante el relevamiento…" />
+              </div>
+            </section>
+
+            {/* Adjuntos + observaciones generales */}
+            <section className="space-y-4">
+              <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2">
+                <FileText size={16} className="text-sig-500" /> Adjuntos
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className={labelCls}>Certificado de calibración (archivo)</label>
+                  <input type="file" className={inputCls} accept=".pdf,image/*" onChange={e => setCertificadoFile(e.target.files?.[0] ?? null)} />
+                </div>
+                <div>
+                  <label className={labelCls}>Plano / croquis</label>
+                  <input type="file" className={inputCls} accept=".pdf,image/*" onChange={e => setPlanoFile(e.target.files?.[0] ?? null)} />
+                </div>
+              </div>
+              <div>
+                <label className={labelCls}>Observaciones generales</label>
+                <textarea className={`${inputCls} resize-none`} rows={2} value={observacionesGenerales} onChange={e => setObservacionesGenerales(e.target.value)} placeholder="Observaciones generales del protocolo…" />
+              </div>
+            </section>
+          </div>
+        )}
+
+        {/* ══ HOJA 2: PUNTOS ═════════════════════════════════════════ */}
+        {step === 'puntos' && punto && (
+          <div className="space-y-4">
+            {/* Selector de puntos */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {puntos.map((p, i) => {
+                const r = resumenes[i]
+                return (
+                  <button
+                    key={p.key}
+                    type="button"
+                    onClick={() => setPuntoActivo(i)}
+                    className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+                      i === puntoActivo ? 'border-sig-500 bg-sig-50/40 text-text-primary font-medium' : 'border-border-default text-text-secondary hover:bg-surface-elevated'
+                    }`}
+                  >
+                    <span>Punto {i + 1}</span>
+                    {r.tieneDatos && <Check size={13} className="text-success" />}
+                  </button>
+                )
+              })}
+              <button
+                type="button"
+                onClick={addPunto}
+                className="inline-flex items-center gap-1 rounded-lg border border-dashed border-sig-400 text-sig-600 px-3 py-1.5 text-sm hover:bg-sig-50/40"
+              >
+                <Plus size={14} /> Agregar punto
+              </button>
+            </div>
+
+            {/* Card del punto activo */}
+            <div className="rounded-xl border border-border-subtle p-4 sm:p-5 space-y-5">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2">
+                  <MapPin size={16} className="text-sig-500" /> Punto {puntoActivo + 1}
+                </h3>
+                {puntos.length > 1 && (
+                  <button type="button" onClick={() => removePunto(punto.key)} className="text-text-tertiary hover:text-danger inline-flex items-center gap-1 text-xs">
+                    <Trash2 size={14} /> Quitar punto
+                  </button>
+                )}
+              </div>
+
+              {/* Ubicación */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div>
+                  <label className={labelCls}>Sector</label>
+                  <select className={inputCls} value={punto.sector_id} onChange={e => updatePunto(punto.key, { sector_id: e.target.value, puesto_id: '' })}>
+                    <option value="">Seleccionar sector…</option>
+                    {sectores.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className={labelCls}>Puesto / sección</label>
+                  <select className={inputCls} value={punto.puesto_id} onChange={e => updatePunto(punto.key, { puesto_id: e.target.value })} disabled={!sectorActivo}>
+                    <option value="">{sectorActivo ? 'Seleccionar puesto…' : 'Elegí un sector primero'}</option>
+                    {(sectorActivo?.puestos ?? []).map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className={labelCls}>Tipo de puesto</label>
+                  <select className={inputCls} value={punto.tipo_puesto} onChange={e => updatePunto(punto.key, { tipo_puesto: e.target.value as TipoPuesto })}>
+                    <option value="puesto">Puesto</option>
+                    <option value="puesto_tipo">Puesto tipo</option>
+                    <option value="movil">Móvil</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Características del ruido + tiempos */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className={labelCls}>Características del ruido</label>
+                  <select className={inputCls} value={punto.caracteristicas_ruido} onChange={e => updatePunto(punto.key, { caracteristicas_ruido: e.target.value as CaracteristicasRuido })}>
+                    <option value="continuo">Continuo</option>
+                    <option value="intermitente">Intermitente</option>
+                    <option value="impacto">De impacto</option>
+                  </select>
+                </div>
+                <div>
+                  <label className={labelCls}>Tiempo de exposición (Te, horas)</label>
+                  <input type="number" className={inputCls} value={punto.te_horas} onChange={e => updatePunto(punto.key, { te_horas: e.target.value })} placeholder="Ej: 8" />
+                </div>
+                <div>
+                  <label className={labelCls}>Tiempo de integración</label>
+                  <input type="text" className={inputCls} value={punto.tiempo_integracion} onChange={e => updatePunto(punto.key, { tiempo_integracion: e.target.value })} placeholder="Ej: 5 min" />
+                </div>
+              </div>
+
+              {/* Nivel pico (solo ruido de impacto) */}
+              {punto.caracteristicas_ruido === 'impacto' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+                  <div>
+                    <label className={labelCls}>Nivel pico Lcpico (dBC)</label>
+                    <input type="number" className={inputCls} value={punto.lcpico_dbc} onChange={e => updatePunto(punto.key, { lcpico_dbc: e.target.value })} placeholder="Límite: 140 dBC" />
+                  </div>
+                  {lcpicoActivo != null && (
+                    <div className={`rounded-lg border px-3 py-2 ${cumplePico(lcpicoActivo) ? 'border-success/40 bg-success-bg/40' : 'border-danger/40 bg-danger-bg/40'}`}>
+                      <p className="text-xs text-text-tertiary">Cumplimiento de pico</p>
+                      <p className="font-semibold flex items-center gap-1">
+                        {cumplePico(lcpicoActivo)
+                          ? <><CheckCircle size={14} className="text-success" /> Cumple (≤ 140 dBC)</>
+                          : <><AlertTriangle size={14} className="text-danger" /> No cumple (&gt; 140 dBC)</>}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Método de medición */}
+              <div className="space-y-3">
+                <label className={labelCls}>Método de medición</label>
+                <div className="inline-flex rounded-lg border border-border-default overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => updatePunto(punto.key, { metodo: 'sonometro' })}
+                    className={`px-4 py-2 text-sm font-medium ${punto.metodo === 'sonometro' ? 'bg-sig-500 text-white' : 'bg-surface-base text-text-secondary hover:bg-surface-elevated'}`}
+                  >
+                    Sonómetro
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => updatePunto(punto.key, { metodo: 'dosimetro' })}
+                    className={`px-4 py-2 text-sm font-medium border-l border-border-default ${punto.metodo === 'dosimetro' ? 'bg-sig-500 text-white' : 'bg-surface-base text-text-secondary hover:bg-surface-elevated'}`}
+                  >
+                    Dosímetro
+                  </button>
+                </div>
+
+                {/* Método dosímetro → dosis_pct */}
+                {punto.metodo === 'dosimetro' && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+                    <div>
+                      <label className={labelCls}>Dosis leída del equipo (%)</label>
+                      <input type="number" className={inputCls} value={punto.dosis_pct} onChange={e => updatePunto(punto.key, { dosis_pct: e.target.value })} placeholder="Ej: 85" />
+                    </div>
+                    {resumenActivo && resumenActivo.dosisOk != null && (
+                      <div className={`rounded-lg border px-3 py-2 ${resumenActivo.dosisOk ? 'border-success/40 bg-success-bg/40' : 'border-danger/40 bg-danger-bg/40'}`}>
+                        <p className="text-xs text-text-tertiary">Cumplimiento de dosis</p>
+                        <p className="font-semibold flex items-center gap-1">
+                          {resumenActivo.dosisOk
+                            ? <><CheckCircle size={14} className="text-success" /> Cumple</>
+                            : <><XCircle size={14} className="text-danger" /> No cumple</>}
+                          <span className="text-[11px] text-text-tertiary tabular-nums ml-1">({resumenActivo.pct?.toFixed(0)}% ≤ 100%)</span>
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Método sonómetro → períodos LAeq + tiempo */}
+                {punto.metodo === 'sonometro' && (
+                  <div className="space-y-3">
+                    <div className="rounded-lg border border-border-subtle overflow-hidden">
+                      <div className="grid grid-cols-[1fr_1fr_auto] gap-2 px-3 py-2 bg-surface-elevated/40 text-xs font-medium text-text-secondary">
+                        <span>LAeq (dBA)</span>
+                        <span>Tiempo de exposición (h)</span>
+                        <span className="w-8" />
+                      </div>
+                      {punto.periodos.map((per, j) => (
+                        <div key={per.key} className="grid grid-cols-[1fr_1fr_auto] gap-2 px-3 py-2 border-t border-border-subtle items-center">
+                          <input
+                            type="number"
+                            aria-label={`Período ${j + 1} LAeq`}
+                            className="w-full border border-border-default rounded px-2 py-1.5 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-sig-500"
+                            value={per.laeq_dba}
+                            onChange={e => updatePeriodo(punto.key, per.key, { laeq_dba: e.target.value })}
+                          />
+                          <input
+                            type="number"
+                            aria-label={`Período ${j + 1} tiempo de exposición`}
+                            className="w-full border border-border-default rounded px-2 py-1.5 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-sig-500"
+                            value={per.tiempo_exposicion_horas}
+                            onChange={e => updatePeriodo(punto.key, per.key, { tiempo_exposicion_horas: e.target.value })}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removePeriodo(punto.key, per.key)}
+                            disabled={punto.periodos.length === 1}
+                            className="text-text-tertiary hover:text-danger disabled:opacity-30 disabled:cursor-not-allowed inline-flex items-center justify-center w-8 h-8"
+                            title="Quitar período"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => addPeriodo(punto.key)}
+                      className="inline-flex items-center gap-1 rounded-lg border border-dashed border-sig-400 text-sig-600 px-3 py-1.5 text-sm hover:bg-sig-50/40"
+                    >
+                      <Plus size={14} /> Agregar período
+                    </button>
+
+                    {/* T por nivel (Tmax) de cada período válido */}
+                    {periodosValidos(punto).length > 0 && (
+                      <div className="rounded-lg border border-border-subtle bg-surface-elevated/30 p-3 space-y-1">
+                        <p className="text-xs font-medium text-text-secondary mb-1">Tiempo máximo permitido por nivel (Tmax)</p>
+                        {periodosValidos(punto).map((per, j) => {
+                          const tmax = tiempoMaxPermitido(per.laeq_dba)
+                          const ignora = per.laeq_dba < 80
+                          return (
+                            <p key={j} className="text-xs tabular-nums text-text-tertiary flex items-center gap-2">
+                              <span className="text-text-secondary">LAeq {per.laeq_dba} dBA · Te {per.tiempo_exposicion_horas} h</span>
+                              {ignora
+                                ? <span className="text-text-tertiary">→ &lt; 80 dBA, no computa</span>
+                                : <span>→ Tmax {tmax.toFixed(2)} h · fracción {(per.tiempo_exposicion_horas / tmax).toFixed(3)}</span>}
+                            </p>
+                          )
+                        })}
+                      </div>
+                    )}
+
+                    {/* Dosis acumulada en vivo */}
+                    {resumenActivo && resumenActivo.D != null && (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+                        <Metric label="Dosis acumulada (D)" value={resumenActivo.D.toFixed(3)} />
+                        <Metric label="Dosis (%)" value={`${resumenActivo.pct?.toFixed(0)}%`} />
+                        <div className={`rounded-lg border px-3 py-2 ${resumenActivo.dosisOk ? 'border-success/40 bg-success-bg/40' : 'border-danger/40 bg-danger-bg/40'}`}>
+                          <p className="text-xs text-text-tertiary">Cumplimiento de dosis</p>
+                          <p className="font-semibold flex items-center gap-1">
+                            {resumenActivo.dosisOk
+                              ? <><CheckCircle size={14} className="text-success" /> Cumple</>
+                              : <><XCircle size={14} className="text-danger" /> No cumple</>}
+                            <span className="text-[11px] text-text-tertiary tabular-nums ml-1">(D ≤ 1)</span>
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    <p className="text-xs text-text-tertiary flex items-center gap-1.5">
+                      <Info size={13} /> Ruido estable de un solo nivel = un único período. Las exposiciones &lt; 80 dBA no se computan en la dosis.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className={labelCls}>Información adicional del punto</label>
+                <textarea className={`${inputCls} resize-none`} rows={2} value={punto.info_adicional} onChange={e => updatePunto(punto.key, { info_adicional: e.target.value })} placeholder="Notas de este punto de muestreo…" />
+              </div>
+            </div>
+
+            <p className="text-xs text-text-tertiary flex items-center gap-1.5">
+              <Info size={13} /> Una medición no conforme NO bloquea el guardado: se registra igual y suma al plan de mejora.
+            </p>
+          </div>
+        )}
+
+        {/* ══ HOJA 3: ANÁLISIS ═══════════════════════════════════════ */}
+        {step === 'analisis' && (
+          <div className="space-y-5">
+            {/* Resumen automático */}
+            <section className="rounded-xl border border-border-subtle bg-surface-elevated/40 p-4">
+              <h3 className="text-sm font-semibold text-text-primary mb-3">Resumen de cumplimiento</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+                <Metric label="Puntos con datos" value={`${totalesAnalisis.conDatos} / ${totalesAnalisis.total}`} />
+                <div className="rounded-lg border border-success/40 bg-success-bg/40 px-3 py-2">
+                  <p className="text-xs text-text-tertiary">Cumplen</p>
+                  <p className="font-semibold text-success tabular-nums">{totalesAnalisis.cumplen}</p>
+                </div>
+                <div className="rounded-lg border border-danger/40 bg-danger-bg/40 px-3 py-2">
+                  <p className="text-xs text-text-tertiary">No cumplen</p>
+                  <p className="font-semibold text-danger tabular-nums">{totalesAnalisis.noCumplen}</p>
+                </div>
+              </div>
+              <p className="text-xs text-text-tertiary mt-3">Cumple = dosis ≤ 100% y nivel pico ≤ 140 dBC. Usá este resumen para redactar las conclusiones y el plan de mejora.</p>
+            </section>
+
+            <div>
+              <label className={labelCls}>Conclusiones</label>
+              <textarea className={`${inputCls} resize-y`} rows={5} value={conclusiones} onChange={e => setConclusiones(e.target.value)} placeholder="Conclusiones del relevamiento de ruido…" />
+            </div>
+            <div>
+              <label className={labelCls}>Recomendaciones</label>
+              <textarea className={`${inputCls} resize-y`} rows={5} value={recomendaciones} onChange={e => setRecomendaciones(e.target.value)} placeholder="Jerarquía de control del ruido: 1) en la fuente, 2) barreras / encerramientos, 3) EPP (último recurso) + rotación de personal." />
+            </div>
+          </div>
+        )}
+
+        {/* ══ REVISAR Y GUARDAR ══════════════════════════════════════ */}
+        {step === 'revisar' && (
+          <div className="space-y-5">
+            <p className="text-sm text-text-secondary">Revisá las tres hojas antes de guardar el protocolo.</p>
+
+            {/* Resumen hoja 1 */}
+            <ReviewSection title="Datos del protocolo">
+              <ReviewGrid>
+                <ReadOnly label="Empresa" value={estCtx?.empresa_razon_social} />
+                <ReadOnly label="Establecimiento" value={estCtx?.nombre} />
+                <ReadOnly label="Instrumento" value={(() => { const i = instrumentos.find(x => x.id === instrumentoId); return i ? [i.marca, i.modelo].filter(Boolean).join(' ') : null })()} />
+                <ReadOnly label="Profesional firmante" value={firmante} />
+                <ReadOnly label="Fecha de medición" value={fechaMedicionFin ? `${fechaMedicion} → ${fechaMedicionFin}` : fechaMedicion} />
+                <ReadOnly label="Horario" value={horaInicio && horaFin ? `${horaInicio} – ${horaFin}` : (horaInicio || horaFin || null)} />
+                <ReadOnly label="Jornada (h)" value={jornadaHoras} />
+                <ReadOnly label="Turnos" value={turnos} />
+              </ReviewGrid>
+              <div className="flex gap-3 mt-2 text-xs text-text-tertiary">
+                <span>{certificadoFile ? '✓ Certificado adjunto' : 'Sin certificado adjunto'}</span>
+                <span>{planoFile ? '✓ Plano adjunto' : 'Sin plano adjunto'}</span>
+              </div>
+            </ReviewSection>
+
+            {/* Resumen hoja 2 */}
+            <ReviewSection title={`Puntos medidos (${puntos.length})`}>
+              <div className="space-y-2">
+                {puntos.map((p, i) => {
+                  const r = resumenes[i]
+                  const sec = sectores.find(s => s.id === p.sector_id)
+                  const cumple = r.tieneDatos ? ((r.dosisOk ?? true) && r.picoOk) : null
+                  return (
+                    <div key={p.key} className="rounded-lg border border-border-subtle px-3 py-2 text-sm flex flex-wrap items-center gap-x-4 gap-y-1">
+                      <span className="font-medium text-text-primary">Punto {i + 1}</span>
+                      {sec && <span className="text-text-secondary">{sec.nombre}</span>}
+                      <span className="text-text-tertiary">{p.metodo === 'dosimetro' ? 'Dosímetro' : 'Sonómetro'}</span>
+                      {r.pct != null && <span className="text-text-tertiary tabular-nums">Dosis {r.pct.toFixed(0)}%</span>}
+                      {cumple != null && (
+                        <span className={`inline-flex items-center gap-1 text-xs font-medium ${cumple ? 'text-success' : 'text-danger'}`}>
+                          {cumple ? <CheckCircle size={13} /> : <XCircle size={13} />} {cumple ? 'Cumple' : 'No cumple'}
+                        </span>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </ReviewSection>
+
+            {/* Resumen hoja 3 */}
+            <ReviewSection title="Análisis">
+              <ReadOnly label="Conclusiones" value={conclusiones} block />
+              <ReadOnly label="Recomendaciones" value={recomendaciones} block />
+            </ReviewSection>
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 pt-3 pb-1 sticky bottom-0 bg-surface-base border-t border-border-subtle">
+          {step !== 'datos' && (
+            <Button type="button" variant="secondary" onClick={goBack} disabled={saving}>
+              <ChevronLeft size={14} /> Atrás
+            </Button>
+          )}
+          {step !== 'revisar' ? (
+            <Button type="button" onClick={goNext}>
+              Continuar <ChevronRight size={14} />
+            </Button>
+          ) : (
+            <Button type="button" onClick={handleGuardar} disabled={saving}>
+              {saving ? <><Loader2 size={14} className="animate-spin" /> Guardando…</> : 'Guardar protocolo'}
+            </Button>
+          )}
+          <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>Cancelar</Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+// ── Subcomponentes de presentación ─────────────────────────────────────
+
+function ReadOnly({ label, value, block }: { label: string; value: string | null | undefined; block?: boolean }) {
+  return (
+    <div className={block ? 'mb-2' : ''}>
+      <p className="text-xs text-text-tertiary">{label}</p>
+      <p className={`text-text-primary ${block ? 'whitespace-pre-wrap text-sm' : 'font-medium'}`}>{value || <span className="text-text-tertiary font-normal">—</span>}</p>
+    </div>
+  )
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-border-subtle bg-surface-elevated/60 px-3 py-2">
+      <p className="text-xs text-text-tertiary">{label}</p>
+      <p className="font-semibold text-text-primary tabular-nums">{value}</p>
+    </div>
+  )
+}
+
+function ReviewSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="rounded-xl border border-border-subtle p-4">
+      <h3 className="text-sm font-semibold text-text-primary mb-3">{title}</h3>
+      {children}
+    </section>
+  )
+}
+
+function ReviewGrid({ children }: { children: React.ReactNode }) {
+  return <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2 text-sm">{children}</div>
+}
+
+// ── Anillo de progreso (gamificación) ──────────────────────────────────
+
+interface Level { label: string; color: string; ring: string; track: string }
+function levelFromPercent(pct: number): Level {
+  if (pct >= 100) return { label: 'Completo', color: 'text-success', ring: 'stroke-success', track: 'stroke-success/15' }
+  if (pct >= 90) return { label: 'Casi completo', color: 'text-sig-700', ring: 'stroke-sig-700', track: 'stroke-sig-700/15' }
+  if (pct >= 60) return { label: 'Avanzado', color: 'text-sig-500', ring: 'stroke-sig-500', track: 'stroke-sig-500/15' }
+  if (pct >= 30) return { label: 'En progreso', color: 'text-sig-400', ring: 'stroke-sig-400', track: 'stroke-sig-400/15' }
+  return { label: 'En construcción', color: 'text-text-tertiary', ring: 'stroke-text-tertiary', track: 'stroke-text-tertiary/15' }
+}
+
+function ProgressRing({ pct, level }: { pct: number; level: Level }) {
+  const size = 56
+  const stroke = 5
+  const radius = (size - stroke) / 2
+  const circumference = 2 * Math.PI * radius
+  const offset = circumference - (pct / 100) * circumference
+  return (
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90">
+        <circle cx={size / 2} cy={size / 2} r={radius} strokeWidth={stroke} fill="none" className={level.track} />
+        <circle cx={size / 2} cy={size / 2} r={radius} strokeWidth={stroke} fill="none" strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={offset} className={`${level.ring} transition-[stroke-dashoffset] duration-500 ease-out`} />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center">
+        {pct >= 100 ? <Check className="text-success" size={20} strokeWidth={2.5} /> : <span className={`text-sm font-bold tabular-nums ${level.color}`}>{pct}%</span>}
+      </div>
+    </div>
+  )
+}
