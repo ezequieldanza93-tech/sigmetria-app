@@ -5,6 +5,14 @@ import { isTestBypassAccount } from '@/lib/auth/test-mfa-bypass'
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
+
+  // Confirmación de invitación: el invitado llega SIN sesión (verifyOtp corre
+  // dentro de la ruta y recién ahí escribe las cookies). Debe ser alcanzable
+  // antes de cualquier chequeo de sesión, o el invitado cae en /login.
+  if (pathname.startsWith('/auth/confirm')) {
+    return NextResponse.next()
+  }
+
   const publicPaths = ['/manifest.json', '/service-worker', '/sw.js', '/robots.txt', '/sitemap.xml', '/favicon.svg', '/favicon.ico', '/offline']
   if (
     publicPaths.some(p => pathname === p) ||
@@ -56,8 +64,12 @@ export async function middleware(request: NextRequest) {
   // Roles obligatorios: full_access_main, responsable_estandares
   // Cookie mfa_verified: HMAC firmada (MFA_COOKIE_SECRET), TTL 24h
   const isMfaPage = pathname.startsWith('/mfa/')
+  // El invitado recién canjeó su token (ya tiene sesión) pero todavía no fijó
+  // contraseña. No lo mandamos a /mfa/verify acá: el MFA es flujo posterior y
+  // se aplica normalmente cuando navegue al dashboard.
+  const isSetPasswordPage = pathname.startsWith('/set-password')
 
-  if (user && !pathname.startsWith('/login')) {
+  if (user && !pathname.startsWith('/login') && !isSetPasswordPage) {
     // ── TESTING BYPASS — cuentas @sigmetria.app ──────────────────────────────
     // Cuentas de prueba sin buzón real: saltean el MFA directamente en el
     // enforcement, SIN depender de la cookie firmada ni de MFA_COOKIE_SECRET
