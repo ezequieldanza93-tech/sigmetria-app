@@ -66,8 +66,8 @@ export async function POST(request: NextRequest) {
   const admin = createAdminClient()
 
   // Genera el link de invitación SIN enviar email (a diferencia de
-  // inviteUserByEmail, que dispara el mail). El admin comparte el action_link
-  // como prefiera; el invitado lo abre, setea contraseña y queda activo.
+  // inviteUserByEmail, que dispara el mail). El admin comparte el link como
+  // prefiera; el invitado lo abre, setea contraseña y queda activo.
   const { data: invited, error: inviteError } = await admin.auth.admin.generateLink({
     type: 'invite',
     email,
@@ -77,10 +77,18 @@ export async function POST(request: NextRequest) {
   if (inviteError) return NextResponse.json({ error: inviteError.message }, { status: 500 })
 
   const invitedUser = invited.user
-  const actionLink = invited.properties?.action_link
-  if (!invitedUser || !actionLink) {
+  // No usamos properties.action_link: ese link nativo de Supabase deja la
+  // sesión en el hash fragment (#access_token=...), que el middleware
+  // cookie-based no puede leer → el invitado cae en /login sin sesión. En su
+  // lugar apuntamos a /auth/confirm con el hashed_token, que verifyOtp canjea
+  // server-side y escribe las cookies de sesión.
+  const hashedToken = invited.properties?.hashed_token
+  if (!invitedUser || !hashedToken) {
     return NextResponse.json({ error: 'No se pudo generar el link de invitación' }, { status: 500 })
   }
+
+  const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin
+  const inviteLink = `${siteUrl}/auth/confirm?token_hash=${hashedToken}&type=invite`
 
   await admin.from('profiles').upsert({
     id: invitedUser.id,
@@ -123,5 +131,5 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ success: true, link: actionLink, role })
+  return NextResponse.json({ success: true, link: inviteLink, role })
 }
