@@ -1,6 +1,10 @@
 'use client'
 
 import dynamic from 'next/dynamic'
+import type { MutableRefObject } from 'react'
+import type { DrawObject } from './photo-canvas-editor-inner'
+
+export type { DrawObject } from './photo-canvas-editor-inner'
 
 export interface ObservacionCategoria {
   id: string
@@ -15,6 +19,9 @@ export interface PhotoCanvasEditorProps {
   enableObservacionTool?: boolean
   categorias?: ObservacionCategoria[]
   onObservacionAdded?: (descripcion: string, categoriaId: string) => void
+  initialObjects?: DrawObject[]
+  onObjectsChange?: (objects: DrawObject[]) => void
+  exportControl?: MutableRefObject<(() => Promise<Blob | null>) | null>
 }
 
 // Un único dynamic import garantiza que react-konva (Stage + hijos) viajen
