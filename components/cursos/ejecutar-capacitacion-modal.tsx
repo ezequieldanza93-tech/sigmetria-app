@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useMemo, useState, useTransition } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
+import { QRCodeCanvas } from 'qrcode.react'
 import { createClient } from '@/lib/supabase/client'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
@@ -10,24 +11,23 @@ import {
   agregarParticipantes,
   enviarLinksParticipantes,
   getPersonasDeEstablecimiento,
-  getRegistroGeneral,
 } from '@/lib/actions/capacitacion'
 import type {
   CapacitacionModalidad,
   ParticipanteInput,
+  ParticipanteToken,
   PersonaEstablecimiento,
-  RegistroGeneral,
-  RegistroParticipante,
 } from '@/lib/actions/capacitacion'
 import {
   GraduationCap,
-  Mail,
   Plus,
   Trash2,
   ExternalLink,
   CheckCircle2,
-  XCircle,
-  Clock,
+  Copy,
+  Check,
+  Download,
+  Mail,
 } from 'lucide-react'
 
 type CursoLite = { id: string; titulo: string }
@@ -65,110 +65,133 @@ function nombreCompleto(p: PersonaEstablecimiento): string {
   return `${p.apellido}, ${p.nombre}`.trim()
 }
 
-// ─── Vista del acta / registro general post-creación ─────────────────────────
-const ESTADO_META: Record<
-  RegistroParticipante['estado'],
-  { label: string; icon: typeof Clock; cls: string }
-> = {
-  pendiente: { label: 'Pendiente', icon: Clock, cls: 'text-text-tertiary' },
-  en_progreso: { label: 'En progreso', icon: Clock, cls: 'text-info' },
-  aprobado: { label: 'Aprobado', icon: CheckCircle2, cls: 'text-success' },
-  reprobado: { label: 'Reprobado', icon: XCircle, cls: 'text-danger' },
+// ─── Tarjeta de enlace + QR por participante (post-creación) ─────────────────
+function ParticipanteEnlaceCard({ p }: { p: ParticipanteToken }) {
+  const qrRef = useRef<HTMLDivElement>(null)
+  const [copiado, setCopiado] = useState(false)
+  const nombre = p.nombre ?? 'Participante'
+
+  function copiarEnlace() {
+    navigator.clipboard
+      .writeText(p.url)
+      .then(() => {
+        setCopiado(true)
+        toast.success('Enlace copiado')
+        setTimeout(() => setCopiado(false), 1800)
+      })
+      .catch(() => toast.error('No se pudo copiar'))
+  }
+
+  function descargarQR() {
+    const canvas = qrRef.current?.querySelector('canvas')
+    if (!canvas) return
+    const dataUrl = canvas.toDataURL('image/png')
+    const a = document.createElement('a')
+    a.href = dataUrl
+    const slug =
+      nombre.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') || 'participante'
+    a.download = `capacitacion-${slug}.png`
+    a.click()
+  }
+
+  return (
+    <div className="flex gap-3 border border-border-subtle rounded-lg p-3 bg-surface-base">
+      <div
+        ref={qrRef}
+        className="shrink-0 p-2 bg-white rounded-lg border border-border-subtle h-fit"
+      >
+        <QRCodeCanvas value={p.url} size={96} level="M" includeMargin={false} />
+      </div>
+      <div className="flex-1 min-w-0 space-y-2">
+        <div>
+          <div className="text-sm font-medium text-text-primary truncate">{nombre}</div>
+          {p.email && <div className="text-xs text-text-tertiary truncate">{p.email}</div>}
+        </div>
+        <div className="flex items-center gap-1.5">
+          <input
+            readOnly
+            value={p.url}
+            onFocus={(e) => e.currentTarget.select()}
+            className="flex-1 min-w-0 text-xs border border-border-default rounded-lg px-2 py-1.5 bg-surface-elevated text-text-secondary focus:outline-none focus:ring-2 focus:ring-sig-500"
+          />
+          <button
+            type="button"
+            onClick={copiarEnlace}
+            title="Copiar enlace"
+            className={`shrink-0 inline-flex items-center justify-center rounded-lg border px-2 py-1.5 transition-colors ${
+              copiado
+                ? 'border-success/40 text-success bg-success-bg'
+                : 'border-border-default text-text-secondary hover:bg-surface-elevated'
+            }`}
+          >
+            {copiado ? <Check size={14} /> : <Copy size={14} />}
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-3 text-xs">
+          <button
+            type="button"
+            onClick={descargarQR}
+            className="inline-flex items-center gap-1 text-sig-600 hover:text-sig-700 font-medium"
+          >
+            <Download size={13} /> Descargar QR
+          </button>
+          <a
+            href={p.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-text-secondary hover:text-text-primary"
+          >
+            <ExternalLink size={13} /> Abrir enlace
+          </a>
+        </div>
+      </div>
+    </div>
+  )
 }
 
-function ActaView({
-  registro,
+// ─── Vista de enlaces generados (post-creación) ──────────────────────────────
+function EnlacesView({
+  participantes,
   sesionId,
   appUrl,
-  onReenviar,
-  reenviando,
+  onEnviarEmail,
+  enviandoEmail,
 }: {
-  registro: RegistroGeneral
+  participantes: ParticipanteToken[]
   sesionId: string
   appUrl: string
-  onReenviar: () => void
-  reenviando: boolean
+  onEnviarEmail: () => void
+  enviandoEmail: boolean
 }) {
+  const hayEmails = participantes.some((p) => p.email)
+
   return (
     <div className="space-y-4">
       <div className="bg-success-bg border border-success/30 text-success text-sm rounded-lg px-3 py-2 flex items-center gap-2">
         <CheckCircle2 size={16} />
-        Capacitación creada. {registro.participantes.length} participante
-        {registro.participantes.length === 1 ? '' : 's'} cargado
-        {registro.participantes.length === 1 ? '' : 's'}.
+        {participantes.length} enlace{participantes.length === 1 ? '' : 's'} generado
+        {participantes.length === 1 ? '' : 's'}.
       </div>
 
-      <div className="bg-surface-base rounded-lg border border-border-subtle px-3 py-2.5 text-sm">
-        <div className="font-medium text-text-primary">{registro.curso.titulo}</div>
-        <div className="text-text-secondary text-xs mt-0.5">
-          {registro.sesion.titulo ?? '—'}
-          {registro.sesion.fecha ? ` · ${registro.sesion.fecha}` : ''}
-          {' · '}
-          {registro.sesion.modalidad === 'presencial' ? 'Presencial' : 'E-learning'}
-        </div>
-        {(registro.instructor.nombre || registro.instructor.externo) && (
-          <div className="text-text-tertiary text-xs mt-0.5">
-            Instructor: {registro.instructor.nombre ?? registro.instructor.externo}
-          </div>
+      <p className="text-sm text-text-secondary">
+        Compartí el enlace o el QR de cada participante como prefieras: WhatsApp, impreso, o
+        escaneando el QR en el momento. Cada enlace es personal y no requiere usuario ni contraseña.{' '}
+        <span className="text-text-tertiary">No se envió ningún email automáticamente.</span>
+      </p>
+
+      <div className="space-y-3 max-h-[440px] overflow-y-auto pr-1">
+        {participantes.map((p) => (
+          <ParticipanteEnlaceCard key={p.id} p={p} />
+        ))}
+      </div>
+
+      <div className="flex flex-wrap gap-2 pt-3 border-t border-border-subtle">
+        {hayEmails && (
+          <Button type="button" variant="secondary" onClick={onEnviarEmail} disabled={enviandoEmail}>
+            <Mail size={14} />
+            {enviandoEmail ? 'Enviando…' : 'Enviar por email (opcional)'}
+          </Button>
         )}
-      </div>
-
-      <div className="border border-border-subtle rounded-lg overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="bg-surface-base text-left text-xs text-text-secondary">
-              <th className="px-3 py-2 font-medium">Participante</th>
-              <th className="px-3 py-2 font-medium">Estado</th>
-              <th className="px-3 py-2 font-medium text-center">Puntaje</th>
-              <th className="px-3 py-2 font-medium text-center">Certif.</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border-subtle">
-            {registro.participantes.map((p) => {
-              const meta = ESTADO_META[p.estado]
-              const Icon = meta.icon
-              return (
-                <tr key={p.id}>
-                  <td className="px-3 py-2">
-                    <div className="text-text-primary">{p.nombre ?? '—'}</div>
-                    {p.email && <div className="text-xs text-text-tertiary">{p.email}</div>}
-                  </td>
-                  <td className="px-3 py-2">
-                    <span className={`inline-flex items-center gap-1 text-xs ${meta.cls}`}>
-                      <Icon size={13} />
-                      {meta.label}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2 text-center tabular-nums text-text-secondary">
-                    {p.puntaje != null ? `${p.puntaje}%` : '—'}
-                  </td>
-                  <td className="px-3 py-2 text-center">
-                    {p.certificado_pdf_url ? (
-                      <a
-                        href={p.certificado_pdf_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        title="Ver certificado"
-                        className="inline-flex text-sig-600 hover:text-sig-800"
-                      >
-                        <ExternalLink size={14} />
-                      </a>
-                    ) : (
-                      <span className="text-text-tertiary">—</span>
-                    )}
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="flex flex-wrap gap-2 pt-1">
-        <Button type="button" variant="secondary" onClick={onReenviar} disabled={reenviando}>
-          <Mail size={14} />
-          {reenviando ? 'Reenviando…' : 'Reenviar enlaces por email'}
-        </Button>
         <a
           href={`${appUrl}/capacitacion/registro/${sesionId}`}
           target="_blank"
@@ -212,10 +235,13 @@ export function EjecutarCapacitacionModal({
   // Participantes (preseleccionados desde el establecimiento, editables)
   const [participantes, setParticipantes] = useState<ParticipanteDraft[]>([])
   const [cargandoPersonas, setCargandoPersonas] = useState(true)
-  const [reenviando, setReenviando] = useState(false)
+  const [enviandoEmail, setEnviandoEmail] = useState(false)
 
-  // Resultado: una vez creado, mostramos el acta
-  const [acta, setActa] = useState<{ sesionId: string; registro: RegistroGeneral } | null>(null)
+  // Resultado: una vez creado, mostramos los enlaces + QR
+  const [enlaces, setEnlaces] = useState<{
+    sesionId: string
+    participantes: ParticipanteToken[]
+  } | null>(null)
 
   const appUrl =
     process.env.NEXT_PUBLIC_APP_URL ??
@@ -342,54 +368,45 @@ export function EjecutarCapacitacionModal({
         return
       }
 
-      // Envío de links best-effort (no bloquea el éxito)
-      const envio = await enviarLinksParticipantes(sesionId)
-      if (envio.success) {
-        const enviados = envio.data.filter((r) => r.enviado).length
-        const sinEmail = envio.data.filter((r) => !r.enviado && r.error === 'Sin email').length
-        if (enviados > 0) toast.success(`${enviados} enlace${enviados === 1 ? '' : 's'} enviado${enviados === 1 ? '' : 's'} por email`)
-        if (sinEmail > 0) toast.info(`${sinEmail} participante${sinEmail === 1 ? '' : 's'} sin email: copiá el enlace manualmente`)
-      }
-
-      const reg = await getRegistroGeneral(sesionId)
-      if (reg.success) {
-        setActa({ sesionId, registro: reg.data })
-        onSuccess?.()
-      } else {
-        // La sesión se creó igual; cerramos con éxito.
-        toast.success('Capacitación creada')
-        onSuccess?.()
-        onClose()
-      }
+      // No se envían emails automáticamente: mostramos enlaces + QR para que el
+      // profesional los distribuya como prefiera (copiar, descargar QR, etc.).
+      setEnlaces({ sesionId, participantes: agregar.data })
+      toast.success('Capacitación creada')
+      onSuccess?.()
     })
   }
 
-  function handleReenviar() {
-    if (!acta) return
-    setReenviando(true)
-    enviarLinksParticipantes(acta.sesionId)
+  function handleEnviarEmail() {
+    if (!enlaces) return
+    setEnviandoEmail(true)
+    enviarLinksParticipantes(enlaces.sesionId)
       .then((res) => {
-        if (res.success) {
-          const enviados = res.data.filter((r) => r.enviado).length
-          toast.success(`${enviados} enlace${enviados === 1 ? '' : 's'} reenviado${enviados === 1 ? '' : 's'}`)
-        } else {
+        if (!res.success) {
           toast.error(res.error)
+          return
         }
+        const enviados = res.data.filter((r) => r.enviado).length
+        const sinEmail = res.data.filter((r) => !r.enviado && r.error === 'Sin email').length
+        if (enviados > 0)
+          toast.success(`${enviados} email${enviados === 1 ? '' : 's'} enviado${enviados === 1 ? '' : 's'}`)
+        if (sinEmail > 0)
+          toast.info(`${sinEmail} sin email: compartí el enlace o el QR`)
+        if (enviados === 0 && sinEmail === 0) toast.info('No se envió ningún email')
       })
-      .finally(() => setReenviando(false))
+      .finally(() => setEnviandoEmail(false))
   }
 
-  const tituloModal = acta ? 'Capacitación creada' : 'Ejecutar capacitación'
+  const tituloModal = enlaces ? 'Enlaces de la capacitación' : 'Ejecutar capacitación'
 
   return (
     <Modal open title={tituloModal} onClose={onClose} size="full">
-      {acta ? (
-        <ActaView
-          registro={acta.registro}
-          sesionId={acta.sesionId}
+      {enlaces ? (
+        <EnlacesView
+          participantes={enlaces.participantes}
+          sesionId={enlaces.sesionId}
           appUrl={appUrl}
-          onReenviar={handleReenviar}
-          reenviando={reenviando}
+          onEnviarEmail={handleEnviarEmail}
+          enviandoEmail={enviandoEmail}
         />
       ) : (
         <div className="space-y-4">
@@ -551,7 +568,7 @@ export function EjecutarCapacitacionModal({
                         type="email"
                         value={p.email}
                         onChange={(e) => actualizar(p.key, 'email', e.target.value)}
-                        placeholder="email@ejemplo.com"
+                        placeholder="email@ejemplo.com (opcional)"
                         className="border border-border-default rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-sig-500"
                       />
                     </div>
@@ -568,14 +585,14 @@ export function EjecutarCapacitacionModal({
               </div>
             )}
             <p className="text-xs text-text-tertiary mt-2">
-              Cada participante recibe un enlace personal para hacer la capacitación sin usuario ni
-              contraseña. Si no tiene email, vas a poder copiar el enlace luego.
+              Al crear la capacitación se genera un enlace personal y un QR por participante. No se
+              envían emails: vos los compartís como prefieras (WhatsApp, impreso, QR en el momento).
             </p>
           </div>
 
           <div className="flex flex-wrap gap-3 pt-1">
             <Button type="button" onClick={handleConfirmar} disabled={isPending || cursos.length === 0}>
-              {isPending ? 'Creando…' : 'Crear y enviar enlaces'}
+              {isPending ? 'Creando…' : 'Crear y generar enlaces'}
             </Button>
             <Button type="button" variant="secondary" onClick={onClose} disabled={isPending}>
               Cancelar
