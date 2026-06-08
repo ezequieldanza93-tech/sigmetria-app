@@ -119,6 +119,10 @@ export async function crearReporteFotografico(
           }
           return {
             registro_gestion_id: reg.id,
+            // rg_fecha_planificada completa la FK compuesta hacia el registro
+            // particionado (registro_gestion_id + rg_fecha_planificada) y es NOT NULL.
+            // Debe matchear el fecha_planificada con el que se insertó gestiones_registros.
+            rg_fecha_planificada: today,
             descripcion: o.descripcion.trim(),
             categoria_id: o.categoria_id,
             clasificacion_id: o.clasificacion_id || null,
@@ -130,6 +134,7 @@ export async function crearReporteFotografico(
         const { error: obsError } = await supabase.from('gestiones_observaciones').insert(rows)
         if (obsError) {
           console.error('[reporteFotografico] Error al insertar gestiones_observaciones:', obsError.message)
+          return { success: false, error: 'El reporte se guardó, pero no se pudieron registrar las observaciones: ' + obsError.message }
         }
       }
     } catch (e) { console.error('[reporteFotografico] Error parseando observaciones:', e) }
