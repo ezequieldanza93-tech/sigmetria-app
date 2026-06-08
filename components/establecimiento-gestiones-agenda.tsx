@@ -17,7 +17,7 @@ import {
   ClipboardCheck, GraduationCap, Heart, FileText, AlertTriangle,
   ClipboardList, UserPlus, Dumbbell, Kanban, HelpCircle,
   Play, Upload, Download, BookMarked,
-  ChevronUp, ChevronDown, Columns, CalendarDays, List, X,
+  ChevronUp, ChevronDown, Columns, CalendarDays, List, X, Volume2,
 } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { createPortal } from 'react-dom'
@@ -74,6 +74,10 @@ const FormularioEjecucion = dynamic(
 )
 const ReporteFotograficoEjecutorModal = dynamic(
   () => import('@/components/reporte-fotografico-ejecutor-modal').then(m => m.ReporteFotograficoEjecutorModal),
+  { ssr: false }
+)
+const MedicionRuidoEjecutorModal = dynamic(
+  () => import('@/components/medicion-ruido-ejecutor-modal').then(m => m.MedicionRuidoEjecutorModal),
   { ssr: false }
 )
 const EjecutarCapacitacionModal = dynamic(
@@ -1314,6 +1318,7 @@ function AgendaActionsCell({
   canWrite,
   onExecuteForm,
   onExecuteReporte,
+  onExecuteMedicionRuido,
   onLoadEvidence,
   onToggleLegajo,
   onEjecutarCapacitacion,
@@ -1322,6 +1327,7 @@ function AgendaActionsCell({
   canWrite: boolean
   onExecuteForm: () => void
   onExecuteReporte: () => void
+  onExecuteMedicionRuido: () => void
   onLoadEvidence: () => void
   onToggleLegajo: () => void | Promise<void>
   /** Solo para gestiones de categoría Capacitaciones: abre el flujo de capacitación LMS. */
@@ -1525,6 +1531,60 @@ function AgendaActionsCell({
     )
   }
 
+  // Gestión tipo medicion_ruido → wizard del Protocolo de Ruido (SRT 85/2012).
+  if (r.ge_tipo_ejecucion === 'medicion_ruido') {
+    return (
+      <div ref={triggerRef} className="flex items-center justify-center relative">
+        <div className="inline-flex rounded-lg overflow-hidden shadow-sm">
+          <button
+            title="Ejecutar protocolo de ruido"
+            onClick={onExecuteMedicionRuido}
+            className={`${primaryBtn} ${primaryActive} rounded-r-none pr-2.5 border-r-0`}
+          >
+            <Volume2 size={14} />
+            <span className="hidden sm:inline">Ejecutar</span>
+          </button>
+          <button
+            title="Más opciones"
+            onClick={toggleMenu}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            className={`${primaryActive} px-2 min-h-[36px] rounded-l-none ${menuOpen ? 'bg-sig-500/10' : ''}`}
+          >
+            <ChevronDown size={14} className={`transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+
+        {menuOpen && menuPos && createPortal(
+          <div
+            ref={dropdownRef}
+            role="menu"
+            style={{ position: 'fixed', top: menuPos.top, left: menuPos.left, transform: 'translateX(-100%)', zIndex: 9999 }}
+            className="bg-surface-base border border-border-subtle rounded-xl shadow-xl overflow-hidden min-w-[200px]"
+          >
+            <button
+              role="menuitem"
+              onClick={() => { setMenuOpen(false); onExecuteMedicionRuido() }}
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-text-primary hover:bg-surface-sunken text-left"
+            >
+              <Volume2 size={14} className="text-sig-500" />
+              Ejecutar protocolo de ruido
+            </button>
+            <button
+              role="menuitem"
+              onClick={() => { setMenuOpen(false); onLoadEvidence() }}
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-text-primary hover:bg-surface-sunken text-left border-t border-border-subtle"
+            >
+              <Upload size={14} className="text-text-secondary" />
+              Cargar archivo manual
+            </button>
+          </div>,
+          document.body
+        )}
+      </div>
+    )
+  }
+
   // Con formulario → botón "Ejecutar ▾" con submenu
   if (r.ge_tiene_formulario) {
     return (
@@ -1655,6 +1715,7 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
   const [editingRegistro, setEditingRegistro] = useState<FullRegistro | null>(null)
   const [executingFormulario, setExecutingFormulario] = useState<FullRegistro | null>(null)
   const [executingReporte, setExecutingReporte] = useState<FullRegistro | null>(null)
+  const [executingMedicionRuido, setExecutingMedicionRuido] = useState<FullRegistro | null>(null)
   const [executingCapacitacion, setExecutingCapacitacion] = useState<FullRegistro | null>(null)
   const [showPlanificarModal, setShowPlanificarModal] = useState(false)
   const [showReporteModal, setShowReporteModal] = useState(false)
@@ -1878,6 +1939,8 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
     const yaEjecutada = !!(r.fecha_ejecutada || r.evidencia_url)
     if (r.ge_tipo_ejecucion === 'reporte_fotografico' && !yaEjecutada && canWrite) {
       setExecutingReporte(r)
+    } else if (r.ge_tipo_ejecucion === 'medicion_ruido' && !yaEjecutada && canWrite) {
+      setExecutingMedicionRuido(r)
     } else {
       setEditingRegistro(r)
     }
@@ -1920,6 +1983,7 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
               canWrite={canWrite}
               onExecuteForm={() => setExecutingFormulario(r)}
               onExecuteReporte={() => setExecutingReporte(r)}
+              onExecuteMedicionRuido={() => setExecutingMedicionRuido(r)}
               onLoadEvidence={() => setEditingRegistro(r)}
               onEjecutarCapacitacion={
                 r.ge_categoria_nombre === CATEGORIA_CAPACITACIONES
@@ -2515,6 +2579,17 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
           establecimientoNombre={establecimientoNombre}
           onClose={() => setExecutingReporte(null)}
           onSuccess={() => { setExecutingReporte(null); queryClient.invalidateQueries({ queryKey: ['gestiones-establecimiento', establecimientoId, year] }); queryClient.invalidateQueries({ queryKey: ['registros-gestion'] }) }}
+        />
+      )}
+
+      {executingMedicionRuido && (
+        <MedicionRuidoEjecutorModal
+          establecimientoId={establecimientoId}
+          registroId={executingMedicionRuido.id}
+          rgFechaPlanificada={executingMedicionRuido.fecha_planificada}
+          gestionEstablecimientoId={executingMedicionRuido.ge_id ?? ''}
+          onClose={() => setExecutingMedicionRuido(null)}
+          onSuccess={() => { setExecutingMedicionRuido(null); queryClient.invalidateQueries({ queryKey: ['gestiones-establecimiento', establecimientoId, year] }); queryClient.invalidateQueries({ queryKey: ['registros-gestion'] }) }}
         />
       )}
 
