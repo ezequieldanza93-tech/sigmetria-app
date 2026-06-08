@@ -25,7 +25,16 @@ export function useEquipoMembers() {
     queryFn: async () => {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return { miembros: [] as MemberRow[], currentUserId: null }
+      if (!user) return { miembros: [] as MemberRow[], currentUserId: null, currentUserName: '' }
+
+      // Nombre propio desde profiles (policy permite id = auth.uid()): sirve
+      // para el botón "Completar mi perfil" aunque la lista de equipo esté vacía.
+      const { data: ownProfile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user.id)
+        .maybeSingle()
+      const currentUserName = ownProfile?.full_name ?? user.email ?? 'Mi perfil'
 
       const { data: membership } = await supabase
         .from('consultoras_members')
@@ -34,7 +43,7 @@ export function useEquipoMembers() {
         .eq('is_active', true)
         .maybeSingle()
 
-      if (!membership) return { miembros: [] as MemberRow[], currentUserId: user.id }
+      if (!membership) return { miembros: [] as MemberRow[], currentUserId: user.id, currentUserName }
 
       const { data: miembrosData } = await supabase
         .from('consultoras_members')
@@ -46,6 +55,7 @@ export function useEquipoMembers() {
       return {
         miembros: (miembrosData as unknown as MemberRow[]) ?? [],
         currentUserId: user.id,
+        currentUserName,
       }
     },
     staleTime: 1000 * 30,
