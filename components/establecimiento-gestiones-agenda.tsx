@@ -1360,7 +1360,7 @@ function AgendaActionsCell({
 
   // Estilos compartidos (touch-friendly: min-h 36px desktop / 44px mobile)
   const primaryBtn = 'inline-flex items-center justify-center gap-1.5 px-3 min-h-[36px] sm:min-h-[36px] rounded-lg text-xs font-medium transition-colors'
-  const primaryActive = 'bg-sig-500 text-white hover:bg-sig-700'
+  const primaryActive = 'bg-surface-base border border-sig-500 text-sig-500 hover:bg-sig-500/10'
   const toggleBtn = 'inline-flex items-center justify-center w-9 h-9 rounded-lg border transition-colors'
   const toggleOn = 'bg-sig-500 border-sig-500 text-white hover:bg-sig-700'
   const toggleOff = 'bg-white border-border-default text-text-tertiary hover:bg-surface-base hover:text-text-secondary'
@@ -1420,22 +1420,53 @@ function AgendaActionsCell({
   // Aditivo: convive con "Cargar" (carga manual de evidencia) como acción secundaria.
   if (onEjecutarCapacitacion) {
     return (
-      <div className="flex items-center justify-center gap-1.5">
-        <button
-          title="Ejecutar capacitación (campus virtual)"
-          onClick={onEjecutarCapacitacion}
-          className={`${primaryBtn} ${primaryActive}`}
-        >
-          <GraduationCap size={14} />
-          <span className="hidden sm:inline">Capacitar</span>
-        </button>
-        <button
-          title="Cargar evidencia manual"
-          onClick={onLoadEvidence}
-          className={`${toggleBtn} ${toggleOff}`}
-        >
-          <Upload size={14} />
-        </button>
+      <div ref={triggerRef} className="flex items-center justify-center relative">
+        <div className="inline-flex rounded-lg overflow-hidden shadow-sm">
+          <button
+            title="Ejecutar capacitación (campus virtual)"
+            onClick={onEjecutarCapacitacion}
+            className={`${primaryBtn} ${primaryActive} rounded-r-none pr-2.5 border-r-0`}
+          >
+            <GraduationCap size={14} />
+            <span className="hidden sm:inline">Capacitar</span>
+          </button>
+          <button
+            title="Más opciones"
+            onClick={toggleMenu}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            className={`${primaryActive} px-2 min-h-[36px] rounded-l-none ${menuOpen ? 'bg-sig-500/10' : ''}`}
+          >
+            <ChevronDown size={14} className={`transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+
+        {menuOpen && menuPos && createPortal(
+          <div
+            ref={dropdownRef}
+            role="menu"
+            style={{ position: 'fixed', top: menuPos.top, left: menuPos.left, transform: 'translateX(-100%)', zIndex: 9999 }}
+            className="bg-surface-base border border-border-subtle rounded-xl shadow-xl overflow-hidden min-w-[200px]"
+          >
+            <button
+              role="menuitem"
+              onClick={() => { setMenuOpen(false); onEjecutarCapacitacion() }}
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-text-primary hover:bg-surface-sunken text-left"
+            >
+              <GraduationCap size={14} className="text-sig-500" />
+              Ejecutar capacitación
+            </button>
+            <button
+              role="menuitem"
+              onClick={() => { setMenuOpen(false); onLoadEvidence() }}
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-text-primary hover:bg-surface-sunken text-left border-t border-border-subtle"
+            >
+              <Upload size={14} className="text-text-secondary" />
+              Cargar archivo manual
+            </button>
+          </div>,
+          document.body
+        )}
       </div>
     )
   }
@@ -1443,15 +1474,53 @@ function AgendaActionsCell({
   // Gestión tipo reporte_fotografico → wizard multi-foto (en vez del flujo estándar).
   if (r.ge_tipo_ejecucion === 'reporte_fotografico') {
     return (
-      <div className="flex items-center justify-center">
-        <button
-          title="Ejecutar reporte fotográfico"
-          onClick={onExecuteReporte}
-          className={`${primaryBtn} ${primaryActive}`}
-        >
-          <Camera size={14} />
-          <span className="hidden sm:inline">Ejecutar</span>
-        </button>
+      <div ref={triggerRef} className="flex items-center justify-center relative">
+        <div className="inline-flex rounded-lg overflow-hidden shadow-sm">
+          <button
+            title="Ejecutar reporte fotográfico"
+            onClick={onExecuteReporte}
+            className={`${primaryBtn} ${primaryActive} rounded-r-none pr-2.5 border-r-0`}
+          >
+            <Camera size={14} />
+            <span className="hidden sm:inline">Ejecutar</span>
+          </button>
+          <button
+            title="Más opciones"
+            onClick={toggleMenu}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            className={`${primaryActive} px-2 min-h-[36px] rounded-l-none ${menuOpen ? 'bg-sig-500/10' : ''}`}
+          >
+            <ChevronDown size={14} className={`transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+
+        {menuOpen && menuPos && createPortal(
+          <div
+            ref={dropdownRef}
+            role="menu"
+            style={{ position: 'fixed', top: menuPos.top, left: menuPos.left, transform: 'translateX(-100%)', zIndex: 9999 }}
+            className="bg-surface-base border border-border-subtle rounded-xl shadow-xl overflow-hidden min-w-[200px]"
+          >
+            <button
+              role="menuitem"
+              onClick={() => { setMenuOpen(false); onExecuteReporte() }}
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-text-primary hover:bg-surface-sunken text-left"
+            >
+              <Camera size={14} className="text-sig-500" />
+              Ejecutar reporte fotográfico
+            </button>
+            <button
+              role="menuitem"
+              onClick={() => { setMenuOpen(false); onLoadEvidence() }}
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-text-primary hover:bg-surface-sunken text-left border-t border-border-subtle"
+            >
+              <Upload size={14} className="text-text-secondary" />
+              Cargar archivo manual
+            </button>
+          </div>,
+          document.body
+        )}
       </div>
     )
   }
@@ -1464,7 +1533,7 @@ function AgendaActionsCell({
           <button
             title="Ejecutar formulario"
             onClick={onExecuteForm}
-            className={`${primaryBtn} ${primaryActive} rounded-r-none pr-2.5`}
+            className={`${primaryBtn} ${primaryActive} rounded-r-none pr-2.5 border-r-0`}
           >
             <Play size={14} />
             <span className="hidden sm:inline">Ejecutar</span>
@@ -1474,7 +1543,7 @@ function AgendaActionsCell({
             onClick={toggleMenu}
             aria-haspopup="menu"
             aria-expanded={menuOpen}
-            className={`${primaryActive} px-2 min-h-[36px] border-l border-white/20 rounded-l-none ${menuOpen ? 'bg-sig-700' : ''}`}
+            className={`${primaryActive} px-2 min-h-[36px] rounded-l-none ${menuOpen ? 'bg-sig-500/10' : ''}`}
           >
             <ChevronDown size={14} className={`transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
           </button>

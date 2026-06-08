@@ -651,7 +651,7 @@ function TablaView({
           <td className="px-3 py-2 text-text-tertiary text-xs">{fmt(r.fecha_ejecutada)}</td>
           <td className="px-3 py-2 text-text-tertiary text-xs">{r.responsable_nombre ?? '—'}</td>
           <td className="px-3 py-2">
-            <Link href={agendaHref(r)} className="inline-flex items-center gap-1.5 text-xs font-medium text-sig-500 hover:text-sig-700 transition-colors" title="Ir a la agenda del establecimiento para ejecutar esta gestión">
+            <Link href={agendaHref(r)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-surface-base border border-sig-500 text-sig-500 hover:bg-sig-500/10 transition-colors" title="Ir a la agenda del establecimiento para ejecutar esta gestión">
               <Play size={14} /> Ejecutar
             </Link>
           </td>
