@@ -101,7 +101,10 @@ export async function crearReporteFotografico(
         // principal: path prefijado por tenant para que la RLS de lectura
         // matchee. Guardamos el PATH relativo (no la URL).
         const rows = await Promise.all(validas.map(async (o, idx) => {
-          let foto_url: string | null = null
+          // Por defecto la obs hereda la foto PRINCIPAL editada del reporte
+          // (upload.path, la misma que va a evidencia_url) para que se vea en
+          // Seguimiento; si la obs trae su propia foto, esa pisa el default.
+          let foto_url: string | null = upload.path
           if (o.tiene_foto) {
             const obsFile = formData.get(`obs-foto-${idx}`) as File | null
             if (obsFile && obsFile.size > 0) {
@@ -119,6 +122,10 @@ export async function crearReporteFotografico(
           }
           return {
             registro_gestion_id: reg.id,
+            // rg_fecha_planificada completa la FK compuesta hacia el registro
+            // particionado (registro_gestion_id + rg_fecha_planificada) y es NOT NULL.
+            // Debe matchear el fecha_planificada con el que se insertó gestiones_registros.
+            rg_fecha_planificada: today,
             descripcion: o.descripcion.trim(),
             categoria_id: o.categoria_id,
             clasificacion_id: o.clasificacion_id || null,
@@ -130,6 +137,7 @@ export async function crearReporteFotografico(
         const { error: obsError } = await supabase.from('gestiones_observaciones').insert(rows)
         if (obsError) {
           console.error('[reporteFotografico] Error al insertar gestiones_observaciones:', obsError.message)
+          return { success: false, error: 'El reporte se guardó, pero no se pudieron registrar las observaciones: ' + obsError.message }
         }
       }
     } catch (e) { console.error('[reporteFotografico] Error parseando observaciones:', e) }
