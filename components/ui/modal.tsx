@@ -9,12 +9,13 @@ interface ModalProps {
   title: string
   children: React.ReactNode
   className?: string
-  size?: 'default' | 'full'
+  size?: 'default' | 'full' | 'wide'
 }
 
 const SIZE_CLASSES = {
   default: 'max-w-lg',
   full: 'max-w-4xl',
+  wide: 'max-w-6xl',
 }
 
 export function Modal({ open, onClose, title, children, className, size = 'default' }: ModalProps) {

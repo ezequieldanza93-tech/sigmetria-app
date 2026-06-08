@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { crearReporteFotograficoEjecucion } from '@/lib/actions/reporte-fotografico'
 import { PhotoCanvasEditor } from '@/components/photo-canvas-editor'
+import type { DrawObject } from '@/components/photo-canvas-editor'
 import { PersonaSelector } from '@/components/persona-selector'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
@@ -46,8 +47,12 @@ interface FotoItem {
   previewUrl: string
   /** Blob editado (PNG del editor). Si null, se usa el File original al enviar. */
   editedBlob: Blob | null
+  /** Object URL del blob editado (para el review/PDF). Se revoca al reemplazar. */
+  editedUrl: string | null
   /** File original seleccionado. */
   originalFile: File
+  /** Objetos de dibujo del editor, persistidos para sobrevivir al re-montaje. */
+  annotations: DrawObject[]
   observaciones: ObsFoto[]
 }
 
@@ -122,7 +127,10 @@ export function ReporteFotograficoEjecutorModal({
   fotosRef.current = fotos
   useEffect(() => {
     return () => {
-      for (const f of fotosRef.current) URL.revokeObjectURL(f.previewUrl)
+      for (const f of fotosRef.current) {
+        URL.revokeObjectURL(f.previewUrl)
+        if (f.editedUrl) URL.revokeObjectURL(f.editedUrl)
+      }
     }
   }, [])
 
@@ -136,7 +144,9 @@ export function ReporteFotograficoEjecutorModal({
         key: fotoKeyRef.current++,
         previewUrl: URL.createObjectURL(f),
         editedBlob: null,
+        editedUrl: null,
         originalFile: f,
+        annotations: [],
         observaciones: [],
       })),
     ])
@@ -155,7 +165,10 @@ export function ReporteFotograficoEjecutorModal({
   function removeFoto(key: number) {
     setFotos(prev => {
       const target = prev.find(f => f.key === key)
-      if (target) URL.revokeObjectURL(target.previewUrl)
+      if (target) {
+        URL.revokeObjectURL(target.previewUrl)
+        if (target.editedUrl) URL.revokeObjectURL(target.editedUrl)
+      }
       const next = prev.filter(f => f.key !== key)
       setFotoActiva(a => Math.min(a, Math.max(0, next.length - 1)))
       return next
@@ -173,8 +186,30 @@ export function ReporteFotograficoEjecutorModal({
   }
 
   // ── Editor / observaciones por foto ───────────────────────────────
+  // Ref para flushear el canvas del editor activo a PNG antes de navegar
+  // (sin depender del debounce de 500ms, que se cancelaba al desmontar).
+  const exportControlRef = useRef<(() => Promise<Blob | null>) | null>(null)
+
   function setEditedBlob(fotoKey: number, blob: Blob) {
-    setFotos(prev => prev.map(f => (f.key === fotoKey ? { ...f, editedBlob: blob } : f)))
+    setFotos(prev => prev.map(f => {
+      if (f.key !== fotoKey) return f
+      // Revocar la URL anterior antes de crear la nueva: el review lee editedUrl
+      // directamente, así siempre refleja el último blob (con sus anotaciones).
+      if (f.editedUrl) URL.revokeObjectURL(f.editedUrl)
+      return { ...f, editedBlob: blob, editedUrl: URL.createObjectURL(blob) }
+    }))
+  }
+
+  function setFotoAnnotations(fotoKey: number, annotations: DrawObject[]) {
+    setFotos(prev => prev.map(f => (f.key === fotoKey ? { ...f, annotations } : f)))
+  }
+
+  // Exporta el canvas del editor activo a PNG y lo guarda como editedBlob/editedUrl.
+  async function flushActiveFoto() {
+    const activa = fotos[fotoActiva]
+    if (!activa) return
+    const blob = await exportControlRef.current?.()
+    if (blob) setEditedBlob(activa.key, blob)
   }
 
   function addObsFromEditor(fotoKey: number, descripcion: string, categoriaId: string) {
@@ -220,7 +255,7 @@ export function ReporteFotograficoEjecutorModal({
   }
 
   // ── Navegación wizard ─────────────────────────────────────────────
-  function goNext() {
+  async function goNext() {
     setError(null)
     if (step === 'upload') {
       if (fotos.length === 0) { setError('Subí al menos una foto.'); return }
@@ -229,12 +264,14 @@ export function ReporteFotograficoEjecutorModal({
       setStep('editor')
       setFotoActiva(0)
     } else if (step === 'editor') {
+      await flushActiveFoto()
       setStep('guardar')
     }
   }
 
-  function goBack() {
+  async function goBack() {
     setError(null)
+    if (step === 'editor') await flushActiveFoto()
     const idx = STEP_ORDER.indexOf(step)
     if (idx > 0) setStep(STEP_ORDER[idx - 1])
   }
@@ -389,28 +426,6 @@ export function ReporteFotograficoEjecutorModal({
   const totalObs = fotos.reduce((acc, f) => acc + f.observaciones.filter(o => o.descripcion.trim()).length, 0)
   const stepIdx = STEP_ORDER.indexOf(step)
 
-  // URL del PNG editado por foto (o el original si no se editó), para el nodo de
-  // review. Memoizado por (key, blob) para no crear un object URL nuevo en cada
-  // render; se revocan los blobs editados al cambiar/desmontar.
-  const reviewUrls = useMemo(() => {
-    const map = new Map<number, string>()
-    for (const f of fotos) {
-      map.set(f.key, f.editedBlob ? URL.createObjectURL(f.editedBlob) : f.previewUrl)
-    }
-    return map
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fotos.map(f => `${f.key}:${f.editedBlob ? 'e' : 'o'}`).join('|')])
-
-  useEffect(() => {
-    return () => {
-      for (const f of fotos) {
-        const url = reviewUrls.get(f.key)
-        if (url && f.editedBlob) URL.revokeObjectURL(url)
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reviewUrls])
-
   // ── Render: post-guardado ─────────────────────────────────────────
   if (step === 'listo') {
     return (
@@ -464,8 +479,8 @@ export function ReporteFotograficoEjecutorModal({
   const fotoEnEdicion = fotos[fotoActiva]
 
   return (
-    <Modal open title={`Reporte Fotográfico — ${gestionNombre}`} onClose={onClose} size="full">
-      <div className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
+    <Modal open title={`Reporte Fotográfico — ${gestionNombre}`} onClose={onClose} size="wide">
+      <div className="space-y-4 max-h-[85vh] overflow-y-auto pr-1">
         {/* Stepper */}
         <div className="flex items-center gap-1.5 text-xs">
           {STEP_ORDER.map((s, i) => (
@@ -599,7 +614,7 @@ export function ReporteFotograficoEjecutorModal({
             <div className="flex items-center justify-between">
               <button
                 type="button"
-                onClick={() => setFotoActiva(a => Math.max(0, a - 1))}
+                onClick={async () => { await flushActiveFoto(); setFotoActiva(a => Math.max(0, a - 1)) }}
                 disabled={fotoActiva === 0}
                 className="inline-flex items-center gap-1 text-sm text-sig-600 hover:text-sig-700 disabled:opacity-30"
               >
@@ -610,7 +625,7 @@ export function ReporteFotograficoEjecutorModal({
               </span>
               <button
                 type="button"
-                onClick={() => setFotoActiva(a => Math.min(fotos.length - 1, a + 1))}
+                onClick={async () => { await flushActiveFoto(); setFotoActiva(a => Math.min(fotos.length - 1, a + 1)) }}
                 disabled={fotoActiva === fotos.length - 1}
                 className="inline-flex items-center gap-1 text-sm text-sig-600 hover:text-sig-700 disabled:opacity-30"
               >
@@ -626,6 +641,9 @@ export function ReporteFotograficoEjecutorModal({
               enableObservacionTool
               categorias={categorias}
               onObservacionAdded={(desc, catId) => addObsFromEditor(fotoEnEdicion.key, desc, catId)}
+              initialObjects={fotoEnEdicion.annotations}
+              onObjectsChange={objs => setFotoAnnotations(fotoEnEdicion.key, objs)}
+              exportControl={exportControlRef}
             />
 
             {/* Observaciones de esta foto */}
@@ -757,7 +775,7 @@ export function ReporteFotograficoEjecutorModal({
               {/* 1 bloque por foto */}
               {fotos.map((f, idx) => {
                 const obsValidas = f.observaciones.filter(o => o.descripcion.trim())
-                const editedUrl = reviewUrls.get(f.key) ?? f.previewUrl
+                const editedUrl = f.editedUrl ?? f.previewUrl
                 return (
                   <div key={f.key} className="break-inside-avoid">
                     <h2 className="text-sm font-bold text-gray-900 mb-2">Foto {idx + 1}</h2>

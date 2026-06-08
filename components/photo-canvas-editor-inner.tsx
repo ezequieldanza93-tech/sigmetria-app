@@ -7,6 +7,7 @@
 // resueltos y el canvas queda en blanco.
 
 import { useRef, useState, useEffect, useCallback, useMemo } from 'react'
+import type { MutableRefObject } from 'react'
 import { Stage, Layer, Image as KonvaImage, Line, Rect, Circle, Arrow, Text as KonvaText, Group, Transformer } from 'react-konva'
 import type Konva from 'konva'
 import type { KonvaEventObject } from 'konva/lib/Node'
@@ -41,7 +42,7 @@ interface ObservacionCategoria {
   color: string
 }
 
-type DrawObject =
+export type DrawObject =
   | { type: 'pen'; id: string; points: number[]; stroke: string; strokeWidth: number }
   | { type: 'rect'; id: string; x: number; y: number; width: number; height: number; stroke: string; strokeWidth: number; rotation?: number }
   | { type: 'circle'; id: string; x: number; y: number; radius: number; stroke: string; strokeWidth: number }
@@ -57,6 +58,12 @@ export interface PhotoCanvasEditorProps {
   categorias?: ObservacionCategoria[]
   /** Callback cuando el usuario crea una observación desde el editor. */
   onObservacionAdded?: (descripcion: string, categoriaId: string) => void
+  /** Objetos iniciales: restaura anotaciones al re-montar (cambio de foto). */
+  initialObjects?: DrawObject[]
+  /** Notifica al padre los objetos actuales para persistirlos entre re-montajes. */
+  onObjectsChange?: (objects: DrawObject[]) => void
+  /** Ref para exportar el canvas a PNG de forma imperativa (flush antes de navegar). */
+  exportControl?: MutableRefObject<(() => Promise<Blob | null>) | null>
 }
 
 function genId(): string {
@@ -69,6 +76,9 @@ export default function PhotoCanvasEditorInner({
   enableObservacionTool = false,
   categorias = [],
   onObservacionAdded,
+  initialObjects,
+  onObjectsChange,
+  exportControl,
 }: PhotoCanvasEditorProps) {
   const stageRef = useRef<Konva.Stage | null>(null)
   const transformerRef = useRef<Konva.Transformer | null>(null)
@@ -79,7 +89,7 @@ export default function PhotoCanvasEditorInner({
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 })
   const [naturalSize, setNaturalSize] = useState({ width: 0, height: 0 })
 
-  const [objects, setObjects] = useState<DrawObject[]>([])
+  const [objects, setObjects] = useState<DrawObject[]>(() => initialObjects ?? [])
   const [tool, setTool] = useState<Tool>('select')
   const [color, setColor] = useState(DEFAULT_COLOR)
   const [strokeWidth, setStrokeWidth] = useState<number>(DEFAULT_BRUSH)
@@ -199,9 +209,31 @@ export default function PhotoCanvasEditorInner({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [objects, image, stageSize, onImageChange])
 
+  // Refs a lo último, para el flush imperativo (sin re-render por cada cambio).
+  const onObjectsChangeRef = useRef(onObjectsChange)
+  onObjectsChangeRef.current = onObjectsChange
+  const objectsRef = useRef(objects)
+  objectsRef.current = objects
+  const exportBlobLatest = useRef<(() => Promise<Blob | null>) | undefined>(undefined)
+  useEffect(() => { exportBlobLatest.current = exportBlob })
+
+  // Export imperativo: persiste los objetos actuales en el padre (para que
+  // sobrevivan al re-montaje del editor, key={foto.key}) y devuelve el PNG.
+  // El padre lo invoca ANTES de navegar (cambio de foto / paso), así no depende
+  // del debounce de 500ms del auto-export (que se cancelaba al desmontar).
+  useEffect(() => {
+    if (!exportControl) return
+    exportControl.current = async () => {
+      onObjectsChangeRef.current?.(objectsRef.current)
+      return (await exportBlobLatest.current?.()) ?? null
+    }
+    return () => { if (exportControl) exportControl.current = null }
+  }, [exportControl])
+
   async function exportBlob(): Promise<Blob | null> {
     const stage = stageRef.current
-    if (!stage || !image) return null
+    // stageSize.width === 0 daría pixelRatio = Infinity y rompería toBlob.
+    if (!stage || !image || stageSize.width === 0) return null
     // Deseleccionar antes de exportar para que no aparezca el transformer
     transformerRef.current?.nodes([])
     transformerRef.current?.getLayer()?.batchDraw()
