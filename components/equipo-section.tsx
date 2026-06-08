@@ -10,17 +10,28 @@ export function EquipoSection() {
   const { data, isLoading } = useEquipoMembers()
   const { data: provincias = [] } = useProvincias()
   const [selected, setSelected] = useState<MemberRow | null>(null)
+  const [selfOpen, setSelfOpen] = useState(false)
 
   if (isLoading || !data) return null
 
-  const { miembros, currentUserId } = data
+  const { miembros, currentUserId, currentUserName } = data
 
   return (
     <>
       <div className="bg-surface-elevated rounded-xl border border-border-subtle overflow-hidden">
-        <div className="px-5 py-3.5 border-b border-border-subtle">
-          <h2 className="text-sm font-semibold text-text-primary">Perfiles profesionales</h2>
-          <p className="text-xs text-text-tertiary mt-0.5">Hacé click en un miembro para ver o editar su perfil</p>
+        <div className="px-5 py-3.5 border-b border-border-subtle flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold text-text-primary">Perfiles profesionales</h2>
+            <p className="text-xs text-text-tertiary mt-0.5">Hacé click en un miembro para ver o editar su perfil</p>
+          </div>
+          {currentUserId && (
+            <button
+              onClick={() => setSelfOpen(true)}
+              className="shrink-0 text-xs font-medium bg-sig-500 text-white px-3 py-1.5 rounded-lg hover:bg-sig-700 transition-colors"
+            >
+              Completar mi perfil
+            </button>
+          )}
         </div>
 
         {miembros.length === 0 ? (
@@ -86,6 +97,16 @@ export function EquipoSection() {
           open={!!selected}
           onClose={() => setSelected(null)}
           canEdit={selected.user_id === currentUserId}
+        />
+      )}
+
+      {selfOpen && currentUserId && (
+        <ProfesionalModal
+          userId={currentUserId}
+          fullName={currentUserName || 'Mi perfil'}
+          open={selfOpen}
+          onClose={() => setSelfOpen(false)}
+          canEdit
         />
       )}
     </>
