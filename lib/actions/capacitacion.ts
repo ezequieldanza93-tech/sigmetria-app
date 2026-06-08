@@ -21,6 +21,7 @@ export interface PersonaEstablecimiento {
   nombre: string
   apellido: string
   email: string | null
+  celular: string | null
   legajo: string | null
 }
 
@@ -28,6 +29,7 @@ export interface ParticipanteInput {
   personaId?: string
   nombre?: string
   email?: string
+  celular?: string
 }
 
 export interface ParticipanteToken {
@@ -35,6 +37,7 @@ export interface ParticipanteToken {
   personaId: string | null
   nombre: string | null
   email: string | null
+  celular: string | null
   token: string
   url: string
 }
@@ -251,7 +254,7 @@ export async function getPersonasDeEstablecimiento(
 
   const { data, error } = await supabase
     .from('personas_establecimientos')
-    .select('persona_id, personas_directorio!persona_id(id, nombre, apellido, email, legajo, is_active)')
+    .select('persona_id, personas_directorio!persona_id(id, nombre, apellido, email, telefono, legajo, is_active)')
     .eq('establecimiento_id', establecimientoId)
 
   if (error) return { success: false, error: error.message }
@@ -259,7 +262,7 @@ export async function getPersonasDeEstablecimiento(
   const personas: PersonaEstablecimiento[] = (data ?? [])
     .map((row) => {
       const p = (row as { personas_directorio: unknown }).personas_directorio as
-        | { id: string; nombre: string; apellido: string; email: string | null; legajo: string | null; is_active: boolean }
+        | { id: string; nombre: string; apellido: string; email: string | null; telefono: string | null; legajo: string | null; is_active: boolean }
         | null
       if (!p || p.is_active === false) return null
       return {
@@ -267,6 +270,7 @@ export async function getPersonasDeEstablecimiento(
         nombre: p.nombre,
         apellido: p.apellido,
         email: p.email,
+        celular: p.telefono,
         legajo: p.legajo,
       }
     })
@@ -346,13 +350,14 @@ export async function agregarParticipantes(
         persona_id: item.personaId ?? null,
         nombre: item.nombre ?? null,
         email: item.email ?? null,
+        celular: item.celular ?? null,
         token,
         asignacion_id: asignacionId,
         estado: 'pendiente',
         aprobado: false,
         intentos: 0,
       })
-      .select('id, persona_id, nombre, email, token')
+      .select('id, persona_id, nombre, email, celular, token')
       .single()
 
     if (partErr || !participante) continue
@@ -362,6 +367,7 @@ export async function agregarParticipantes(
       personaId: participante.persona_id,
       nombre: participante.nombre,
       email: participante.email,
+      celular: participante.celular,
       token: participante.token,
       url: `${appUrl()}/capacitacion/${participante.token}`,
     })
