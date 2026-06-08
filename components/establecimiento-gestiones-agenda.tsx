@@ -1346,9 +1346,9 @@ function AgendaActionsCell({
     return () => document.removeEventListener('mousedown', handleOutside)
   }, [menuOpen])
 
-  function toggleMenu() {
-    if (!menuOpen && triggerRef.current) {
-      const rect = triggerRef.current.getBoundingClientRect()
+  function toggleMenu(e: { currentTarget: HTMLElement }) {
+    if (!menuOpen) {
+      const rect = e.currentTarget.getBoundingClientRect()
       setMenuPos({ top: rect.bottom + 4, left: rect.right })
     }
     setMenuOpen(v => !v)
