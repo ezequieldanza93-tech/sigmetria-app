@@ -28,10 +28,10 @@ import {
   Check,
   Download,
   Mail,
+  MessageSquare,
 } from 'lucide-react'
 
 type CursoLite = { id: string; titulo: string }
-type PersonaLite = { id: string; nombre: string; apellido: string }
 
 interface EjecutarCapacitacionModalProps {
   establecimientoId: string
@@ -59,10 +59,19 @@ interface ParticipanteDraft {
   personaId: string | null
   nombre: string
   email: string
+  celular: string
 }
 
 function nombreCompleto(p: PersonaEstablecimiento): string {
   return `${p.apellido}, ${p.nombre}`.trim()
+}
+
+// Link de WhatsApp con el celular del participante + el enlace de su capacitación.
+// Mejor esfuerzo: limpia no-dígitos; el número debería incluir código de país.
+function waLink(celular: string, url: string): string {
+  const digits = celular.replace(/\D/g, '')
+  const text = encodeURIComponent(`Hola, te comparto el enlace para hacer tu capacitación: ${url}`)
+  return `https://wa.me/${digits}?text=${text}`
 }
 
 // ─── Tarjeta de enlace + QR por participante (post-creación) ─────────────────
@@ -135,6 +144,16 @@ function ParticipanteEnlaceCard({ p }: { p: ParticipanteToken }) {
           >
             <Download size={13} /> Descargar QR
           </button>
+          {p.celular && (
+            <a
+              href={waLink(p.celular, p.url)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-green-600 hover:text-green-700 font-medium"
+            >
+              <MessageSquare size={13} /> WhatsApp
+            </a>
+          )}
           <a
             href={p.url}
             target="_blank"
@@ -227,8 +246,8 @@ export function EjecutarCapacitacionModal({
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0])
   const [modalidad, setModalidad] = useState<CapacitacionModalidad>('elearning')
 
-  // Instructor: persona del directorio o externo (texto libre)
-  const [personas, setPersonas] = useState<PersonaLite[]>([])
+  // Instructor + participantes: personas del directorio del establecimiento (con email + celular)
+  const [directorio, setDirectorio] = useState<PersonaEstablecimiento[]>([])
   const [instructorPersonaId, setInstructorPersonaId] = useState(instructorPersonaIdDefault ?? '')
   const [instructorExterno, setInstructorExterno] = useState('')
 
@@ -247,7 +266,7 @@ export function EjecutarCapacitacionModal({
     process.env.NEXT_PUBLIC_APP_URL ??
     (typeof window !== 'undefined' ? window.location.origin : '')
 
-  // Cargar cursos publicados (cliente, RLS) + personas del establecimiento
+  // Cargar cursos publicados (cliente, RLS)
   useEffect(() => {
     const supabase = createClient()
     supabase
@@ -256,35 +275,25 @@ export function EjecutarCapacitacionModal({
       .eq('estado', 'publicado')
       .order('titulo', { ascending: true })
       .then(({ data }) => setCursos((data ?? []) as CursoLite[]))
-
-    supabase
-      .from('personas_establecimientos')
-      .select('personas_directorio!persona_id(id, nombre, apellido)')
-      .eq('establecimiento_id', establecimientoId)
-      .then(({ data }) => {
-        const ps = ((data ?? []) as unknown as {
-          personas_directorio: PersonaLite | null
-        }[])
-          .map((pe) => pe.personas_directorio)
-          .filter((p): p is PersonaLite => !!p)
-          .sort((a, b) => a.apellido.localeCompare(b.apellido))
-        setPersonas(ps)
-      })
   }, [establecimientoId])
 
-  // Preseleccionar participantes vía server action (incluye email + legajo, filtra inactivos)
+  // Una sola fuente: el directorio del establecimiento (con email + celular) sirve
+  // para el dropdown de participantes, el selector de instructor y la preselección.
   useEffect(() => {
     let cancelled = false
     setCargandoPersonas(true)
     getPersonasDeEstablecimiento(establecimientoId).then((res) => {
       if (cancelled) return
       if (res.success) {
+        const ordenadas = [...res.data].sort((a, b) => a.apellido.localeCompare(b.apellido))
+        setDirectorio(ordenadas)
         setParticipantes(
-          res.data.map((p) => ({
+          ordenadas.map((p) => ({
             key: p.persona_id,
             personaId: p.persona_id,
             nombre: nombreCompleto(p),
             email: p.email ?? '',
+            celular: p.celular ?? '',
           })),
         )
       }
@@ -297,22 +306,28 @@ export function EjecutarCapacitacionModal({
 
   const personasDisponibles = useMemo(() => {
     const usados = new Set(participantes.map((p) => p.personaId).filter(Boolean))
-    return personas.filter((p) => !usados.has(p.id))
-  }, [personas, participantes])
+    return directorio.filter((p) => !usados.has(p.persona_id))
+  }, [directorio, participantes])
 
   function agregarPersona(personaId: string) {
-    const p = personas.find((x) => x.id === personaId)
+    const p = directorio.find((x) => x.persona_id === personaId)
     if (!p) return
     setParticipantes((prev) => [
       ...prev,
-      { key: p.id, personaId: p.id, nombre: `${p.apellido}, ${p.nombre}`, email: '' },
+      {
+        key: p.persona_id,
+        personaId: p.persona_id,
+        nombre: nombreCompleto(p),
+        email: p.email ?? '',
+        celular: p.celular ?? '',
+      },
     ])
   }
 
   function agregarExterno() {
     setParticipantes((prev) => [
       ...prev,
-      { key: `ext-${crypto.randomUUID()}`, personaId: null, nombre: '', email: '' },
+      { key: `ext-${crypto.randomUUID()}`, personaId: null, nombre: '', email: '', celular: '' },
     ])
   }
 
@@ -320,7 +335,7 @@ export function EjecutarCapacitacionModal({
     setParticipantes((prev) => prev.filter((p) => p.key !== key))
   }
 
-  function actualizar(key: string, campo: 'nombre' | 'email', valor: string) {
+  function actualizar(key: string, campo: 'nombre' | 'email' | 'celular', valor: string) {
     setParticipantes((prev) => prev.map((p) => (p.key === key ? { ...p, [campo]: valor } : p)))
   }
 
@@ -360,6 +375,7 @@ export function EjecutarCapacitacionModal({
         personaId: p.personaId ?? undefined,
         nombre: p.personaId ? undefined : p.nombre.trim() || undefined,
         email: p.email.trim() || undefined,
+        celular: p.celular.trim() || undefined,
       }))
 
       const agregar = await agregarParticipantes(sesionId, items)
@@ -478,8 +494,8 @@ export function EjecutarCapacitacionModal({
                 className={inputCls}
               >
                 <option value="">— Sin asignar / externo —</option>
-                {personas.map((p) => (
-                  <option key={p.id} value={p.id}>
+                {directorio.map((p) => (
+                  <option key={p.persona_id} value={p.persona_id}>
                     {p.apellido}, {p.nombre}
                   </option>
                 ))}
@@ -524,7 +540,7 @@ export function EjecutarCapacitacionModal({
                   >
                     <option value="">+ Agregar persona…</option>
                     {personasDisponibles.map((p) => (
-                      <option key={p.id} value={p.id}>
+                      <option key={p.persona_id} value={p.persona_id}>
                         {p.apellido}, {p.nombre}
                       </option>
                     ))}
@@ -553,7 +569,7 @@ export function EjecutarCapacitacionModal({
                     key={p.key}
                     className="flex items-start gap-2 border border-border-subtle rounded-lg p-2 bg-gray-50/50"
                   >
-                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2">
                       <input
                         type="text"
                         value={p.nombre}
@@ -571,6 +587,13 @@ export function EjecutarCapacitacionModal({
                         placeholder="email@ejemplo.com (opcional)"
                         className="border border-border-default rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-sig-500"
                       />
+                      <input
+                        type="tel"
+                        value={p.celular}
+                        onChange={(e) => actualizar(p.key, 'celular', e.target.value)}
+                        placeholder="Celular (opcional)"
+                        className="border border-border-default rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-sig-500"
+                      />
                     </div>
                     <button
                       type="button"
@@ -585,8 +608,9 @@ export function EjecutarCapacitacionModal({
               </div>
             )}
             <p className="text-xs text-text-tertiary mt-2">
-              Al crear la capacitación se genera un enlace personal y un QR por participante. No se
-              envían emails: vos los compartís como prefieras (WhatsApp, impreso, QR en el momento).
+              Al elegir una persona del directorio se traen su email y celular. Al crear la
+              capacitación se genera un enlace personal + QR por participante para compartir como
+              prefieras (WhatsApp, impreso, QR en el momento). No se envían emails automáticamente.
             </p>
           </div>
 
