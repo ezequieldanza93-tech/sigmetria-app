@@ -7,10 +7,8 @@ import {
   sugerirValorRequerido,
   getDec351Tablas,
   getInstrumentosLuxometro,
-  getPerfilesProfesionales,
   getSectoresYPuestos,
   type InstrumentoLuxometro,
-  type PerfilProfesionalOption,
   type SectorConPuestos,
   type ValorRequeridoSugerido,
 } from '@/lib/actions/medicion-iluminacion'
@@ -198,7 +196,6 @@ export function MedicionIluminacionEjecutorModal({
   // ── Catálogos ───────────────────────────────────────────────────────
   const [estCtx, setEstCtx] = useState<EstablecimientoCtx | null>(null)
   const [instrumentos, setInstrumentos] = useState<InstrumentoLuxometro[]>([])
-  const [perfiles, setPerfiles] = useState<PerfilProfesionalOption[]>([])
   const [sectores, setSectores] = useState<SectorConPuestos[]>([])
   const [tabla4, setTabla4] = useState<Array<Record<string, unknown>>>([])
   const [certificados, setCertificados] = useState<
@@ -208,7 +205,7 @@ export function MedicionIluminacionEjecutorModal({
   // ── Hoja 1: datos ───────────────────────────────────────────────────
   const [instrumentoId, setInstrumentoId] = useState('')
   const [certificadoId, setCertificadoId] = useState('')
-  const [perfilProfesionalId, setPerfilProfesionalId] = useState('')
+  const [firmante, setFirmante] = useState('')
   const [metodologia, setMetodologia] = useState('')
   const [fechaMedicion, setFechaMedicion] = useState(rgFechaPlanificada || '')
   const [horaInicio, setHoraInicio] = useState('')
@@ -266,7 +263,6 @@ export function MedicionIluminacionEjecutorModal({
       })
 
     getInstrumentosLuxometro().then(r => { if (activo && r.success) setInstrumentos(r.data) })
-    getPerfilesProfesionales().then(r => { if (activo && r.success) setPerfiles(r.data) })
     getSectoresYPuestos(establecimientoId).then(r => { if (activo && r.success) setSectores(r.data) })
     getDec351Tablas().then(r => { if (activo && r.success) setTabla4(r.data.tabla4) })
 
@@ -382,7 +378,7 @@ export function MedicionIluminacionEjecutorModal({
     return [
       // Hoja 1
       { id: 'instrumento', label: 'Elegí el luxómetro usado', done: !!instrumentoId, section: 1 },
-      { id: 'profesional', label: 'Asigná el profesional firmante', done: !!perfilProfesionalId, section: 1 },
+      { id: 'profesional', label: 'Cargá el profesional firmante', done: !!firmante.trim(), section: 1 },
       { id: 'fecha', label: 'Cargá la fecha de medición', done: !!fechaMedicion, section: 1 },
       { id: 'horario', label: 'Cargá el horario (inicio/fin)', done: !!horaInicio && !!horaFin, section: 1 },
       // Hoja 2
@@ -394,7 +390,7 @@ export function MedicionIluminacionEjecutorModal({
       { id: 'conclusiones', label: 'Redactá las conclusiones', done: !!conclusiones.trim(), section: 3 },
       { id: 'recomendaciones', label: 'Redactá las recomendaciones', done: !!recomendaciones.trim(), section: 3 },
     ]
-  }, [instrumentoId, perfilProfesionalId, fechaMedicion, horaInicio, horaFin, puntos, conclusiones, recomendaciones])
+  }, [instrumentoId, firmante, fechaMedicion, horaInicio, horaFin, puntos, conclusiones, recomendaciones])
 
   const doneCount = checks.filter(c => c.done).length
   const totalChecks = checks.length || 1
@@ -408,7 +404,7 @@ export function MedicionIluminacionEjecutorModal({
     if (step === 'datos') {
       // Mínimo de la hoja 1: luxómetro + profesional + fecha.
       if (!instrumentoId) { setError('Elegí el luxómetro usado en la medición.'); return }
-      if (!perfilProfesionalId) { setError('Asigná el profesional firmante del protocolo.'); return }
+      if (!firmante.trim()) { setError('Cargá el profesional firmante del protocolo.'); return }
       if (!fechaMedicion) { setError('Cargá la fecha de medición.'); return }
       setStep('puntos')
     } else if (step === 'puntos') {
@@ -439,7 +435,7 @@ export function MedicionIluminacionEjecutorModal({
       if (gestionEstablecimientoId) fd.set('gestion_establecimiento_id', gestionEstablecimientoId)
       if (instrumentoId) fd.set('instrumento_id', instrumentoId)
       if (certificadoId) fd.set('certificado_id', certificadoId)
-      if (perfilProfesionalId) fd.set('perfil_profesional_id', perfilProfesionalId)
+      fd.set('firmante', firmante)
       fd.set('metodologia', metodologia)
       fd.set('fecha_medicion', fechaMedicion)
       fd.set('hora_inicio', horaInicio)
@@ -641,13 +637,14 @@ export function MedicionIluminacionEjecutorModal({
                   </select>
                 </div>
                 <div>
-                  <label className={labelCls}>Profesional firmante <span className="text-danger">*</span></label>
-                  <select className={inputCls} value={perfilProfesionalId} onChange={e => setPerfilProfesionalId(e.target.value)}>
-                    <option value="">Seleccionar profesional…</option>
-                    {perfiles.map(p => (
-                      <option key={p.id} value={p.id}>{p.full_name ?? 'Profesional sin nombre'}</option>
-                    ))}
-                  </select>
+                  <label className={labelCls}>Profesional firmante (nombre y matrícula) <span className="text-danger">*</span></label>
+                  <input
+                    type="text"
+                    className={inputCls}
+                    value={firmante}
+                    onChange={e => setFirmante(e.target.value)}
+                    placeholder="Ing. Juan Pérez — Mat. 1234"
+                  />
                 </div>
                 <div>
                   <label className={labelCls}>Metodología</label>
@@ -1073,7 +1070,7 @@ export function MedicionIluminacionEjecutorModal({
                 <ReadOnly label="Empresa" value={estCtx?.empresa_razon_social} />
                 <ReadOnly label="Establecimiento" value={estCtx?.nombre} />
                 <ReadOnly label="Luxómetro" value={instrumentos.find(i => i.id === instrumentoId) ? `${[instrumentos.find(i => i.id === instrumentoId)?.marca, instrumentos.find(i => i.id === instrumentoId)?.modelo].filter(Boolean).join(' ')}` : null} />
-                <ReadOnly label="Profesional" value={perfiles.find(p => p.id === perfilProfesionalId)?.full_name} />
+                <ReadOnly label="Profesional firmante" value={firmante} />
                 <ReadOnly label="Fecha de medición" value={fechaMedicion} />
                 <ReadOnly label="Horario" value={horaInicio && horaFin ? `${horaInicio} – ${horaFin}` : (horaInicio || horaFin || null)} />
                 <ReadOnly label="Criterio de altura" value={alturaCriterio === 'piso' ? 'Desde el piso' : 'Desde el plano de trabajo'} />

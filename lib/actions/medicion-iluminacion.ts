@@ -54,7 +54,7 @@ interface PuntoInput {
  *  - gestion_establecimiento_id   → vínculo a la gestión del establecimiento (opcional)
  *  - instrumento_id?              → luxómetro usado (FK opcional)
  *  - certificado_id?              → certificado de calibración del instrumento (FK opcional)
- *  - perfil_profesional_id?       → firmante del protocolo (FK opcional)
+ *  - firmante?                    → profesional firmante del protocolo (texto libre: nombre y matrícula)
  *  - metodologia                  → texto
  *  - fecha_medicion               → date (YYYY-MM-DD)
  *  - hora_inicio / hora_fin       → time (HH:MM)
@@ -78,7 +78,7 @@ export async function crearMedicionIluminacion(
   const gestionEstablecimientoId = (formData.get('gestion_establecimiento_id') as string) || null
   const instrumentoId = (formData.get('instrumento_id') as string) || null
   const certificadoId = (formData.get('certificado_id') as string) || null
-  const perfilProfesionalId = (formData.get('perfil_profesional_id') as string) || null
+  const firmante = (formData.get('firmante') as string) || null
   const metodologia = (formData.get('metodologia') as string) || null
   const fechaMedicion = (formData.get('fecha_medicion') as string) || null
   const horaInicio = (formData.get('hora_inicio') as string) || null
@@ -174,7 +174,7 @@ export async function crearMedicionIluminacion(
       gestion_establecimiento_id: gestionEstablecimientoId,
       instrumento_id: instrumentoId,
       certificado_id: certificadoId,
-      perfil_profesional_id: perfilProfesionalId,
+      firmante,
       metodologia,
       fecha_medicion: fechaMedicion,
       hora_inicio: horaInicio,
