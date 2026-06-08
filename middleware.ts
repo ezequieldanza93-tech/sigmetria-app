@@ -12,7 +12,10 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/icons/') ||
     pathname.startsWith('/_next/') ||
     pathname.startsWith('/verificar-certificado/') ||
-    pathname.startsWith('/verificar/')
+    pathname.startsWith('/verificar/') ||
+    // Capacitación por token: el participante entra SIN login.
+    // El registro general (/capacitacion/registro/...) queda con auth.
+    (pathname.startsWith('/capacitacion/') && !pathname.startsWith('/capacitacion/registro'))
   ) {
     return NextResponse.next()
   }
