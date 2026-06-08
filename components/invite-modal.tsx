@@ -50,10 +50,8 @@ export function InviteModal({ seatsUsed, seatsMax }: InviteModalProps) {
       </div>
 
       <Modal open={open} onClose={() => setOpen(false)} title="Agregar miembro">
-        <InviteUsuarioForm
-          action={inviteUsuario}
-          onSuccess={() => setOpen(false)}
-        />
+        {/* No cerramos al generar el link: el admin debe poder copiarlo. */}
+        <InviteUsuarioForm action={inviteUsuario} />
       </Modal>
     </>
   )

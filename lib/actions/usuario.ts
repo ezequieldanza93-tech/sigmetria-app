@@ -29,7 +29,9 @@ async function assertCanManage() {
   return { user, profile, membership }
 }
 
-export async function inviteUsuario(_prevState: ActionResult<null> | null, formData: FormData): Promise<ActionResult<null>> {
+export type InviteResult = { link: string; role: string }
+
+export async function inviteUsuario(_prevState: ActionResult<InviteResult> | null, formData: FormData): Promise<ActionResult<InviteResult>> {
   const ctx = await assertCanManage()
   if (!ctx) return { success: false, error: 'Sin permisos para invitar usuarios' }
 
@@ -84,8 +86,13 @@ export async function inviteUsuario(_prevState: ActionResult<null> | null, formD
     return { success: false, error }
   }
 
+  const payload = await response.json().catch(() => null) as { link?: string; role?: string } | null
+  if (!payload?.link) {
+    return { success: false, error: 'No se pudo generar el link de invitación' }
+  }
+
   revalidatePath('/dashboard/usuarios')
-  return { success: true, data: null }
+  return { success: true, data: { link: payload.link, role: payload.role ?? role } }
 }
 
 export async function updateRol(memberId: string, role: UserRole): Promise<ActionResult<null>> {

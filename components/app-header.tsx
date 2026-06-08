@@ -3,8 +3,8 @@
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Sun, Moon, LogOut, ShieldCheck, MessageSquare, Wifi, WifiOff, Download, Keyboard, Home, BookMarked, KeyRound, User } from 'lucide-react'
-import { SystemRole, UserRole, ROLE_LABELS, ROLE_COLORS } from '@/lib/types'
+import { Sun, Moon, LogOut, ShieldCheck, MessageSquare, Wifi, WifiOff, Download, Keyboard, Home, BookMarked, KeyRound, User, Users } from 'lucide-react'
+import { SystemRole, UserRole, ROLE_LABELS, ROLE_COLORS, canManageUsers } from '@/lib/types'
 import { RoleSwitcher } from '@/components/layout/role-switcher'
 import { LanguageSwitcher } from '@/components/layout/language-switcher'
 import { useTranslations } from 'next-intl'
@@ -358,11 +358,14 @@ export function AppHeader({
                 />
 
                 {/* Consultora */}
-                {(userRole === 'full_access_main' || isSuperAdmin) && (
+                {(userRole === 'full_access_main' || canManageUsers(userRole, systemRole) || isSuperAdmin) && (
                   <div className="py-1 border-b border-border-subtle">
                     <div className="px-4 py-1.5">
                       <p className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold">Consultora</p>
                     </div>
+                    {(canManageUsers(userRole, systemRole) || isSuperAdmin) && (
+                      <DropdownItem href="/dashboard/usuarios" icon={Users} label="Usuarios" role="menuitem" />
+                    )}
                     <DropdownItem href="/dashboard/configuracion/api-keys" icon={KeyRound} label="API Keys" role="menuitem" />
                   </div>
                 )}

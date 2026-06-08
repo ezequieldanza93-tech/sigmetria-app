@@ -64,54 +64,64 @@ export async function POST(request: NextRequest) {
   }
 
   const admin = createAdminClient()
-  const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, {
-    data: { full_name },
+
+  // Genera el link de invitación SIN enviar email (a diferencia de
+  // inviteUserByEmail, que dispara el mail). El admin comparte el action_link
+  // como prefiera; el invitado lo abre, setea contraseña y queda activo.
+  const { data: invited, error: inviteError } = await admin.auth.admin.generateLink({
+    type: 'invite',
+    email,
+    options: { data: { full_name } },
   })
 
   if (inviteError) return NextResponse.json({ error: inviteError.message }, { status: 500 })
 
-  if (invited.user) {
-    await admin.from('profiles').upsert({
-      id: invited.user.id,
-      full_name: full_name || email,
-      system_role: 'user',
-    }, { onConflict: 'id' })
+  const invitedUser = invited.user
+  const actionLink = invited.properties?.action_link
+  if (!invitedUser || !actionLink) {
+    return NextResponse.json({ error: 'No se pudo generar el link de invitación' }, { status: 500 })
+  }
 
-    const { error: memberError } = await admin.from('consultoras_members').insert({
-      consultora_id: consultoraId,
-      user_id: invited.user.id,
-      role,
-      invited_by: user.id,
-    })
+  await admin.from('profiles').upsert({
+    id: invitedUser.id,
+    full_name: full_name || email,
+    system_role: 'user',
+  }, { onConflict: 'id' })
 
-    if (memberError) return NextResponse.json({ error: memberError.message }, { status: 500 })
+  const { error: memberError } = await admin.from('consultoras_members').insert({
+    consultora_id: consultoraId,
+    user_id: invitedUser.id,
+    role,
+    invited_by: user.id,
+  })
 
-    // Sync to personas_directorio as "Usuarios" type
-    const nameParts = full_name.trim().split(/\s+/)
-    const nombre = nameParts[0]
-    const apellido = nameParts.slice(1).join(' ') || nombre
-    const { data: usuarioTipo } = await admin
-      .from('personas_tipos')
+  if (memberError) return NextResponse.json({ error: memberError.message }, { status: 500 })
+
+  // Sync to personas_directorio as "Usuarios" type
+  const nameParts = full_name.trim().split(/\s+/)
+  const nombre = nameParts[0]
+  const apellido = nameParts.slice(1).join(' ') || nombre
+  const { data: usuarioTipo } = await admin
+    .from('personas_tipos')
+    .select('id')
+    .eq('nombre', 'Usuarios')
+    .maybeSingle()
+  if (usuarioTipo) {
+    const { data: existing } = await admin
+      .from('personas_directorio')
       .select('id')
-      .eq('nombre', 'Usuarios')
+      .eq('email', email)
       .maybeSingle()
-    if (usuarioTipo) {
-      const { data: existing } = await admin
-        .from('personas_directorio')
-        .select('id')
-        .eq('email', email)
-        .maybeSingle()
-      if (!existing) {
-        await admin.from('personas_directorio').insert({
-          tipo_id: usuarioTipo.id,
-          nombre,
-          apellido,
-          email,
-          is_active: true,
-        })
-      }
+    if (!existing) {
+      await admin.from('personas_directorio').insert({
+        tipo_id: usuarioTipo.id,
+        nombre,
+        apellido,
+        email,
+        is_active: true,
+      })
     }
   }
 
-  return NextResponse.json({ success: true })
+  return NextResponse.json({ success: true, link: actionLink, role })
 }
