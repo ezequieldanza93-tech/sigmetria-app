@@ -237,11 +237,18 @@ export default function PhotoCanvasEditorInner({
     // Deseleccionar antes de exportar para que no aparezca el transformer
     transformerRef.current?.nodes([])
     transformerRef.current?.getLayer()?.batchDraw()
-    // Renderizar a tamaño natural de la imagen para máxima calidad
-    const pixelRatio = naturalSize.width / stageSize.width
+    // Exportar como JPEG con el lado más largo limitado a 1920px: una foto de
+    // celular full-res en PNG pesa 10-30MB y excede el límite duro de body de
+    // Vercel (4.5MB), lo que produce el error "An unexpected response was
+    // received from the server" al guardar el reporte.
+    const MAX_DIM = 1920
+    const longSide = Math.max(naturalSize.width, naturalSize.height) || stageSize.width
+    const scale = Math.min(1, MAX_DIM / longSide)
+    const pixelRatio = (naturalSize.width / stageSize.width) * scale
     return new Promise(resolve => {
       stage.toBlob({
-        mimeType: 'image/png',
+        mimeType: 'image/jpeg',
+        quality: 0.82,
         pixelRatio,
         callback: (blob: Blob | null) => {
           // Restaurar selección
