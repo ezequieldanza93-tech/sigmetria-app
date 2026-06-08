@@ -101,7 +101,10 @@ export async function crearReporteFotografico(
         // principal: path prefijado por tenant para que la RLS de lectura
         // matchee. Guardamos el PATH relativo (no la URL).
         const rows = await Promise.all(validas.map(async (o, idx) => {
-          let foto_url: string | null = null
+          // Por defecto la obs hereda la foto PRINCIPAL editada del reporte
+          // (upload.path, la misma que va a evidencia_url) para que se vea en
+          // Seguimiento; si la obs trae su propia foto, esa pisa el default.
+          let foto_url: string | null = upload.path
           if (o.tiene_foto) {
             const obsFile = formData.get(`obs-foto-${idx}`) as File | null
             if (obsFile && obsFile.size > 0) {
