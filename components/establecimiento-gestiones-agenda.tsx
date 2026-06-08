@@ -76,6 +76,13 @@ const ReporteFotograficoEjecutorModal = dynamic(
   () => import('@/components/reporte-fotografico-ejecutor-modal').then(m => m.ReporteFotograficoEjecutorModal),
   { ssr: false }
 )
+const EjecutarCapacitacionModal = dynamic(
+  () => import('@/components/cursos/ejecutar-capacitacion-modal').then(m => m.EjecutarCapacitacionModal),
+  { ssr: false }
+)
+
+// Categoría de gestiones que habilita el flujo de capacitación (LMS / campus virtual).
+const CATEGORIA_CAPACITACIONES = 'Capacitaciones'
 
 const MONTHS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 const MONTHS_FULL = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
@@ -1309,6 +1316,7 @@ function AgendaActionsCell({
   onExecuteReporte,
   onLoadEvidence,
   onToggleLegajo,
+  onEjecutarCapacitacion,
 }: {
   registro: FullRegistro
   canWrite: boolean
@@ -1316,6 +1324,8 @@ function AgendaActionsCell({
   onExecuteReporte: () => void
   onLoadEvidence: () => void
   onToggleLegajo: () => void | Promise<void>
+  /** Solo para gestiones de categoría Capacitaciones: abre el flujo de capacitación LMS. */
+  onEjecutarCapacitacion?: () => void
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
@@ -1404,6 +1414,30 @@ function AgendaActionsCell({
   // Caso: Pendiente / Planificado
   if (!canWrite) {
     return <span className="text-xs text-text-tertiary">—</span>
+  }
+
+  // Capacitación (LMS) → botón "Capacitar".
+  // Aditivo: convive con "Cargar" (carga manual de evidencia) como acción secundaria.
+  if (onEjecutarCapacitacion) {
+    return (
+      <div className="flex items-center justify-center gap-1.5">
+        <button
+          title="Ejecutar capacitación (campus virtual)"
+          onClick={onEjecutarCapacitacion}
+          className={`${primaryBtn} ${primaryActive}`}
+        >
+          <GraduationCap size={14} />
+          <span className="hidden sm:inline">Capacitar</span>
+        </button>
+        <button
+          title="Cargar evidencia manual"
+          onClick={onLoadEvidence}
+          className={`${toggleBtn} ${toggleOff}`}
+        >
+          <Upload size={14} />
+        </button>
+      </div>
+    )
   }
 
   // Gestión tipo reporte_fotografico → wizard multi-foto (en vez del flujo estándar).
@@ -1552,6 +1586,7 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
   const [editingRegistro, setEditingRegistro] = useState<FullRegistro | null>(null)
   const [executingFormulario, setExecutingFormulario] = useState<FullRegistro | null>(null)
   const [executingReporte, setExecutingReporte] = useState<FullRegistro | null>(null)
+  const [executingCapacitacion, setExecutingCapacitacion] = useState<FullRegistro | null>(null)
   const [showPlanificarModal, setShowPlanificarModal] = useState(false)
   const [showReporteModal, setShowReporteModal] = useState(false)
 
@@ -1817,6 +1852,11 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
               onExecuteForm={() => setExecutingFormulario(r)}
               onExecuteReporte={() => setExecutingReporte(r)}
               onLoadEvidence={() => setEditingRegistro(r)}
+              onEjecutarCapacitacion={
+                r.ge_categoria_nombre === CATEGORIA_CAPACITACIONES
+                  ? () => setExecutingCapacitacion(r)
+                  : undefined
+              }
               onToggleLegajo={async () => {
                 const supabase = createClient()
                 await supabase.from('gestiones_registros').update({ mostrar_lt: !r.mostrar_lt }).eq('id', r.id)
@@ -2406,6 +2446,20 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
           establecimientoNombre={establecimientoNombre}
           onClose={() => setExecutingReporte(null)}
           onSuccess={() => { setExecutingReporte(null); queryClient.invalidateQueries({ queryKey: ['gestiones-establecimiento', establecimientoId, year] }); queryClient.invalidateQueries({ queryKey: ['registros-gestion'] }) }}
+        />
+      )}
+
+      {executingCapacitacion && (
+        <EjecutarCapacitacionModal
+          establecimientoId={establecimientoId}
+          empresaId={empresaId}
+          gestionEstablecimientoId={executingCapacitacion.gestion_establecimiento_id}
+          registroGestionId={executingCapacitacion.id}
+          rgFechaPlanificada={executingCapacitacion.fecha_planificada}
+          gestionNombre={executingCapacitacion.ge_gestion_nombre}
+          instructorPersonaIdDefault={executingCapacitacion.responsable_id ?? undefined}
+          onClose={() => setExecutingCapacitacion(null)}
+          onSuccess={() => { queryClient.invalidateQueries({ queryKey: ['registros-gestion'] }) }}
         />
       )}
 
