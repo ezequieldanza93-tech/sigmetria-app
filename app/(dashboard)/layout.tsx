@@ -99,9 +99,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       <DevicePreviewPanel>{children}</DevicePreviewPanel>
       <ContextualBottomNav />
       <GestionLauncher />
-      <div className="hidden lg:block">
-        <ChatWidget />
-      </div>
+      <ChatWidget />
     </SidebarWrapper>
     <FloatingAvatar
       fullName={profile?.full_name ?? user.email ?? 'Usuario'}

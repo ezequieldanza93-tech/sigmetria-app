@@ -102,7 +102,7 @@ export function ChatWidget() {
       <ShortcutTooltip action="open-sigia" side="left">
         <button
           onClick={handleMainButton}
-          className="w-14 h-14 rounded-full bg-brand-primary text-white shadow-lg hover:bg-brand-primary/90 transition-all duration-200 flex items-center justify-center hover:scale-105 active:scale-95"
+          className="hidden lg:flex w-14 h-14 rounded-full bg-brand-primary text-white shadow-lg hover:bg-brand-primary/90 transition-all duration-200 items-center justify-center hover:scale-105 active:scale-95"
           aria-label={isAnyOpen ? 'Cerrar' : 'Abrir menú de acciones'}
         >
           {isAnyOpen ? <X size={24} /> : <Menu size={24} />}
@@ -111,7 +111,7 @@ export function ChatWidget() {
 
       {/* Chat panel */}
       {chatOpen && (
-        <div className="fixed bottom-20 right-4 z-[9998] w-[380px] h-[600px] bg-surface-base border border-border-subtle rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-200">
+        <div className="fixed bottom-20 right-4 z-[9998] w-[calc(100vw-2rem)] max-w-[400px] sm:w-[380px] h-[min(600px,70vh)] sm:h-[600px] bg-surface-base border border-border-subtle rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-200">
           <Suspense
             fallback={
               <div className="flex items-center justify-center h-full">
