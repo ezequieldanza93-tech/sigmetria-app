@@ -11,13 +11,16 @@ import {
   Plus,
   Camera,
   Bot,
+  Menu,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useNavigationLevel } from '@/lib/hooks/use-navigation-level'
 import { useShortcuts } from '@/lib/contexts/shortcuts-context'
 import type { ShortcutAction } from '@/lib/constants/shortcuts'
 
-// ─── Tabs de navegación (presentes en todos los niveles) ─────────────
+// ─── Tabs de la barra ────────────────────────────────────────────────
+// Orden: Inicio · Gestiones · Cámara (resaltada) · Obs · Menú (☰).
+// El botón de menú se renderiza aparte (abre el resto de las acciones).
 interface NavTab {
   id: string
   label: string
@@ -28,31 +31,31 @@ interface NavTab {
   section?: string
   /** Acción a emitir en lugar de navegar (Cámara). */
   action?: ShortcutAction
+  /** Resalta la tab: la Cámara es el diferenciador del producto. */
+  highlight?: boolean
 }
 
 const TABS: NavTab[] = [
   { id: 'inicio', label: 'Inicio', short: 'Inicio', icon: Home },
-  { id: 'ficha', label: 'Ficha', short: 'Ficha', icon: FileText, section: 'ficha' },
   { id: 'gestiones', label: 'Gestiones', short: 'Gestiones', icon: ClipboardList, section: 'gestiones' },
+  { id: 'camara', label: 'Cámara', short: 'Cámara', icon: Camera, action: 'open-reporte-fotografico', highlight: true },
   { id: 'observaciones', label: 'Observaciones', short: 'Obs.', icon: Eye, section: 'seguimiento' },
-  { id: 'camara', label: 'Cámara', short: 'Cámara', icon: Camera, action: 'open-reporte-fotografico' },
 ]
 
-// ─── Acciones del botón "+" (se despliegan hacia arriba) ─────────────
-// Dashboard navega (?section=dashboard); SIGIA y Planificar emiten acciones:
-//  · open-reporte-fotografico / plan-gestion → resueltas por GestionLauncher (global).
+// ─── Ítems del menú hamburguesa (☰), se despliega hacia arriba ────────
+// Ficha y Dashboard navegan (?section=); SIGIA y Planificar emiten acciones:
+//  · plan-gestion → resuelta por GestionLauncher (global).
 //  · open-sigia → manejada por el ChatWidget (abre el panel en cualquier nivel).
-interface ActionItem {
+interface MenuItem {
   id: string
   label: string
   icon: typeof Home
-  /** Acción a emitir. undefined = es un Link (Dashboard). */
   action?: ShortcutAction
-  /** ?section= a navegar (Dashboard). */
   section?: string
 }
 
-const ACTIONS: ActionItem[] = [
+const MENU_ITEMS: MenuItem[] = [
+  { id: 'ficha', label: 'Ficha', icon: FileText, section: 'ficha' },
   { id: 'dashboard', label: 'Dashboard', icon: BarChart3, section: 'dashboard' },
   { id: 'sigia', label: 'SIGIA', icon: Bot, action: 'open-sigia' },
   { id: 'planificar', label: 'Planificar gestión', icon: Plus, action: 'plan-gestion' },
@@ -87,7 +90,7 @@ export function ContextualBottomNav() {
     return sectionHref(section)
   }
 
-  // Cerrar el speed-dial al tocar afuera.
+  // Cerrar el menú al tocar afuera.
   useEffect(() => {
     if (!menuOpen) return
     function onOutside(e: MouseEvent) {
@@ -103,6 +106,12 @@ export function ContextualBottomNav() {
     setMenuOpen(false)
     emit(action)
   }
+
+  const tabClasses = cn(
+    'flex flex-col items-center justify-center gap-0.5 flex-1 min-w-0 py-1.5 rounded-xl',
+    'text-text-tertiary hover:text-brand-primary hover:bg-brand-muted/30 active:scale-95',
+    'transition-all duration-150',
+  )
 
   return (
     <>
@@ -123,13 +132,8 @@ export function ContextualBottomNav() {
         >
           {TABS.map((tab) => {
             const Icon = tab.icon
-            const className = cn(
-              'flex flex-col items-center justify-center gap-0.5 flex-1 min-w-0 py-1.5 rounded-xl',
-              'text-text-tertiary hover:text-brand-primary hover:bg-brand-muted/30 active:scale-95',
-              'transition-all duration-150',
-            )
 
-            // Cámara: botón que emite la acción (no navega).
+            // Cámara: botón resaltado que emite la acción (no navega).
             if (tab.action) {
               return (
                 <button
@@ -137,9 +141,15 @@ export function ContextualBottomNav() {
                   type="button"
                   onClick={() => handleAction(tab.action!)}
                   aria-label={tab.label}
-                  className={className}
+                  className={cn(tabClasses, tab.highlight && 'text-brand-primary')}
                 >
-                  <Icon size={20} strokeWidth={1.75} aria-hidden="true" />
+                  {tab.highlight ? (
+                    <span className="flex items-center justify-center w-10 h-10 rounded-full bg-brand-primary text-white shadow-md">
+                      <Icon size={22} strokeWidth={2} aria-hidden="true" />
+                    </span>
+                  ) : (
+                    <Icon size={20} strokeWidth={1.75} aria-hidden="true" />
+                  )}
                   <span className="text-[9px] font-medium leading-none">{tab.short}</span>
                 </button>
               )
@@ -150,7 +160,7 @@ export function ContextualBottomNav() {
                 key={tab.id}
                 href={tabHref(tab)}
                 aria-label={tab.label}
-                className={className}
+                className={tabClasses}
               >
                 <Icon size={20} strokeWidth={1.75} aria-hidden="true" />
                 <span className="text-[9px] font-medium leading-none">{tab.short}</span>
@@ -158,42 +168,33 @@ export function ContextualBottomNav() {
             )
           })}
 
-          {/* Botón "+" expansible */}
-          <div className="flex-1 min-w-0 flex items-center justify-center">
-            <button
-              type="button"
-              onClick={() => setMenuOpen((o) => !o)}
-              aria-label="Acciones rápidas"
-              aria-expanded={menuOpen}
-              className={cn(
-                'w-12 h-12 rounded-full flex items-center justify-center shadow-md',
-                'transition-all duration-200 active:scale-95',
-                menuOpen
-                  ? 'bg-sig-700 text-white rotate-45'
-                  : 'bg-sig-500 text-white hover:bg-sig-700',
-              )}
-            >
-              <Plus size={24} strokeWidth={2.5} />
-            </button>
-          </div>
+          {/* Botón hamburguesa (☰): un tab más; abre el menú hacia arriba. */}
+          <button
+            type="button"
+            onClick={() => setMenuOpen((o) => !o)}
+            aria-label="Más opciones"
+            aria-expanded={menuOpen}
+            className={cn(tabClasses, menuOpen && 'text-brand-primary bg-brand-muted/30')}
+          >
+            <Menu size={20} strokeWidth={1.75} aria-hidden="true" />
+            <span className="text-[9px] font-medium leading-none">Menú</span>
+          </button>
 
-          {/* Speed-dial: se despliega hacia arriba desde el "+". */}
+          {/* Menú desplegable hacia arriba desde la hamburguesa. */}
           {menuOpen && (
-            <div className="absolute bottom-full right-1 mb-3 flex flex-col items-end gap-2 animate-in fade-in slide-in-from-bottom-2 duration-150">
-              {ACTIONS.map(({ id, label, icon: Icon, action, section }) => {
-                const innerClassName = 'flex items-center gap-2.5'
-                const labelEl = (
-                  <span className="bg-gray-900/90 text-white text-xs font-medium rounded-lg px-2.5 py-1.5 whitespace-nowrap shadow-lg">
-                    {label}
-                  </span>
+            <div className="absolute bottom-full right-1 mb-2 w-52 overflow-hidden rounded-2xl border border-border-subtle bg-surface-base shadow-xl animate-in fade-in slide-in-from-bottom-2 duration-150">
+              {MENU_ITEMS.map(({ id, label, icon: Icon, action, section }, i) => {
+                const rowClasses = cn(
+                  'flex w-full items-center gap-3 px-4 py-3 text-sm font-medium',
+                  'text-text-secondary hover:bg-brand-muted/30 hover:text-brand-primary',
+                  'active:bg-brand-muted/50 transition-colors',
+                  i > 0 && 'border-t border-border-subtle',
                 )
                 const iconEl = (
-                  <span className="w-11 h-11 rounded-full bg-sig-600 hover:bg-sig-700 text-white shadow-md flex items-center justify-center transition-all active:scale-95 shrink-0">
-                    <Icon size={18} strokeWidth={2} />
-                  </span>
+                  <Icon size={18} strokeWidth={1.75} className="shrink-0 text-text-tertiary" aria-hidden="true" />
                 )
 
-                // Dashboard: navega con Link.
+                // Ficha / Dashboard: navegan por Link.
                 if (section) {
                   return (
                     <Link
@@ -201,25 +202,25 @@ export function ContextualBottomNav() {
                       href={sectionHref(section)}
                       onClick={() => setMenuOpen(false)}
                       aria-label={label}
-                      className={innerClassName}
+                      className={rowClasses}
                     >
-                      {labelEl}
                       {iconEl}
+                      <span>{label}</span>
                     </Link>
                   )
                 }
 
-                // SIGIA / Planificar: emiten acción.
+                // SIGIA / Planificar: emiten acción por el bus de shortcuts.
                 return (
                   <button
                     key={id}
                     type="button"
                     onClick={() => handleAction(action!)}
                     aria-label={label}
-                    className={innerClassName}
+                    className={rowClasses}
                   >
-                    {labelEl}
                     {iconEl}
+                    <span>{label}</span>
                   </button>
                 )
               })}
