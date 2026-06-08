@@ -163,11 +163,15 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
         const img = new Image()
         img.onload = () => {
           const canvas = document.createElement('canvas')
-          canvas.width = img.naturalWidth
-          canvas.height = img.naturalHeight
+          // Limitar el lado más largo a 1920px y exportar JPEG 0.82 para no
+          // exceder el límite de body de Vercel (4.5MB) cuando la imagen no se
+          // editó y se rasteriza el original full-res.
+          const s = Math.min(1, 1920 / Math.max(img.naturalWidth, img.naturalHeight))
+          canvas.width = Math.round(img.naturalWidth * s)
+          canvas.height = Math.round(img.naturalHeight * s)
           const ctx = canvas.getContext('2d')!
-          ctx.drawImage(img, 0, 0)
-          canvas.toBlob(b => resolve(b), 'image/png')
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+          canvas.toBlob(b => resolve(b), 'image/jpeg', 0.82)
         }
         img.src = reader.result as string
       }
@@ -242,7 +246,6 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
               ref={fileInputRef}
               type="file"
               accept="image/*"
-              capture="environment"
               onChange={handleImageSelected}
               className="hidden"
             />
@@ -388,7 +391,6 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
                         <input
                           type="file"
                           accept="image/*"
-                          capture="environment"
                           className="hidden"
                           onChange={e => {
                             const f = e.target.files?.[0]
