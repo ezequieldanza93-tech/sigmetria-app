@@ -7,7 +7,7 @@ import type { ActionResult, DocumentType } from '@/lib/types'
 interface Props {
   action: (prev: ActionResult<null> | null, fd: FormData) => Promise<ActionResult<null>>
   documentTypes: DocumentType[]
-  context: 'empresa' | 'establecimiento'
+  context: 'empresa' | 'establecimiento' | 'empleado'
   onSuccess: () => void
   /**
    * Si viene, el tipo de documento queda PREFIJADO y bloqueado: no se muestra el

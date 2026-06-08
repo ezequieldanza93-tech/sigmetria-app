@@ -116,12 +116,14 @@ export function ReporteFotograficoEjecutorModal({
       .then(({ data }) => setCategorias((data ?? []) as CategoriaObs[]))
   }, [establecimientoId])
 
-  // Liberar object URLs al desmontar.
+  // Liberar object URLs al desmontar. Con deps [] el cleanup capturaria el snapshot
+  // vacio de `fotos` del montaje y no revocaria nada; usamos una ref al array actual.
+  const fotosRef = useRef(fotos)
+  fotosRef.current = fotos
   useEffect(() => {
     return () => {
-      for (const f of fotos) URL.revokeObjectURL(f.previewUrl)
+      for (const f of fotosRef.current) URL.revokeObjectURL(f.previewUrl)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // ── Upload helpers ────────────────────────────────────────────────
