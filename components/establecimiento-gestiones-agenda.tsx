@@ -1031,15 +1031,19 @@ function EjecucionModal({
     if (!form) return
     const fd = new FormData(form)
     startTransition(async () => {
-      const result = await ejecutarGestion(null, fd)
-      if (!result.success) { setError(result.error); return }
-
+      // Validamos las observaciones ANTES de ejecutar: ejecutarGestion marca el
+      // registro como Realizado, así que no conviene persistir la ejecución si las
+      // observaciones son inválidas (falta categoría) y después no se guardan.
       const validObs = observaciones.filter(o => o.descripcion.trim())
       const sinCategoria = validObs.filter(o => !o.categoria_id)
       if (sinCategoria.length > 0) {
         setError('Toda observación requiere una categoría.')
         return
       }
+
+      const result = await ejecutarGestion(null, fd)
+      if (!result.success) { setError(result.error); return }
+
       if (validObs.length > 0) {
         const obsResult = await crearObservaciones(registro.id, validObs)
         if (!obsResult.success) { setError(obsResult.error); return }

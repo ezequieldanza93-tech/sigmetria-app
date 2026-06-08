@@ -282,7 +282,12 @@ export async function crearReporteFotograficoEjecucion(
   }))
   const { error: fotosErr } = await supabase.from('reportes_fotograficos_fotos').insert(fotoRows)
   if (fotosErr) {
+    // Las fotos son el contenido principal del reporte: si no se guardan, la cabecera
+    // queda inútil. Rollback manual (borramos la cabecera recién creada) y devolvemos
+    // error en vez de tragarlo y reportar éxito.
     console.error('[reporteFotograficoEjecucion] Error al insertar fotos:', fotosErr.message)
+    await supabase.from('reportes_fotograficos').delete().eq('id', reporteId)
+    return { success: false, error: 'Error al guardar las fotos del reporte: ' + fotosErr.message }
   }
 
   // ── 6. INSERT observaciones (pool común → Seguimiento via actuar-view)
