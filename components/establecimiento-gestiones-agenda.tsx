@@ -16,8 +16,8 @@ import {
   Camera, BarChart3, FileCheck,
   ClipboardCheck, GraduationCap, Heart, FileText, AlertTriangle,
   ClipboardList, UserPlus, Dumbbell, Kanban, HelpCircle,
-  Play, Upload, Download, BookMarked, Lightbulb,
-  ChevronUp, ChevronDown, Columns, CalendarDays, List, X, Thermometer, Flame, Zap, Volume2,
+  Play, Upload, Download, BookMarked,
+  ChevronUp, ChevronDown, Columns, CalendarDays, List, X, Thermometer, Flame, Zap, Volume2, Lightbulb,
 } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { createPortal } from 'react-dom'
@@ -78,6 +78,8 @@ const ReporteFotograficoEjecutorModal = dynamic(
 )
 const MedicionIluminacionEjecutorModal = dynamic(
   () => import('@/components/medicion-iluminacion-ejecutor-modal').then(m => m.MedicionIluminacionEjecutorModal),
+  { ssr: false }
+)
 const MedicionRuidoEjecutorModal = dynamic(
   () => import('@/components/medicion-ruido-ejecutor-modal').then(m => m.MedicionRuidoEjecutorModal),
   { ssr: false }
@@ -1335,8 +1337,8 @@ function AgendaActionsCell({
   onExecuteMedicionCargaTermica,
   onExecuteCargaFuego,
   onExecuteMedicionPat,
-  onExecuteMedicionIluminacion,
   onExecuteMedicionRuido,
+  onExecuteMedicionIluminacion,
   onLoadEvidence,
   onToggleLegajo,
   onEjecutarCapacitacion,
@@ -1348,8 +1350,8 @@ function AgendaActionsCell({
   onExecuteMedicionCargaTermica: () => void
   onExecuteCargaFuego: () => void
   onExecuteMedicionPat: () => void
-  onExecuteMedicionIluminacion: () => void
   onExecuteMedicionRuido: () => void
+  onExecuteMedicionIluminacion: () => void
   onLoadEvidence: () => void
   onToggleLegajo: () => void | Promise<void>
   /** Solo para gestiones de categoría Capacitaciones: abre el flujo de capacitación LMS. */
@@ -1956,8 +1958,8 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
   const [executingMedicionCargaTermica, setExecutingMedicionCargaTermica] = useState<FullRegistro | null>(null)
   const [executingCargaFuego, setExecutingCargaFuego] = useState<FullRegistro | null>(null)
   const [executingMedicionPat, setExecutingMedicionPat] = useState<FullRegistro | null>(null)
-  const [executingMedicionIluminacion, setExecutingMedicionIluminacion] = useState<FullRegistro | null>(null)
   const [executingMedicionRuido, setExecutingMedicionRuido] = useState<FullRegistro | null>(null)
+  const [executingMedicionIluminacion, setExecutingMedicionIluminacion] = useState<FullRegistro | null>(null)
   const [executingCapacitacion, setExecutingCapacitacion] = useState<FullRegistro | null>(null)
   const [showPlanificarModal, setShowPlanificarModal] = useState(false)
   const [showReporteModal, setShowReporteModal] = useState(false)
@@ -2187,15 +2189,10 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
       setExecutingCargaFuego(r)
     } else if (r.ge_tipo_ejecucion === 'medicion_pat' && !yaEjecutada && canWrite) {
       setExecutingMedicionPat(r)
-    } else if (r.ge_tipo_ejecucion === 'medicion_iluminacion' && !yaEjecutada && canWrite) {
-      setExecutingMedicionIluminacion(r)
-    } else {
-      setEditingRegistro(r)
-    }
-  }
-
     } else if (r.ge_tipo_ejecucion === 'medicion_ruido' && !yaEjecutada && canWrite) {
       setExecutingMedicionRuido(r)
+    } else if (r.ge_tipo_ejecucion === 'medicion_iluminacion' && !yaEjecutada && canWrite) {
+      setExecutingMedicionIluminacion(r)
     } else {
       setEditingRegistro(r)
     }
@@ -2241,8 +2238,8 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
               onExecuteMedicionCargaTermica={() => setExecutingMedicionCargaTermica(r)}
               onExecuteCargaFuego={() => setExecutingCargaFuego(r)}
               onExecuteMedicionPat={() => setExecutingMedicionPat(r)}
-              onExecuteMedicionIluminacion={() => setExecutingMedicionIluminacion(r)}
               onExecuteMedicionRuido={() => setExecutingMedicionRuido(r)}
+              onExecuteMedicionIluminacion={() => setExecutingMedicionIluminacion(r)}
               onLoadEvidence={() => setEditingRegistro(r)}
               onEjecutarCapacitacion={
                 r.ge_categoria_nombre === CATEGORIA_CAPACITACIONES
@@ -2849,6 +2846,9 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
           gestionEstablecimientoId={executingMedicionIluminacion.ge_id ?? ''}
           onClose={() => setExecutingMedicionIluminacion(null)}
           onSuccess={() => { setExecutingMedicionIluminacion(null); queryClient.invalidateQueries({ queryKey: ['gestiones-establecimiento', establecimientoId, year] }); queryClient.invalidateQueries({ queryKey: ['registros-gestion'] }) }}
+        />
+      )}
+
       {executingMedicionRuido && (
         <MedicionRuidoEjecutorModal
           establecimientoId={establecimientoId}
