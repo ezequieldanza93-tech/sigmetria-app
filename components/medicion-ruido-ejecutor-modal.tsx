@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { descargarProtocoloPdf } from '@/lib/pdf/protocolo-pdf'
 import {
   crearMedicionRuido,
   getInstrumentosRuido,
@@ -21,7 +22,7 @@ import { Button } from '@/components/ui/button'
 import {
   Building2, FileText, Plus, Trash2,
   ChevronLeft, ChevronRight, CheckCircle, XCircle, Loader2,
-  Info, ArrowRight, Check, Sparkles, MapPin, Gauge, AlertTriangle, Camera,
+  Info, ArrowRight, Check, Sparkles, MapPin, Gauge, AlertTriangle, Camera, Download,
 } from 'lucide-react'
 
 // ── Props ────────────────────────────────────────────────────────────
@@ -80,6 +81,22 @@ const STEP_LABELS: Record<WizardStep, string> = {
 // "Mañana, Tarde".
 const TURNO_OPCIONES = ['Mañana', 'Tarde', 'Noche'] as const
 
+// Etiquetas legibles para el PDF oficial (los selects guardan el código interno).
+const TIPO_PUESTO_LABEL: Record<TipoPuesto, string> = {
+  puesto: 'Puesto',
+  puesto_tipo: 'Puesto tipo',
+  movil: 'Móvil',
+}
+const CARACTERISTICAS_LABEL: Record<CaracteristicasRuido, string> = {
+  continuo: 'Continuo',
+  intermitente: 'Intermitente',
+  impacto: 'De impacto',
+}
+const METODO_LABEL: Record<Metodo, string> = {
+  sonometro: 'Sonómetro',
+  dosimetro: 'Dosímetro',
+}
+
 /** Parsea el campo `turnos` (string unido) a un set de opciones para el multi-select. */
 function turnosSeleccionados(turno: string): Set<string> {
   return new Set(
@@ -130,6 +147,56 @@ interface ObsDraft {
   fecha_subsanacion: string
   foto_preview: string | null
   foto_file: File | null
+}
+
+// ── Datos del PDF oficial (3 hojas SRT 85/2012) ────────────────────────
+// Estructura plana consolidada desde el estado del wizard. Los valores derivados
+// (Tmax, dosis, cumple) salen de lib/medicion-ruido/calculos vía resumenPunto, NO
+// se recalculan acá.
+interface PdfFilaGrilla {
+  n: number
+  sector: string
+  puesto: string
+  tipoPuesto: string
+  te: string
+  tiempoIntegracion: string
+  caracteristicas: string
+  lcpico: string
+  metodo: string
+  /** LAeq equivalente / nivel representativo (sonómetro: máx período; dosímetro: —). */
+  laeq: string
+  /** Dosis en % (D·100). null si no hay datos. */
+  dosisPct: number | null
+  /** Suma de fracciones (dosis acumulada D, método sonómetro). null si no aplica. */
+  sumaFracciones: number | null
+  /** Cumple (dosis ≤ 100% y pico ≤ 140 dBC). null si no hay datos. */
+  cumple: boolean | null
+}
+
+interface ProtocoloPdfData {
+  razonSocial: string | null
+  cuit: string | null
+  domicilio: string | null
+  establecimiento: string | null
+  localidad: string | null
+  provincia: string | null
+  instrumento: string | null
+  instrumentoSerie: string | null
+  instrumentoTipo: string | null
+  fechaCalibracion: string | null
+  fechaMedicion: string | null
+  fechaMedicionFin: string | null
+  horaInicio: string | null
+  horaFin: string | null
+  jornadaHoras: string | null
+  turnos: string | null
+  condicionesNormales: string | null
+  condicionesMedicion: string | null
+  observacionesGenerales: string | null
+  firmante: string | null
+  filasGrilla: PdfFilaGrilla[]
+  conclusiones: string | null
+  recomendaciones: string | null
 }
 
 let obsKeySeq = 0
@@ -225,6 +292,13 @@ export function MedicionRuidoEjecutorModal({
   const [step, setStep] = useState<WizardStep>('datos')
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [descargandoPdf, setDescargandoPdf] = useState(false)
+
+  // Refs a las 3 hojas ocultas del protocolo oficial (DATOS / GRILLA / ANÁLISIS).
+  // Se renderizan fuera de pantalla y se rasterizan al descargar el PDF.
+  const hojaDatosRef = useRef<HTMLDivElement>(null)
+  const hojaGrillaRef = useRef<HTMLDivElement>(null)
+  const hojaAnalisisRef = useRef<HTMLDivElement>(null)
 
   // ── Catálogos ───────────────────────────────────────────────────────
   const [estCtx, setEstCtx] = useState<EstablecimientoCtx | null>(null)
@@ -611,11 +685,94 @@ export function MedicionRuidoEjecutorModal({
     }
   }
 
+  // ── Descargar PDF oficial (3 hojas SRT 85/2012) ────────────────────
+  // Genera el protocolo client-side a partir de los datos en memoria, sin tocar
+  // storage (v1): rasteriza las 3 hojas ocultas y arma un A4 multipágina.
+  async function handleDescargarPdf() {
+    const hojas = [hojaDatosRef.current, hojaGrillaRef.current, hojaAnalisisRef.current]
+      .filter((h): h is HTMLDivElement => h != null)
+    if (hojas.length === 0) return
+    setDescargandoPdf(true)
+    setError(null)
+    try {
+      const nombre = `protocolo-ruido-${fechaMedicion || new Date().toISOString().slice(0, 10)}.pdf`
+      await descargarProtocoloPdf({ hojas }, nombre)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo generar el PDF.')
+    } finally {
+      setDescargandoPdf(false)
+    }
+  }
+
   const stepIdx = STEP_ORDER.indexOf(step)
   const punto = puntos[puntoActivo]
   const resumenActivo = punto ? resumenPunto(punto) : null
   const sectorActivo = punto ? sectores.find(s => s.id === punto.sector_id) : undefined
   const lcpicoActivo = punto ? num(punto.lcpico_dbc) : null
+
+  // ── Datos consolidados para el PDF oficial ─────────────────────────
+  // Se arma una sola vez con los datos en memoria del wizard. Los valores de
+  // cumplimiento / dosis salen de `resumenes` (que ya usa lib/medicion-ruido/calculos).
+  const pdfData: ProtocoloPdfData = useMemo(() => {
+    const instr = instrumentos.find(i => i.id === instrumentoId)
+    const cert = certificados.find(c => c.id === certificadoId)
+    const filasGrilla: PdfFilaGrilla[] = puntos.map((p, i) => {
+      const r = resumenes[i]
+      const sec = sectores.find(s => s.id === p.sector_id)
+      const pue = sec?.puestos.find(pu => pu.id === p.puesto_id)
+      // LAeq representativo: en sonómetro, el máximo de los períodos válidos
+      // (el nivel que manda en la exposición). En dosímetro no aplica.
+      const periodos = periodosValidos(p)
+      const laeqMax = p.metodo === 'sonometro' && periodos.length > 0
+        ? Math.max(...periodos.map(per => per.laeq_dba))
+        : null
+      return {
+        n: i + 1,
+        sector: sec?.nombre ?? '—',
+        puesto: pue?.nombre ?? '—',
+        tipoPuesto: TIPO_PUESTO_LABEL[p.tipo_puesto] ?? '—',
+        te: p.te_horas ? `${p.te_horas} h` : '—',
+        tiempoIntegracion: p.tiempo_integracion || '—',
+        caracteristicas: CARACTERISTICAS_LABEL[p.caracteristicas_ruido] ?? '—',
+        lcpico: p.caracteristicas_ruido === 'impacto' && p.lcpico_dbc ? `${p.lcpico_dbc} dBC` : '—',
+        metodo: METODO_LABEL[p.metodo] ?? '—',
+        laeq: laeqMax != null ? `${laeqMax.toFixed(1)} dBA` : '—',
+        dosisPct: r.tieneDatos ? (r.pct ?? null) : null,
+        sumaFracciones: p.metodo === 'sonometro' && r.tieneDatos ? (r.D ?? null) : null,
+        cumple: r.tieneDatos ? ((r.dosisOk ?? true) && r.picoOk) : null,
+      }
+    })
+    return {
+      razonSocial: estCtx?.empresa_razon_social ?? null,
+      cuit: estCtx?.empresa_cuit ?? null,
+      domicilio: estCtx?.domicilio ?? estCtx?.empresa_domicilio ?? null,
+      establecimiento: estCtx?.nombre ?? null,
+      localidad: estCtx?.localidad ?? null,
+      provincia: estCtx?.provincia ?? null,
+      instrumento: instr ? [instr.marca, instr.modelo].filter(Boolean).join(' ') || null : null,
+      instrumentoSerie: instr?.numero_serie ?? null,
+      instrumentoTipo: instr?.tipo ?? null,
+      fechaCalibracion: cert?.fecha_emision ?? null,
+      fechaMedicion: fechaMedicion || null,
+      fechaMedicionFin: fechaMedicionFin || null,
+      horaInicio: horaInicio || null,
+      horaFin: horaFin || null,
+      jornadaHoras: jornadaHoras || null,
+      turnos: turnos || null,
+      condicionesNormales: condicionesNormales || null,
+      condicionesMedicion: condicionesMedicion || null,
+      observacionesGenerales: observacionesGenerales || null,
+      firmante: firmante || null,
+      filasGrilla,
+      conclusiones: conclusiones || null,
+      recomendaciones: recomendaciones || null,
+    }
+  }, [
+    instrumentos, instrumentoId, certificados, certificadoId, puntos, resumenes,
+    sectores, estCtx, fechaMedicion, fechaMedicionFin, horaInicio, horaFin,
+    jornadaHoras, turnos, condicionesNormales, condicionesMedicion,
+    observacionesGenerales, firmante, conclusiones, recomendaciones,
+  ])
 
   // ── Render: post-guardado ───────────────────────────────────────────
   if (step === 'listo') {
@@ -634,13 +791,28 @@ export function MedicionRuidoEjecutorModal({
               )}
             </p>
           </div>
-          <p className="text-xs text-text-tertiary text-center">
-            La descarga del PDF oficial estará disponible próximamente.
-          </p>
-          <div className="flex justify-center pt-2">
+          {error && (
+            <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-3 py-2">{error}</div>
+          )}
+          <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3 justify-center pt-2">
+            <Button type="button" onClick={handleDescargarPdf} disabled={descargandoPdf}>
+              {descargandoPdf ? (
+                <><Loader2 size={14} className="inline mr-1.5 animate-spin" /> Generando…</>
+              ) : (
+                <><Download size={14} className="inline mr-1.5" /> Descargar PDF</>
+              )}
+            </Button>
             <Button type="button" variant="secondary" onClick={onClose}>Cerrar</Button>
           </div>
         </div>
+
+        {/* Hojas ocultas del PDF oficial (se rasterizan al descargar). */}
+        <ProtocoloRuidoHojas
+          data={pdfData}
+          hojaDatosRef={hojaDatosRef}
+          hojaGrillaRef={hojaGrillaRef}
+          hojaAnalisisRef={hojaAnalisisRef}
+        />
       </Modal>
     )
   }
@@ -1371,12 +1543,29 @@ export function MedicionRuidoEjecutorModal({
               Continuar <ChevronRight size={14} />
             </Button>
           ) : (
-            <Button type="button" onClick={handleGuardar} disabled={saving}>
-              {saving ? <><Loader2 size={14} className="animate-spin" /> Guardando…</> : 'Guardar protocolo'}
-            </Button>
+            <>
+              <Button type="button" onClick={handleGuardar} disabled={saving || descargandoPdf}>
+                {saving ? <><Loader2 size={14} className="animate-spin" /> Guardando…</> : 'Guardar protocolo'}
+              </Button>
+              <Button type="button" variant="secondary" onClick={handleDescargarPdf} disabled={saving || descargandoPdf}>
+                {descargandoPdf ? (
+                  <><Loader2 size={14} className="animate-spin" /> Generando…</>
+                ) : (
+                  <><Download size={14} /> Descargar PDF</>
+                )}
+              </Button>
+            </>
           )}
           <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>Cancelar</Button>
         </div>
+
+        {/* Hojas ocultas del PDF oficial (se rasterizan al descargar). */}
+        <ProtocoloRuidoHojas
+          data={pdfData}
+          hojaDatosRef={hojaDatosRef}
+          hojaGrillaRef={hojaGrillaRef}
+          hojaAnalisisRef={hojaAnalisisRef}
+        />
       </div>
     </Modal>
   )
@@ -1441,6 +1630,237 @@ function ProgressRing({ pct, level }: { pct: number; level: Level }) {
       <div className="absolute inset-0 flex items-center justify-center">
         {pct >= 100 ? <Check className="text-success" size={20} strokeWidth={2.5} /> : <span className={`text-sm font-bold tabular-nums ${level.color}`}>{pct}%</span>}
       </div>
+    </div>
+  )
+}
+
+// ── Hojas ocultas del PDF oficial (3 hojas SRT 85/2012) ─────────────────
+//
+// Maqueta autocontenida con estilos INLINE (no tokens de Tailwind): html2canvas
+// rasteriza mejor colores concretos, y el protocolo debe verse igual sin importar
+// el tema de la app. Cada hoja es un nodo A4 (≈794px = 210mm @96dpi) fuera de
+// pantalla (position:fixed, left:-99999px) para que html2canvas pueda medirlo.
+//
+// REUTILIZACIÓN: mismo patrón que el protocolo de Iluminación. El shell A4
+// (`HojaA4`), la tipografía y los helpers (`PdfSeccion`/`PdfCampo`/`PdfFirma`) se
+// reusan tal cual; solo cambia el contenido de las hojas (campos y grilla de Ruido).
+
+const PDF_PAGE_WIDTH = 794 // px ≈ 210mm @ 96dpi
+const PDF_FONT = 'Helvetica, Arial, sans-serif'
+const PDF_INK = '#1a1a1a'
+const PDF_MUTED = '#555555'
+const PDF_BORDER = '#999999'
+const PDF_OK = '#15803d'
+const PDF_NO = '#b91c1c'
+
+function dash(v: string | number | null | undefined): string {
+  if (v == null || v === '') return '—'
+  return String(v)
+}
+
+function HojaA4({
+  hojaRef,
+  titulo,
+  subtitulo,
+  children,
+}: {
+  hojaRef: React.RefObject<HTMLDivElement | null>
+  titulo: string
+  subtitulo: string
+  children: React.ReactNode
+}) {
+  return (
+    <div
+      ref={hojaRef}
+      style={{
+        width: PDF_PAGE_WIDTH,
+        minHeight: 1123, // ≈ 297mm @ 96dpi
+        backgroundColor: '#ffffff',
+        color: PDF_INK,
+        fontFamily: PDF_FONT,
+        fontSize: 12,
+        lineHeight: 1.4,
+        padding: 48,
+        boxSizing: 'border-box',
+      }}
+    >
+      <div style={{ borderBottom: `2px solid ${PDF_INK}`, paddingBottom: 8, marginBottom: 16 }}>
+        <p style={{ margin: 0, fontSize: 11, letterSpacing: 1, color: PDF_MUTED, textTransform: 'uppercase' }}>
+          Protocolo de Medición de Ruido · SRT 85/2012
+        </p>
+        <h1 style={{ margin: '4px 0 0', fontSize: 18, fontWeight: 700 }}>{titulo}</h1>
+        <p style={{ margin: '2px 0 0', fontSize: 12, color: PDF_MUTED }}>{subtitulo}</p>
+      </div>
+      {children}
+    </div>
+  )
+}
+
+function PdfSeccion({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <h2 style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: PDF_INK }}>{titulo}</h2>
+      {children}
+    </div>
+  )
+}
+
+function PdfCampo({ label, value }: { label: string; value: string | null }) {
+  return (
+    <div style={{ display: 'flex', gap: 6, padding: '3px 0', borderBottom: `1px solid #eeeeee` }}>
+      <span style={{ minWidth: 180, color: PDF_MUTED, fontSize: 11 }}>{label}</span>
+      <span style={{ flex: 1, fontWeight: 500 }}>{dash(value)}</span>
+    </div>
+  )
+}
+
+function PdfFirma({ firmante }: { firmante: string | null }) {
+  return (
+    <div style={{ marginTop: 40 }}>
+      <div style={{ width: 280, borderTop: `1px solid ${PDF_INK}`, paddingTop: 6 }}>
+        <p style={{ margin: 0, fontWeight: 600 }}>{dash(firmante)}</p>
+        <p style={{ margin: '2px 0 0', fontSize: 10, color: PDF_MUTED }}>Firma · Aclaración · Matrícula / Registro</p>
+      </div>
+    </div>
+  )
+}
+
+function ProtocoloRuidoHojas({
+  data,
+  hojaDatosRef,
+  hojaGrillaRef,
+  hojaAnalisisRef,
+}: {
+  data: ProtocoloPdfData
+  hojaDatosRef: React.RefObject<HTMLDivElement | null>
+  hojaGrillaRef: React.RefObject<HTMLDivElement | null>
+  hojaAnalisisRef: React.RefObject<HTMLDivElement | null>
+}) {
+  const subtitulo = [data.establecimiento, data.razonSocial].filter(Boolean).join(' · ') || 'Establecimiento'
+  const fecha = data.fechaMedicion && data.fechaMedicionFin
+    ? `${data.fechaMedicion} → ${data.fechaMedicionFin}`
+    : (data.fechaMedicion || data.fechaMedicionFin || null)
+  const horario = data.horaInicio && data.horaFin
+    ? `${data.horaInicio} – ${data.horaFin}`
+    : (data.horaInicio || data.horaFin || null)
+  const instrumentoTexto = [data.instrumento, data.instrumentoTipo].filter(Boolean).join(' · ') || null
+
+  const th: React.CSSProperties = {
+    border: `1px solid ${PDF_BORDER}`,
+    padding: '5px 4px',
+    fontSize: 9,
+    fontWeight: 700,
+    backgroundColor: '#f0f0f0',
+    textAlign: 'center',
+    verticalAlign: 'middle',
+  }
+  const td: React.CSSProperties = {
+    border: `1px solid ${PDF_BORDER}`,
+    padding: '4px',
+    fontSize: 9,
+    textAlign: 'center',
+    verticalAlign: 'middle',
+  }
+
+  return (
+    <div
+      aria-hidden
+      style={{ position: 'fixed', left: -99999, top: 0, width: PDF_PAGE_WIDTH, pointerEvents: 'none' }}
+    >
+      {/* ── HOJA 1: DATOS ─────────────────────────────────────────── */}
+      <HojaA4 hojaRef={hojaDatosRef} titulo="Hoja 1 — Datos del relevamiento" subtitulo={subtitulo}>
+        <PdfSeccion titulo="Empresa y establecimiento">
+          <PdfCampo label="Razón social" value={data.razonSocial} />
+          <PdfCampo label="CUIT" value={data.cuit} />
+          <PdfCampo label="Establecimiento" value={data.establecimiento} />
+          <PdfCampo label="Domicilio" value={data.domicilio} />
+          <PdfCampo label="Localidad" value={data.localidad} />
+          <PdfCampo label="Provincia" value={data.provincia} />
+        </PdfSeccion>
+
+        <PdfSeccion titulo="Instrumental">
+          <PdfCampo label="Instrumento (marca/modelo)" value={instrumentoTexto} />
+          <PdfCampo label="N° de serie" value={data.instrumentoSerie} />
+          <PdfCampo label="Fecha de calibración" value={data.fechaCalibracion} />
+        </PdfSeccion>
+
+        <PdfSeccion titulo="Fecha, horario y jornada">
+          <PdfCampo label="Fecha de medición" value={fecha} />
+          <PdfCampo label="Horario" value={horario} />
+          <PdfCampo label="Jornada (horas)" value={data.jornadaHoras} />
+          <PdfCampo label="Turnos" value={data.turnos} />
+        </PdfSeccion>
+
+        <PdfSeccion titulo="Condiciones del relevamiento">
+          <PdfCampo label="Condiciones normales de trabajo" value={data.condicionesNormales} />
+          <PdfCampo label="Condiciones durante la medición" value={data.condicionesMedicion} />
+          <PdfCampo label="Observaciones generales" value={data.observacionesGenerales} />
+        </PdfSeccion>
+
+        <PdfSeccion titulo="Responsable del protocolo">
+          <PdfCampo label="Profesional firmante" value={data.firmante} />
+        </PdfSeccion>
+
+        <PdfFirma firmante={data.firmante} />
+      </HojaA4>
+
+      {/* ── HOJA 2: GRILLA ────────────────────────────────────────── */}
+      <HojaA4 hojaRef={hojaGrillaRef} titulo="Hoja 2 — Grilla de puntos de muestreo" subtitulo={subtitulo}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr>
+              <th style={{ ...th, width: 20 }}>N°</th>
+              <th style={th}>Sector</th>
+              <th style={th}>Puesto / Tipo</th>
+              <th style={th}>Te</th>
+              <th style={th}>T. integración</th>
+              <th style={th}>Características</th>
+              <th style={th}>LCpico</th>
+              <th style={th}>Método</th>
+              <th style={th}>LAeq</th>
+              <th style={th}>Dosis<br />(%)</th>
+              <th style={th}>Σ fracciones</th>
+              <th style={th}>Cumple</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.filasGrilla.map(f => (
+              <tr key={f.n}>
+                <td style={td}>{f.n}</td>
+                <td style={{ ...td, textAlign: 'left' }}>{f.sector}</td>
+                <td style={{ ...td, textAlign: 'left' }}>{`${f.puesto} · ${f.tipoPuesto}`}</td>
+                <td style={td}>{f.te}</td>
+                <td style={td}>{f.tiempoIntegracion}</td>
+                <td style={td}>{f.caracteristicas}</td>
+                <td style={td}>{f.lcpico}</td>
+                <td style={td}>{f.metodo}</td>
+                <td style={td}>{f.laeq}</td>
+                <td style={td}>{f.dosisPct != null ? f.dosisPct.toFixed(0) : '—'}</td>
+                <td style={td}>{f.sumaFracciones != null ? f.sumaFracciones.toFixed(3) : '—'}</td>
+                <td style={{ ...td, color: f.cumple == null ? PDF_MUTED : f.cumple ? PDF_OK : PDF_NO, fontWeight: 600 }}>
+                  {f.cumple == null ? '—' : f.cumple ? 'Sí' : 'No'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p style={{ marginTop: 10, fontSize: 9, color: PDF_MUTED }}>
+          Cumple cuando la dosis acumulada ≤ 100 % (D ≤ 1) y el nivel pico LCpico ≤ 140 dBC.
+          Tiempo máximo permitido Tmax = 8 / 2^((LAeq − 85) / 3); las exposiciones &lt; 80 dBA no computan
+          en la dosis. Cálculos según SRT 85/2012 (Res. 295/03 Anexo V).
+        </p>
+      </HojaA4>
+
+      {/* ── HOJA 3: ANÁLISIS ──────────────────────────────────────── */}
+      <HojaA4 hojaRef={hojaAnalisisRef} titulo="Hoja 3 — Análisis de resultados" subtitulo={subtitulo}>
+        <PdfSeccion titulo="Conclusiones">
+          <p style={{ margin: 0, whiteSpace: 'pre-wrap', minHeight: 60 }}>{dash(data.conclusiones)}</p>
+        </PdfSeccion>
+        <PdfSeccion titulo="Recomendaciones">
+          <p style={{ margin: 0, whiteSpace: 'pre-wrap', minHeight: 60 }}>{dash(data.recomendaciones)}</p>
+        </PdfSeccion>
+        <PdfFirma firmante={data.firmante} />
+      </HojaA4>
     </div>
   )
 }
