@@ -29,6 +29,7 @@ import {
   CalendarClock,
   MessageSquare,
   Map,
+  Scale,
 } from 'lucide-react'
 import Image from 'next/image'
 import { publicAssetUrl } from '@/lib/storage/asset-url'
@@ -125,6 +126,7 @@ export function ConsultoraFichaGlobal({ consultora, empresas, usuario, userRole,
       items: [
         { href: '/dashboard/productos', icon: Shield, label: 'Elementos de Protección' },
         { href: '/dashboard/configuracion/iperc', icon: ClipboardList, label: 'Librería IPERC' },
+        { href: '/dashboard/configuracion/normativa-legal', icon: Scale, label: 'Normativa Legal' },
         { href: '/dashboard/cursos', icon: GraduationCap, label: 'Mis Cursos' },
         ...(canManageCursos
           ? [
