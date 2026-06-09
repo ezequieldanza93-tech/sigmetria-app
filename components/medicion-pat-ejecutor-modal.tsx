@@ -1,0 +1,1224 @@
+'use client'
+
+import { useState, useEffect, useMemo } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import {
+  crearMedicionPat,
+  getInstrumentosPat,
+  getSectoresYPuestos,
+  type InstrumentoTelurimetro,
+  type SectorConPuestos,
+} from '@/lib/actions/medicion-pat'
+import { raMaxTT, cumpleToma } from '@/lib/medicion-pat/calculos'
+import { Modal } from '@/components/ui/modal'
+import { Button } from '@/components/ui/button'
+import {
+  Zap, Building2, FileText, Plus, Trash2,
+  ChevronLeft, ChevronRight, CheckCircle, XCircle, Loader2,
+  Info, ArrowRight, Check, Sparkles, MapPin, Gauge, Camera, ShieldCheck,
+} from 'lucide-react'
+
+// ── Props ────────────────────────────────────────────────────────────
+interface MedicionPatEjecutorModalProps {
+  establecimientoId: string
+  registroId: string
+  rgFechaPlanificada: string
+  gestionEstablecimientoId?: string
+  onClose: () => void
+  onSuccess: () => void
+}
+
+// ── Modelo de estado del wizard ───────────────────────────────────────
+
+type Ect = 'TT' | 'TN-S' | 'TN-C' | 'TN-C-S' | 'IT'
+type Proteccion = 'DD' | 'IA' | 'Fus'
+type TriEstado = '' | 'si' | 'no'
+
+interface TomaState {
+  key: number
+  numero_toma: string
+  sector_id: string
+  seccion: string
+  condicion_terreno: string
+  uso_pat: string
+  ect: Ect | ''
+  valor_medido_ohm: string
+  /** Valor exigido (Ω). Default 40 para TT con IΔn ≤ 300 mA; editable. */
+  valor_exigido_ohm: string
+  continuidad: TriEstado
+  capacidad_carga: TriEstado
+  desconexion_automatica: TriEstado
+  proteccion: Proteccion | ''
+  observaciones: string
+}
+
+type WizardStep = 'datos' | 'tomas' | 'observaciones' | 'analisis' | 'revisar' | 'listo'
+
+const STEP_ORDER: WizardStep[] = ['datos', 'tomas', 'observaciones', 'analisis', 'revisar']
+const STEP_LABELS: Record<WizardStep, string> = {
+  datos: 'Datos',
+  tomas: 'Tomas de tierra',
+  observaciones: 'Observaciones',
+  analisis: 'Análisis',
+  revisar: 'Revisar',
+  listo: 'Listo',
+}
+
+// Opciones de los selects del protocolo.
+const ECT_OPCIONES: Ect[] = ['TT', 'TN-S', 'TN-C', 'TN-C-S', 'IT']
+const CONDICION_TERRENO_OPCIONES = ['Seco', 'Húmedo', 'Saturado', 'Rocoso', 'Arenoso', 'Arcilloso'] as const
+const USO_PAT_OPCIONES = [
+  'Protección de personas',
+  'Protección de equipos',
+  'Pararrayos',
+  'Descarga electrostática',
+  'Neutro de transformador',
+] as const
+
+// ── Contexto read-only del establecimiento / empresa ──────────────────
+interface EstablecimientoCtx {
+  nombre: string
+  domicilio: string | null
+  codigo_postal: string | null
+  localidad: string | null
+  provincia: string | null
+  empresa_razon_social: string | null
+  empresa_cuit: string | null
+  empresa_domicilio: string | null
+}
+
+// ── Observaciones de seguimiento (replicado de iluminación) ────────────
+interface CategoriaObs {
+  id: string
+  nombre: string
+  nivel: number
+  color: string
+}
+
+interface ObsDraft {
+  key: number
+  descripcion: string
+  categoria_id: string
+  clasificacion_id: string
+  responsable_id: string
+  fecha_subsanacion: string
+  foto_preview: string | null
+  foto_file: File | null
+}
+
+let obsKeySeq = 0
+let tomaKeySeq = 0
+
+function nuevaToma(numero: number): TomaState {
+  return {
+    key: tomaKeySeq++,
+    numero_toma: String(numero),
+    sector_id: '',
+    seccion: '',
+    condicion_terreno: '',
+    uso_pat: '',
+    ect: '',
+    valor_medido_ohm: '',
+    // Default 40 Ω (TT con diferencial general IΔn ≤ 300 mA). Editable por toma.
+    valor_exigido_ohm: String(raMaxTT()),
+    continuidad: '',
+    capacidad_carga: '',
+    desconexion_automatica: '',
+    proteccion: '',
+    observaciones: '',
+  }
+}
+
+// Helper de parseo numérico tolerante (campo de texto → number | null).
+function num(v: string): number | null {
+  if (v.trim() === '') return null
+  const n = Number(v)
+  return Number.isFinite(n) ? n : null
+}
+
+/** Tri-estado ('si' | 'no' | '') → boolean | null para el payload. */
+function triToBool(v: TriEstado): boolean | null {
+  if (v === 'si') return true
+  if (v === 'no') return false
+  return null
+}
+
+/** Resultado de cumplimiento (Ω) de una toma para vivo + análisis. */
+function cumpleDe(t: TomaState): boolean | null {
+  return cumpleToma(num(t.valor_medido_ohm), num(t.valor_exigido_ohm))
+}
+
+export function MedicionPatEjecutorModal({
+  establecimientoId,
+  registroId,
+  rgFechaPlanificada,
+  gestionEstablecimientoId,
+  onClose,
+  onSuccess,
+}: MedicionPatEjecutorModalProps) {
+  const [step, setStep] = useState<WizardStep>('datos')
+  const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  // ── Catálogos ───────────────────────────────────────────────────────
+  const [estCtx, setEstCtx] = useState<EstablecimientoCtx | null>(null)
+  const [instrumentos, setInstrumentos] = useState<InstrumentoTelurimetro[]>([])
+  const [sectores, setSectores] = useState<SectorConPuestos[]>([])
+  const [certificados, setCertificados] = useState<
+    Array<{ id: string; fecha_emision: string; fecha_vencimiento: string; activo: boolean }>
+  >([])
+
+  // ── Hoja 1: datos ───────────────────────────────────────────────────
+  const [instrumentoId, setInstrumentoId] = useState('')
+  const [certificadoId, setCertificadoId] = useState('')
+  const [firmante, setFirmante] = useState('')
+  const [metodologia, setMetodologia] = useState('')
+  const [fechaMedicion, setFechaMedicion] = useState(rgFechaPlanificada || '')
+  const [fechaMedicionFin, setFechaMedicionFin] = useState('')
+  const [horaInicio, setHoraInicio] = useState('')
+  const [horaFin, setHoraFin] = useState('')
+  const [observacionesGenerales, setObservacionesGenerales] = useState('')
+  const [certificadoFile, setCertificadoFile] = useState<File | null>(null)
+  const [planoFile, setPlanoFile] = useState<File | null>(null)
+
+  // ── Hoja 2: tomas ───────────────────────────────────────────────────
+  const [tomas, setTomas] = useState<TomaState[]>([nuevaToma(1)])
+  const [tomaActiva, setTomaActiva] = useState(0)
+
+  // ── Hoja 3: observaciones de seguimiento ────────────────────────────
+  const [observacionesSeguimiento, setObservacionesSeguimiento] = useState<ObsDraft[]>([])
+  const [categoriasObs, setCategoriasObs] = useState<CategoriaObs[]>([])
+  const [clasificacionesObs, setClasificacionesObs] = useState<{ id: string; nombre: string }[]>([])
+  const [personasObs, setPersonasObs] = useState<{ id: string; nombre: string; apellido: string }[]>([])
+
+  // ── Hoja 4: análisis ────────────────────────────────────────────────
+  const [conclusiones, setConclusiones] = useState('')
+  const [recomendaciones, setRecomendaciones] = useState('')
+
+  const inputCls = 'w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500'
+  const labelCls = 'text-sm font-medium text-text-secondary block mb-1'
+
+  // ── Carga de catálogos ──────────────────────────────────────────────
+  useEffect(() => {
+    let activo = true
+    const supabase = createClient()
+
+    supabase
+      .from('establecimientos')
+      .select('nombre, domicilio, codigo_postal, localidades!localidad_id(nombre, provincia), empresas!inner(razon_social, cuit, domicilio)')
+      .eq('id', establecimientoId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!activo || !data) return
+        const loc = data.localidades as { nombre: string | null; provincia: string | null } | { nombre: string | null; provincia: string | null }[] | null
+        const locRow = Array.isArray(loc) ? loc[0] : loc
+        const emp = data.empresas as { razon_social: string | null; cuit: string | null; domicilio: string | null } | { razon_social: string | null; cuit: string | null; domicilio: string | null }[] | null
+        const empRow = Array.isArray(emp) ? emp[0] : emp
+        setEstCtx({
+          nombre: (data.nombre as string) ?? '',
+          domicilio: (data.domicilio as string | null) ?? null,
+          codigo_postal: (data.codigo_postal as string | null) ?? null,
+          localidad: locRow?.nombre ?? null,
+          provincia: locRow?.provincia ?? null,
+          empresa_razon_social: empRow?.razon_social ?? null,
+          empresa_cuit: empRow?.cuit ?? null,
+          empresa_domicilio: empRow?.domicilio ?? null,
+        })
+      })
+
+    getInstrumentosPat().then(r => { if (activo && r.success) setInstrumentos(r.data) })
+    getSectoresYPuestos(establecimientoId).then(r => { if (activo && r.success) setSectores(r.data) })
+
+    // Catálogos de las observaciones de seguimiento (mismas queries que iluminación).
+    supabase
+      .from('personas_establecimientos')
+      .select('personas_directorio!persona_id(id, nombre, apellido)')
+      .eq('establecimiento_id', establecimientoId)
+      .then(({ data }) => {
+        if (!activo) return
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const ps = ((data ?? []) as any[])
+          .map(pe => pe.personas_directorio)
+          .filter(Boolean)
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .sort((a: any, b: any) => a.apellido.localeCompare(b.apellido))
+        setPersonasObs(ps)
+      })
+    supabase
+      .from('observaciones_clasificaciones')
+      .select('id, nombre')
+      .eq('is_active', true)
+      .order('nombre')
+      .then(({ data }) => { if (activo) setClasificacionesObs((data ?? []) as { id: string; nombre: string }[]) })
+    supabase
+      .from('observaciones_categorias')
+      .select('id, nombre, nivel, color')
+      .eq('is_active', true)
+      .order('nivel')
+      .then(({ data }) => { if (activo) setCategoriasObs((data ?? []) as CategoriaObs[]) })
+
+    return () => { activo = false }
+  }, [establecimientoId])
+
+  // Certificados de calibración del instrumento elegido (asociación instrumento → cert).
+  useEffect(() => {
+    if (!instrumentoId) { setCertificados([]); setCertificadoId(''); return }
+    let activo = true
+    const supabase = createClient()
+    supabase
+      .from('certificados_calibracion')
+      .select('id, fecha_emision, fecha_vencimiento, activo')
+      .eq('instrumento_id', instrumentoId)
+      .order('fecha_emision', { ascending: false })
+      .then(({ data }) => {
+        if (!activo) return
+        const rows = (data ?? []) as Array<{ id: string; fecha_emision: string; fecha_vencimiento: string; activo: boolean }>
+        setCertificados(rows)
+        const activoRow = rows.find(c => c.activo) ?? rows[0]
+        setCertificadoId(activoRow?.id ?? '')
+      })
+    return () => { activo = false }
+  }, [instrumentoId])
+
+  // ── Mutadores de tomas ──────────────────────────────────────────────
+  function updateToma(key: number, patch: Partial<TomaState>) {
+    setTomas(prev => prev.map(t => (t.key === key ? { ...t, ...patch } : t)))
+  }
+
+  function addToma() {
+    setTomas(prev => {
+      const next = [...prev, nuevaToma(prev.length + 1)]
+      setTomaActiva(next.length - 1)
+      return next
+    })
+  }
+
+  function removeToma(key: number) {
+    setTomas(prev => {
+      if (prev.length === 1) return prev // siempre queda al menos una
+      const next = prev.filter(t => t.key !== key)
+      setTomaActiva(a => Math.min(a, next.length - 1))
+      return next
+    })
+  }
+
+  // ── Mutadores de observaciones de seguimiento ───────────────────────
+  function addObs() {
+    setObservacionesSeguimiento(prev => [...prev, {
+      key: obsKeySeq++,
+      descripcion: '',
+      categoria_id: '',
+      clasificacion_id: '',
+      responsable_id: '',
+      fecha_subsanacion: '',
+      foto_preview: null,
+      foto_file: null,
+    }])
+  }
+
+  function removeObs(key: number) {
+    setObservacionesSeguimiento(prev => {
+      const obj = prev.find(o => o.key === key)
+      if (obj?.foto_preview) URL.revokeObjectURL(obj.foto_preview)
+      return prev.filter(o => o.key !== key)
+    })
+  }
+
+  function updateObs(key: number, field: keyof Omit<ObsDraft, 'key' | 'foto_preview' | 'foto_file'>, value: string) {
+    setObservacionesSeguimiento(prev => prev.map(o => o.key === key ? { ...o, [field]: value } : o))
+  }
+
+  function updateObsFoto(key: number, file: File | null) {
+    setObservacionesSeguimiento(prev => prev.map(o => {
+      if (o.key !== key) return o
+      if (o.foto_preview) URL.revokeObjectURL(o.foto_preview)
+      return { ...o, foto_file: file, foto_preview: file ? URL.createObjectURL(file) : null }
+    }))
+  }
+
+  // ── Resúmenes derivados ─────────────────────────────────────────────
+  const totalesAnalisis = useMemo(() => {
+    let cumplenOk = 0, cumplenNo = 0, conDatos = 0
+    for (const t of tomas) {
+      const c = cumpleDe(t)
+      if (c == null) continue
+      conDatos++
+      if (c) cumplenOk++
+      else cumplenNo++
+    }
+    return { cumplenOk, cumplenNo, conDatos, total: tomas.length }
+  }, [tomas])
+
+  // ── Gamificación: checks por hoja ───────────────────────────────────
+  interface Check { id: string; label: string; done: boolean; section: 1 | 2 | 3 }
+  const checks: Check[] = useMemo(() => {
+    const algunaTomaConValor = tomas.some(t => num(t.valor_medido_ohm) != null)
+    const algunaTomaConSector = tomas.some(t => t.sector_id)
+    const algunaTomaConEct = tomas.some(t => t.ect)
+    const algunaTomaConProteccion = tomas.some(t => t.proteccion)
+    return [
+      // Hoja 1
+      { id: 'instrumento', label: 'Elegí el telurímetro usado', done: !!instrumentoId, section: 1 },
+      { id: 'profesional', label: 'Cargá el profesional firmante', done: !!firmante.trim(), section: 1 },
+      { id: 'fecha', label: 'Cargá la fecha de medición', done: !!fechaMedicion, section: 1 },
+      // Hoja 2
+      { id: 'sector', label: 'Asociá la toma a un sector', done: algunaTomaConSector, section: 2 },
+      { id: 'ect', label: 'Definí el esquema de conexión (ECT)', done: algunaTomaConEct, section: 2 },
+      { id: 'valor', label: 'Cargá el valor medido (Ω)', done: algunaTomaConValor, section: 2 },
+      { id: 'proteccion', label: 'Indicá el dispositivo de protección', done: algunaTomaConProteccion, section: 2 },
+      // Hoja 3
+      { id: 'conclusiones', label: 'Redactá las conclusiones', done: !!conclusiones.trim(), section: 3 },
+      { id: 'recomendaciones', label: 'Redactá las recomendaciones', done: !!recomendaciones.trim(), section: 3 },
+    ]
+  }, [instrumentoId, firmante, fechaMedicion, tomas, conclusiones, recomendaciones])
+
+  const doneCount = checks.filter(c => c.done).length
+  const totalChecks = checks.length || 1
+  const pct = Math.round((doneCount / totalChecks) * 100)
+  const proximoPaso = checks.find(c => !c.done)
+  const level = levelFromPercent(pct)
+
+  // ── Navegación ──────────────────────────────────────────────────────
+  function goNext() {
+    setError(null)
+    if (step === 'datos') {
+      if (!instrumentoId) { setError('Elegí el telurímetro usado en la medición.'); return }
+      if (!firmante.trim()) { setError('Cargá el profesional firmante del protocolo.'); return }
+      if (!fechaMedicion) { setError('Cargá la fecha de medición.'); return }
+      setStep('tomas')
+    } else if (step === 'tomas') {
+      const algunaConValor = tomas.some(t => num(t.valor_medido_ohm) != null)
+      if (!algunaConValor) { setError('Cargá al menos una toma con su valor medido (Ω).'); return }
+      setStep('observaciones')
+    } else if (step === 'observaciones') {
+      const obsSinCat = observacionesSeguimiento.filter(o => o.descripcion.trim() && !o.categoria_id)
+      if (obsSinCat.length > 0) { setError('Toda observación de seguimiento requiere una categoría.'); return }
+      setStep('analisis')
+    } else if (step === 'analisis') {
+      setStep('revisar')
+    }
+  }
+
+  function goBack() {
+    setError(null)
+    const idx = STEP_ORDER.indexOf(step)
+    if (idx > 0) setStep(STEP_ORDER[idx - 1])
+  }
+
+  // ── Guardar ─────────────────────────────────────────────────────────
+  async function handleGuardar() {
+    setError(null)
+
+    const obsSinCat = observacionesSeguimiento.filter(o => o.descripcion.trim() && !o.categoria_id)
+    if (obsSinCat.length > 0) {
+      setError('Toda observación de seguimiento requiere una categoría.')
+      setStep('observaciones')
+      return
+    }
+
+    setSaving(true)
+    try {
+      const fd = new FormData()
+      fd.set('registro_id', registroId)
+      fd.set('rg_fecha_planificada', rgFechaPlanificada)
+      fd.set('establecimiento_id', establecimientoId)
+      if (gestionEstablecimientoId) fd.set('gestion_establecimiento_id', gestionEstablecimientoId)
+      if (instrumentoId) fd.set('instrumento_id', instrumentoId)
+      if (certificadoId) fd.set('certificado_id', certificadoId)
+      fd.set('firmante', firmante)
+      fd.set('metodologia', metodologia)
+      fd.set('fecha_medicion', fechaMedicion)
+      if (fechaMedicionFin) fd.set('fecha_medicion_fin', fechaMedicionFin)
+      fd.set('hora_inicio', horaInicio)
+      fd.set('hora_fin', horaFin)
+      fd.set('conclusiones', conclusiones)
+      fd.set('recomendaciones', recomendaciones)
+      fd.set('observaciones', observacionesGenerales)
+      if (certificadoFile) fd.set('certificado', certificadoFile)
+      if (planoFile) fd.set('plano', planoFile)
+
+      // Tomas → contrato del server action.
+      const tomasPayload = tomas.map((t, idx) => ({
+        numero_toma: num(t.numero_toma) ?? idx + 1,
+        sector_id: t.sector_id || null,
+        seccion: t.seccion || null,
+        condicion_terreno: t.condicion_terreno || null,
+        uso_pat: t.uso_pat || null,
+        ect: t.ect || null,
+        valor_medido_ohm: num(t.valor_medido_ohm),
+        valor_exigido_ohm: num(t.valor_exigido_ohm),
+        cumple: cumpleDe(t),
+        continuidad: triToBool(t.continuidad),
+        capacidad_carga: triToBool(t.capacidad_carga),
+        desconexion_automatica: triToBool(t.desconexion_automatica),
+        proteccion: t.proteccion || null,
+        observaciones: t.observaciones || null,
+        orden: idx,
+      }))
+      fd.set('tomas', JSON.stringify(tomasPayload))
+
+      // Observaciones de seguimiento → mismo contrato que iluminación / reporte fotográfico.
+      const validObs = observacionesSeguimiento.filter(o => o.descripcion.trim())
+      if (validObs.length > 0) {
+        const obsMeta = validObs.map((o, idx) => {
+          if (o.foto_file) fd.set(`obs-foto-${idx}`, o.foto_file)
+          return {
+            descripcion: o.descripcion,
+            categoria_id: o.categoria_id,
+            clasificacion_id: o.clasificacion_id,
+            responsable_id: o.responsable_id,
+            fecha_subsanacion: o.fecha_subsanacion,
+            tiene_foto: !!o.foto_file,
+          }
+        })
+        fd.set('observaciones_seguimiento', JSON.stringify(obsMeta))
+      }
+
+      const result = await crearMedicionPat(fd)
+      if (!result.success) { setError(result.error); setSaving(false); return }
+
+      setStep('listo')
+      onSuccess()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error inesperado al guardar la medición')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const stepIdx = STEP_ORDER.indexOf(step)
+  const toma = tomas[tomaActiva]
+  const cumpleActiva = toma ? cumpleDe(toma) : null
+  const sectorActivo = toma ? sectores.find(s => s.id === toma.sector_id) : undefined
+
+  // ── Render: post-guardado ───────────────────────────────────────────
+  if (step === 'listo') {
+    return (
+      <Modal open title="Protocolo de puesta a tierra guardado" onClose={onClose} size="full">
+        <div className="space-y-5 py-2">
+          <div className="text-center py-4">
+            <div className="w-14 h-14 bg-success-bg rounded-full flex items-center justify-center mx-auto mb-3">
+              <CheckCircle size={28} className="text-success" />
+            </div>
+            <h3 className="font-semibold text-text-primary text-base">Protocolo registrado</h3>
+            <p className="text-sm text-text-secondary mt-1">
+              {tomas.length} {tomas.length === 1 ? 'toma medida' : 'tomas medidas'}
+              {totalesAnalisis.conDatos > 0 && (
+                <> · {totalesAnalisis.cumplenOk} cumplen · {totalesAnalisis.cumplenNo} no cumplen</>
+              )}
+            </p>
+          </div>
+          <p className="text-xs text-text-tertiary text-center">
+            La descarga del PDF oficial estará disponible próximamente.
+          </p>
+          <div className="flex justify-center pt-2">
+            <Button type="button" variant="secondary" onClick={onClose}>Cerrar</Button>
+          </div>
+        </div>
+      </Modal>
+    )
+  }
+
+  return (
+    <Modal open title="Protocolo de Puesta a Tierra (SRT 900/2015)" onClose={onClose} size="full">
+      <div className="space-y-4 max-h-[86vh] overflow-y-auto pr-1">
+        {/* ── Gamificación: anillo de progreso sticky ──────────────── */}
+        <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 bg-surface-base/90 backdrop-blur-md border-b border-border-subtle">
+          <div className="flex items-center gap-4">
+            <ProgressRing pct={pct} level={level} />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={`text-xs font-semibold uppercase tracking-wider ${level.color}`}>{level.label}</span>
+                <span className="text-xs text-text-tertiary">·</span>
+                <span className="text-xs text-text-tertiary tabular-nums">{doneCount}/{totalChecks} campos clave</span>
+              </div>
+              {proximoPaso ? (
+                <div className="flex items-center gap-1.5 mt-0.5 text-sm text-text-primary truncate">
+                  <ArrowRight size={13} className="text-sig-500 shrink-0" />
+                  <span className="text-text-tertiary">Próximo paso:</span>
+                  <span className="font-medium truncate">{proximoPaso.label}</span>
+                </div>
+              ) : (
+                <p className="mt-0.5 text-sm text-success font-medium flex items-center gap-1.5">
+                  <Sparkles size={14} /> Protocolo completo. Revisá y guardá.
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Stepper */}
+          <div className="flex items-center gap-1.5 text-xs mt-3 flex-wrap">
+            {STEP_ORDER.map((s, i) => (
+              <div key={s} className="flex items-center gap-1.5">
+                <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[11px] font-semibold ${
+                  i === stepIdx ? 'bg-sig-500 text-white' : i < stepIdx ? 'bg-success text-white' : 'bg-surface-sunken text-text-tertiary'
+                }`}>
+                  {i < stepIdx ? <Check size={12} /> : i + 1}
+                </span>
+                <span className={i === stepIdx ? 'font-semibold text-text-primary' : 'text-text-tertiary'}>
+                  {STEP_LABELS[s]}
+                </span>
+                {i < STEP_ORDER.length - 1 && <ChevronRight size={12} className="text-text-tertiary" />}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {error && (
+          <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-3 py-2">{error}</div>
+        )}
+
+        {/* ══ HOJA 1: DATOS ═══════════════════════════════════════════ */}
+        {step === 'datos' && (
+          <div className="space-y-5">
+            {/* Contexto read-only del establecimiento / empresa */}
+            <section className="rounded-xl border border-border-subtle bg-surface-elevated/40 p-4">
+              <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2 mb-3">
+                <Building2 size={16} className="text-sig-500" /> Establecimiento y empresa
+                <span className="text-xs font-normal text-text-tertiary">(datos reusados, solo lectura)</span>
+              </h3>
+              {estCtx ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2 text-sm">
+                  <ReadOnly label="Razón social" value={estCtx.empresa_razon_social} />
+                  <ReadOnly label="CUIT" value={estCtx.empresa_cuit} />
+                  <ReadOnly label="Establecimiento" value={estCtx.nombre} />
+                  <ReadOnly label="Domicilio" value={estCtx.domicilio ?? estCtx.empresa_domicilio} />
+                  <ReadOnly label="Localidad" value={estCtx.localidad} />
+                  <ReadOnly label="Provincia" value={estCtx.provincia} />
+                </div>
+              ) : (
+                <p className="text-xs text-text-tertiary flex items-center gap-2"><Loader2 size={14} className="animate-spin" /> Cargando datos…</p>
+              )}
+            </section>
+
+            {/* Instrumental + firmante */}
+            <section className="space-y-4">
+              <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2">
+                <Gauge size={16} className="text-sig-500" /> Instrumental y responsable
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className={labelCls}>Telurímetro <span className="text-danger">*</span></label>
+                  <select className={inputCls} value={instrumentoId} onChange={e => setInstrumentoId(e.target.value)}>
+                    <option value="">Seleccionar instrumento…</option>
+                    {instrumentos.map(i => (
+                      <option key={i.id} value={i.id}>
+                        {[i.marca, i.modelo].filter(Boolean).join(' ')}{i.numero_serie ? ` · N° ${i.numero_serie}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  {instrumentos.length === 0 && (
+                    <p className="text-xs text-text-tertiary mt-1">No hay telurímetros activos cargados.</p>
+                  )}
+                </div>
+                <div>
+                  <label className={labelCls}>Certificado de calibración</label>
+                  <select
+                    className={inputCls}
+                    value={certificadoId}
+                    onChange={e => setCertificadoId(e.target.value)}
+                    disabled={!instrumentoId}
+                  >
+                    <option value="">{instrumentoId ? 'Sin certificado asociado' : 'Elegí un telurímetro primero'}</option>
+                    {certificados.map(c => (
+                      <option key={c.id} value={c.id}>
+                        Emitido {c.fecha_emision} · vence {c.fecha_vencimiento}{c.activo ? ' (activo)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className={labelCls}>Profesional firmante (nombre y matrícula) <span className="text-danger">*</span></label>
+                  <input
+                    type="text"
+                    className={inputCls}
+                    value={firmante}
+                    onChange={e => setFirmante(e.target.value)}
+                    placeholder="Ing. Juan Pérez — Mat. 1234"
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Metodología</label>
+                  <input
+                    type="text"
+                    className={inputCls}
+                    value={metodologia}
+                    onChange={e => setMetodologia(e.target.value)}
+                    placeholder="Ej: método de caída de potencial (regla 62%)…"
+                  />
+                </div>
+              </div>
+            </section>
+
+            {/* Fecha y horario */}
+            <section className="space-y-4">
+              <h3 className="text-sm font-semibold text-text-primary">Fecha y horario</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                <div>
+                  <label className={labelCls}>Fecha de medición <span className="text-danger">*</span></label>
+                  <input type="date" className={inputCls} value={fechaMedicion} onChange={e => setFechaMedicion(e.target.value)} />
+                </div>
+                <div>
+                  <label className={labelCls}>Fecha de fin (opcional)</label>
+                  <input type="date" className={inputCls} value={fechaMedicionFin} onChange={e => setFechaMedicionFin(e.target.value)} />
+                </div>
+                <div>
+                  <label className={labelCls}>Hora inicio</label>
+                  <input type="time" className={inputCls} value={horaInicio} onChange={e => setHoraInicio(e.target.value)} />
+                </div>
+                <div>
+                  <label className={labelCls}>Hora fin</label>
+                  <input type="time" className={inputCls} value={horaFin} onChange={e => setHoraFin(e.target.value)} />
+                </div>
+              </div>
+            </section>
+
+            {/* Adjuntos + observaciones generales */}
+            <section className="space-y-4">
+              <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2">
+                <FileText size={16} className="text-sig-500" /> Adjuntos
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className={labelCls}>Certificado de calibración (archivo)</label>
+                  <input type="file" className={inputCls} accept=".pdf,image/*" onChange={e => setCertificadoFile(e.target.files?.[0] ?? null)} />
+                </div>
+                <div>
+                  <label className={labelCls}>Plano / croquis de las tomas</label>
+                  <input type="file" className={inputCls} accept=".pdf,image/*" onChange={e => setPlanoFile(e.target.files?.[0] ?? null)} />
+                </div>
+              </div>
+              <div>
+                <label className={labelCls}>Observaciones generales</label>
+                <textarea className={`${inputCls} resize-none`} rows={2} value={observacionesGenerales} onChange={e => setObservacionesGenerales(e.target.value)} placeholder="Observaciones generales del protocolo…" />
+              </div>
+            </section>
+          </div>
+        )}
+
+        {/* ══ HOJA 2: TOMAS DE TIERRA ════════════════════════════════ */}
+        {step === 'tomas' && toma && (
+          <div className="space-y-4">
+            {/* Selector de tomas */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {tomas.map((t, i) => {
+                const c = cumpleDe(t)
+                const tieneDatos = num(t.valor_medido_ohm) != null
+                return (
+                  <button
+                    key={t.key}
+                    type="button"
+                    onClick={() => setTomaActiva(i)}
+                    className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+                      i === tomaActiva ? 'border-sig-500 bg-sig-50/40 text-text-primary font-medium' : 'border-border-default text-text-secondary hover:bg-surface-elevated'
+                    }`}
+                  >
+                    <span>Toma {t.numero_toma || i + 1}</span>
+                    {tieneDatos && (c ? <CheckCircle size={13} className="text-success" /> : <XCircle size={13} className="text-danger" />)}
+                  </button>
+                )
+              })}
+              <button
+                type="button"
+                onClick={addToma}
+                className="inline-flex items-center gap-1 rounded-lg border border-dashed border-sig-400 text-sig-600 px-3 py-1.5 text-sm hover:bg-sig-50/40"
+              >
+                <Plus size={14} /> Agregar toma
+              </button>
+            </div>
+
+            {/* Card de la toma activa */}
+            <div className="rounded-xl border border-border-subtle p-4 sm:p-5 space-y-5">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2">
+                  <MapPin size={16} className="text-sig-500" /> Toma {toma.numero_toma || tomaActiva + 1}
+                </h3>
+                {tomas.length > 1 && (
+                  <button type="button" onClick={() => removeToma(toma.key)} className="text-text-tertiary hover:text-danger inline-flex items-center gap-1 text-xs">
+                    <Trash2 size={14} /> Quitar toma
+                  </button>
+                )}
+              </div>
+
+              {/* Identificación / ubicación */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                  <label className={labelCls}>N° de toma</label>
+                  <input type="number" className={inputCls} value={toma.numero_toma} onChange={e => updateToma(toma.key, { numero_toma: e.target.value })} />
+                </div>
+                <div>
+                  <label className={labelCls}>Sector</label>
+                  <select className={inputCls} value={toma.sector_id} onChange={e => updateToma(toma.key, { sector_id: e.target.value })}>
+                    <option value="">Seleccionar sector…</option>
+                    {sectores.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className={labelCls}>Sección / ubicación</label>
+                  <input type="text" className={inputCls} value={toma.seccion} onChange={e => updateToma(toma.key, { seccion: e.target.value })} placeholder={sectorActivo ? sectorActivo.nombre : 'Tablero general, jabalina N°1…'} />
+                </div>
+                <div>
+                  <label className={labelCls}>Uso de la PaT</label>
+                  <select className={inputCls} value={toma.uso_pat} onChange={e => updateToma(toma.key, { uso_pat: e.target.value })}>
+                    <option value="">Sin especificar</option>
+                    {USO_PAT_OPCIONES.map(o => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {/* Condiciones + esquema */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className={labelCls}>Condición del terreno</label>
+                  <select className={inputCls} value={toma.condicion_terreno} onChange={e => updateToma(toma.key, { condicion_terreno: e.target.value })}>
+                    <option value="">Sin especificar</option>
+                    {CONDICION_TERRENO_OPCIONES.map(o => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className={labelCls}>Esquema de conexión a tierra (ECT)</label>
+                  <select className={inputCls} value={toma.ect} onChange={e => updateToma(toma.key, { ect: e.target.value as Ect | '' })}>
+                    <option value="">Sin especificar</option>
+                    {ECT_OPCIONES.map(o => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {/* Medición + cumplimiento en vivo */}
+              <div className="rounded-lg border border-border-subtle bg-surface-elevated/30 p-4 space-y-3">
+                <h4 className="text-sm font-semibold text-text-primary flex items-center gap-2">
+                  <Zap size={15} className="text-sig-500" /> Resistencia de puesta a tierra
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                  <div>
+                    <label className={labelCls}>Valor medido (Ω) <span className="text-danger">*</span></label>
+                    <input type="number" step="any" className={inputCls} value={toma.valor_medido_ohm} onChange={e => updateToma(toma.key, { valor_medido_ohm: e.target.value })} placeholder="Ej: 12.5" />
+                  </div>
+                  <div>
+                    <label className={labelCls}>
+                      Valor exigido (Ω)
+                      <span className="ml-1 inline-flex items-center text-text-tertiary cursor-help align-middle" title="Por defecto 40 Ω (esquema TT con diferencial general IΔn ≤ 300 mA). Editable según el dispositivo de protección.">
+                        <Info size={13} />
+                      </span>
+                    </label>
+                    <input type="number" step="any" className={inputCls} value={toma.valor_exigido_ohm} onChange={e => updateToma(toma.key, { valor_exigido_ohm: e.target.value })} placeholder="40" />
+                  </div>
+                  <div>
+                    <div className={`rounded-lg border px-3 py-2 ${cumpleActiva == null ? 'border-border-subtle bg-surface-elevated/40' : cumpleActiva ? 'border-success/40 bg-success-bg/40' : 'border-danger/40 bg-danger-bg/40'}`}>
+                      <p className="text-xs text-text-tertiary">Cumplimiento</p>
+                      <p className="font-semibold flex items-center gap-1">
+                        {cumpleActiva == null
+                          ? <span className="text-text-tertiary">Cargá el valor medido</span>
+                          : cumpleActiva
+                            ? <><CheckCircle size={14} className="text-success" /> Cumple</>
+                            : <><XCircle size={14} className="text-danger" /> No cumple</>}
+                      </p>
+                      {cumpleActiva != null && num(toma.valor_exigido_ohm) != null && (
+                        <p className="text-[11px] text-text-tertiary tabular-nums">
+                          {num(toma.valor_medido_ohm)} Ω {cumpleActiva ? '≤' : '>'} {num(toma.valor_exigido_ohm)} Ω
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Verificaciones SI/NO + protección */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-semibold text-text-primary flex items-center gap-2">
+                  <ShieldCheck size={15} className="text-sig-500" /> Verificaciones y protección
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <TriToggle label="Continuidad" value={toma.continuidad} onChange={v => updateToma(toma.key, { continuidad: v })} />
+                  <TriToggle label="Capacidad de carga" value={toma.capacidad_carga} onChange={v => updateToma(toma.key, { capacidad_carga: v })} />
+                  <TriToggle label="Desconexión automática" value={toma.desconexion_automatica} onChange={v => updateToma(toma.key, { desconexion_automatica: v })} />
+                </div>
+                <div className="sm:max-w-xs">
+                  <label className={labelCls}>Dispositivo de protección</label>
+                  <select className={inputCls} value={toma.proteccion} onChange={e => updateToma(toma.key, { proteccion: e.target.value as Proteccion | '' })}>
+                    <option value="">Sin especificar</option>
+                    <option value="DD">DD — Disyuntor diferencial</option>
+                    <option value="IA">IA — Interruptor automático</option>
+                    <option value="Fus">Fus — Fusible</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className={labelCls}>Observaciones de la toma</label>
+                <textarea className={`${inputCls} resize-none`} rows={2} value={toma.observaciones} onChange={e => updateToma(toma.key, { observaciones: e.target.value })} placeholder="Notas de esta toma de tierra…" />
+              </div>
+            </div>
+
+            <p className="text-xs text-text-tertiary flex items-center gap-1.5">
+              <Info size={13} /> Una toma no conforme NO bloquea el guardado: se registra igual y suma al plan de mejora.
+            </p>
+          </div>
+        )}
+
+        {/* ══ HOJA 3: OBSERVACIONES DE SEGUIMIENTO ═══════════════════ */}
+        {step === 'observaciones' && (
+          <div className="space-y-4">
+            <div className="rounded-xl border border-border-subtle bg-surface-elevated/40 p-4">
+              <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2">
+                <Camera size={16} className="text-sig-500" /> Observaciones de seguimiento
+                <span className="text-xs font-normal text-text-tertiary">(opcional)</span>
+              </h3>
+              <p className="text-xs text-text-tertiary mt-1">
+                Findings adicionales a las tomas. Cada observación entra al plan de
+                Seguimiento con su responsable, fecha de subsanación y foto.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-semibold text-text-secondary">
+                Observaciones
+                {observacionesSeguimiento.length > 0 && (
+                  <span className="ml-2 text-xs font-normal text-text-tertiary">({observacionesSeguimiento.length})</span>
+                )}
+              </h4>
+              <button
+                type="button"
+                onClick={addObs}
+                className="text-xs text-sig-600 hover:text-sig-700 font-medium inline-flex items-center gap-1"
+              >
+                <Plus size={14} /> Agregar
+              </button>
+            </div>
+
+            {observacionesSeguimiento.length === 0 ? (
+              <p className="text-xs text-text-tertiary text-center py-4 border border-dashed border-border-subtle rounded-lg">
+                Sin observaciones de seguimiento. Hacé clic en &quot;+ Agregar&quot; para registrar un finding.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {observacionesSeguimiento.map((obs, idx) => (
+                  <div key={obs.key} className="border border-border-subtle rounded-lg p-3 space-y-2 bg-surface-elevated/30">
+                    <div className="flex items-start gap-2">
+                      <span className="text-xs text-text-tertiary mt-2 w-4 shrink-0">{idx + 1}.</span>
+                      <textarea
+                        value={obs.descripcion}
+                        onChange={e => updateObs(obs.key, 'descripcion', e.target.value)}
+                        placeholder="Descripción de la observación…"
+                        rows={2}
+                        className="flex-1 border border-border-default rounded-lg px-3 py-1.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sig-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeObs(obs.key)}
+                        className="text-text-tertiary hover:text-danger mt-1 shrink-0"
+                        title="Eliminar observación"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pl-6">
+                      <div>
+                        <label className="text-xs text-text-secondary block mb-0.5">
+                          Categoría <span className="text-danger">*</span>
+                        </label>
+                        <select
+                          value={obs.categoria_id}
+                          onChange={e => updateObs(obs.key, 'categoria_id', e.target.value)}
+                          className="w-full border border-border-default rounded-lg px-2 py-1.5 text-xs bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500"
+                          style={obs.categoria_id ? { backgroundColor: categoriasObs.find(c => c.id === obs.categoria_id)?.color, color: '#000' } : {}}
+                        >
+                          <option value="">Seleccionar…</option>
+                          {categoriasObs.map(c => (
+                            <option key={c.id} value={c.id}>{c.nombre}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs text-text-secondary block mb-0.5">Tipo de riesgo</label>
+                        <select
+                          value={obs.clasificacion_id}
+                          onChange={e => updateObs(obs.key, 'clasificacion_id', e.target.value)}
+                          className="w-full border border-border-default rounded-lg px-2 py-1.5 text-xs bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500"
+                        >
+                          <option value="">Sin clasificar</option>
+                          {clasificacionesObs.map(c => (
+                            <option key={c.id} value={c.id}>{c.nombre}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs text-text-secondary block mb-0.5">Responsable</label>
+                        <select
+                          value={obs.responsable_id}
+                          onChange={e => updateObs(obs.key, 'responsable_id', e.target.value)}
+                          className="w-full border border-border-default rounded-lg px-2 py-1.5 text-xs bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500"
+                        >
+                          <option value="">Sin asignar</option>
+                          {personasObs.map(p => (
+                            <option key={p.id} value={p.id}>{p.apellido}, {p.nombre}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs text-text-secondary block mb-0.5">Fecha subsanación</label>
+                        <input
+                          type="date"
+                          value={obs.fecha_subsanacion}
+                          onChange={e => updateObs(obs.key, 'fecha_subsanacion', e.target.value)}
+                          className="w-full border border-border-default rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-sig-500"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Foto de la observación (adjuntar / tomar, sin capture, con preview) */}
+                    <div className="pl-6">
+                      {!obs.foto_preview ? (
+                        <label className="inline-flex items-center gap-1.5 text-xs text-text-tertiary hover:text-sig-600 cursor-pointer transition-colors">
+                          <Camera size={13} />
+                          Adjuntar / sacar foto
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={e => {
+                              const f = e.target.files?.[0]
+                              if (!f) return
+                              updateObsFoto(obs.key, f)
+                            }}
+                          />
+                        </label>
+                      ) : (
+                        <div className="flex items-center gap-3">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={obs.foto_preview} alt="Foto observación" className="w-14 h-14 object-cover rounded-lg border border-border-subtle" />
+                          <button
+                            type="button"
+                            onClick={() => updateObsFoto(obs.key, null)}
+                            className="text-xs text-red-400 hover:text-danger"
+                          >
+                            Eliminar foto
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ══ HOJA 4: ANÁLISIS ═══════════════════════════════════════ */}
+        {step === 'analisis' && (
+          <div className="space-y-5">
+            {/* Resumen automático */}
+            <section className="rounded-xl border border-border-subtle bg-surface-elevated/40 p-4">
+              <h3 className="text-sm font-semibold text-text-primary mb-3">Resumen de cumplimiento</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                <Metric label="Tomas con datos" value={`${totalesAnalisis.conDatos} / ${totalesAnalisis.total}`} />
+                <div className="rounded-lg border border-success/40 bg-success-bg/40 px-3 py-2">
+                  <p className="text-xs text-text-tertiary">Cumplen</p>
+                  <p className="font-semibold text-success tabular-nums">{totalesAnalisis.cumplenOk}</p>
+                </div>
+                <div className="rounded-lg border border-danger/40 bg-danger-bg/40 px-3 py-2">
+                  <p className="text-xs text-text-tertiary">No cumplen</p>
+                  <p className="font-semibold text-danger tabular-nums">{totalesAnalisis.cumplenNo}</p>
+                </div>
+                <Metric label="Total de tomas" value={String(totalesAnalisis.total)} />
+              </div>
+              <p className="text-xs text-text-tertiary mt-3">Usá este resumen para redactar las conclusiones y el plan de mejora.</p>
+            </section>
+
+            <div>
+              <label className={labelCls}>Conclusiones</label>
+              <textarea className={`${inputCls} resize-y`} rows={5} value={conclusiones} onChange={e => setConclusiones(e.target.value)} placeholder="Conclusiones del relevamiento de puesta a tierra…" />
+            </div>
+            <div>
+              <label className={labelCls}>Recomendaciones</label>
+              <textarea className={`${inputCls} resize-y`} rows={5} value={recomendaciones} onChange={e => setRecomendaciones(e.target.value)} placeholder="Recomendaciones y acciones de mejora propuestas…" />
+            </div>
+          </div>
+        )}
+
+        {/* ══ REVISAR Y GUARDAR ══════════════════════════════════════ */}
+        {step === 'revisar' && (
+          <div className="space-y-5">
+            <p className="text-sm text-text-secondary">Revisá las hojas antes de guardar el protocolo.</p>
+
+            {/* Resumen hoja 1 */}
+            <ReviewSection title="Datos del protocolo">
+              <ReviewGrid>
+                <ReadOnly label="Empresa" value={estCtx?.empresa_razon_social} />
+                <ReadOnly label="Establecimiento" value={estCtx?.nombre} />
+                <ReadOnly label="Telurímetro" value={instrumentos.find(i => i.id === instrumentoId) ? `${[instrumentos.find(i => i.id === instrumentoId)?.marca, instrumentos.find(i => i.id === instrumentoId)?.modelo].filter(Boolean).join(' ')}` : null} />
+                <ReadOnly label="Profesional firmante" value={firmante} />
+                <ReadOnly label="Fecha de medición" value={fechaMedicion} />
+                <ReadOnly label="Horario" value={horaInicio && horaFin ? `${horaInicio} – ${horaFin}` : (horaInicio || horaFin || null)} />
+                <ReadOnly label="Metodología" value={metodologia} />
+              </ReviewGrid>
+              <div className="flex gap-3 mt-2 text-xs text-text-tertiary">
+                <span>{certificadoFile ? '✓ Certificado adjunto' : 'Sin certificado adjunto'}</span>
+                <span>{planoFile ? '✓ Plano adjunto' : 'Sin plano adjunto'}</span>
+              </div>
+            </ReviewSection>
+
+            {/* Resumen hoja 2 */}
+            <ReviewSection title={`Tomas medidas (${tomas.length})`}>
+              <div className="space-y-2">
+                {tomas.map((t, i) => {
+                  const c = cumpleDe(t)
+                  const sec = sectores.find(s => s.id === t.sector_id)
+                  return (
+                    <div key={t.key} className="rounded-lg border border-border-subtle px-3 py-2 text-sm flex flex-wrap items-center gap-x-4 gap-y-1">
+                      <span className="font-medium text-text-primary">Toma {t.numero_toma || i + 1}</span>
+                      {sec && <span className="text-text-secondary">{sec.nombre}</span>}
+                      {t.ect && <span className="text-text-tertiary text-xs">{t.ect}</span>}
+                      {num(t.valor_medido_ohm) != null && <span className="text-text-tertiary tabular-nums">{num(t.valor_medido_ohm)} Ω</span>}
+                      {c != null && (
+                        <span className={`inline-flex items-center gap-1 text-xs font-medium ${c ? 'text-success' : 'text-danger'}`}>
+                          {c ? <CheckCircle size={13} /> : <XCircle size={13} />} {c ? 'Cumple' : 'No cumple'}
+                        </span>
+                      )}
+                      {t.proteccion && <span className="text-text-tertiary text-xs">Prot. {t.proteccion}</span>}
+                    </div>
+                  )
+                })}
+              </div>
+            </ReviewSection>
+
+            {/* Resumen hoja 3 — observaciones de seguimiento */}
+            {observacionesSeguimiento.filter(o => o.descripcion.trim()).length > 0 && (
+              <ReviewSection title={`Observaciones de seguimiento (${observacionesSeguimiento.filter(o => o.descripcion.trim()).length})`}>
+                <div className="space-y-2">
+                  {observacionesSeguimiento.filter(o => o.descripcion.trim()).map((o, i) => {
+                    const cat = categoriasObs.find(c => c.id === o.categoria_id)
+                    const resp = personasObs.find(p => p.id === o.responsable_id)
+                    return (
+                      <div key={o.key} className="rounded-lg border border-border-subtle px-3 py-2 text-sm flex flex-wrap items-center gap-x-4 gap-y-1">
+                        <span className="font-medium text-text-primary">{i + 1}.</span>
+                        <span className="text-text-secondary flex-1 min-w-[12rem]">{o.descripcion}</span>
+                        {cat && <span className="text-xs rounded px-2 py-0.5" style={{ backgroundColor: cat.color, color: '#000' }}>{cat.nombre}</span>}
+                        {resp && <span className="text-text-tertiary text-xs">{resp.apellido}, {resp.nombre}</span>}
+                        {o.fecha_subsanacion && <span className="text-text-tertiary text-xs tabular-nums">Subsana {o.fecha_subsanacion}</span>}
+                        {o.foto_file && <span className="text-text-tertiary text-xs inline-flex items-center gap-1"><Camera size={12} /> Foto</span>}
+                      </div>
+                    )
+                  })}
+                </div>
+              </ReviewSection>
+            )}
+
+            {/* Resumen hoja 4 */}
+            <ReviewSection title="Análisis">
+              <ReadOnly label="Conclusiones" value={conclusiones} block />
+              <ReadOnly label="Recomendaciones" value={recomendaciones} block />
+            </ReviewSection>
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 pt-3 pb-1 sticky bottom-0 bg-surface-base border-t border-border-subtle">
+          {step !== 'datos' && (
+            <Button type="button" variant="secondary" onClick={goBack} disabled={saving}>
+              <ChevronLeft size={14} /> Atrás
+            </Button>
+          )}
+          {step !== 'revisar' ? (
+            <Button type="button" onClick={goNext}>
+              Continuar <ChevronRight size={14} />
+            </Button>
+          ) : (
+            <Button type="button" onClick={handleGuardar} disabled={saving}>
+              {saving ? <><Loader2 size={14} className="animate-spin" /> Guardando…</> : 'Guardar protocolo'}
+            </Button>
+          )}
+          <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>Cancelar</Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+// ── Subcomponentes de presentación ─────────────────────────────────────
+
+function ReadOnly({ label, value, block }: { label: string; value: string | null | undefined; block?: boolean }) {
+  return (
+    <div className={block ? 'mb-2' : ''}>
+      <p className="text-xs text-text-tertiary">{label}</p>
+      <p className={`text-text-primary ${block ? 'whitespace-pre-wrap text-sm' : 'font-medium'}`}>{value || <span className="text-text-tertiary font-normal">—</span>}</p>
+    </div>
+  )
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-border-subtle bg-surface-elevated/60 px-3 py-2">
+      <p className="text-xs text-text-tertiary">{label}</p>
+      <p className="font-semibold text-text-primary tabular-nums">{value}</p>
+    </div>
+  )
+}
+
+/** Toggle de tres estados (SI / NO / sin definir) para verificaciones booleanas. */
+function TriToggle({ label, value, onChange }: { label: string; value: TriEstado; onChange: (v: TriEstado) => void }) {
+  return (
+    <div>
+      <label className="text-sm font-medium text-text-secondary block mb-1">{label}</label>
+      <div className="inline-flex rounded-lg border border-border-default overflow-hidden">
+        <button
+          type="button"
+          onClick={() => onChange(value === 'si' ? '' : 'si')}
+          className={`px-3 py-1.5 text-sm transition-colors ${value === 'si' ? 'bg-success text-white font-medium' : 'text-text-secondary hover:bg-surface-elevated'}`}
+        >
+          Sí
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange(value === 'no' ? '' : 'no')}
+          className={`px-3 py-1.5 text-sm transition-colors border-l border-border-default ${value === 'no' ? 'bg-danger text-white font-medium' : 'text-text-secondary hover:bg-surface-elevated'}`}
+        >
+          No
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function ReviewSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="rounded-xl border border-border-subtle p-4">
+      <h3 className="text-sm font-semibold text-text-primary mb-3">{title}</h3>
+      {children}
+    </section>
+  )
+}
+
+function ReviewGrid({ children }: { children: React.ReactNode }) {
+  return <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2 text-sm">{children}</div>
+}
+
+// ── Anillo de progreso (gamificación) ──────────────────────────────────
+
+interface Level { label: string; color: string; ring: string; track: string }
+function levelFromPercent(pct: number): Level {
+  if (pct >= 100) return { label: 'Completo', color: 'text-success', ring: 'stroke-success', track: 'stroke-success/15' }
+  if (pct >= 90) return { label: 'Casi completo', color: 'text-sig-700', ring: 'stroke-sig-700', track: 'stroke-sig-700/15' }
+  if (pct >= 60) return { label: 'Avanzado', color: 'text-sig-500', ring: 'stroke-sig-500', track: 'stroke-sig-500/15' }
+  if (pct >= 30) return { label: 'En progreso', color: 'text-sig-400', ring: 'stroke-sig-400', track: 'stroke-sig-400/15' }
+  return { label: 'En construcción', color: 'text-text-tertiary', ring: 'stroke-text-tertiary', track: 'stroke-text-tertiary/15' }
+}
+
+function ProgressRing({ pct, level }: { pct: number; level: Level }) {
+  const size = 56
+  const stroke = 5
+  const radius = (size - stroke) / 2
+  const circumference = 2 * Math.PI * radius
+  const offset = circumference - (pct / 100) * circumference
+  return (
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90">
+        <circle cx={size / 2} cy={size / 2} r={radius} strokeWidth={stroke} fill="none" className={level.track} />
+        <circle cx={size / 2} cy={size / 2} r={radius} strokeWidth={stroke} fill="none" strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={offset} className={`${level.ring} transition-[stroke-dashoffset] duration-500 ease-out`} />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center">
+        {pct >= 100 ? <Check className="text-success" size={20} strokeWidth={2.5} /> : <span className={`text-sm font-bold tabular-nums ${level.color}`}>{pct}%</span>}
+      </div>
+    </div>
+  )
+}
