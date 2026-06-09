@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { descargarProtocoloPdf } from '@/lib/pdf/protocolo-pdf'
 import {
   crearCalculoCargaFuego,
   getMaterialesPci,
@@ -24,7 +25,7 @@ import { Button } from '@/components/ui/button'
 import {
   Flame, Building2, Layers, FileText, Plus, Trash2,
   ChevronLeft, ChevronRight, CheckCircle, Loader2,
-  Info, ArrowRight, Check, Sparkles, Camera, ShieldCheck, Gauge,
+  Info, ArrowRight, Check, Sparkles, Camera, ShieldCheck, Gauge, Download,
 } from 'lucide-react'
 
 // ── Props ────────────────────────────────────────────────────────────
@@ -79,6 +80,41 @@ interface EstablecimientoCtx {
   empresa_razon_social: string | null
   empresa_cuit: string | null
   empresa_domicilio: string | null
+}
+
+// ── Datos consolidados para el PDF oficial (3 hojas Dec 351/79 Anexo VII) ──
+interface PdfFilaMaterial {
+  n: number
+  descripcion: string
+  estado: string
+  pesoKg: number | null
+  pciKcal: number | null
+  coefC: number | null
+  equivMaderaKg: number
+}
+
+interface ProtocoloPdfData {
+  razonSocial: string | null
+  cuit: string | null
+  establecimiento: string | null
+  domicilio: string | null
+  localidad: string | null
+  provincia: string | null
+  sectorIncendio: string | null
+  superficie: number | null
+  ventilacion: Ventilacion
+  observacionesGenerales: string | null
+  firmante: string | null
+  filasMateriales: PdfFilaMaterial[]
+  totalEquiv: number
+  qf: number | null
+  franja: FranjaQf | null
+  riesgo: Riesgo | ''
+  fExigido: string | null
+  potencialA: string | null
+  potencialB: string | null
+  conclusiones: string | null
+  recomendaciones: string | null
 }
 
 // ── Observaciones de seguimiento (replicado del reporte fotográfico) ───
@@ -140,6 +176,13 @@ export function CalculoCargaFuegoEjecutorModal({
   const [step, setStep] = useState<WizardStep>('datos')
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [descargandoPdf, setDescargandoPdf] = useState(false)
+
+  // Refs a las 3 hojas ocultas del protocolo oficial (DATOS / MATERIALES / RESULTADO).
+  // Se renderizan fuera de pantalla y se rasterizan al descargar el PDF.
+  const hojaDatosRef = useRef<HTMLDivElement>(null)
+  const hojaMaterialesRef = useRef<HTMLDivElement>(null)
+  const hojaResultadoRef = useRef<HTMLDivElement>(null)
 
   // ── Catálogos ───────────────────────────────────────────────────────
   const [estCtx, setEstCtx] = useState<EstablecimientoCtx | null>(null)
@@ -489,6 +532,67 @@ export function CalculoCargaFuegoEjecutorModal({
   const stepIdx = STEP_ORDER.indexOf(step)
   const materialesValidos = materiales.filter(m => m.descripcion.trim() || num(m.peso_kg) != null)
 
+  // ── Datos consolidados para el PDF oficial ─────────────────────────
+  // Se arma con los datos en memoria del wizard. Qf / franja / F / extintores
+  // salen de los derivados que ya usan lib/calculo-carga-fuego/calculos.
+  const pdfData: ProtocoloPdfData = useMemo(() => {
+    const filasMateriales: PdfFilaMaterial[] = materialesValidos.map((m, i) => ({
+      n: i + 1,
+      descripcion: m.descripcion.trim() || 'Material',
+      estado: m.estado || '',
+      pesoKg: num(m.peso_kg),
+      pciKcal: num(m.pci_kcal),
+      coefC: num(m.coef_c),
+      equivMaderaKg: equivDe(m),
+    }))
+    return {
+      razonSocial: estCtx?.empresa_razon_social ?? null,
+      cuit: estCtx?.empresa_cuit ?? null,
+      establecimiento: estCtx?.nombre ?? null,
+      domicilio: estCtx?.domicilio ?? estCtx?.empresa_domicilio ?? null,
+      localidad: estCtx?.localidad ?? null,
+      provincia: estCtx?.provincia ?? null,
+      sectorIncendio: sectorIncendio || null,
+      superficie: superficieNum,
+      ventilacion,
+      observacionesGenerales: observacionesGenerales || null,
+      firmante: firmante || null,
+      filasMateriales,
+      totalEquiv,
+      qf,
+      franja,
+      riesgo,
+      fExigido,
+      potencialA,
+      potencialB,
+      conclusiones: conclusiones || null,
+      recomendaciones: recomendaciones || null,
+    }
+  }, [
+    materialesValidos, estCtx, sectorIncendio, superficieNum, ventilacion,
+    observacionesGenerales, firmante, totalEquiv, qf, franja, riesgo,
+    fExigido, potencialA, potencialB, conclusiones, recomendaciones,
+  ])
+
+  // ── Descargar PDF oficial (3 hojas Dec 351/79 Anexo VII) ───────────
+  // Genera el protocolo client-side a partir de los datos en memoria, sin tocar
+  // storage (v1): rasteriza las 3 hojas ocultas y arma un A4 multipágina.
+  async function handleDescargarPdf() {
+    const hojas = [hojaDatosRef.current, hojaMaterialesRef.current, hojaResultadoRef.current]
+      .filter((h): h is HTMLDivElement => h != null)
+    if (hojas.length === 0) return
+    setDescargandoPdf(true)
+    setError(null)
+    try {
+      const nombre = `carga-de-fuego-${rgFechaPlanificada || new Date().toISOString().slice(0, 10)}.pdf`
+      await descargarProtocoloPdf({ hojas }, nombre)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo generar el PDF.')
+    } finally {
+      setDescargandoPdf(false)
+    }
+  }
+
   // ── Render: post-guardado ───────────────────────────────────────────
   if (step === 'listo') {
     return (
@@ -504,13 +608,28 @@ export function CalculoCargaFuegoEjecutorModal({
               {qf != null && <> · Qf {qf.toFixed(1)} kg/m² · franja {franja}</>}
             </p>
           </div>
-          <p className="text-xs text-text-tertiary text-center">
-            La descarga del PDF oficial estará disponible próximamente.
-          </p>
-          <div className="flex justify-center pt-2">
+          {error && (
+            <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-3 py-2">{error}</div>
+          )}
+          <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3 justify-center pt-2">
+            <Button type="button" onClick={handleDescargarPdf} disabled={descargandoPdf}>
+              {descargandoPdf ? (
+                <><Loader2 size={14} className="inline mr-1.5 animate-spin" /> Generando…</>
+              ) : (
+                <><Download size={14} className="inline mr-1.5" /> Descargar PDF</>
+              )}
+            </Button>
             <Button type="button" variant="secondary" onClick={onClose}>Cerrar</Button>
           </div>
         </div>
+
+        {/* Hojas ocultas del PDF oficial (se rasterizan al descargar). */}
+        <ProtocoloCargaFuegoHojas
+          data={pdfData}
+          hojaDatosRef={hojaDatosRef}
+          hojaMaterialesRef={hojaMaterialesRef}
+          hojaResultadoRef={hojaResultadoRef}
+        />
       </Modal>
     )
   }
@@ -1119,12 +1238,29 @@ export function CalculoCargaFuegoEjecutorModal({
               Continuar <ChevronRight size={14} />
             </Button>
           ) : (
-            <Button type="button" onClick={handleGuardar} disabled={saving}>
-              {saving ? <><Loader2 size={14} className="animate-spin" /> Guardando…</> : 'Guardar cálculo'}
-            </Button>
+            <>
+              <Button type="button" onClick={handleGuardar} disabled={saving || descargandoPdf}>
+                {saving ? <><Loader2 size={14} className="animate-spin" /> Guardando…</> : 'Guardar cálculo'}
+              </Button>
+              <Button type="button" variant="secondary" onClick={handleDescargarPdf} disabled={saving || descargandoPdf}>
+                {descargandoPdf ? (
+                  <><Loader2 size={14} className="animate-spin" /> Generando…</>
+                ) : (
+                  <><Download size={14} /> Descargar PDF</>
+                )}
+              </Button>
+            </>
           )}
           <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>Cancelar</Button>
         </div>
+
+        {/* Hojas ocultas del PDF oficial (se rasterizan al descargar). */}
+        <ProtocoloCargaFuegoHojas
+          data={pdfData}
+          hojaDatosRef={hojaDatosRef}
+          hojaMaterialesRef={hojaMaterialesRef}
+          hojaResultadoRef={hojaResultadoRef}
+        />
       </div>
     </Modal>
   )
@@ -1189,6 +1325,244 @@ function ProgressRing({ pct, level }: { pct: number; level: Level }) {
       <div className="absolute inset-0 flex items-center justify-center">
         {pct >= 100 ? <Check className="text-success" size={20} strokeWidth={2.5} /> : <span className={`text-sm font-bold tabular-nums ${level.color}`}>{pct}%</span>}
       </div>
+    </div>
+  )
+}
+
+// ── Hojas ocultas del PDF oficial (3 hojas Dec 351/79 Anexo VII) ────────
+//
+// Maqueta autocontenida con estilos INLINE (no tokens de Tailwind): html2canvas
+// rasteriza mejor colores concretos, y el protocolo debe verse igual sin importar
+// el tema de la app. Cada hoja es un nodo A4 (≈794px = 210mm @96dpi) fuera de
+// pantalla (position:fixed, left:-99999px) para que html2canvas pueda medirlo.
+//
+// Reusa el mismo patrón que el protocolo de Iluminación (shell `HojaA4`,
+// tipografía y helpers de tabla); solo cambia el contenido de las hojas.
+
+const PDF_PAGE_WIDTH = 794 // px ≈ 210mm @ 96dpi
+const PDF_FONT = 'Helvetica, Arial, sans-serif'
+const PDF_INK = '#1a1a1a'
+const PDF_MUTED = '#555555'
+const PDF_BORDER = '#999999'
+
+const RIESGO_LABEL: Record<Riesgo, string> = {
+  R1: 'R1 — Explosivos',
+  R2: 'R2 — Inflamables',
+  R3: 'R3 — Muy combustibles',
+  R4: 'R4 — Combustibles',
+  R5: 'R5 — Poco combustibles',
+  R6: 'R6 — Incombustibles',
+  R7: 'R7 — Refractarios',
+}
+
+function dash(v: string | number | null | undefined): string {
+  if (v == null || v === '') return '—'
+  return String(v)
+}
+
+function HojaA4({
+  hojaRef,
+  titulo,
+  subtitulo,
+  children,
+}: {
+  hojaRef: React.RefObject<HTMLDivElement | null>
+  titulo: string
+  subtitulo: string
+  children: React.ReactNode
+}) {
+  return (
+    <div
+      ref={hojaRef}
+      style={{
+        width: PDF_PAGE_WIDTH,
+        minHeight: 1123, // ≈ 297mm @ 96dpi
+        backgroundColor: '#ffffff',
+        color: PDF_INK,
+        fontFamily: PDF_FONT,
+        fontSize: 12,
+        lineHeight: 1.4,
+        padding: 48,
+        boxSizing: 'border-box',
+      }}
+    >
+      <div style={{ borderBottom: `2px solid ${PDF_INK}`, paddingBottom: 8, marginBottom: 16 }}>
+        <p style={{ margin: 0, fontSize: 11, letterSpacing: 1, color: PDF_MUTED, textTransform: 'uppercase' }}>
+          Cálculo de Carga de Fuego · Dec. 351/79 Anexo VII
+        </p>
+        <h1 style={{ margin: '4px 0 0', fontSize: 18, fontWeight: 700 }}>{titulo}</h1>
+        <p style={{ margin: '2px 0 0', fontSize: 12, color: PDF_MUTED }}>{subtitulo}</p>
+      </div>
+      {children}
+    </div>
+  )
+}
+
+function PdfSeccion({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <h2 style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: PDF_INK }}>{titulo}</h2>
+      {children}
+    </div>
+  )
+}
+
+function PdfCampo({ label, value }: { label: string; value: string | null }) {
+  return (
+    <div style={{ display: 'flex', gap: 6, padding: '3px 0', borderBottom: `1px solid #eeeeee` }}>
+      <span style={{ minWidth: 150, color: PDF_MUTED, fontSize: 11 }}>{label}</span>
+      <span style={{ flex: 1, fontWeight: 500 }}>{dash(value)}</span>
+    </div>
+  )
+}
+
+function PdfFirma({ firmante }: { firmante: string | null }) {
+  return (
+    <div style={{ marginTop: 40 }}>
+      <div style={{ width: 280, borderTop: `1px solid ${PDF_INK}`, paddingTop: 6 }}>
+        <p style={{ margin: 0, fontWeight: 600 }}>{dash(firmante)}</p>
+        <p style={{ margin: '2px 0 0', fontSize: 10, color: PDF_MUTED }}>Firma · Aclaración · Matrícula / Registro</p>
+      </div>
+    </div>
+  )
+}
+
+function ProtocoloCargaFuegoHojas({
+  data,
+  hojaDatosRef,
+  hojaMaterialesRef,
+  hojaResultadoRef,
+}: {
+  data: ProtocoloPdfData
+  hojaDatosRef: React.RefObject<HTMLDivElement | null>
+  hojaMaterialesRef: React.RefObject<HTMLDivElement | null>
+  hojaResultadoRef: React.RefObject<HTMLDivElement | null>
+}) {
+  const subtitulo = [data.establecimiento, data.razonSocial].filter(Boolean).join(' · ') || 'Establecimiento'
+
+  const th: React.CSSProperties = {
+    border: `1px solid ${PDF_BORDER}`,
+    padding: '5px 4px',
+    fontSize: 9.5,
+    fontWeight: 700,
+    backgroundColor: '#f0f0f0',
+    textAlign: 'center',
+    verticalAlign: 'middle',
+  }
+  const td: React.CSSProperties = {
+    border: `1px solid ${PDF_BORDER}`,
+    padding: '4px',
+    fontSize: 10,
+    textAlign: 'center',
+    verticalAlign: 'middle',
+  }
+
+  return (
+    <div
+      aria-hidden
+      style={{ position: 'fixed', left: -99999, top: 0, width: PDF_PAGE_WIDTH, pointerEvents: 'none' }}
+    >
+      {/* ── HOJA 1: DATOS ─────────────────────────────────────────── */}
+      <HojaA4 hojaRef={hojaDatosRef} titulo="Hoja 1 — Datos del sector" subtitulo={subtitulo}>
+        <PdfSeccion titulo="Empresa y establecimiento">
+          <PdfCampo label="Razón social" value={data.razonSocial} />
+          <PdfCampo label="CUIT" value={data.cuit} />
+          <PdfCampo label="Establecimiento" value={data.establecimiento} />
+          <PdfCampo label="Domicilio" value={data.domicilio} />
+          <PdfCampo label="Localidad" value={data.localidad} />
+          <PdfCampo label="Provincia" value={data.provincia} />
+        </PdfSeccion>
+
+        <PdfSeccion titulo="Sector de incendio">
+          <PdfCampo label="Sector de incendio" value={data.sectorIncendio} />
+          <PdfCampo label="Superficie (S)" value={data.superficie != null ? `${data.superficie} m²` : null} />
+          <PdfCampo label="Ventilación" value={data.ventilacion === 'natural' ? 'Natural' : 'Mecánica'} />
+          <PdfCampo label="Observaciones" value={data.observacionesGenerales} />
+        </PdfSeccion>
+
+        <PdfFirma firmante={data.firmante} />
+      </HojaA4>
+
+      {/* ── HOJA 2: MATERIALES ────────────────────────────────────── */}
+      <HojaA4 hojaRef={hojaMaterialesRef} titulo="Hoja 2 — Inventario de materiales combustibles" subtitulo={subtitulo}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr>
+              <th style={{ ...th, width: 24 }}>N°</th>
+              <th style={th}>Descripción</th>
+              <th style={th}>Estado</th>
+              <th style={th}>Peso<br />(kg)</th>
+              <th style={th}>PCI<br />(kcal/kg)</th>
+              <th style={th}>Coef. C</th>
+              <th style={th}>Equiv. madera<br />(kg)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.filasMateriales.map(f => (
+              <tr key={f.n}>
+                <td style={td}>{f.n}</td>
+                <td style={{ ...td, textAlign: 'left' }}>{f.descripcion}</td>
+                <td style={td}>{dash(f.estado)}</td>
+                <td style={td}>{f.pesoKg != null ? f.pesoKg : '—'}</td>
+                <td style={td}>{f.pciKcal != null ? f.pciKcal : '—'}</td>
+                <td style={td}>{f.coefC != null ? f.coefC : '—'}</td>
+                <td style={td}>{f.equivMaderaKg > 0 ? f.equivMaderaKg.toFixed(1) : '—'}</td>
+              </tr>
+            ))}
+            <tr>
+              <td style={{ ...td, fontWeight: 700, textAlign: 'right' }} colSpan={6}>
+                Total equivalente en madera (Σ peso · C)
+              </td>
+              <td style={{ ...td, fontWeight: 700 }}>{data.totalEquiv.toFixed(1)} kg</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div
+          style={{
+            marginTop: 16,
+            border: `2px solid ${PDF_INK}`,
+            padding: '10px 12px',
+            backgroundColor: '#f7f7f7',
+            display: 'flex',
+            alignItems: 'baseline',
+            gap: 12,
+          }}
+        >
+          <span style={{ fontSize: 13, fontWeight: 700 }}>Carga de fuego (Qf = Σ equiv / S)</span>
+          <span style={{ fontSize: 18, fontWeight: 700 }}>
+            {data.qf != null ? `${data.qf.toFixed(1)} kg/m²` : '—'}
+          </span>
+          {data.franja && (
+            <span style={{ fontSize: 12, fontWeight: 600, color: PDF_MUTED }}>franja {data.franja}</span>
+          )}
+        </div>
+        <p style={{ marginTop: 10, fontSize: 9, color: PDF_MUTED }}>
+          Coeficiente C = PCI / 4400 kcal/kg (madera de referencia, C = 1). Equivalente en
+          madera = peso · C. Qf = Σ(peso · C) / superficie. Cálculos según Dec. 351/79 Anexo VII.
+        </p>
+      </HojaA4>
+
+      {/* ── HOJA 3: RESULTADO Y ANÁLISIS ──────────────────────────── */}
+      <HojaA4 hojaRef={hojaResultadoRef} titulo="Hoja 3 — Resultado y análisis" subtitulo={subtitulo}>
+        <PdfSeccion titulo="Resultado del cálculo">
+          <PdfCampo label="Total equiv. madera" value={`${data.totalEquiv.toFixed(1)} kg`} />
+          <PdfCampo label="Carga de fuego (Qf)" value={data.qf != null ? `${data.qf.toFixed(1)} kg/m²` : null} />
+          <PdfCampo label="Franja de carga" value={data.franja} />
+          <PdfCampo label="Nivel de riesgo" value={data.riesgo ? RIESGO_LABEL[data.riesgo] : null} />
+          <PdfCampo label="Resistencia al fuego exigida (F)" value={data.fExigido} />
+          <PdfCampo label="Potencial extintor — Clase A" value={data.potencialA} />
+          <PdfCampo label="Potencial extintor — Clase B" value={data.potencialB} />
+        </PdfSeccion>
+
+        <PdfSeccion titulo="Conclusiones">
+          <p style={{ margin: 0, whiteSpace: 'pre-wrap', minHeight: 60 }}>{dash(data.conclusiones)}</p>
+        </PdfSeccion>
+        <PdfSeccion titulo="Recomendaciones">
+          <p style={{ margin: 0, whiteSpace: 'pre-wrap', minHeight: 60 }}>{dash(data.recomendaciones)}</p>
+        </PdfSeccion>
+        <PdfFirma firmante={data.firmante} />
+      </HojaA4>
     </div>
   )
 }
