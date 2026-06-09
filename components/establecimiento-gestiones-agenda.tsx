@@ -17,7 +17,7 @@ import {
   ClipboardCheck, GraduationCap, Heart, FileText, AlertTriangle,
   ClipboardList, UserPlus, Dumbbell, Kanban, HelpCircle,
   Play, Upload, Download, BookMarked, Lightbulb,
-  ChevronUp, ChevronDown, Columns, CalendarDays, List, X, Volume2,
+  ChevronUp, ChevronDown, Columns, CalendarDays, List, X, Zap, Volume2,
 } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { createPortal } from 'react-dom'
@@ -80,6 +80,10 @@ const MedicionIluminacionEjecutorModal = dynamic(
   () => import('@/components/medicion-iluminacion-ejecutor-modal').then(m => m.MedicionIluminacionEjecutorModal),
 const MedicionRuidoEjecutorModal = dynamic(
   () => import('@/components/medicion-ruido-ejecutor-modal').then(m => m.MedicionRuidoEjecutorModal),
+  { ssr: false }
+)
+const MedicionPatEjecutorModal = dynamic(
+  () => import('@/components/medicion-pat-ejecutor-modal').then(m => m.MedicionPatEjecutorModal),
   { ssr: false }
 )
 const EjecutarCapacitacionModal = dynamic(
@@ -1320,6 +1324,7 @@ function AgendaActionsCell({
   canWrite,
   onExecuteForm,
   onExecuteReporte,
+  onExecuteMedicionPat,
   onExecuteMedicionIluminacion,
   onExecuteMedicionRuido,
   onLoadEvidence,
@@ -1330,6 +1335,7 @@ function AgendaActionsCell({
   canWrite: boolean
   onExecuteForm: () => void
   onExecuteReporte: () => void
+  onExecuteMedicionPat: () => void
   onExecuteMedicionIluminacion: () => void
   onExecuteMedicionRuido: () => void
   onLoadEvidence: () => void
@@ -1643,6 +1649,60 @@ function AgendaActionsCell({
     )
   }
 
+  // Gestión tipo medicion_pat → wizard del Protocolo de Puesta a Tierra (SRT 900/2015).
+  if (r.ge_tipo_ejecucion === 'medicion_pat') {
+    return (
+      <div ref={triggerRef} className="flex items-center justify-center relative">
+        <div className="inline-flex rounded-lg overflow-hidden shadow-sm">
+          <button
+            title="Ejecutar protocolo de puesta a tierra"
+            onClick={onExecuteMedicionPat}
+            className={`${primaryBtn} ${primaryActive} rounded-r-none pr-2.5 border-r-0`}
+          >
+            <Zap size={14} />
+            <span className="hidden sm:inline">Ejecutar</span>
+          </button>
+          <button
+            title="Más opciones"
+            onClick={toggleMenu}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            className={`${primaryActive} px-2 min-h-[36px] rounded-l-none ${menuOpen ? 'bg-sig-500/10' : ''}`}
+          >
+            <ChevronDown size={14} className={`transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+
+        {menuOpen && menuPos && createPortal(
+          <div
+            ref={dropdownRef}
+            role="menu"
+            style={{ position: 'fixed', top: menuPos.top, left: menuPos.left, transform: 'translateX(-100%)', zIndex: 9999 }}
+            className="bg-surface-base border border-border-subtle rounded-xl shadow-xl overflow-hidden min-w-[200px]"
+          >
+            <button
+              role="menuitem"
+              onClick={() => { setMenuOpen(false); onExecuteMedicionPat() }}
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-text-primary hover:bg-surface-sunken text-left"
+            >
+              <Zap size={14} className="text-sig-500" />
+              Ejecutar protocolo de puesta a tierra
+            </button>
+            <button
+              role="menuitem"
+              onClick={() => { setMenuOpen(false); onLoadEvidence() }}
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-text-primary hover:bg-surface-sunken text-left border-t border-border-subtle"
+            >
+              <Upload size={14} className="text-text-secondary" />
+              Cargar archivo manual
+            </button>
+          </div>,
+          document.body
+        )}
+      </div>
+    )
+  }
+
   // Con formulario → botón "Ejecutar ▾" con submenu
   if (r.ge_tiene_formulario) {
     return (
@@ -1773,6 +1833,7 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
   const [editingRegistro, setEditingRegistro] = useState<FullRegistro | null>(null)
   const [executingFormulario, setExecutingFormulario] = useState<FullRegistro | null>(null)
   const [executingReporte, setExecutingReporte] = useState<FullRegistro | null>(null)
+  const [executingMedicionPat, setExecutingMedicionPat] = useState<FullRegistro | null>(null)
   const [executingMedicionIluminacion, setExecutingMedicionIluminacion] = useState<FullRegistro | null>(null)
   const [executingMedicionRuido, setExecutingMedicionRuido] = useState<FullRegistro | null>(null)
   const [executingCapacitacion, setExecutingCapacitacion] = useState<FullRegistro | null>(null)
@@ -1998,6 +2059,8 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
     const yaEjecutada = !!(r.fecha_ejecutada || r.evidencia_url)
     if (r.ge_tipo_ejecucion === 'reporte_fotografico' && !yaEjecutada && canWrite) {
       setExecutingReporte(r)
+    } else if (r.ge_tipo_ejecucion === 'medicion_pat' && !yaEjecutada && canWrite) {
+      setExecutingMedicionPat(r)
     } else if (r.ge_tipo_ejecucion === 'medicion_iluminacion' && !yaEjecutada && canWrite) {
       setExecutingMedicionIluminacion(r)
     } else {
@@ -2049,6 +2112,7 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
               canWrite={canWrite}
               onExecuteForm={() => setExecutingFormulario(r)}
               onExecuteReporte={() => setExecutingReporte(r)}
+              onExecuteMedicionPat={() => setExecutingMedicionPat(r)}
               onExecuteMedicionIluminacion={() => setExecutingMedicionIluminacion(r)}
               onExecuteMedicionRuido={() => setExecutingMedicionRuido(r)}
               onLoadEvidence={() => setEditingRegistro(r)}
@@ -2665,6 +2729,17 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
           gestionEstablecimientoId={executingMedicionRuido.ge_id ?? ''}
           onClose={() => setExecutingMedicionRuido(null)}
           onSuccess={() => { setExecutingMedicionRuido(null); queryClient.invalidateQueries({ queryKey: ['gestiones-establecimiento', establecimientoId, year] }); queryClient.invalidateQueries({ queryKey: ['registros-gestion'] }) }}
+        />
+      )}
+
+      {executingMedicionPat && (
+        <MedicionPatEjecutorModal
+          establecimientoId={establecimientoId}
+          registroId={executingMedicionPat.id}
+          rgFechaPlanificada={executingMedicionPat.fecha_planificada}
+          gestionEstablecimientoId={executingMedicionPat.gestion_establecimiento_id}
+          onClose={() => setExecutingMedicionPat(null)}
+          onSuccess={() => { setExecutingMedicionPat(null); queryClient.invalidateQueries({ queryKey: ['gestiones-establecimiento', establecimientoId, year] }); queryClient.invalidateQueries({ queryKey: ['registros-gestion'] }) }}
         />
       )}
 
