@@ -9,6 +9,18 @@ import {
 
 const CLAMP_CHARS = 280
 
+/**
+ * Parsea markdown mínimo de negritas (`**texto**`) sin usar dangerouslySetInnerHTML.
+ * Parte el string por `**` y alterna texto normal / <strong>.
+ * Un `**` sin cerrar deja el tramo restante como texto normal.
+ */
+function renderNegritas(texto: string): React.ReactNode[] {
+  return texto.split('**').map((tramo, i) =>
+    // Los índices impares quedan entre pares de `**` → van en negrita.
+    i % 2 === 1 ? <strong key={i}>{tramo}</strong> : <span key={i}>{tramo}</span>,
+  )
+}
+
 function RequisitoItem({ req }: { req: NormativaRequisito }) {
   const [open, setOpen] = useState(false)
   const oficial = req.descripcion_oficial?.trim() ?? ''
@@ -22,7 +34,9 @@ function RequisitoItem({ req }: { req: NormativaRequisito }) {
           <span className="text-sm font-semibold text-brand-primary">{req.articulo}</span>
         )}
         {req.descripcion_corta && (
-          <span className="text-sm font-medium text-text-primary">{req.descripcion_corta}</span>
+          <span className="text-sm font-medium text-text-primary">
+            {renderNegritas(req.descripcion_corta)}
+          </span>
         )}
         {req.code && (
           <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface-sunken text-text-tertiary">
