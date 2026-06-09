@@ -46,12 +46,20 @@ export interface NormativaNorma {
   url_oficial: string | null
   estado: NormativaEstado
   modificaciones: string | null
+  descripcion: string | null
+  aplica_a_todos: boolean
   airtable_id: string | null
   orden: number | null
 }
 
+export interface TipoEstablecimientoRef {
+  codigo: string
+  nombre: string
+}
+
 export interface NormativaNormaConConteo extends NormativaNorma {
   requisitos_count: number
+  tipos: TipoEstablecimientoRef[]
 }
 
 export interface NormativaRequisito {
@@ -139,7 +147,7 @@ export async function getNormativaNormas(
   let query = supabase
     .from('normativa_normas')
     .select(
-      'id, consultora_id, categoria_id, tipo, numero, anio, titulo, nombre_completo, organismo, ambito, url_oficial, estado, modificaciones, airtable_id, orden, normativa_requisitos(count)',
+      'id, consultora_id, categoria_id, tipo, numero, anio, titulo, nombre_completo, organismo, ambito, url_oficial, estado, modificaciones, descripcion, aplica_a_todos, airtable_id, orden, normativa_requisitos(count), normativa_normas_tipos_establecimiento(establecimientos_tipos(codigo, nombre))',
     )
 
   if (filtros.categoria_id) query = query.eq('categoria_id', filtros.categoria_id)
@@ -157,15 +165,22 @@ export async function getNormativaNormas(
   }
 
   const { data, error } = await query
-    .order('orden', { ascending: true, nullsFirst: false })
     .order('anio', { ascending: false, nullsFirst: false })
-    .order('numero', { ascending: true })
+    .order('numero', { ascending: false, nullsFirst: false })
 
   if (error) return { success: false, error: error.message }
 
   const normas: NormativaNormaConConteo[] = (data ?? []).map((n) => {
     const rel = n.normativa_requisitos as unknown as { count: number }[] | null
     const requisitos_count = Array.isArray(rel) && rel.length > 0 ? rel[0].count : 0
+    const tipoRel = n.normativa_normas_tipos_establecimiento as unknown as
+      | { establecimientos_tipos: TipoEstablecimientoRef | null }[]
+      | null
+    const tipos: TipoEstablecimientoRef[] = Array.isArray(tipoRel)
+      ? tipoRel
+          .map((t) => t.establecimientos_tipos)
+          .filter((t): t is TipoEstablecimientoRef => Boolean(t))
+      : []
     return {
       id: n.id,
       consultora_id: n.consultora_id,
@@ -180,9 +195,12 @@ export async function getNormativaNormas(
       url_oficial: n.url_oficial,
       estado: n.estado as NormativaEstado,
       modificaciones: n.modificaciones,
+      descripcion: n.descripcion,
+      aplica_a_todos: n.aplica_a_todos,
       airtable_id: n.airtable_id,
       orden: n.orden,
       requisitos_count,
+      tipos,
     }
   })
 
@@ -272,7 +290,7 @@ export async function createNormativa(formData: FormData): Promise<ActionResult<
   const { data, error } = await supabase
     .from('normativa_normas')
     .insert({ ...parsed.value, consultora_id: cId.data })
-    .select('id, consultora_id, categoria_id, tipo, numero, anio, titulo, nombre_completo, organismo, ambito, url_oficial, estado, modificaciones, airtable_id, orden')
+    .select('id, consultora_id, categoria_id, tipo, numero, anio, titulo, nombre_completo, organismo, ambito, url_oficial, estado, modificaciones, descripcion, aplica_a_todos, airtable_id, orden')
     .single()
 
   if (error) return { success: false, error: error.message }
@@ -297,7 +315,7 @@ export async function updateNormativa(
     .update(parsed.value)
     .eq('id', id)
     .eq('consultora_id', cId.data)
-    .select('id, consultora_id, categoria_id, tipo, numero, anio, titulo, nombre_completo, organismo, ambito, url_oficial, estado, modificaciones, airtable_id, orden')
+    .select('id, consultora_id, categoria_id, tipo, numero, anio, titulo, nombre_completo, organismo, ambito, url_oficial, estado, modificaciones, descripcion, aplica_a_todos, airtable_id, orden')
     .single()
 
   if (error) return { success: false, error: error.message }

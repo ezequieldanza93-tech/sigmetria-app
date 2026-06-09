@@ -68,6 +68,10 @@ export function NormativaNormaCard({ norma, esPropia, onEdit, onDelete }: Props)
             {subtitulo && <p className="text-xs text-text-secondary mt-0.5">{subtitulo}</p>}
           </button>
 
+          {norma.descripcion && (
+            <p className="text-xs text-text-secondary mt-1 leading-snug">{norma.descripcion}</p>
+          )}
+
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs text-text-tertiary">
             {norma.organismo && <span>{norma.organismo}</span>}
             {norma.anio && <span>Año {norma.anio}</span>}
@@ -75,6 +79,19 @@ export function NormativaNormaCard({ norma, esPropia, onEdit, onDelete }: Props)
               <FileText className="h-3.5 w-3.5" aria-hidden="true" />
               {norma.requisitos_count} {norma.requisitos_count === 1 ? 'requisito' : 'requisitos'}
             </span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1 mt-2">
+            <span className="text-[11px] text-text-tertiary mr-0.5">Aplica a:</span>
+            {norma.aplica_a_todos || norma.tipos.length === 0 ? (
+              <Badge className="bg-surface-elevated text-text-secondary">Todos los establecimientos</Badge>
+            ) : (
+              norma.tipos.map((t) => (
+                <Badge key={t.codigo} className="bg-[var(--info-bg)] text-[var(--info)]">
+                  {t.nombre}
+                </Badge>
+              ))
+            )}
           </div>
         </div>
 
