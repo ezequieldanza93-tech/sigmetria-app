@@ -125,6 +125,7 @@ declare module 'lucide-react' {
   export const UserPlus: Icon
   export const Users: Icon
   export const Video: Icon
+  export const Volume2: Icon
   export const Wifi: Icon
   export const WifiOff: Icon
   export const X: Icon
