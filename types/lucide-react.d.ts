@@ -62,8 +62,11 @@ declare module 'lucide-react' {
   export const FileCheck: Icon
   export const FileSignature: Icon
   export const FileText: Icon
+  export const Filter: Icon
   export const Flame: Icon
+  export const FolderOpen: Icon
   export const Gauge: Icon
+  export const Gavel: Icon
   export const Globe: Icon
   export const GraduationCap: Icon
   export const Grid3X3: Icon
@@ -78,6 +81,7 @@ declare module 'lucide-react' {
   export const Kanban: Icon
   export const KeyRound: Icon
   export const Keyboard: Icon
+  export const Landmark: Icon
   export const Layers: Icon
   export const LayoutDashboard: Icon
   export const Library: Icon
@@ -108,6 +112,7 @@ declare module 'lucide-react' {
   export const RotateCcw: Icon
   export const Save: Icon
   export const Scale: Icon
+  export const ScrollText: Icon
   export const Search: Icon
   export const Send: Icon
   export const Settings: Icon
@@ -118,6 +123,7 @@ declare module 'lucide-react' {
   export const Sparkles: Icon
   export const Star: Icon
   export const Sun: Icon
+  export const Tag: Icon
   export const Thermometer: Icon
   export const ThermometerSun: Icon
   export const Trash2: Icon
