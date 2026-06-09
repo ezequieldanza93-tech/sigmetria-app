@@ -72,11 +72,27 @@ export interface NormativaRequisito {
   orden: number | null
 }
 
+export interface TipoEstablecimientoOption {
+  id: string
+  codigo: string
+  nombre: string
+}
+
 export interface NormativaFiltros {
   categoria_id?: string | null
-  tipo?: NormativaTipo | null
-  ambito?: NormativaAmbito | null
-  estado?: NormativaEstado | null
+  /** Tipos seleccionados. Si están todos (o el array está vacío) no se filtra por tipo. */
+  tipos?: string[]
+  /** Ámbitos seleccionados. Si están todos (o el array está vacío) no se filtra por ámbito. */
+  ambitos?: string[]
+  /** Estados seleccionados. Si están todos (o el array está vacío) no se filtra por estado. */
+  estados?: string[]
+  /**
+   * Ids de tipos de establecimiento seleccionados. Una norma aplica si
+   * `aplica_a_todos = true` OR tiene una fila en
+   * `normativa_normas_tipos_establecimiento` con un tipo seleccionado.
+   * Si están todos (o el array está vacío) no se filtra.
+   */
+  tiposEstablecimiento?: string[]
   search?: string | null
 }
 
@@ -136,13 +152,79 @@ export async function getNormativaCategorias(): Promise<ActionResult<NormativaCa
 }
 
 // ============================================================
+// TIPOS DE ESTABLECIMIENTO (para el filtro de aplicabilidad)
+// ============================================================
+
+export async function getTiposEstablecimiento(): Promise<ActionResult<TipoEstablecimientoOption[]>> {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('establecimientos_tipos')
+    .select('id, codigo, nombre')
+    .order('nombre', { ascending: true })
+
+  if (error) return { success: false, error: error.message }
+  return { success: true, data: (data ?? []) as TipoEstablecimientoOption[] }
+}
+
+// ============================================================
 // NORMAS (base + consultora) con filtros + conteo de requisitos
 // ============================================================
+
+/**
+ * Decide si un filtro multi-select debe aplicarse: solo cuando la selección NO
+ * está vacía Y NO contiene todas las opciones disponibles. En cualquier otro
+ * caso (vacío o "todas") se considera "sin filtro".
+ */
+function shouldFilter(selected: string[] | undefined, totalOptions: number): selected is string[] {
+  return Array.isArray(selected) && selected.length > 0 && selected.length < totalOptions
+}
+
+const TOTAL_TIPOS = 8 // NORMATIVA_TIPOS
+const TOTAL_AMBITOS = 5 // NORMATIVA_AMBITOS
+const TOTAL_ESTADOS = 3 // NORMATIVA_ESTADOS
 
 export async function getNormativaNormas(
   filtros: NormativaFiltros = {},
 ): Promise<ActionResult<NormativaNormaConConteo[]>> {
   const supabase = await createClient()
+
+  // --- Filtro por tipo de establecimiento -------------------------------
+  // Una norma aplica si aplica_a_todos = true OR tiene un join a un tipo
+  // seleccionado. Solo filtramos si la selección es un subconjunto propio.
+  let normaIdsPorTipoEst: string[] | null = null
+  if (filtros.tiposEstablecimiento && filtros.tiposEstablecimiento.length > 0) {
+    const { count: totalTiposEst } = await supabase
+      .from('establecimientos_tipos')
+      .select('id', { count: 'exact', head: true })
+
+    const total = totalTiposEst ?? 0
+    if (total === 0 || filtros.tiposEstablecimiento.length < total) {
+      // Normas con join a alguno de los tipos seleccionados.
+      const { data: joinRows, error: joinErr } = await supabase
+        .from('normativa_normas_tipos_establecimiento')
+        .select('norma_id')
+        .in('tipo_establecimiento_id', filtros.tiposEstablecimiento)
+
+      if (joinErr) return { success: false, error: joinErr.message }
+
+      // Normas que aplican a todos (siempre matchean cualquier tipo).
+      const { data: todosRows, error: todosErr } = await supabase
+        .from('normativa_normas')
+        .select('id')
+        .eq('aplica_a_todos', true)
+
+      if (todosErr) return { success: false, error: todosErr.message }
+
+      const ids = new Set<string>()
+      for (const r of joinRows ?? []) ids.add((r as { norma_id: string }).norma_id)
+      for (const r of todosRows ?? []) ids.add((r as { id: string }).id)
+      normaIdsPorTipoEst = [...ids]
+
+      // Sin coincidencias → devolvemos vacío sin disparar la query principal.
+      if (normaIdsPorTipoEst.length === 0) return { success: true, data: [] }
+    }
+  }
 
   let query = supabase
     .from('normativa_normas')
@@ -151,9 +233,10 @@ export async function getNormativaNormas(
     )
 
   if (filtros.categoria_id) query = query.eq('categoria_id', filtros.categoria_id)
-  if (filtros.tipo) query = query.eq('tipo', filtros.tipo)
-  if (filtros.ambito) query = query.eq('ambito', filtros.ambito)
-  if (filtros.estado) query = query.eq('estado', filtros.estado)
+  if (shouldFilter(filtros.tipos, TOTAL_TIPOS)) query = query.in('tipo', filtros.tipos)
+  if (shouldFilter(filtros.ambitos, TOTAL_AMBITOS)) query = query.in('ambito', filtros.ambitos)
+  if (shouldFilter(filtros.estados, TOTAL_ESTADOS)) query = query.in('estado', filtros.estados)
+  if (normaIdsPorTipoEst) query = query.in('id', normaIdsPorTipoEst)
 
   const search = filtros.search?.trim()
   if (search) {

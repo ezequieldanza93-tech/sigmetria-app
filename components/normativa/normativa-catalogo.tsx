@@ -17,17 +17,17 @@ import {
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
+import { MultiSelectFilter, type MultiSelectOption } from '@/components/ui/multi-select-filter'
 import { useDebounce } from '@/lib/hooks/use-debounce'
 import { useToast } from '@/lib/hooks/use-toast'
 import {
   getNormativaCategorias,
   getNormativaNormas,
+  getTiposEstablecimiento,
   deleteNormativa,
-  type NormativaAmbito,
   type NormativaCategoriaConConteo,
-  type NormativaEstado,
   type NormativaNormaConConteo,
-  type NormativaTipo,
+  type TipoEstablecimientoOption,
 } from '@/lib/actions/normativa-legal'
 import { NORMATIVA_AMBITOS, NORMATIVA_ESTADOS, NORMATIVA_TIPOS } from './normativa-constants'
 import { NormativaNormaCard } from './normativa-norma-card'
@@ -41,18 +41,33 @@ const AMBITO_ICON = {
   Interno: ScrollText,
 } as const
 
+// Opciones de filtros (value === label en los enums de texto).
+const TIPO_OPTIONS: MultiSelectOption[] = NORMATIVA_TIPOS.map((t) => ({ value: t, label: t }))
+const AMBITO_OPTIONS: MultiSelectOption[] = NORMATIVA_AMBITOS.map((a) => ({ value: a, label: a }))
+const ESTADO_OPTIONS: MultiSelectOption[] = NORMATIVA_ESTADOS.map((e) => ({ value: e, label: e }))
+
 export function NormativaCatalogo() {
   const { success, error } = useToast()
 
   const [categorias, setCategorias] = useState<NormativaCategoriaConConteo[]>([])
   const [loadingCats, setLoadingCats] = useState(true)
 
+  const [tiposEst, setTiposEst] = useState<TipoEstablecimientoOption[]>([])
+
   const [categoriaSel, setCategoriaSel] = useState<string | null>(null)
-  const [tipo, setTipo] = useState<NormativaTipo | null>(null)
-  const [ambito, setAmbito] = useState<NormativaAmbito | null>(null)
-  const [estado, setEstado] = useState<NormativaEstado | null>(null)
+  // Por defecto: TODAS las opciones seleccionadas (= sin filtrar).
+  const [tipoSel, setTipoSel] = useState<Set<string>>(() => new Set(NORMATIVA_TIPOS))
+  const [ambitoSel, setAmbitoSel] = useState<Set<string>>(() => new Set(NORMATIVA_AMBITOS))
+  const [estadoSel, setEstadoSel] = useState<Set<string>>(() => new Set(NORMATIVA_ESTADOS))
+  const [tipoEstSel, setTipoEstSel] = useState<Set<string>>(() => new Set())
   const [searchInput, setSearchInput] = useState('')
   const search = useDebounce(searchInput.trim(), 300)
+
+  // Opciones del filtro de tipo de establecimiento (desde la tabla).
+  const tipoEstOptions = useMemo<MultiSelectOption[]>(
+    () => tiposEst.map((t) => ({ value: t.id, label: t.nombre })),
+    [tiposEst],
+  )
 
   const [normas, setNormas] = useState<NormativaNormaConConteo[]>([])
   const [loadingNormas, setLoadingNormas] = useState(true)
@@ -73,20 +88,39 @@ export function NormativaCatalogo() {
     cargarCategorias()
   }, [cargarCategorias])
 
+  // --- Carga de tipos de establecimiento (una sola vez) ---
+  useEffect(() => {
+    let cancelado = false
+    getTiposEstablecimiento().then((res) => {
+      if (cancelado) return
+      if (res.success) {
+        setTiposEst(res.data)
+        // Por defecto: TODOS seleccionados (= sin filtrar).
+        setTipoEstSel(new Set(res.data.map((t) => t.id)))
+      } else {
+        error(res.error)
+      }
+    })
+    return () => {
+      cancelado = true
+    }
+  }, [error])
+
   // --- Carga de normas (reacciona a filtros) ---
   const cargarNormas = useCallback(async () => {
     setLoadingNormas(true)
     const res = await getNormativaNormas({
       categoria_id: categoriaSel,
-      tipo,
-      ambito,
-      estado,
+      tipos: [...tipoSel],
+      ambitos: [...ambitoSel],
+      estados: [...estadoSel],
+      tiposEstablecimiento: [...tipoEstSel],
       search,
     })
     if (res.success) setNormas(res.data)
     else error(res.error)
     setLoadingNormas(false)
-  }, [categoriaSel, tipo, ambito, estado, search, error])
+  }, [categoriaSel, tipoSel, ambitoSel, estadoSel, tipoEstSel, search, error])
 
   useEffect(() => {
     cargarNormas()
@@ -97,15 +131,24 @@ export function NormativaCatalogo() {
     cargarCategorias()
   }, [cargarNormas, cargarCategorias])
 
-  const hayFiltros = Boolean(tipo || ambito || estado || search || categoriaSel)
+  // Un filtro multi-select está activo si NO están todas las opciones tildadas.
+  const tipoActivo = tipoSel.size > 0 && tipoSel.size < NORMATIVA_TIPOS.length
+  const ambitoActivo = ambitoSel.size > 0 && ambitoSel.size < NORMATIVA_AMBITOS.length
+  const estadoActivo = estadoSel.size > 0 && estadoSel.size < NORMATIVA_ESTADOS.length
+  const tipoEstActivo = tiposEst.length > 0 && tipoEstSel.size > 0 && tipoEstSel.size < tiposEst.length
+
+  const hayFiltros = Boolean(
+    tipoActivo || ambitoActivo || estadoActivo || tipoEstActivo || search || categoriaSel,
+  )
 
   const limpiarFiltros = useCallback(() => {
-    setTipo(null)
-    setAmbito(null)
-    setEstado(null)
+    setTipoSel(new Set(NORMATIVA_TIPOS))
+    setAmbitoSel(new Set(NORMATIVA_AMBITOS))
+    setEstadoSel(new Set(NORMATIVA_ESTADOS))
+    setTipoEstSel(new Set(tiposEst.map((t) => t.id)))
     setSearchInput('')
     setCategoriaSel(null)
-  }, [])
+  }, [tiposEst])
 
   const categoriaActiva = useMemo(
     () => categorias.find((c) => c.id === categoriaSel) ?? null,
@@ -178,15 +221,37 @@ export function NormativaCatalogo() {
       </div>
 
       {/* Filtros */}
-      <div className="flex flex-col gap-3 mb-6">
-        <FilterRow label="Tipo" value={tipo} options={NORMATIVA_TIPOS} onChange={setTipo} />
-        <FilterRow label="Ámbito" value={ambito} options={NORMATIVA_AMBITOS} onChange={setAmbito} />
-        <FilterRow label="Estado" value={estado} options={NORMATIVA_ESTADOS} onChange={setEstado} />
+      <div className="flex flex-wrap items-center gap-2 mb-6">
+        <MultiSelectFilter
+          label="Tipo"
+          options={TIPO_OPTIONS}
+          selected={tipoSel}
+          onChange={setTipoSel}
+        />
+        <MultiSelectFilter
+          label="Ámbito"
+          options={AMBITO_OPTIONS}
+          selected={ambitoSel}
+          onChange={setAmbitoSel}
+        />
+        <MultiSelectFilter
+          label="Estado"
+          options={ESTADO_OPTIONS}
+          selected={estadoSel}
+          onChange={setEstadoSel}
+        />
+        <MultiSelectFilter
+          label="Tipo de Establecimiento"
+          options={tipoEstOptions}
+          selected={tipoEstSel}
+          onChange={setTipoEstSel}
+          emptyLabel="Cargando…"
+        />
         {hayFiltros && (
           <button
             type="button"
             onClick={limpiarFiltros}
-            className="self-start inline-flex items-center gap-1 text-xs font-medium text-text-secondary hover:text-text-primary"
+            className="inline-flex items-center gap-1 text-xs font-medium text-text-secondary hover:text-text-primary"
           >
             <X className="h-3.5 w-3.5" />
             Limpiar filtros
@@ -291,57 +356,6 @@ export function NormativaCatalogo() {
 // ============================================================
 // Sub-componentes
 // ============================================================
-
-function FilterRow<T extends string>({
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  label: string
-  value: T | null
-  options: readonly T[]
-  onChange: (v: T | null) => void
-}) {
-  return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      <span className="text-xs font-medium text-text-tertiary w-14 shrink-0">{label}</span>
-      <Chip active={value === null} onClick={() => onChange(null)}>
-        Todos
-      </Chip>
-      {options.map((opt) => (
-        <Chip key={opt} active={value === opt} onClick={() => onChange(value === opt ? null : opt)}>
-          {opt}
-        </Chip>
-      ))}
-    </div>
-  )
-}
-
-function Chip({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean
-  onClick: () => void
-  children: React.ReactNode
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'px-2.5 py-1 rounded-full text-xs font-medium border transition-colors',
-        active
-          ? 'bg-brand-primary border-brand-primary text-white'
-          : 'bg-surface-base border-border-default text-text-secondary hover:border-border-default hover:text-text-primary hover:bg-surface-elevated',
-      )}
-    >
-      {children}
-    </button>
-  )
-}
 
 function CategoriaChip({
   label,
