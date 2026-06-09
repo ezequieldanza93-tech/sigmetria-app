@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Play, Search, List, CalendarDays, Columns, ArrowUpDown, Layers, Plus, X, ChevronRight, ChevronDown } from 'lucide-react'
-import { MultiFilterWithAll } from '@/components/ui/multi-filter-with-all'
+import { MultiSelectFilter } from '@/components/ui/multi-select-filter'
 import { calcularEstadoGestion } from '@/lib/types'
 import type { EstadoGestion } from '@/lib/types'
 
@@ -352,15 +352,15 @@ export function GestionesAggregate({
           />
         </div>
         {showEmpresaFilter && (
-          <MultiFilterWithAll label="Empresa" options={empresaOptions} selected={empresaSel} onChange={setEmpresaSel} />
+          <MultiSelectFilter label="Empresa" options={empresaOptions} selected={empresaSel} onChange={setEmpresaSel} />
         )}
         {showEstablecimientoFilter && (
-          <MultiFilterWithAll label="Establecimiento" options={establecimientoOptions} selected={estSel} onChange={setEstSel} />
+          <MultiSelectFilter label="Establecimiento" options={establecimientoOptions} selected={estSel} onChange={setEstSel} />
         )}
-        <MultiFilterWithAll label="Grupo" options={grupoOptions} selected={grupoSel} onChange={setGrupoSel} />
-        <MultiFilterWithAll label="Categoría" options={categoriaOptions} selected={categoriaSel} onChange={setCategoriaSel} />
-        <MultiFilterWithAll label="Responsable" options={responsableOptions} selected={responsableSel} onChange={setResponsableSel} />
-        <MultiFilterWithAll label="Estado" options={ESTADOS.map(e => ({ value: e, label: e }))} selected={estadoSel} onChange={setEstadoSel} />
+        <MultiSelectFilter label="Grupo" options={grupoOptions} selected={grupoSel} onChange={setGrupoSel} />
+        <MultiSelectFilter label="Categoría" options={categoriaOptions} selected={categoriaSel} onChange={setCategoriaSel} />
+        <MultiSelectFilter label="Responsable" options={responsableOptions} selected={responsableSel} onChange={setResponsableSel} />
+        <MultiSelectFilter label="Estado" options={ESTADOS.map(e => ({ value: e, label: e }))} selected={estadoSel} onChange={setEstadoSel} />
 
         {/* Ordenar + Agrupar + selector de vista — derecha */}
         <div className="ml-auto flex items-center gap-2">

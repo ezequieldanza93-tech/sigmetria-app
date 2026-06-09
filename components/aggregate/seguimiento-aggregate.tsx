@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { MultiFilterWithAll } from '@/components/ui/multi-filter-with-all'
+import { MultiSelectFilter } from '@/components/ui/multi-select-filter'
 
 export interface SeguimientoAggregateRow {
   id: string
@@ -84,17 +84,17 @@ export function SeguimientoAggregate({
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="text-lg font-semibold text-text-primary mr-4">Seguimiento de observaciones</h2>
         {showEmpresaFilter && (
-          <MultiFilterWithAll label="Empresa" options={empresaOptions} selected={empresaSel} onChange={setEmpresaSel} />
+          <MultiSelectFilter label="Empresa" options={empresaOptions} selected={empresaSel} onChange={setEmpresaSel} />
         )}
         {showEstablecimientoFilter && (
-          <MultiFilterWithAll
+          <MultiSelectFilter
             label="Establecimiento"
             options={establecimientoOptions}
             selected={estSel}
             onChange={setEstSel}
           />
         )}
-        <MultiFilterWithAll
+        <MultiSelectFilter
           label="Estado"
           options={ESTADOS.map(e => ({ value: e, label: e }))}
           selected={estadoSel}

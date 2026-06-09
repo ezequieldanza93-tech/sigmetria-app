@@ -10,8 +10,7 @@ import { calcularEstadoGestion } from '@/lib/types'
 import type { EstadoGestion, Gestion, CategoriaGestion, GrupoGestion, RegistroGestion, Riesgo } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
-import { MultiFilter } from '@/components/ui/multi-filter'
-import { ViewSelector } from '@/components/ui/view-selector'
+import { MultiSelectFilter } from '@/components/ui/multi-select-filter'
 import {
   Camera, BarChart3, FileCheck,
   ClipboardCheck, GraduationCap, Heart, FileText, AlertTriangle,
@@ -2560,6 +2559,138 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
         </button>
       </div>
 
+      {/* Filtros + selector de vista — fila horizontal arriba (matchea Gestiones a nivel consultora) */}
+      <div className="flex items-center gap-1.5 mb-4 overflow-x-auto pb-0.5 shrink-0">
+        <input
+          type="text"
+          value={searchText}
+          onChange={e => setSearchText(e.target.value)}
+          placeholder="Buscar gestión..."
+          className="text-xs border border-border-subtle rounded-lg px-2 py-1.5 bg-surface-base text-text-secondary focus:outline-none w-[140px] shrink-0"
+        />
+        {gruposFiltro.length > 0 && (
+          <MultiSelectFilter
+            label="Grupo"
+            options={gruposFiltro.map(g => ({ value: g, label: g }))}
+            selected={filterGrupo ?? new Set()}
+            onChange={setFilterGrupo}
+          />
+        )}
+        {categoriasFiltro.length > 0 && (
+          <MultiSelectFilter
+            label="Categoría"
+            options={categoriasFiltro.map(c => ({ value: c, label: c }))}
+            selected={filterCategoria ?? new Set()}
+            onChange={setFilterCategoria}
+          />
+        )}
+        {responsablesFiltro.length > 0 && (
+          <MultiSelectFilter
+            label="Responsable"
+            options={responsablesFiltro.map(r => ({ value: r, label: r }))}
+            selected={filterResponsable ?? new Set()}
+            onChange={setFilterResponsable}
+          />
+        )}
+        <MultiSelectFilter
+          label="Estado"
+          options={[
+            { value: 'Planificado', label: 'Planificado' },
+            { value: 'Pendiente', label: 'Pendiente' },
+            { value: 'Realizado', label: 'Realizado' },
+          ]}
+          selected={filterEstado ?? new Set()}
+          onChange={setFilterEstado}
+        />
+        <button
+          onClick={() => { setFilterEstado(null); setFilterCategoria(null); setFilterGrupo(null); setFilterResponsable(null); setSortConfig({ col: null, dir: 'asc' }) }}
+          className="text-xs border border-border-subtle rounded-lg px-2 py-1.5 text-text-secondary hover:bg-surface-base shrink-0"
+        >
+          Rest.
+        </button>
+
+        {/* Right-side actions — pushed to the end */}
+        <div className="flex items-center gap-1 ml-auto shrink-0">
+          {selectedMonths.size > 1 && (
+            <button
+              onClick={() => setGroupByMonth(v => !v)}
+              className={`text-xs border rounded-lg px-2 py-1.5 transition-colors ${
+                groupByMonth
+                  ? 'border-sig-300 bg-sig-50 text-sig-700'
+                  : 'border-border-subtle text-text-secondary hover:bg-surface-base'
+              }`}
+            >
+              {groupByMonth ? 'Desagrupar' : 'Agrupar por mes'}
+            </button>
+          )}
+
+          <div ref={colPickerTriggerRef} className="hidden md:block">
+            <button
+              onClick={() => {
+                if (!showColPicker && colPickerTriggerRef.current) {
+                  const rect = colPickerTriggerRef.current.getBoundingClientRect()
+                  setColPickerPos({ top: rect.bottom + 4, left: rect.left })
+                }
+                setShowColPicker(v => !v)
+              }}
+              className={`text-xs border rounded-lg px-2 py-1.5 flex items-center gap-1 transition-colors ${
+                showColPicker ? 'border-sig-300 bg-sig-50 text-sig-700' : 'border-border-subtle text-text-secondary hover:bg-surface-base'
+              }`}
+            >
+              <Columns size={12} />
+              Columnas
+            </button>
+            {showColPicker && colPickerPos && createPortal(
+              <div
+                ref={colPickerDropdownRef}
+                style={{ position: 'fixed', top: colPickerPos.top, left: colPickerPos.left, zIndex: 9999 }}
+                className="bg-surface-base border border-border-subtle rounded-xl shadow-lg p-1.5 min-w-[140px]"
+              >
+                {TOGGLEABLE_COLS.map(({ key, label }) => (
+                  <label key={key} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-surface-elevated cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={visibleCols.has(key)}
+                      onChange={() => toggleCol(key)}
+                      className="rounded"
+                    />
+                    <span className="text-xs text-text-secondary">{label}</span>
+                  </label>
+                ))}
+              </div>,
+              document.body
+            )}
+          </div>
+
+          {/* Selector de vista — botones inline (estilo Gestiones a nivel consultora). Desktop only. */}
+          <div className="hidden md:flex items-center gap-0.5 border border-border-default rounded-lg p-0.5 bg-surface-base">
+            {([
+              { mode: 'tabla' as ViewMode, icon: List, label: 'Tabla' },
+              { mode: 'calendario' as ViewMode, icon: CalendarDays, label: 'Calendario' },
+              { mode: 'kanban' as ViewMode, icon: Kanban, label: 'Kanban' },
+            ]).map(({ mode, icon: Icon, label }) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setViewMode(mode)}
+                title={label}
+                aria-label={label}
+                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+                  viewMode === mode ? 'bg-brand-muted text-brand-primary' : 'text-text-tertiary hover:text-text-primary hover:bg-surface-elevated'
+                }`}
+              >
+                <Icon size={14} />
+                <span className="hidden sm:inline">{label}</span>
+              </button>
+            ))}
+          </div>
+
+          <span className="text-xs text-text-tertiary pl-1">
+            {registros !== null ? `${filteredRegistros.length} gestiones` : ''}
+          </span>
+        </div>
+      </div>
+
       {/* Month tiles */}
       <div className="grid grid-cols-12 gap-1.5 mb-3">
         {MONTHS.map((m, i) => {
@@ -2626,125 +2757,6 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
         >
           Invertir selección
         </button>
-      </div>
-
-      {/* Filter row */}
-      <div className="flex items-center gap-1.5 mb-4 overflow-x-auto pb-0.5 shrink-0">
-        <input
-          type="text"
-          value={searchText}
-          onChange={e => setSearchText(e.target.value)}
-          placeholder="Buscar gestión..."
-          className="text-xs border border-border-subtle rounded-lg px-2 py-1.5 bg-surface-base text-text-secondary focus:outline-none w-[140px] shrink-0"
-        />
-        {gruposFiltro.length > 0 && (
-          <MultiFilter
-            label="Grupo"
-            options={gruposFiltro.map(g => ({ value: g, label: g }))}
-            selected={filterGrupo ?? new Set(gruposFiltro)}
-            onChange={setFilterGrupo}
-          />
-        )}
-        {categoriasFiltro.length > 0 && (
-          <MultiFilter
-            label="Categoría"
-            options={categoriasFiltro.map(c => ({ value: c, label: c }))}
-            selected={filterCategoria ?? new Set(categoriasFiltro)}
-            onChange={setFilterCategoria}
-          />
-        )}
-        {responsablesFiltro.length > 0 && (
-          <MultiFilter
-            label="Responsable"
-            options={responsablesFiltro.map(r => ({ value: r, label: r }))}
-            selected={filterResponsable ?? new Set(responsablesFiltro)}
-            onChange={setFilterResponsable}
-          />
-        )}
-        <MultiFilter
-          label="Estado"
-          options={[
-            { value: 'Planificado', label: 'Planificado' },
-            { value: 'Pendiente', label: 'Pendiente' },
-            { value: 'Realizado', label: 'Realizado' },
-          ]}
-          selected={filterEstado ?? new Set(['Planificado', 'Pendiente', 'Realizado'])}
-          onChange={setFilterEstado}
-        />
-        <button
-          onClick={() => { setFilterEstado(null); setFilterCategoria(null); setFilterGrupo(null); setFilterResponsable(null); setSortConfig({ col: null, dir: 'asc' }) }}
-          className="text-xs border border-border-subtle rounded-lg px-2 py-1.5 text-text-secondary hover:bg-surface-base shrink-0"
-        >
-          Rest.
-        </button>
-
-        {/* Right-side actions — pushed to the end */}
-        <div className="flex items-center gap-1 ml-auto shrink-0">
-          {selectedMonths.size > 1 && (
-            <button
-              onClick={() => setGroupByMonth(v => !v)}
-              className={`text-xs border rounded-lg px-2 py-1.5 transition-colors ${
-                groupByMonth
-                  ? 'border-sig-300 bg-sig-50 text-sig-700'
-                  : 'border-border-subtle text-text-secondary hover:bg-surface-base'
-              }`}
-            >
-              {groupByMonth ? 'Desagrupar' : 'Agrupar por mes'}
-            </button>
-          )}
-
-          <div ref={colPickerTriggerRef} className="hidden md:block">
-            <button
-              onClick={() => {
-                if (!showColPicker && colPickerTriggerRef.current) {
-                  const rect = colPickerTriggerRef.current.getBoundingClientRect()
-                  setColPickerPos({ top: rect.bottom + 4, left: rect.left })
-                }
-                setShowColPicker(v => !v)
-              }}
-              className={`text-xs border rounded-lg px-2 py-1.5 flex items-center gap-1 transition-colors ${
-                showColPicker ? 'border-sig-300 bg-sig-50 text-sig-700' : 'border-border-subtle text-text-secondary hover:bg-surface-base'
-              }`}
-            >
-              <Columns size={12} />
-              Columnas
-            </button>
-            {showColPicker && colPickerPos && createPortal(
-              <div
-                ref={colPickerDropdownRef}
-                style={{ position: 'fixed', top: colPickerPos.top, left: colPickerPos.left, zIndex: 9999 }}
-                className="bg-surface-base border border-border-subtle rounded-xl shadow-lg p-1.5 min-w-[140px]"
-              >
-                {TOGGLEABLE_COLS.map(({ key, label }) => (
-                  <label key={key} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-surface-elevated cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={visibleCols.has(key)}
-                      onChange={() => toggleCol(key)}
-                      className="rounded"
-                    />
-                    <span className="text-xs text-text-secondary">{label}</span>
-                  </label>
-                ))}
-              </div>,
-              document.body
-            )}
-          </div>
-
-          <ViewSelector
-            options={[
-              { value: 'tabla' as ViewMode,      label: 'Tabla',      icon: List },
-              { value: 'calendario' as ViewMode, label: 'Calendario', icon: CalendarDays },
-              { value: 'kanban' as ViewMode,     label: 'Kanban',     icon: Kanban },
-            ]}
-            value={viewMode}
-            onChange={setViewMode}
-          />
-
-          <span className="text-xs text-text-tertiary pl-1">
-            {registros !== null ? `${filteredRegistros.length} gestiones` : ''}
-          </span>
-        </div>
       </div>
 
       {/* Gestiones view */}

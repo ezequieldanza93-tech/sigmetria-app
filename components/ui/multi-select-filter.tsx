@@ -1,9 +1,14 @@
 'use client'
 
-import { useEffect, useId, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Check, ChevronDown, Minus } from 'lucide-react'
 import { cn } from '@/lib/utils'
+
+/** Separación entre el borde inferior del trigger y el panel. */
+const GAP = 6
+/** Margen mínimo respecto a los bordes del viewport al hacer clamp. */
+const VIEWPORT_MARGIN = 8
 
 export interface MultiSelectOption {
   value: string
@@ -52,14 +57,50 @@ export function MultiSelectFilter({
   const allCheckboxRef = useRef<HTMLInputElement>(null)
   const panelId = useId()
 
-  const total = options.length
-  const selectedCount = options.reduce((acc, o) => acc + (selected.has(o.value) ? 1 : 0), 0)
-  const allSelected = total > 0 && selectedCount === total
-  const noneSelected = selectedCount === 0
-  const partial = !allSelected && !noneSelected
+  /**
+   * Calcula la posición del panel ANCLADO AL BORDE INFERIOR del trigger.
+   * - Por defecto abre hacia abajo: `top = triggerRect.bottom + GAP`.
+   * - Solo hace FLIP hacia arriba si no entra abajo y hay más espacio arriba.
+   * - `left` se clampa al viewport para que el panel no se salga de pantalla.
+   */
+  const recalc = useCallback(() => {
+    const trigger = triggerRef.current
+    if (!trigger) return
+    const rect = trigger.getBoundingClientRect()
+    const vw = window.innerWidth
+    const vh = window.innerHeight
 
-  // Resumen en el trigger: "Todos" si todas tildadas, sino "N/M".
-  const summary = allSelected || total === 0 ? 'Todos' : `${selectedCount}/${total}`
+    // Ancho real del panel (mínimo 220). Si todavía no se montó, estimamos con el trigger.
+    const panelWidth = Math.max(dropdownRef.current?.offsetWidth ?? 0, rect.width, 220)
+    // Alto real del panel una vez montado (acotado por el max-h-80 del CSS = 320px).
+    const panelHeight = dropdownRef.current?.offsetHeight ?? 0
+
+    const spaceBelow = vh - rect.bottom
+    const spaceAbove = rect.top
+    // Flip hacia arriba SOLO si no hay lugar abajo para el panel y arriba hay más.
+    const flipUp =
+      panelHeight > 0 &&
+      spaceBelow < panelHeight + GAP &&
+      spaceAbove > spaceBelow
+
+    const top = flipUp ? rect.top - panelHeight - GAP : rect.bottom + GAP
+
+    // Clamp horizontal: arranca alineado al borde izquierdo del trigger.
+    let left = rect.left
+    const maxLeft = vw - panelWidth - VIEWPORT_MARGIN
+    if (left > maxLeft) left = maxLeft
+    if (left < VIEWPORT_MARGIN) left = VIEWPORT_MARGIN
+
+    setPos({ top, left, width: rect.width })
+  }, [])
+
+  const total = options.length
+  // Vacío = sin filtro = "Todos visible". Marcado = filtro activo.
+  const allSelected = selected.size === 0
+  const partial = selected.size > 0 && selected.size < total
+
+  // Resumen: "Todos" cuando nada está marcado, "N/M" cuando hay filtro activo.
+  const summary = allSelected || total === 0 ? 'Todos' : `${selected.size}/${total}`
 
   useEffect(() => {
     if (!open) return
@@ -75,13 +116,25 @@ export function MultiSelectFilter({
     function handleKey(e: KeyboardEvent) {
       if (e.key === 'Escape') setOpen(false)
     }
+    // Recalcular si la página hace scroll (capture: alcanza scroll de cualquier
+    // contenedor) o cambia el tamaño del viewport, así el panel sigue al trigger.
     document.addEventListener('mousedown', handlePointer)
     document.addEventListener('keydown', handleKey)
+    window.addEventListener('scroll', recalc, true)
+    window.addEventListener('resize', recalc)
     return () => {
       document.removeEventListener('mousedown', handlePointer)
       document.removeEventListener('keydown', handleKey)
+      window.removeEventListener('scroll', recalc, true)
+      window.removeEventListener('resize', recalc)
     }
-  }, [open])
+  }, [open, recalc])
+
+  // Tras montar el panel ya conocemos su alto real → reposicionar para decidir
+  // el flip y el clamp con medidas exactas (evita el "salto" inicial).
+  useLayoutEffect(() => {
+    if (open) recalc()
+  }, [open, recalc, total])
 
   // El estado "indeterminate" del checkbox "Todos" solo se setea por DOM.
   useEffect(() => {
@@ -89,9 +142,9 @@ export function MultiSelectFilter({
   }, [partial, open])
 
   function handleToggleOpen() {
-    if (!open && triggerRef.current) {
-      const rect = triggerRef.current.getBoundingClientRect()
-      setPos({ top: rect.bottom + 4, left: rect.left, width: rect.width })
+    if (!open) {
+      // Posición inicial (hacia abajo). useLayoutEffect la refina con el alto real.
+      recalc()
     }
     setOpen((v) => !v)
   }
@@ -100,13 +153,13 @@ export function MultiSelectFilter({
     const next = new Set(selected)
     if (next.has(value)) next.delete(value)
     else next.add(value)
-    onChange(next)
+    // Si el usuario marcó TODO individualmente → auto-reset a vacío (= mostrar todos).
+    onChange(next.size === total ? new Set() : next)
   }
 
   function toggleAll() {
-    // Si están todas tildadas → deselecciona todas. Sino → selecciona todas.
-    if (allSelected) onChange(new Set())
-    else onChange(new Set(options.map((o) => o.value)))
+    // "Todos" siempre limpia la selección → vuelve al estado "sin filtro".
+    onChange(new Set())
   }
 
   return (
@@ -120,7 +173,7 @@ export function MultiSelectFilter({
         aria-controls={open ? panelId : undefined}
         className={cn(
           'inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors whitespace-nowrap',
-          !allSelected && total > 0
+          selected.size > 0
             ? 'border-brand-primary/40 bg-brand-primary/5 text-text-primary'
             : 'border-border-default bg-surface-base text-text-secondary hover:bg-surface-elevated',
           className,
@@ -160,11 +213,11 @@ export function MultiSelectFilter({
                   <input
                     ref={allCheckboxRef}
                     type="checkbox"
-                    checked={allSelected}
+                    checked={selected.size === 0}
                     onChange={toggleAll}
                     className="peer h-4 w-4 cursor-pointer appearance-none rounded border border-border-default checked:border-brand-primary checked:bg-brand-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
                   />
-                  {allSelected && (
+                  {selected.size === 0 && (
                     <Check className="pointer-events-none absolute h-3 w-3 text-white" aria-hidden="true" />
                   )}
                   {partial && (
