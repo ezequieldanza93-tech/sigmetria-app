@@ -43,6 +43,19 @@ interface PuntoInput {
   periodos?: PeriodoInput[]
 }
 
+// Observación de seguimiento (finding adicional a los puntos medidos).
+// Mismo contrato que crearReporteFotografico y la medición de iluminación:
+// viene del FormData como JSON `observaciones_seguimiento`; las fotos llegan
+// como `obs-foto-{idx}` File.
+interface ObsSeguimientoInput {
+  descripcion: string
+  categoria_id: string
+  clasificacion_id?: string | null
+  responsable_id?: string | null
+  fecha_subsanacion?: string | null
+  tiene_foto?: boolean
+}
+
 /**
  * EJECUTOR del Protocolo de Medición de Ruido desde una fila planificada.
  *
@@ -65,6 +78,8 @@ interface PuntoInput {
  *  - certificado                  → File? (adjunto, sube a `documentos`, guarda PATH en certificado_url)
  *  - plano                        → File? (adjunto, sube a `documentos`, guarda PATH en plano_url)
  *  - puntos                       → JSON: array de PuntoInput (cada uno con sus períodos)
+ *  - observaciones_seguimiento?   → JSON: array de ObsSeguimientoInput (findings al pool gestiones_observaciones)
+ *  - obs-foto-{idx}               → File? (foto de la observación de seguimiento idx, sube a `documentos`)
  */
 export async function crearMedicionRuido(
   formData: FormData
@@ -94,6 +109,7 @@ export async function crearMedicionRuido(
   const certificadoFile = formData.get('certificado') as File | null
   const planoFile = formData.get('plano') as File | null
   const puntosRaw = (formData.get('puntos') as string) || '[]'
+  const observacionesSeguimientoRaw = (formData.get('observaciones_seguimiento') as string) || null
 
   if (!registroId) return { success: false, error: 'Registro requerido' }
   if (!establecimientoId) return { success: false, error: 'Establecimiento requerido' }
@@ -237,6 +253,69 @@ export async function crearMedicionRuido(
       if (periodosErr) {
         await supabase.from('medicion_ruido').delete().eq('id', medicionId)
         return { success: false, error: 'Error al guardar los períodos de un punto: ' + periodosErr.message }
+      }
+    }
+  }
+
+  // ── 5. INSERT observaciones de seguimiento → pool común gestiones_observaciones
+  // Replicado de crearReporteFotografico (lib/actions/reporte-fotografico.ts) y de la
+  // medición de iluminación: mismo contrato de FormData (JSON `observaciones_seguimiento`
+  // + fotos `obs-foto-{idx}`), misma forma de inserción (registro_gestion_id +
+  // rg_fecha_planificada para que entren a Seguimiento), y subida de fotos al bucket
+  // privado `documentos` con tenantStoragePath. Son findings ADICIONALES a los puntos
+  // medidos. NO se traga el error: si falla el insert, devolvemos error (la medición ya
+  // quedó guardada, pero lo informamos).
+  if (observacionesSeguimientoRaw) {
+    let observacionesSeg: ObsSeguimientoInput[] = []
+    try {
+      const parsed = JSON.parse(observacionesSeguimientoRaw)
+      observacionesSeg = Array.isArray(parsed) ? parsed : []
+    } catch {
+      return { success: false, error: 'Las observaciones de seguimiento tienen un formato inválido' }
+    }
+
+    const validas = observacionesSeg.filter(o => o.descripcion?.trim() && o.categoria_id)
+    if (validas.length > 0) {
+      const rows = await Promise.all(validas.map(async (o, idx) => {
+        // foto_url: null por defecto (la obs es un finding independiente, no hereda foto).
+        // Si la obs trae su propia foto, la subimos al bucket privado con tenantStoragePath
+        // (path prefijado por tenant para que la RLS de lectura matchee). Guardamos el PATH.
+        let foto_url: string | null = null
+        if (o.tiene_foto) {
+          const obsFile = formData.get(`obs-foto-${idx}`) as File | null
+          if (obsFile && obsFile.size > 0) {
+            const obsExt = obsFile.name.split('.').pop() ?? 'png'
+            const obsPath = tenantStoragePath(consultoraId, 'observaciones-fotos', establecimientoId, `${Date.now()}-${idx}.${obsExt}`)
+            const { data: obsUp, error: obsUploadError } = await supabase.storage
+              .from('documentos')
+              .upload(obsPath, obsFile, { upsert: false })
+            if (obsUploadError) {
+              console.error('[medicionRuido] Error al subir foto de observación:', obsUploadError.message)
+            } else if (obsUp) {
+              foto_url = obsUp.path
+            }
+          }
+        }
+        return {
+          registro_gestion_id: registroId,
+          // rg_fecha_planificada completa la FK compuesta hacia el registro particionado
+          // (registro_gestion_id + rg_fecha_planificada) y es NOT NULL. Debe matchear el
+          // fecha_planificada del gestiones_registros que se está ejecutando.
+          rg_fecha_planificada: rgFechaPlanificada,
+          descripcion: o.descripcion.trim(),
+          categoria_id: o.categoria_id,
+          clasificacion_id: o.clasificacion_id || null,
+          responsable_id: o.responsable_id || null,
+          // fecha_planificada (= fecha de subsanación comprometida) es NOT NULL y ningún
+          // trigger la rellena. Fallback a hoy si el técnico no la cargó.
+          fecha_planificada: o.fecha_subsanacion || hoy,
+          foto_url,
+        }
+      }))
+      const { error: obsError } = await supabase.from('gestiones_observaciones').insert(rows)
+      if (obsError) {
+        console.error('[medicionRuido] Error al insertar gestiones_observaciones:', obsError.message)
+        return { success: false, error: 'La medición se guardó, pero no se pudieron registrar las observaciones de seguimiento: ' + obsError.message }
       }
     }
   }

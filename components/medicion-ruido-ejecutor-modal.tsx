@@ -21,7 +21,7 @@ import { Button } from '@/components/ui/button'
 import {
   Building2, FileText, Plus, Trash2,
   ChevronLeft, ChevronRight, CheckCircle, XCircle, Loader2,
-  Info, ArrowRight, Check, Sparkles, MapPin, Gauge, AlertTriangle,
+  Info, ArrowRight, Check, Sparkles, MapPin, Gauge, AlertTriangle, Camera,
 } from 'lucide-react'
 
 // ── Props ────────────────────────────────────────────────────────────
@@ -63,15 +63,40 @@ interface PuntoState {
   info_adicional: string
 }
 
-type WizardStep = 'datos' | 'puntos' | 'analisis' | 'revisar' | 'listo'
+type WizardStep = 'datos' | 'puntos' | 'analisis' | 'observaciones' | 'revisar' | 'listo'
 
-const STEP_ORDER: WizardStep[] = ['datos', 'puntos', 'analisis', 'revisar']
+const STEP_ORDER: WizardStep[] = ['datos', 'puntos', 'analisis', 'observaciones', 'revisar']
 const STEP_LABELS: Record<WizardStep, string> = {
   datos: 'Datos',
   puntos: 'Puntos',
   analisis: 'Análisis',
+  observaciones: 'Observaciones',
   revisar: 'Revisar',
   listo: 'Listo',
+}
+
+// Turnos disponibles para la selección múltiple (cabecera del protocolo). El valor
+// persistido en `turnos` (text) es el string unido de las opciones elegidas, ej.
+// "Mañana, Tarde".
+const TURNO_OPCIONES = ['Mañana', 'Tarde', 'Noche'] as const
+
+/** Parsea el campo `turnos` (string unido) a un set de opciones para el multi-select. */
+function turnosSeleccionados(turno: string): Set<string> {
+  return new Set(
+    turno
+      .split(',')
+      .map(t => t.trim())
+      .filter(Boolean)
+  )
+}
+
+/** Alterna una opción de turno y devuelve el string unido en el orden canónico. */
+function toggleTurno(turno: string, opcion: string): string {
+  const sel = turnosSeleccionados(turno)
+  if (sel.has(opcion)) sel.delete(opcion)
+  else sel.add(opcion)
+  // Orden canónico Mañana → Tarde → Noche para que el string sea estable.
+  return TURNO_OPCIONES.filter(o => sel.has(o)).join(', ')
 }
 
 // ── Contexto read-only del establecimiento / empresa ──────────────────
@@ -85,6 +110,29 @@ interface EstablecimientoCtx {
   empresa_cuit: string | null
   empresa_domicilio: string | null
 }
+
+// ── Observaciones de seguimiento (replicado del reporte fotográfico) ───
+// Son findings ADICIONALES a los puntos medidos: entran al pool común
+// gestiones_observaciones y aparecen en la vista de Seguimiento.
+interface CategoriaObs {
+  id: string
+  nombre: string
+  nivel: number
+  color: string
+}
+
+interface ObsDraft {
+  key: number
+  descripcion: string
+  categoria_id: string
+  clasificacion_id: string
+  responsable_id: string
+  fecha_subsanacion: string
+  foto_preview: string | null
+  foto_file: File | null
+}
+
+let obsKeySeq = 0
 
 let puntoKeySeq = 0
 let periodoKeySeq = 0
@@ -210,6 +258,12 @@ export function MedicionRuidoEjecutorModal({
   const [conclusiones, setConclusiones] = useState('')
   const [recomendaciones, setRecomendaciones] = useState('')
 
+  // ── Hoja 4: observaciones de seguimiento ────────────────────────────
+  const [observacionesSeguimiento, setObservacionesSeguimiento] = useState<ObsDraft[]>([])
+  const [categoriasObs, setCategoriasObs] = useState<CategoriaObs[]>([])
+  const [clasificacionesObs, setClasificacionesObs] = useState<{ id: string; nombre: string }[]>([])
+  const [personasObs, setPersonasObs] = useState<{ id: string; nombre: string; apellido: string }[]>([])
+
   const inputCls = 'w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500'
   const labelCls = 'text-sm font-medium text-text-secondary block mb-1'
 
@@ -244,6 +298,36 @@ export function MedicionRuidoEjecutorModal({
 
     getInstrumentosRuido().then(r => { if (activo && r.success) setInstrumentos(r.data) })
     getSectoresYPuestos(establecimientoId).then(r => { if (activo && r.success) setSectores(r.data) })
+
+    // Catálogos de las observaciones de seguimiento (mismas queries que el
+    // reporte fotográfico y la medición de iluminación: categorías,
+    // clasificaciones y personas del establecimiento).
+    supabase
+      .from('personas_establecimientos')
+      .select('personas_directorio!persona_id(id, nombre, apellido)')
+      .eq('establecimiento_id', establecimientoId)
+      .then(({ data }) => {
+        if (!activo) return
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const ps = ((data ?? []) as any[])
+          .map(pe => pe.personas_directorio)
+          .filter(Boolean)
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .sort((a: any, b: any) => a.apellido.localeCompare(b.apellido))
+        setPersonasObs(ps)
+      })
+    supabase
+      .from('observaciones_clasificaciones')
+      .select('id, nombre')
+      .eq('is_active', true)
+      .order('nombre')
+      .then(({ data }) => { if (activo) setClasificacionesObs((data ?? []) as { id: string; nombre: string }[]) })
+    supabase
+      .from('observaciones_categorias')
+      .select('id, nombre, nivel, color')
+      .eq('is_active', true)
+      .order('nivel')
+      .then(({ data }) => { if (activo) setCategoriasObs((data ?? []) as CategoriaObs[]) })
 
     return () => { activo = false }
   }, [establecimientoId])
@@ -311,6 +395,40 @@ export function MedicionRuidoEjecutorModal({
     }))
   }
 
+  // ── Mutadores de observaciones de seguimiento ───────────────────────
+  function addObs() {
+    setObservacionesSeguimiento(prev => [...prev, {
+      key: obsKeySeq++,
+      descripcion: '',
+      categoria_id: '',
+      clasificacion_id: '',
+      responsable_id: '',
+      fecha_subsanacion: '',
+      foto_preview: null,
+      foto_file: null,
+    }])
+  }
+
+  function removeObs(key: number) {
+    setObservacionesSeguimiento(prev => {
+      const obj = prev.find(o => o.key === key)
+      if (obj?.foto_preview) URL.revokeObjectURL(obj.foto_preview)
+      return prev.filter(o => o.key !== key)
+    })
+  }
+
+  function updateObs(key: number, field: keyof Omit<ObsDraft, 'key' | 'foto_preview' | 'foto_file'>, value: string) {
+    setObservacionesSeguimiento(prev => prev.map(o => o.key === key ? { ...o, [field]: value } : o))
+  }
+
+  function updateObsFoto(key: number, file: File | null) {
+    setObservacionesSeguimiento(prev => prev.map(o => {
+      if (o.key !== key) return o
+      if (o.foto_preview) URL.revokeObjectURL(o.foto_preview)
+      return { ...o, foto_file: file, foto_preview: file ? URL.createObjectURL(file) : null }
+    }))
+  }
+
   // ── Resúmenes derivados ─────────────────────────────────────────────
   const resumenes = useMemo(() => puntos.map(resumenPunto), [puntos])
 
@@ -368,6 +486,12 @@ export function MedicionRuidoEjecutorModal({
       if (!algunoConDatos) { setError('Cargá al menos un punto con su dosis (dosímetro) o sus períodos (sonómetro).'); return }
       setStep('analisis')
     } else if (step === 'analisis') {
+      setStep('observaciones')
+    } else if (step === 'observaciones') {
+      // Las observaciones de seguimiento son opcionales, pero si hay alguna con
+      // descripción debe tener categoría (categoría es obligatoria).
+      const obsSinCat = observacionesSeguimiento.filter(o => o.descripcion.trim() && !o.categoria_id)
+      if (obsSinCat.length > 0) { setError('Toda observación de seguimiento requiere una categoría.'); return }
       setStep('revisar')
     }
   }
@@ -381,6 +505,16 @@ export function MedicionRuidoEjecutorModal({
   // ── Guardar ─────────────────────────────────────────────────────────
   async function handleGuardar() {
     setError(null)
+
+    // Validación: toda observación de seguimiento con descripción debe tener categoría
+    // (categoría es obligatoria, igual que en el reporte fotográfico).
+    const obsSinCat = observacionesSeguimiento.filter(o => o.descripcion.trim() && !o.categoria_id)
+    if (obsSinCat.length > 0) {
+      setError('Toda observación de seguimiento requiere una categoría.')
+      setStep('observaciones')
+      return
+    }
+
     setSaving(true)
     try {
       const fd = new FormData()
@@ -442,6 +576,28 @@ export function MedicionRuidoEjecutorModal({
         }
       })
       fd.set('puntos', JSON.stringify(puntosPayload))
+
+      // Observaciones de seguimiento → mismo contrato que el reporte fotográfico
+      // y la medición de iluminación: mandamos el meta como JSON y las fotos como
+      // `obs-foto-{idx}` File. El cliente NO sube las fotos (no conoce el
+      // consultora_id/tenant); la server action las sube con tenantStoragePath.
+      // El `idx` es la posición dentro de las obs válidas.
+      const validObs = observacionesSeguimiento.filter(o => o.descripcion.trim())
+      if (validObs.length > 0) {
+        const obsMeta = validObs.map((o, idx) => {
+          if (o.foto_file) fd.set(`obs-foto-${idx}`, o.foto_file)
+          return {
+            descripcion: o.descripcion,
+            categoria_id: o.categoria_id,
+            clasificacion_id: o.clasificacion_id,
+            responsable_id: o.responsable_id,
+            fecha_subsanacion: o.fecha_subsanacion,
+            tiene_foto: !!o.foto_file,
+          }
+        })
+        // Clave distinta de `observaciones` (que ya transporta el texto general).
+        fd.set('observaciones_seguimiento', JSON.stringify(obsMeta))
+      }
 
       const result = await crearMedicionRuido(fd)
       if (!result.success) { setError(result.error); setSaving(false); return }
@@ -638,7 +794,26 @@ export function MedicionRuidoEjecutorModal({
                 </div>
                 <div>
                   <label className={labelCls}>Turnos</label>
-                  <input type="text" className={inputCls} value={turnos} onChange={e => setTurnos(e.target.value)} placeholder="Ej: mañana, tarde" />
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {TURNO_OPCIONES.map(opcion => {
+                      const activo = turnosSeleccionados(turnos).has(opcion)
+                      return (
+                        <button
+                          key={opcion}
+                          type="button"
+                          onClick={() => setTurnos(toggleTurno(turnos, opcion))}
+                          className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+                            activo
+                              ? 'border-sig-500 bg-sig-50/40 text-text-primary font-medium'
+                              : 'border-border-default text-text-secondary hover:bg-surface-elevated'
+                          }`}
+                        >
+                          {activo && <Check size={13} className="text-sig-600" />}
+                          {opcion}
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
               </div>
             </section>
@@ -959,10 +1134,158 @@ export function MedicionRuidoEjecutorModal({
           </div>
         )}
 
+        {/* ══ HOJA 4: OBSERVACIONES DE SEGUIMIENTO ═══════════════════ */}
+        {step === 'observaciones' && (
+          <div className="space-y-4">
+            <div className="rounded-xl border border-border-subtle bg-surface-elevated/40 p-4">
+              <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2">
+                <Camera size={16} className="text-sig-500" /> Observaciones de seguimiento
+                <span className="text-xs font-normal text-text-tertiary">(opcional)</span>
+              </h3>
+              <p className="text-xs text-text-tertiary mt-1">
+                Findings adicionales a los puntos medidos. Cada observación entra al plan de
+                Seguimiento con su responsable, fecha de subsanación y foto.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-semibold text-text-secondary">
+                Observaciones
+                {observacionesSeguimiento.length > 0 && (
+                  <span className="ml-2 text-xs font-normal text-text-tertiary">({observacionesSeguimiento.length})</span>
+                )}
+              </h4>
+              <button
+                type="button"
+                onClick={addObs}
+                className="text-xs text-sig-600 hover:text-sig-700 font-medium inline-flex items-center gap-1"
+              >
+                <Plus size={14} /> Agregar
+              </button>
+            </div>
+
+            {observacionesSeguimiento.length === 0 ? (
+              <p className="text-xs text-text-tertiary text-center py-4 border border-dashed border-border-subtle rounded-lg">
+                Sin observaciones de seguimiento. Hacé clic en &quot;+ Agregar&quot; para registrar un finding.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {observacionesSeguimiento.map((obs, idx) => (
+                  <div key={obs.key} className="border border-border-subtle rounded-lg p-3 space-y-2 bg-surface-elevated/30">
+                    <div className="flex items-start gap-2">
+                      <span className="text-xs text-text-tertiary mt-2 w-4 shrink-0">{idx + 1}.</span>
+                      <textarea
+                        value={obs.descripcion}
+                        onChange={e => updateObs(obs.key, 'descripcion', e.target.value)}
+                        placeholder="Descripción de la observación…"
+                        rows={2}
+                        className="flex-1 border border-border-default rounded-lg px-3 py-1.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sig-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeObs(obs.key)}
+                        className="text-text-tertiary hover:text-danger mt-1 shrink-0"
+                        title="Eliminar observación"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pl-6">
+                      <div>
+                        <label className="text-xs text-text-secondary block mb-0.5">
+                          Categoría <span className="text-danger">*</span>
+                        </label>
+                        <select
+                          value={obs.categoria_id}
+                          onChange={e => updateObs(obs.key, 'categoria_id', e.target.value)}
+                          className="w-full border border-border-default rounded-lg px-2 py-1.5 text-xs bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500"
+                          style={obs.categoria_id ? { backgroundColor: categoriasObs.find(c => c.id === obs.categoria_id)?.color, color: '#000' } : {}}
+                        >
+                          <option value="">Seleccionar…</option>
+                          {categoriasObs.map(c => (
+                            <option key={c.id} value={c.id}>{c.nombre}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs text-text-secondary block mb-0.5">Tipo de riesgo</label>
+                        <select
+                          value={obs.clasificacion_id}
+                          onChange={e => updateObs(obs.key, 'clasificacion_id', e.target.value)}
+                          className="w-full border border-border-default rounded-lg px-2 py-1.5 text-xs bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500"
+                        >
+                          <option value="">Sin clasificar</option>
+                          {clasificacionesObs.map(c => (
+                            <option key={c.id} value={c.id}>{c.nombre}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs text-text-secondary block mb-0.5">Responsable</label>
+                        <select
+                          value={obs.responsable_id}
+                          onChange={e => updateObs(obs.key, 'responsable_id', e.target.value)}
+                          className="w-full border border-border-default rounded-lg px-2 py-1.5 text-xs bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500"
+                        >
+                          <option value="">Sin asignar</option>
+                          {personasObs.map(p => (
+                            <option key={p.id} value={p.id}>{p.apellido}, {p.nombre}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs text-text-secondary block mb-0.5">Fecha subsanación</label>
+                        <input
+                          type="date"
+                          value={obs.fecha_subsanacion}
+                          onChange={e => updateObs(obs.key, 'fecha_subsanacion', e.target.value)}
+                          className="w-full border border-border-default rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-sig-500"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Foto de la observación (adjuntar / tomar, sin capture, con preview) */}
+                    <div className="pl-6">
+                      {!obs.foto_preview ? (
+                        <label className="inline-flex items-center gap-1.5 text-xs text-text-tertiary hover:text-sig-600 cursor-pointer transition-colors">
+                          <Camera size={13} />
+                          Adjuntar / sacar foto
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={e => {
+                              const f = e.target.files?.[0]
+                              if (!f) return
+                              updateObsFoto(obs.key, f)
+                            }}
+                          />
+                        </label>
+                      ) : (
+                        <div className="flex items-center gap-3">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={obs.foto_preview} alt="Foto observación" className="w-14 h-14 object-cover rounded-lg border border-border-subtle" />
+                          <button
+                            type="button"
+                            onClick={() => updateObsFoto(obs.key, null)}
+                            className="text-xs text-red-400 hover:text-danger"
+                          >
+                            Eliminar foto
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ══ REVISAR Y GUARDAR ══════════════════════════════════════ */}
         {step === 'revisar' && (
           <div className="space-y-5">
-            <p className="text-sm text-text-secondary">Revisá las tres hojas antes de guardar el protocolo.</p>
+            <p className="text-sm text-text-secondary">Revisá las hojas antes de guardar el protocolo.</p>
 
             {/* Resumen hoja 1 */}
             <ReviewSection title="Datos del protocolo">
@@ -1011,6 +1334,28 @@ export function MedicionRuidoEjecutorModal({
               <ReadOnly label="Conclusiones" value={conclusiones} block />
               <ReadOnly label="Recomendaciones" value={recomendaciones} block />
             </ReviewSection>
+
+            {/* Resumen hoja 4 — observaciones de seguimiento */}
+            {observacionesSeguimiento.filter(o => o.descripcion.trim()).length > 0 && (
+              <ReviewSection title={`Observaciones de seguimiento (${observacionesSeguimiento.filter(o => o.descripcion.trim()).length})`}>
+                <div className="space-y-2">
+                  {observacionesSeguimiento.filter(o => o.descripcion.trim()).map((o, i) => {
+                    const cat = categoriasObs.find(c => c.id === o.categoria_id)
+                    const resp = personasObs.find(p => p.id === o.responsable_id)
+                    return (
+                      <div key={o.key} className="rounded-lg border border-border-subtle px-3 py-2 text-sm flex flex-wrap items-center gap-x-4 gap-y-1">
+                        <span className="font-medium text-text-primary">{i + 1}.</span>
+                        <span className="text-text-secondary flex-1 min-w-[12rem]">{o.descripcion}</span>
+                        {cat && <span className="text-xs rounded px-2 py-0.5" style={{ backgroundColor: cat.color, color: '#000' }}>{cat.nombre}</span>}
+                        {resp && <span className="text-text-tertiary text-xs">{resp.apellido}, {resp.nombre}</span>}
+                        {o.fecha_subsanacion && <span className="text-text-tertiary text-xs tabular-nums">Subsana {o.fecha_subsanacion}</span>}
+                        {o.foto_file && <span className="text-text-tertiary text-xs inline-flex items-center gap-1"><Camera size={12} /> Foto</span>}
+                      </div>
+                    )
+                  })}
+                </div>
+              </ReviewSection>
+            )}
           </div>
         )}
 
