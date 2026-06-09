@@ -17,7 +17,7 @@ import {
   ClipboardCheck, GraduationCap, Heart, FileText, AlertTriangle,
   ClipboardList, UserPlus, Dumbbell, Kanban, HelpCircle,
   Play, Upload, Download, BookMarked,
-  ChevronUp, ChevronDown, Columns, CalendarDays, List, X,
+  ChevronUp, ChevronDown, Columns, CalendarDays, List, X, Thermometer, Flame, Zap, Volume2, Lightbulb,
 } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { createPortal } from 'react-dom'
@@ -74,6 +74,26 @@ const FormularioEjecucion = dynamic(
 )
 const ReporteFotograficoEjecutorModal = dynamic(
   () => import('@/components/reporte-fotografico-ejecutor-modal').then(m => m.ReporteFotograficoEjecutorModal),
+  { ssr: false }
+)
+const MedicionIluminacionEjecutorModal = dynamic(
+  () => import('@/components/medicion-iluminacion-ejecutor-modal').then(m => m.MedicionIluminacionEjecutorModal),
+  { ssr: false }
+)
+const MedicionRuidoEjecutorModal = dynamic(
+  () => import('@/components/medicion-ruido-ejecutor-modal').then(m => m.MedicionRuidoEjecutorModal),
+  { ssr: false }
+)
+const MedicionPatEjecutorModal = dynamic(
+  () => import('@/components/medicion-pat-ejecutor-modal').then(m => m.MedicionPatEjecutorModal),
+  { ssr: false }
+)
+const CalculoCargaFuegoEjecutorModal = dynamic(
+  () => import('@/components/calculo-carga-fuego-ejecutor-modal').then(m => m.CalculoCargaFuegoEjecutorModal),
+  { ssr: false }
+)
+const MedicionCargaTermicaEjecutorModal = dynamic(
+  () => import('@/components/medicion-carga-termica-ejecutor-modal').then(m => m.MedicionCargaTermicaEjecutorModal),
   { ssr: false }
 )
 const EjecutarCapacitacionModal = dynamic(
@@ -1314,6 +1334,11 @@ function AgendaActionsCell({
   canWrite,
   onExecuteForm,
   onExecuteReporte,
+  onExecuteMedicionCargaTermica,
+  onExecuteCargaFuego,
+  onExecuteMedicionPat,
+  onExecuteMedicionRuido,
+  onExecuteMedicionIluminacion,
   onLoadEvidence,
   onToggleLegajo,
   onEjecutarCapacitacion,
@@ -1322,6 +1347,11 @@ function AgendaActionsCell({
   canWrite: boolean
   onExecuteForm: () => void
   onExecuteReporte: () => void
+  onExecuteMedicionCargaTermica: () => void
+  onExecuteCargaFuego: () => void
+  onExecuteMedicionPat: () => void
+  onExecuteMedicionRuido: () => void
+  onExecuteMedicionIluminacion: () => void
   onLoadEvidence: () => void
   onToggleLegajo: () => void | Promise<void>
   /** Solo para gestiones de categoría Capacitaciones: abre el flujo de capacitación LMS. */
@@ -1525,6 +1555,276 @@ function AgendaActionsCell({
     )
   }
 
+  // Gestión tipo medicion_iluminacion → wizard del Protocolo de Iluminación (SRT 84/2012).
+  if (r.ge_tipo_ejecucion === 'medicion_iluminacion') {
+    return (
+      <div ref={triggerRef} className="flex items-center justify-center relative">
+        <div className="inline-flex rounded-lg overflow-hidden shadow-sm">
+          <button
+            title="Ejecutar protocolo de iluminación"
+            onClick={onExecuteMedicionIluminacion}
+            className={`${primaryBtn} ${primaryActive} rounded-r-none pr-2.5 border-r-0`}
+          >
+            <Lightbulb size={14} />
+            <span className="hidden sm:inline">Ejecutar</span>
+          </button>
+          <button
+            title="Más opciones"
+            onClick={toggleMenu}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            className={`${primaryActive} px-2 min-h-[36px] rounded-l-none ${menuOpen ? 'bg-sig-500/10' : ''}`}
+          >
+            <ChevronDown size={14} className={`transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+
+        {menuOpen && menuPos && createPortal(
+          <div
+            ref={dropdownRef}
+            role="menu"
+            style={{ position: 'fixed', top: menuPos.top, left: menuPos.left, transform: 'translateX(-100%)', zIndex: 9999 }}
+            className="bg-surface-base border border-border-subtle rounded-xl shadow-xl overflow-hidden min-w-[200px]"
+          >
+            <button
+              role="menuitem"
+              onClick={() => { setMenuOpen(false); onExecuteMedicionIluminacion() }}
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-text-primary hover:bg-surface-sunken text-left"
+            >
+              <Lightbulb size={14} className="text-sig-500" />
+              Ejecutar protocolo de iluminación
+            </button>
+            <button
+              role="menuitem"
+              onClick={() => { setMenuOpen(false); onLoadEvidence() }}
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-text-primary hover:bg-surface-sunken text-left border-t border-border-subtle"
+            >
+              <Upload size={14} className="text-text-secondary" />
+              Cargar archivo manual
+            </button>
+          </div>,
+          document.body
+        )}
+      </div>
+    )
+  }
+
+  // Gestión tipo medicion_ruido → wizard del Protocolo de Ruido (SRT 85/2012).
+  if (r.ge_tipo_ejecucion === 'medicion_ruido') {
+    return (
+      <div ref={triggerRef} className="flex items-center justify-center relative">
+        <div className="inline-flex rounded-lg overflow-hidden shadow-sm">
+          <button
+            title="Ejecutar protocolo de ruido"
+            onClick={onExecuteMedicionRuido}
+            className={`${primaryBtn} ${primaryActive} rounded-r-none pr-2.5 border-r-0`}
+          >
+            <Volume2 size={14} />
+            <span className="hidden sm:inline">Ejecutar</span>
+          </button>
+          <button
+            title="Más opciones"
+            onClick={toggleMenu}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            className={`${primaryActive} px-2 min-h-[36px] rounded-l-none ${menuOpen ? 'bg-sig-500/10' : ''}`}
+          >
+            <ChevronDown size={14} className={`transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+
+        {menuOpen && menuPos && createPortal(
+          <div
+            ref={dropdownRef}
+            role="menu"
+            style={{ position: 'fixed', top: menuPos.top, left: menuPos.left, transform: 'translateX(-100%)', zIndex: 9999 }}
+            className="bg-surface-base border border-border-subtle rounded-xl shadow-xl overflow-hidden min-w-[200px]"
+          >
+            <button
+              role="menuitem"
+              onClick={() => { setMenuOpen(false); onExecuteMedicionRuido() }}
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-text-primary hover:bg-surface-sunken text-left"
+            >
+              <Volume2 size={14} className="text-sig-500" />
+              Ejecutar protocolo de ruido
+            </button>
+            <button
+              role="menuitem"
+              onClick={() => { setMenuOpen(false); onLoadEvidence() }}
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-text-primary hover:bg-surface-sunken text-left border-t border-border-subtle"
+            >
+              <Upload size={14} className="text-text-secondary" />
+              Cargar archivo manual
+            </button>
+          </div>,
+          document.body
+        )}
+      </div>
+    )
+  }
+
+  // Gestión tipo medicion_pat → wizard del Protocolo de Puesta a Tierra (SRT 900/2015).
+  if (r.ge_tipo_ejecucion === 'medicion_pat') {
+    return (
+      <div ref={triggerRef} className="flex items-center justify-center relative">
+        <div className="inline-flex rounded-lg overflow-hidden shadow-sm">
+          <button
+            title="Ejecutar protocolo de puesta a tierra"
+            onClick={onExecuteMedicionPat}
+            className={`${primaryBtn} ${primaryActive} rounded-r-none pr-2.5 border-r-0`}
+          >
+            <Zap size={14} />
+            <span className="hidden sm:inline">Ejecutar</span>
+          </button>
+          <button
+            title="Más opciones"
+            onClick={toggleMenu}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            className={`${primaryActive} px-2 min-h-[36px] rounded-l-none ${menuOpen ? 'bg-sig-500/10' : ''}`}
+          >
+            <ChevronDown size={14} className={`transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+
+        {menuOpen && menuPos && createPortal(
+          <div
+            ref={dropdownRef}
+            role="menu"
+            style={{ position: 'fixed', top: menuPos.top, left: menuPos.left, transform: 'translateX(-100%)', zIndex: 9999 }}
+            className="bg-surface-base border border-border-subtle rounded-xl shadow-xl overflow-hidden min-w-[200px]"
+          >
+            <button
+              role="menuitem"
+              onClick={() => { setMenuOpen(false); onExecuteMedicionPat() }}
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-text-primary hover:bg-surface-sunken text-left"
+            >
+              <Zap size={14} className="text-sig-500" />
+              Ejecutar protocolo de puesta a tierra
+            </button>
+            <button
+              role="menuitem"
+              onClick={() => { setMenuOpen(false); onLoadEvidence() }}
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-text-primary hover:bg-surface-sunken text-left border-t border-border-subtle"
+            >
+              <Upload size={14} className="text-text-secondary" />
+              Cargar archivo manual
+            </button>
+          </div>,
+          document.body
+        )}
+      </div>
+    )
+  }
+
+  // Gestión tipo calculo_carga_fuego → wizard del Cálculo de Carga de Fuego (Dec 351/79 Anexo VII).
+  if (r.ge_tipo_ejecucion === 'calculo_carga_fuego') {
+    return (
+      <div ref={triggerRef} className="flex items-center justify-center relative">
+        <div className="inline-flex rounded-lg overflow-hidden shadow-sm">
+          <button
+            title="Ejecutar cálculo de carga de fuego"
+            onClick={onExecuteCargaFuego}
+            className={`${primaryBtn} ${primaryActive} rounded-r-none pr-2.5 border-r-0`}
+          >
+            <Flame size={14} />
+            <span className="hidden sm:inline">Ejecutar</span>
+          </button>
+          <button
+            title="Más opciones"
+            onClick={toggleMenu}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            className={`${primaryActive} px-2 min-h-[36px] rounded-l-none ${menuOpen ? 'bg-sig-500/10' : ''}`}
+          >
+            <ChevronDown size={14} className={`transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+
+        {menuOpen && menuPos && createPortal(
+          <div
+            ref={dropdownRef}
+            role="menu"
+            style={{ position: 'fixed', top: menuPos.top, left: menuPos.left, transform: 'translateX(-100%)', zIndex: 9999 }}
+            className="bg-surface-base border border-border-subtle rounded-xl shadow-xl overflow-hidden min-w-[200px]"
+          >
+            <button
+              role="menuitem"
+              onClick={() => { setMenuOpen(false); onExecuteCargaFuego() }}
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-text-primary hover:bg-surface-sunken text-left"
+            >
+              <Flame size={14} className="text-sig-500" />
+              Ejecutar cálculo de carga de fuego
+            </button>
+            <button
+              role="menuitem"
+              onClick={() => { setMenuOpen(false); onLoadEvidence() }}
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-text-primary hover:bg-surface-sunken text-left border-t border-border-subtle"
+            >
+              <Upload size={14} className="text-text-secondary" />
+              Cargar archivo manual
+            </button>
+          </div>,
+          document.body
+        )}
+      </div>
+    )
+  }
+
+  // Gestión tipo medicion_carga_termica → wizard del Protocolo de Estrés Térmico (SRT 30/2023).
+  if (r.ge_tipo_ejecucion === 'medicion_carga_termica') {
+    return (
+      <div ref={triggerRef} className="flex items-center justify-center relative">
+        <div className="inline-flex rounded-lg overflow-hidden shadow-sm">
+          <button
+            title="Ejecutar protocolo de carga térmica"
+            onClick={onExecuteMedicionCargaTermica}
+            className={`${primaryBtn} ${primaryActive} rounded-r-none pr-2.5 border-r-0`}
+          >
+            <Thermometer size={14} />
+            <span className="hidden sm:inline">Ejecutar</span>
+          </button>
+          <button
+            title="Más opciones"
+            onClick={toggleMenu}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            className={`${primaryActive} px-2 min-h-[36px] rounded-l-none ${menuOpen ? 'bg-sig-500/10' : ''}`}
+          >
+            <ChevronDown size={14} className={`transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+
+        {menuOpen && menuPos && createPortal(
+          <div
+            ref={dropdownRef}
+            role="menu"
+            style={{ position: 'fixed', top: menuPos.top, left: menuPos.left, transform: 'translateX(-100%)', zIndex: 9999 }}
+            className="bg-surface-base border border-border-subtle rounded-xl shadow-xl overflow-hidden min-w-[200px]"
+          >
+            <button
+              role="menuitem"
+              onClick={() => { setMenuOpen(false); onExecuteMedicionCargaTermica() }}
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-text-primary hover:bg-surface-sunken text-left"
+            >
+              <Thermometer size={14} className="text-sig-500" />
+              Ejecutar protocolo de carga térmica
+            </button>
+            <button
+              role="menuitem"
+              onClick={() => { setMenuOpen(false); onLoadEvidence() }}
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-text-primary hover:bg-surface-sunken text-left border-t border-border-subtle"
+            >
+              <Upload size={14} className="text-text-secondary" />
+              Cargar archivo manual
+            </button>
+          </div>,
+          document.body
+        )}
+      </div>
+    )
+  }
+
   // Con formulario → botón "Ejecutar ▾" con submenu
   if (r.ge_tiene_formulario) {
     return (
@@ -1655,6 +1955,11 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
   const [editingRegistro, setEditingRegistro] = useState<FullRegistro | null>(null)
   const [executingFormulario, setExecutingFormulario] = useState<FullRegistro | null>(null)
   const [executingReporte, setExecutingReporte] = useState<FullRegistro | null>(null)
+  const [executingMedicionCargaTermica, setExecutingMedicionCargaTermica] = useState<FullRegistro | null>(null)
+  const [executingCargaFuego, setExecutingCargaFuego] = useState<FullRegistro | null>(null)
+  const [executingMedicionPat, setExecutingMedicionPat] = useState<FullRegistro | null>(null)
+  const [executingMedicionRuido, setExecutingMedicionRuido] = useState<FullRegistro | null>(null)
+  const [executingMedicionIluminacion, setExecutingMedicionIluminacion] = useState<FullRegistro | null>(null)
   const [executingCapacitacion, setExecutingCapacitacion] = useState<FullRegistro | null>(null)
   const [showPlanificarModal, setShowPlanificarModal] = useState(false)
   const [showReporteModal, setShowReporteModal] = useState(false)
@@ -1878,6 +2183,16 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
     const yaEjecutada = !!(r.fecha_ejecutada || r.evidencia_url)
     if (r.ge_tipo_ejecucion === 'reporte_fotografico' && !yaEjecutada && canWrite) {
       setExecutingReporte(r)
+    } else if (r.ge_tipo_ejecucion === 'medicion_carga_termica' && !yaEjecutada && canWrite) {
+      setExecutingMedicionCargaTermica(r)
+    } else if (r.ge_tipo_ejecucion === 'calculo_carga_fuego' && !yaEjecutada && canWrite) {
+      setExecutingCargaFuego(r)
+    } else if (r.ge_tipo_ejecucion === 'medicion_pat' && !yaEjecutada && canWrite) {
+      setExecutingMedicionPat(r)
+    } else if (r.ge_tipo_ejecucion === 'medicion_ruido' && !yaEjecutada && canWrite) {
+      setExecutingMedicionRuido(r)
+    } else if (r.ge_tipo_ejecucion === 'medicion_iluminacion' && !yaEjecutada && canWrite) {
+      setExecutingMedicionIluminacion(r)
     } else {
       setEditingRegistro(r)
     }
@@ -1920,6 +2235,11 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
               canWrite={canWrite}
               onExecuteForm={() => setExecutingFormulario(r)}
               onExecuteReporte={() => setExecutingReporte(r)}
+              onExecuteMedicionCargaTermica={() => setExecutingMedicionCargaTermica(r)}
+              onExecuteCargaFuego={() => setExecutingCargaFuego(r)}
+              onExecuteMedicionPat={() => setExecutingMedicionPat(r)}
+              onExecuteMedicionRuido={() => setExecutingMedicionRuido(r)}
+              onExecuteMedicionIluminacion={() => setExecutingMedicionIluminacion(r)}
               onLoadEvidence={() => setEditingRegistro(r)}
               onEjecutarCapacitacion={
                 r.ge_categoria_nombre === CATEGORIA_CAPACITACIONES
@@ -2515,6 +2835,61 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
           establecimientoNombre={establecimientoNombre}
           onClose={() => setExecutingReporte(null)}
           onSuccess={() => { setExecutingReporte(null); queryClient.invalidateQueries({ queryKey: ['gestiones-establecimiento', establecimientoId, year] }); queryClient.invalidateQueries({ queryKey: ['registros-gestion'] }) }}
+        />
+      )}
+
+      {executingMedicionIluminacion && (
+        <MedicionIluminacionEjecutorModal
+          establecimientoId={establecimientoId}
+          registroId={executingMedicionIluminacion.id}
+          rgFechaPlanificada={executingMedicionIluminacion.fecha_planificada}
+          gestionEstablecimientoId={executingMedicionIluminacion.ge_id ?? ''}
+          onClose={() => setExecutingMedicionIluminacion(null)}
+          onSuccess={() => { setExecutingMedicionIluminacion(null); queryClient.invalidateQueries({ queryKey: ['gestiones-establecimiento', establecimientoId, year] }); queryClient.invalidateQueries({ queryKey: ['registros-gestion'] }) }}
+        />
+      )}
+
+      {executingMedicionRuido && (
+        <MedicionRuidoEjecutorModal
+          establecimientoId={establecimientoId}
+          registroId={executingMedicionRuido.id}
+          rgFechaPlanificada={executingMedicionRuido.fecha_planificada}
+          gestionEstablecimientoId={executingMedicionRuido.ge_id ?? ''}
+          onClose={() => setExecutingMedicionRuido(null)}
+          onSuccess={() => { setExecutingMedicionRuido(null); queryClient.invalidateQueries({ queryKey: ['gestiones-establecimiento', establecimientoId, year] }); queryClient.invalidateQueries({ queryKey: ['registros-gestion'] }) }}
+        />
+      )}
+
+      {executingMedicionPat && (
+        <MedicionPatEjecutorModal
+          establecimientoId={establecimientoId}
+          registroId={executingMedicionPat.id}
+          rgFechaPlanificada={executingMedicionPat.fecha_planificada}
+          gestionEstablecimientoId={executingMedicionPat.gestion_establecimiento_id}
+          onClose={() => setExecutingMedicionPat(null)}
+          onSuccess={() => { setExecutingMedicionPat(null); queryClient.invalidateQueries({ queryKey: ['gestiones-establecimiento', establecimientoId, year] }); queryClient.invalidateQueries({ queryKey: ['registros-gestion'] }) }}
+        />
+      )}
+
+      {executingCargaFuego && (
+        <CalculoCargaFuegoEjecutorModal
+          establecimientoId={establecimientoId}
+          registroId={executingCargaFuego.id}
+          rgFechaPlanificada={executingCargaFuego.fecha_planificada}
+          gestionEstablecimientoId={executingCargaFuego.ge_id ?? ''}
+          onClose={() => setExecutingCargaFuego(null)}
+          onSuccess={() => { setExecutingCargaFuego(null); queryClient.invalidateQueries({ queryKey: ['gestiones-establecimiento', establecimientoId, year] }); queryClient.invalidateQueries({ queryKey: ['registros-gestion'] }) }}
+        />
+      )}
+
+      {executingMedicionCargaTermica && (
+        <MedicionCargaTermicaEjecutorModal
+          establecimientoId={establecimientoId}
+          registroId={executingMedicionCargaTermica.id}
+          rgFechaPlanificada={executingMedicionCargaTermica.fecha_planificada}
+          gestionEstablecimientoId={executingMedicionCargaTermica.ge_id ?? ''}
+          onClose={() => setExecutingMedicionCargaTermica(null)}
+          onSuccess={() => { setExecutingMedicionCargaTermica(null); queryClient.invalidateQueries({ queryKey: ['gestiones-establecimiento', establecimientoId, year] }); queryClient.invalidateQueries({ queryKey: ['registros-gestion'] }) }}
         />
       )}
 

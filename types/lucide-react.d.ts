@@ -53,6 +53,7 @@ declare module 'lucide-react' {
   export const CreditCard: Icon
   export const Crosshair: Icon
   export const Download: Icon
+  export const Droplets: Icon
   export const Dumbbell: Icon
   export const ExternalLink: Icon
   export const Eye: Icon
@@ -61,6 +62,7 @@ declare module 'lucide-react' {
   export const FileCheck: Icon
   export const FileSignature: Icon
   export const FileText: Icon
+  export const Flame: Icon
   export const Gauge: Icon
   export const Globe: Icon
   export const GraduationCap: Icon
@@ -116,6 +118,8 @@ declare module 'lucide-react' {
   export const Sparkles: Icon
   export const Star: Icon
   export const Sun: Icon
+  export const Thermometer: Icon
+  export const ThermometerSun: Icon
   export const Trash2: Icon
   export const TrendingDown: Icon
   export const TrendingUp: Icon
@@ -125,8 +129,10 @@ declare module 'lucide-react' {
   export const UserPlus: Icon
   export const Users: Icon
   export const Video: Icon
+  export const Volume2: Icon
   export const Wifi: Icon
   export const WifiOff: Icon
+  export const Wind: Icon
   export const X: Icon
   export const XCircle: Icon
   export const Zap: Icon
