@@ -45,32 +45,6 @@ function fmt(date: string | null | undefined): string {
   return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' })
 }
 
-/**
- * Adaptador entre el estado interno ("Set vacío = todos") y la semántica de
- * `MultiSelectFilter` ("selected = tildados, default = TODOS los values").
- * Mantiene intactos los predicados de filtrado (`sel.size > 0 && !sel.has(x)`),
- * por lo que el filtrado es idéntico al anterior.
- */
-function AllOrSubsetFilter({
-  label,
-  options,
-  selected,
-  onChange,
-}: {
-  label: string
-  options: MultiSelectOption[]
-  selected: Set<string>
-  onChange: (next: Set<string>) => void
-}) {
-  const view = selected.size === 0 ? new Set(options.map(o => o.value)) : selected
-  function handleChange(next: Set<string>) {
-    onChange(next.size === options.length ? new Set() : next)
-  }
-  return (
-    <MultiSelectFilter label={label} options={options} selected={view} onChange={handleChange} />
-  )
-}
-
 export function SeguimientoAggregate({
   rows,
   showEmpresaFilter = false,
@@ -110,17 +84,17 @@ export function SeguimientoAggregate({
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="text-lg font-semibold text-text-primary mr-4">Seguimiento de observaciones</h2>
         {showEmpresaFilter && (
-          <AllOrSubsetFilter label="Empresa" options={empresaOptions} selected={empresaSel} onChange={setEmpresaSel} />
+          <MultiSelectFilter label="Empresa" options={empresaOptions} selected={empresaSel} onChange={setEmpresaSel} />
         )}
         {showEstablecimientoFilter && (
-          <AllOrSubsetFilter
+          <MultiSelectFilter
             label="Establecimiento"
             options={establecimientoOptions}
             selected={estSel}
             onChange={setEstSel}
           />
         )}
-        <AllOrSubsetFilter
+        <MultiSelectFilter
           label="Estado"
           options={ESTADOS.map(e => ({ value: e, label: e }))}
           selected={estadoSel}

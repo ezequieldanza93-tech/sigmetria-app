@@ -2572,7 +2572,7 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
           <MultiSelectFilter
             label="Grupo"
             options={gruposFiltro.map(g => ({ value: g, label: g }))}
-            selected={filterGrupo ?? new Set(gruposFiltro)}
+            selected={filterGrupo ?? new Set()}
             onChange={setFilterGrupo}
           />
         )}
@@ -2580,7 +2580,7 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
           <MultiSelectFilter
             label="Categoría"
             options={categoriasFiltro.map(c => ({ value: c, label: c }))}
-            selected={filterCategoria ?? new Set(categoriasFiltro)}
+            selected={filterCategoria ?? new Set()}
             onChange={setFilterCategoria}
           />
         )}
@@ -2588,7 +2588,7 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
           <MultiSelectFilter
             label="Responsable"
             options={responsablesFiltro.map(r => ({ value: r, label: r }))}
-            selected={filterResponsable ?? new Set(responsablesFiltro)}
+            selected={filterResponsable ?? new Set()}
             onChange={setFilterResponsable}
           />
         )}
@@ -2599,7 +2599,7 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
             { value: 'Pendiente', label: 'Pendiente' },
             { value: 'Realizado', label: 'Realizado' },
           ]}
-          selected={filterEstado ?? new Set(['Planificado', 'Pendiente', 'Realizado'])}
+          selected={filterEstado ?? new Set()}
           onChange={setFilterEstado}
         />
         <button

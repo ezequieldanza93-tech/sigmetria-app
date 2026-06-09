@@ -55,10 +55,10 @@ export function NormativaCatalogo() {
   const [tiposEst, setTiposEst] = useState<TipoEstablecimientoOption[]>([])
 
   const [categoriaSel, setCategoriaSel] = useState<string | null>(null)
-  // Por defecto: TODAS las opciones seleccionadas (= sin filtrar).
-  const [tipoSel, setTipoSel] = useState<Set<string>>(() => new Set(NORMATIVA_TIPOS))
-  const [ambitoSel, setAmbitoSel] = useState<Set<string>>(() => new Set(NORMATIVA_AMBITOS))
-  const [estadoSel, setEstadoSel] = useState<Set<string>>(() => new Set(NORMATIVA_ESTADOS))
+  // Por defecto: vacío = sin filtro = mostrar todo (nada marcado en el dropdown).
+  const [tipoSel, setTipoSel] = useState<Set<string>>(() => new Set())
+  const [ambitoSel, setAmbitoSel] = useState<Set<string>>(() => new Set())
+  const [estadoSel, setEstadoSel] = useState<Set<string>>(() => new Set())
   const [tipoEstSel, setTipoEstSel] = useState<Set<string>>(() => new Set())
   const [searchInput, setSearchInput] = useState('')
   const search = useDebounce(searchInput.trim(), 300)
@@ -95,8 +95,6 @@ export function NormativaCatalogo() {
       if (cancelado) return
       if (res.success) {
         setTiposEst(res.data)
-        // Por defecto: TODOS seleccionados (= sin filtrar).
-        setTipoEstSel(new Set(res.data.map((t) => t.id)))
       } else {
         error(res.error)
       }

@@ -99,40 +99,6 @@ function colByKey(key: string): ColDef | undefined {
   return COLS.find(c => c.key === key)
 }
 
-/**
- * Adaptador entre el estado interno ("Set vacío = todos") y la semántica de
- * `MultiSelectFilter` ("selected = tildados, default = TODOS los values").
- *
- * - Vacío interno → todas las opciones tildadas (el trigger muestra "Todos").
- * - Si el usuario tilda TODAS → se guarda vacío (vuelve a "sin filtro").
- * - Cualquier subconjunto se guarda tal cual.
- *
- * Así los predicados de filtrado (`if (sel.size > 0 && !sel.has(x))`) quedan
- * INTACTOS y el comportamiento del filtrado es idéntico al anterior.
- */
-function AllOrSubsetFilter({
-  label,
-  options,
-  selected,
-  onChange,
-}: {
-  label: string
-  options: MultiSelectOption[]
-  selected: Set<string>
-  onChange: (next: Set<string>) => void
-}) {
-  const allValues = options.map(o => o.value)
-  // Vacío interno = todos → mostrar todo tildado.
-  const view = selected.size === 0 ? new Set(allValues) : selected
-  function handleChange(next: Set<string>) {
-    // Tildó todas → vacío (= sin filtro). Subconjunto → tal cual.
-    onChange(next.size === options.length ? new Set() : next)
-  }
-  return (
-    <MultiSelectFilter label={label} options={options} selected={view} onChange={handleChange} />
-  )
-}
-
 // Compara dos filas según una columna. nulls al final.
 function compareByCol(a: GestionAggregateRow, b: GestionAggregateRow, col: ColDef): number {
   const va = col.value(a)
@@ -386,15 +352,15 @@ export function GestionesAggregate({
           />
         </div>
         {showEmpresaFilter && (
-          <AllOrSubsetFilter label="Empresa" options={empresaOptions} selected={empresaSel} onChange={setEmpresaSel} />
+          <MultiSelectFilter label="Empresa" options={empresaOptions} selected={empresaSel} onChange={setEmpresaSel} />
         )}
         {showEstablecimientoFilter && (
-          <AllOrSubsetFilter label="Establecimiento" options={establecimientoOptions} selected={estSel} onChange={setEstSel} />
+          <MultiSelectFilter label="Establecimiento" options={establecimientoOptions} selected={estSel} onChange={setEstSel} />
         )}
-        <AllOrSubsetFilter label="Grupo" options={grupoOptions} selected={grupoSel} onChange={setGrupoSel} />
-        <AllOrSubsetFilter label="Categoría" options={categoriaOptions} selected={categoriaSel} onChange={setCategoriaSel} />
-        <AllOrSubsetFilter label="Responsable" options={responsableOptions} selected={responsableSel} onChange={setResponsableSel} />
-        <AllOrSubsetFilter label="Estado" options={ESTADOS.map(e => ({ value: e, label: e }))} selected={estadoSel} onChange={setEstadoSel} />
+        <MultiSelectFilter label="Grupo" options={grupoOptions} selected={grupoSel} onChange={setGrupoSel} />
+        <MultiSelectFilter label="Categoría" options={categoriaOptions} selected={categoriaSel} onChange={setCategoriaSel} />
+        <MultiSelectFilter label="Responsable" options={responsableOptions} selected={responsableSel} onChange={setResponsableSel} />
+        <MultiSelectFilter label="Estado" options={ESTADOS.map(e => ({ value: e, label: e }))} selected={estadoSel} onChange={setEstadoSel} />
 
         {/* Ordenar + Agrupar + selector de vista — derecha */}
         <div className="ml-auto flex items-center gap-2">

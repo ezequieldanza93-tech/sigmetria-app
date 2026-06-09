@@ -95,13 +95,12 @@ export function MultiSelectFilter({
   }, [])
 
   const total = options.length
-  const selectedCount = options.reduce((acc, o) => acc + (selected.has(o.value) ? 1 : 0), 0)
-  const allSelected = total > 0 && selectedCount === total
-  const noneSelected = selectedCount === 0
-  const partial = !allSelected && !noneSelected
+  // Vacío = sin filtro = "Todos visible". Marcado = filtro activo.
+  const allSelected = selected.size === 0
+  const partial = selected.size > 0 && selected.size < total
 
-  // Resumen en el trigger: "Todos" si todas tildadas, sino "N/M".
-  const summary = allSelected || total === 0 ? 'Todos' : `${selectedCount}/${total}`
+  // Resumen: "Todos" cuando nada está marcado, "N/M" cuando hay filtro activo.
+  const summary = allSelected || total === 0 ? 'Todos' : `${selected.size}/${total}`
 
   useEffect(() => {
     if (!open) return
@@ -154,13 +153,13 @@ export function MultiSelectFilter({
     const next = new Set(selected)
     if (next.has(value)) next.delete(value)
     else next.add(value)
-    onChange(next)
+    // Si el usuario marcó TODO individualmente → auto-reset a vacío (= mostrar todos).
+    onChange(next.size === total ? new Set() : next)
   }
 
   function toggleAll() {
-    // Si están todas tildadas → deselecciona todas. Sino → selecciona todas.
-    if (allSelected) onChange(new Set())
-    else onChange(new Set(options.map((o) => o.value)))
+    // "Todos" siempre limpia la selección → vuelve al estado "sin filtro".
+    onChange(new Set())
   }
 
   return (
@@ -174,7 +173,7 @@ export function MultiSelectFilter({
         aria-controls={open ? panelId : undefined}
         className={cn(
           'inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors whitespace-nowrap',
-          !allSelected && total > 0
+          selected.size > 0
             ? 'border-brand-primary/40 bg-brand-primary/5 text-text-primary'
             : 'border-border-default bg-surface-base text-text-secondary hover:bg-surface-elevated',
           className,
@@ -214,11 +213,11 @@ export function MultiSelectFilter({
                   <input
                     ref={allCheckboxRef}
                     type="checkbox"
-                    checked={allSelected}
+                    checked={selected.size === 0}
                     onChange={toggleAll}
                     className="peer h-4 w-4 cursor-pointer appearance-none rounded border border-border-default checked:border-brand-primary checked:bg-brand-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
                   />
-                  {allSelected && (
+                  {selected.size === 0 && (
                     <Check className="pointer-events-none absolute h-3 w-3 text-white" aria-hidden="true" />
                   )}
                   {partial && (
