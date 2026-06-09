@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { descargarProtocoloPdf } from '@/lib/pdf/protocolo-pdf'
 import {
   crearMedicionIluminacion,
   sugerirValorRequerido,
@@ -26,7 +27,7 @@ import { Button } from '@/components/ui/button'
 import {
   Lightbulb, Building2, Grid3X3, FileText, Plus, Trash2,
   ChevronLeft, ChevronRight, CheckCircle, XCircle, Loader2,
-  Info, ArrowRight, Check, Sparkles, MapPin, Gauge, Camera,
+  Info, ArrowRight, Check, Sparkles, MapPin, Gauge, Camera, Download,
 } from 'lucide-react'
 
 // ── Props ────────────────────────────────────────────────────────────
@@ -87,6 +88,58 @@ const STEP_LABELS: Record<WizardStep, string> = {
 // Turnos disponibles para la selección múltiple del punto. El valor persistido en
 // `turno` (text) es el string unido de las opciones elegidas, ej. "Mañana, Tarde".
 const TURNO_OPCIONES = ['Mañana', 'Tarde', 'Noche'] as const
+
+// Etiquetas legibles de los tipos (para el PDF; la UI usa los <option> directos).
+const TIPO_LABEL = {
+  iluminacion: { natural: 'Natural', artificial: 'Artificial', mixta: 'Mixta', '': '—' } as Record<string, string>,
+  fuente: { incandescente: 'Incandescente', descarga: 'Descarga', mixta: 'Mixta', '': '—' } as Record<string, string>,
+  sistema: { general: 'General', localizada: 'Localizada', mixta: 'Mixta', '': '—' } as Record<string, string>,
+}
+
+const CIELO_LABEL: Record<string, string> = {
+  despejado: 'Despejado',
+  parcialmente_nublado: 'Parcialmente nublado',
+  nublado: 'Nublado',
+  lluvioso: 'Lluvioso',
+}
+
+// ── Datos consolidados para el PDF oficial (3 hojas SRT 84/2012) ───────
+interface PdfFilaGrilla {
+  n: number
+  sector: string
+  puesto: string
+  tipoIluminacion: string
+  tipoFuente: string
+  tipoSistema: string
+  eMedia: number | null
+  eMin: number | null
+  requerido: number | null
+  uniformidadOk: boolean | null
+  nivelOk: boolean | null
+}
+
+interface ProtocoloPdfData {
+  razonSocial: string | null
+  cuit: string | null
+  establecimiento: string | null
+  domicilio: string | null
+  localidad: string | null
+  provincia: string | null
+  instrumento: string | null
+  instrumentoSerie: string | null
+  fechaCalibracion: string | null
+  metodologia: string | null
+  fechaMedicion: string | null
+  horaInicio: string | null
+  horaFin: string | null
+  condiciones: CondicionesAtmosfericas
+  alturaCriterio: AlturaCriterio
+  observacionesGenerales: string | null
+  firmante: string | null
+  filasGrilla: PdfFilaGrilla[]
+  conclusiones: string | null
+  recomendaciones: string | null
+}
 
 /** Parsea el campo `turno` (string unido) a un set de opciones para el multi-select. */
 function turnosSeleccionados(turno: string): Set<string> {
@@ -239,6 +292,13 @@ export function MedicionIluminacionEjecutorModal({
   const [step, setStep] = useState<WizardStep>('datos')
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [descargandoPdf, setDescargandoPdf] = useState(false)
+
+  // Refs a las 3 hojas ocultas del protocolo oficial (DATOS / GRILLA / ANÁLISIS).
+  // Se renderizan fuera de pantalla y se rasterizan al descargar el PDF.
+  const hojaDatosRef = useRef<HTMLDivElement>(null)
+  const hojaGrillaRef = useRef<HTMLDivElement>(null)
+  const hojaAnalisisRef = useRef<HTMLDivElement>(null)
 
   // ── Catálogos ───────────────────────────────────────────────────────
   const [estCtx, setEstCtx] = useState<EstablecimientoCtx | null>(null)
@@ -648,10 +708,82 @@ export function MedicionIluminacionEjecutorModal({
     }
   }
 
+  // ── Descargar PDF oficial (3 hojas SRT 84/2012) ────────────────────
+  // Genera el protocolo client-side a partir de los datos en memoria, sin tocar
+  // storage (v1): rasteriza las 3 hojas ocultas y arma un A4 multipágina.
+  async function handleDescargarPdf() {
+    const hojas = [hojaDatosRef.current, hojaGrillaRef.current, hojaAnalisisRef.current]
+      .filter((h): h is HTMLDivElement => h != null)
+    if (hojas.length === 0) return
+    setDescargandoPdf(true)
+    setError(null)
+    try {
+      const nombre = `protocolo-iluminacion-${fechaMedicion || new Date().toISOString().slice(0, 10)}.pdf`
+      await descargarProtocoloPdf({ hojas }, nombre)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo generar el PDF.')
+    } finally {
+      setDescargandoPdf(false)
+    }
+  }
+
   const stepIdx = STEP_ORDER.indexOf(step)
   const punto = puntos[puntoActivo]
   const resumenActivo = punto ? resumenPunto(punto) : null
   const sectorActivo = punto ? sectores.find(s => s.id === punto.sector_id) : undefined
+
+  // ── Datos consolidados para el PDF oficial ─────────────────────────
+  // Se arma una sola vez con los datos en memoria del wizard. Los valores de
+  // cumplimiento salen de `resumenes` (que ya usa lib/medicion-iluminacion/calculos).
+  const pdfData: ProtocoloPdfData = useMemo(() => {
+    const instr = instrumentos.find(i => i.id === instrumentoId)
+    const cert = certificados.find(c => c.id === certificadoId)
+    const filasGrilla: PdfFilaGrilla[] = puntos.map((p, i) => {
+      const r = resumenes[i]
+      const sec = sectores.find(s => s.id === p.sector_id)
+      const pue = sec?.puestos.find(pu => pu.id === p.puesto_id)
+      const tieneDatos = r.celdasCargadas > 0
+      return {
+        n: i + 1,
+        sector: sec?.nombre ?? '—',
+        puesto: pue?.nombre ?? (p.turno || '—'),
+        tipoIluminacion: TIPO_LABEL.iluminacion[p.tipo_iluminacion] ?? '—',
+        tipoFuente: TIPO_LABEL.fuente[p.tipo_fuente] ?? '—',
+        tipoSistema: TIPO_LABEL.sistema[p.tipo_sistema] ?? '—',
+        eMedia: tieneDatos ? r.eMed : null,
+        eMin: tieneDatos ? r.eMin : null,
+        requerido: r.requerido,
+        uniformidadOk: r.uniformidadOk,
+        nivelOk: r.nivelOk,
+      }
+    })
+    return {
+      razonSocial: estCtx?.empresa_razon_social ?? null,
+      cuit: estCtx?.empresa_cuit ?? null,
+      establecimiento: estCtx?.nombre ?? null,
+      domicilio: estCtx?.domicilio ?? estCtx?.empresa_domicilio ?? null,
+      localidad: estCtx?.localidad ?? null,
+      provincia: estCtx?.provincia ?? null,
+      instrumento: instr ? [instr.marca, instr.modelo].filter(Boolean).join(' ') || null : null,
+      instrumentoSerie: instr?.numero_serie ?? null,
+      fechaCalibracion: cert?.fecha_emision ?? null,
+      metodologia: metodologia || null,
+      fechaMedicion: fechaMedicion || null,
+      horaInicio: horaInicio || null,
+      horaFin: horaFin || null,
+      condiciones,
+      alturaCriterio,
+      observacionesGenerales: observacionesGenerales || null,
+      firmante: firmante || null,
+      filasGrilla,
+      conclusiones: conclusiones || null,
+      recomendaciones: recomendaciones || null,
+    }
+  }, [
+    instrumentos, instrumentoId, certificados, certificadoId, puntos, resumenes,
+    sectores, estCtx, metodologia, fechaMedicion, horaInicio, horaFin, condiciones,
+    alturaCriterio, observacionesGenerales, firmante, conclusiones, recomendaciones,
+  ])
 
   // ── Render: post-guardado ───────────────────────────────────────────
   if (step === 'listo') {
@@ -670,13 +802,28 @@ export function MedicionIluminacionEjecutorModal({
               )}
             </p>
           </div>
-          <p className="text-xs text-text-tertiary text-center">
-            La descarga del PDF oficial estará disponible próximamente.
-          </p>
-          <div className="flex justify-center pt-2">
+          {error && (
+            <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-3 py-2">{error}</div>
+          )}
+          <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3 justify-center pt-2">
+            <Button type="button" onClick={handleDescargarPdf} disabled={descargandoPdf}>
+              {descargandoPdf ? (
+                <><Loader2 size={14} className="inline mr-1.5 animate-spin" /> Generando…</>
+              ) : (
+                <><Download size={14} className="inline mr-1.5" /> Descargar PDF</>
+              )}
+            </Button>
             <Button type="button" variant="secondary" onClick={onClose}>Cerrar</Button>
           </div>
         </div>
+
+        {/* Hojas ocultas del PDF oficial (se rasterizan al descargar). */}
+        <ProtocoloIluminacionHojas
+          data={pdfData}
+          hojaDatosRef={hojaDatosRef}
+          hojaGrillaRef={hojaGrillaRef}
+          hojaAnalisisRef={hojaAnalisisRef}
+        />
       </Modal>
     )
   }
@@ -1472,12 +1619,29 @@ export function MedicionIluminacionEjecutorModal({
               Continuar <ChevronRight size={14} />
             </Button>
           ) : (
-            <Button type="button" onClick={handleGuardar} disabled={saving}>
-              {saving ? <><Loader2 size={14} className="animate-spin" /> Guardando…</> : 'Guardar protocolo'}
-            </Button>
+            <>
+              <Button type="button" onClick={handleGuardar} disabled={saving || descargandoPdf}>
+                {saving ? <><Loader2 size={14} className="animate-spin" /> Guardando…</> : 'Guardar protocolo'}
+              </Button>
+              <Button type="button" variant="secondary" onClick={handleDescargarPdf} disabled={saving || descargandoPdf}>
+                {descargandoPdf ? (
+                  <><Loader2 size={14} className="animate-spin" /> Generando…</>
+                ) : (
+                  <><Download size={14} /> Descargar PDF</>
+                )}
+              </Button>
+            </>
           )}
           <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>Cancelar</Button>
         </div>
+
+        {/* Hojas ocultas del PDF oficial (se rasterizan al descargar). */}
+        <ProtocoloIluminacionHojas
+          data={pdfData}
+          hojaDatosRef={hojaDatosRef}
+          hojaGrillaRef={hojaGrillaRef}
+          hojaAnalisisRef={hojaAnalisisRef}
+        />
       </div>
     </Modal>
   )
@@ -1542,6 +1706,233 @@ function ProgressRing({ pct, level }: { pct: number; level: Level }) {
       <div className="absolute inset-0 flex items-center justify-center">
         {pct >= 100 ? <Check className="text-success" size={20} strokeWidth={2.5} /> : <span className={`text-sm font-bold tabular-nums ${level.color}`}>{pct}%</span>}
       </div>
+    </div>
+  )
+}
+
+// ── Hojas ocultas del PDF oficial (3 hojas SRT 84/2012) ─────────────────
+//
+// Maqueta autocontenida con estilos INLINE (no tokens de Tailwind): html2canvas
+// rasteriza mejor colores concretos, y el protocolo debe verse igual sin importar
+// el tema de la app. Cada hoja es un nodo A4 (≈794px = 210mm @96dpi) fuera de
+// pantalla (position:fixed, left:-99999px) para que html2canvas pueda medirlo.
+//
+// REUTILIZACIÓN: este es el patrón de referencia para Ruido / PAT / Carga de
+// Fuego / Carga Térmica. Para cada protocolo se cambia el contenido de las hojas
+// (los componentes Hoja*), pero el shell A4 (`HojaA4`), la tipografía y los
+// helpers de tabla (`pdfCell`, `pdfHeaderCell`) se reusan tal cual.
+
+const PDF_PAGE_WIDTH = 794 // px ≈ 210mm @ 96dpi
+const PDF_FONT = 'Helvetica, Arial, sans-serif'
+const PDF_INK = '#1a1a1a'
+const PDF_MUTED = '#555555'
+const PDF_BORDER = '#999999'
+const PDF_OK = '#15803d'
+const PDF_NO = '#b91c1c'
+
+function dash(v: string | number | null | undefined): string {
+  if (v == null || v === '') return '—'
+  return String(v)
+}
+
+function HojaA4({
+  hojaRef,
+  titulo,
+  subtitulo,
+  children,
+}: {
+  hojaRef: React.RefObject<HTMLDivElement | null>
+  titulo: string
+  subtitulo: string
+  children: React.ReactNode
+}) {
+  return (
+    <div
+      ref={hojaRef}
+      style={{
+        width: PDF_PAGE_WIDTH,
+        minHeight: 1123, // ≈ 297mm @ 96dpi
+        backgroundColor: '#ffffff',
+        color: PDF_INK,
+        fontFamily: PDF_FONT,
+        fontSize: 12,
+        lineHeight: 1.4,
+        padding: 48,
+        boxSizing: 'border-box',
+      }}
+    >
+      <div style={{ borderBottom: `2px solid ${PDF_INK}`, paddingBottom: 8, marginBottom: 16 }}>
+        <p style={{ margin: 0, fontSize: 11, letterSpacing: 1, color: PDF_MUTED, textTransform: 'uppercase' }}>
+          Protocolo de Medición de Iluminación · SRT 84/2012
+        </p>
+        <h1 style={{ margin: '4px 0 0', fontSize: 18, fontWeight: 700 }}>{titulo}</h1>
+        <p style={{ margin: '2px 0 0', fontSize: 12, color: PDF_MUTED }}>{subtitulo}</p>
+      </div>
+      {children}
+    </div>
+  )
+}
+
+function PdfSeccion({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <h2 style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: PDF_INK }}>{titulo}</h2>
+      {children}
+    </div>
+  )
+}
+
+function PdfCampo({ label, value }: { label: string; value: string | null }) {
+  return (
+    <div style={{ display: 'flex', gap: 6, padding: '3px 0', borderBottom: `1px solid #eeeeee` }}>
+      <span style={{ minWidth: 150, color: PDF_MUTED, fontSize: 11 }}>{label}</span>
+      <span style={{ flex: 1, fontWeight: 500 }}>{dash(value)}</span>
+    </div>
+  )
+}
+
+function PdfFirma({ firmante }: { firmante: string | null }) {
+  return (
+    <div style={{ marginTop: 40 }}>
+      <div style={{ width: 280, borderTop: `1px solid ${PDF_INK}`, paddingTop: 6 }}>
+        <p style={{ margin: 0, fontWeight: 600 }}>{dash(firmante)}</p>
+        <p style={{ margin: '2px 0 0', fontSize: 10, color: PDF_MUTED }}>Firma · Aclaración · Matrícula / Registro</p>
+      </div>
+    </div>
+  )
+}
+
+function ProtocoloIluminacionHojas({
+  data,
+  hojaDatosRef,
+  hojaGrillaRef,
+  hojaAnalisisRef,
+}: {
+  data: ProtocoloPdfData
+  hojaDatosRef: React.RefObject<HTMLDivElement | null>
+  hojaGrillaRef: React.RefObject<HTMLDivElement | null>
+  hojaAnalisisRef: React.RefObject<HTMLDivElement | null>
+}) {
+  const subtitulo = [data.establecimiento, data.razonSocial].filter(Boolean).join(' · ') || 'Establecimiento'
+  const horario = data.horaInicio && data.horaFin
+    ? `${data.horaInicio} – ${data.horaFin}`
+    : (data.horaInicio || data.horaFin || null)
+  const cond = data.condiciones
+  const condTexto = [
+    cond.cielo ? CIELO_LABEL[cond.cielo] ?? cond.cielo : null,
+    cond.temperatura ? `${cond.temperatura} °C` : null,
+    cond.humedad ? `${cond.humedad} % HR` : null,
+    cond.observaciones || null,
+  ].filter(Boolean).join(' · ') || null
+
+  const th: React.CSSProperties = {
+    border: `1px solid ${PDF_BORDER}`,
+    padding: '5px 4px',
+    fontSize: 9.5,
+    fontWeight: 700,
+    backgroundColor: '#f0f0f0',
+    textAlign: 'center',
+    verticalAlign: 'middle',
+  }
+  const td: React.CSSProperties = {
+    border: `1px solid ${PDF_BORDER}`,
+    padding: '4px',
+    fontSize: 10,
+    textAlign: 'center',
+    verticalAlign: 'middle',
+  }
+
+  return (
+    <div
+      aria-hidden
+      style={{ position: 'fixed', left: -99999, top: 0, width: PDF_PAGE_WIDTH, pointerEvents: 'none' }}
+    >
+      {/* ── HOJA 1: DATOS ─────────────────────────────────────────── */}
+      <HojaA4 hojaRef={hojaDatosRef} titulo="Hoja 1 — Datos del relevamiento" subtitulo={subtitulo}>
+        <PdfSeccion titulo="Empresa y establecimiento">
+          <PdfCampo label="Razón social" value={data.razonSocial} />
+          <PdfCampo label="CUIT" value={data.cuit} />
+          <PdfCampo label="Establecimiento" value={data.establecimiento} />
+          <PdfCampo label="Domicilio" value={data.domicilio} />
+          <PdfCampo label="Localidad" value={data.localidad} />
+          <PdfCampo label="Provincia" value={data.provincia} />
+        </PdfSeccion>
+
+        <PdfSeccion titulo="Instrumental">
+          <PdfCampo label="Instrumento (marca/modelo)" value={data.instrumento} />
+          <PdfCampo label="N° de serie" value={data.instrumentoSerie} />
+          <PdfCampo label="Fecha de calibración" value={data.fechaCalibracion} />
+          <PdfCampo label="Metodología" value={data.metodologia} />
+        </PdfSeccion>
+
+        <PdfSeccion titulo="Condiciones de la medición">
+          <PdfCampo label="Fecha de medición" value={data.fechaMedicion} />
+          <PdfCampo label="Horario" value={horario} />
+          <PdfCampo label="Condiciones atmosféricas" value={condTexto} />
+          <PdfCampo
+            label="Criterio de altura"
+            value={data.alturaCriterio === 'piso' ? 'Desde el piso' : 'Desde el plano de trabajo'}
+          />
+          <PdfCampo label="Observaciones" value={data.observacionesGenerales} />
+        </PdfSeccion>
+
+        <PdfFirma firmante={data.firmante} />
+      </HojaA4>
+
+      {/* ── HOJA 2: GRILLA ────────────────────────────────────────── */}
+      <HojaA4 hojaRef={hojaGrillaRef} titulo="Hoja 2 — Grilla de puntos de muestreo" subtitulo={subtitulo}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr>
+              <th style={{ ...th, width: 24 }}>N°</th>
+              <th style={th}>Sector</th>
+              <th style={th}>Sección / Puesto</th>
+              <th style={th}>Iluminación</th>
+              <th style={th}>Fuente</th>
+              <th style={th}>Sistema</th>
+              <th style={th}>Uniformidad<br />(E mín ≥ E media/2)</th>
+              <th style={th}>E media<br />(lux)</th>
+              <th style={th}>Requerido<br />(lux)</th>
+              <th style={th}>Cumple</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.filasGrilla.map(f => (
+              <tr key={f.n}>
+                <td style={td}>{f.n}</td>
+                <td style={{ ...td, textAlign: 'left' }}>{f.sector}</td>
+                <td style={{ ...td, textAlign: 'left' }}>{f.puesto}</td>
+                <td style={td}>{f.tipoIluminacion}</td>
+                <td style={td}>{f.tipoFuente}</td>
+                <td style={td}>{f.tipoSistema}</td>
+                <td style={{ ...td, color: f.uniformidadOk == null ? PDF_MUTED : f.uniformidadOk ? PDF_OK : PDF_NO, fontWeight: 600 }}>
+                  {f.uniformidadOk == null ? '—' : f.uniformidadOk ? 'Cumple' : 'No cumple'}
+                </td>
+                <td style={td}>{f.eMedia != null ? f.eMedia.toFixed(1) : '—'}</td>
+                <td style={td}>{f.requerido != null ? f.requerido : '—'}</td>
+                <td style={{ ...td, color: f.nivelOk == null ? PDF_MUTED : f.nivelOk ? PDF_OK : PDF_NO, fontWeight: 600 }}>
+                  {f.nivelOk == null ? '—' : f.nivelOk ? 'Sí' : 'No'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p style={{ marginTop: 10, fontSize: 9, color: PDF_MUTED }}>
+          Uniformidad conforme cuando E mín ≥ E media / 2. Nivel conforme cuando E media ≥ valor requerido.
+          Cálculos según SRT 84/2012 (Dec. 351/79 Anexo IV).
+        </p>
+      </HojaA4>
+
+      {/* ── HOJA 3: ANÁLISIS ──────────────────────────────────────── */}
+      <HojaA4 hojaRef={hojaAnalisisRef} titulo="Hoja 3 — Análisis de resultados" subtitulo={subtitulo}>
+        <PdfSeccion titulo="Conclusiones">
+          <p style={{ margin: 0, whiteSpace: 'pre-wrap', minHeight: 60 }}>{dash(data.conclusiones)}</p>
+        </PdfSeccion>
+        <PdfSeccion titulo="Recomendaciones">
+          <p style={{ margin: 0, whiteSpace: 'pre-wrap', minHeight: 60 }}>{dash(data.recomendaciones)}</p>
+        </PdfSeccion>
+        <PdfFirma firmante={data.firmante} />
+      </HojaA4>
     </div>
   )
 }
