@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { MultiSelectFilter, type MultiSelectOption } from '@/components/ui/multi-select-filter'
+import { MultiSelectFilter } from '@/components/ui/multi-select-filter'
 
 export interface SeguimientoAggregateRow {
   id: string

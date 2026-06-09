@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Play, Search, List, CalendarDays, Columns, ArrowUpDown, Layers, Plus, X, ChevronRight, ChevronDown } from 'lucide-react'
-import { MultiSelectFilter, type MultiSelectOption } from '@/components/ui/multi-select-filter'
+import { MultiSelectFilter } from '@/components/ui/multi-select-filter'
 import { calcularEstadoGestion } from '@/lib/types'
 import type { EstadoGestion } from '@/lib/types'
 
