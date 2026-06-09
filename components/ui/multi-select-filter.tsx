@@ -1,9 +1,14 @@
 'use client'
 
-import { useEffect, useId, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Check, ChevronDown, Minus } from 'lucide-react'
 import { cn } from '@/lib/utils'
+
+/** Separación entre el borde inferior del trigger y el panel. */
+const GAP = 6
+/** Margen mínimo respecto a los bordes del viewport al hacer clamp. */
+const VIEWPORT_MARGIN = 8
 
 export interface MultiSelectOption {
   value: string
@@ -52,6 +57,43 @@ export function MultiSelectFilter({
   const allCheckboxRef = useRef<HTMLInputElement>(null)
   const panelId = useId()
 
+  /**
+   * Calcula la posición del panel ANCLADO AL BORDE INFERIOR del trigger.
+   * - Por defecto abre hacia abajo: `top = triggerRect.bottom + GAP`.
+   * - Solo hace FLIP hacia arriba si no entra abajo y hay más espacio arriba.
+   * - `left` se clampa al viewport para que el panel no se salga de pantalla.
+   */
+  const recalc = useCallback(() => {
+    const trigger = triggerRef.current
+    if (!trigger) return
+    const rect = trigger.getBoundingClientRect()
+    const vw = window.innerWidth
+    const vh = window.innerHeight
+
+    // Ancho real del panel (mínimo 220). Si todavía no se montó, estimamos con el trigger.
+    const panelWidth = Math.max(dropdownRef.current?.offsetWidth ?? 0, rect.width, 220)
+    // Alto real del panel una vez montado (acotado por el max-h-80 del CSS = 320px).
+    const panelHeight = dropdownRef.current?.offsetHeight ?? 0
+
+    const spaceBelow = vh - rect.bottom
+    const spaceAbove = rect.top
+    // Flip hacia arriba SOLO si no hay lugar abajo para el panel y arriba hay más.
+    const flipUp =
+      panelHeight > 0 &&
+      spaceBelow < panelHeight + GAP &&
+      spaceAbove > spaceBelow
+
+    const top = flipUp ? rect.top - panelHeight - GAP : rect.bottom + GAP
+
+    // Clamp horizontal: arranca alineado al borde izquierdo del trigger.
+    let left = rect.left
+    const maxLeft = vw - panelWidth - VIEWPORT_MARGIN
+    if (left > maxLeft) left = maxLeft
+    if (left < VIEWPORT_MARGIN) left = VIEWPORT_MARGIN
+
+    setPos({ top, left, width: rect.width })
+  }, [])
+
   const total = options.length
   const selectedCount = options.reduce((acc, o) => acc + (selected.has(o.value) ? 1 : 0), 0)
   const allSelected = total > 0 && selectedCount === total
@@ -75,13 +117,25 @@ export function MultiSelectFilter({
     function handleKey(e: KeyboardEvent) {
       if (e.key === 'Escape') setOpen(false)
     }
+    // Recalcular si la página hace scroll (capture: alcanza scroll de cualquier
+    // contenedor) o cambia el tamaño del viewport, así el panel sigue al trigger.
     document.addEventListener('mousedown', handlePointer)
     document.addEventListener('keydown', handleKey)
+    window.addEventListener('scroll', recalc, true)
+    window.addEventListener('resize', recalc)
     return () => {
       document.removeEventListener('mousedown', handlePointer)
       document.removeEventListener('keydown', handleKey)
+      window.removeEventListener('scroll', recalc, true)
+      window.removeEventListener('resize', recalc)
     }
-  }, [open])
+  }, [open, recalc])
+
+  // Tras montar el panel ya conocemos su alto real → reposicionar para decidir
+  // el flip y el clamp con medidas exactas (evita el "salto" inicial).
+  useLayoutEffect(() => {
+    if (open) recalc()
+  }, [open, recalc, total])
 
   // El estado "indeterminate" del checkbox "Todos" solo se setea por DOM.
   useEffect(() => {
@@ -89,9 +143,9 @@ export function MultiSelectFilter({
   }, [partial, open])
 
   function handleToggleOpen() {
-    if (!open && triggerRef.current) {
-      const rect = triggerRef.current.getBoundingClientRect()
-      setPos({ top: rect.bottom + 4, left: rect.left, width: rect.width })
+    if (!open) {
+      // Posición inicial (hacia abajo). useLayoutEffect la refina con el alto real.
+      recalc()
     }
     setOpen((v) => !v)
   }

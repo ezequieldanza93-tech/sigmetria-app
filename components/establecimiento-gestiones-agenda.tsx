@@ -10,8 +10,7 @@ import { calcularEstadoGestion } from '@/lib/types'
 import type { EstadoGestion, Gestion, CategoriaGestion, GrupoGestion, RegistroGestion, Riesgo } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
-import { MultiFilter } from '@/components/ui/multi-filter'
-import { ViewSelector } from '@/components/ui/view-selector'
+import { MultiSelectFilter } from '@/components/ui/multi-select-filter'
 import {
   Camera, BarChart3, FileCheck,
   ClipboardCheck, GraduationCap, Heart, FileText, AlertTriangle,
@@ -2560,75 +2559,7 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
         </button>
       </div>
 
-      {/* Month tiles */}
-      <div className="grid grid-cols-12 gap-1.5 mb-3">
-        {MONTHS.map((m, i) => {
-          const isSelected = selectedMonths.has(i)
-          return (
-            <button
-              key={m}
-              onClick={() => setSelectedMonths(prev => {
-                const next = new Set(prev)
-                if (next.has(i)) next.delete(i)
-                else next.add(i)
-                return next
-              })}
-              className={`rounded-lg py-2 text-center transition-colors ${
-                isSelected ? 'bg-sig-500 text-white' : 'bg-surface-elevated text-text-secondary hover:bg-surface-sunken'
-              }`}
-            >
-              <div className="text-xs font-medium">{m}</div>
-              <div className="text-xs opacity-80">{monthCounts[i]}</div>
-            </button>
-          )
-        })}
-      </div>
-
-      {/* Month quick-select buttons */}
-      <div className="flex gap-2 mb-4 flex-wrap">
-        <button
-          onClick={() => setSelectedMonths(new Set([new Date().getMonth()]))}
-          className={`text-xs border rounded-lg px-3 py-1.5 transition-colors ${
-            selectedMonths.size === 1 && selectedMonths.has(new Date().getMonth())
-              ? 'bg-success-bg border-green-300 text-success'
-              : 'border-border-subtle text-text-secondary hover:bg-surface-base'
-          }`}
-        >
-          Mes actual
-        </button>
-        <button
-          onClick={() => setSelectedMonths(new Set([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]))}
-          className={`text-xs border rounded-lg px-3 py-1.5 transition-colors ${
-            selectedMonths.size === 12
-              ? 'bg-success-bg border-green-300 text-success'
-              : 'border-border-subtle text-text-secondary hover:bg-surface-base'
-          }`}
-        >
-          Todos los meses
-        </button>
-        <button
-          onClick={() => setSelectedMonths(new Set())}
-          className={`text-xs border rounded-lg px-3 py-1.5 transition-colors ${
-            selectedMonths.size === 0
-              ? 'bg-success-bg border-green-300 text-success'
-              : 'border-border-subtle text-text-secondary hover:bg-surface-base'
-          }`}
-        >
-          Ninguno
-        </button>
-        <button
-          onClick={() => setSelectedMonths(prev => {
-            const all = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
-            const inverted = new Set(all.filter(m => !prev.has(m)))
-            return inverted
-          })}
-          className="text-xs border border-border-subtle rounded-lg px-3 py-1.5 text-text-secondary hover:bg-surface-base"
-        >
-          Invertir selección
-        </button>
-      </div>
-
-      {/* Filter row */}
+      {/* Filtros + selector de vista — fila horizontal arriba (matchea Gestiones a nivel consultora) */}
       <div className="flex items-center gap-1.5 mb-4 overflow-x-auto pb-0.5 shrink-0">
         <input
           type="text"
@@ -2638,7 +2569,7 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
           className="text-xs border border-border-subtle rounded-lg px-2 py-1.5 bg-surface-base text-text-secondary focus:outline-none w-[140px] shrink-0"
         />
         {gruposFiltro.length > 0 && (
-          <MultiFilter
+          <MultiSelectFilter
             label="Grupo"
             options={gruposFiltro.map(g => ({ value: g, label: g }))}
             selected={filterGrupo ?? new Set(gruposFiltro)}
@@ -2646,7 +2577,7 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
           />
         )}
         {categoriasFiltro.length > 0 && (
-          <MultiFilter
+          <MultiSelectFilter
             label="Categoría"
             options={categoriasFiltro.map(c => ({ value: c, label: c }))}
             selected={filterCategoria ?? new Set(categoriasFiltro)}
@@ -2654,14 +2585,14 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
           />
         )}
         {responsablesFiltro.length > 0 && (
-          <MultiFilter
+          <MultiSelectFilter
             label="Responsable"
             options={responsablesFiltro.map(r => ({ value: r, label: r }))}
             selected={filterResponsable ?? new Set(responsablesFiltro)}
             onChange={setFilterResponsable}
           />
         )}
-        <MultiFilter
+        <MultiSelectFilter
           label="Estado"
           options={[
             { value: 'Planificado', label: 'Planificado' },
@@ -2731,20 +2662,101 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
             )}
           </div>
 
-          <ViewSelector
-            options={[
-              { value: 'tabla' as ViewMode,      label: 'Tabla',      icon: List },
-              { value: 'calendario' as ViewMode, label: 'Calendario', icon: CalendarDays },
-              { value: 'kanban' as ViewMode,     label: 'Kanban',     icon: Kanban },
-            ]}
-            value={viewMode}
-            onChange={setViewMode}
-          />
+          {/* Selector de vista — botones inline (estilo Gestiones a nivel consultora). Desktop only. */}
+          <div className="hidden md:flex items-center gap-0.5 border border-border-default rounded-lg p-0.5 bg-surface-base">
+            {([
+              { mode: 'tabla' as ViewMode, icon: List, label: 'Tabla' },
+              { mode: 'calendario' as ViewMode, icon: CalendarDays, label: 'Calendario' },
+              { mode: 'kanban' as ViewMode, icon: Kanban, label: 'Kanban' },
+            ]).map(({ mode, icon: Icon, label }) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setViewMode(mode)}
+                title={label}
+                aria-label={label}
+                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+                  viewMode === mode ? 'bg-brand-muted text-brand-primary' : 'text-text-tertiary hover:text-text-primary hover:bg-surface-elevated'
+                }`}
+              >
+                <Icon size={14} />
+                <span className="hidden sm:inline">{label}</span>
+              </button>
+            ))}
+          </div>
 
           <span className="text-xs text-text-tertiary pl-1">
             {registros !== null ? `${filteredRegistros.length} gestiones` : ''}
           </span>
         </div>
+      </div>
+
+      {/* Month tiles */}
+      <div className="grid grid-cols-12 gap-1.5 mb-3">
+        {MONTHS.map((m, i) => {
+          const isSelected = selectedMonths.has(i)
+          return (
+            <button
+              key={m}
+              onClick={() => setSelectedMonths(prev => {
+                const next = new Set(prev)
+                if (next.has(i)) next.delete(i)
+                else next.add(i)
+                return next
+              })}
+              className={`rounded-lg py-2 text-center transition-colors ${
+                isSelected ? 'bg-sig-500 text-white' : 'bg-surface-elevated text-text-secondary hover:bg-surface-sunken'
+              }`}
+            >
+              <div className="text-xs font-medium">{m}</div>
+              <div className="text-xs opacity-80">{monthCounts[i]}</div>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Month quick-select buttons */}
+      <div className="flex gap-2 mb-4 flex-wrap">
+        <button
+          onClick={() => setSelectedMonths(new Set([new Date().getMonth()]))}
+          className={`text-xs border rounded-lg px-3 py-1.5 transition-colors ${
+            selectedMonths.size === 1 && selectedMonths.has(new Date().getMonth())
+              ? 'bg-success-bg border-green-300 text-success'
+              : 'border-border-subtle text-text-secondary hover:bg-surface-base'
+          }`}
+        >
+          Mes actual
+        </button>
+        <button
+          onClick={() => setSelectedMonths(new Set([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]))}
+          className={`text-xs border rounded-lg px-3 py-1.5 transition-colors ${
+            selectedMonths.size === 12
+              ? 'bg-success-bg border-green-300 text-success'
+              : 'border-border-subtle text-text-secondary hover:bg-surface-base'
+          }`}
+        >
+          Todos los meses
+        </button>
+        <button
+          onClick={() => setSelectedMonths(new Set())}
+          className={`text-xs border rounded-lg px-3 py-1.5 transition-colors ${
+            selectedMonths.size === 0
+              ? 'bg-success-bg border-green-300 text-success'
+              : 'border-border-subtle text-text-secondary hover:bg-surface-base'
+          }`}
+        >
+          Ninguno
+        </button>
+        <button
+          onClick={() => setSelectedMonths(prev => {
+            const all = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+            const inverted = new Set(all.filter(m => !prev.has(m)))
+            return inverted
+          })}
+          className="text-xs border border-border-subtle rounded-lg px-3 py-1.5 text-text-secondary hover:bg-surface-base"
+        >
+          Invertir selección
+        </button>
       </div>
 
       {/* Gestiones view */}
