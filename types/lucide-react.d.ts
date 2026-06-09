@@ -61,6 +61,7 @@ declare module 'lucide-react' {
   export const FileCheck: Icon
   export const FileSignature: Icon
   export const FileText: Icon
+  export const Flame: Icon
   export const Gauge: Icon
   export const Globe: Icon
   export const GraduationCap: Icon
