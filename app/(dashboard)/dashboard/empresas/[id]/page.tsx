@@ -9,7 +9,6 @@ import { EmpresaRightPanel } from '@/components/empresa-right-panel'
 import { EmpresaFichaHero } from '@/components/empresa-ficha-hero'
 import { EmpresaFichaEstablecimientos } from '@/components/empresa-ficha-establecimientos'
 import { EmpresaMapaEstablecimientos } from '@/components/empresa-mapa-establecimientos'
-import { EmpresaShell } from '@/components/empresa/empresa-shell'
 import { AnalyticsDashboard } from '@/components/analytics/real/analytics-dashboard'
 import { ExportEmpresaButton } from '@/components/export/export-empresa-button'
 import { GestionesAggregate } from '@/components/aggregate/gestiones-aggregate'
@@ -131,13 +130,8 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
   const gestionesRows = section === 'gestiones' ? await getGestionesAggregate(estContext) : []
   const seguimientoRows = section === 'seguimiento' ? await getSeguimientoAggregate(estContext) : []
 
-  const sidebarEstablecimientos = establecimientos.map(e => ({
-    id: e.id as string,
-    nombre: e.nombre as string,
-  }))
-
   return (
-    <EmpresaShell empresaId={id} establecimientos={sidebarEstablecimientos}>
+    <>
       {section === 'establecimientos' && (
         <div className="p-6">
           <h1 className="text-xl font-bold text-text-primary mb-4">{empresa.razon_social}</h1>
@@ -308,6 +302,6 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
           </div>
         </div>
       )}
-    </EmpresaShell>
+    </>
   )
 }
