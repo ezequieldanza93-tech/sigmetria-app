@@ -178,16 +178,9 @@ export async function createPersonaRapida(
   if (dup.exacto) return { success: false, error: 'Ya existe una persona con el mismo nombre, apellido y DNI.' }
   if (dup.mismoNombreApellido) return { success: false, error: 'Ya existe una persona con el mismo nombre y apellido. Verificá antes de duplicar.' }
 
-  const { data: membership } = await supabase
-    .from('consultoras_members')
-    .select('consultora_id')
-    .eq('user_id', user.id)
-    .eq('is_active', true)
-    .maybeSingle()
-
   const { data: persona, error } = await supabase
     .from('personas_directorio')
-    .insert({ nombre, apellido, tipo_id, dni, created_in_consultora_id: membership?.consultora_id || null })
+    .insert({ nombre, apellido, tipo_id, dni })
     .select('id, nombre, apellido')
     .single()
 
