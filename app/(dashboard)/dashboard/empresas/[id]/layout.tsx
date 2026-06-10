@@ -15,24 +15,18 @@ export default async function EmpresaLegacyLayout({ children, params }: Props) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: empresa }, { data: estData }] = await Promise.all([
-    supabase.from('empresas').select('razon_social').eq('id', id).single(),
-    supabase
-      .from('establecimientos')
-      .select('id, nombre')
-      .eq('empresa_id', id)
-      .neq('status', 'cancelled')
-      .order('nombre'),
-  ])
+  const { data: empresa } = await supabase
+    .from('empresas')
+    .select('razon_social')
+    .eq('id', id)
+    .single()
 
   if (!empresa) notFound()
-
-  const establecimientos = (estData ?? []) as { id: string; nombre: string }[]
 
   return (
     <EmpresaProvider empresaId={id} razonSocial={empresa.razon_social}>
       <Suspense fallback={<div className="lg:pl-14" />}>
-        <EmpresaShell empresaId={id} establecimientos={establecimientos}>
+        <EmpresaShell empresaId={id}>
           {children}
         </EmpresaShell>
       </Suspense>

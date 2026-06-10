@@ -7,14 +7,13 @@ import type { SectionItem } from '@/components/layout/sections-sidebar'
 
 interface EmpresaShellProps {
   empresaId: string
-  establecimientos: { id: string; nombre: string }[]
   children: React.ReactNode
 }
 
 const SECTIONS = ['establecimientos', 'gestiones', 'seguimiento', 'dashboard', 'ficha'] as const
 type Section = (typeof SECTIONS)[number]
 
-export function EmpresaShell({ empresaId, establecimientos, children }: EmpresaShellProps) {
+export function EmpresaShell({ empresaId, children }: EmpresaShellProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
@@ -39,12 +38,6 @@ export function EmpresaShell({ empresaId, establecimientos, children }: EmpresaS
       label: 'Establecimientos',
       icon: Building2,
       href: baseUrl,
-      defaultOpen: true,
-      children: establecimientos.map(e => ({
-        id: e.id,
-        label: e.nombre,
-        href: `${baseUrl}/establecimientos/${e.id}`,
-      })),
     },
     {
       id: 'ficha',

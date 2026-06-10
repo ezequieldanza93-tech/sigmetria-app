@@ -6,14 +6,13 @@ import { SectionsShell } from '@/components/layout/sections-shell'
 import type { SectionItem } from '@/components/layout/sections-sidebar'
 
 interface ConsultoraShellProps {
-  empresas: { id: string; razon_social: string }[]
   children: React.ReactNode
 }
 
 const SECTIONS = ['empresas', 'ficha', 'gestiones', 'seguimiento', 'dashboard'] as const
 type Section = (typeof SECTIONS)[number]
 
-export function ConsultoraShell({ empresas, children }: ConsultoraShellProps) {
+export function ConsultoraShell({ children }: ConsultoraShellProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
@@ -34,12 +33,6 @@ export function ConsultoraShell({ empresas, children }: ConsultoraShellProps) {
       label: 'Empresas',
       icon: Building2,
       href: baseUrl,
-      defaultOpen: true,
-      children: empresas.map(e => ({
-        id: e.id,
-        label: e.razon_social,
-        href: `${baseUrl}/${e.id}`,
-      })),
     },
     {
       id: 'ficha',
