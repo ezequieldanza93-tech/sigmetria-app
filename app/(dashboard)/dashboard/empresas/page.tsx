@@ -1,8 +1,6 @@
-import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { EmpresasList } from '@/components/empresas-list'
-import { ConsultoraShell } from '@/components/consultora/consultora-shell'
 import { GestionesAggregate } from '@/components/aggregate/gestiones-aggregate'
 import { SeguimientoAggregate } from '@/components/aggregate/seguimiento-aggregate'
 import { AnalyticsDashboard } from '@/components/analytics/real/analytics-dashboard'
@@ -93,8 +91,7 @@ export default async function EmpresasPage({ searchParams }: Props) {
   const puedeEditar = canWrite(effective.effectiveUserRole, effective.effectiveSystemRole)
 
   return (
-    <Suspense fallback={<div className="lg:pl-14" />}>
-    <ConsultoraShell empresas={sidebarEmpresas}>
+    <>
       {section === 'empresas' && <EmpresasList />}
 
       {section === 'ficha' && consultora && (
@@ -125,7 +122,6 @@ export default async function EmpresasPage({ searchParams }: Props) {
           />
         </div>
       )}
-    </ConsultoraShell>
-    </Suspense>
+    </>
   )
 }

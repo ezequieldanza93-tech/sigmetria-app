@@ -12,8 +12,9 @@ interface Props {
 // o el ConsultoraShell directamente — no deben recibir el sidebar global
 // para evitar duplicados. Todo lo demás bajo /dashboard sí lo recibe.
 function ownsItsSidebar(pathname: string): boolean {
-  // /dashboard/empresas y subrutas (incluye [id] y establecimientos) ya tienen shell propio
-  return pathname === '/dashboard/empresas' || pathname.startsWith('/dashboard/empresas/')
+  // Solo las rutas con ID de empresa (y sus subrutas) tienen shell propio.
+  // /dashboard/empresas (lista) usa el ConsultoraShell del layout.
+  return pathname.startsWith('/dashboard/empresas/')
 }
 
 export function GlobalSectionsSidebar({ empresas, children }: Props) {
