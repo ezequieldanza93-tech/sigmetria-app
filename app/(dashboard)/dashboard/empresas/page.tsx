@@ -43,8 +43,6 @@ export default async function EmpresasPage({ searchParams }: Props) {
   }
   const empresas = (empresasRaw ?? []) as unknown as EmpresaWithEst[]
 
-  const sidebarEmpresas = empresas.map(e => ({ id: e.id, razon_social: e.razon_social }))
-
   const estContext = empresas.flatMap(e =>
     (e.establecimientos ?? []).map(es => ({
       id: es.id,
