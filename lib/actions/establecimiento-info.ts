@@ -85,20 +85,39 @@ export async function createDenuncia(
   const consultoraId = await getConsultoraId(supabase, user.id)
   if (!consultoraId) return { success: false, error: 'Sin consultora asignada' }
 
+  const { data: est } = await supabase
+    .from('establecimientos')
+    .select('empresa_id')
+    .eq('id', establecimientoId)
+    .maybeSingle()
+  if (!est) return { success: false, error: 'Establecimiento no encontrado' }
+
   const files = collectFiles(formData)
   const adjuntosUrls = files.length > 0
     ? await uploadFiles(supabase, consultoraId, 'denuncias', files)
     : []
 
-  const { error } = await supabase.from('establecimientos_denuncias').insert({
-    establecimiento_id: establecimientoId,
-    fecha,
-    descripcion,
-    persona_id: persona_id ?? null,
-    adjuntos_urls: adjuntosUrls.length > 0 ? adjuntosUrls : null,
-  })
+  const { data: denuncia, error } = await supabase
+    .from('denuncias')
+    .insert({
+      consultora_id: consultoraId,
+      empresa_id: est.empresa_id,
+      establecimiento_id: establecimientoId,
+      descripcion,
+      persona_id: persona_id ?? null,
+      fecha_denuncia: fecha,
+    })
+    .select('id')
+    .single()
 
   if (error) return { success: false, error: error.message }
+
+  if (adjuntosUrls.length > 0) {
+    await supabase.from('denuncias_fotos').insert(
+      adjuntosUrls.map(url => ({ denuncia_id: denuncia.id, url }))
+    )
+  }
+
   return { success: true, data: null }
 }
 

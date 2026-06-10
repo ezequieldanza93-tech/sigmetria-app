@@ -7,10 +7,10 @@ import { Button } from '@/components/ui/button'
 import { formatDate } from '@/lib/utils'
 import { createDenuncia } from '@/lib/actions/establecimiento-info'
 import { useSignedUrls } from '@/lib/storage/sign-client'
-import type { EstablecimientoDenuncia, DirectorioPersona, ActionResult } from '@/lib/types'
+import type { Denuncia, DirectorioPersona, ActionResult } from '@/lib/types'
 
 interface DenunciasTabProps {
-  denuncias: EstablecimientoDenuncia[]
+  denuncias: Denuncia[]
   establecimientoId: string
   canWrite: boolean
 }
@@ -99,7 +99,7 @@ export function DenunciasTab({ denuncias, establecimientoId, canWrite }: Denunci
   const [showModal, setShowModal] = useState(false)
   const denunciaAction = createDenuncia.bind(null, establecimientoId)
   // Bucket privado `documentos`: firmamos todos los adjuntos en el cliente (batch).
-  const { getUrl } = useSignedUrls('documentos', denuncias.flatMap(d => d.adjuntos_urls ?? []))
+  const { getUrl } = useSignedUrls('documentos', denuncias.flatMap(d => (d.denuncias_fotos ?? []).map(f => f.url)))
 
   return (
     <div>
@@ -128,7 +128,7 @@ export function DenunciasTab({ denuncias, establecimientoId, canWrite }: Denunci
             <tbody className="divide-y divide-gray-50 dark:divide-border-subtle">
               {denuncias.map(d => (
                 <tr key={d.id} className="hover:bg-surface-base">
-                  <td className="px-5 py-3.5 text-text-secondary whitespace-nowrap">{formatDate(d.fecha)}</td>
+                  <td className="px-5 py-3.5 text-text-secondary whitespace-nowrap">{formatDate(d.fecha_denuncia)}</td>
                   <td className="px-5 py-3.5 text-text-primary dark:text-white">
                     {d.personas_directorio
                       ? `${d.personas_directorio.apellido}, ${d.personas_directorio.nombre}`
@@ -136,12 +136,12 @@ export function DenunciasTab({ denuncias, establecimientoId, canWrite }: Denunci
                   </td>
                   <td className="px-5 py-3.5 text-text-primary dark:text-white">{d.descripcion}</td>
                   <td className="px-5 py-3.5">
-                    {d.adjuntos_urls && d.adjuntos_urls.length > 0 ? (
+                    {d.denuncias_fotos && d.denuncias_fotos.length > 0 ? (
                       <div className="flex gap-1 flex-wrap">
-                        {d.adjuntos_urls.map((url, i) => (
+                        {d.denuncias_fotos.map((foto, i) => (
                           <a
                             key={i}
-                            href={getUrl(url) ?? '#'}
+                            href={getUrl(foto.url) ?? '#'}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-xs text-sig-600 hover:text-sig-800 underline"

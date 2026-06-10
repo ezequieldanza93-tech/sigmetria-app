@@ -9,7 +9,7 @@ import { getDocTiposAplicables } from '@/lib/actions/aplicabilidad'
 import { getLegajoEsperados } from '@/lib/actions/establecimiento-ficha'
 import type {
   SectorEstablecimiento, Incidente, Inspeccion, Riesgo, Documento, DocumentType,
-  EstablecimientoDenuncia, FeedbackCliente, EmpresaDocumento, EmpleadoDocumentoLegajo, LegajoGestion,
+  Denuncia, FeedbackCliente, EmpresaDocumento, EmpleadoDocumentoLegajo, LegajoGestion,
   Capacitacion, Medicion, LegajoEsperados,
 } from '@/lib/types'
 import { AnalyticsDashboard } from '@/components/analytics/real/analytics-dashboard'
@@ -57,7 +57,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
   let riesgos: Riesgo[] = []
   let documentos: Documento[] = []
   let documentTypes: DocumentType[] = []
-  let denuncias: EstablecimientoDenuncia[] = []
+  let denuncias: Denuncia[] = []
   let feedbackClientes: FeedbackCliente[] = []
   let empresaDocumentos: EmpresaDocumento[] = []
   let gestionesLegajo: LegajoGestion[] = []
@@ -107,7 +107,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
 
     const today = new Date().toISOString().split('T')[0]
     const [d1, d2, d3, d4] = await Promise.all([
-      supabase.from('establecimientos_denuncias').select('*, personas_directorio(nombre, apellido)').eq('establecimiento_id', estId).order('fecha', { ascending: false }),
+      supabase.from('denuncias').select('*, personas_directorio(nombre, apellido), denuncias_fotos(url)').eq('establecimiento_id', estId).order('fecha_denuncia', { ascending: false }),
       supabase.from('establecimientos_feedback_clientes').select('*, personas_directorio(nombre, apellido)').eq('establecimiento_id', estId).order('fecha', { ascending: false }),
       supabase.from('empresas_documentos').select('*, documentos_tipos(nombre, categoria_legajo, periodicidad)').eq('empresa_id', empresaId).order('created_at', { ascending: false }),
       supabase
@@ -119,7 +119,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
         .gte('fecha_planificada', today)
         .order('fecha_planificada'),
     ])
-    denuncias = (d1.data ?? []) as unknown as EstablecimientoDenuncia[]
+    denuncias = (d1.data ?? []) as unknown as Denuncia[]
     feedbackClientes = (d2.data ?? []) as unknown as FeedbackCliente[]
     empresaDocumentos = (d3.data ?? []) as unknown as EmpresaDocumento[]
     gestionesLegajo = (d4.data ?? []) as unknown as LegajoGestion[]

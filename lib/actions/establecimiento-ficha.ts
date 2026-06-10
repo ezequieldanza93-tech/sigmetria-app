@@ -9,7 +9,7 @@ import type {
   Inspeccion,
   Documento,
   DocumentType,
-  EstablecimientoDenuncia,
+  Denuncia,
   FeedbackCliente,
   EmpresaDocumento,
   EmpleadoDocumentoLegajo,
@@ -29,7 +29,7 @@ export interface EstablecimientoFichaData {
   inspecciones: Inspeccion[]
   documentos: Documento[]
   documentTypes: DocumentType[]
-  denuncias: EstablecimientoDenuncia[]
+  denuncias: Denuncia[]
   feedbackClientes: FeedbackCliente[]
   empresaDocumentos: EmpresaDocumento[]
   gestionesLegajo: LegajoGestion[]
@@ -94,7 +94,7 @@ export async function getEstablecimientoFichaData(
 
   const today = new Date().toISOString().split('T')[0]
   const [d1, d2, d3, d4] = await Promise.all([
-    supabase.from('establecimientos_denuncias').select('*, personas_directorio(nombre, apellido)').eq('establecimiento_id', establecimientoId).order('fecha', { ascending: false }),
+    supabase.from('denuncias').select('*, personas_directorio(nombre, apellido), denuncias_fotos(url)').eq('establecimiento_id', establecimientoId).order('fecha_denuncia', { ascending: false }),
     supabase.from('establecimientos_feedback_clientes').select('*, personas_directorio(nombre, apellido)').eq('establecimiento_id', establecimientoId).order('fecha', { ascending: false }),
     supabase.from('empresas_documentos').select('*, documentos_tipos(nombre, categoria_legajo, periodicidad)').eq('empresa_id', empresaId).order('created_at', { ascending: false }),
     supabase
@@ -107,7 +107,7 @@ export async function getEstablecimientoFichaData(
       .order('fecha_planificada'),
   ])
 
-  const denuncias = (d1.data ?? []) as unknown as EstablecimientoDenuncia[]
+  const denuncias = (d1.data ?? []) as unknown as Denuncia[]
   const feedbackClientes = (d2.data ?? []) as unknown as FeedbackCliente[]
   const empresaDocumentos = (d3.data ?? []) as unknown as EmpresaDocumento[]
   const gestionesLegajo = (d4.data ?? []) as unknown as LegajoGestion[]

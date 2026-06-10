@@ -965,6 +965,32 @@ export interface ObservacionFotoCliente {
   created_at: string
 }
 
+export interface Denuncia {
+  id: string
+  consultora_id: string
+  empresa_id: string
+  establecimiento_id: string
+  titulo: string | null
+  descripcion: string
+  tipo_denuncia: string | null
+  denunciante_tipo: string
+  persona_id: string | null
+  denunciante_nombre: string | null
+  fecha_denuncia: string
+  estado: string
+  confidencial: boolean
+  responsable_asignado_id: string | null
+  acciones_tomadas: string | null
+  conclusion: string | null
+  cerrado_por: string | null
+  fecha_cierre: string | null
+  created_at: string
+  updated_at: string
+  personas_directorio?: { nombre: string; apellido: string } | null
+  denuncias_fotos?: { url: string }[]
+}
+
+/** @deprecated usar Denuncia */
 export interface EstablecimientoDenuncia {
   id: string
   establecimiento_id: string
