@@ -16,10 +16,10 @@ type Section = (typeof SECTIONS)[number]
 
 export function EmpresaShell({ empresaId, establecimientos, children }: EmpresaShellProps) {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
+
   const isEstablecimientoRoute = pathname.includes('/establecimientos/')
   if (isEstablecimientoRoute) return <>{children}</>
-
-  const searchParams = useSearchParams()
   const raw = searchParams.get('section') ?? 'establecimientos'
   const activeId: Section = (SECTIONS as readonly string[]).includes(raw)
     ? (raw as Section)
