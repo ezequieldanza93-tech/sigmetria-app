@@ -1,5 +1,6 @@
 'use server'
 import { z } from 'zod'
+import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import type { ActionResult } from '@/lib/types'
 
@@ -118,6 +119,7 @@ export async function createDenuncia(
     )
   }
 
+  revalidatePath(`/dashboard/empresas/[id]/establecimientos/${establecimientoId}`, 'page')
   return { success: true, data: null }
 }
 
