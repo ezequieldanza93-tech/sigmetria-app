@@ -1,7 +1,7 @@
 'use client'
 
 import { Building2, ClipboardList, BarChart3, BookOpen, Eye } from 'lucide-react'
-import { useSearchParams } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { SectionsShell } from '@/components/layout/sections-shell'
 import type { SectionItem } from '@/components/layout/sections-sidebar'
 
@@ -14,7 +14,13 @@ const SECTIONS = ['empresas', 'ficha', 'gestiones', 'seguimiento', 'dashboard'] 
 type Section = (typeof SECTIONS)[number]
 
 export function ConsultoraShell({ empresas, children }: ConsultoraShellProps) {
+  const pathname = usePathname()
   const searchParams = useSearchParams()
+
+  // Rutas de empresa y establecimiento tienen su propio shell — no duplicar sidebar
+  if (pathname?.startsWith('/dashboard/empresas/')) {
+    return <>{children}</>
+  }
   const raw = searchParams.get('section') ?? 'empresas'
   const activeId: Section = (SECTIONS as readonly string[]).includes(raw)
     ? (raw as Section)
