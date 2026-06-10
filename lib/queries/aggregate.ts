@@ -119,7 +119,9 @@ export async function getSeguimientoAggregate(establecimientos: EstabContext[]):
       personas_directorio!responsable_id(nombre, apellido)
     `)
     .in('registro_gestion_id', regIds)
-    .order('fecha_planificada', { ascending: false })
+    // Orden ascendente: las vencidas/próximas a vencer arriba, las de fecha
+    // futura al fondo (la vista es de seguimiento — lo urgente primero).
+    .order('fecha_planificada', { ascending: true })
     .limit(5000)
 
   const obsTyped = (obs ?? []) as unknown as Array<{
