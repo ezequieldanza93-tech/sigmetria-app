@@ -146,25 +146,7 @@ export function MultiSelectFilter({
             <div className="px-3 py-2 text-xs italic text-text-tertiary">{emptyLabel}</div>
           ) : (
             <>
-              {/* Fila "Todos" */}
-              <label className="flex cursor-pointer items-center gap-2.5 px-3 py-2 text-xs font-semibold text-text-primary hover:bg-surface-sunken transition-colors">
-                <span className="relative inline-flex h-4 w-4 shrink-0 items-center justify-center">
-                  <input
-                    type="checkbox"
-                    checked={allSelected}
-                    onChange={toggleAll}
-                    className="peer h-4 w-4 cursor-pointer appearance-none rounded border border-border-default checked:border-brand-primary checked:bg-brand-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
-                  />
-                  {allSelected && (
-                    <Check className="pointer-events-none absolute h-3 w-3 text-white" aria-hidden="true" />
-                  )}
-                </span>
-                Todos
-              </label>
-
-              <div className="my-1 border-t border-border-subtle" role="separator" />
-
-              {/* Opciones */}
+              {/* Opciones individuales */}
               {options.map((opt) => {
                 const isOn = selected.has(opt.value)
                 return (
@@ -189,6 +171,24 @@ export function MultiSelectFilter({
                   </label>
                 )
               })}
+
+              <div className="my-1 border-t border-border-subtle" role="separator" />
+
+              {/* Fila "Todos" al fondo */}
+              <label className="flex cursor-pointer items-center gap-2.5 px-3 py-2 text-xs font-semibold text-text-primary hover:bg-surface-sunken transition-colors">
+                <span className="relative inline-flex h-4 w-4 shrink-0 items-center justify-center">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={toggleAll}
+                    className="peer h-4 w-4 cursor-pointer appearance-none rounded border border-border-default checked:border-brand-primary checked:bg-brand-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
+                  />
+                  {allSelected && (
+                    <Check className="pointer-events-none absolute h-3 w-3 text-white" aria-hidden="true" />
+                  )}
+                </span>
+                Todos
+              </label>
             </>
           )}
         </div>,

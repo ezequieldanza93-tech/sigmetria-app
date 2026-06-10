@@ -10,7 +10,7 @@ import { calcularEstadoGestion } from '@/lib/types'
 import type { EstadoGestion, Gestion, CategoriaGestion, GrupoGestion, RegistroGestion, Riesgo } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
-import { MultiFilter } from '@/components/ui/multi-filter'
+import { MultiSelectFilter } from '@/components/ui/multi-select-filter'
 import { ViewSelector } from '@/components/ui/view-selector'
 import {
   Camera, BarChart3, FileCheck,
@@ -2128,10 +2128,10 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
     const month = parseInt(r.fecha_planificada?.split('-')[1] ?? '0') - 1
     if (!selectedMonths.has(month)) return false
     const estado = calcularEstadoGestion(r.fecha_ejecutada ?? null, r.fecha_planificada)
-    if (filterEstado && filterEstado.size > 0 && !filterEstado.has(estado)) return false
-    if (filterCategoria && filterCategoria.size > 0 && !filterCategoria.has(r.ge_categoria_nombre ?? '')) return false
-    if (filterGrupo && filterGrupo.size > 0 && !filterGrupo.has(r.ge_grupo_nombre ?? '')) return false
-    if (filterResponsable && filterResponsable.size > 0 && !filterResponsable.has(r.responsable_nombre ?? '')) return false
+    if (filterEstado !== null && !filterEstado.has(estado)) return false
+    if (filterCategoria !== null && !filterCategoria.has(r.ge_categoria_nombre ?? '')) return false
+    if (filterGrupo !== null && !filterGrupo.has(r.ge_grupo_nombre ?? '')) return false
+    if (filterResponsable !== null && !filterResponsable.has(r.responsable_nombre ?? '')) return false
     if (q && !r.ge_gestion_nombre?.toLowerCase().includes(q) && !r.ge_categoria_nombre?.toLowerCase().includes(q)) return false
     return true
   })
@@ -2638,7 +2638,7 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
           className="text-xs border border-border-subtle rounded-lg px-2 py-1.5 bg-surface-base text-text-secondary focus:outline-none w-[140px] shrink-0"
         />
         {gruposFiltro.length > 0 && (
-          <MultiFilter
+          <MultiSelectFilter
             label="Grupo"
             options={gruposFiltro.map(g => ({ value: g, label: g }))}
             selected={filterGrupo ?? new Set(gruposFiltro)}
@@ -2646,7 +2646,7 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
           />
         )}
         {categoriasFiltro.length > 0 && (
-          <MultiFilter
+          <MultiSelectFilter
             label="Categoría"
             options={categoriasFiltro.map(c => ({ value: c, label: c }))}
             selected={filterCategoria ?? new Set(categoriasFiltro)}
@@ -2654,14 +2654,14 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
           />
         )}
         {responsablesFiltro.length > 0 && (
-          <MultiFilter
+          <MultiSelectFilter
             label="Responsable"
             options={responsablesFiltro.map(r => ({ value: r, label: r }))}
             selected={filterResponsable ?? new Set(responsablesFiltro)}
             onChange={setFilterResponsable}
           />
         )}
-        <MultiFilter
+        <MultiSelectFilter
           label="Estado"
           options={[
             { value: 'Planificado', label: 'Planificado' },

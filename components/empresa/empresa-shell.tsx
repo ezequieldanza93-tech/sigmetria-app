@@ -1,7 +1,7 @@
 'use client'
 
 import { Building2, ClipboardList, Eye, BarChart3, BookOpen, ArrowLeft } from 'lucide-react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, usePathname } from 'next/navigation'
 import { SectionsShell } from '@/components/layout/sections-shell'
 import type { SectionItem } from '@/components/layout/sections-sidebar'
 
@@ -15,6 +15,10 @@ const SECTIONS = ['establecimientos', 'gestiones', 'seguimiento', 'dashboard', '
 type Section = (typeof SECTIONS)[number]
 
 export function EmpresaShell({ empresaId, establecimientos, children }: EmpresaShellProps) {
+  const pathname = usePathname()
+  const isEstablecimientoRoute = pathname.includes('/establecimientos/')
+  if (isEstablecimientoRoute) return <>{children}</>
+
   const searchParams = useSearchParams()
   const raw = searchParams.get('section') ?? 'establecimientos'
   const activeId: Section = (SECTIONS as readonly string[]).includes(raw)
