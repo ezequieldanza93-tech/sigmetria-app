@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Play, Search, List, CalendarDays, Columns, ArrowUpDown, Layers, Plus, X, ChevronRight, ChevronDown } from 'lucide-react'
-import { MultiFilterWithAll } from '@/components/ui/multi-filter-with-all'
+import { MultiSelectFilter } from '@/components/ui/multi-select-filter'
 import { calcularEstadoGestion } from '@/lib/types'
 import type { EstadoGestion } from '@/lib/types'
 
@@ -121,12 +121,14 @@ export function GestionesAggregate({
   showEstablecimientoFilter = true,
   title,
 }: Props) {
-  const [empresaSel, setEmpresaSel] = useState<Set<string>>(new Set())
-  const [estSel, setEstSel] = useState<Set<string>>(new Set())
-  const [estadoSel, setEstadoSel] = useState<Set<string>>(new Set())
-  const [grupoSel, setGrupoSel] = useState<Set<string>>(new Set())
-  const [categoriaSel, setCategoriaSel] = useState<Set<string>>(new Set())
-  const [responsableSel, setResponsableSel] = useState<Set<string>>(new Set())
+  // Filtros multi-select: null = "Todos" (sin filtrar). Un Set (aunque vacío)
+  // significa "mostrar solo lo tildado" — consistente con MultiSelectFilter.
+  const [empresaSel, setEmpresaSel] = useState<Set<string> | null>(null)
+  const [estSel, setEstSel] = useState<Set<string> | null>(null)
+  const [estadoSel, setEstadoSel] = useState<Set<string> | null>(null)
+  const [grupoSel, setGrupoSel] = useState<Set<string> | null>(null)
+  const [categoriaSel, setCategoriaSel] = useState<Set<string> | null>(null)
+  const [responsableSel, setResponsableSel] = useState<Set<string> | null>(null)
   const [search, setSearch] = useState('')
   const [viewMode, setViewMode] = useState<ViewMode>('tabla')
   const [selectedMonths, setSelectedMonths] = useState<Set<string>>(new Set())
@@ -161,7 +163,7 @@ export function GestionesAggregate({
 
   const establecimientoOptions = useMemo(() => {
     const map = new Map<string, string>()
-    const allowed = empresaSel.size === 0 ? null : empresaSel
+    const allowed = empresaSel && empresaSel.size > 0 ? empresaSel : null
     for (const r of rows) {
       if (allowed && !allowed.has(r.empresa_id)) continue
       map.set(r.establecimiento_id, r.establecimiento_nombre)
@@ -199,12 +201,12 @@ export function GestionesAggregate({
         const month = parseInt(r.fecha_planificada.split('-')[1] ?? '0') - 1
         if (selectedMonths.size > 0 && !selectedMonths.has(String(month))) return false
       }
-      if (empresaSel.size > 0 && !empresaSel.has(r.empresa_id)) return false
-      if (estSel.size > 0 && !estSel.has(r.establecimiento_id)) return false
-      if (estadoSel.size > 0 && !estadoSel.has(getEstado(r))) return false
-      if (grupoSel.size > 0 && !(r.grupo && grupoSel.has(r.grupo))) return false
-      if (categoriaSel.size > 0 && !(r.categoria && categoriaSel.has(r.categoria))) return false
-      if (responsableSel.size > 0 && !(r.responsable_nombre && responsableSel.has(r.responsable_nombre))) return false
+      if (empresaSel !== null && !empresaSel.has(r.empresa_id)) return false
+      if (estSel !== null && !estSel.has(r.establecimiento_id)) return false
+      if (estadoSel !== null && !estadoSel.has(getEstado(r))) return false
+      if (grupoSel !== null && !(r.grupo && grupoSel.has(r.grupo))) return false
+      if (categoriaSel !== null && !(r.categoria && categoriaSel.has(r.categoria))) return false
+      if (responsableSel !== null && !(r.responsable_nombre && responsableSel.has(r.responsable_nombre))) return false
       if (q) {
         const haystack = `${r.gestion_nombre ?? ''} ${r.categoria ?? ''}`.toLowerCase()
         if (!haystack.includes(q)) return false
@@ -268,12 +270,12 @@ export function GestionesAggregate({
     const q = search.trim().toLowerCase()
     for (const r of rows) {
       if (r.fecha_planificada && new Date(r.fecha_planificada).getFullYear() !== anio) continue
-      if (empresaSel.size > 0 && !empresaSel.has(r.empresa_id)) continue
-      if (estSel.size > 0 && !estSel.has(r.establecimiento_id)) continue
-      if (estadoSel.size > 0 && !estadoSel.has(getEstado(r))) continue
-      if (grupoSel.size > 0 && !(r.grupo && grupoSel.has(r.grupo))) continue
-      if (categoriaSel.size > 0 && !(r.categoria && categoriaSel.has(r.categoria))) continue
-      if (responsableSel.size > 0 && !(r.responsable_nombre && responsableSel.has(r.responsable_nombre))) continue
+      if (empresaSel !== null && !empresaSel.has(r.empresa_id)) continue
+      if (estSel !== null && !estSel.has(r.establecimiento_id)) continue
+      if (estadoSel !== null && !estadoSel.has(getEstado(r))) continue
+      if (grupoSel !== null && !(r.grupo && grupoSel.has(r.grupo))) continue
+      if (categoriaSel !== null && !(r.categoria && categoriaSel.has(r.categoria))) continue
+      if (responsableSel !== null && !(r.responsable_nombre && responsableSel.has(r.responsable_nombre))) continue
       if (q) {
         const haystack = `${r.gestion_nombre ?? ''} ${r.categoria ?? ''}`.toLowerCase()
         if (!haystack.includes(q)) continue
@@ -352,15 +354,15 @@ export function GestionesAggregate({
           />
         </div>
         {showEmpresaFilter && (
-          <MultiFilterWithAll label="Empresa" options={empresaOptions} selected={empresaSel} onChange={setEmpresaSel} />
+          <MultiSelectFilter label="Empresa" options={empresaOptions} selected={empresaSel ?? new Set(empresaOptions.map(o => o.value))} onChange={setEmpresaSel} />
         )}
         {showEstablecimientoFilter && (
-          <MultiFilterWithAll label="Establecimiento" options={establecimientoOptions} selected={estSel} onChange={setEstSel} />
+          <MultiSelectFilter label="Establecimiento" options={establecimientoOptions} selected={estSel ?? new Set(establecimientoOptions.map(o => o.value))} onChange={setEstSel} />
         )}
-        <MultiFilterWithAll label="Grupo" options={grupoOptions} selected={grupoSel} onChange={setGrupoSel} />
-        <MultiFilterWithAll label="Categoría" options={categoriaOptions} selected={categoriaSel} onChange={setCategoriaSel} />
-        <MultiFilterWithAll label="Responsable" options={responsableOptions} selected={responsableSel} onChange={setResponsableSel} />
-        <MultiFilterWithAll label="Estado" options={ESTADOS.map(e => ({ value: e, label: e }))} selected={estadoSel} onChange={setEstadoSel} />
+        <MultiSelectFilter label="Grupo" options={grupoOptions} selected={grupoSel ?? new Set(grupoOptions.map(o => o.value))} onChange={setGrupoSel} />
+        <MultiSelectFilter label="Categoría" options={categoriaOptions} selected={categoriaSel ?? new Set(categoriaOptions.map(o => o.value))} onChange={setCategoriaSel} />
+        <MultiSelectFilter label="Responsable" options={responsableOptions} selected={responsableSel ?? new Set(responsableOptions.map(o => o.value))} onChange={setResponsableSel} />
+        <MultiSelectFilter label="Estado" options={ESTADOS.map(e => ({ value: e, label: e }))} selected={estadoSel ?? new Set(ESTADOS)} onChange={setEstadoSel} />
 
         {/* Ordenar + Agrupar + selector de vista — derecha */}
         <div className="ml-auto flex items-center gap-2">

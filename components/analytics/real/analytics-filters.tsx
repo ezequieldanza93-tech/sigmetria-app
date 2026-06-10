@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { cn } from '@/lib/utils'
+import { MultiSelectFilter } from '@/components/ui/multi-select-filter'
 import type { ResponsableOption } from '@/lib/actions/analytics'
 
 interface AnalyticsFiltersProps {
@@ -80,52 +80,12 @@ export function AnalyticsFilters({
 
       {/* Establecimientos (multi) */}
       {establecimientos && establecimientos.length > 1 && onEstablecimientosChange && selectedEstIds && (
-        <div className="relative">
-          <details className="group">
-            <summary className={cn(SELECT_CLASS, 'list-none cursor-pointer flex items-center gap-1.5')}>
-              <span>
-                {selectedEstIds.length === establecimientos.length
-                  ? 'Todos los establecimientos'
-                  : selectedEstIds.length === 0
-                  ? 'Sin establecimientos'
-                  : `${selectedEstIds.length} establecimientos`}
-              </span>
-              <svg className="w-3 h-3 text-text-tertiary group-open:rotate-180 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </summary>
-            <div className="absolute top-full mt-1 left-0 z-50 bg-surface-elevated border border-border-default rounded-xl shadow-[var(--shadow-lg)] p-2 min-w-[220px] max-h-64 overflow-y-auto space-y-0.5">
-              {/* Select all */}
-              <label className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-surface-sunken cursor-pointer text-xs font-semibold text-text-secondary">
-                <input
-                  type="checkbox"
-                  checked={selectedEstIds.length === establecimientos.length}
-                  onChange={e => onEstablecimientosChange(e.target.checked ? establecimientos.map(est => est.id) : [])}
-                  className="rounded"
-                />
-                Todos
-              </label>
-              <div className="border-t border-border-subtle my-1" />
-              {establecimientos.map(est => (
-                <label key={est.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-surface-sunken cursor-pointer text-sm text-text-primary">
-                  <input
-                    type="checkbox"
-                    checked={selectedEstIds.includes(est.id)}
-                    onChange={e => {
-                      if (e.target.checked) {
-                        onEstablecimientosChange([...selectedEstIds, est.id])
-                      } else {
-                        onEstablecimientosChange(selectedEstIds.filter(id => id !== est.id))
-                      }
-                    }}
-                    className="rounded"
-                  />
-                  <span className="truncate">{est.nombre}</span>
-                </label>
-              ))}
-            </div>
-          </details>
-        </div>
+        <MultiSelectFilter
+          label="Establecimientos"
+          options={establecimientos.map(est => ({ value: est.id, label: est.nombre }))}
+          selected={new Set(selectedEstIds)}
+          onChange={next => onEstablecimientosChange(Array.from(next))}
+        />
       )}
     </div>
   )

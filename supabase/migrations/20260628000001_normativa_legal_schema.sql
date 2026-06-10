@@ -5,10 +5,10 @@
 --   is_active_member_of(uuid), is_developer() (== is_super_admin())
 
 -- ============================================================
--- Tablas
+-- Tablas (idempotentes — las MCP sessions del 7-9 jun pueden haberlas creado ya)
 -- ============================================================
 
-create table public.normativa_categorias (
+create table if not exists public.normativa_categorias (
   id uuid primary key default gen_random_uuid(),
   consultora_id uuid references public.consultoras(id) on delete cascade, -- NULL = base nacional compartida
   nombre text not null,
@@ -19,7 +19,7 @@ create table public.normativa_categorias (
   updated_at timestamptz not null default now()
 );
 
-create table public.normativa_normas (
+create table if not exists public.normativa_normas (
   id uuid primary key default gen_random_uuid(),
   consultora_id uuid references public.consultoras(id) on delete cascade, -- NULL = base nacional
   categoria_id uuid references public.normativa_categorias(id) on delete set null,
@@ -42,7 +42,7 @@ create table public.normativa_normas (
   updated_at timestamptz not null default now()
 );
 
-create table public.normativa_requisitos (
+create table if not exists public.normativa_requisitos (
   id uuid primary key default gen_random_uuid(),
   norma_id uuid not null references public.normativa_normas(id) on delete cascade,
   articulo text,
@@ -55,28 +55,31 @@ create table public.normativa_requisitos (
   updated_at timestamptz not null default now()
 );
 
-create index on public.normativa_normas (categoria_id);
-create index on public.normativa_normas (consultora_id);
-create index on public.normativa_requisitos (norma_id);
+create index if not exists normativa_normas_categoria_id_idx on public.normativa_normas (categoria_id);
+create index if not exists normativa_normas_consultora_id_idx on public.normativa_normas (consultora_id);
+create index if not exists normativa_requisitos_norma_id_idx on public.normativa_requisitos (norma_id);
 
 -- ============================================================
--- updated_at triggers
+-- updated_at triggers (idempotentes)
 -- ============================================================
 
+drop trigger if exists set_updated_at on public.normativa_categorias;
 create trigger set_updated_at
   before update on public.normativa_categorias
   for each row execute function public.trigger_set_updated_at();
 
+drop trigger if exists set_updated_at on public.normativa_normas;
 create trigger set_updated_at
   before update on public.normativa_normas
   for each row execute function public.trigger_set_updated_at();
 
+drop trigger if exists set_updated_at on public.normativa_requisitos;
 create trigger set_updated_at
   before update on public.normativa_requisitos
   for each row execute function public.trigger_set_updated_at();
 
 -- ============================================================
--- RLS
+-- RLS (idempotente: drop + recreate policies)
 -- ============================================================
 
 alter table public.normativa_categorias enable row level security;
@@ -84,6 +87,11 @@ alter table public.normativa_normas enable row level security;
 alter table public.normativa_requisitos enable row level security;
 
 -- ---------- normativa_categorias ----------
+drop policy if exists "normativa_categorias: select" on public.normativa_categorias;
+drop policy if exists "normativa_categorias: insert" on public.normativa_categorias;
+drop policy if exists "normativa_categorias: update" on public.normativa_categorias;
+drop policy if exists "normativa_categorias: delete" on public.normativa_categorias;
+
 -- SELECT: base (NULL) visible para todos los autenticados, o propias de la consultora del usuario
 create policy "normativa_categorias: select" on public.normativa_categorias
   for select to authenticated
@@ -124,6 +132,11 @@ create policy "normativa_categorias: delete" on public.normativa_categorias
   );
 
 -- ---------- normativa_normas ----------
+drop policy if exists "normativa_normas: select" on public.normativa_normas;
+drop policy if exists "normativa_normas: insert" on public.normativa_normas;
+drop policy if exists "normativa_normas: update" on public.normativa_normas;
+drop policy if exists "normativa_normas: delete" on public.normativa_normas;
+
 create policy "normativa_normas: select" on public.normativa_normas
   for select to authenticated
   using (consultora_id is null or is_active_member_of(consultora_id));
@@ -162,6 +175,11 @@ create policy "normativa_normas: delete" on public.normativa_normas
   );
 
 -- ---------- normativa_requisitos ----------
+drop policy if exists "normativa_requisitos: select" on public.normativa_requisitos;
+drop policy if exists "normativa_requisitos: insert" on public.normativa_requisitos;
+drop policy if exists "normativa_requisitos: update" on public.normativa_requisitos;
+drop policy if exists "normativa_requisitos: delete" on public.normativa_requisitos;
+
 -- El acceso se deriva de la norma padre.
 create policy "normativa_requisitos: select" on public.normativa_requisitos
   for select to authenticated

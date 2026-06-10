@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { useSignedUrls } from '@/lib/storage/sign-client'
 import { CierreObservacionModal } from '@/components/cierre-observacion-modal'
-import { MultiFilter } from '@/components/ui/multi-filter'
+import { MultiSelectFilter } from '@/components/ui/multi-select-filter'
 import type { ObservacionGestion } from '@/lib/types'
 
 interface ObsRow extends ObservacionGestion {
@@ -317,49 +317,49 @@ export function ActuarView({ establecimientoId, canWrite = true }: { establecimi
             </button>
           ))}
         </div>
-        <MultiFilter
+        <MultiSelectFilter
           label="Estado"
           options={estadoOptions}
           selected={filterEstado}
           onChange={setFilterEstado}
         />
         {responsableOptions.length > 0 && (
-          <MultiFilter
+          <MultiSelectFilter
             label="Responsable"
             options={responsableOptions}
-            selected={filterResponsable ?? new Set()}
+            selected={filterResponsable ?? new Set(responsableOptions.map(o => o.value))}
             onChange={setFilterResponsable}
           />
         )}
         {aspectoOptions.length > 0 && (
-          <MultiFilter
+          <MultiSelectFilter
             label="Aspecto HyS"
             options={aspectoOptions}
-            selected={filterAspecto ?? new Set()}
+            selected={filterAspecto ?? new Set(aspectoOptions.map(o => o.value))}
             onChange={setFilterAspecto}
           />
         )}
         {gestionOptions.length > 0 && (
-          <MultiFilter
+          <MultiSelectFilter
             label="Gestión origen"
             options={gestionOptions}
-            selected={filterGestion ?? new Set()}
+            selected={filterGestion ?? new Set(gestionOptions.map(o => o.value))}
             onChange={setFilterGestion}
           />
         )}
         {sectorOptions.length > 0 && (
-          <MultiFilter
+          <MultiSelectFilter
             label="Sector"
             options={sectorOptions}
-            selected={filterSector ?? new Set()}
+            selected={filterSector ?? new Set(sectorOptions.map(o => o.value))}
             onChange={setFilterSector}
           />
         )}
         {puestoOptions.length > 0 && (
-          <MultiFilter
+          <MultiSelectFilter
             label="Puesto"
             options={puestoOptions}
-            selected={filterPuesto ?? new Set()}
+            selected={filterPuesto ?? new Set(puestoOptions.map(o => o.value))}
             onChange={setFilterPuesto}
           />
         )}

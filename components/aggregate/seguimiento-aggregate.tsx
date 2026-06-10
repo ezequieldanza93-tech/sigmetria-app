@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { MultiFilterWithAll } from '@/components/ui/multi-filter-with-all'
+import { MultiSelectFilter } from '@/components/ui/multi-select-filter'
 
 export interface SeguimientoAggregateRow {
   id: string
@@ -50,9 +50,11 @@ export function SeguimientoAggregate({
   showEmpresaFilter = false,
   showEstablecimientoFilter = true,
 }: Props) {
-  const [empresaSel, setEmpresaSel] = useState<Set<string>>(new Set())
-  const [estSel, setEstSel] = useState<Set<string>>(new Set())
-  const [estadoSel, setEstadoSel] = useState<Set<string>>(new Set(['Planificado', 'Vencido']))
+  // null = "Todos" (sin filtrar). Estado arranca con default explícito
+  // (Planificado + Vencido) para ocultar los cerrados de entrada.
+  const [empresaSel, setEmpresaSel] = useState<Set<string> | null>(null)
+  const [estSel, setEstSel] = useState<Set<string> | null>(null)
+  const [estadoSel, setEstadoSel] = useState<Set<string> | null>(new Set(['Planificado', 'Vencido']))
 
   const empresaOptions = useMemo(() => {
     const map = new Map<string, string>()
@@ -62,7 +64,7 @@ export function SeguimientoAggregate({
 
   const establecimientoOptions = useMemo(() => {
     const map = new Map<string, string>()
-    const allowed = empresaSel.size === 0 ? null : empresaSel
+    const allowed = empresaSel && empresaSel.size > 0 ? empresaSel : null
     for (const r of rows) {
       if (allowed && !allowed.has(r.empresa_id)) continue
       map.set(r.establecimiento_id, r.establecimiento_nombre)
@@ -72,9 +74,9 @@ export function SeguimientoAggregate({
 
   const filtered = useMemo(() => {
     return rows.filter(r => {
-      if (empresaSel.size > 0 && !empresaSel.has(r.empresa_id)) return false
-      if (estSel.size > 0 && !estSel.has(r.establecimiento_id)) return false
-      if (estadoSel.size > 0 && !estadoSel.has(getEstado(r))) return false
+      if (empresaSel !== null && !empresaSel.has(r.empresa_id)) return false
+      if (estSel !== null && !estSel.has(r.establecimiento_id)) return false
+      if (estadoSel !== null && !estadoSel.has(getEstado(r))) return false
       return true
     })
   }, [rows, empresaSel, estSel, estadoSel])
@@ -84,20 +86,20 @@ export function SeguimientoAggregate({
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="text-lg font-semibold text-text-primary mr-4">Seguimiento de observaciones</h2>
         {showEmpresaFilter && (
-          <MultiFilterWithAll label="Empresa" options={empresaOptions} selected={empresaSel} onChange={setEmpresaSel} />
+          <MultiSelectFilter label="Empresa" options={empresaOptions} selected={empresaSel ?? new Set(empresaOptions.map(o => o.value))} onChange={setEmpresaSel} />
         )}
         {showEstablecimientoFilter && (
-          <MultiFilterWithAll
+          <MultiSelectFilter
             label="Establecimiento"
             options={establecimientoOptions}
-            selected={estSel}
+            selected={estSel ?? new Set(establecimientoOptions.map(o => o.value))}
             onChange={setEstSel}
           />
         )}
-        <MultiFilterWithAll
+        <MultiSelectFilter
           label="Estado"
           options={ESTADOS.map(e => ({ value: e, label: e }))}
-          selected={estadoSel}
+          selected={estadoSel ?? new Set(ESTADOS)}
           onChange={setEstadoSel}
         />
         <span className="text-xs text-text-tertiary ml-auto">{filtered.length} de {rows.length}</span>

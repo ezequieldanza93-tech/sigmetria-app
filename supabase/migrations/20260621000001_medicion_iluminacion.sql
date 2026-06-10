@@ -30,9 +30,12 @@ BEGIN;
 -- tipo_ejecucion es TEXT + CHECK (no enum). Se recrea el CHECK añadiendo el valor.
 ALTER TABLE public.gestiones DROP CONSTRAINT IF EXISTS chk_gestiones_tipo_ejecucion;
 ALTER TABLE public.gestiones ADD CONSTRAINT chk_gestiones_tipo_ejecucion
-  CHECK (tipo_ejecucion IN ('estandar', 'reporte_fotografico', 'medicion_iluminacion'));
+  CHECK (tipo_ejecucion IN (
+    'estandar', 'reporte_fotografico', 'medicion_iluminacion',
+    'medicion_ruido', 'medicion_carga_termica', 'calculo_carga_fuego', 'medicion_pat'
+  ));
 COMMENT ON COLUMN public.gestiones.tipo_ejecucion IS
-  'Flujo del botón Ejecutar: estandar (carga 1 archivo) | reporte_fotografico (wizard multi-foto + PDF) | medicion_iluminacion (protocolo SRT 84/2012).';
+  'Flujo del botón Ejecutar: estandar | reporte_fotografico | medicion_iluminacion | medicion_ruido | medicion_carga_termica | calculo_carga_fuego | medicion_pat.';
 
 -- ─── 2. Cabecera del protocolo de medición de iluminación ───
 CREATE TABLE IF NOT EXISTS public.medicion_iluminacion (

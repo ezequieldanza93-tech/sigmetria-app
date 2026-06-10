@@ -16,10 +16,12 @@ CREATE INDEX IF NOT EXISTS idx_nnte_tipo ON public.normativa_normas_tipos_establ
 
 ALTER TABLE public.normativa_normas_tipos_establecimiento ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "nnte_select" ON public.normativa_normas_tipos_establecimiento;
 CREATE POLICY "nnte_select" ON public.normativa_normas_tipos_establecimiento FOR SELECT USING (
   EXISTS (SELECT 1 FROM public.normativa_normas n WHERE n.id = norma_id
           AND (n.consultora_id IS NULL OR is_active_member_of(n.consultora_id)))
 );
+DROP POLICY IF EXISTS "nnte_write" ON public.normativa_normas_tipos_establecimiento;
 CREATE POLICY "nnte_write" ON public.normativa_normas_tipos_establecimiento FOR ALL USING (
   EXISTS (SELECT 1 FROM public.normativa_normas n WHERE n.id = norma_id
           AND ((n.consultora_id IS NULL AND is_developer()) OR (n.consultora_id IS NOT NULL AND is_active_member_of(n.consultora_id))))
