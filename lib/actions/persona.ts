@@ -156,6 +156,56 @@ export async function createPersona(
   return { success: true, data: {} }
 }
 
+export async function createPersonaRapida(
+  _prev: ActionResult<{ id: string; nombre: string; apellido: string }> | null,
+  formData: FormData
+): Promise<ActionResult<{ id: string; nombre: string; apellido: string }>> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'No autenticado' }
+
+  const nombre = (formData.get('nombre') as string)?.trim()
+  const apellido = (formData.get('apellido') as string)?.trim()
+  const tipo_id = (formData.get('tipo_id') as string)?.trim()
+  const dni = (formData.get('dni') as string)?.trim() || null
+  const establecimientoId = (formData.get('establecimiento_id') as string) || null
+
+  if (!nombre || !apellido || !tipo_id) {
+    return { success: false, error: 'Nombre, apellido y tipo son obligatorios' }
+  }
+
+  const dup = await detectarDuplicado(supabase, nombre, apellido, dni)
+  if (dup.exacto) return { success: false, error: 'Ya existe una persona con el mismo nombre, apellido y DNI.' }
+  if (dup.mismoNombreApellido) return { success: false, error: 'Ya existe una persona con el mismo nombre y apellido. Verificá antes de duplicar.' }
+
+  const { data: membership } = await supabase
+    .from('consultoras_members')
+    .select('consultora_id')
+    .eq('user_id', user.id)
+    .eq('is_active', true)
+    .maybeSingle()
+
+  const { data: persona, error } = await supabase
+    .from('personas_directorio')
+    .insert({ nombre, apellido, tipo_id, dni, created_in_consultora_id: membership?.consultora_id || null })
+    .select('id, nombre, apellido')
+    .single()
+
+  if (error || !persona) return { success: false, error: error?.message ?? 'Error al crear persona' }
+
+  if (establecimientoId) {
+    await supabase
+      .from('personas_establecimientos')
+      .upsert(
+        { persona_id: persona.id, establecimiento_id: establecimientoId },
+        { onConflict: 'persona_id,establecimiento_id', ignoreDuplicates: true }
+      )
+  }
+
+  revalidatePath('/dashboard/personas')
+  return { success: true, data: { id: persona.id, nombre: persona.nombre, apellido: persona.apellido } }
+}
+
 export async function deletePersona(id: string): Promise<ActionResult<null>> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
