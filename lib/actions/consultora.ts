@@ -147,6 +147,7 @@ export async function updateConsultora(data: {
   if (error) return { success: false, error: error.message }
 
   revalidatePath('/dashboard/configuracion/consultora')
+  revalidatePath('/dashboard/empresas')
   return { success: true, data: updated as unknown as Consultora }
 }
 
@@ -218,5 +219,6 @@ export async function uploadConsultoraLogo(
   if (updateError) return { success: false, error: updateError.message }
 
   revalidatePath('/dashboard/configuracion/consultora')
+  revalidatePath('/dashboard/empresas')
   return { success: true, data: { url: logoUrl } }
 }

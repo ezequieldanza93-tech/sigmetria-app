@@ -1,6 +1,6 @@
 'use client'
 
-import { Building2, ClipboardList, Crosshair, BarChart3, FileText } from 'lucide-react'
+import { Building2, ClipboardList, BarChart3, BookOpen, Eye } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { SectionsShell } from '@/components/layout/sections-shell'
 import type { SectionItem } from '@/components/layout/sections-sidebar'
@@ -38,7 +38,7 @@ export function ConsultoraShell({ empresas, children }: ConsultoraShellProps) {
     {
       id: 'ficha',
       label: 'Ficha',
-      icon: FileText,
+      icon: BookOpen,
       href: `${baseUrl}?section=ficha`,
     },
     {
@@ -50,7 +50,7 @@ export function ConsultoraShell({ empresas, children }: ConsultoraShellProps) {
     {
       id: 'seguimiento',
       label: 'Seguimiento',
-      icon: Crosshair,
+      icon: Eye,
       href: `${baseUrl}?section=seguimiento`,
     },
     {

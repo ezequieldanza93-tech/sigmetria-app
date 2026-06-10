@@ -1,6 +1,6 @@
 'use client'
 
-import { Building2, ClipboardList, Crosshair, BarChart3, FileText, ArrowLeft } from 'lucide-react'
+import { Building2, ClipboardList, Eye, BarChart3, BookOpen, ArrowLeft } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { SectionsShell } from '@/components/layout/sections-shell'
 import type { SectionItem } from '@/components/layout/sections-sidebar'
@@ -45,7 +45,7 @@ export function EmpresaShell({ empresaId, establecimientos, children }: EmpresaS
     {
       id: 'ficha',
       label: 'Ficha',
-      icon: FileText,
+      icon: BookOpen,
       href: `${baseUrl}?section=ficha`,
     },
     {
@@ -57,7 +57,7 @@ export function EmpresaShell({ empresaId, establecimientos, children }: EmpresaS
     {
       id: 'seguimiento',
       label: 'Seguimiento',
-      icon: Crosshair,
+      icon: Eye,
       href: `${baseUrl}?section=seguimiento`,
     },
     {

@@ -1,62 +1,70 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { SeccionesSidebar } from './secciones-sidebar'
+import { ArrowLeft, BookOpen, ClipboardList, Eye, BarChart3, QrCode } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
+import { SectionsShell } from '@/components/layout/sections-shell'
+import type { SectionItem } from '@/components/layout/sections-sidebar'
 
-const SIDEBAR_WIDTH_KEY = 'sidebar_expanded_width'
-const DEFAULT_WIDTH = 160
-const MIN_WIDTH = 80
-const MAX_WIDTH = 240
-
-interface Props {
+interface EstablecimientoShellProps {
   empresaId: string
   establecimientoId: string
   children: React.ReactNode
 }
 
-export function EstablecimientoShell({ empresaId, establecimientoId, children }: Props) {
-  const [expanded, setExpanded] = useState(false)
-  const [expandedWidth, setExpandedWidth] = useState(DEFAULT_WIDTH)
-  const [isResizing, setIsResizing] = useState(false)
+const SECTIONS = ['agenda', 'ficha', 'seguimiento', 'dashboard', 'legajo'] as const
+type Section = (typeof SECTIONS)[number]
 
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(SIDEBAR_WIDTH_KEY)
-      if (stored) {
-        const w = parseInt(stored)
-        if (w >= MIN_WIDTH && w <= MAX_WIDTH) setExpandedWidth(w)
-      }
-    } catch {}
-  }, [])
+export function EstablecimientoShell({ empresaId, establecimientoId, children }: EstablecimientoShellProps) {
+  const searchParams = useSearchParams()
+  const raw = searchParams.get('section') ?? 'agenda'
+  const activeId: Section = (SECTIONS as readonly string[]).includes(raw)
+    ? (raw as Section)
+    : 'agenda'
 
-  function handleWidthChange(w: number) {
-    const clamped = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, w))
-    setExpandedWidth(clamped)
-    try { localStorage.setItem(SIDEBAR_WIDTH_KEY, String(clamped)) } catch {}
-  }
+  const baseUrl = `/dashboard/empresas/${empresaId}/establecimientos/${establecimientoId}`
 
-  const contentStyle: React.CSSProperties = {
-    paddingLeft: expanded ? expandedWidth : undefined,
-    transition: isResizing ? 'none' : undefined,
-  }
+  const items: SectionItem[] = [
+    {
+      id: 'empresa',
+      label: 'Empresa',
+      icon: ArrowLeft,
+      href: `/dashboard/empresas/${empresaId}`,
+    },
+    {
+      id: 'ficha',
+      label: 'Ficha',
+      icon: BookOpen,
+      href: `${baseUrl}?section=ficha`,
+    },
+    {
+      id: 'agenda',
+      label: 'Gestiones',
+      icon: ClipboardList,
+      href: baseUrl,
+    },
+    {
+      id: 'seguimiento',
+      label: 'Seguimiento',
+      icon: Eye,
+      href: `${baseUrl}?section=seguimiento`,
+    },
+    {
+      id: 'dashboard',
+      label: 'Dashboards',
+      icon: BarChart3,
+      href: `${baseUrl}?section=dashboard`,
+    },
+    {
+      id: 'legajo',
+      label: 'Legajo QR',
+      icon: QrCode,
+      href: `${baseUrl}?section=legajo`,
+    },
+  ]
 
   return (
-    <>
-      <SeccionesSidebar
-        empresaId={empresaId}
-        establecimientoId={establecimientoId}
-        expanded={expanded}
-        expandedWidth={expandedWidth}
-        onToggle={() => setExpanded(v => !v)}
-        onWidthChange={handleWidthChange}
-        onResizingChange={setIsResizing}
-      />
-      <div
-        className={`transition-[padding] duration-200 ${!expanded ? 'lg:pl-14' : ''}`}
-        style={contentStyle}
-      >
-        {children}
-      </div>
-    </>
+    <SectionsShell items={items} activeId={activeId} ariaLabel="Secciones del establecimiento">
+      {children}
+    </SectionsShell>
   )
 }

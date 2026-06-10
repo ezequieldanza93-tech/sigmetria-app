@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Check, ChevronDown, Minus } from 'lucide-react'
+import { Check, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export interface MultiSelectOption {
@@ -49,14 +49,11 @@ export function MultiSelectFilter({
   const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
-  const allCheckboxRef = useRef<HTMLInputElement>(null)
   const panelId = useId()
 
   const total = options.length
   const selectedCount = options.reduce((acc, o) => acc + (selected.has(o.value) ? 1 : 0), 0)
   const allSelected = total > 0 && selectedCount === total
-  const noneSelected = selectedCount === 0
-  const partial = !allSelected && !noneSelected
 
   // Resumen en el trigger: "Todos" si todas tildadas, sino "N/M".
   const summary = allSelected || total === 0 ? 'Todos' : `${selectedCount}/${total}`
@@ -82,11 +79,6 @@ export function MultiSelectFilter({
       document.removeEventListener('keydown', handleKey)
     }
   }, [open])
-
-  // El estado "indeterminate" del checkbox "Todos" solo se setea por DOM.
-  useEffect(() => {
-    if (allCheckboxRef.current) allCheckboxRef.current.indeterminate = partial
-  }, [partial, open])
 
   function handleToggleOpen() {
     if (!open && triggerRef.current) {
@@ -158,7 +150,6 @@ export function MultiSelectFilter({
               <label className="flex cursor-pointer items-center gap-2.5 px-3 py-2 text-xs font-semibold text-text-primary hover:bg-surface-sunken transition-colors">
                 <span className="relative inline-flex h-4 w-4 shrink-0 items-center justify-center">
                   <input
-                    ref={allCheckboxRef}
                     type="checkbox"
                     checked={allSelected}
                     onChange={toggleAll}
@@ -166,9 +157,6 @@ export function MultiSelectFilter({
                   />
                   {allSelected && (
                     <Check className="pointer-events-none absolute h-3 w-3 text-white" aria-hidden="true" />
-                  )}
-                  {partial && (
-                    <Minus className="pointer-events-none absolute h-3 w-3 text-brand-primary" aria-hidden="true" />
                   )}
                 </span>
                 Todos

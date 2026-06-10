@@ -16,7 +16,7 @@ interface Props {
 }
 
 export function SectionsShell({ items, activeId, ariaLabel, children }: Props) {
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(true)
   const [expandedWidth, setExpandedWidth] = useState(DEFAULT_WIDTH)
   const [isResizing, setIsResizing] = useState(false)
 

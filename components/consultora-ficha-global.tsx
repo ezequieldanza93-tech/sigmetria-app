@@ -30,6 +30,7 @@ import {
   MessageSquare,
   Map,
   Scale,
+  Pencil,
 } from 'lucide-react'
 import Image from 'next/image'
 import { publicAssetUrl } from '@/lib/storage/asset-url'
@@ -96,6 +97,7 @@ function antiguedad(desde: string | null): string | null {
  * y abrir la ficha que corresponda a cada nivel.
  */
 export function ConsultoraFichaGlobal({ consultora, empresas, usuario, userRole, isSuperAdmin = false }: Props) {
+  const canEditConsultora = userRole === 'full_access_main' || isSuperAdmin
   const canManageCursos =
     userRole === 'full_access_main' || userRole === 'full_access_branch' || isSuperAdmin
   const canVerReportes =
@@ -183,12 +185,25 @@ export function ConsultoraFichaGlobal({ consultora, empresas, usuario, userRole,
           )}
 
           <div className="min-w-0 flex-1">
-            <h1 className="text-lg font-semibold text-text-primary dark:text-white truncate">
-              {consultora.nombre}
-            </h1>
-            <p className="text-xs text-text-tertiary mt-0.5">
-              Ficha global de la consultora
-            </p>
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <h1 className="text-lg font-semibold text-text-primary dark:text-white truncate">
+                  {consultora.nombre}
+                </h1>
+                <p className="text-xs text-text-tertiary mt-0.5">
+                  Ficha global de la consultora
+                </p>
+              </div>
+              {canEditConsultora && (
+                <Link
+                  href="/dashboard/configuracion/consultora"
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-text-secondary hover:text-sig-600 transition-colors shrink-0 mt-0.5"
+                >
+                  <Pencil size={13} aria-hidden="true" />
+                  Editar
+                </Link>
+              )}
+            </div>
 
             <dl className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5">
               {consultora.cuit && (

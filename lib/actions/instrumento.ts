@@ -26,7 +26,12 @@ export async function createInstrumento(
     dueño_id: (formData.get('dueño_id') as string) || null,
   })
 
-  if (error) return { success: false, error: error.message }
+  if (error) {
+    if (error.code === '23505') {
+      return { success: false, error: 'Ya existe un instrumento con ese número de serie.' }
+    }
+    return { success: false, error: error.message }
+  }
 
   revalidatePath('/dashboard/instrumentos')
   return { success: true, data: null }
@@ -60,7 +65,12 @@ export async function updateInstrumento(
     })
     .eq('id', id)
 
-  if (error) return { success: false, error: error.message }
+  if (error) {
+    if (error.code === '23505') {
+      return { success: false, error: 'Ya existe un instrumento con ese número de serie.' }
+    }
+    return { success: false, error: error.message }
+  }
 
   revalidatePath('/dashboard/instrumentos')
   return { success: true, data: null }

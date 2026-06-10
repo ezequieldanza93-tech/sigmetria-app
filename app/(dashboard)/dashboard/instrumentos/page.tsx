@@ -5,9 +5,12 @@ import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { createClient } from '@/lib/supabase/client'
 import { createInstrumento, updateInstrumento, deleteInstrumento } from '@/lib/actions/instrumento'
+import { createMarcaInline } from '@/lib/actions/organizacion'
 import { InstrumentoModal } from '@/components/instrumento-modal'
 import { PersonaSelector } from '@/components/persona-selector'
 import type { InstrumentoMedicion, TipoInstrumentoMedicion, Organizacion, ActionResult } from '@/lib/types'
+
+type MarcaOption = { id: string; nombre: string }
 
 function InstrumentoForm({
   tipos,
@@ -30,6 +33,34 @@ function InstrumentoForm({
   onSuccessRef.current = onSuccess
   useEffect(() => { if (state?.success) onSuccessRef.current() }, [state])
 
+  const [localMarcas, setLocalMarcas] = useState<MarcaOption[]>(
+    () => marcas.map(m => ({ id: m.id, nombre: m.nombre }))
+  )
+  const [selectedMarcaId, setSelectedMarcaId] = useState<string>(instrumento?.marca_id ?? '')
+  const [showNewMarca, setShowNewMarca] = useState(false)
+  const [newMarcaNombre, setNewMarcaNombre] = useState('')
+  const [creatingMarca, setCreatingMarca] = useState(false)
+  const [createMarcaError, setCreateMarcaError] = useState<string | null>(null)
+
+  async function handleCreateMarca() {
+    if (!newMarcaNombre.trim()) return
+    setCreatingMarca(true)
+    setCreateMarcaError(null)
+    const result = await createMarcaInline(newMarcaNombre.trim())
+    setCreatingMarca(false)
+    if (!result.success) {
+      setCreateMarcaError(result.error ?? 'Error al crear la marca')
+      return
+    }
+    setLocalMarcas(prev =>
+      [...prev, { id: result.data.id, nombre: result.data.nombre }]
+        .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
+    )
+    setSelectedMarcaId(result.data.id)
+    setShowNewMarca(false)
+    setNewMarcaNombre('')
+  }
+
   return (
     <form action={formAction} className="space-y-4">
       {state && !state.success && (
@@ -49,10 +80,58 @@ function InstrumentoForm({
       </div>
       <div>
         <label className="text-sm font-medium text-text-secondary block mb-1">Marca</label>
-        <select name="marca_id" defaultValue={instrumento?.marca_id ?? ''} className="w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base">
-          <option value="">Sin marca</option>
-          {marcas.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
-        </select>
+        <div className="flex gap-2">
+          <select
+            name="marca_id"
+            value={selectedMarcaId}
+            onChange={e => setSelectedMarcaId(e.target.value)}
+            className="flex-1 border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base"
+          >
+            <option value="">Sin marca</option>
+            {localMarcas.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
+          </select>
+          <button
+            type="button"
+            onClick={() => { setShowNewMarca(v => !v); setCreateMarcaError(null); setNewMarcaNombre('') }}
+            className="px-3 py-2 text-sm border border-border-default rounded-lg hover:bg-surface-base transition-colors text-text-secondary"
+            title="Crear nueva marca"
+          >
+            +
+          </button>
+        </div>
+        {showNewMarca && (
+          <div className="mt-2 space-y-1.5">
+            {createMarcaError && (
+              <p className="text-xs text-danger">{createMarcaError}</p>
+            )}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newMarcaNombre}
+                onChange={e => setNewMarcaNombre(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleCreateMarca() } }}
+                placeholder="Nombre de la marca…"
+                className="flex-1 border border-border-default rounded-lg px-3 py-2 text-sm"
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={handleCreateMarca}
+                disabled={creatingMarca || !newMarcaNombre.trim()}
+                className="px-3 py-2 text-sm bg-sig-500 text-white rounded-lg hover:bg-sig-600 disabled:opacity-50 transition-colors"
+              >
+                {creatingMarca ? '…' : 'Crear'}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setShowNewMarca(false); setCreateMarcaError(null) }}
+                className="px-3 py-2 text-sm border border-border-default rounded-lg hover:bg-surface-base transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        )}
       </div>
       <div>
         <label className="text-sm font-medium text-text-secondary block mb-1">Número de serie</label>

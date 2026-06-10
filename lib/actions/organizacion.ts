@@ -210,3 +210,43 @@ export async function deleteOrganizacion(id: string): Promise<ActionResult<null>
   revalidatePath('/dashboard/organizaciones-externas')
   return { success: true, data: null }
 }
+
+export async function createMarcaInline(
+  nombre: string
+): Promise<ActionResult<{ id: string; nombre: string }>> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'No autenticado' }
+
+  const nombreTrim = nombre.trim()
+  if (!nombreTrim) return { success: false, error: 'El nombre es obligatorio' }
+
+  const { data: tipoMarca } = await supabase
+    .from('organizaciones_tipos')
+    .select('id')
+    .eq('nombre', 'Marca')
+    .single()
+
+  if (!tipoMarca) return { success: false, error: 'Tipo "Marca" no encontrado en el sistema' }
+
+  const { data: existing } = await supabase
+    .from('organizaciones_externas')
+    .select('id')
+    .eq('nombre', nombreTrim)
+    .eq('is_active', true)
+    .maybeSingle()
+
+  if (existing) return { success: false, error: 'Ya existe una marca con ese nombre' }
+
+  const { data, error } = await supabase
+    .from('organizaciones_externas')
+    .insert({ nombre: nombreTrim, tipo_id: tipoMarca.id, scope: 'global' })
+    .select('id, nombre')
+    .single()
+
+  if (error) return { success: false, error: error.message }
+
+  revalidatePath('/dashboard/instrumentos')
+  revalidatePath('/dashboard/organizaciones-externas')
+  return { success: true, data: { id: data.id, nombre: data.nombre } }
+}
