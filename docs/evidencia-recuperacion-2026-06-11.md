@@ -134,9 +134,10 @@ GitHub → **Actions** → **"Prueba de recuperación (auditoría)"** → **Run 
 descargar el artifact `recovery-test-log-<N>`: ese log fechado es la evidencia de esa corrida.
 
 El respaldo está **agendado** para correr **automáticamente todos los días** (workflow "Backup
-externo", 04:00 UTC). El pipeline de backup standalone fue **ejecutado y verificado de forma
-manual** (`workflow_dispatch`); la **primera corrida autónoma** del agendado ocurrirá en el
-próximo ciclo de las 04:00 UTC.
+externo", 04:00 UTC). El workflow standalone de backup fue **ejecutado y verificado con éxito de
+forma manual** (`workflow_dispatch`) — corrida CI **27371773547** (`conclusion: success`): dump
+cifrado a R2 + espejo incremental de Storage, sin la prueba de restore. La **primera corrida
+autónoma** del agendado (sin intervención) ocurrirá en el próximo ciclo de las 04:00 UTC.
 
 ---
 
