@@ -1,0 +1,79 @@
+# Aplicar migraciones SRT a PRODUCCIÓN — con verificación y auto-rollback.
+#
+# MANUAL + confirmación explícita (input confirm=APLICAR-PROD). Aplica las migraciones
+# pendientes a prod (via SUPABASE_DB_URL), verifica la cadena de auditoría y prueba que
+# una escritura en una tabla auditada NO se rompa por el trigger nuevo. Si la escritura
+# falla, desactiva automáticamente los triggers de auditoría (prod vuelve a escribir,
+# sin auditar) y marca la corrida en rojo para revisar.
+#
+# Las migraciones se toman de la rama feat/srt-48-2025-compliance.
+# Secret requerido: SUPABASE_DB_URL (el mismo del backup).
+
+name: Migrar a producción (SRT)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Escribí APLICAR-PROD para confirmar que aplicás a PRODUCCIÓN'
+        required: true
+        default: ''
+
+jobs:
+  migrate:
+    if: ${{ github.event.inputs.confirm == 'APLICAR-PROD' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/srt-48-2025-compliance
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Instalar cliente Postgres (psql)
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Migraciones en prod ANTES
+        env:
+          U: ${{ secrets.SUPABASE_DB_URL }}
+        run: psql "$U" -t -c "SELECT version FROM supabase_migrations.schema_migrations ORDER BY version DESC LIMIT 6;"
+
+      - name: Aplicar migraciones pendientes (supabase db push)
+        id: apply
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: echo "y" | supabase db push --db-url "$SUPABASE_DB_URL"
+
+      - name: Verificar cadena + escritura (aísla el trigger de auditoría)
+        id: verify
+        env:
+          U: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -e
+          echo "### Migraciones en prod DESPUÉS:"
+          psql "$U" -t -c "SELECT version FROM supabase_migrations.schema_migrations ORDER BY version DESC LIMIT 6;"
+          echo "### Cadena de auditoría:"
+          psql "$U" -c "SELECT estado, detalle FROM public.fn_verify_audit_chain(NULL);"
+          echo "### Escritura de prueba (transaccional, ROLLBACK):"
+          psql "$U" -v ON_ERROR_STOP=1 -f scripts/verify-prod-write.sql
+          echo "✅✅ MIGRACIÓN A PROD COMPLETA Y VERIFICADA (escritura no rota)."
+
+      - name: AUTO-ROLLBACK si la escritura se rompió
+        if: ${{ failure() && steps.apply.outcome == 'success' && steps.verify.outcome == 'failure' }}
+        env:
+          U: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          echo "❌ La escritura de prueba falló tras aplicar → el trigger de auditoría rompe escrituras."
+          echo "⏪ AUTO-ROLLBACK: desactivando triggers de auditoría…"
+          psql "$U" -f scripts/disable-audit-triggers.sql
+          echo "Triggers de auditoría DESACTIVADOS. Prod escribe normal (sin auditar). Revisar fn_audit_trigger."
