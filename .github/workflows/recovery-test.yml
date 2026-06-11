@@ -1,8 +1,9 @@
 # Prueba de recuperación END-TO-END — evidencia para auditoría (SRT 48/2025).
 #
 # Corre el ciclo COMPLETO en CI (Linux, todas las herramientas presentes):
-#   backup (dump real + Storage) → cifrado AES-256 → upload a R2/B2
-#   → download desde R2/B2 → descifrado → verificación de checksums
+#   backup track DB (dump real → cifrado AES-256 → upload a R2/B2 db/daily/)
+#   + backup track Storage (espejo incremental a R2 storage/, sin cifrado)
+#   → download del bundle DB desde R2/B2 → descifrado → verificación de checksums
 #   → restore en un Postgres EFÍMERO → conteo de filas (integridad).
 #
 # El log completo queda como ARTIFACT descargable = evidencia para el auditor.
@@ -105,10 +106,12 @@ jobs:
             echo ""; echo "### PASO 1 — Backup (dump real + Storage) → cifrado → upload a R2/B2"
             npx tsx scripts/backup-external.ts
 
-            echo ""; echo "### PASO 2 — Download del bundle desde R2/B2 (prueba el round-trip real)"
+            echo ""; echo "### PASO 2 — Download del bundle de la DB desde R2/B2 (round-trip real)"
+            # El bundle cifrado de la DB ahora vive bajo db/daily/ (el track de
+            # Storage es un espejo aparte bajo storage/, no se descarga acá).
             DAY="$(date -u +%F)"
             mkdir -p dl
-            aws s3 cp "s3://${S3_BUCKET}/daily/${DAY}/" ./dl/ --recursive \
+            aws s3 cp "s3://${S3_BUCKET}/db/daily/${DAY}/" ./dl/ --recursive \
               --endpoint-url "$S3_ENDPOINT" --region "$S3_REGION"
             BUNDLE="$(find dl -name '*.tar.enc' | sort | tail -1)"
             echo "Bundle descargado: $BUNDLE"

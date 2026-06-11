@@ -1,4 +1,7 @@
-# Backup externo cifrado — DB (Supabase) + Storage → tar → AES-256 → R2/B2.
+# Backup externo — dos tracks separados → R2/B2.
+#   Track DB:      dump (Supabase) → tar → AES-256 (cifrado) → db/daily/ + db/monthly/
+#   Track Storage: espejo INCREMENTAL de objetos → storage/<bucket>/<path>
+#                  (sin cifrado client-side: R2 cifra en reposo; sube solo el delta)
 #
 # Corre TODOS los días a las 04:00 UTC (≈ 01:00 ART) y también on-demand
 # (workflow_dispatch). Toda credencial viene de GitHub Secrets — nada en claro.

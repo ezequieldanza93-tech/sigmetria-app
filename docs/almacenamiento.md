@@ -28,50 +28,89 @@ de Storage):
 ## 2. Estrategia de backup
 
 El plan de Supabase **hoy es Free** → no hay backups automáticos gestionados ni
-PITR. Por eso se construyó un **backup lógico externo cifrado**, independiente del
-proveedor, que cubre DB + Storage.
+PITR. Por eso se construyó un **backup lógico externo**, independiente del
+proveedor, que cubre DB + Storage en **dos tracks separados** con estrategias
+distintas según el tipo de dato.
 
-### 2.1 Qué se respalda
+### 2.0 Por qué dos tracks (DB cifrada versionada + Storage espejo incremental)
 
-| Componente | Script | Salida |
-|------------|--------|--------|
+Un snapshot monolítico (dumpear la DB + descargar TODO el Storage + meter todo en
+un único tar cifrado, cada noche) **no escala**: re-copia TB todos los días (costo
+de R2 × retención) y re-baja TB de Supabase a diario (el egress de Supabase
+explota). La solución es separar por naturaleza del dato:
+
+- **DB** = chica (datos tabulares), sensible y **probatoria** → se versiona diario
+  y se **cifra client-side**. Tenerla cifrada y con N versiones es barato y correcto.
+- **Storage** = pesada (binarios), inmutable en su mayoría → se **espeja
+  incrementalmente** (solo lo nuevo), **sin cifrado client-side**.
+
+### 2.1 Track DB — cifrado, versionado diario
+
+| Componente | Comando / script | Salida |
+|------------|------------------|--------|
 | Schema (DDL) | `supabase db dump` | `db/schema.sql` |
 | Datos | `supabase db dump --data-only` | `db/data.sql` |
 | Roles | `supabase db dump --role-only` | `db/roles.sql` |
 | Tablas public (fallback JSON) | `scripts/backup.ts` | `db-json/*.json` |
-| Objetos de Storage | `scripts/backup-storage.ts` | `storage/<bucket>/<path>` |
 
-El dump de la DB usa la **Supabase CLI (2.105)** contra la base **remota, sin
-Docker**. El dump de Storage descarga **todos los objetos de todos los buckets**
-(descubiertos vía `listBuckets()`, con fallback a la lista declarada),
-preservando las rutas y paginando `list()`.
+`scripts/backup-external.ts` (track DB):
 
-### 2.2 Empaquetado, cifrado e integridad
-
-`scripts/backup-external.ts` orquesta el pipeline:
-
-1. Corre los dumps de DB y Storage en `./backups/<timestamp>/`.
+1. Corre los dumps de DB en `./backups/<timestamp>/` (CLI **2.105** contra la base
+   **remota, sin Docker**).
 2. Genera `manifest.json`: timestamp, **versión de schema** (última migración
    aplicada), y por cada archivo su tamaño y **checksum SHA-256**.
-3. Empaqueta todo en `backup-<timestamp>.tar`.
+3. Empaqueta **solo `db/` + `db-json/` + `manifest.json`** en `backup-<timestamp>.tar`.
 4. **Cifra** a `backup-<timestamp>.tar.enc` con **AES-256-CBC** (OpenSSL, PBKDF2
-   100k iteraciones, clave desde `BACKUP_ENCRYPTION_KEY`). Escribe también el
-   `.sha256` del bundle cifrado.
-5. **Sube** a almacenamiento **S3-compatible (Cloudflare R2 / Backblaze B2)** vía
-   AWS CLI (`aws s3 cp --endpoint-url`), con prefijos `daily/<fecha>/` y
-   `monthly/<mes>/`.
+   100k iteraciones, clave desde `BACKUP_ENCRYPTION_KEY`). Escribe el `.sha256`.
+5. **Sube** a R2/B2 vía AWS CLI (`aws s3 cp --endpoint-url`) con prefijos
+   **`db/daily/<fecha>/`** y **`db/monthly/<mes>/`** (+ el `manifest.json` junto al
+   diario).
+
+### 2.2 Track Storage — espejo INCREMENTAL (sin cifrado client-side)
+
+`scripts/backup-external.ts` (track Storage) + `scripts/backup-storage.ts`
+(`listSupabaseObjects`) + `scripts/storage-delta.ts` (lógica pura del delta):
+
+1. **Lista las keys ya presentes en R2** bajo el prefijo `storage/`
+   (`aws s3api list-objects-v2`, paginado con ContinuationToken).
+2. **Lista los objetos de Supabase** (todos los buckets, descubiertos vía
+   `listBuckets()` con fallback a la lista declarada, paginando `list()`) **sin
+   descargarlos** — solo `{ bucket, path, size }`.
+3. **Calcula el delta** (`computeStorageDelta`): un objeto se sube solo si **falta
+   en R2** o si **su tamaño difiere**. Todo lo ya presente se **saltea** (no se
+   re-baja de Supabase ni se re-sube a R2).
+4. Por cada faltante: lo **descarga** de Supabase y lo **sube** a R2 con
+   `aws s3 cp` bajo `storage/<bucket>/<path>`.
+5. Escribe `storage/manifest.json` en R2 (evidencia): **total de objetos**, **total
+   de bytes** y **fecha de última sync**.
+
+> **Postura de cifrado (deliberada):** los objetos de Storage **NO se cifran
+> client-side**. Van a un bucket R2 **privado**, que ya los **cifra en reposo
+> (AES-256)** y los transfiere por **TLS**. Cifrarlos client-side **rompería la
+> deduplicación incremental**: el salt/IV de OpenSSL hace que el mismo archivo
+> produzca bytes distintos en cada corrida → se re-subiría todo siempre,
+> matando el ahorro. La **DB sí va cifrada client-side** porque es lo
+> probatorio/sensible y es chica (versionarla cifrada es barato).
 
 Si faltan credenciales, el script **falla con un mensaje claro** listando las env
 vars requeridas (no con stack trace).
 
-### 2.3 Variables de entorno
+### 2.3 Flags del orquestador
+
+| Flag | Efecto |
+|------|--------|
+| `--no-upload` | Corre el dump + cifrado **local del track DB** sin subir nada (salta también Storage, que requiere R2). |
+| `--db-only` | Corre solo el track DB (dump + cifrado + upload); **salta el track de Storage**. |
+| `--keep-tar` | No borra el `.tar` intermedio sin cifrar (debug). |
+
+### 2.4 Variables de entorno
 
 | Variable | Para qué |
 |----------|----------|
-| `SUPABASE_DB_URL` | connection string para el dump SQL (requerida) |
-| `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | dump de Storage + fallback JSON |
-| `BACKUP_ENCRYPTION_KEY` | clave AES-256 (requerida) |
-| `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | subida a R2/B2 |
+| `SUPABASE_DB_URL` | connection string para el dump SQL (requerida, track DB) |
+| `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | listado + descarga de Storage + fallback JSON |
+| `BACKUP_ENCRYPTION_KEY` | clave AES-256 del track DB (requerida) |
+| `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | subida + listado en R2/B2 (ambos tracks) |
 
 > Las credenciales **no** están en el repo. Se cargan como **GitHub Secrets**
 > (CI) o variables de entorno locales. El usuario las provee al activar el flujo.
@@ -94,14 +133,25 @@ vars requeridas (no con stack trace).
 
 ### 4.1 Retención por esquema temporal
 
-- **30 backups diarios** (prefijo `daily/<YYYY-MM-DD>/`).
-- **12 backups mensuales** (prefijo `monthly/<YYYY-MM>/`).
+La retención difiere por track, porque la naturaleza del dato difiere:
+
+**Track DB (versionado, cifrado):**
+- **30 backups diarios** (prefijo `db/daily/<YYYY-MM-DD>/`).
+- **12 backups mensuales** (prefijo `db/monthly/<YYYY-MM>/`).
 
 La separación de prefijos ya está **implementada** en `backup-external.ts` (cada
 corrida sube a ambos). La **purga efectiva** se aplica vía **lifecycle del bucket**
-R2/B2 (regla por prefijo: expirar `daily/` a 30 días, `monthly/` a 365). Esa
-regla de lifecycle queda **documentada como pendiente de configurar** en la consola
-del bucket (ver "Pendiente").
+R2/B2 (regla por prefijo: expirar `db/daily/` a 30 días, `db/monthly/` a 365).
+
+**Track Storage (espejo incremental):**
+- **NO se versiona por fecha**: es un espejo vivo bajo `storage/<bucket>/<path>`.
+  La última sync refleja el estado actual de Supabase. **No** se le aplica
+  lifecycle de expiración (borraría binarios vigentes). Los binarios eliminados
+  en Supabase quedan como huérfanos en el espejo (el incremental nunca borra) —
+  su limpieza, si se quisiera, sería un proceso aparte y controlado.
+
+Las reglas de lifecycle del bucket quedan **documentadas como pendiente de
+configurar** en la consola del bucket (ver "Pendiente").
 
 ### 4.2 Retención por tipo de dato (valor probatorio)
 
@@ -161,14 +211,18 @@ Proceso **controlado** (no un DELETE directo):
 
 ## 6. Prueba de recuperación
 
-- Script: `scripts/restore-dry-run.sh` — descifra el bundle, restaura schema +
-  data + roles a un Postgres objetivo (`RESTORE_DB_URL`), y verifica integridad
-  (conteo de filas + cross-check de checksums contra el manifest). Idempotente y
-  **no destructivo sobre prod** (guard que rechaza URLs de producción salvo
-  `CONFIRM=yes`).
+- Script: `scripts/restore-dry-run.sh` — descifra el **bundle de la DB**, restaura
+  schema + data + roles a un Postgres objetivo (`RESTORE_DB_URL`), y verifica
+  integridad (conteo de filas + cross-check de checksums contra el manifest).
+  Idempotente y **no destructivo sobre prod** (guard que rechaza URLs de producción
+  salvo `CONFIRM=yes`). El **Storage** se recupera aparte desde el espejo de R2
+  (`aws s3 sync s3://$S3_BUCKET/storage/ …`) — documentado en el propio script
+  (sección 7) y en `docs/recuperacion.md` (Paso 3).
 - Runbook paso a paso: `docs/recuperacion.md`.
-- **Corrida real PENDIENTE**: requiere Docker o staging (esta máquina no tiene
-  Docker). Los scripts están listos y pasan `tsc --noEmit`.
+- **Corrida real PENDIENTE**: el track DB se validó localmente (ver
+  `docs/recuperacion.md`); el track Storage incremental tiene tests unitarios del
+  delta (`tests/storage-delta.test.ts`) y **se valida en vivo en la primera corrida
+  CI** (es donde corre el `aws` CLI real). Los scripts pasan `tsc --noEmit`.
 
 ---
 
@@ -178,8 +232,9 @@ Proceso **controlado** (no un DELETE directo):
 |------|---------|---------|
 | **Upgrade a Supabase Pro (PITR)** | Contratar el plan **Pro (~US$25/mes)**: habilita backups diarios gestionados de 7 días y **Point-in-Time Recovery** (restauración a cualquier segundo dentro de la ventana). | El backup externo cubre el respaldo lógico, pero PITR da RPO casi nulo y restauración granular sin reconstruir desde un dump. Recomendado antes de salir a producción con datos de clientes reales. |
 | **Corrida real de restauración** | Levantar Postgres (Docker/staging) y correr `restore-dry-run.sh` end-to-end; archivar el log como evidencia. | Hoy no hay Docker en la máquina; la prueba real valida el RTO. |
-| **Lifecycle del bucket R2/B2** | Configurar reglas de expiración por prefijo (`daily/` 30d, `monthly/` 365d) en la consola del bucket. | La rotación de prefijos ya está en el código; la purga la aplica el proveedor. |
-| **Re-upload automatizado de Storage** | Script que recorra `storage/` del bundle y suba cada objeto al bucket destino. | Hoy el re-poblado de Storage es manual. |
+| **Lifecycle del bucket R2/B2** | Configurar expiración por prefijo SOLO en `db/daily/` (30d) y `db/monthly/` (365d) en la consola del bucket. **No** poner lifecycle sobre `storage/` (borraría binarios vigentes del espejo). | La rotación de prefijos del track DB ya está en el código; la purga la aplica el proveedor. |
+| **Re-upload automatizado de Storage** | Script que recorra el espejo `storage/` de R2 (`aws s3 sync`) y re-suba cada objeto al Supabase destino preservando bucket+path. | Hoy el re-poblado de Storage es manual (ver `docs/recuperacion.md`). |
+| **Limpieza de huérfanos en el espejo** | (Opcional) proceso controlado que detecte objetos en `storage/` de R2 que ya no existen en Supabase y los purgue. | El incremental nunca borra; los huérfanos se acumulan. No es urgente (R2 es barato) pero conviene auditarlo. |
 | **Borrado de cliente como flujo único** | Action que orqueste export → audit → soft-delete → purga física controlada. | Hoy las piezas existen pero no hay un único punto de entrada. |
 | **Re-habilitar Service Worker** | Re-activar `public/sw.js` para caching/offline real. | Bloqueado por el bug React #418; re-habilitar solo cuando se resuelva. |
 | **Cron de health en Vercel** | (Opcional) agregar `/api/health` a un monitor externo o cron. | Mejora la detección proactiva de caídas. |

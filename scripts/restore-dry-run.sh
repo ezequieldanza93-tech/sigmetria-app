@@ -2,8 +2,13 @@
 #
 # restore-dry-run.sh — Restauración del bundle de backup a un Postgres OBJETIVO.
 #
-# Descifra el bundle (.tar.enc), restaura schema + data, y verifica integridad
-# comparando el conteo de filas por tabla contra el manifest.json.
+# Descifra el bundle (.tar.enc) del TRACK DB, restaura schema + data, y verifica
+# integridad comparando el conteo de filas por tabla contra el manifest.json.
+#
+# NOTA SOBRE STORAGE: desde el refactor incremental, el bundle cifrado contiene
+# SOLO la DB (db/ + db-json/ + manifest.json). Los objetos de Storage NO viajan
+# acá: viven espejados (sin cifrar) en R2 bajo `storage/<bucket>/<path>`. El
+# restore de Storage se documenta más abajo (sección "Restaurar Storage").
 #
 # NO destructivo sobre producción: rechaza URLs que parezcan de prod salvo
 # confirmación explícita. Idempotente: el restore usa el schema dumpeado (que ya
@@ -141,7 +146,29 @@ if [ -f "$MANIFEST" ] && command -v sha256sum >/dev/null 2>&1; then
 fi
 
 echo ""
-echo "✅ Restauración + verificación completas sobre el Postgres objetivo."
-echo "   NOTA: este script NO restaura objetos de Storage (los archivos quedan"
-echo "   extraídos en $WORK/storage/ durante la corrida; subilos manualmente al"
-echo "   bucket de Storage del proyecto objetivo si hace falta — ver docs/recuperacion.md)."
+echo "✅ Restauración + verificación de la DB completas sobre el Postgres objetivo."
+
+# ── 7. Restaurar Storage (documentado — NO se ejecuta acá) ────────────────────
+# El Storage NO está en este bundle: vive ESPEJADO (sin cifrar) en R2 bajo el
+# prefijo `storage/<bucket>/<path>`. R2 lo guarda cifrado en reposo (AES-256) y
+# se transfiere por TLS. Para recuperarlo:
+#
+#   1) Bajar el espejo de R2 a local (egress de R2 = $0):
+#        aws s3 sync "s3://$S3_BUCKET/storage/" ./storage-restore/ \
+#          --endpoint-url "$S3_ENDPOINT" --region "$S3_REGION"
+#
+#   2) Re-subir a un Supabase OBJETIVO, preservando bucket+path. Cada subdir de
+#      ./storage-restore/<bucket>/ corresponde a un bucket de Storage; el resto
+#      del path es la key dentro del bucket. Ejemplo con la Supabase CLI / SDK
+#      (o el dashboard de Storage), por bucket:
+#        # for f in $(find ./storage-restore/<bucket> -type f); do
+#        #   key="${f#./storage-restore/<bucket>/}"
+#        #   # supabase storage cp / SDK upload  ->  bucket=<bucket> path=$key
+#        # done
+#
+#   3) `storage/manifest.json` (en R2) lista total de objetos/bytes y la última
+#      sync — sirve para verificar que el re-poblado quedó completo.
+#
+# (Automatización del re-upload de Storage: ver "Pendiente" en docs/recuperacion.md.)
+echo "   NOTA: el Storage no está en este bundle. Restauralo desde el espejo de R2"
+echo "   (s3://\$S3_BUCKET/storage/) — ver la sección 7 de este script y docs/recuperacion.md."

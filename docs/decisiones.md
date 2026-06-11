@@ -114,6 +114,36 @@
   `CONFIRM=yes`. Evita restaurar accidentalmente sobre producción.
 - **`backups/` en `.gitignore`**: los dumps y bundles cifrados nunca se commitean.
 
+### Backup incremental — qué / por qué / alternativa
+
+- **Qué:** se separó el backup en DOS tracks (refactor de `scripts/backup-external.ts`):
+  - **Track DB** — sigue igual pero el tar cifrado contiene SOLO `db/` (+ `db-json/` + `manifest`).
+    Se versiona diario (`db/daily/<fecha>/` + `db/monthly/<mes>/`), cifrado AES-256 client-side.
+  - **Track Storage** — espejo INCREMENTAL a R2 bajo `storage/<bucket>/<path>`: lista lo que ya
+    hay en R2 (`aws s3api list-objects-v2` paginado), lista los objetos de Supabase
+    (`listSupabaseObjects`, sin descargar), calcula el delta (`scripts/storage-delta.ts`,
+    `computeStorageDelta` — sube solo lo que falta o cambió de tamaño) y sube solo el delta con
+    `aws s3 cp`. Escribe `storage/manifest.json` (objetos/bytes/última sync) como evidencia.
+- **Por qué:** el diseño monolítico (DB + TODO el Storage en un único tar cifrado cada noche) NO
+  escala: re-copia TB todos los días (costo R2 × retención) y re-baja TB de Supabase a diario (el
+  egress de Supabase explota). Separando: la DB es chica y probatoria → versionada + cifrada; el
+  Storage es pesado e inmutable → espejo incremental sin re-trabajo.
+- **Postura de cifrado del Storage (deliberada):** los binarios NO se cifran client-side. Van a un
+  bucket R2 privado (cifrado en reposo AES-256 + TLS). Cifrarlos client-side rompería la
+  deduplicación: el salt/IV de OpenSSL haría que el mismo archivo produzca bytes distintos cada
+  corrida → se re-subiría todo siempre. La DB SÍ va cifrada (sensible/probatoria y chica).
+- **Flag `--db-only`:** corre solo el track DB (dump + cifrado + upload), salta Storage. `--no-upload`
+  ahora hace el dump+cifrado local del track DB sin subir nada (y salta Storage, que requiere R2).
+- **Sin dependencias nuevas:** el cliente S3 sigue siendo el `aws` CLI vía `child_process` (no
+  `@aws-sdk/*`); el delta es lógica TS pura testeada (`tests/storage-delta.test.ts`).
+- **Alternativa descartada:** seguir con el snapshot monolítico (simple pero inviable a escala) o
+  cifrar el Storage client-side con dedup por contenido (complejo, requeriría un índice de hashes
+  propio — innecesario teniendo cifrado en reposo de R2). El incremental por tamaño/presencia es lo
+  más barato que cumple el objetivo de compliance (custodia + disponibilidad) sin re-trabajo.
+- **No borra huérfanos:** el incremental nunca elimina objetos del espejo (un binario borrado en
+  Supabase queda en R2). Limpieza opcional documentada como pendiente (no hay lifecycle sobre
+  `storage/`, eso borraría binarios vigentes).
+
 ---
 
 ### Prompt 3 — Portabilidad

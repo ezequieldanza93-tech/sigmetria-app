@@ -3,6 +3,12 @@
 > Fecha: 2026-06-11. Entorno: Supabase local (Docker Desktop + `supabase start`), levantado
 > exprofeso para validar las migraciones nuevas EN VIVO antes de aplicarlas a producción.
 > Esto eleva la evidencia de "scripts listos" a "probado contra un Postgres real".
+>
+> **Nota (refactor backup incremental, posterior):** la sección del Prompt 2 abajo documenta el
+> diseño de backup **monolítico** vigente ese día (DB + Storage en un único tar cifrado, prefijo
+> `daily/`). Luego se refactorizó a **dos tracks** (DB cifrada versionada en `db/daily/` + Storage
+> espejo incremental en `storage/`). Esta página queda como **registro histórico** de la corrida del
+> 2026-06-11; el diseño actual está en `docs/almacenamiento.md` y `docs/recuperacion.md`.
 
 ## Cómo se levantó el entorno (reproducible)
 

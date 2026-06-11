@@ -1,11 +1,19 @@
 /**
- * Backup de Storage (Supabase) — descarga TODOS los objetos de TODOS los buckets.
+ * Backup de Storage (Supabase).
  *
- * Usage:
- *   npx tsx scripts/backup-storage.ts [--out <dir>]
+ * Expone DOS modos de uso:
  *
- * Salida por defecto: ./backups/<timestamp>/storage/<bucket>/<path...>
- * (preserva la estructura de rutas tal cual está en cada bucket).
+ * 1. `listSupabaseObjects(supabase?)` — LISTA todos los objetos de todos los
+ *    buckets ({ bucket, path, size }) SIN descargarlos. Es la base del espejo
+ *    INCREMENTAL a R2 (backup-external.ts calcula el delta contra lo ya subido).
+ *
+ * 2. `backupStorage(outDir)` — descarga TODOS los objetos a disco
+ *    (`./backups/<ts>/storage/<bucket>/<path>`). Uso histórico/standalone:
+ *    snapshot local completo. NO lo usa el track incremental.
+ *
+ * Usage standalone:
+ *   npx tsx scripts/backup-storage.ts [--out <dir>]   # descarga completa a disco
+ *   npx tsx scripts/backup-storage.ts --list          # solo lista (stdout JSON)
  *
  * Variables de entorno requeridas (mismas que scripts/backup.ts):
  *   - NEXT_PUBLIC_SUPABASE_URL
@@ -18,9 +26,6 @@
  *
  * Maneja la paginación de `list()` (Supabase pagina de a 100 por defecto) y
  * recorre recursivamente las "carpetas" (prefijos) de cada bucket.
- *
- * Imprime un resumen con conteo de objetos y bytes por bucket, y escribe
- * `storage-summary.json` dentro del directorio de salida.
  */
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
@@ -33,7 +38,7 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 const LIST_PAGE_SIZE = 100
 
-interface FileEntry {
+export interface FileEntry {
   bucket: string
   /** path relativo dentro del bucket (con prefijos) */
   path: string
@@ -44,6 +49,19 @@ interface BucketSummary {
   bucket: string
   objects: number
   bytes: number
+}
+
+/** Crea el cliente Supabase con service_role (aborta si faltan credenciales). */
+export function createStorageClient(): SupabaseClient {
+  if (!supabaseUrl || !supabaseKey) {
+    console.error(
+      'Faltan variables de entorno: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY',
+    )
+    process.exit(1)
+  }
+  return createClient(supabaseUrl, supabaseKey, {
+    auth: { persistSession: false },
+  })
 }
 
 /** Lista recursivamente todos los objetos bajo un prefijo, paginando. */
@@ -97,17 +115,32 @@ async function discoverBuckets(supabase: SupabaseClient): Promise<string[]> {
   return data.map((b) => b.name)
 }
 
-export async function backupStorage(outDir: string): Promise<BucketSummary[]> {
-  if (!supabaseUrl || !supabaseKey) {
-    console.error(
-      'Faltan variables de entorno: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY',
-    )
-    process.exit(1)
-  }
+/**
+ * LISTA todos los objetos de todos los buckets de Supabase Storage SIN
+ * descargarlos. Base del espejo incremental: el orquestador compara este set
+ * contra lo ya presente en R2 y baja/sube SOLO el delta.
+ */
+export async function listSupabaseObjects(
+  supabase: SupabaseClient = createStorageClient(),
+): Promise<FileEntry[]> {
+  const buckets = await discoverBuckets(supabase)
+  console.log(`Descubiertos ${buckets.length} buckets: ${buckets.join(', ')}`)
 
-  const supabase = createClient(supabaseUrl, supabaseKey, {
-    auth: { persistSession: false },
-  })
+  const all: FileEntry[] = []
+  for (const bucket of buckets) {
+    const objects = await listAllObjects(supabase, bucket)
+    console.log(`  📦 ${bucket}: ${objects.length} objetos`)
+    all.push(...objects)
+  }
+  return all
+}
+
+/**
+ * Descarga COMPLETA a disco (uso standalone/histórico). El track incremental
+ * NO usa esta función — usa `listSupabaseObjects` + `aws s3 cp` por objeto.
+ */
+export async function backupStorage(outDir: string): Promise<BucketSummary[]> {
+  const supabase = createStorageClient()
 
   const buckets = await discoverBuckets(supabase)
   console.log(`Descubiertos ${buckets.length} buckets: ${buckets.join(', ')}`)
@@ -165,19 +198,35 @@ const isMain =
   process.argv[1] && /backup-storage\.ts$/.test(process.argv[1].replace(/\\/g, '/'))
 
 if (isMain) {
-  const outFlagIdx = process.argv.indexOf('--out')
-  const outDir =
-    outFlagIdx !== -1 && process.argv[outFlagIdx + 1]
-      ? process.argv[outFlagIdx + 1]
-      : path.join(
-          __dirname,
-          '..',
-          'backups',
-          new Date().toISOString().replace(/[:.]/g, '-'),
+  if (process.argv.includes('--list')) {
+    // Modo lista: imprime el inventario de Supabase como JSON (debug/inspección).
+    listSupabaseObjects()
+      .then((objects) => {
+        const bytes = objects.reduce((a, o) => a + o.size, 0)
+        console.log(
+          `\n📋 ${objects.length} objetos, ${(bytes / 1024 / 1024).toFixed(2)} MiB`,
         )
+        console.log(JSON.stringify(objects, null, 2))
+      })
+      .catch((e) => {
+        console.error(e)
+        process.exit(1)
+      })
+  } else {
+    const outFlagIdx = process.argv.indexOf('--out')
+    const outDir =
+      outFlagIdx !== -1 && process.argv[outFlagIdx + 1]
+        ? process.argv[outFlagIdx + 1]
+        : path.join(
+            __dirname,
+            '..',
+            'backups',
+            new Date().toISOString().replace(/[:.]/g, '-'),
+          )
 
-  backupStorage(outDir).catch((e) => {
-    console.error(e)
-    process.exit(1)
-  })
+    backupStorage(outDir).catch((e) => {
+      console.error(e)
+      process.exit(1)
+    })
+  }
 }
