@@ -62,7 +62,7 @@ export function IncidenteForm({ action, onSuccess, establecimientoId }: Props) {
   )
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form action={formAction} className="space-y-4 max-md:space-y-6">
       {state && !state.success && (
         <div role="alert" className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3">
           {state.error}
@@ -108,7 +108,7 @@ export function IncidenteForm({ action, onSuccess, establecimientoId }: Props) {
 
       <div className="border-t border-border-subtle pt-4">
         <p className="text-sm font-medium text-text-secondary mb-3">Datos médicos</p>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Input label="Fecha baja médica" name="fecha_baja_medica" type="date"
             value={fechaBaja} onChange={e => setFechaBaja(e.target.value)} />
           <Input label="Fecha alta médica" name="fecha_alta_medica" type="date"
@@ -174,7 +174,7 @@ export function IncidenteForm({ action, onSuccess, establecimientoId }: Props) {
 
       <Textarea label="Acciones correctivas" name="acciones_correctivas" placeholder="Acciones tomadas…" rows={3} />
 
-      <div className="flex gap-3 pt-1">
+      <div className="flex flex-wrap gap-3 pt-1">
         <Button type="submit" disabled={isPending}>
           {isPending ? 'Guardando...' : 'Registrar Incidente'}
         </Button>

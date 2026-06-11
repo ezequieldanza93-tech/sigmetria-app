@@ -13,9 +13,9 @@ interface ModalProps {
 }
 
 const SIZE_CLASSES = {
-  default: 'max-w-lg',
-  full: 'max-w-4xl',
-  wide: 'max-w-6xl',
+  default: 'md:max-w-lg',
+  full: 'md:max-w-4xl',
+  wide: 'md:max-w-6xl',
 }
 
 export function Modal({ open, onClose, title, children, className, size = 'default' }: ModalProps) {
@@ -38,7 +38,11 @@ export function Modal({ open, onClose, title, children, className, size = 'defau
       onClose={onClose}
       aria-labelledby={titleId}
       className={cn(
-        'rounded-2xl border border-border-subtle bg-surface-base shadow-[var(--shadow-lg)] p-0 backdrop:bg-black/40 w-[calc(100vw-1rem)]',
+        'bg-surface-base p-0 backdrop:bg-black/40',
+        // Móvil (<md): full-screen, sin bordes ni márgenes.
+        'max-md:fixed max-md:inset-0 max-md:m-0 max-md:h-auto max-md:max-h-none max-md:w-auto max-md:max-w-none max-md:rounded-none max-md:border-0',
+        // Desktop (md+): ventana centrada — diseño actual intacto.
+        'md:w-[calc(100vw-1rem)] md:rounded-2xl md:border md:border-border-subtle md:shadow-[var(--shadow-lg)]',
         SIZE_CLASSES[size],
         className,
       )}
@@ -46,8 +50,8 @@ export function Modal({ open, onClose, title, children, className, size = 'defau
         if (e.target === dialogRef.current) onClose()
       }}
     >
-      <div className="p-4 sm:p-6">
-        <div className="flex items-center justify-between mb-4 sm:mb-5">
+      <div className="md:p-6 max-md:flex max-md:flex-col max-md:h-full">
+        <div className="flex items-center justify-between md:mb-5 max-md:shrink-0 max-md:p-4 max-md:border-b max-md:border-border-subtle">
           <h2 id={titleId} className="text-base sm:text-lg font-semibold text-text-primary truncate pr-2">{title}</h2>
           <button
             onClick={onClose}
@@ -57,7 +61,11 @@ export function Modal({ open, onClose, title, children, className, size = 'defau
             &times;
           </button>
         </div>
-        {children}
+        {/* En desktop el wrapper es `contents` (no afecta el layout actual);
+            en móvil se vuelve el área scrolleable del full-screen. */}
+        <div className="contents max-md:block max-md:flex-1 max-md:min-h-0 max-md:overflow-y-auto max-md:overflow-x-hidden max-md:p-4">
+          {children}
+        </div>
       </div>
     </dialog>
   )

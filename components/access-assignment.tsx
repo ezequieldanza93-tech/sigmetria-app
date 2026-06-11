@@ -12,6 +12,8 @@ interface AccessItem {
 
 interface EmpresaConEstablecimientos extends Empresa {
   establecimientos: Establecimiento[]
+  /** false = el granter no puede otorgar la empresa entera (solo establecimientos puntuales). */
+  puedeEmpresaEntera?: boolean
 }
 
 interface AccessAssignmentProps {
@@ -114,26 +116,35 @@ export function AccessAssignment({ targetUserId, empresas, currentAccess }: Acce
       )}
 
       <div className="bg-surface-base rounded-xl border border-border-subtle divide-y divide-gray-100">
-        {empresas.map(empresa => (
+        {empresas.map(empresa => {
+          const soloEst = empresa.puedeEmpresaEntera === false
+          const showEst = soloEst || expanded.has(empresa.id)
+          return (
           <div key={empresa.id} className="p-4">
             <div className="flex items-center gap-3">
-              {/* Empresa entera checkbox */}
-              <input
-                type="checkbox"
-                id={`emp-${empresa.id}`}
-                checked={isEmpresaEntera(empresa.id)}
-                onChange={() => toggleEmpresaEntera(empresa.id)}
-                className="w-4 h-4 text-sig-500 rounded border-border-default focus:ring-sig-500"
-              />
-              <label
-                htmlFor={`emp-${empresa.id}`}
-                className="flex-1 font-medium text-text-primary text-sm cursor-pointer"
-              >
-                {empresa.razon_social}
-                <span className="text-text-tertiary text-xs font-normal ml-2">empresa entera</span>
-              </label>
+              {!soloEst ? (
+                <>
+                  {/* Empresa entera checkbox */}
+                  <input
+                    type="checkbox"
+                    id={`emp-${empresa.id}`}
+                    checked={isEmpresaEntera(empresa.id)}
+                    onChange={() => toggleEmpresaEntera(empresa.id)}
+                    className="w-4 h-4 text-sig-500 rounded border-border-default focus:ring-sig-500"
+                  />
+                  <label
+                    htmlFor={`emp-${empresa.id}`}
+                    className="flex-1 font-medium text-text-primary text-sm cursor-pointer"
+                  >
+                    {empresa.razon_social}
+                    <span className="text-text-tertiary text-xs font-normal ml-2">empresa entera</span>
+                  </label>
+                </>
+              ) : (
+                <span className="flex-1 font-medium text-text-primary text-sm">{empresa.razon_social}</span>
+              )}
 
-              {empresa.establecimientos.length > 0 && (
+              {!soloEst && empresa.establecimientos.length > 0 && (
                 <button
                   onClick={() => toggleExpand(empresa.id)}
                   className="text-xs text-sig-500 hover:text-sig-700"
@@ -144,7 +155,7 @@ export function AccessAssignment({ targetUserId, empresas, currentAccess }: Acce
             </div>
 
             {/* Establecimientos */}
-            {expanded.has(empresa.id) && empresa.establecimientos.length > 0 && (
+            {showEst && empresa.establecimientos.length > 0 && (
               <div className="mt-3 ml-7 space-y-2">
                 {empresa.establecimientos.map(est => (
                   <div key={est.id} className="flex items-center gap-3">
@@ -170,7 +181,8 @@ export function AccessAssignment({ targetUserId, empresas, currentAccess }: Acce
               </div>
             )}
           </div>
-        ))}
+          )
+        })}
 
         {empresas.length === 0 && (
           <div className="p-8 text-center text-text-tertiary text-sm">

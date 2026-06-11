@@ -5,6 +5,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { createServiceClient } from '@/lib/supabase/service'
 import { getTestMfaBypassCookie } from '@/lib/auth/test-mfa-bypass'
+import { logAuditEvent } from '@/lib/audit/log-event'
 
 function buildSupabaseClient(cookieStore: Awaited<ReturnType<typeof cookies>>) {
   return createServerClient(
@@ -73,10 +74,31 @@ export async function login(
   }
 
   // TEMP testing bypass — ver lib/auth/test-mfa-bypass.ts
+  let dest = '/dashboard/empresas'
   if (signInData.user) {
     const bypass = await getTestMfaBypassCookie(email, signInData.user.id)
     if (bypass) cookieStore.set(bypass.name, bypass.value, bypass.options)
+
+    // El Viewer de Observaciones aterriza en su pantalla (no ve empresas).
+    const { data: m } = await supabase
+      .from('consultoras_members')
+      .select('role, consultora_id')
+      .eq('user_id', signInData.user.id)
+      .eq('is_active', true)
+      .maybeSingle()
+    if (m?.role === 'viewer_observaciones') dest = '/dashboard/mis-observaciones'
+
+    // Evento de acceso en el audit log (cadena de custodia, Art. 4.2).
+    // Best-effort (D3): nunca bloquea el login. No registra credenciales.
+    await logAuditEvent(supabase, {
+      accion: 'LOGIN',
+      tabla: 'auth',
+      registroId: signInData.user.id,
+      consultoraId: m?.consultora_id ?? null,
+      meta: { method: 'password' },
+      origen: 'humano',
+    })
   }
 
-  redirect('/dashboard/empresas')
+  redirect(dest)
 }

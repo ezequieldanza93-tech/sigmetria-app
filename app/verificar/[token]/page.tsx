@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { createServiceClient } from '@/lib/supabase/service'
+import { logAuditEvent } from '@/lib/audit/log-event'
 import { LegajoTecnico } from '@/components/establecimiento/legajo-tecnico'
 import type { Inspeccion, Documento, Capacitacion, Riesgo, Medicion, Incidente } from '@/lib/types'
 
@@ -11,7 +12,7 @@ async function getEstablecimientoByToken(token: string) {
   const supabase = createServiceClient()
   const { data } = await supabase
     .from('verificacion_tokens')
-    .select('establecimiento_id, token')
+    .select('id, establecimiento_id, token')
     .eq('token', token)
     .single()
   return data
@@ -73,7 +74,7 @@ export default async function VerificarPage({ params }: Props) {
 
   const { data: empresa } = await supabase
     .from('empresas')
-    .select('id, razon_social')
+    .select('id, razon_social, consultora_id')
     .eq('id', establecimiento.empresa_id)
     .single()
 
@@ -149,6 +150,23 @@ export default async function VerificarPage({ params }: Props) {
 
   // Registrar acceso (fire and forget — no bloquea el render)
   supabase.rpc('registrar_acceso_legajo', { p_token: token }).then(() => {})
+
+  // Auditoría del acceso por QR (Art. 4.5 — cadena de custodia del legajo público).
+  // Best-effort (D3): nunca rompe la página pública si el log falla. NO registra
+  // datos sensibles ni personales — solo el token_id y el contexto del legajo.
+  // Origen 'sistema': es un acceso anónimo (no hay usuario autenticado en esta ruta).
+  await logAuditEvent(supabase, {
+    accion: 'QR_ACCESS',
+    tabla: 'verificacion_tokens',
+    registroId: estId,
+    consultoraId: (empresa as { consultora_id?: string | null }).consultora_id ?? null,
+    meta: {
+      token_id: (tokenData as { id?: string }).id ?? null,
+      empresa_id: empresa.id,
+      establecimiento_id: estId,
+    },
+    origen: 'sistema',
+  })
 
   return (
     <main id="main-content" className="min-h-screen bg-surface-base">

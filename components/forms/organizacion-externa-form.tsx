@@ -87,7 +87,7 @@ export function OrganizacionExternaForm({ action }: Props) {
   const localidadesFiltradas = localidades.filter(l => l.provincia === selectedProvincia)
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form action={formAction} className="space-y-4 max-md:space-y-6">
       {/* hidden fields for server action */}
       <input type="hidden" name="tipo_nombre" value={selectedTipoNombre} />
 
@@ -130,7 +130,7 @@ export function OrganizacionExternaForm({ action }: Props) {
       {isSubcontratista && (
         <>
           {/* Identificación impositiva */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Select
               label="Tipo identidad impositiva"
               name="tipo_identidad_impositiva"
@@ -156,7 +156,7 @@ export function OrganizacionExternaForm({ action }: Props) {
           {/* Ubicación */}
           <SectionTitle>Ubicación</SectionTitle>
           <Input label="Domicilio" name="domicilio" placeholder="Av. Corrientes 1234" />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Select
               label="Provincia"
               value={selectedProvincia}
@@ -178,7 +178,7 @@ export function OrganizacionExternaForm({ action }: Props) {
 
           {/* ART */}
           <SectionTitle>ART</SectionTitle>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Select
               label="ART"
               name="art_id"
@@ -211,7 +211,7 @@ export function OrganizacionExternaForm({ action }: Props) {
               </p>
             )}
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input label="Actividad Principal" name="actividad_principal" placeholder="Construcción de obras civiles" />
             <Input label="Cantidad de Trabajadores" name="cantidad_trabajadores" type="number" min="0" placeholder="0" />
           </div>
@@ -254,7 +254,7 @@ export function OrganizacionExternaForm({ action }: Props) {
       {selectedTipoId && (
         <>
           {isSubcontratista && <SectionTitle>Contacto</SectionTitle>}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input label="Email" name="email" type="email" placeholder="correo@ejemplo.com" />
             <Input label="Teléfono" name="telefono" placeholder="+54 11 0000-0000" />
           </div>
@@ -271,7 +271,7 @@ export function OrganizacionExternaForm({ action }: Props) {
             />
           </div>
 
-          <div className="flex gap-3 pt-2">
+          <div className="flex flex-wrap gap-3 pt-2">
             <Button type="submit" disabled={isPending}>
               {isPending ? 'Guardando…' : 'Guardar'}
             </Button>

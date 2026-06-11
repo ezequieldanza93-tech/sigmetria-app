@@ -8,6 +8,7 @@ import type { DrawObject } from '@/components/photo-canvas-editor'
 import { PersonaSelector } from '@/components/persona-selector'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
+import { FotoInput } from '@/components/ui/foto-input'
 import {
   Camera, X, ChevronLeft, ChevronRight, ChevronUp, ChevronDown,
   Trash2, Download, Copy, Share2, CheckCircle, Loader2,
@@ -96,7 +97,6 @@ export function ReporteFotograficoEjecutorModal({
   const [pdfSignedUrl, setPdfSignedUrl] = useState<string | null>(null)
   const [linkCopiado, setLinkCopiado] = useState(false)
 
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const fotoKeyRef = useRef(0)
   const obsKeyRef = useRef(0)
   const reviewRef = useRef<HTMLDivElement>(null)
@@ -506,23 +506,14 @@ export function ReporteFotograficoEjecutorModal({
         {step === 'upload' && (
           <div className="space-y-3">
             <div
-              onClick={() => fileInputRef.current?.click()}
               onDragOver={e => e.preventDefault()}
               onDrop={handleDrop}
-              className="border-2 border-dashed border-border-default rounded-xl p-8 text-center cursor-pointer hover:border-sig-400 hover:bg-sig-50/30 transition-colors"
+              className="border-2 border-dashed border-border-default rounded-xl p-8 text-center transition-colors"
             >
               <Camera size={36} strokeWidth={1.5} className="mx-auto text-text-tertiary mb-2" />
-              <p className="text-sm font-medium text-text-secondary">Hacé clic o arrastrá las fotos acá</p>
-              <p className="text-xs text-text-tertiary mt-1">Podés subir varias a la vez · En el celular se abre la cámara</p>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                multiple
-                onChange={handleFileInput}
-                className="hidden"
-              />
+              <p className="text-sm font-medium text-text-secondary mb-1">Cargá las fotos</p>
+              <p className="text-xs text-text-tertiary mb-3">Sacá una foto, elegí varias de la galería o arrastrálas acá</p>
+              <FotoInput multiple onChange={handleFileInput} className="justify-center" />
             </div>
 
             {fotos.length > 0 && (

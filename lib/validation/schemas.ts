@@ -12,7 +12,8 @@ export const tipoEstablecimiento = z.enum([
 
 export const userRole = z.enum([
   'full_access_main', 'full_access_branch', 'colaborador', 'full_viewer',
-  'colaborador_viewer', 'visualizador_comentarista',
+  'colaborador_viewer', 'visualizador_comentarista', 'responsable_estandares',
+  'viewer_observaciones',
 ])
 
 export const siniestroTipo = z.enum(['accidente', 'incidente', 'casi_accidente', 'enfermedad_profesional'])

@@ -154,13 +154,20 @@ export function AlertasBell() {
             ))}
           </div>
 
-          <div className="px-4 py-2.5 border-t border-border-subtle">
+          <div className="px-4 py-2.5 border-t border-border-subtle flex items-center justify-between gap-3">
             <Link
               href="/dashboard/alertas"
               onClick={() => setOpen(false)}
               className="text-xs font-medium text-blue-600 hover:text-blue-700 hover:underline"
             >
               Ver todas las alertas →
+            </Link>
+            <Link
+              href="/dashboard/cumplimiento"
+              onClick={() => setOpen(false)}
+              className="text-xs font-medium text-text-tertiary hover:text-text-primary hover:underline"
+            >
+              Cumplimiento
             </Link>
           </div>
         </div>

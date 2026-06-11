@@ -29,6 +29,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   if (!effective) redirect('/login')
 
+  // Usuario autenticado pero sin consultora (y que no es staff de Sigmetría):
+  // es un cliente nuevo → al onboarding autoservicio.
+  if (!effective.consultoraId && !effective.isSuperAdmin && effective.realSystemRole !== 'developer') {
+    redirect('/onboarding')
+  }
+
   const {
     isSuperAdmin,
     canSwitchRole,

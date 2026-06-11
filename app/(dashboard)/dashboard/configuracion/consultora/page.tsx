@@ -9,7 +9,7 @@ import { inviteUsuario } from '@/lib/actions/usuario'
 import { InviteUsuarioForm } from '@/components/forms/invite-usuario-form'
 import NextImage from 'next/image'
 import { Save, Loader2, Building2, Globe, Mail, Phone, Image as LucideImage, Check, Upload, X, Plus, UserPlus, Users, Shield, ShieldAlert } from 'lucide-react'
-import { ROLE_LABELS, ROLE_COLORS, UserRole } from '@/lib/types'
+import { ROLE_LABELS, ROLE_COLORS, UserRole, isFreeViewerRole } from '@/lib/types'
 import type { Consultora } from '@/lib/types'
 
 function InstagramIcon() {
@@ -699,6 +699,8 @@ export default function ConsultoraInfoPage() {
               </div>
               <InviteUsuarioForm
                 action={inviteUsuario}
+                seatsUsed={members.filter((m: any) => m.is_active !== false && !isFreeViewerRole(m.role as UserRole)).length}
+                seatsMax={(consultora as unknown as { seats_max?: number }).seats_max ?? 3}
                 onSuccess={() => {
                   setShowInviteModal(false)
                   // Reload members

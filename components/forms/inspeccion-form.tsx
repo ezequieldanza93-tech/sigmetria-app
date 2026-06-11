@@ -40,7 +40,7 @@ export function InspeccionForm({ action, onSuccess }: InspeccionFormProps) {
   )
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form action={formAction} className="space-y-4 max-md:space-y-6">
       {state && !state.success && (
         <div role="alert" className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3">
           {state.error}
@@ -93,7 +93,7 @@ export function InspeccionForm({ action, onSuccess }: InspeccionFormProps) {
         rows={3}
       />
 
-      <div className="flex gap-3 pt-1">
+      <div className="flex flex-wrap gap-3 pt-1">
         <Button type="submit" disabled={isPending}>
           {isPending ? 'Guardando...' : 'Registrar Inspección'}
         </Button>

@@ -9,7 +9,7 @@ async function isViewerRole(supabase: Awaited<ReturnType<typeof createClient>>, 
     .select('role')
     .eq('user_id', userId)
     .eq('is_active', true)
-    .in('role', ['full_viewer', 'colaborador_viewer', 'visualizador_comentarista'])
+    .in('role', ['full_viewer', 'colaborador_viewer', 'visualizador_comentarista', 'viewer_observaciones'])
     .limit(1)
     .maybeSingle()
   return data !== null

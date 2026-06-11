@@ -355,12 +355,12 @@ export function PerfilForm({ fullName, email, personaId: initialPersonaId }: Pro
 
         {/* Estado: crear nueva persona */}
         {modo === 'nuevo' && (
-          <form onSubmit={handleCrear} className="space-y-3">
+          <form onSubmit={handleCrear} className="space-y-3 max-md:space-y-5">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-xs font-medium text-text-secondary">Crear nueva persona en el directorio</span>
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-sig-100 text-sig-700 font-medium">Tipo: Profesionales</span>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium text-text-secondary mb-1">Nombre *</label>
                 <input type="text" value={nuevoNombre} onChange={e => setNuevoNombre(e.target.value)} required className="w-full px-3 py-2 text-sm border border-border-default rounded-lg bg-surface-base text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/30" placeholder="Juan" />
@@ -370,7 +370,7 @@ export function PerfilForm({ fullName, email, personaId: initialPersonaId }: Pro
                 <input type="text" value={nuevoApellido} onChange={e => setNuevoApellido(e.target.value)} required className="w-full px-3 py-2 text-sm border border-border-default rounded-lg bg-surface-base text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/30" placeholder="Pérez" />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium text-text-secondary mb-1">DNI</label>
                 <input type="text" value={nuevoDni} onChange={e => setNuevoDni(e.target.value)} className="w-full px-3 py-2 text-sm border border-border-default rounded-lg bg-surface-base text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/30" placeholder="12345678" />
@@ -387,7 +387,7 @@ export function PerfilForm({ fullName, email, personaId: initialPersonaId }: Pro
               </p>
             )}
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="submit"
                 disabled={crearPending || !nuevoNombre || !nuevoApellido}
@@ -444,7 +444,7 @@ export function PerfilForm({ fullName, email, personaId: initialPersonaId }: Pro
 
       {/* ── Sección 3: Seguridad ── */}
       <FormSection step={3} title={SECTIONS[2].title} description={SECTIONS[2].description} isActive={currentSection === 3} sectionStats={sectionStats[3]}>
-        <form onSubmit={handleChangePassword} className="space-y-3">
+        <form onSubmit={handleChangePassword} className="space-y-3 max-md:space-y-5">
           <div>
             <label className="block text-xs font-medium text-text-secondary mb-1.5">Contraseña actual</label>
             <div className="relative">

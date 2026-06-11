@@ -60,7 +60,7 @@ export function DocumentoForm({ action, documentTypes, context, onSuccess, fixed
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4 max-md:space-y-6">
       {error && (
         <div role="alert" className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3">
           {error}
@@ -142,7 +142,7 @@ export function DocumentoForm({ action, documentTypes, context, onSuccess, fixed
         </label>
       </div>
 
-      <div className="flex gap-3 pt-1">
+      <div className="flex flex-wrap gap-3 pt-1">
         <Button type="submit" disabled={pending}>
           {pending ? 'Guardando...' : 'Agregar Documento'}
         </Button>

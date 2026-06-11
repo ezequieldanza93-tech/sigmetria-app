@@ -25,7 +25,7 @@ export function SectorForm({ action, onSuccess }: SectorFormProps) {
   )
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form action={formAction} className="space-y-4 max-md:space-y-6">
       {state && !state.success && (
         <div role="alert" className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3">
           {state.error}
@@ -49,7 +49,7 @@ export function SectorForm({ action, onSuccess }: SectorFormProps) {
         Los trabajadores se asignan desde los puestos de trabajo. La cantidad se calcula automáticamente.
       </p>
 
-      <div className="flex gap-3 pt-1">
+      <div className="flex flex-wrap gap-3 pt-1">
         <Button type="submit" disabled={isPending}>
           {isPending ? 'Guardando...' : 'Crear Sector'}
         </Button>

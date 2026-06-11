@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { startCronRun, finishCronRun } from '@/lib/cron/cron-log'
 
 export const runtime = 'nodejs'
 export const maxDuration = 120
@@ -11,6 +13,23 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   }
 
+  const admin = createAdminClient()
+  const runId = await startCronRun(admin, 'cursos-vencimientos')
+  try {
+    const res = await ejecutar()
+    await finishCronRun(admin, runId, 'success', {
+      notificaciones: res.notificaciones_creadas,
+      filas: res.vencidos,
+    })
+    return NextResponse.json({ ok: true, ...res })
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : 'Error desconocido'
+    await finishCronRun(admin, runId, 'error', {}, msg)
+    return NextResponse.json({ error: msg }, { status: 500 })
+  }
+}
+
+async function ejecutar() {
   const supabase = await createClient()
 
   // 1. Marcar cursos vencidos
@@ -67,9 +86,8 @@ export async function GET(req: Request) {
     }
   }
 
-  return NextResponse.json({
-    ok: true,
+  return {
     vencidos,
     notificaciones_creadas: notificacionesCreadas,
-  })
+  }
 }

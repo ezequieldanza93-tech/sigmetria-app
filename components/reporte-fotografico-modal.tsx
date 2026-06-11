@@ -5,6 +5,7 @@ import { crearReporteFotografico } from '@/lib/actions/reporte-fotografico'
 import { PhotoCanvasEditor } from '@/components/photo-canvas-editor'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
+import { FotoInput } from '@/components/ui/foto-input'
 import { createClient } from '@/lib/supabase/client'
 import { Camera } from 'lucide-react'
 
@@ -45,7 +46,6 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
   const [categorias, setCategorias] = useState<CategoriaObs[]>([])
   const [formError, setFormError] = useState<string | null>(null)
   const obsKeyRef = useRef(0)
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const onSuccessRef = useRef(onSuccess)
   onSuccessRef.current = onSuccess
@@ -235,20 +235,11 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
 
         {/* Image upload */}
         {!imagePreviewUrl ? (
-          <div
-            onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-border-default rounded-xl p-12 text-center cursor-pointer hover:border-sig-400 hover:bg-sig-50/30 transition-colors"
-          >
+          <div className="border-2 border-dashed border-border-default rounded-xl p-8 sm:p-12 text-center">
             <Camera size={40} strokeWidth={1.5} className="mx-auto text-text-tertiary mb-3" />
-            <p className="text-sm font-medium text-text-secondary">Hacé clic para seleccionar una imagen</p>
-            <p className="text-xs text-text-tertiary mt-1">O usá la cámara si estás en el celular</p>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleImageSelected}
-              className="hidden"
-            />
+            <p className="text-sm font-medium text-text-secondary mb-1">Cargá una imagen</p>
+            <p className="text-xs text-text-tertiary mb-4">Sacá una foto o elegí una de la galería</p>
+            <FotoInput onChange={handleImageSelected} className="justify-center" />
           </div>
         ) : (
           <div className="space-y-3">
@@ -385,20 +376,14 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
                   {/* Foto de la observación */}
                   <div className="pl-6">
                     {!obs.foto_preview ? (
-                      <label className="inline-flex items-center gap-1.5 text-xs text-text-tertiary hover:text-sig-600 cursor-pointer transition-colors">
-                        <Camera size={13} />
-                        Adjuntar foto
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={e => {
-                            const f = e.target.files?.[0]
-                            if (!f) return
-                            updateObsFoto(obs.key, URL.createObjectURL(f), f, false)
-                          }}
-                        />
-                      </label>
+                      <FotoInput
+                        size="sm"
+                        onChange={e => {
+                          const f = e.target.files?.[0]
+                          if (!f) return
+                          updateObsFoto(obs.key, URL.createObjectURL(f), f, false)
+                        }}
+                      />
                     ) : (
                       <div className="space-y-2">
                         <div className="flex items-center gap-3">

@@ -29,7 +29,7 @@ export function RiesgoForm({ action, onSuccess }: RiesgoFormProps) {
   )
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form action={formAction} className="space-y-4 max-md:space-y-6">
       {state && !state.success && (
         <div role="alert" className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3">
           {state.error}
@@ -44,7 +44,7 @@ export function RiesgoForm({ action, onSuccess }: RiesgoFormProps) {
         rows={2}
       />
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Select
           label="Nivel de Riesgo"
           name="nivel"
@@ -69,7 +69,7 @@ export function RiesgoForm({ action, onSuccess }: RiesgoFormProps) {
         rows={2}
       />
 
-      <div className="flex gap-3 pt-1">
+      <div className="flex flex-wrap gap-3 pt-1">
         <Button type="submit" disabled={isPending}>
           {isPending ? 'Guardando...' : 'Registrar Riesgo'}
         </Button>

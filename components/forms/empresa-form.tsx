@@ -113,7 +113,7 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
   }
 
   return (
-    <form ref={formRef} action={formAction} className="space-y-4" noValidate>
+    <form ref={formRef} action={formAction} className="space-y-4 max-md:space-y-6" noValidate>
       {state && !state.success && state.error && (
         <div role="alert" className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3">
           {state.error}
@@ -129,7 +129,7 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
         error={fieldErrors.razon_social}
       />
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Select
           label="Tipo identidad impositiva"
           name="tipo_identidad_impositiva"
@@ -164,7 +164,7 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
         placeholder="Av. Corrientes 1234"
       />
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Select
           label="Provincia"
           value={selectedProvincia}
@@ -190,7 +190,7 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
         className="w-32"
       />
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Input
           label="Latitud"
           name="latitude"
@@ -205,7 +205,7 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <Select
             label="ART"
@@ -264,7 +264,7 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <FileUploadInput
           name="logo_small"
           label="Logo pequeño"
@@ -297,7 +297,7 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
         />
       </div>
 
-      <div className="flex gap-3 pt-2">
+      <div className="flex flex-wrap gap-3 pt-2">
         <Button type="submit" disabled={isPending}>
           {isPending ? 'Guardando...' : submitLabel}
         </Button>

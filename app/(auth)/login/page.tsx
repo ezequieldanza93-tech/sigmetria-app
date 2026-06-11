@@ -2,13 +2,15 @@
 
 import { useActionState, useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { AlertCircle, Loader2, CheckCircle2 } from 'lucide-react'
+import { AlertCircle, Loader2, CheckCircle2, Eye, EyeOff } from 'lucide-react'
 import { DemoCredentials } from '@/components/demo-credentials'
 import { login, signup } from '@/lib/actions/login'
 
 export default function LoginPage() {
   const t = useTranslations('login')
   const [mode, setMode] = useState<'login' | 'signup'>('login')
+  const [showPassword, setShowPassword] = useState(false)
+  const [showSignupPassword, setShowSignupPassword] = useState(false)
 
   const [loginState, loginAction, loginPending] = useActionState<
     { error?: string } | undefined,
@@ -113,15 +115,26 @@ export default function LoginPage() {
                   <label htmlFor="password" className="block text-text-primary text-sm font-medium mb-2">
                     {t('passwordLabel')}
                   </label>
-                  <input
-                    id="password"
-                    name="password"
-                    type="password"
-                    required
-                    autoComplete="current-password"
-                    placeholder={t('passwordPlaceholder')}
-                    className="w-full bg-surface-base border border-border-default text-text-primary rounded-lg px-4 py-3 text-sm placeholder-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent transition-shadow"
-                  />
+                  <div className="relative">
+                    <input
+                      id="password"
+                      name="password"
+                      type={showPassword ? 'text' : 'password'}
+                      required
+                      autoComplete="current-password"
+                      placeholder={t('passwordPlaceholder')}
+                      className="w-full bg-surface-base border border-border-default text-text-primary rounded-lg px-4 py-3 pr-11 text-sm placeholder-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent transition-shadow"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                      aria-pressed={showPassword}
+                      className="absolute inset-y-0 right-0 flex items-center px-3 text-text-tertiary hover:text-text-secondary transition-colors"
+                    >
+                      {showPassword ? <EyeOff className="h-5 w-5" aria-hidden="true" /> : <Eye className="h-5 w-5" aria-hidden="true" />}
+                    </button>
+                  </div>
                 </div>
 
                 <button
@@ -218,16 +231,27 @@ export default function LoginPage() {
                     <label htmlFor="signup-password" className="block text-text-primary text-sm font-medium mb-2">
                       Contraseña
                     </label>
-                    <input
-                      id="signup-password"
-                      name="password"
-                      type="password"
-                      required
-                      autoComplete="new-password"
-                      minLength={8}
-                      placeholder="Mínimo 8 caracteres"
-                      className="w-full bg-surface-base border border-border-default text-text-primary rounded-lg px-4 py-3 text-sm placeholder-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent transition-shadow"
-                    />
+                    <div className="relative">
+                      <input
+                        id="signup-password"
+                        name="password"
+                        type={showSignupPassword ? 'text' : 'password'}
+                        required
+                        autoComplete="new-password"
+                        minLength={8}
+                        placeholder="Mínimo 8 caracteres"
+                        className="w-full bg-surface-base border border-border-default text-text-primary rounded-lg px-4 py-3 pr-11 text-sm placeholder-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent transition-shadow"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowSignupPassword((v) => !v)}
+                        aria-label={showSignupPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                        aria-pressed={showSignupPassword}
+                        className="absolute inset-y-0 right-0 flex items-center px-3 text-text-tertiary hover:text-text-secondary transition-colors"
+                      >
+                        {showSignupPassword ? <EyeOff className="h-5 w-5" aria-hidden="true" /> : <Eye className="h-5 w-5" aria-hidden="true" />}
+                      </button>
+                    </div>
                   </div>
 
                   <button
