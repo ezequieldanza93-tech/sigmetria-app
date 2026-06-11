@@ -1,6 +1,5 @@
 import { Resend } from 'resend'
-
-const FROM = 'Sigmetría Alertas <alertas@sigmetria.com.ar>'
+import { EMAIL_FROM as FROM } from '@/lib/email/from'
 
 const TIPO_LABELS: Record<string, string> = {
   documento_vencido: 'Documento vencido',

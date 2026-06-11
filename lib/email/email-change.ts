@@ -1,6 +1,5 @@
 import { Resend } from 'resend'
-
-const FROM = 'Sigmetría Seguridad <seguridad@sigmetria.com.ar>'
+import { EMAIL_FROM as FROM } from '@/lib/email/from'
 
 export async function sendEmailChangeCode({
   email,

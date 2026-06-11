@@ -1,6 +1,6 @@
 import { Resend } from 'resend'
+import { EMAIL_FROM as FROM } from '@/lib/email/from'
 
-const FROM = 'Sigmetría Seguridad <seguridad@sigmetria.com.ar>'
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.sigmetria.com.ar'
 
 export async function sendMfaCode({
@@ -13,8 +13,9 @@ export async function sendMfaCode({
   userName: string
 }) {
   if (!process.env.RESEND_API_KEY) {
-    console.warn('[MFA] RESEND_API_KEY no configurado — email omitido')
-    return
+    // MFA es crítico: sin email no hay forma de completar el login. Fallar fuerte
+    // (el caller lo muestra) en vez de simular que el código se envió.
+    throw new Error('RESEND_API_KEY no está configurado — no se puede enviar el código MFA')
   }
 
   const resend = new Resend(process.env.RESEND_API_KEY)
@@ -61,10 +62,18 @@ export async function sendMfaCode({
     </div>
   `
 
-  await resend.emails.send({
+  const { error } = await resend.emails.send({
     from: FROM,
     to: email,
     subject: `${code} es tu código de verificación de Sigmetría`,
     html,
   })
+
+  // Resend NO lanza excepción ante un fallo de API: devuelve { error }. Si no lo
+  // chequeamos, un mail que nunca salió (dominio sin verificar, destinatario no
+  // permitido en modo prueba, key inválida) se reporta como "enviado". Lo
+  // propagamos para que el caller lo muestre al usuario en vez de mentir.
+  if (error) {
+    throw new Error(`Resend rechazó el envío del código MFA: ${error.message ?? JSON.stringify(error)}`)
+  }
 }

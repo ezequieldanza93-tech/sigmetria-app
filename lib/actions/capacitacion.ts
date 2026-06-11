@@ -413,7 +413,7 @@ export async function enviarLinksParticipantes(
   const resultados: EnvioLinkResultado[] = []
   const resendKey = process.env.RESEND_API_KEY
   const resend = resendKey ? new Resend(resendKey) : null
-  const FROM = 'Sigmetría Capacitaciones <alertas@sigmetria.com.ar>'
+  const FROM = process.env.EMAIL_FROM ?? 'Sigmetría <onboarding@resend.dev>'
 
   for (const p of participantes ?? []) {
     if (!p.email) {
