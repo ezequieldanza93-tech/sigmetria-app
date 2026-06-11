@@ -121,6 +121,10 @@ export async function confirmEmailChange(targetUserId: string, code: string): Pr
   // La persona del directorio es dueña del email: la mantenemos en sync.
   await service.from('personas_directorio').update({ email: challenge.new_email }).eq('user_id', targetUserId)
 
+  // Revoca las sesiones activas del usuario: las sesiones viejas dejan de servir
+  // tras el cambio de email (control de acceso, Art. 4.5). Best-effort.
+  try { await service.rpc('revocar_sesiones_usuario', { p_user_id: targetUserId }) } catch { /* no crítico */ }
+
   await service.from('email_change_challenges').update({ used_at: new Date().toISOString() }).eq('id', challenge.id)
 
   revalidatePath('/dashboard/usuarios')

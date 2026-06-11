@@ -212,20 +212,18 @@ solo `is_developer()`.
 - ✅ **QR no adivinable + revocable + sin datos personales:** verificado (§5).
 - ✅ **Bypass MFA de testing:** gateado tras `ALLOW_MFA_TEST_BYPASS` (Prompt 4).
 
-### 6.1 Pendiente — `personas_directorio` INSERT no scopea establecimiento
-- **Archivo:** `supabase/migrations/20260516000009_rls_fix_rename_consultor.sql:30`.
-- Un `colaborador` sin ningún `user_access` activo puede insertar personas en el
-  directorio de SU consultora (riesgo intra-consultora, NO cross-tenant).
-- **Fix preparado (NO aplicado):**
-  `docs/migraciones-preparadas/01_personas_directorio_insert_estricto.sql`.
-  **Riesgo:** puede romper onboarding de colaboradores sin scope.
+### 6.1 ✅ Corregido — `personas_directorio` INSERT exige scope al colaborador
+- **Fix APLICADO:** `supabase/migrations/20260707000001_personas_directorio_insert_estricto.sql`
+  (aplicado a prod 2026-06-11, corrida nocturna). Un `colaborador` solo puede insertar
+  personas si tiene AL MENOS un `user_access` activo en su consultora; admins (main/branch)
+  y developer sin restricción. Cierra el hueco intra-consultora del §6.1 original.
 
-### 6.2 Pendiente — sin revocación de sesión al cambiar email/contraseña
-- **Archivo:** `lib/actions/email-change.ts:115` (`updateUserById` sin signOut).
-- **Fix preparado (NO aplicado):**
-  `docs/migraciones-preparadas/02_revocar_sesiones_al_cambiar_email_o_password.sql`
-  (Opción A app-side recomendada: `admin.auth.admin.signOut(userId, 'global')`).
-  **Riesgo:** desloguea al usuario de todos sus dispositivos.
+### 6.2 ✅ Corregido — revocación de sesión al cambiar email
+- **Fix APLICADO:** RPC `revocar_sesiones_usuario` (`supabase/migrations/20260707000002_revocar_sesiones_usuario.sql`,
+  service_role-only, borra `auth.sessions`) + llamada en `lib/actions/email-change.ts`
+  tras `updateUserById`. Al cambiar el email, las sesiones viejas dejan de servir y el
+  usuario re-loguea con el email nuevo. (Se eligió la Opción B/RPC: la Opción A `signOut(userId)`
+  del archivo preparado era incorrecta para supabase-js v2, que espera un JWT, no un user_id.)
 
 ### 6.3 ✅ Corregido — `verificacion_tokens` UPDATE / `regenerar_token` ahora scopean tenant
 - **Hueco original:** `supabase/migrations/20260609000001_verificacion_tokens.sql:32` y la
@@ -270,8 +268,11 @@ solo `is_developer()`.
 - `supabase/migrations/20260706000001_verificacion_tokens_update_scoped.sql` (ex fix preparado #3;
   run GitHub Actions 27370607649) — UPDATE/`regenerar_token` scopeado por tenant. Ver §6.3.
 
-**Preparado, NO aplicado (requiere decisión del usuario — pueden cortar acceso):**
-- `docs/migraciones-preparadas/01_personas_directorio_insert_estricto.sql` — hueco residual
-  INTRA-consultora sigue **abierto** (ver §6.1).
-- `docs/migraciones-preparadas/02_revocar_sesiones_al_cambiar_email_o_password.sql` — las sesiones
-  **NO** se revocan al cambiar email (`email-change.ts` no llama `signOut`); ver §6.2.
+**Aplicado a producción (2026-06-11, corrida nocturna — el usuario autorizó aplicar lo pendiente):**
+- `supabase/migrations/20260707000001_personas_directorio_insert_estricto.sql` (ex fix preparado #1) —
+  INSERT de `personas_directorio` exige scope al colaborador. Hueco §6.1 **cerrado**.
+- `supabase/migrations/20260707000002_revocar_sesiones_usuario.sql` (ex fix preparado #2, Opción B) +
+  llamada en `email-change.ts` — sesiones revocadas al cambiar email. Hueco §6.2 **cerrado**.
+
+> Con esto, los 3 fixes preparados del Prompt 4 quedaron aplicados (el #3 ya estaba — §6.3).
+> No quedan fixes de acceso pendientes.
