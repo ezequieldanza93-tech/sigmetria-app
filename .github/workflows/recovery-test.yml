@@ -1,0 +1,140 @@
+# Prueba de recuperación END-TO-END — evidencia para auditoría (SRT 48/2025).
+#
+# Corre el ciclo COMPLETO en CI (Linux, todas las herramientas presentes):
+#   backup (dump real + Storage) → cifrado AES-256 → upload a R2/B2
+#   → download desde R2/B2 → descifrado → verificación de checksums
+#   → restore en un Postgres EFÍMERO → conteo de filas (integridad).
+#
+# El log completo queda como ARTIFACT descargable = evidencia para el auditor.
+# Es MANUAL (workflow_dispatch): se dispara desde Actions → "Run workflow".
+#
+# Seguridad: NUNCA toca producción como destino (el restore va a un Postgres
+# efímero del runner). El dump del SOURCE es read-only. Toda credencial viene de
+# GitHub Secrets.
+#
+# ── Secrets requeridos (los MISMOS que backup.yml) ────────────────────────────
+#   SUPABASE_DB_URL            connection string del SOURCE a respaldar
+#                              (prod read-only, o un proyecto de staging — tu decisión)
+#   NEXT_PUBLIC_SUPABASE_URL   URL del proyecto (para el dump de Storage)
+#   SUPABASE_SERVICE_ROLE_KEY  service role key del SOURCE
+#   BACKUP_ENCRYPTION_KEY      passphrase AES-256 (32+ chars)
+#   S3_ENDPOINT                https://<acct>.r2.cloudflarestorage.com (R2) | endpoint B2
+#   S3_BUCKET                  bucket de backups
+#   S3_REGION                  auto (R2) | us-west-004 (B2)
+#   AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY   credenciales del bucket
+
+name: Prueba de recuperación (auditoría)
+
+on:
+  workflow_dispatch:
+    inputs:
+      nota:
+        description: 'Nota para el log (ej. "evidencia auditoría SRT junio 2026")'
+        required: false
+        default: 'prueba de recuperación end-to-end'
+
+jobs:
+  recovery-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: restore_target
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Instalar Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Instalar cliente Postgres (psql)
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Verificar herramientas
+        run: |
+          aws --version
+          openssl version
+          supabase --version
+          tar --version
+          psql --version
+
+      - name: Ejecutar ciclo de recuperación end-to-end
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          BACKUP_ENCRYPTION_KEY: ${{ secrets.BACKUP_ENCRYPTION_KEY }}
+          S3_ENDPOINT: ${{ secrets.S3_ENDPOINT }}
+          S3_BUCKET: ${{ secrets.S3_BUCKET }}
+          S3_REGION: ${{ secrets.S3_REGION }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          RESTORE_DB_URL: postgresql://postgres:postgres@localhost:5432/restore_target
+          NOTA: ${{ github.event.inputs.nota }}
+        run: |
+          set -o pipefail
+          LOG="recovery-test-${{ github.run_number }}.log"
+          {
+            echo "================================================================"
+            echo " PRUEBA DE RECUPERACIÓN END-TO-END — SRT 48/2025"
+            echo " Nota:    $NOTA"
+            echo " Fecha:   $(date -u +'%Y-%m-%dT%H:%M:%SZ') (UTC)"
+            echo " Commit:  ${{ github.sha }}"
+            echo " Runner:  $(uname -a)"
+            echo "================================================================"
+
+            echo ""; echo "### PASO 1 — Backup (dump real + Storage) → cifrado → upload a R2/B2"
+            npx tsx scripts/backup-external.ts
+
+            echo ""; echo "### PASO 2 — Download del bundle desde R2/B2 (prueba el round-trip real)"
+            DAY="$(date -u +%F)"
+            mkdir -p dl
+            aws s3 cp "s3://${S3_BUCKET}/daily/${DAY}/" ./dl/ --recursive \
+              --endpoint-url "$S3_ENDPOINT" --region "$S3_REGION"
+            BUNDLE="$(find dl -name '*.tar.enc' | sort | tail -1)"
+            echo "Bundle descargado: $BUNDLE"
+            [ -n "$BUNDLE" ] || { echo "❌ No se descargó ningún bundle de R2"; exit 1; }
+
+            echo ""; echo "### PASO 3 — Bootstrap del destino (prerequisitos Supabase mínimos)"
+            psql "$RESTORE_DB_URL" -v ON_ERROR_STOP=0 -c \
+              "CREATE EXTENSION IF NOT EXISTS pgcrypto;
+               CREATE SCHEMA IF NOT EXISTS auth;
+               CREATE SCHEMA IF NOT EXISTS storage;
+               CREATE TABLE IF NOT EXISTS auth.users(id uuid PRIMARY KEY);" || true
+
+            echo ""; echo "### PASO 4 — Restore + verificación de integridad (checksums + filas)"
+            bash scripts/restore-dry-run.sh "$BUNDLE"
+
+            echo ""; echo "### RESULTADO — tablas y filas restauradas en el destino efímero"
+            psql "$RESTORE_DB_URL" -t -c \
+              "SELECT 'tablas public: '||count(*) FROM pg_tables WHERE schemaname='public';"
+            echo ""
+            echo "✅ Ciclo de recuperación completado. Este log es la evidencia."
+          } 2>&1 | tee "$LOG"
+
+      - name: Publicar log como evidencia (artifact)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: recovery-test-log-${{ github.run_number }}
+          path: recovery-test-*.log
+          retention-days: 90

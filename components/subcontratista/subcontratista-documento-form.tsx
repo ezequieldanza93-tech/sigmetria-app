@@ -50,7 +50,7 @@ export function SubcontratistaDocumentoForm({ action, documentTypes, onSuccess }
         kind="document"
       />
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Input label="Fecha de emisión" name="fecha_emision" type="date" />
         <Input label="Fecha de vencimiento" name="fecha_vencimiento" type="date" />
       </div>

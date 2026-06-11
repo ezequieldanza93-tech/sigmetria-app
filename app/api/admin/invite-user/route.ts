@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireOrigin } from '@/lib/csrf'
-import type { UserRole } from '@/lib/types'
-import { canManageUsers } from '@/lib/types'
+import type { UserRole, SystemRole } from '@/lib/types'
+import { canManageUsers, canInviteViewers, isFreeViewerRole } from '@/lib/types'
 import { z } from 'zod'
 
 const inviteSchema = z.object({
@@ -11,6 +11,8 @@ const inviteSchema = z.object({
   full_name: z.string().min(1),
   role: z.string().min(1),
   consultora_id: z.string().uuid().optional(),
+  // Persona del directorio a la que se linkea la cuenta (ej. Viewer de Observaciones).
+  persona_id: z.string().uuid().optional(),
 })
 
 export async function POST(request: NextRequest) {
@@ -26,9 +28,8 @@ export async function POST(request: NextRequest) {
     supabase.from('consultoras_members').select('role, consultora_id').eq('user_id', user.id).eq('is_active', true).maybeSingle(),
   ])
 
-  if (!canManageUsers(membership?.role as UserRole ?? null, profile?.system_role ?? 'user')) {
-    return NextResponse.json({ error: 'Sin permisos para invitar usuarios' }, { status: 403 })
-  }
+  const systemRole = (profile?.system_role ?? 'user') as SystemRole
+  const myRole = (membership?.role as UserRole | undefined) ?? null
 
   const body = await request.json()
   const parsed = inviteSchema.safeParse(body)
@@ -36,31 +37,40 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 })
   }
 
-  const { email, full_name, role, consultora_id } = parsed.data
+  const { email, full_name, role, consultora_id, persona_id } = parsed.data
   const consultoraId = consultora_id ?? membership?.consultora_id
   if (!consultoraId) return NextResponse.json({ error: 'Sin consultora' }, { status: 400 })
 
-  if (membership?.role !== 'full_access_main' && profile?.system_role !== 'developer') {
-    return NextResponse.json({ error: 'Solo el Admin Principal puede agregar miembros' }, { status: 403 })
+  const targetIsViewer = isFreeViewerRole(role as UserRole)
+
+  // Viewers (sin cargo): Admin o colaborador. Otros roles: solo Admin Principal.
+  if (targetIsViewer) {
+    if (!canInviteViewers(myRole, systemRole)) {
+      return NextResponse.json({ error: 'Sin permisos para invitar usuarios' }, { status: 403 })
+    }
+  } else if (!canManageUsers(myRole, systemRole)) {
+    return NextResponse.json({ error: 'Solo el Admin Principal puede crear Administradores o Colaboradores' }, { status: 403 })
   }
 
-  const [{ count: activeCount }, { data: consultora }] = await Promise.all([
-    supabase
-      .from('consultoras_members')
-      .select('*', { count: 'exact', head: true })
-      .eq('consultora_id', consultoraId)
-      .eq('is_active', true),
-    supabase
-      .from('consultoras')
-      .select('seats_max')
-      .eq('id', consultoraId)
-      .single(),
-  ])
-
-  const seatsMax = consultora?.seats_max ?? 3
-  const seatsUsed = activeCount ?? 0
-  if (seatsUsed >= seatsMax) {
-    return NextResponse.json({ error: `SEATS_LIMIT:${seatsUsed}:${seatsMax}` }, { status: 400 })
+  // Control de seats: solo cuentan los roles con cargo; los viewers son gratis.
+  if (!targetIsViewer) {
+    const [{ data: members }, { data: consultora }] = await Promise.all([
+      supabase
+        .from('consultoras_members')
+        .select('role')
+        .eq('consultora_id', consultoraId)
+        .eq('is_active', true),
+      supabase
+        .from('consultoras')
+        .select('seats_max')
+        .eq('id', consultoraId)
+        .single(),
+    ])
+    const seatsMax = consultora?.seats_max ?? 3
+    const seatsUsed = (members ?? []).filter(m => !isFreeViewerRole(m.role as UserRole)).length
+    if (seatsUsed >= seatsMax) {
+      return NextResponse.json({ error: `SEATS_LIMIT:${seatsUsed}:${seatsMax}` }, { status: 400 })
+    }
   }
 
   const admin = createAdminClient()
@@ -97,29 +107,48 @@ export async function POST(request: NextRequest) {
 
   if (memberError) return NextResponse.json({ error: memberError.message }, { status: 500 })
 
-  // Sync to personas_directorio as "Usuarios" type
-  const nameParts = full_name.trim().split(/\s+/)
-  const nombre = nameParts[0]
-  const apellido = nameParts.slice(1).join(' ') || nombre
-  const { data: usuarioTipo } = await admin
-    .from('personas_tipos')
-    .select('id')
-    .eq('nombre', 'Usuarios')
-    .maybeSingle()
-  if (usuarioTipo) {
+  // ── Identidad normalizada: la cuenta se linkea a UNA persona del directorio ──
+  // La persona es dueña del email (single source of truth). Se setea user_id.
+  if (persona_id) {
+    // Viewer de Observaciones u otro: linkear una persona existente del directorio.
+    await admin
+      .from('personas_directorio')
+      .update({ user_id: invitedUser.id, email })
+      .eq('id', persona_id)
+  } else {
+    const nameParts = full_name.trim().split(/\s+/)
+    const nombre = nameParts[0]
+    const apellido = nameParts.slice(1).join(' ') || nombre
+
     const { data: existing } = await admin
       .from('personas_directorio')
       .select('id')
       .eq('email', email)
       .maybeSingle()
-    if (!existing) {
-      await admin.from('personas_directorio').insert({
-        tipo_id: usuarioTipo.id,
-        nombre,
-        apellido,
-        email,
-        is_active: true,
-      })
+
+    if (existing) {
+      await admin.from('personas_directorio').update({ user_id: invitedUser.id }).eq('id', existing.id)
+    } else {
+      // Asegurar el tipo "Usuarios"
+      let tipoId: string | undefined
+      const { data: usuarioTipo } = await admin
+        .from('personas_tipos').select('id').eq('nombre', 'Usuarios').maybeSingle()
+      tipoId = usuarioTipo?.id
+      if (!tipoId) {
+        const { data: nuevoTipo } = await admin
+          .from('personas_tipos').insert({ nombre: 'Usuarios' }).select('id').single()
+        tipoId = nuevoTipo?.id
+      }
+      if (tipoId) {
+        await admin.from('personas_directorio').insert({
+          tipo_id: tipoId,
+          nombre,
+          apellido,
+          email,
+          user_id: invitedUser.id,
+          is_active: true,
+        })
+      }
     }
   }
 

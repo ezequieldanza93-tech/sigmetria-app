@@ -150,6 +150,7 @@ export const USER_ROLE_OPTIONS = [
   { value: 'colaborador_viewer', label: 'Viewer Limitado' },
   { value: 'visualizador_comentarista', label: 'Visualizador Comentarista' },
   { value: 'responsable_estandares', label: 'Resp. de Estándares' },
+  { value: 'viewer_observaciones', label: 'Viewer de Observaciones' },
 ] as const
 
 export const ROLE_DESCRIPTIONS: Partial<Record<string, string>> = {

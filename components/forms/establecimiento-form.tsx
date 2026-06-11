@@ -345,7 +345,7 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
       ref={formRef}
       action={formAction}
       onBlur={() => setTick(t => t + 1)}
-      className="space-y-4"
+      className="space-y-4 max-md:space-y-6"
     >
       <EstablecimientoProgress checks={checks} />
 
@@ -429,7 +429,7 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
           placeholder="Calle 123"
         />
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="flex flex-col gap-1.5">
             <label htmlFor="provincia-select" className="text-sm font-medium text-text-secondary">
               Provincia
@@ -623,7 +623,7 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
 
         <div className="border-t border-border-subtle pt-4 space-y-3">
           <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Planos del establecimiento</p>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <FileUploadInput
               name="floor_plan_pdf"
               label="Plano (PDF)"

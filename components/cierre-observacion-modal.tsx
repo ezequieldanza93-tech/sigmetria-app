@@ -9,6 +9,7 @@ import { addObservacionComentario, addObservacionFoto, marcarObservacionVista } 
 import { createPersonaDirectorio } from '@/lib/actions/persona-directorio'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
+import { FotoInput } from '@/components/ui/foto-input'
 import { Send } from 'lucide-react'
 import type { ObservacionGestion, ObservacionComentario, ObservacionFotoCliente } from '@/lib/types'
 
@@ -619,18 +620,15 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
               ))}
             </div>
           )}
-          <label className="inline-block cursor-pointer">
-            <span className="text-xs text-brand-primary hover:text-brand-primary/80 font-medium">
-              {uploadingFoto ? 'Subiendo…' : '+ Agregar foto'}
-            </span>
-            <input
-              type="file"
-              accept=".jpg,.jpeg,.png,.webp"
-              onChange={handleFotoClienteChange}
-              disabled={uploadingFoto}
-              className="hidden"
-            />
-          </label>
+          <FotoInput
+            size="sm"
+            accept=".jpg,.jpeg,.png,.webp"
+            disabled={uploadingFoto}
+            onChange={handleFotoClienteChange}
+          />
+          {uploadingFoto && (
+            <p className="text-xs text-text-tertiary mt-1">Subiendo…</p>
+          )}
         </div>
 
         {/* Close form — only for professionals */}
@@ -768,17 +766,13 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
 
             {/* Evidencia foto */}
             <div>
-              <label htmlFor="cierre-evidencia-foto" className="text-sm font-medium text-text-primary block mb-1">
+              <span className="text-sm font-medium text-text-primary block mb-1">
                 Foto de evidencia
-              </label>
-              <input
-                id="cierre-evidencia-foto"
-                type="file"
+              </span>
+              <FotoInput
                 accept=".jpg,.jpeg,.png,.webp"
-                onChange={handleFileChange}
                 disabled={saving}
-                aria-label="Foto de evidencia de cierre"
-                className="w-full text-sm text-text-tertiary file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-brand-muted file:text-brand-primary hover:file:bg-brand-muted/80 cursor-pointer"
+                onChange={handleFileChange}
               />
               {evidenciaFile && (
                 <p className="text-xs text-success mt-1">✓ {evidenciaName}</p>

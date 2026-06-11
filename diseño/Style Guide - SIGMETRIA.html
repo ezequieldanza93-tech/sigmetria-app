@@ -1,0 +1,589 @@
+<!doctype html>
+<html lang="es" data-theme="light">
+<head>
+<meta charset="utf-8"/>
+<title>Sigmetría — Style Guide</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<template id="__bundler_thumbnail" data-bg-color="#0F1115">
+  <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+    <rect width="1200" height="800" fill="#0F1115"/>
+    <text x="600" y="420" text-anchor="middle" font-family="Montserrat, Helvetica, Arial, sans-serif" font-weight="700" font-size="180" fill="#4CAF50" letter-spacing="-4">Σ</text>
+    <text x="600" y="560" text-anchor="middle" font-family="Montserrat, Helvetica, Arial, sans-serif" font-weight="500" font-size="42" fill="#F0F0F0" letter-spacing="8">STYLE GUIDE</text>
+  </svg>
+</template>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;700&family=Poppins:wght@300;400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ============================================================
+     SIGMETRÍA — Visual System
+     LIGHT (día) tokens en :root · DARK (noche) en [data-theme=dark]
+     Toggle JS conmuta data-theme y recolorea TODAS las variables.
+     ============================================================ */
+  :root{
+    /* Brand */
+    --brand:#4CAF50;
+    --brand-hover:#43A047;
+    --brand-muted:#E8F5E9;
+    /* Text */
+    --text-1:#333333;
+    --text-2:#6B6B6B;
+    --text-3:#888888;
+    /* Surfaces */
+    --surface-base:#FFFFFF;
+    --surface-elevated:#FAFAFA;
+    --surface-sunken:#F4F4F5;
+    --surface-sidebar:#FAFAFA;
+    /* Borders */
+    --border-subtle:#E4E4E7;
+    --border-default:#D4D4D8;
+    /* Status FG */
+    --success:#4CAF50;
+    --warning:#F59E0B;
+    --danger:#DC2626;
+    --info:#2563EB;
+    /* Status BG */
+    --success-bg:#E8F5E9;
+    --warning-bg:#FEF3C7;
+    --danger-bg:#FEE2E2;
+    --info-bg:#DBEAFE;
+    /* Chart */
+    --chart-1:#4CAF50;
+    --chart-2:#2563EB;
+    --chart-3:#F59E0B;
+    --chart-4:#DC2626;
+    --chart-5:#A855F7;
+    --chart-6:#14B8A6;
+    /* Radii (Tailwind) */
+    --radius-sm:4px;
+    --radius-lg:8px;
+    --radius-xl:12px;
+    --radius-2xl:16px;
+    /* Shadows */
+    --shadow-sm:0 1px 2px 0 rgba(0,0,0,0.05);
+    --shadow-md:0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+    --shadow-lg:0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+    /* Page chrome (derivado de surfaces) */
+    --page-bg:#FFFFFF;
+    --hairline:#E4E4E7;
+    --rule:#333333;
+  }
+
+  [data-theme="dark"]{
+    /* Brand */
+    --brand:#4CAF50;
+    --brand-hover:#5BBF5F;
+    --brand-muted:rgba(76,175,80,0.12);
+    /* Text */
+    --text-1:#FFFFFF;
+    --text-2:#F0F0F0;
+    --text-3:#CCCCCC;
+    /* Surfaces */
+    --surface-base:#0F1115;
+    --surface-elevated:#1A1D23;
+    --surface-sunken:#0A0C10;
+    --surface-sidebar:#1A1D23;
+    /* Borders */
+    --border-subtle:#22262E;
+    --border-default:#2D323B;
+    /* Status FG */
+    --success:#4CAF50;
+    --warning:#FBBF24;
+    --danger:#EF4444;
+    --info:#60A5FA;
+    /* Status BG */
+    --success-bg:rgba(76,175,80,0.12);
+    --warning-bg:rgba(251,191,36,0.12);
+    --danger-bg:rgba(239,68,68,0.12);
+    --info-bg:rgba(96,165,250,0.12);
+    /* Chart */
+    --chart-1:#5BBF5F;
+    --chart-2:#60A5FA;
+    --chart-3:#FBBF24;
+    --chart-4:#F87171;
+    --chart-5:#C084FC;
+    --chart-6:#2DD4BF;
+    /* Page chrome */
+    --page-bg:#0F1115;
+    --hairline:#22262E;
+    --rule:#2D323B;
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{
+    background:var(--page-bg);
+    color:var(--text-1);
+    font-family:"Poppins",Helvetica,Arial,sans-serif;
+    font-weight:400;
+    -webkit-font-smoothing:antialiased;
+    transition:background .3s ease,color .3s ease;
+  }
+  body{padding:64px 72px 120px;max-width:1280px;margin:0 auto}
+
+  /* Theme toggle (fixed, top-right) */
+  .theme-toggle{
+    position:fixed;top:24px;right:24px;z-index:50;
+    display:inline-flex;align-items:center;gap:8px;
+    padding:8px 14px;border-radius:999px;cursor:pointer;
+    background:var(--surface-elevated);
+    border:1px solid var(--border-default);
+    color:var(--text-1);
+    box-shadow:var(--shadow-md);
+    font-family:"JetBrains Mono",ui-monospace,monospace;
+    font-size:12px;letter-spacing:0.04em;
+    transition:background .3s ease,border-color .3s ease,color .3s ease;
+    user-select:none;
+  }
+  .theme-toggle:hover{border-color:var(--brand)}
+  .theme-toggle .ico{font-size:14px;line-height:1}
+  .theme-toggle .lbl-light,.theme-toggle .lbl-dark{display:none}
+  :root .theme-toggle .lbl-light,
+  [data-theme="light"] .theme-toggle .lbl-light{display:inline}
+  [data-theme="dark"] .theme-toggle .lbl-dark{display:inline}
+
+  /* Masthead */
+  .mast{display:grid;grid-template-columns:1fr auto;align-items:end;gap:24px;padding-bottom:28px;border-bottom:1px solid var(--rule);margin-bottom:64px}
+  .mast h1{font-family:"Montserrat",Helvetica,Arial,sans-serif;font-weight:700;font-size:64px;line-height:0.95;letter-spacing:-0.025em;color:var(--text-1)}
+  .mast h1 em{font-style:normal;font-weight:500;color:var(--brand)}
+  .sigma{font-family:"Montserrat",Helvetica,Arial,sans-serif;color:var(--brand)}
+  .mast .sub{font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-2);margin-top:16px}
+  .mast .meta{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:11px;color:var(--text-2);text-align:right;line-height:1.6}
+  .mast .meta b{color:var(--text-1);font-weight:500}
+
+  /* Section */
+  section{margin-bottom:72px}
+  .sec-hd{display:grid;grid-template-columns:48px 1fr auto;gap:16px;align-items:baseline;border-bottom:0.5px solid var(--rule);padding-bottom:10px;margin-bottom:28px}
+  .sec-hd .num{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:11px;color:var(--brand);font-weight:500}
+  .sec-hd h2{font-family:"Montserrat",Helvetica,Arial,sans-serif;font-weight:500;font-size:28px;letter-spacing:-0.015em;color:var(--text-1)}
+  .sec-hd .tag{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-3)}
+
+  /* Sub-label for paired light/dark palettes */
+  .pal-split{display:grid;grid-template-columns:1fr 1fr;gap:36px;margin-bottom:8px}
+  .pal-col .pal-hd{display:flex;align-items:center;gap:8px;font-family:"JetBrains Mono",ui-monospace,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-2);margin-bottom:16px;padding-bottom:8px;border-bottom:0.5px solid var(--hairline)}
+  .pal-col .pal-hd .dot{width:10px;height:10px;border-radius:999px}
+  .pal-col .pal-hd .dot.day{background:#4CAF50}
+  .pal-col .pal-hd .dot.night{background:#0F1115;border:1px solid #2D323B}
+
+  /* Color grid */
+  .cgrid{display:grid;gap:14px}
+  .cgrid.six{grid-template-columns:repeat(6,1fr)}
+  .cgrid.four{grid-template-columns:repeat(4,1fr)}
+  .cgrid.three{grid-template-columns:repeat(3,1fr)}
+  .sw{display:flex;flex-direction:column}
+  .sw .chip{aspect-ratio:1/1;border-radius:8px;border:0.5px solid var(--hairline);margin-bottom:10px}
+  .sw .name{font-family:"Poppins",Helvetica,Arial,sans-serif;font-size:12px;font-weight:400;color:var(--text-1);letter-spacing:-0.01em}
+  .sw .hex{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:10.5px;color:var(--text-2);margin-top:2px}
+  .sw .tok{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:10px;color:var(--text-3);margin-top:6px;letter-spacing:0.02em}
+
+  /* Type specimens */
+  .type-row{display:grid;grid-template-columns:200px 1fr;gap:32px;align-items:baseline;padding:18px 0;border-bottom:0.5px solid var(--hairline)}
+  .type-row:last-child{border-bottom:none}
+  .type-meta{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:11px;color:var(--text-2);line-height:1.55}
+  .type-meta b{color:var(--text-1);font-weight:500;display:block;margin-bottom:4px;font-family:"Poppins",Helvetica,Arial,sans-serif}
+  .type-sample{color:var(--text-1)}
+
+  .s-display{font-family:"Montserrat",Helvetica,Arial,sans-serif;font-weight:700;font-size:72px;line-height:0.95;letter-spacing:-0.025em}
+  .s-h1{font-family:"Montserrat",Helvetica,Arial,sans-serif;font-weight:700;font-size:48px;line-height:1;letter-spacing:-0.02em}
+  .s-h2{font-family:"Montserrat",Helvetica,Arial,sans-serif;font-weight:500;font-size:28px;line-height:1.1;letter-spacing:-0.015em}
+  .s-body{font-family:"Poppins",Helvetica,Arial,sans-serif;font-weight:400;font-size:16px;line-height:1.5;color:var(--text-1)}
+  .s-body-light{font-family:"Poppins",Helvetica,Arial,sans-serif;font-weight:300;font-size:16px;line-height:1.6;color:var(--text-2)}
+  .s-ui-lg{font-family:"Poppins",Helvetica,Arial,sans-serif;font-weight:400;font-size:16px;letter-spacing:-0.01em}
+  .s-ui-md{font-family:"Poppins",Helvetica,Arial,sans-serif;font-weight:400;font-size:14px;letter-spacing:-0.01em}
+  .s-ui-sm{font-family:"Poppins",Helvetica,Arial,sans-serif;font-weight:400;font-size:12px;letter-spacing:-0.005em}
+  .s-eyebrow{font-family:"Montserrat",Helvetica,Arial,sans-serif;font-weight:500;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-2)}
+  .s-mono{font-family:"JetBrains Mono",ui-monospace,monospace;font-weight:400;font-size:12px;letter-spacing:0.02em;color:var(--text-1)}
+
+  /* Radius / shadow grid */
+  .mgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
+  .mcard{background:var(--surface-elevated);padding:28px 20px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:160px;border:0.5px solid var(--hairline);position:relative;border-radius:8px;transition:background .3s ease,border-color .3s ease}
+  .mcard .demo{width:72px;height:72px;background:var(--brand);margin-bottom:14px}
+  .mcard .demo.sh{background:var(--surface-base);box-shadow:var(--shadow-sm)}
+  .mcard .demo.sh-md{background:var(--surface-base);box-shadow:var(--shadow-md)}
+  .mcard .demo.sh-lg{background:var(--surface-base);box-shadow:var(--shadow-lg)}
+  .mcard .lbl{font-size:12px;font-weight:500;color:var(--text-1);font-family:"Montserrat",Helvetica,Arial,sans-serif}
+  .mcard .val{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:10px;color:var(--text-2);margin-top:4px;text-align:center}
+  .mcard .tok{position:absolute;top:10px;left:12px;font-family:"JetBrains Mono",ui-monospace,monospace;font-size:9.5px;color:var(--text-3);letter-spacing:0.04em}
+
+  /* Usage examples */
+  .usage{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+  .u-card{background:var(--surface-base);border:0.5px solid var(--hairline);border-radius:12px;padding:20px;box-shadow:var(--shadow-md);transition:background .3s ease,border-color .3s ease}
+  .u-card .u-eye{font-family:"Montserrat",Helvetica,Arial,sans-serif;font-weight:500;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-2);margin-bottom:14px}
+  .u-card .u-hd{font-family:"Montserrat",Helvetica,Arial,sans-serif;font-weight:500;font-size:20px;letter-spacing:-0.015em;margin-bottom:8px;color:var(--text-1)}
+  .u-card .u-num{font-family:"Montserrat",Helvetica,Arial,sans-serif;font-weight:700;font-size:44px;letter-spacing:-0.02em;line-height:1;margin-bottom:10px;color:var(--brand)}
+  .u-card .u-num em{font-style:normal;font-size:26px;color:var(--text-3)}
+  .u-card .u-body{font-family:"Poppins",Helvetica,Arial,sans-serif;font-weight:300;font-size:12.5px;color:var(--text-2);line-height:1.55}
+  .u-card .u-foot{display:flex;justify-content:space-between;align-items:center;margin-top:18px;padding-top:12px;border-top:0.5px solid var(--hairline);font-family:"JetBrains Mono",ui-monospace,monospace;font-size:10.5px;color:var(--text-2)}
+
+  .pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-family:"Montserrat",Helvetica,Arial,sans-serif;font-size:10.5px;font-weight:500;letter-spacing:0.02em}
+  .pill.ok{background:var(--success-bg);color:var(--success)}
+  .pill.warn{background:var(--warning-bg);color:var(--warning)}
+  .pill.info{background:var(--info-bg);color:var(--info)}
+  .pill.err{background:var(--danger-bg);color:var(--danger)}
+
+  /* SIGIA chip */
+  .sigia{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;background:var(--brand-muted);color:var(--brand);font-family:"Montserrat",Helvetica,Arial,sans-serif;font-weight:500;font-size:13px}
+  .sigia .av{width:22px;height:22px;border-radius:999px;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
+
+  /* Button samples */
+  .btn{font-family:"Montserrat",Helvetica,Arial,sans-serif;font-weight:500;font-size:14px;padding:10px 18px;border-radius:8px;border:1px solid transparent;cursor:pointer}
+  .btn.primary{background:var(--brand);color:#fff}
+  .btn.primary:hover{background:var(--brand-hover)}
+  .btn.ghost{background:transparent;color:var(--text-1);border-color:var(--border-default)}
+  .btn.ghost:hover{border-color:var(--brand);color:var(--brand)}
+
+  /* Footer */
+  .foot{margin-top:80px;padding-top:20px;border-top:1px solid var(--rule);display:flex;justify-content:space-between;font-family:"JetBrains Mono",ui-monospace,monospace;font-size:10.5px;color:var(--text-2);letter-spacing:0.04em}
+</style>
+</head>
+<body>
+
+  <!-- DAY / NIGHT TOGGLE -->
+  <button class="theme-toggle" id="themeToggle" aria-label="Cambiar tema día / noche">
+    <span class="ico">☀</span><span class="lbl-light">Modo día</span>
+    <span class="ico" style="display:none">☾</span><span class="lbl-dark">Modo noche</span>
+  </button>
+
+  <header class="mast">
+    <div>
+      <div class="s-eyebrow">Sigmetría · Higiene &amp; Seguridad · SaaS</div>
+      <h1><span class="sigma">Σ</span> Visual system · <em>v1.0</em></h1>
+      <div class="sub">Tokens · Tipografía · Color · Radios · Sombras · Componentes</div>
+    </div>
+    <div class="meta">
+      <b>Doc 07 / STYLE</b>
+      JUN 2026<br>
+      Referencia interna<br>
+      Día &amp; Noche · live preview
+    </div>
+  </header>
+
+  <!-- 01 TYPOGRAPHY -->
+  <section>
+    <div class="sec-hd">
+      <span class="num">01</span>
+      <h2>Tipografía</h2>
+      <span class="tag">2 Familias</span>
+    </div>
+
+    <div style="background:var(--surface-sunken);padding:18px 20px;margin-bottom:28px;border-left:2px solid var(--brand);font-family:'Poppins';font-weight:300;font-size:13px;line-height:1.6;color:var(--text-2)">
+      <b style="font-weight:500;color:var(--text-1);font-family:'Montserrat'">Regla.</b> <b style="font-weight:500;color:var(--text-1)">Montserrat</b> es la voz estructural — títulos, eyebrows, etiquetas de UI y números destacados (KPIs). <b style="font-weight:500;color:var(--text-1)">Poppins</b> es el cuerpo: copy, body y texto corrido en pesos Light (300) y Regular (400). Mantené Montserrat para jerarquía y Poppins para lectura.
+    </div>
+
+    <div class="type-row">
+      <div class="type-meta"><b>Heading 1</b>Montserrat<br>48 / 700 / −0.02em</div>
+      <div class="type-sample s-h1">Gestión integral de Higiene y Seguridad</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta"><b>Heading 2 / Sección</b>Montserrat<br>28 / 500 / −0.015em</div>
+      <div class="type-sample s-h2">Matriz de riesgos &amp; cumplimiento</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta"><b>Body</b>Poppins<br>16 / 400 / 1.5 line</div>
+      <div class="type-sample s-body" style="max-width:620px">Inspecciones de campo registradas en tiempo real. El relevamiento del establecimiento se cierra con +98% de hallazgos resueltos dentro del plazo comprometido.</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta"><b>Body · Light</b>Poppins<br>16 / 300 / 1.6 line</div>
+      <div class="type-sample s-body-light" style="max-width:620px">Texto secundario y descripciones extensas usan Poppins Light para aligerar la mancha tipográfica sin perder legibilidad.</div>
+    </div>
+    <div class="type-row" style="background:var(--surface-sunken);padding:18px 20px;margin:8px 0;border-radius:8px">
+      <div class="type-meta"><b>KPI · Display</b>Montserrat<br>64 / 700 / −0.02em<br><span style="color:var(--brand)">Métricas destacadas</span></div>
+      <div class="type-sample s-display" style="color:var(--brand)">98<em style="color:var(--text-3);font-weight:500">%</em></div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta"><b>UI · Large</b>Poppins<br>16 / 400 / −0.01em</div>
+      <div class="type-sample s-ui-lg">Programar visita técnica al cliente</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta"><b>UI · Medium</b>Poppins<br>14 / 400 / −0.01em</div>
+      <div class="type-sample s-ui-md">Lunes, 02 jun 2026 · Panel de la consultora</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta"><b>UI · Small</b>Poppins<br>12 / 400</div>
+      <div class="type-sample s-ui-sm">01 Relevamientos · 02 Capacitaciones · 03 Auditorías</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta"><b>Eyebrow</b>Montserrat<br>11 / 500 / 0.12em / MAYÚS</div>
+      <div class="type-sample s-eyebrow">Hallazgos críticos · Este mes</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta"><b>Mono · Datos</b>JetBrains Mono<br>12 / 400</div>
+      <div class="type-sample s-mono">RES-2026-00482 · ART 19587 · +2.3% MoM</div>
+    </div>
+  </section>
+
+  <!-- 02 COLOR -->
+  <section>
+    <div class="sec-hd">
+      <span class="num">02</span>
+      <h2>Color</h2>
+      <span class="tag">Día &amp; Noche</span>
+    </div>
+
+    <div style="background:var(--surface-sunken);padding:14px 18px;margin-bottom:28px;border-left:2px solid var(--brand);font-family:'Poppins';font-weight:300;font-size:12.5px;line-height:1.6;color:var(--text-2)">
+      Cada bloque muestra <b style="font-weight:500;color:var(--text-1)">los dos modos lado a lado</b>: izquierda Día (light), derecha Noche (dark). El toggle ☀/☾ arriba a la derecha recolorea TODO el documento en vivo — usalo para ver los tokens aplicados en su contexto real.
+    </div>
+
+    <!-- BRAND -->
+    <div class="s-eyebrow" style="margin-bottom:14px">Marca · Brand</div>
+    <div class="pal-split">
+      <div class="pal-col">
+        <div class="pal-hd"><span class="dot day"></span> Día · Light</div>
+        <div class="cgrid three">
+          <div class="sw"><div class="chip" style="background:#4CAF50"></div><div class="name">Primary</div><div class="hex">#4CAF50</div><div class="tok">--brand</div></div>
+          <div class="sw"><div class="chip" style="background:#43A047"></div><div class="name">Hover</div><div class="hex">#43A047</div><div class="tok">--brand-hover</div></div>
+          <div class="sw"><div class="chip" style="background:#E8F5E9"></div><div class="name">Muted</div><div class="hex">#E8F5E9</div><div class="tok">--brand-muted</div></div>
+        </div>
+      </div>
+      <div class="pal-col">
+        <div class="pal-hd"><span class="dot night"></span> Noche · Dark</div>
+        <div class="cgrid three">
+          <div class="sw"><div class="chip" style="background:#4CAF50"></div><div class="name">Primary</div><div class="hex">#4CAF50</div><div class="tok">--brand</div></div>
+          <div class="sw"><div class="chip" style="background:#5BBF5F"></div><div class="name">Hover</div><div class="hex">#5BBF5F</div><div class="tok">--brand-hover</div></div>
+          <div class="sw"><div class="chip" style="background:rgba(76,175,80,0.12);border:0.5px solid var(--hairline)"></div><div class="name">Muted</div><div class="hex">rgba(76,175,80,.12)</div><div class="tok">--brand-muted</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TEXT -->
+    <div class="s-eyebrow" style="margin:32px 0 14px">Texto</div>
+    <div class="pal-split">
+      <div class="pal-col">
+        <div class="pal-hd"><span class="dot day"></span> Día · Light</div>
+        <div class="cgrid three">
+          <div class="sw"><div class="chip" style="background:#333333"></div><div class="name">Text Primary</div><div class="hex">#333333</div><div class="tok">--text-1</div></div>
+          <div class="sw"><div class="chip" style="background:#6B6B6B"></div><div class="name">Text Secondary</div><div class="hex">#6B6B6B</div><div class="tok">--text-2</div></div>
+          <div class="sw"><div class="chip" style="background:#888888"></div><div class="name">Text Tertiary</div><div class="hex">#888888</div><div class="tok">--text-3</div></div>
+        </div>
+      </div>
+      <div class="pal-col">
+        <div class="pal-hd"><span class="dot night"></span> Noche · Dark</div>
+        <div class="cgrid three">
+          <div class="sw"><div class="chip" style="background:#FFFFFF;border:0.5px solid var(--hairline)"></div><div class="name">Text Primary</div><div class="hex">#FFFFFF</div><div class="tok">--text-1</div></div>
+          <div class="sw"><div class="chip" style="background:#F0F0F0;border:0.5px solid var(--hairline)"></div><div class="name">Text Secondary</div><div class="hex">#F0F0F0</div><div class="tok">--text-2</div></div>
+          <div class="sw"><div class="chip" style="background:#CCCCCC"></div><div class="name">Text Tertiary</div><div class="hex">#CCCCCC</div><div class="tok">--text-3</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SURFACES -->
+    <div class="s-eyebrow" style="margin:32px 0 14px">Superficies · Surfaces</div>
+    <div class="pal-split">
+      <div class="pal-col">
+        <div class="pal-hd"><span class="dot day"></span> Día · Light</div>
+        <div class="cgrid four">
+          <div class="sw"><div class="chip" style="background:#FFFFFF"></div><div class="name">Base</div><div class="hex">#FFFFFF</div><div class="tok">--surface-base</div></div>
+          <div class="sw"><div class="chip" style="background:#FAFAFA"></div><div class="name">Elevated</div><div class="hex">#FAFAFA</div><div class="tok">--surface-elevated</div></div>
+          <div class="sw"><div class="chip" style="background:#F4F4F5"></div><div class="name">Sunken</div><div class="hex">#F4F4F5</div><div class="tok">--surface-sunken</div></div>
+          <div class="sw"><div class="chip" style="background:#FAFAFA"></div><div class="name">Sidebar</div><div class="hex">#FAFAFA</div><div class="tok">--surface-sidebar</div></div>
+        </div>
+      </div>
+      <div class="pal-col">
+        <div class="pal-hd"><span class="dot night"></span> Noche · Dark</div>
+        <div class="cgrid four">
+          <div class="sw"><div class="chip" style="background:#0F1115;border:0.5px solid var(--hairline)"></div><div class="name">Base</div><div class="hex">#0F1115</div><div class="tok">--surface-base</div></div>
+          <div class="sw"><div class="chip" style="background:#1A1D23;border:0.5px solid var(--hairline)"></div><div class="name">Elevated</div><div class="hex">#1A1D23</div><div class="tok">--surface-elevated</div></div>
+          <div class="sw"><div class="chip" style="background:#0A0C10;border:0.5px solid var(--hairline)"></div><div class="name">Sunken</div><div class="hex">#0A0C10</div><div class="tok">--surface-sunken</div></div>
+          <div class="sw"><div class="chip" style="background:#1A1D23;border:0.5px solid var(--hairline)"></div><div class="name">Sidebar</div><div class="hex">#1A1D23</div><div class="tok">--surface-sidebar</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BORDERS -->
+    <div class="s-eyebrow" style="margin:32px 0 14px">Bordes</div>
+    <div class="pal-split">
+      <div class="pal-col">
+        <div class="pal-hd"><span class="dot day"></span> Día · Light</div>
+        <div class="cgrid three">
+          <div class="sw"><div class="chip" style="background:#E4E4E7"></div><div class="name">Subtle</div><div class="hex">#E4E4E7</div><div class="tok">--border-subtle</div></div>
+          <div class="sw"><div class="chip" style="background:#D4D4D8"></div><div class="name">Default</div><div class="hex">#D4D4D8</div><div class="tok">--border-default</div></div>
+          <div class="sw"></div>
+        </div>
+      </div>
+      <div class="pal-col">
+        <div class="pal-hd"><span class="dot night"></span> Noche · Dark</div>
+        <div class="cgrid three">
+          <div class="sw"><div class="chip" style="background:#22262E;border:0.5px solid var(--hairline)"></div><div class="name">Subtle</div><div class="hex">#22262E</div><div class="tok">--border-subtle</div></div>
+          <div class="sw"><div class="chip" style="background:#2D323B;border:0.5px solid var(--hairline)"></div><div class="name">Default</div><div class="hex">#2D323B</div><div class="tok">--border-default</div></div>
+          <div class="sw"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATUS -->
+    <div class="s-eyebrow" style="margin:32px 0 14px">Estado · Status (FG + pair BG)</div>
+    <div class="pal-split">
+      <div class="pal-col">
+        <div class="pal-hd"><span class="dot day"></span> Día · Light</div>
+        <div class="cgrid four">
+          <div class="sw"><div class="chip" style="background:#4CAF50"></div><div class="name">Success</div><div class="hex">#4CAF50</div><div class="tok">pair #E8F5E9</div></div>
+          <div class="sw"><div class="chip" style="background:#F59E0B"></div><div class="name">Warning</div><div class="hex">#F59E0B</div><div class="tok">pair #FEF3C7</div></div>
+          <div class="sw"><div class="chip" style="background:#DC2626"></div><div class="name">Danger</div><div class="hex">#DC2626</div><div class="tok">pair #FEE2E2</div></div>
+          <div class="sw"><div class="chip" style="background:#2563EB"></div><div class="name">Info</div><div class="hex">#2563EB</div><div class="tok">pair #DBEAFE</div></div>
+        </div>
+      </div>
+      <div class="pal-col">
+        <div class="pal-hd"><span class="dot night"></span> Noche · Dark</div>
+        <div class="cgrid four">
+          <div class="sw"><div class="chip" style="background:#4CAF50"></div><div class="name">Success</div><div class="hex">#4CAF50</div><div class="tok">bg rgba(.12)</div></div>
+          <div class="sw"><div class="chip" style="background:#FBBF24"></div><div class="name">Warning</div><div class="hex">#FBBF24</div><div class="tok">bg rgba(.12)</div></div>
+          <div class="sw"><div class="chip" style="background:#EF4444"></div><div class="name">Danger</div><div class="hex">#EF4444</div><div class="tok">bg rgba(.12)</div></div>
+          <div class="sw"><div class="chip" style="background:#60A5FA"></div><div class="name">Info</div><div class="hex">#60A5FA</div><div class="tok">bg rgba(.12)</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATUS SOFT BG -->
+    <div class="s-eyebrow" style="margin:32px 0 14px">Estado · Soft BG (Día — solo fondos)</div>
+    <div class="cgrid four">
+      <div class="sw"><div class="chip" style="background:#E8F5E9;border:0.5px solid var(--hairline)"></div><div class="name">Success BG</div><div class="hex">#E8F5E9</div><div class="tok">--success-bg</div></div>
+      <div class="sw"><div class="chip" style="background:#FEF3C7;border:0.5px solid var(--hairline)"></div><div class="name">Warning BG</div><div class="hex">#FEF3C7</div><div class="tok">--warning-bg</div></div>
+      <div class="sw"><div class="chip" style="background:#FEE2E2;border:0.5px solid var(--hairline)"></div><div class="name">Danger BG</div><div class="hex">#FEE2E2</div><div class="tok">--danger-bg</div></div>
+      <div class="sw"><div class="chip" style="background:#DBEAFE;border:0.5px solid var(--hairline)"></div><div class="name">Info BG</div><div class="hex">#DBEAFE</div><div class="tok">--info-bg</div></div>
+    </div>
+
+    <!-- CHART -->
+    <div class="s-eyebrow" style="margin:32px 0 14px">Paleta de gráficos · Charts</div>
+    <div class="pal-split">
+      <div class="pal-col">
+        <div class="pal-hd"><span class="dot day"></span> Día · Light</div>
+        <div class="cgrid six">
+          <div class="sw"><div class="chip" style="background:#4CAF50"></div><div class="name">Chart 1</div><div class="hex">#4CAF50</div><div class="tok">--chart-1</div></div>
+          <div class="sw"><div class="chip" style="background:#2563EB"></div><div class="name">Chart 2</div><div class="hex">#2563EB</div><div class="tok">--chart-2</div></div>
+          <div class="sw"><div class="chip" style="background:#F59E0B"></div><div class="name">Chart 3</div><div class="hex">#F59E0B</div><div class="tok">--chart-3</div></div>
+          <div class="sw"><div class="chip" style="background:#DC2626"></div><div class="name">Chart 4</div><div class="hex">#DC2626</div><div class="tok">--chart-4</div></div>
+          <div class="sw"><div class="chip" style="background:#A855F7"></div><div class="name">Chart 5</div><div class="hex">#A855F7</div><div class="tok">--chart-5</div></div>
+          <div class="sw"><div class="chip" style="background:#14B8A6"></div><div class="name">Chart 6</div><div class="hex">#14B8A6</div><div class="tok">--chart-6</div></div>
+        </div>
+      </div>
+      <div class="pal-col">
+        <div class="pal-hd"><span class="dot night"></span> Noche · Dark</div>
+        <div class="cgrid six">
+          <div class="sw"><div class="chip" style="background:#5BBF5F"></div><div class="name">Chart 1</div><div class="hex">#5BBF5F</div><div class="tok">--chart-1</div></div>
+          <div class="sw"><div class="chip" style="background:#60A5FA"></div><div class="name">Chart 2</div><div class="hex">#60A5FA</div><div class="tok">--chart-2</div></div>
+          <div class="sw"><div class="chip" style="background:#FBBF24"></div><div class="name">Chart 3</div><div class="hex">#FBBF24</div><div class="tok">--chart-3</div></div>
+          <div class="sw"><div class="chip" style="background:#F87171"></div><div class="name">Chart 4</div><div class="hex">#F87171</div><div class="tok">--chart-4</div></div>
+          <div class="sw"><div class="chip" style="background:#C084FC"></div><div class="name">Chart 5</div><div class="hex">#C084FC</div><div class="tok">--chart-5</div></div>
+          <div class="sw"><div class="chip" style="background:#2DD4BF"></div><div class="name">Chart 6</div><div class="hex">#2DD4BF</div><div class="tok">--chart-6</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 03 RADII -->
+  <section>
+    <div class="sec-hd">
+      <span class="num">03</span>
+      <h2>Radios</h2>
+      <span class="tag">4 Tokens · Tailwind scale</span>
+    </div>
+    <div class="mgrid">
+      <div class="mcard"><span class="tok">--radius-sm</span><div class="demo" style="border-radius:4px"></div><div class="lbl">SM · rounded</div><div class="val">4px</div></div>
+      <div class="mcard"><span class="tok">--radius-lg</span><div class="demo" style="border-radius:8px"></div><div class="lbl">LG · rounded-lg</div><div class="val">8px</div></div>
+      <div class="mcard"><span class="tok">--radius-xl</span><div class="demo" style="border-radius:12px"></div><div class="lbl">XL · rounded-xl</div><div class="val">12px</div></div>
+      <div class="mcard"><span class="tok">--radius-2xl</span><div class="demo" style="border-radius:16px"></div><div class="lbl">2XL · rounded-2xl</div><div class="val">16px</div></div>
+    </div>
+  </section>
+
+  <!-- 04 SHADOWS -->
+  <section>
+    <div class="sec-hd">
+      <span class="num">04</span>
+      <h2>Elevación</h2>
+      <span class="tag">3 Sombras</span>
+    </div>
+    <div class="mgrid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="mcard"><span class="tok">--shadow-sm</span><div class="demo sh" style="border-radius:8px"></div><div class="lbl">SM</div><div class="val">0 1 2 rgba(0,0,0,.05)</div></div>
+      <div class="mcard"><span class="tok">--shadow-md</span><div class="demo sh-md" style="border-radius:8px"></div><div class="lbl">MD</div><div class="val">0 4 6 -1 rgba(0,0,0,.1)<br>+ 0 2 4 -1 rgba(0,0,0,.06)</div></div>
+      <div class="mcard"><span class="tok">--shadow-lg</span><div class="demo sh-lg" style="border-radius:8px"></div><div class="lbl">LG</div><div class="val">0 10 15 -3 rgba(0,0,0,.1)<br>+ 0 4 6 -2 rgba(0,0,0,.05)</div></div>
+    </div>
+  </section>
+
+  <!-- 05 PATTERNS -->
+  <section>
+    <div class="sec-hd">
+      <span class="num">05</span>
+      <h2>Status pills &amp; controles</h2>
+      <span class="tag">Soft BG · Colored FG</span>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px">
+      <span class="pill ok">◇ Conforme</span>
+      <span class="pill warn">◇ Observación</span>
+      <span class="pill info">◇ En revisión</span>
+      <span class="pill err">◇ No conforme</span>
+      <span class="pill ok">+1.2% vs objetivo</span>
+      <span class="pill warn">−0.4% desvío</span>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+      <button class="btn primary">Acción primaria</button>
+      <button class="btn ghost">Secundaria</button>
+      <span class="sigia"><span class="av">Σ</span> SIGIA · asistente IA</span>
+    </div>
+  </section>
+
+  <!-- 06 COMPOSITION -->
+  <section>
+    <div class="sec-hd">
+      <span class="num">06</span>
+      <h2>Aplicado — tarjetas de ejemplo</h2>
+      <span class="tag">Referencia de composición</span>
+    </div>
+    <div class="usage">
+      <div class="u-card">
+        <div class="u-eye">Cumplimiento</div>
+        <div class="u-num">98<em>%</em></div>
+        <div class="u-hd">Hallazgos resueltos en plazo</div>
+        <div class="u-body">Relevamiento de planta cerrado sin no-conformidades críticas pendientes. Desvío dentro de los límites del plan anual de HyS.</div>
+        <div class="u-foot"><span>JUN · 2026</span><span class="pill ok">Conforme</span></div>
+      </div>
+      <div class="u-card" style="background:var(--surface-elevated)">
+        <div class="u-eye">Capacitación</div>
+        <div class="u-num">JUN 11</div>
+        <div class="u-hd">Charla de uso de EPP agendada</div>
+        <div class="u-body">Sesión con personal de obra confirmada 10:30. Temario: protección auditiva, arnés y trabajo en altura según ley 19.587.</div>
+        <div class="u-foot"><span>CAPACITACIÓN</span><span class="pill info">Agendada</span></div>
+      </div>
+      <div class="u-card" style="background:var(--brand);color:#fff;border-color:transparent">
+        <div class="u-eye" style="color:rgba(255,255,255,.85)">SIGIA</div>
+        <div class="u-num" style="color:#fff">24<em style="color:rgba(255,255,255,.7)">/7</em></div>
+        <div class="u-hd" style="color:#fff">Asistente de normativa</div>
+        <div class="u-body" style="color:rgba(255,255,255,.9)">SIGIA responde consultas sobre legislación de Higiene y Seguridad y sugiere medidas correctivas en cada relevamiento.</div>
+        <div class="u-foot" style="border-top-color:rgba(255,255,255,.25);color:rgba(255,255,255,.85)"><span>IA / Multi-tenant</span><span>+4 pts vs plan</span></div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <span>SIGMETRÍA · STYLE REFERENCE · v1.0 · HyS SaaS</span>
+    <span>JUN 2026</span>
+  </footer>
+
+<script>
+  /* DAY / NIGHT TOGGLE
+     Conmuta el atributo data-theme en <html>. CSS hace el resto:
+     :root = tokens light (día) · [data-theme=dark] = tokens dark (noche).
+     Persiste la elección en localStorage. */
+  (function () {
+    var root = document.documentElement;
+    var btn = document.getElementById('themeToggle');
+    var icons = btn.querySelectorAll('.ico');
+
+    function render(theme) {
+      root.setAttribute('data-theme', theme);
+      var dark = theme === 'dark';
+      icons[0].style.display = dark ? 'none' : 'inline';  // ☀
+      icons[1].style.display = dark ? 'inline' : 'none';  // ☾
+    }
+
+    var saved = localStorage.getItem('sigmetria-theme') || 'light';
+    render(saved);
+
+    btn.addEventListener('click', function () {
+      var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('sigmetria-theme', next);
+      render(next);
+    });
+  })();
+</script>
+
+</body>
+</html>

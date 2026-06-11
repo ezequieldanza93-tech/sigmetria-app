@@ -4,8 +4,8 @@ import { z } from 'zod'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
-import type { ActionResult, UserRole } from '@/lib/types'
-import { canManageUsers } from '@/lib/types'
+import type { ActionResult, UserRole, SystemRole } from '@/lib/types'
+import { canManageUsers, canInviteViewers, isFreeViewerRole } from '@/lib/types'
 import { validateFormData, formatZodErrors } from '@/lib/validation/helpers'
 import { userRole } from '@/lib/validation/schemas'
 
@@ -32,42 +32,52 @@ async function assertCanManage() {
 export type InviteResult = { link: string; role: string }
 
 export async function inviteUsuario(_prevState: ActionResult<InviteResult> | null, formData: FormData): Promise<ActionResult<InviteResult>> {
-  const ctx = await assertCanManage()
-  if (!ctx) return { success: false, error: 'Sin permisos para invitar usuarios' }
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'No autenticado' }
+
+  const [{ data: profile }, { data: membership }] = await Promise.all([
+    supabase.from('profiles').select('system_role').eq('id', user.id).single(),
+    supabase.from('consultoras_members').select('role, consultora_id').eq('user_id', user.id).eq('is_active', true).maybeSingle(),
+  ])
+  const systemRole = (profile?.system_role ?? 'user') as SystemRole
+  const myRole = (membership?.role as UserRole | undefined) ?? null
 
   const parsed = validateFormData(inviteUsuarioSchema, formData)
   if (!parsed.success) {
     return { success: false, error: formatZodErrors(parsed.error) }
   }
   const { email, full_name: fullName, role } = parsed.data
-  const consultoraId = ctx.membership?.consultora_id
+  const personaId = (formData.get('persona_id') as string | null)?.trim() || null
+  const consultoraId = membership?.consultora_id
 
-  if (!consultoraId) return { success: false, error: 'No se encontró consultora' }
-
-  // Check if full_access_main role (only they can invite)
-  if (ctx.membership?.role !== 'full_access_main' && ctx.profile?.system_role !== 'developer') {
-    return { success: false, error: 'Solo el Admin Principal puede agregar miembros' }
+  if (!consultoraId && systemRole !== 'developer') {
+    return { success: false, error: 'No se encontró consultora' }
   }
 
-  // Check seat availability
-  const supabaseCheck = await createServerClient()
-  const [{ count: activeCount }, { data: consultora }] = await Promise.all([
-    supabaseCheck
-      .from('consultoras_members')
-      .select('*', { count: 'exact', head: true })
-      .eq('consultora_id', consultoraId)
-      .eq('is_active', true),
-    supabaseCheck
-      .from('consultoras')
-      .select('seats_max')
-      .eq('id', consultoraId)
-      .single(),
-  ])
+  const targetIsViewer = isFreeViewerRole(role)
 
-  const seatsMax = consultora?.seats_max ?? 3
-  const seatsUsed = activeCount ?? 0
-  if (seatsUsed >= seatsMax) {
-    return { success: false, error: `SEATS_LIMIT:${seatsUsed}:${seatsMax}` }
+  // Viewers (sin cargo): los puede crear el Admin o un colaborador.
+  // Cualquier otro rol (Admin / Colaborador con cargo): solo el Admin Principal.
+  if (targetIsViewer) {
+    if (!canInviteViewers(myRole, systemRole)) {
+      return { success: false, error: 'Sin permisos para invitar usuarios' }
+    }
+  } else if (!canManageUsers(myRole, systemRole)) {
+    return { success: false, error: 'Solo el Admin Principal puede crear Administradores o Colaboradores' }
+  }
+
+  // Control de seats: solo cuentan los roles con cargo. Los viewers son gratis.
+  if (!targetIsViewer && consultoraId) {
+    const [{ data: members }, { data: consultora }] = await Promise.all([
+      supabase.from('consultoras_members').select('role').eq('consultora_id', consultoraId).eq('is_active', true),
+      supabase.from('consultoras').select('seats_max').eq('id', consultoraId).single(),
+    ])
+    const seatsMax = consultora?.seats_max ?? 3
+    const seatsUsed = (members ?? []).filter(m => !isFreeViewerRole(m.role as UserRole)).length
+    if (seatsUsed >= seatsMax) {
+      return { success: false, error: `SEATS_LIMIT:${seatsUsed}:${seatsMax}` }
+    }
   }
 
   const headersList = await headers()
@@ -78,7 +88,7 @@ export async function inviteUsuario(_prevState: ActionResult<InviteResult> | nul
   const response = await fetch(`${baseUrl}/api/admin/invite-user`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, full_name: fullName, role }),
+    body: JSON.stringify({ email, full_name: fullName, role, ...(personaId ? { persona_id: personaId } : {}) }),
   })
 
   if (!response.ok) {
@@ -127,4 +137,55 @@ export async function revokeAcceso(memberId: string): Promise<ActionResult<null>
 
   revalidatePath('/dashboard/usuarios')
   return { success: true, data: null }
+}
+
+/**
+ * Reemplaza a una persona del equipo: da de baja al miembro actual e invita a
+ * uno nuevo con el MISMO rol. Lo correcto cuando rota el equipo (historial del
+ * anterior queda intacto y trazable; el nuevo arranca con su propia cuenta).
+ */
+export async function replaceMember(memberId: string, newFullName: string, newEmail: string): Promise<ActionResult<InviteResult>> {
+  const ctx = await assertCanManage()
+  if (!ctx) return { success: false, error: 'Solo el Admin Principal puede reemplazar usuarios' }
+
+  const fullName = newFullName.trim()
+  const email = newEmail.trim().toLowerCase()
+  if (!fullName) return { success: false, error: 'Nombre requerido' }
+
+  const supabase = await createServerClient()
+  const { data: member } = await supabase
+    .from('consultoras_members')
+    .select('role, user_id')
+    .eq('id', memberId)
+    .eq('consultora_id', ctx.membership?.consultora_id ?? '')
+    .maybeSingle()
+  if (!member) return { success: false, error: 'Usuario no encontrado' }
+  if (member.user_id === ctx.user.id) return { success: false, error: 'No podés reemplazarte a vos mismo' }
+
+  // Baja del anterior (libera el seat si lo consumía).
+  const { error: deactivateError } = await supabase
+    .from('consultoras_members')
+    .update({ is_active: false })
+    .eq('id', memberId)
+  if (deactivateError) return { success: false, error: deactivateError.message }
+
+  // Invitación del reemplazo con el mismo rol.
+  const headersList = await headers()
+  const host = headersList.get('host') ?? 'localhost:3000'
+  const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https'
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? `${protocol}://${host}`
+  const response = await fetch(`${baseUrl}/api/admin/invite-user`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, full_name: fullName, role: member.role }),
+  })
+  if (!response.ok) {
+    const { error } = await response.json().catch(() => ({ error: 'Error al invitar al reemplazo' }))
+    return { success: false, error }
+  }
+  const payload = await response.json().catch(() => null) as { link?: string; role?: string } | null
+  if (!payload?.link) return { success: false, error: 'No se pudo generar el link de invitación' }
+
+  revalidatePath('/dashboard/usuarios')
+  return { success: true, data: { link: payload.link, role: payload.role ?? member.role } }
 }

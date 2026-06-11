@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Factibilidad Comercial — Sigmetría HyS</title>
+<style>
+  @page { size: A4; margin: 15mm 14mm; }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  :root{
+    --primary:#4CAF50; --primary-dark:#2E7D32; --primary-light:#E8F5E9;
+    --text:#333333; --muted:#666666; --light:#888888;
+    --bg:#FFFFFF; --soft:#F9FAFB; --border:#E5E7EB;
+    --warning:#FFD54F; --alert:#E53935;
+  }
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Poppins','Segoe UI',system-ui,sans-serif;
+    color:var(--text); font-size:10.5px; line-height:1.6; background:#fff;
+  }
+  h1,h2,h3,h4{font-family:'Montserrat','Segoe UI',system-ui,sans-serif;font-weight:700;line-height:1.2;color:var(--text);margin:0;}
+  h2{font-size:19px;color:var(--primary-dark);border-bottom:2px solid var(--primary);padding-bottom:6px;margin-bottom:14px;}
+  h3{font-size:14px;margin:18px 0 8px;color:var(--text);}
+  h4{font-size:11.5px;margin:0 0 4px;}
+  p{margin:0 0 9px;}
+  .muted{color:var(--muted);}
+  .small{font-size:9px;}
+  strong{color:var(--text);}
+  .accent{color:var(--primary);}
+
+  /* Cover */
+  .cover{height:267mm;display:flex;flex-direction:column;justify-content:center;page-break-after:always;text-align:left;}
+  .cover .brand{font-family:'Montserrat',sans-serif;font-weight:700;font-size:30px;color:var(--primary-dark);letter-spacing:-0.5px;}
+  .cover .brand span{color:var(--text);}
+  .cover .dot{color:var(--primary);}
+  .cover .eyebrow{text-transform:uppercase;letter-spacing:2px;font-size:11px;color:var(--muted);margin:48px 0 10px;}
+  .cover .title{font-size:46px;line-height:1.05;letter-spacing:-1px;margin-bottom:18px;}
+  .cover .subtitle{font-size:15px;color:var(--muted);max-width:75%;font-weight:400;}
+  .cover .meta{margin-top:52px;font-size:11px;color:var(--light);border-top:1px solid var(--border);padding-top:16px;}
+  .cover .stripe{height:6px;width:90px;background:var(--primary);border-radius:3px;margin:28px 0;}
+
+  section{page-break-inside:auto;}
+  .page-break{page-break-before:always;}
+
+  table{width:100%;border-collapse:collapse;margin:10px 0 16px;font-size:9.5px;}
+  th,td{padding:7px 8px;text-align:left;border-bottom:1px solid var(--border);}
+  th{background:var(--primary-dark);color:#fff;font-family:'Montserrat',sans-serif;font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:0.3px;}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;}
+  tr:nth-child(even) td{background:var(--soft);}
+  table.scenario tr td:first-child{font-weight:600;color:var(--primary-dark);}
+  .total-row td{background:var(--primary-light)!important;font-weight:700;color:var(--text);border-top:2px solid var(--primary);}
+
+  .grid{display:flex;gap:12px;margin:14px 0;}
+  .kpi{flex:1;background:var(--soft);border:1px solid var(--border);border-left:4px solid var(--primary);border-radius:8px;padding:14px;}
+  .kpi .n{font-family:'Montserrat',sans-serif;font-weight:700;font-size:26px;color:var(--primary);line-height:1;}
+  .kpi .l{font-size:9px;color:var(--muted);margin-top:6px;}
+
+  .callout{background:var(--primary-light);border-left:4px solid var(--primary);border-radius:0 8px 8px 0;padding:14px 16px;margin:14px 0;}
+  .callout.warn{background:#FFF8E1;border-left-color:var(--warning);}
+  .callout.alert{background:#FDECEA;border-left-color:var(--alert);}
+  .callout p{margin:0;}
+
+  .badge{display:inline-block;font-size:8.5px;font-weight:600;padding:2px 8px;border-radius:99px;color:#fff;font-family:'Montserrat',sans-serif;}
+  .badge.low{background:#90A4AE;}
+  .badge.mid{background:var(--primary);}
+  .badge.high{background:var(--primary-dark);}
+
+  ul.clean{margin:6px 0 12px;padding-left:18px;}
+  ul.clean li{margin-bottom:5px;}
+
+  .scenario-head{display:flex;align-items:center;gap:10px;margin:6px 0 4px;}
+  .footer-note{font-size:8px;color:var(--light);border-top:1px solid var(--border);padding-top:8px;margin-top:6px;}
+  .pos{color:var(--primary-dark);font-weight:700;}
+</style>
+</head>
+<body>
+
+<!-- ============ COVER ============ -->
+<div class="cover">
+  <div class="brand">Sigmetría<span> HyS</span><span class="dot">.</span></div>
+  <div class="stripe"></div>
+  <div class="eyebrow">Documento estratégico · Confidencial</div>
+  <div class="title">Análisis de<br>Factibilidad Comercial</div>
+  <div class="subtitle">Proyección financiera de la plataforma SaaS de gestión de Higiene y Seguridad bajo tres escenarios de escalabilidad: baja, intermedia y alta.</div>
+  <div class="meta">
+    Preparado para: Dirección de Sigmetría HyS (Amarilla Ingeniería)<br>
+    Modelo: SaaS B2B · USD 30 por usuario/mes · Infraestructura Supabase<br>
+    Fecha: Junio 2026 · Horizonte: 3 años
+  </div>
+</div>
+
+<!-- ============ RESUMEN EJECUTIVO ============ -->
+<section>
+  <h2>1. Resumen ejecutivo</h2>
+  <p>Este informe evalúa la <strong>factibilidad económica de la infraestructura</strong> de la plataforma SaaS de Sigmetría a un precio de <strong>USD 30 por usuario/mes</strong>, proyectada sobre tres trayectorias de crecimiento a 3 años. La conclusión es contundente: <strong>el modelo es robustamente rentable a nivel operativo en los tres escenarios</strong>, con márgenes de infraestructura que se mantienen entre el <strong>84% y el 94%</strong> y que <em>mejoran</em> a medida que el negocio escala.</p>
+
+  <div class="grid">
+    <div class="kpi"><div class="n">84–94%</div><div class="l">Margen sobre costos de infraestructura en los 3 escenarios</div></div>
+    <div class="kpi"><div class="n">3–15%</div><div class="l">Peso de la infraestructura sobre la facturación</div></div>
+    <div class="kpi"><div class="n">~4</div><div class="l">Usuarios para cubrir el costo técnico mínimo (break-even de infra)</div></div>
+  </div>
+
+  <div class="callout">
+    <p><strong>Veredicto:</strong> la factibilidad <em>técnica y de costos</em> NO es un riesgo del negocio. El costo de servir a un usuario es marginal frente a lo que paga. El verdadero desafío —y donde se juega la rentabilidad neta— está en el <strong>go-to-market</strong>: adquirir y retener usuarios (CAC, churn), no en el costo de la plataforma.</p>
+  </div>
+
+  <p class="small muted">Nota de alcance: este documento analiza costos de <strong>infraestructura y servicios técnicos</strong> (Supabase, procesamiento de pagos, bot, hosting, monitoreo). No incluye costos humanos (desarrollo, soporte, ventas), inversión en marketing/adquisición ni impuestos — ver sección 7.</p>
+</section>
+
+<!-- ============ SUPUESTOS ============ -->
+<section class="page-break">
+  <h2>2. Supuestos y metodología</h2>
+
+  <h3>2.1 Modelo de ingresos</h3>
+  <ul class="clean">
+    <li><strong>Precio:</strong> USD 30 por usuario/mes (precio de lista; competidor de referencia cobra USD 40).</li>
+    <li><strong>MRR</strong> (ingreso mensual recurrente) = usuarios activos × USD 30. <strong>ARR</strong> = MRR × 12.</li>
+    <li>El crecimiento de usuarios entre hitos se modela de forma lineal para estimar el consumo acumulado.</li>
+  </ul>
+
+  <h3>2.2 Consumo por usuario</h3>
+  <ul class="clean">
+    <li>Cada usuario carga <strong>100 fotos + 200 PDF por mes</strong>.</li>
+    <li>Peso <strong>optimizado</strong> (compresión aplicada antes del lanzamiento): foto ≈ 0,7 MB, PDF ≈ 1,5 MB → <strong>~370 MB por usuario/mes</strong>. El almacenamiento se <strong>acumula</strong> mes a mes.</li>
+    <li>Sin optimización, el consumo sería ~2,4× mayor. La compresión de imágenes es la palanca de costo #1.</li>
+  </ul>
+
+  <h3>2.3 Costos de infraestructura (tarifas Supabase verificadas, jun. 2026)</h3>
+  <ul class="clean">
+    <li><strong>Plan Pro:</strong> USD 25/mes — incluye 100 GB storage, 250 GB egress, 8 GB base de datos.</li>
+    <li><strong>Storage excedente:</strong> USD 0,021/GB-mes · <strong>Egress:</strong> USD 0,09/GB (sin caché), USD 0,03/GB (con CDN) · <strong>DB:</strong> USD 0,125/GB.</li>
+    <li><strong>Compute</strong> escala por tramos: Small (~USD 15) → Medium (~USD 110) → Large (~USD 210) → XL (~USD 410) + réplicas de lectura a gran escala.</li>
+    <li><strong>Otros:</strong> hosting USD 80/año, bot WhatsApp (OpenAI + Resend), email transaccional, monitoreo (Sentry).</li>
+    <li><strong>Procesador de pagos:</strong> ~4% de la facturación (Paddle / Lemon Squeezy / Mercado Pago).</li>
+    <li>Se aplica una <strong>línea de contingencia del 15%</strong> sobre el costo técnico.</li>
+  </ul>
+</section>
+
+<!-- ============ ESCENARIO A ============ -->
+<section class="page-break">
+  <div class="scenario-head"><h2 style="border:0;margin:0;padding:0;">3. Escenario A — Baja escalabilidad</h2> <span class="badge low">BAJA</span></div>
+  <p class="muted">Adopción conservadora: 20 usuarios a los 3 meses, 100 al año, 200 a los 3 años. Crecimiento orgánico, boca a boca, sin inversión fuerte en adquisición.</p>
+
+  <table class="scenario">
+    <thead><tr>
+      <th>Hito</th><th class="num">Usuarios</th><th class="num">MRR</th><th class="num">ARR</th><th class="num">Storage acum.</th><th class="num">Costo infra/mes</th><th class="num">Margen/mes</th><th class="num">Margen %</th>
+    </tr></thead>
+    <tbody>
+      <tr><td>3 meses</td><td class="num">20</td><td class="num">$600</td><td class="num">$7.200</td><td class="num">11 GB</td><td class="num">$93</td><td class="num pos">$507</td><td class="num">84%</td></tr>
+      <tr><td>1 año</td><td class="num">100</td><td class="num">$3.000</td><td class="num">$36.000</td><td class="num">211 GB</td><td class="num">$217</td><td class="num pos">$2.783</td><td class="num">93%</td></tr>
+      <tr><td>3 años</td><td class="num">200</td><td class="num">$6.000</td><td class="num">$72.000</td><td class="num">1,54 TB</td><td class="num">$561</td><td class="num pos">$5.439</td><td class="num">91%</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout"><p><strong>Lectura:</strong> incluso en el peor caso de adopción, el negocio es altamente rentable a nivel infra. A 3 años factura USD 72.000/año con un costo técnico de ~USD 6.700/año. El storage (1,5 TB) cuesta apenas USD 30/mes. El riesgo acá no es el costo — es <strong>si el crecimiento se queda corto</strong> para sostener la estructura humana.</p></div>
+</section>
+
+<!-- ============ ESCENARIO B ============ -->
+<section class="page-break">
+  <div class="scenario-head"><h2 style="border:0;margin:0;padding:0;">4. Escenario B — Escalabilidad intermedia</h2> <span class="badge mid">INTERMEDIA</span></div>
+  <p class="muted">Adopción sólida con marketing activo: 35 usuarios a los 3 meses, 400 al año, 1.500 a los 3 años. Es el escenario objetivo realista si la estrategia de marketing funciona.</p>
+
+  <table class="scenario">
+    <thead><tr>
+      <th>Hito</th><th class="num">Usuarios</th><th class="num">MRR</th><th class="num">ARR</th><th class="num">Storage acum.</th><th class="num">Costo infra/mes</th><th class="num">Margen/mes</th><th class="num">Margen %</th>
+    </tr></thead>
+    <tbody>
+      <tr><td>3 meses</td><td class="num">35</td><td class="num">$1.050</td><td class="num">$12.600</td><td class="num">19 GB</td><td class="num">$114</td><td class="num pos">$936</td><td class="num">89%</td></tr>
+      <tr><td>1 año</td><td class="num">400</td><td class="num">$12.000</td><td class="num">$144.000</td><td class="num">744 GB</td><td class="num">$945</td><td class="num pos">$11.055</td><td class="num">92%</td></tr>
+      <tr><td>3 años</td><td class="num">1.500</td><td class="num">$45.000</td><td class="num">$540.000</td><td class="num">9,2 TB</td><td class="num">$3.352</td><td class="num pos">$41.648</td><td class="num">93%</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout"><p><strong>Lectura:</strong> a 3 años el negocio factura <strong>USD 540.000/año</strong> con un costo de infraestructura de ~USD 40.000/año (7,4%). Acá aparece la primera decisión técnica relevante: con 9,2 TB conviene activar el <strong>tiering hot/cold</strong> (histórico a almacenamiento frío tipo Backblaze B2) y réplicas de lectura. Ambos ya contemplados en el plan de optimización.</p></div>
+</section>
+
+<!-- ============ ESCENARIO C ============ -->
+<section class="page-break">
+  <div class="scenario-head"><h2 style="border:0;margin:0;padding:0;">5. Escenario C — Alta escalabilidad</h2> <span class="badge high">ALTA</span></div>
+  <p class="muted">Crecimiento agresivo / product-market fit fuerte: 50 usuarios a los 3 meses, 1.000 al año, 5.000 a los 3 años. Requiere inversión sostenida en adquisición y un equipo creciente.</p>
+
+  <table class="scenario">
+    <thead><tr>
+      <th>Hito</th><th class="num">Usuarios</th><th class="num">MRR</th><th class="num">ARR</th><th class="num">Storage acum.</th><th class="num">Costo infra/mes</th><th class="num">Margen/mes</th><th class="num">Margen %</th>
+    </tr></thead>
+    <tbody>
+      <tr><td>3 meses</td><td class="num">50</td><td class="num">$1.500</td><td class="num">$18.000</td><td class="num">28 GB</td><td class="num">$135</td><td class="num pos">$1.365</td><td class="num">91%</td></tr>
+      <tr><td>1 año</td><td class="num">1.000</td><td class="num">$30.000</td><td class="num">$360.000</td><td class="num">1,78 TB</td><td class="num">$2.105</td><td class="num pos">$27.895</td><td class="num">93%</td></tr>
+      <tr><td>3 años</td><td class="num">5.000</td><td class="num">$150.000</td><td class="num">$1.800.000</td><td class="num">28,4 TB</td><td class="num">$9.643</td><td class="num pos">$140.357</td><td class="num">94%</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout"><p><strong>Lectura:</strong> a 3 años el negocio factura <strong>USD 1,8 millones/año</strong>. La infraestructura cuesta ~USD 116.000/año: apenas el <strong>6,4%</strong>. Con 28 TB, el tiering hot/cold y la arquitectura de datos eficiente (índices, paginación, metadata propia) dejan de ser opcionales: son lo que mantiene el margen en 94% en vez de erosionarlo.</p></div>
+</section>
+
+<!-- ============ COMPARATIVA ============ -->
+<section class="page-break">
+  <h2>6. Comparativa de escenarios</h2>
+
+  <h3>6.1 Facturación anual (ARR) por hito</h3>
+  <table>
+    <thead><tr><th>Escenario</th><th class="num">3 meses (anualizado)</th><th class="num">1 año</th><th class="num">3 años</th></tr></thead>
+    <tbody>
+      <tr><td><span class="badge low">BAJA</span> A</td><td class="num">$7.200</td><td class="num">$36.000</td><td class="num">$72.000</td></tr>
+      <tr><td><span class="badge mid">INTERMEDIA</span> B</td><td class="num">$12.600</td><td class="num">$144.000</td><td class="num">$540.000</td></tr>
+      <tr><td><span class="badge high">ALTA</span> C</td><td class="num">$18.000</td><td class="num">$360.000</td><td class="num">$1.800.000</td></tr>
+    </tbody>
+  </table>
+
+  <h3>6.2 Composición del costo mensual a 3 años</h3>
+  <p class="muted small">Dónde se va realmente la plata cuando el negocio madura. Nota: el <strong>procesador de pagos</strong> (4%) supera a toda la infraestructura junta — la infra NO es el costo dominante.</p>
+  <table>
+    <thead><tr><th>Concepto</th><th class="num">A · 200 u.</th><th class="num">B · 1.500 u.</th><th class="num">C · 5.000 u.</th></tr></thead>
+    <tbody>
+      <tr><td>Supabase (base + compute)</td><td class="num">$135</td><td class="num">$645</td><td class="num">$1.225</td></tr>
+      <tr><td>Storage</td><td class="num">$30</td><td class="num">$191</td><td class="num">$595</td></tr>
+      <tr><td>Egress (con CDN)</td><td class="num">$0</td><td class="num">$10</td><td class="num">$63</td></tr>
+      <tr><td>Base de datos</td><td class="num">$0</td><td class="num">$2</td><td class="num">$5</td></tr>
+      <tr><td>Hosting (dominio)</td><td class="num">$7</td><td class="num">$7</td><td class="num">$7</td></tr>
+      <tr><td>Bot WhatsApp (OpenAI/WA/Resend)</td><td class="num">$30</td><td class="num">$80</td><td class="num">$200</td></tr>
+      <tr><td>Email transaccional</td><td class="num">$20</td><td class="num">$20</td><td class="num">$90</td></tr>
+      <tr><td>Monitoreo (Sentry)</td><td class="num">$26</td><td class="num">$80</td><td class="num">$200</td></tr>
+      <tr><td><strong>Procesador de pagos (4%)</strong></td><td class="num">$240</td><td class="num">$1.800</td><td class="num">$6.000</td></tr>
+      <tr><td>Contingencia (15%)</td><td class="num">$73</td><td class="num">$437</td><td class="num">$1.258</td></tr>
+      <tr class="total-row"><td>TOTAL mensual</td><td class="num">$561</td><td class="num">$3.352</td><td class="num">$9.643</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout"><p><strong>Insight clave:</strong> en los tres escenarios, el <strong>procesamiento de pagos es el mayor costo variable</strong>, no la infraestructura técnica. Negociar una mejor tasa de procesamiento mueve más el resultado que cualquier optimización de servidores.</p></div>
+</section>
+
+<!-- ============ LO QUE NO INCLUYE ============ -->
+<section class="page-break">
+  <h2>7. Lo que este análisis NO incluye</h2>
+  <p>La factibilidad de infraestructura está sobradamente probada. Pero la rentabilidad <strong>neta</strong> del negocio depende de costos que están fuera de este modelo y que son los que de verdad hay que gestionar:</p>
+  <ul class="clean">
+    <li><strong>Costos humanos:</strong> desarrollo y mantenimiento, soporte al cliente (CSM), ventas. Es el costo más grande de un SaaS real.</li>
+    <li><strong>Adquisición (CAC):</strong> inversión en marketing y publicidad para conseguir cada usuario. Define la velocidad de crecimiento.</li>
+    <li><strong>Impuestos, contabilidad y legal.</strong></li>
+  </ul>
+
+  <div class="callout warn"><p><strong>Conclusión del alcance:</strong> con márgenes de infraestructura del 84–94%, el negocio tiene <strong>enorme aire</strong> para financiar estructura humana y adquisición. La pregunta estratégica no es <em>"¿la infra es rentable?"</em> (lo es, ampliamente) sino <em>"¿qué tan rápido y a qué costo consigo y retengo usuarios?"</em>.</p></div>
+
+  <h3>7.1 Indicadores SaaS a vigilar</h3>
+  <table>
+    <thead><tr><th>Indicador</th><th>Qué mide</th><th>Objetivo de referencia</th></tr></thead>
+    <tbody>
+      <tr><td>LTV : CAC</td><td>Valor del cliente vs. costo de adquirirlo</td><td>≥ 3 : 1</td></tr>
+      <tr><td>Churn mensual</td><td>% de clientes que se van por mes</td><td>&lt; 3% (ideal &lt; 2%)</td></tr>
+      <tr><td>Payback de CAC</td><td>Meses para recuperar el costo de adquisición</td><td>&lt; 12 meses</td></tr>
+      <tr><td>NRR</td><td>Expansión neta de ingresos por cliente</td><td>&gt; 100%</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============ RIESGOS Y RECOMENDACIONES ============ -->
+<section class="page-break">
+  <h2>8. Riesgos y recomendaciones</h2>
+
+  <h3>8.1 Riesgos</h3>
+  <ul class="clean">
+    <li><strong>Crecimiento por debajo del escenario A:</strong> el único riesgo financiero real. Mitigación: estructura de costos humanos liviana hasta validar tracción.</li>
+    <li><strong>Storage sin optimizar:</strong> duplicaría el costo de almacenamiento. Mitigación: aplicar compresión y thumbnails ANTES de lanzar (ya planificado).</li>
+    <li><strong>Egress descontrolado:</strong> servir archivos full-res sin CDN. Mitigación: thumbnails + CDN + buckets públicos cacheados.</li>
+    <li><strong>Performance a escala:</strong> sin índices en foreign keys, las consultas RLS se degradan. Mitigación: plan de optimización de base de datos pre-lanzamiento.</li>
+  </ul>
+
+  <h3>8.2 Recomendaciones</h3>
+  <ul class="clean">
+    <li><strong>Lanzar con el "Programa Fundadores":</strong> 5 cupos, pago anual, garantía de 30 días. Asegura base inicial + prueba social.</li>
+    <li><strong>Mantener el precio de lista en USD 30</strong> (con espacio hacia USD 40 del competidor). No competir por precio: competir por producto y marketing.</li>
+    <li><strong>Optimizar antes de lanzar:</strong> compresión de imágenes, índices, thumbnails, paginación. Barato ahora, carísimo después.</li>
+    <li><strong>Arrancar con stack mínimo</strong> (~USD 5/mes extra): bot + HubSpot Free + Cal.com. Sumar herramientas cuando el volumen lo justifique.</li>
+    <li><strong>Activar tiering hot/cold de storage</strong> al superar ~5 TB (escenarios B/C, año 2–3).</li>
+    <li><strong>Negociar la tasa del procesador de pagos:</strong> es el mayor costo variable a escala.</li>
+  </ul>
+
+  <div class="callout"><p><strong>Conclusión final:</strong> la plataforma SaaS de Sigmetría es <strong>comercialmente factible y financieramente sólida</strong> en los tres escenarios de escalabilidad. La infraestructura nunca representa más del 15% de la facturación y el margen mejora con la escala. El proyecto está habilitado para avanzar al lanzamiento; el foco de gestión debe ponerse en la <strong>adquisición y retención de usuarios</strong>, no en el costo técnico.</p></div>
+
+  <div class="footer-note">
+    Sigmetría HyS · Amarilla Ingeniería · Análisis de Factibilidad Comercial · Junio 2026.<br>
+    Documento de proyección basado en supuestos declarados (sección 2) y tarifas Supabase vigentes a la fecha. Las cifras son estimaciones para planificación, no garantías de resultado. Los costos humanos, de adquisición e impositivos se analizan por separado.
+  </div>
+</section>
+
+</body>
+</html>

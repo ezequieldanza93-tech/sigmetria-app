@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Sigmetría HyS · Sistema de Usuarios y Accesos</title>
+<style>
+  @page { size: A4; margin: 12mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+    color: #1f2937; font-size: 10px; line-height: 1.4; margin: 0;
+  }
+  h1 { font-size: 19px; margin: 0; color: #0f766e; }
+  h2 { font-size: 11.5px; margin: 12px 0 5px; color: #0f766e; text-transform: uppercase; letter-spacing: .04em; border-bottom: 1.5px solid #99f6e4; padding-bottom: 2px; }
+  .sub { color: #6b7280; font-size: 10px; margin-top: 2px; }
+  .header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #0f766e; padding-bottom: 8px; }
+  .badge { background: #0f766e; color: #fff; font-size: 9px; padding: 3px 8px; border-radius: 999px; font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  th, td { text-align: left; padding: 4px 6px; vertical-align: top; border-bottom: 1px solid #e5e7eb; }
+  th { background: #f0fdfa; color: #0f766e; font-size: 9px; text-transform: uppercase; letter-spacing: .03em; }
+  td .role { font-weight: 700; color: #111827; }
+  .cols { display: flex; gap: 16px; }
+  .col { flex: 1; }
+  ul { margin: 3px 0 0; padding-left: 14px; }
+  li { margin-bottom: 2px; }
+  .tag { display: inline-block; background: #ecfeff; color: #0e7490; border: 1px solid #a5f3fc; border-radius: 4px; padding: 0 4px; font-size: 8.5px; font-weight: 600; }
+  .free { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
+  .footer { margin-top: 12px; border-top: 1px solid #e5e7eb; padding-top: 6px; color: #9ca3af; font-size: 8.5px; display: flex; justify-content: space-between; }
+  .flow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+  .step { background: #f0fdfa; border: 1px solid #99f6e4; border-radius: 6px; padding: 3px 8px; font-weight: 600; color: #0f766e; }
+  .arrow { color: #0f766e; font-weight: 700; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1>Sistema de Usuarios y Accesos</h1>
+      <div class="sub">Sigmetría HyS · Plataforma SaaS de Higiene y Seguridad · Multi-tenant</div>
+    </div>
+    <span class="badge">Res. SRT 48/2025</span>
+  </div>
+
+  <h2>Jerarquía y multi-tenant</h2>
+  <div class="flow">
+    <span class="step">Consultora</span><span class="arrow">→</span>
+    <span class="step">Empresa (cliente)</span><span class="arrow">→</span>
+    <span class="step">Establecimiento</span><span class="arrow">→</span>
+    <span class="step">Gestiones · Documentos · Observaciones · Riesgos</span>
+  </div>
+  <div class="sub" style="margin-top:5px">
+    Cada <b>consultora</b> es un cliente con su propio espacio. El <b>Admin</b> de la consultora administra a todo su equipo
+    y le otorga accesos. La seguridad se aplica en la base de datos (Row Level Security), no en la pantalla:
+    un usuario nunca puede ver datos fuera de su alcance, aunque manipule la URL.
+  </div>
+
+  <h2>Perfiles de usuario</h2>
+  <table>
+    <thead>
+      <tr><th style="width:18%">Perfil</th><th style="width:30%">Qué puede hacer</th><th style="width:30%">Qué ve (alcance)</th><th style="width:22%">Cargo / quién lo crea</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="role">Admin</span></td>
+        <td>Todo: gestiona usuarios, empresas, accesos y facturación.</td>
+        <td>Toda la consultora.</td>
+        <td>Consume seat. Es la cuenta dueña de la consultora.</td>
+      </tr>
+      <tr>
+        <td><span class="role">Colaborador</span></td>
+        <td>Carga, edita y planifica. Puede crear Visualizadores (nunca con más alcance del que él tiene).</td>
+        <td>Toda la consultora <b>o</b> empresas/establecimientos puntuales.</td>
+        <td><span class="tag">seat</span> Lo crea el Admin.</td>
+      </tr>
+      <tr>
+        <td><span class="role">Visualizador</span></td>
+        <td>Solo ve y comenta. No modifica, borra ni planifica.</td>
+        <td><b>Máximo a nivel empresa</b> (o establecimiento). Nunca toda la consultora: no ve a otros clientes.</td>
+        <td><span class="tag free">sin cargo</span> Lo crea el Admin o un Colaborador.</td>
+      </tr>
+      <tr>
+        <td><span class="role">Viewer de Observaciones</span></td>
+        <td>Ve, sigue y <b>cierra</b> observaciones; el cierre exige evidencia (foto o adjunto, obligatoria).</td>
+        <td><b>Solo las observaciones donde figura como responsable.</b> Para trabajadores, capataces, supervisores.</td>
+        <td><span class="tag free">sin cargo</span> Linkeado a una persona del directorio.</td>
+      </tr>
+      <tr>
+        <td><span class="role">Resp. de Estándares</span></td>
+        <td>Lectura total + reportes y auditoría (cumplimiento normativo).</td>
+        <td>Toda la consultora (solo lectura).</td>
+        <td>Rol de compliance · Art. 5 SRT 48/2025.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="cols">
+    <div class="col">
+      <h2>Identidad y accesos</h2>
+      <ul>
+        <li>Cada usuario se asigna a una <b>persona del directorio</b>, y esa persona es la <b>dueña del email</b> de login (datos normalizados, sin duplicar).</li>
+        <li><b>Acceso por empresa</b>: el usuario ve todos los establecimientos de esa empresa (incluso los futuros).</li>
+        <li><b>Acceso por establecimiento</b>: solo los establecimientos marcados.</li>
+        <li>Un Colaborador <b>no puede otorgar más permisos de los que él tiene</b>: como mucho, lo mismo que él, y solo como Visualizador.</li>
+        <li>Los <b>Visualizadores no consumen seats</b> del plan.</li>
+      </ul>
+    </div>
+    <div class="col">
+      <h2>Verificación y seguridad</h2>
+      <ul>
+        <li><b>Doble factor por email</b> (código de 6 dígitos) obligatorio para Admin y Resp. de Estándares.</li>
+        <li><b>Mostrar/ocultar contraseña</b> al iniciar sesión para confirmar antes de entrar.</li>
+        <li><b>Cambio de email</b> de un usuario: lo hace el Admin y se confirma con un código enviado al nuevo correo (valida a la persona). El link cuenta↔persona sobrevive al cambio.</li>
+        <li>Reemplazo de persona en el equipo: baja del anterior + invitación al nuevo (historial trazable).</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>Onboarding de un cliente nuevo (autoservicio)</h2>
+  <div class="flow">
+    <span class="step">1 · Registro</span><span class="arrow">→</span>
+    <span class="step">2 · Crear consultora (activa prueba gratis 1 mes)</span><span class="arrow">→</span>
+    <span class="step">3 · Primera empresa</span><span class="arrow">→</span>
+    <span class="step">4 · Primer establecimiento</span><span class="arrow">→</span>
+    <span class="step">¡Listo!</span>
+  </div>
+  <div class="sub" style="margin-top:4px">Los pasos 3 y 4 son opcionales: el usuario puede completarlos más tarde y entrar directo a su panel.</div>
+
+  <div class="footer">
+    <span>Sigmetría HyS · Sistema de Usuarios y Accesos</span>
+    <span>Documento de referencia interna · v1</span>
+  </div>
+</body>
+</html>

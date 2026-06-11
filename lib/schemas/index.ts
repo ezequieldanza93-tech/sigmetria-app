@@ -10,6 +10,8 @@ export const userRoleSchema = z.enum([
   'full_viewer',
   'colaborador_viewer',
   'visualizador_comentarista',
+  'responsable_estandares',
+  'viewer_observaciones',
 ])
 export type UserRole = z.infer<typeof userRoleSchema>
 

@@ -1,0 +1,71 @@
+# Backup externo cifrado — DB (Supabase) + Storage → tar → AES-256 → R2/B2.
+#
+# Corre TODOS los días a las 04:00 UTC (≈ 01:00 ART) y también on-demand
+# (workflow_dispatch). Toda credencial viene de GitHub Secrets — nada en claro.
+#
+# ── Secrets requeridos (Settings → Secrets and variables → Actions → Secrets) ──
+#   SUPABASE_DB_URL            postgres://postgres:[PWD]@db.<ref>.supabase.co:5432/postgres
+#   NEXT_PUBLIC_SUPABASE_URL   https://<ref>.supabase.co   (para el dump de Storage)
+#   SUPABASE_SERVICE_ROLE_KEY  service role key            (bypassa RLS en backups)
+#   BACKUP_ENCRYPTION_KEY      passphrase fuerte (32+ chars) para AES-256
+#   S3_ENDPOINT                https://<acct>.r2.cloudflarestorage.com  (R2) | B2 S3 endpoint
+#   S3_BUCKET                  nombre del bucket de backups
+#   S3_REGION                  auto (R2) | us-west-004 (B2)
+#   AWS_ACCESS_KEY_ID          access key del bucket S3-compatible
+#   AWS_SECRET_ACCESS_KEY      secret key del bucket S3-compatible
+#
+# Nota: `aws` CLI y `openssl` ya vienen instalados en ubuntu-latest.
+# La Supabase CLI dumpea contra la DB remota SIN Docker (CLI 2.105+).
+
+name: Backup externo
+
+on:
+  schedule:
+    - cron: '0 4 * * *' # diario 04:00 UTC
+  workflow_dispatch: {} # ejecución manual desde la UI de Actions
+
+# Evita solapamiento si una corrida tarda más de 24 h.
+concurrency:
+  group: backup-externo
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Instalar Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Verificar herramientas
+        run: |
+          aws --version
+          openssl version
+          supabase --version
+          tar --version
+
+      - name: Correr backup externo cifrado
+        run: npx tsx scripts/backup-external.ts
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          BACKUP_ENCRYPTION_KEY: ${{ secrets.BACKUP_ENCRYPTION_KEY }}
+          S3_ENDPOINT: ${{ secrets.S3_ENDPOINT }}
+          S3_BUCKET: ${{ secrets.S3_BUCKET }}
+          S3_REGION: ${{ secrets.S3_REGION }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}

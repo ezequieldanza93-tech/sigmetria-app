@@ -47,8 +47,13 @@ async function backup() {
   const supabase = createClient(supabaseUrl, supabaseKey)
   const tables = process.argv[2] ? process.argv.slice(2) : await getTables(supabase as any)
 
+  // BACKUP_OUT_DIR permite al orquestador (backup-external.ts) redirigir la
+  // salida a un subdirectorio del bundle en curso, en vez de crear su propio
+  // timestamp. Si no está seteada, mantiene el comportamiento standalone.
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-  const dir = path.join(__dirname, '..', 'backups', timestamp)
+  const dir = process.env.BACKUP_OUT_DIR
+    ? process.env.BACKUP_OUT_DIR
+    : path.join(__dirname, '..', 'backups', timestamp)
   fs.mkdirSync(dir, { recursive: true })
 
   console.log(`Backing up ${tables.length} tables to ${dir}`)

@@ -7,6 +7,7 @@ export type UserRole =
   | 'colaborador_viewer'
   | 'visualizador_comentarista'
   | 'responsable_estandares'
+  | 'viewer_observaciones'
 
 export type TipoEstablecimiento =
   | 'industria'
@@ -741,6 +742,7 @@ export const ROLE_LABELS: Record<UserRole | SystemRole, string> = {
   colaborador_viewer: 'Viewer Limitado',
   visualizador_comentarista: 'Visualizador Comentarista',
   responsable_estandares: 'Resp. de Estándares',
+  viewer_observaciones: 'Viewer de Observaciones',
 }
 
 export const ROLE_COLORS: Record<UserRole | 'developer', string> = {
@@ -752,6 +754,7 @@ export const ROLE_COLORS: Record<UserRole | 'developer', string> = {
   colaborador_viewer: 'bg-gray-100 text-gray-800',
   visualizador_comentarista: 'bg-teal-100 text-teal-800',
   responsable_estandares: 'bg-indigo-100 text-indigo-800',
+  viewer_observaciones: 'bg-amber-100 text-amber-800',
 }
 
 export const RIESGO_NIVEL_COLORS: Record<RiesgoNivel, string> = {
@@ -799,6 +802,63 @@ export function canViewAll(role: UserRole | null, systemRole: SystemRole): boole
 export function canViewReportes(role: UserRole | null, systemRole: SystemRole): boolean {
   if (systemRole === 'developer') return true
   return role === 'full_access_main' || role === 'responsable_estandares'
+}
+
+// ── Usuarios viewer "sin cargo" ──────────────────────────────────────────────
+// Roles de solo-lectura (pueden ver y comentar, nunca escribir). NO consumen
+// seat del plan y los puede crear tanto el Admin como cualquier colaborador.
+export const FREE_VIEWER_ROLES: UserRole[] = [
+  'full_viewer',
+  'colaborador_viewer',
+  'visualizador_comentarista',
+  'viewer_observaciones',
+]
+
+export function isFreeViewerRole(role: UserRole | null | undefined): boolean {
+  return role != null && FREE_VIEWER_ROLES.includes(role)
+}
+
+// El Admin (full_access_main) gestiona todo el equipo; los colaboradores
+// (full_access_branch / colaborador) SOLO pueden crear usuarios viewer.
+export function canInviteViewers(role: UserRole | null, systemRole: SystemRole): boolean {
+  if (systemRole === 'developer') return true
+  return role === 'full_access_main' || role === 'full_access_branch' || role === 'colaborador'
+}
+
+// ── Roles amigables (mapea los 7 roles internos a 3 categorías + compliance) ──
+export type FriendlyRoleKey = 'admin' | 'colaborador' | 'visualizador' | 'viewer_obs'
+export type ScopeKey = 'todo' | 'especifico'
+
+export interface FriendlyRole {
+  label: string
+  scope?: string
+  color: string
+}
+
+export function roleToFriendly(role: UserRole | 'developer' | null | undefined): FriendlyRole {
+  switch (role) {
+    case 'developer': return { label: 'Developer', color: 'bg-purple-100 text-purple-800' }
+    case 'full_access_main': return { label: 'Admin', color: 'bg-red-100 text-red-800' }
+    case 'full_access_branch': return { label: 'Colaborador', scope: 'Toda la consultora', color: 'bg-blue-100 text-blue-800' }
+    case 'colaborador': return { label: 'Colaborador', scope: 'Acceso específico', color: 'bg-blue-100 text-blue-800' }
+    case 'full_viewer': return { label: 'Visualizador', scope: 'Toda la consultora', color: 'bg-green-100 text-green-800' }
+    case 'colaborador_viewer': return { label: 'Visualizador', scope: 'Acceso específico', color: 'bg-green-100 text-green-800' }
+    case 'visualizador_comentarista': return { label: 'Visualizador', scope: 'Ve y comenta', color: 'bg-teal-100 text-teal-800' }
+    case 'viewer_observaciones': return { label: 'Viewer de Observaciones', scope: 'Solo sus observaciones', color: 'bg-amber-100 text-amber-800' }
+    case 'responsable_estandares': return { label: 'Resp. de Estándares', scope: 'Compliance SRT', color: 'bg-indigo-100 text-indigo-800' }
+    default: return { label: 'Sin rol', color: 'bg-surface-elevated text-text-secondary' }
+  }
+}
+
+// Traduce la elección amigable (rol + alcance) al rol interno del enum.
+// REGLA: un visualizador NUNCA es consultora-wide. Su techo es nivel empresa
+// (acceso puntual vía user_access), para que no vea datos de otro cliente.
+export function resolveUserRole(friendly: FriendlyRoleKey, scope: ScopeKey): UserRole {
+  if (friendly === 'admin') return 'full_access_main'
+  if (friendly === 'colaborador') return scope === 'todo' ? 'full_access_branch' : 'colaborador'
+  // El viewer de observaciones está scopeado por "responsable", no por empresa.
+  if (friendly === 'viewer_obs') return 'viewer_observaciones'
+  return 'visualizador_comentarista'
 }
 
 export interface VerificacionToken {

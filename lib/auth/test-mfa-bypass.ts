@@ -3,11 +3,17 @@
 // ║  Pre-setea la cookie `mfa_verified` para cuentas @sigmetria.app que   ║
 // ║  no tienen buzón real y no pueden recibir el código OTP.              ║
 // ║                                                                        ║
+// ║  GATE (Art. 4.5 Res. SRT 48/2025 — Prompt 4): el bypass SOLO está     ║
+// ║  activo si la env var `ALLOW_MFA_TEST_BYPASS === 'true'`. Por DEFAULT ║
+// ║  (y en producción, donde no debe setearse) queda DESACTIVADO: el MFA  ║
+// ║  real por OTP se exige a TODAS las cuentas, incluidas @sigmetria.app. ║
+// ║                                                                        ║
 // ║  REMOVER cuando termine la etapa de testing:                          ║
 // ║    1. Borrar este archivo                                             ║
 // ║    2. Quitar los imports y la llamada en:                             ║
 // ║         - app/api/auth/login/route.ts                                 ║
 // ║         - lib/actions/login.ts                                        ║
+// ║         - middleware.ts                                               ║
 // ║                                                                        ║
 // ║  La lógica de enforcement en middleware.ts NO se toca: el bypass      ║
 // ║  simplemente fabrica la misma cookie HMAC que produce el flow normal  ║
@@ -18,7 +24,15 @@ import { createMfaCookie, MFA_COOKIE_NAME, MFA_COOKIE_TTL_MS } from '@/lib/mfa-c
 
 const TEST_DOMAIN_SUFFIX = '@sigmetria.app'
 
+// El bypass está cerrado por defecto. Solo se abre con la env var explícita
+// `ALLOW_MFA_TEST_BYPASS=true` (entornos de testing/preview). Si la var no
+// existe o tiene cualquier otro valor → el bypass NO aplica y rige el MFA real.
+function isBypassEnabled(): boolean {
+  return process.env.ALLOW_MFA_TEST_BYPASS === 'true'
+}
+
 export function isTestBypassAccount(email: string | null | undefined): boolean {
+  if (!isBypassEnabled()) return false
   if (!email) return false
   return email.toLowerCase().endsWith(TEST_DOMAIN_SUFFIX)
 }

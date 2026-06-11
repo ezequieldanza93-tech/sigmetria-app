@@ -24,6 +24,9 @@ auditoria_tablas.xlsx
 # Build artifacts
 tsconfig.tsbuildinfo
 
+# Backups locales (dumps DB + Storage, bundles cifrados) — NUNCA commitear
+backups/
+
 # Archivos locales / sensibles
 supabase/token_mcp_supa.txt
 aux capturas/
