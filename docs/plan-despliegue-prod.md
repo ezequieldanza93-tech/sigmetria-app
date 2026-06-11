@@ -1,105 +1,76 @@
-# Plan de despliegue a producción — SRT 48/2025 (Bloque A)
+# Despliegue a producción — SRT 48/2025 (Bloque A) ✅ COMPLETADO
 
-> Estado al 2026-06-11. Todo el Bloque A está **construido, validado y documentado**. Falta el
-> **despliegue a producción**, que está bloqueado por una credencial y por pasos irreversibles que
-> conviene hacer con supervisión. Este documento es la guía de ejecución, en orden.
-
----
-
-## 🔴 Bloqueo actual (resolver PRIMERO)
-
-**El secret `SUPABASE_DB_URL` tiene una contraseña que no autentica.** Las corridas de la prueba de
-recuperación (#3, #4) fallan con `password authentication failed for user "postgres"`. Esto **también
-bloquea** aplicar migraciones a prod y hace **fallar el backup diario**.
-
-**Causas probables (revisar en este orden):**
-1. La contraseña tipeada en Supabase ≠ la pegada en el secret (mismatch).
-2. Un espacio o salto de línea al pegar el secret.
-3. La cadena usa el usuario equivocado: debe ser `postgres.lslzhgmoaxgkcjeweqaz` (no `postgres`).
-4. Caracteres especiales en la contraseña (rompen la URL) — **usar contraseña alfanumérica**.
-
-**Plantilla exacta del secret** (alfanumérica, sin símbolos):
-```
-postgresql://postgres.lslzhgmoaxgkcjeweqaz:<CLAVE_ALFANUMERICA>@aws-1-us-east-2.pooler.supabase.com:5432/postgres
-```
-
-**Cómo confirmar que quedó bien:** Actions → "Prueba de recuperación (auditoría)" → Run workflow.
-Si pasa (verde), el secret está OK y el backup diario también funcionará.
+> Estado al 2026-06-11 (cierre). El Bloque A está **construido, validado, desplegado y verificado
+> en producción**. Este documento registra el despliegue ya ejecutado y lo único que queda
+> deliberadamente pendiente (2 fixes RLS que tocan flujos de usuarios reales).
 
 ---
 
-## Estado de producción HOY (honesto)
+## ✅ Estado de producción HOY
 
-| Componente | ¿En producción? |
-|---|---|
-| App (código de los 5 prompts: audit UI, /cumplimiento, export ampliado, QR audit) | ❌ NO — vive en la rama `feat/srt-48-2025-compliance`, sin deployar |
-| Migraciones (1/3/5) | ❌ NO aplicadas a prod |
-| Backup diario (`backup.yml`) | ⚠️ Deployado en master, pero **fallando** hasta arreglar el secret |
-| Capacidad de recuperación | ✅ **Probada** (corrida #2, datos reales) — ver `docs/evidencia-recuperacion-2026-06-11.md` |
-| Bucket R2 + 9 secrets | ✅ Configurados (1 secret a corregir) |
+| Componente | ¿En producción? | Evidencia |
+|---|---|---|
+| App (audit UI, /cumplimiento, export ampliado, QR audit, alertas) | ✅ **SÍ** | deploy `dpl_5RTppXn8iVkMxUBr5jHpy21u1RbW` (commit 515ef02) **READY**; `/api/health` → 200 |
+| Migración Prompt 1 (trazabilidad + hash chain) | ✅ Aplicada | run 27368883915; cadena **INTEGRA** |
+| Migración Prompt 3 (bucket exports) | ✅ Aplicada | run 27368883915 |
+| Migraciones Prompt 5 (constraints + inconsistencias) | ✅ Aplicadas | run 27368883915 |
+| Migración Prompt 4 #3 (QR cross-tenant scoped) | ✅ Aplicada | run 27370607649; cadena **INTEGRA** + escritura OK |
+| Backup diario (`backup.yml`) | ✅ Activo | secret `SUPABASE_DB_URL` corregido; corre 04:00 UTC |
+| Capacidad de recuperación | ✅ **Probada (corrida limpia #6)** | run 27368489932 — `docs/evidencia-recuperacion-2026-06-11.md` |
+| Bucket R2 + 9 secrets | ✅ Configurados | — |
+| Fix RLS #1 (personas insert estricto) | ⏸️ **Preparado, NO aplicado** | puede romper onboarding de colaboradores |
+| Fix RLS #2 (revocar sesiones) | ⏸️ **Preparado, NO aplicado** | desloguea todos los dispositivos; requiere UX |
 
-> En resumen: **implementación 100% / despliegue a prod ~0%**. Nada de las features nuevas está
-> "vivo" para usuarios todavía; está todo listo para rodar.
-
----
-
-## Plan de ejecución (en orden)
-
-### Paso 0 — Arreglar el secret `SUPABASE_DB_URL`
-Ver "Bloqueo actual". Confirmar con una corrida verde de la prueba de recuperación.
-→ Esto desbloquea: backup diario + recuperación + aplicar migraciones.
-
-### Paso 1 — Aplicar las 4 migraciones a producción
-Método sancionado del proyecto (CLAUDE.md), corrido en local con `SUPABASE_ACCESS_TOKEN` en `.env.local`:
-```bash
-npx supabase db push          # revisar el diff que muestra antes de confirmar
-```
-Migraciones que aplica (additivas, validadas en local):
-- `20260702000001_audit_trazabilidad_srt.sql` — ⚠️ **la de mayor riesgo**: reescribe el trigger de
-  auditoría de ~18 tablas. Tras aplicar, **probar una escritura real** (crear/editar una empresa)
-  para confirmar que el trigger no rompe nada. Si algo falla, hay rollback documentado abajo.
-- `20260704000001_exports_bucket.sql` — bucket privado de exports (bajo riesgo).
-- `20260705000001_autocontrol_check_constraints.sql` — CHECK `NOT VALID` (bajo riesgo).
-- `20260705000002_autocontrol_inconsistencias_y_supervision.sql` — tablas/funciones nuevas (bajo riesgo).
-
-**Verificación post-aplicación:**
-```sql
-SELECT * FROM public.fn_verify_audit_chain(NULL);          -- cadena íntegra
-SELECT count(*) FROM public.audit_chain_state;             -- existe
--- crear/editar una empresa de prueba y confirmar fila en audit_log
-```
-
-### Paso 2 — Desplegar la app (merge → deploy)
-**Solo DESPUÉS del Paso 1** (las pantallas nuevas dependen de las migraciones).
-```bash
-# PR de feat/srt-48-2025-compliance → master, revisar, y mergear.
-# Vercel deploya master automáticamente.
-```
-Smoke test post-deploy: abrir `/dashboard/cumplimiento`, probar un export, confirmar `/api/health`.
-
-### Paso 3 — Aplicar los 3 fixes de RLS (Prompt 4)
-Están en `docs/migraciones-preparadas/`. Aplicar **de a uno**, probando el flujo que cada uno toca:
-1. `03_verificacion_tokens_update_scoped.sql` — el más seguro (cierra hueco cross-tenant del QR). Aplicar primero.
-2. `01_personas_directorio_insert_estricto.sql` — probar onboarding de colaboradores después.
-3. `02_revocar_sesiones_al_cambiar_email_o_password.sql` — avisa que desloguea otros dispositivos.
-
-### Paso 4 — Cerrar evidencia
-Re-correr la prueba de recuperación (ahora con secret OK) → log limpio → es la evidencia "oficial"
-sin la contraseña vieja. Reemplaza la referencia a la corrida #2 en `docs/evidencia-recuperacion-*.md`.
+> En resumen: **implementación 100% / despliegue a prod 100%** salvo los 2 fixes RLS que tocan
+> acceso de usuarios reales (decisión consciente — ver abajo).
 
 ---
 
-## Rollback (si la migración del audit log rompe escrituras en prod)
-```sql
--- Desactivar los triggers de auditoría en las tablas afectadas (escrituras vuelven a funcionar):
--- por cada tabla: ALTER TABLE public.<tabla> DISABLE TRIGGER audit_<tabla>;
--- o restaurar fn_audit_trigger a la versión previa (migración 20260608000001).
-```
-La migración es additiva (no borra datos), así que el rollback es desactivar triggers, no perder nada.
+## Lo que se ejecutó (en orden, todo hecho)
+
+1. **Secret `SUPABASE_DB_URL` corregido** → desbloqueó backup + recuperación + migraciones.
+   Confirmado con corrida verde de la prueba de recuperación (#6, run 27368489932).
+2. **4 migraciones aditivas aplicadas a prod** (run 27368883915) vía workflow `migrate-prod.yml`
+   (`supabase db push` + verificación de cadena + prueba de escritura transaccional + auto-rollback).
+   Resultado: cadena **INTEGRA**, escritura no rota.
+3. **App desplegada** (merge `feat` → `master`). Se diagnosticó y corrigió un error de build real:
+   `new Resend()` instanciado a nivel de módulo en `lib/email/alertas.ts` rompía `next build` en la
+   fase *collect page data* (sin `RESEND_API_KEY`). Fix: lazy init dentro del handler. Deploy 515ef02
+   **READY**, `/api/health` 200.
+4. **Fix RLS #3 aplicado** (run 27370607649): `20260706000001_verificacion_tokens_update_scoped.sql`
+   — cierra el hueco cross-tenant del QR. Cadena **INTEGRA** + escritura OK tras aplicar.
+5. **Evidencia de recuperación archivada** (corrida limpia #6, sin contraseña en claro):
+   `docs/evidencia-recuperacion-2026-06-11.md` + log crudo `docs/evidencia/recovery-test-6.log`.
 
 ---
 
-## Quién hace qué
-- **Vos:** Paso 0 (arreglar el secret — sólo vos tenés la contraseña). Autorizar/supervisar Pasos 1–3 (son producción).
-- **Yo:** puedo guiar/ejecutar los Pasos 1–4 con vos presente (el `db push` necesita el token de
-  `.env.local`, que no toco solo). Una vez desbloqueado el secret, esto son ~30–45 min con supervisión.
+## Lo único pendiente (2 fixes RLS — requieren tu mano)
+
+Quedan **preparados, no aplicados**, en `docs/migraciones-preparadas/`. La razón es que **tocan
+flujos de usuarios reales** (regla de la corrida autónoma: lo que corta acceso real se deja
+preparado, no se aplica solo).
+
+### Fix #1 — `01_personas_directorio_insert_estricto.sql`
+Endurece el INSERT de `personas_directorio` para que un `colaborador` necesite al menos un
+`user_access` activo. **Riesgo:** puede romper el onboarding de colaboradores recién invitados que
+todavía no tienen acceso granular asignado.
+**Antes de aplicar:** confirmar el flujo real de alta de colaboradores (¿se asigna `user_access`
+antes o después de que empiecen a cargar datos?). Testear los 5 casos del header del archivo.
+
+### Fix #2 — `02_revocar_sesiones_al_cambiar_email_o_password.sql`
+Revoca todas las sesiones al cambiar email/contraseña. **Recomendado: Opción A (app-side)** —
+agregar `await admin.auth.admin.signOut(targetUserId, 'global')` en `lib/actions/email-change.ts`
+(no necesita SQL). **Riesgo:** desloguea al usuario de todos sus dispositivos; la UX debe comunicar
+que tendrá que volver a loguearse con el email nuevo.
+
+> Ambos son mejoras de seguridad correctas, pero la decisión de activarlos es de negocio/UX, no de
+> código. Cuando los quieras, se aplican igual que el #3 (migración nueva + `migrate-prod.yml`, o el
+> cambio app-side para el #2) en ~10 min con testeo del flujo.
+
+---
+
+## Rollback (si alguna vez la migración del audit log rompe escrituras)
+La migración es **aditiva** (no borra datos). Rollback = desactivar triggers de auditoría
+(`scripts/disable-audit-triggers.sql`) → prod escribe normal sin auditar, hasta revisar
+`fn_audit_trigger`. El workflow `migrate-prod.yml` ya lo hace **automáticamente** si la prueba de
+escritura falla tras aplicar.

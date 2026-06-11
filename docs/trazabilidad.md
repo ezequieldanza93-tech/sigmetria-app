@@ -101,7 +101,7 @@ Para eventos que no son CRUD. Estado de cableado:
 | `LOGIN` | **Implementado** | `lib/actions/login.ts` (best-effort, no bloqueante). |
 | `EXPORT` | **Implementado** (Prompt 3) | `app/api/export/empresa/[empresa_id]/route.ts`. |
 | `QR_ACCESS` | **Implementado** (Prompt 4) | `app/verificar/[token]/page.tsx` (best-effort, origen `sistema`). |
-| `GENERAR_REPORTE` | Disponible (RPC listo) | cablear donde se genere el PDF/reporte. |
+| `GENERAR_REPORTE` | **A cablear** (RPC listo, sin call-site) | cablear donde se genere el PDF/reporte. |
 
 ---
 
@@ -113,13 +113,16 @@ transacción del trigger:
 
 - El trigger lee `request.headers ->> 'x-trace-id'` y `'x-audit-origen'` (fallback a los GUC
   `sigmetria.trace_id` / `sigmetria.origen` para flujos que corran dentro de un RPC).
-- La app adjunta esos headers usando `createAuditedClient(traceId, origen)`
-  (`lib/audit/trace.ts`). Todas las escrituras hechas con ese cliente comparten el `trace_id`.
+- El mecanismo previsto es que la app adjunte esos headers usando `createAuditedClient(traceId,
+  origen)` (`lib/audit/trace.ts`): toda escritura hecha con ese cliente compartiría el `trace_id`.
 - Los **eventos de acceso** reciben el `trace_id` como parámetro explícito de `log_audit_event`.
 
-**Adopción incremental**: las server actions actuales siguen funcionando sin `trace_id` (queda
-NULL; el resto del registro de auditoría se captura igual). Para correlacionar un flujo completo
-(ej. una recorrida) se usa `createAuditedClient()` en lugar de `createClient()`.
+**Estado real (adopción incremental / preparado, aún NO cableado en CRUD)**:
+`createAuditedClient` está **definido** en `lib/audit/trace.ts` pero **no tiene ningún call-site**
+todavía — ninguna server action lo usa en lugar de `createClient()`. En consecuencia, **hoy el
+`trace_id` de las escrituras CRUD queda NULL en la práctica** (el resto del registro de auditoría
+se captura igual). Cablearlo donde se quiera correlacionar un flujo completo (ej. una recorrida)
+es trabajo pendiente — ver §10.3.
 
 ---
 
@@ -150,6 +153,13 @@ NULL; el resto del registro de auditoría se captura igual). Para correlacionar 
 | Reconstruir un flujo de negocio | `SELECT * FROM fn_audit_por_trace('<trace_id>');` |
 | Vista cruda (hereda RLS) | `SELECT * FROM audit_trail ORDER BY created_at, seq;` |
 | **Verificar integridad de la cadena** | `SELECT * FROM fn_verify_audit_chain('<consultora_id>');` → `INTEGRA` o el primer `seq` alterado. |
+
+> **Superficie de consulta hoy (honesto):** estas herramientas forenses (vista `audit_trail`,
+> `fn_audit_historial`, `fn_audit_por_trace`, `fn_verify_audit_chain`) se consultan **SOLO vía SQL
+> directo** (consola Supabase / `psql`) o desde **CI**. **NO existe todavía una UI ni un dashboard
+> de auditoría dentro de la app** — un operador no puede reconstruir un flujo ni verificar la
+> cadena desde la interfaz; es una capacidad de base de datos, no de producto. La UI de auditoría
+> queda como trabajo pendiente.
 
 ---
 
@@ -189,10 +199,11 @@ NULL; el resto del registro de auditoría se captura igual). Para correlacionar 
 
 ## 10. Pendientes / limitaciones (honesto)
 
-1. **Migración NO aplicada a producción** (D1): YA se validó contra Supabase local (Docker) con
-   resultado exitoso — ver `docs/validacion_en_vivo.md`. Aún así, **aplicar primero en staging**
-   con datos reales y recién entonces a prod. La reescritura de `fn_audit_trigger` cambia el camino
-   de escritura de todas las tablas auditadas: la validación en staging sigue siendo obligatoria.
+1. **Migración APLICADA a producción** (D1): ✅ `20260702000001_audit_trazabilidad_srt.sql`
+   **aplicada a prod el 2026-06-11** (run GitHub Actions 27368883915; cadena de auditoría
+   **INTEGRA** + escritura OK). Previamente se había validado contra Supabase local (Docker) con
+   resultado exitoso — ver `docs/validacion_en_vivo.md`. La reescritura de `fn_audit_trigger`
+   cambió el camino de escritura de todas las tablas auditadas y quedó verificada en producción.
 2. **Cableado de eventos de acceso**: `EXPORT` y `QR_ACCESS` se integran en los Prompts 3 y 4.
    `GENERAR_REPORTE` queda con el RPC disponible, a cablear donde se generen reportes.
 3. **`trace_id` en CRUD**: adopción incremental vía `createAuditedClient()`. Las acciones no

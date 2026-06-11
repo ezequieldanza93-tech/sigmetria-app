@@ -190,10 +190,10 @@ solo `is_developer()`.
   `logAuditEvent({ accion: 'QR_ACCESS', tabla: 'verificacion_tokens',
   registroId: establecimiento_id, consultoraId, meta:{ token_id, empresa_id,
   establecimiento_id }, origen: 'sistema' })` en `page.tsx`, best-effort (no rompe
-  la página pública). `meta` NO contiene datos sensibles. **Queda operativo
-  cuando se aplique la migración del audit extendido** (`20260702000001`, Prompt 1,
-  que habilita la acción `QR_ACCESS` y el RPC `log_audit_event`); hasta entonces
-  el RPC no existe y `logAuditEvent` lo absorbe sin romper.
+  la página pública). `meta` NO contiene datos sensibles. **Operativo en producción**:
+  la migración del audit extendido (`20260702000001`, Prompt 1) está **aplicada a prod**
+  (2026-06-11, run GitHub Actions 27368883915; cadena INTEGRA + escritura OK), por lo
+  que el RPC `log_audit_event` existe y la acción `QR_ACCESS` se registra efectivamente.
 
 ---
 
@@ -227,17 +227,15 @@ solo `is_developer()`.
   (Opción A app-side recomendada: `admin.auth.admin.signOut(userId, 'global')`).
   **Riesgo:** desloguea al usuario de todos sus dispositivos.
 
-### 6.3 Pendiente — `verificacion_tokens` UPDATE / `regenerar_token` no scopean tenant
-- **Archivo:** `supabase/migrations/20260609000001_verificacion_tokens.sql:32` y la
-  función `regenerar_token` (SECURITY DEFINER sin chequeo de acceso).
-- **Divergencia RLS real:** un admin de la consultora A puede invalidar el QR de
-  un establecimiento de la consultora B (ruptura de aislamiento / DoS cruzado).
-  El SELECT público y la lectura sin datos personales están OK; el hueco es solo
-  el UPDATE/regeneración.
-- **Fix preparado (NO aplicado):**
-  `docs/migraciones-preparadas/03_verificacion_tokens_update_scoped.sql`.
-  **Riesgo:** cambia quién puede regenerar tokens (correcto, pero verificar que no
-  haya automatización que lo llame sin scope).
+### 6.3 ✅ Corregido — `verificacion_tokens` UPDATE / `regenerar_token` ahora scopean tenant
+- **Hueco original:** `supabase/migrations/20260609000001_verificacion_tokens.sql:32` y la
+  función `regenerar_token` (SECURITY DEFINER sin chequeo de acceso) permitían que un admin de
+  la consultora A invalidara el QR de un establecimiento de la consultora B (ruptura de
+  aislamiento / DoS cruzado).
+- **Fix APLICADO:** el fix preparado #3 fue **promovido** a la migración
+  `supabase/migrations/20260706000001_verificacion_tokens_update_scoped.sql` y **aplicado a
+  producción** (2026-06-11, run GitHub Actions 27370607649, success). El UPDATE/regeneración de
+  tokens ahora queda scopeado por tenant; un admin de A ya no puede regenerar el QR de B.
 
 ### 6.4 Datos personales (DNI/teléfono/dirección)
 - `personas_directorio` (DNI, teléfono, dirección, contacto de emergencia, talles)
@@ -268,7 +266,12 @@ solo `is_developer()`.
 - Auditoría de acceso QR (`QR_ACCESS`, best-effort) — `app/verificar/[token]/page.tsx`.
 - Test de viewers solo-lectura — `tests/viewer-readonly.test.ts`.
 
+**Aplicado a producción (2026-06-11):**
+- `supabase/migrations/20260706000001_verificacion_tokens_update_scoped.sql` (ex fix preparado #3;
+  run GitHub Actions 27370607649) — UPDATE/`regenerar_token` scopeado por tenant. Ver §6.3.
+
 **Preparado, NO aplicado (requiere decisión del usuario — pueden cortar acceso):**
-- `docs/migraciones-preparadas/01_personas_directorio_insert_estricto.sql`
-- `docs/migraciones-preparadas/02_revocar_sesiones_al_cambiar_email_o_password.sql`
-- `docs/migraciones-preparadas/03_verificacion_tokens_update_scoped.sql`
+- `docs/migraciones-preparadas/01_personas_directorio_insert_estricto.sql` — hueco residual
+  INTRA-consultora sigue **abierto** (ver §6.1).
+- `docs/migraciones-preparadas/02_revocar_sesiones_al_cambiar_email_o_password.sql` — las sesiones
+  **NO** se revocan al cambiar email (`email-change.ts` no llama `signOut`); ver §6.2.

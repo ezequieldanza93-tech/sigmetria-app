@@ -1,5 +1,8 @@
 -- ════════════════════════════════════════════════════════════════════════════
--- PREPARADA — NO APLICAR SIN REVISIÓN (D1/D2 docs/decisiones.md)
+-- ✅ APLICADA EN PRODUCCIÓN — 2026-06-11 (run GitHub Actions 27370607649).
+--    Promovida a supabase/migrations/20260706000001_verificacion_tokens_update_scoped.sql.
+--    Verificado tras aplicar: cadena de auditoría INTEGRA + escritura de prueba OK.
+--    Este archivo queda como documentación del análisis original.
 --
 -- QUÉ CORRIGE (DIVERGENCIA RLS — aislamiento entre consultoras en el QR)
 --   La policy UPDATE de `verificacion_tokens`

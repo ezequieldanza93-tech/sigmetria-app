@@ -219,10 +219,16 @@ Proceso **controlado** (no un DELETE directo):
   (`aws s3 sync s3://$S3_BUCKET/storage/ …`) — documentado en el propio script
   (sección 7) y en `docs/recuperacion.md` (Paso 3).
 - Runbook paso a paso: `docs/recuperacion.md`.
-- **Corrida real PENDIENTE**: el track DB se validó localmente (ver
-  `docs/recuperacion.md`); el track Storage incremental tiene tests unitarios del
-  delta (`tests/storage-delta.test.ts`) y **se valida en vivo en la primera corrida
-  CI** (es donde corre el `aws` CLI real). Los scripts pasan `tsc --noEmit`.
+- **✅ Corrida real CUMPLIDA** (run GitHub Actions 27368489932, 2026-06-11): la **recuperación de
+  la DB** se probó end-to-end contra infraestructura real y el **delta de Storage** quedó
+  verificado en vivo (inventario 22 buckets / 55 objetos / 31,29 MiB; `Δ Delta: 0 de 55` →
+  comportamiento incremental demostrado). El track DB también se había validado localmente (ver
+  `docs/recuperacion.md`); el track Storage incremental tiene además tests unitarios del delta
+  (`tests/storage-delta.test.ts`). Evidencia: `docs/evidencia-recuperacion-2026-06-11.md`. Los
+  scripts pasan `tsc --noEmit`.
+  > **Pendiente honesto:** la **recuperación end-to-end del Storage** (re-upload de los objetos al
+  > Supabase destino) sigue siendo **manual y no ejecutada** — lo verificado es el delta/espejo,
+  > no el re-poblado. Ver "Pendiente".
 
 ---
 
@@ -231,7 +237,7 @@ Proceso **controlado** (no un DELETE directo):
 | Ítem | Detalle | Por qué |
 |------|---------|---------|
 | **Upgrade a Supabase Pro (PITR)** | Contratar el plan **Pro (~US$25/mes)**: habilita backups diarios gestionados de 7 días y **Point-in-Time Recovery** (restauración a cualquier segundo dentro de la ventana). | El backup externo cubre el respaldo lógico, pero PITR da RPO casi nulo y restauración granular sin reconstruir desde un dump. Recomendado antes de salir a producción con datos de clientes reales. |
-| **Corrida real de restauración** | Levantar Postgres (Docker/staging) y correr `restore-dry-run.sh` end-to-end; archivar el log como evidencia. | Hoy no hay Docker en la máquina; la prueba real valida el RTO. |
+| **Corrida real de restauración** | ✅ **CUMPLIDA en CI** (run 27368489932, 2026-06-11): recuperación de DB probada + delta de Storage verificado; log archivado como evidencia (`docs/evidencia-recuperacion-2026-06-11.md`). | La prueba real valida el RTO. Queda repetirla periódicamente como prueba de recuperación. |
 | **Lifecycle del bucket R2/B2** | Configurar expiración por prefijo SOLO en `db/daily/` (30d) y `db/monthly/` (365d) en la consola del bucket. **No** poner lifecycle sobre `storage/` (borraría binarios vigentes del espejo). | La rotación de prefijos del track DB ya está en el código; la purga la aplica el proveedor. |
 | **Re-upload automatizado de Storage** | Script que recorra el espejo `storage/` de R2 (`aws s3 sync`) y re-suba cada objeto al Supabase destino preservando bucket+path. | Hoy el re-poblado de Storage es manual (ver `docs/recuperacion.md`). |
 | **Limpieza de huérfanos en el espejo** | (Opcional) proceso controlado que detecte objetos en `storage/` de R2 que ya no existen en Supabase y los purgue. | El incremental nunca borra; los huérfanos se acumulan. No es urgente (R2 es barato) pero conviene auditarlo. |

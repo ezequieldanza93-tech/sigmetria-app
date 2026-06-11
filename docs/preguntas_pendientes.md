@@ -1,63 +1,48 @@
-# Preguntas / decisiones pendientes — Corrida SRT 48/2025
+# Preguntas / decisiones pendientes — SRT 48/2025 (actualizado al cierre 2026-06-11)
 
-> Lo que NO pude avanzar solo, en formato cerrado para destrabarlo en minutos cuando vuelvas.
-> Nada de esto bloqueó al resto: los 5 prompts quedaron implementados y verificados
-> (`docs/resumen_corrida.md`). Lo de acá requiere tu mano (credenciales, infra, o una decisión que
-> toca plata / puede afectar usuarios reales).
+> La mayoría de lo que estaba pendiente **ya se ejecutó y está en producción**. Abajo queda el
+> registro de qué se resolvió y lo único que sigue requiriendo tu mano (2 fixes que tocan flujos de
+> usuarios reales + decisiones de plata/infra opcionales).
 
 ---
 
-## P1 — Aplicar las 4 migraciones aditivas (trazabilidad, exports, autocontrol)
-No las apliqué a prod por la regla del modo autónomo (sin Docker no pude probarlas en vivo; un
-trigger/constraint con bug podría cortar escrituras).
+## ✅ RESUELTO (en producción)
 
-- **A) (recomendada)** Aplicar primero en **staging**, correr `docs/pruebas/prompt_1_*.sql`, y luego
-  a prod con `npx supabase db push`. Es el camino seguro.
-- **B)** Aplicar directo a prod (más rápido, más riesgo — no recomendado sin staging).
+- **P1 — Migraciones aditivas (trazabilidad, exports, autocontrol):** ✅ aplicadas a prod
+  (run 27368883915, vía `migrate-prod.yml` con verificación + auto-rollback). Cadena INTEGRA.
+- **P2 (parte) — Fix RLS #3 (QR cross-tenant):** ✅ aplicado a prod (run 27370607649).
+- **P3 — Credenciales backup R2:** ✅ bucket + 9 secrets configurados; backup diario activo.
+- **P4 — Prueba de recuperación real:** ✅ corrida limpia #6 (run 27368489932) — backup→R2→restore,
+  8.217 filas, 180 tablas, checksums OK. Evidencia: `docs/evidencia-recuperacion-2026-06-11.md`
+  + log crudo `docs/evidencia/recovery-test-6.log`.
+- **P6 — Crons en Vercel:** ✅ resuelto. Hobby permite máx. 2 crons → `vercel.json` agenda **1
+  dispatcher** (`/api/cron/diario`) que dispara los 7 jobs en paralelo.
+- **Deploy de la app:** ✅ deploy 515ef02 READY; `/api/health` 200. (Se corrigió un error de build:
+  `new Resend()` a nivel de módulo en `lib/email/alertas.ts` → lazy init.)
 
-## P2 — Aplicar los 3 fixes de acceso preparados (`docs/migraciones-preparadas/`)
-Pueden **cortarle el acceso a usuarios reales**, por eso quedaron sin aplicar.
+---
 
-- **A) (recomendada)** Revisar uno por uno y aplicar en staging con testeo dirigido del flujo que
-  cada uno toca (onboarding de colaboradores / sesiones / QR), luego a prod.
-- **B)** Aplicar solo el `03_verificacion_tokens_update_scoped.sql` ahora (cierra un hueco
-  cross-tenant y el riesgo de romper acceso es bajo), y diferir el 01 y el 02.
-- **C)** Diferir los tres hasta tener staging.
+## ⏸️ PENDIENTE — requiere tu decisión (tocan usuarios reales o plata)
 
-## P3 — Credenciales del backup externo (Cloudflare R2 / Backblaze B2)
-Los scripts y la GitHub Action están listos; faltan las llaves (no las tengo).
+### P2-bis — Los otros 2 fixes RLS (`docs/migraciones-preparadas/`)
+Quedan **preparados, no aplicados** porque cortan/alteran acceso de usuarios reales:
 
-- **A) (recomendada)** Crear un bucket en **R2** (sin egress fees) y cargar en GitHub Secrets:
-  `SUPABASE_DB_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,
-  `BACKUP_ENCRYPTION_KEY`, `S3_ENDPOINT`, `S3_BUCKET`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
-  `S3_REGION`. Después corré la Action manual (`workflow_dispatch`) para validar.
-- **B)** Backblaze B2 (un poco más barato en storage) con las mismas vars.
+- **#1 `01_personas_directorio_insert_estricto.sql`** — exige que un `colaborador` tenga
+  `user_access` activo para insertar personas. **Riesgo:** puede romper el onboarding de
+  colaboradores recién invitados. *Antes de aplicar:* confirmar el flujo real de alta.
+- **#2 `02_revocar_sesiones_al_cambiar_email_o_password.sql`** — desloguea de todos los dispositivos
+  al cambiar email/clave. **Recomendado:** Opción A app-side (`admin.auth.admin.signOut(id,'global')`
+  en `lib/actions/email-change.ts`). *Riesgo:* UX debe avisar que hay que re-loguear.
 
-## P4 — Prueba de recuperación real → ✅ YA EJECUTADA localmente
-Se corrió la cadena completa end-to-end (Docker + Supabase local + MinIO como R2): backup →
-AES-256 → S3 round-trip (SHA-256 idéntico) → descifrado → checksums OK → restore → 180 tablas +
-datos. Evidencia en `docs/validacion_en_vivo.md`.
-- **Pendiente (opcional, formal):** repetir contra un staging real con credenciales R2 reales y
-  archivar el log como evidencia para el auditor. No requiere cambios de código.
+> Cuando los quieras, se aplican igual que el #3 (~10 min con testeo del flujo que cada uno toca).
 
-## P5 — Upgrade a Supabase Pro (PITR)
-Decisión de plata, ya conversada (quedaste en Free + backup externo). Lo dejo explícito por si querés
-reconsiderar para el protocolo.
+### P5 — Upgrade a Supabase Pro (PITR) — decisión de plata
+- **A) (elegida)** Seguir en **Free** + backup lógico externo cifrado diario (recuperación ya
+  probada y documentada → suficiente para el estándar).
+- **B)** **Pro (~US$25/mes)**: PITR 7 días + branching.
 
-- **A) (recomendada, ya elegida)** Seguir en **Free** con el backup lógico externo cifrado diario.
-  Suficiente para el estándar si la prueba de recuperación queda documentada.
-- **B)** Upgrade a **Pro (~US$25/mes)**: habilita PITR 7 días + branching (permitiría restauración
-  real sobre una branch efímera, cerrando P4 sin Docker).
-
-## P6 — Vercel: frecuencia de los crons
-`vercel.json` ahora agenda 7 crons **diarios** (límite del plan Hobby).
-
-- **A) (recomendada)** Dejar diario: alcanza para vencimientos/alertas/inconsistencias.
-- **B)** Vercel **Pro** si querés frecuencia sub-diaria (ej. alertas cada hora).
-
-## P7 — `VALIDATE CONSTRAINT` de los CHECK del Prompt 5
-Los CHECK se agregaron `NOT VALID` para no romper el `db push` con datos legacy.
-
-- **A) (recomendada)** Tras aplicar la migración, correr una query de detección de filas que violen
-  cada CHECK, limpiar/corregir, y recién entonces `ALTER TABLE ... VALIDATE CONSTRAINT ...`.
-- **B)** Dejarlos `NOT VALID` (protegen solo cargas nuevas) — aceptable, documentado.
+### P7 — `VALIDATE CONSTRAINT` de los CHECK del Prompt 5
+Los CHECK se aplicaron `NOT VALID` (protegen cargas nuevas, no las filas legacy).
+- **A) (recomendada)** Detectar filas que violen cada CHECK, limpiar, y luego
+  `ALTER TABLE … VALIDATE CONSTRAINT …` para cubrir el histórico.
+- **B)** Dejarlos `NOT VALID` — aceptable y documentado.
