@@ -83,9 +83,15 @@ function requireEnv(vars: string[], context: string): void {
   }
 }
 
+/** Enmascara contraseñas de connection strings (ej. postgres://user:PWD@host) para no
+ *  filtrarlas a los logs de CI. SEGURIDAD: nunca imprimir credenciales en claro. */
+function maskSecrets(s: string): string {
+  return s.replace(/([a-z][a-z+.-]*:\/\/[^\s:/@]+:)[^@\s]+(@)/gi, '$1***$2')
+}
+
 /** Ejecuta un comando heredando stdio; si falla, aborta con mensaje claro. */
 function run(cmd: string, args: string[], label: string): void {
-  console.log(`\n▶ ${label}\n  $ ${cmd} ${args.join(' ')}`)
+  console.log(`\n▶ ${label}\n  $ ${cmd} ${maskSecrets(args.join(' '))}`)
   const res = spawnSync(cmd, args, { stdio: 'inherit', shell: process.platform === 'win32' })
   if (res.error) die(`${label}: no se pudo ejecutar "${cmd}" (${res.error.message})`)
   if (res.status !== 0) die(`${label}: salió con código ${res.status}`)
