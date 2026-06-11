@@ -39,6 +39,9 @@ jobs:
       - uses: supabase/setup-cli@v1
         with:
           version: latest
+        env:
+          # Autentica la resolución de release contra la GitHub API (evita rate-limit).
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Instalar cliente Postgres (psql)
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
