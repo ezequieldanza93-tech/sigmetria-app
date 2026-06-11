@@ -29,7 +29,8 @@
 --   ALTER TABLE <tabla> VALIDATE CONSTRAINT <nombre>;
 -- (operación online, no bloquea escrituras). Ver docs/autocontrol.md → "Pendiente".
 --
--- ADITIVA. NO aplicada a producción en la corrida autónoma.
+-- ADITIVA.
+-- ✅ APLICADA A PRODUCCIÓN 2026-06-11 (run GitHub Actions 27368883915; cadena INTEGRA + escritura OK).
 -- Idempotente: cada constraint se DROP-IF-EXISTS antes de re-crearse.
 -- ============================================================
 

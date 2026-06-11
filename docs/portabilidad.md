@@ -180,16 +180,21 @@ npx vitest run lib/export
 ## Pendiente
 
 - **Worker async completo (cola/background)**: hoy la **generación** del ZIP es
-  **síncrona** dentro del request; el guardado en bucket privado + signed URL + email YA
-  funcionan. Falta mover la generación a un job en segundo plano (cola Upstash + cron)
-  para paquetes muy grandes que excedan el tiempo de un request. El endpoint
-  [`/api/cron/limpiar-exports`](../app/api/cron/limpiar-exports/route.ts) ya existe como
+  **síncrona** dentro del request HTTP; solo el **guardado en bucket privado + signed URL +
+  email** son asíncronos respecto de la descarga directa. Esto implica **riesgo de timeout en
+  paquetes muy grandes**, porque el ZIP se arma dentro del tiempo del request. Falta mover la
+  generación a un **worker async completo** (cola Upstash + drenado por cron) para esos casos. El
+  endpoint [`/api/cron/limpiar-exports`](../app/api/cron/limpiar-exports/route.ts) ya existe como
   patrón Vercel Cron y es el lugar natural para drenar esa cola.
-- **Declarar el cron en `vercel.json`**: agregar
-  `{ "crons": [{ "path": "/api/cron/limpiar-exports", "schedule": "0 * * * *" }] }`.
-- **Migración `20260704000001_exports_bucket.sql` NO aplicada**: es aditiva y está
-  versionada; debe pushearse (`npx supabase db push`) para que el bucket `exports` y su
-  RLS existan en la base. Sin ella, el modo async cae a descarga directa (fallback).
+- **Cron de limpieza** (✅ **resuelto**): por el **límite de crons de Vercel Hobby** (máx. 2,
+  diarios), los crons se **consolidaron en el dispatcher** [`/api/cron/diario`](../app/api/cron/diario/route.ts)
+  (agendado en `vercel.json`, `0 6 * * *`), que invoca [`/api/cron/limpiar-exports`](../app/api/cron/limpiar-exports/route.ts)
+  en su array de jobs. **La limpieza de paquetes corre a diario** — ya no hace falta declarar un
+  cron propio para este endpoint.
+- **Migración `20260704000001_exports_bucket.sql` ✅ APLICADA**: aplicada a producción el
+  2026-06-11 (run GitHub Actions 27368883915; cadena de auditoría INTEGRA + escritura OK). El
+  bucket privado `exports` y su RLS por consultora existen en la base → el **modo async con bucket
+  privado + signed URL funciona** (ya no cae al fallback de descarga directa).
 - **Subcontratistas**: `subcontratistas` no tiene `empresa_id` (cuelga de
   `organizaciones_externas` a nivel consultora), por lo que **no** se incluye en el export
   por empresa para no mezclar tenants. Queda pendiente decidir el criterio de scoping.

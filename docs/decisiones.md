@@ -257,8 +257,10 @@
   consultora (anti-spam) a los admins, solo para críticas; in-app siempre. Cada
   emisión se registra en `alertas_emitidas_log` (inmutable, service_role).
 - **Bitácora `cron_jobs_log` + agendado en `vercel.json`**: antes los endpoints de
-  cron existían pero `vercel.json` no agendaba nada. Ahora se agendan diariamente
-  (límite Hobby; sub-diario requiere Pro — D4) y cada corrida escribe start/finish
+  cron existían pero `vercel.json` no agendaba nada. Como Vercel Hobby permite máx. 2
+  crons, `vercel.json` agenda **1 dispatcher diario** (`/api/cron/diario`) que dispara
+  los 7 jobs en paralelo (sub-diario o jobs separados requieren Pro — D4) y cada corrida
+  escribe start/finish
   en `cron_jobs_log` vía helpers SECURITY DEFINER best-effort (`lib/cron/cron-log.ts`).
   **Por qué best-effort:** la bitácora no debe poder romper el trabajo del cron.
   Los crons de facturación no se duplican acá (ya tienen `subscription_audit_log`).

@@ -10,12 +10,12 @@
 > → restore en DB fresca → **180 tablas + datos recuperados**. Evidencia en `docs/validacion_en_vivo.md`.
 >
 > **Track Storage incremental (refactor 2026):** la lógica de cálculo del delta tiene **tests
-> unitarios** (`tests/storage-delta.test.ts`), pero el espejo real `aws s3 sync` / `s3api
-> list-objects-v2` contra R2 **todavía NO fue validado en vivo** — corre en CI
-> (`backup.yml` / `recovery-test.yml`), que es donde existe el `aws` CLI con credenciales reales.
-> La validación end-to-end del round-trip del Storage queda **pendiente de la primera corrida CI**.
-> La validación previa (arriba) fue sobre el diseño monolítico anterior (DB + Storage en un único
-> tar cifrado); el track DB no cambió su formato, el de Storage sí.
+> unitarios** (`tests/storage-delta.test.ts`) y el **espejo/delta real** (`s3api list-objects-v2` +
+> `aws s3 cp`) **YA fue validado en vivo en CI** (run 27368489932, 2026-06-11): inventario de 22
+> buckets / 55 objetos / 31,29 MiB y `Δ Delta: 0 de 55` (incremental demostrado). Evidencia:
+> `docs/evidencia-recuperacion-2026-06-11.md`. **Pendiente honesto:** la **recuperación
+> end-to-end del Storage** (re-upload de objetos al Supabase destino, Paso 3b) sigue siendo
+> **manual y no ejecutada** — lo verificado es el delta/espejo, no el re-poblado.
 
 ---
 
@@ -143,12 +143,13 @@ re-upload: ver "Pendiente".)
 - **Restauración end-to-end del track DB**: ✅ **ejecutada localmente** (Docker + Supabase local +
   MinIO) — ver `docs/validacion_en_vivo.md`. La cadena completa (cifrado → S3 round-trip →
   descifrado → verificación de checksums → restore → conteo de filas) funcionó.
-- **Track Storage incremental**: la lógica del delta tiene tests unitarios; el espejo real
-  (`s3api list-objects-v2` + `aws s3 cp/sync`) **se valida en la primera corrida CI** (es donde
-  vive el `aws` CLI con credenciales). PENDIENTE confirmar ese round-trip en vivo.
-- **Pendiente (DB)**: repetir contra un **staging real** con **credenciales R2 reales** (cargadas
-  por el usuario en GitHub Secrets) y archivar el log como evidencia formal. No requiere cambios de
-  código — el mismo flujo corre en la GitHub Action diaria.
+- **Track Storage incremental**: la lógica del delta tiene tests unitarios y el espejo real
+  (`s3api list-objects-v2` + `aws s3 cp`) **YA fue validado en vivo en CI** (run 27368489932,
+  2026-06-11). **PENDIENTE real:** la **recuperación end-to-end** del Storage (re-upload al
+  Supabase destino, Paso 3b) sigue siendo **manual y no ejecutada** — lo verificado es el espejo/
+  delta, no el re-poblado.
+- **Recuperación de DB**: ✅ **probada end-to-end en CI** (run 27368489932). Queda como buena
+  práctica repetirla periódicamente como prueba de recuperación archivando cada log.
 - **Re-upload automatizado de Storage**: script que recorra el espejo `storage/` de R2
   (`aws s3 sync`) y re-suba cada objeto al Supabase destino preservando bucket+path (hoy es manual).
 - **PITR (point-in-time recovery)**: requiere Supabase Pro — ver `docs/almacenamiento.md`.

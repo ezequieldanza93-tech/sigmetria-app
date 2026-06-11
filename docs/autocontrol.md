@@ -142,22 +142,27 @@ resultado.
 
 ---
 
-## 6. Agendado del cron (`vercel.json`)
+## 6. Agendado del cron (`vercel.json`) — dispatcher único (límite Hobby)
 
 Antes `vercel.json` no agendaba ningún cron (los endpoints existían pero nada los
-disparaba). Ahora se agendan **diariamente** (límite del plan Vercel Hobby):
+disparaba). El plan **Vercel Hobby permite máximo 2 cron jobs** (y solo diarios), así
+que `vercel.json` agenda **un único cron** — `/api/cron/diario` (`0 6 * * *`) — que actúa
+como **dispatcher**: dispara los 7 jobs en paralelo en una sola corrida y devuelve el
+estado de cada uno. (Código: `app/api/cron/diario/route.ts`.)
 
-| Cron | Schedule (UTC) | Qué hace |
-|------|----------------|----------|
-| `/api/cron/vencimientos` | `0 6 * * *` | Refresca notificaciones de vencimiento (10/3/0) |
-| `/api/cron/cursos-vencimientos` | `15 6 * * *` | Marca cursos vencidos + notifica (30/7/1) |
-| `/api/cron/alertas` | `30 6 * * *` | Regenera alertas SRT + email crítico agrupado |
-| `/api/cron/inconsistencias` | `45 6 * * *` | Corre la detección y registra el conteo |
-| `/api/cron/expirar-past-due` | `0 7 * * *` | (Facturación) expira past_due |
-| `/api/cron/aplicar-cambios-plan` | `15 7 * * *` | (Facturación) aplica downgrades |
-| `/api/cron/limpiar-exports` | `0 3 * * *` | GC de paquetes de portabilidad |
+| Job disparado por el dispatcher | Qué hace |
+|------|----------|
+| `/api/cron/vencimientos` | Refresca notificaciones de vencimiento (10/3/0) |
+| `/api/cron/cursos-vencimientos` | Marca cursos vencidos + notifica (30/7/1) |
+| `/api/cron/alertas` | Regenera alertas SRT + email crítico agrupado |
+| `/api/cron/inconsistencias` | Corre la detección y registra el conteo |
+| `/api/cron/expirar-past-due` | (Facturación) expira past_due |
+| `/api/cron/aplicar-cambios-plan` | (Facturación) aplica downgrades |
+| `/api/cron/limpiar-exports` | GC de paquetes de portabilidad |
 
-Todos autentican con `Authorization: Bearer ${CRON_SECRET}`.
+El dispatcher y cada job autentican con `Authorization: Bearer ${CRON_SECRET}` (el
+dispatcher reenvía el header a cada sub-job). Si en el futuro se necesita frecuencia
+sub-diaria o jobs con horarios separados → Vercel Pro (levanta el límite de crons).
 
 ---
 
@@ -176,12 +181,11 @@ pendiente/en_investigacion/cerrado; campo `fecha_ocurrencia`).
 - **Validar los CHECK `NOT VALID`**: tras limpiar datos legacy, promover cada
   constraint con `ALTER TABLE … VALIDATE CONSTRAINT …` para que también cubra las
   filas históricas. Hoy solo protegen la carga nueva.
-- **Aplicar las migraciones**: `20260705000001` y `20260705000002` están
-  versionadas y **NO aplicadas** (regla de la corrida autónoma). Aplicar en
-  staging, verificar, y recién entonces a producción.
-- **Frecuencia sub-diaria**: en Vercel Hobby los cron son **diarios**. Mayor
-  frecuencia (ej. cada hora) requiere **Vercel Pro**. Los schedules de `vercel.json`
-  asumen Hobby.
+- **Migraciones**: ✅ `20260705000001` y `20260705000002` **APLICADAS a producción**
+  (2026-06-11, run GitHub Actions 27368883915; cadena de auditoría INTEGRA + escritura OK).
+- **Frecuencia sub-diaria**: en Vercel Hobby los cron son **diarios** y hay 1 solo
+  (el dispatcher). Mayor frecuencia (ej. alertas cada hora) o jobs separados requiere
+  **Vercel Pro**.
 - **Email de avisos tempranos no-críticos**: hoy el email es solo para alertas
   críticas (D6). Los avisos tempranos por umbral (30/15) se registran in-app y en
   `alertas_emitidas_log`, pero no envían email.

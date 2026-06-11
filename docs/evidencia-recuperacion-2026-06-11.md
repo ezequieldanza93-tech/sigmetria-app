@@ -8,15 +8,19 @@
 | Dato | Valor |
 |---|---|
 | **Resultado** | ✅ **ÉXITO** (`conclusion: success`) |
-| **Fecha (UTC)** | 2026-06-11T16:04:36Z |
+| **Fecha (UTC)** | 2026-06-11T18:24:33Z (backup interno 18:25:52Z) |
 | **Ejecutado por** | GitHub Actions — workflow "Prueba de recuperación (auditoría)" |
-| **Run ID** | 27360267634 |
-| **Enlace verificable** | https://github.com/ezequieldanza93-tech/sigmetria-app/actions/runs/27360267634 |
-| **Commit auditado** | `729f30eb58f6abbc31ad462bccf3261f628a10ae` |
+| **Run ID** | 27368489932 |
+| **Enlace verificable** | https://github.com/ezequieldanza93-tech/sigmetria-app/actions/runs/27368489932 |
+| **Commit auditado** | `4d9aedd40a74cbc31dc97851df7f5407d3043bc6` |
 | **Runner** | ubuntu (Linux x86_64), entorno efímero y aislado |
 | **Origen de los datos** | Base de datos y Storage de **producción** (acceso de solo lectura) |
 | **Ubicación del respaldo** | Cloudflare R2 (bucket `sigmetria-backups`) — independiente de Supabase |
-| **Log crudo (evidencia original)** | Artifact `recovery-test-log-2` de la corrida (retención 90 días) |
+| **Log crudo (evidencia original)** | Artifact `recovery-test-log-6` de la corrida (retención 90 días) |
+
+> **Nota de seguridad:** esta corrida se ejecutó *después* de incorporar el enmascarado de
+> credenciales en los logs (commit `4d9aedd`). El log crudo muestra la contraseña como `***`
+> — **no expone ningún secreto** y es apto para entregar a un auditor sin redacción adicional.
 
 ---
 
@@ -40,15 +44,17 @@ destino del respaldo fue el **bucket R2 real**, físicamente separado del provee
 ### 2.1 Respaldo de la base de datos (cifrado)
 - Dump lógico de producción (esquema + datos + roles) vía conexión *Session pooler*.
 - Empaquetado y **cifrado AES-256-CBC** (PBKDF2, 100.000 iteraciones).
-- Bundle: `backup-2026-06-11T16-04-38-796Z.tar.enc` — **SHA-256 `87ad41ae1ba151f6…`**.
+- Bundle: `backup-2026-06-11T18-25-52-778Z.tar.enc` — **SHA-256 `4b2290495673b4c1…`**.
 - Subido a R2 en **dos ubicaciones** (retención diaria + mensual) + manifiesto con checksums:
   - `s3://sigmetria-backups/db/daily/2026-06-11/`
   - `s3://sigmetria-backups/db/monthly/2026-06/`
 
-### 2.2 Respaldo de Storage (archivos) — incremental
+### 2.2 Respaldo de Storage (archivos) — incremental **demostrado**
 - Inventario detectado: **22 buckets, 55 objetos, 31,29 MiB**.
-- Sincronización **incremental**: `Δ Delta: 55 de 55 objetos a sincronizar (0 ya presentes)`
-  (primera corrida → todos nuevos; las siguientes solo suben lo que cambió).
+- Sincronización **incremental**: `Δ Delta: 0 de 55 objetos a sincronizar (55 ya presentes)`.
+  → Esta corrida **prueba en vivo el comportamiento incremental**: los 55 objetos ya estaban en R2
+  (subidos en una corrida previa), por lo que **no se re-subió ninguno**. Solo se transfiere el
+  delta — ahorro de transferencia y costo, sin perder cobertura.
 - Espejados a `s3://sigmetria-backups/storage/<bucket>/<path>` + `storage/manifest.json`.
 
 ### 2.3 Recuperación + verificación de integridad
@@ -58,7 +64,7 @@ Restauración del bundle en un **Postgres limpio y efímero** (nunca producción
 |---|---|
 | Descifrado del bundle | ✅ OK |
 | Restauración de esquema + datos + roles | ✅ OK |
-| **Filas de negocio restauradas** | **8.216** |
+| **Filas de negocio restauradas** | **8.217** |
 | **Tablas restauradas (schema public)** | **180** |
 | **Checksums del manifiesto vs archivos** | ✅ **`Todos los checksums coinciden`** |
 
@@ -66,16 +72,16 @@ Cierre del log: `✅ Ciclo de recuperación completado. Este log es la evidencia
 
 ---
 
-## 3. Citas textuales del log (fuente: artifact `recovery-test-log-2`)
+## 3. Citas textuales del log (fuente: artifact `recovery-test-log-6`)
 
 ```
-🔐 Cifrado DB: backup-2026-06-11T16-04-38-796Z.tar.enc (SHA-256 87ad41ae1ba151f6…)
-✅ Track DB subido. Bundle: backup-2026-06-11T16-04-38-796Z.tar.enc
+🔐 Cifrado DB: backup-2026-06-11T18-25-52-778Z.tar.enc (SHA-256 4b2290495673b4c1…)
+✅ Track DB subido. Bundle: backup-2026-06-11T18-25-52-778Z.tar.enc
    db/daily/2026-06-11/  +  db/monthly/2026-06/
-  Δ Delta: 55 de 55 objetos a sincronizar (0 ya presentes, no se re-suben).
+  Δ Delta: 0 de 55 objetos a sincronizar (55 ya presentes, no se re-suben).
 ✅ Track Storage sincronizado. Inventario: 55 objetos, 31.29 MiB.
 ...
-  TOTAL filas restauradas: 8216
+  TOTAL filas restauradas: 8217
 🔐 Verificando checksums del manifest contra los archivos extraídos…
   ✓ Todos los checksums coinciden.
 ✅ Restauración + verificación de la DB completas sobre el Postgres objetivo.
@@ -88,15 +94,18 @@ Cierre del log: `✅ Ciclo de recuperación completado. Este log es la evidencia
 
 ## 4. Garantías que acredita esta prueba
 
-1. **Existen copias de respaldo** de la información (datos de negocio + archivos), generadas
-   automáticamente.
+1. **Existen copias de respaldo** de la información (datos de negocio + archivos). La generación
+   demostrada hasta ahora fue por **corrida manual** del pipeline (`workflow_dispatch`); el
+   agendado diario (04:00 UTC) está **armado** y correrá de forma autónoma en el próximo ciclo.
 2. **Confidencialidad:** el respaldo de la base viaja **cifrado** (AES-256); el respaldo de Storage
    reside en un bucket **privado** con cifrado en reposo y TLS en tránsito.
 3. **Ubicación independiente:** las copias se guardan en **Cloudflare R2**, separado del proveedor
    primario (Supabase) — una falla de uno no afecta al otro.
 4. **Recuperabilidad demostrada:** las copias **se restauran con éxito** y los datos vuelven íntegros
-   (8.216 filas, 180 tablas), con **verificación criptográfica de integridad** (checksums).
-5. **Reproducibilidad:** la prueba es un workflow versionado y disparable a demanda — cualquier
+   (8.217 filas, 180 tablas), con **verificación criptográfica de integridad** (checksums).
+5. **Eficiencia incremental probada:** el respaldo de Storage solo transfiere el delta
+   (esta corrida: 0 de 55 objetos re-subidos), demostrando que el esquema escala sin re-subir todo.
+6. **Reproducibilidad:** la prueba es un workflow versionado y disparable a demanda — cualquier
    auditoría futura puede re-ejecutarla y obtener un nuevo log fechado.
 
 ---
@@ -110,12 +119,12 @@ Cierre del log: `✅ Ciclo de recuperación completado. Este log es la evidencia
 - **Advertencia de pg_dump** sobre FK circulares (`empresas` ↔ `organizaciones_externas`): es
   informativa; la restauración se completó igualmente.
 - **Destino de restauración:** un Postgres genérico efímero (no un proyecto Supabase completo). Por
-  eso la restauración tolera errores no-fatales esperables (referencias al esquema `auth`/`storage`
-  gestionado por Supabase, owners/roles). La **integridad se acredita por checksums + conteo de
+  eso la restauración tolera errores no-fatales esperables (referencias a los esquemas `auth`/`storage`
+  gestionados por Supabase, owners/roles). La **integridad se acredita por checksums + conteo de
   filas**, no por "cero advertencias". En una recuperación real ante desastre se restauraría sobre
   un proyecto Supabase nuevo, donde esas referencias se resuelven.
 - **Credenciales:** ninguna credencial figura en este documento ni en el repositorio. Viven como
-  *secrets* cifrados de GitHub.
+  *secrets* cifrados de GitHub y aparecen enmascaradas (`***`) en el log crudo.
 
 ---
 
@@ -124,9 +133,12 @@ Cierre del log: `✅ Ciclo de recuperación completado. Este log es la evidencia
 GitHub → **Actions** → **"Prueba de recuperación (auditoría)"** → **Run workflow**. Al finalizar,
 descargar el artifact `recovery-test-log-<N>`: ese log fechado es la evidencia de esa corrida.
 
-El respaldo, además, corre **automáticamente todos los días** (workflow "Backup externo", 04:00 UTC).
+El respaldo está **agendado** para correr **automáticamente todos los días** (workflow "Backup
+externo", 04:00 UTC). El pipeline de backup standalone fue **ejecutado y verificado de forma
+manual** (`workflow_dispatch`); la **primera corrida autónoma** del agendado ocurrirá en el
+próximo ciclo de las 04:00 UTC.
 
 ---
 
 *Sigmetría HyS · Amarilla Ingeniería · Evidencia generada el 2026-06-11 a partir de la corrida CI
-27360267634. Runbook de recuperación: `docs/recuperacion.md`. Estrategia: `docs/almacenamiento.md`.*
+27368489932. Runbook de recuperación: `docs/recuperacion.md`. Estrategia: `docs/almacenamiento.md`.*
