@@ -4,6 +4,7 @@ import { Building2, ClipboardList, BarChart3, BookOpen, Eye } from 'lucide-react
 import { usePathname, useSearchParams } from 'next/navigation'
 import { SectionsShell } from '@/components/layout/sections-shell'
 import type { SectionItem } from '@/components/layout/sections-sidebar'
+import { useEffectiveRoleContext } from '@/lib/contexts/effective-role-context'
 
 interface ConsultoraShellProps {
   children: React.ReactNode
@@ -15,11 +16,30 @@ type Section = (typeof SECTIONS)[number]
 export function ConsultoraShell({ children }: ConsultoraShellProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const eff = useEffectiveRoleContext()
 
   // Rutas de empresa y establecimiento tienen su propio shell — no duplicar sidebar
   if (pathname?.startsWith('/dashboard/empresas/')) {
     return <>{children}</>
   }
+
+  // El Viewer de Observaciones solo opera sobre sus observaciones: nav acotado.
+  if (eff?.userRole === 'viewer_observaciones') {
+    const obsItems: SectionItem[] = [
+      {
+        id: 'mis-observaciones',
+        label: 'Mis Observaciones',
+        icon: Eye,
+        href: '/dashboard/mis-observaciones',
+      },
+    ]
+    return (
+      <SectionsShell items={obsItems} activeId="mis-observaciones" ariaLabel="Mis observaciones">
+        {children}
+      </SectionsShell>
+    )
+  }
+
   const raw = searchParams.get('section') ?? 'empresas'
   const activeId: Section = (SECTIONS as readonly string[]).includes(raw)
     ? (raw as Section)
