@@ -1,7 +1,5 @@
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
-
 const FROM = 'Sigmetría Alertas <alertas@sigmetria.com.ar>'
 
 const TIPO_LABELS: Record<string, string> = {
@@ -33,6 +31,11 @@ export async function sendAlertasCriticalEmail({
     console.warn('RESEND_API_KEY no configurado — email omitido')
     return
   }
+
+  // Lazy init: instanciar el cliente DENTRO del handler, nunca a nivel de módulo.
+  // Si se instancia arriba, `next build` lo ejecuta al "collect page data" (sin
+  // RESEND_API_KEY) y el constructor de Resend tira "Missing API key" → rompe el build.
+  const resend = new Resend(process.env.RESEND_API_KEY)
 
   const count = alertas.length
   const subject = `[Sigmetría] ${count} alerta${count !== 1 ? 's' : ''} crítica${count !== 1 ? 's' : ''} en ${consultoraNombre}`
