@@ -32,3 +32,5 @@ supabase/token_mcp_supa.txt
 aux capturas/
 documentación_usuarios_accesos/
 supabase/Auditorías_bd/
+# Evidencia temporal de corridas (el log canónico vive en docs/evidencia/)
+evidencia-tmp/
