@@ -43,6 +43,7 @@ declare module 'lucide-react' {
   export const Clock: Icon
   export const Code: Icon
   export const Columns: Icon
+  export const Contact: Icon
   export const Copy: Icon
   export const CreditCard: Icon
   export const Crosshair: Icon
@@ -56,6 +57,7 @@ declare module 'lucide-react' {
   export const FileCheck: Icon
   export const FileSignature: Icon
   export const FileText: Icon
+  export const Filter: Icon
   export const Flame: Icon
   export const FolderOpen: Icon
   export const Gauge: Icon

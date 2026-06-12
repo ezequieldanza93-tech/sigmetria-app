@@ -1,10 +1,11 @@
 'use client'
 
-import { Building2, ClipboardList, BarChart3, BookOpen, Eye } from 'lucide-react'
+import { Building2, ClipboardList, BarChart3, BookOpen, Eye, Contact } from 'lucide-react'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { SectionsShell } from '@/components/layout/sections-shell'
 import type { SectionItem } from '@/components/layout/sections-sidebar'
 import { useEffectiveRoleContext } from '@/lib/contexts/effective-role-context'
+import { isCrmAdmin } from '@/lib/auth/crm-access'
 
 interface ConsultoraShellProps {
   children: React.ReactNode
@@ -41,9 +42,13 @@ export function ConsultoraShell({ children }: ConsultoraShellProps) {
   }
 
   const raw = searchParams.get('section') ?? 'empresas'
-  const activeId: Section = (SECTIONS as readonly string[]).includes(raw)
+  const sectionActive: Section = (SECTIONS as readonly string[]).includes(raw)
     ? (raw as Section)
     : 'empresas'
+
+  const onCrm = pathname?.startsWith('/dashboard/crm') ?? false
+  const activeId: string = onCrm ? 'crm' : sectionActive
+  const showCrm = isCrmAdmin(eff?.email)
 
   const baseUrl = `/dashboard/empresas`
 
@@ -78,6 +83,9 @@ export function ConsultoraShell({ children }: ConsultoraShellProps) {
       icon: BarChart3,
       href: `${baseUrl}?section=dashboard`,
     },
+    ...(showCrm
+      ? ([{ id: 'crm', label: 'CRM', icon: Contact, href: '/dashboard/crm' }] as SectionItem[])
+      : []),
   ]
 
   return (
