@@ -63,6 +63,45 @@ export async function createMyConsultora(
     return { success: false, error: memberError.message }
   }
 
+  // ── Plan elegido en el wizard ────────────────────────────────────────────────
+  // FASE DE ARMADO (sin pasarela): elegir el plan funciona como "pago recibido" →
+  // se activa la suscripción del plan y el usuario queda como admin de ese plan.
+  // El trigger on_consultora_created ya creó una suscripción trial; acá la subimos
+  // al plan elegido (si no es trial/gratis).
+  const planSlug = (formData.get('plan_slug') as string)?.trim()
+  if (planSlug && planSlug !== 'trial') {
+    const { data: plan } = await service
+      .from('plans')
+      .select('id, max_colaboradores, tipo')
+      .eq('slug', planSlug)
+      .maybeSingle()
+    if (plan) {
+      const now = new Date()
+      const end = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
+      await service
+        .from('subscriptions')
+        .update({
+          plan_id: plan.id,
+          estado: 'active',
+          periodo: 'monthly',
+          current_period_start: now.toISOString(),
+          current_period_end: end.toISOString(),
+          updated_at: now.toISOString(),
+        })
+        .eq('consultora_id', consultora.id)
+
+      // seats_max = admin + colaboradores del plan (null = ilimitado → tope alto).
+      const seatsMax = plan.max_colaboradores == null ? 999 : plan.max_colaboradores + 1
+      await service
+        .from('consultoras')
+        .update({
+          seats_max: seatsMax,
+          tipo: plan.tipo === 'profesional_independiente' ? 'profesional' : 'consultora',
+        })
+        .eq('id', consultora.id)
+    }
+  }
+
   // Refrescar el cache de permisos de la sesión actual.
   try { await supabase.rpc('cache_user_permissions') } catch { /* no crítico */ }
 

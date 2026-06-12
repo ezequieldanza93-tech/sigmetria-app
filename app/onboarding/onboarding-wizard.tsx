@@ -2,119 +2,129 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Building2, Briefcase, MapPin, Sparkles, Check } from 'lucide-react'
+import { Building2, Sparkles, Check, Briefcase } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import {
-  createMyConsultora,
-  createOnboardingEmpresa,
-  createOnboardingEstablecimiento,
-} from '@/lib/actions/onboarding'
+import { createMyConsultora } from '@/lib/actions/onboarding'
+import { InviteUsuarioForm } from '@/components/forms/invite-usuario-form'
+import { inviteUsuario } from '@/lib/actions/usuario'
 
-type Step = 1 | 2 | 3 | 4
+interface Plan {
+  id: string
+  nombre: string
+  slug: string
+  tipo: string
+  precio_mensual_neto: number | string | null
+  max_colaboradores: number | null
+  max_empresas: number | null
+  max_establecimientos: number | null
+  descripcion_corta: string | null
+}
 
-const STEPS = [
-  { n: 1 as const, label: 'Tu consultora', icon: Building2 },
-  { n: 2 as const, label: 'Primera empresa', icon: Briefcase },
-  { n: 3 as const, label: 'Primer establecimiento', icon: MapPin },
-]
+type Step = 'plan' | 'datos' | 'equipo' | 'listo'
+
+const FREE_PLAN: Plan = {
+  id: 'free', nombre: 'Gratis (Trial)', slug: 'trial', tipo: 'trial',
+  precio_mensual_neto: null, max_colaboradores: 0, max_empresas: 2, max_establecimientos: 5,
+  descripcion_corta: '1 mes de prueba',
+}
+
+function precioLabel(p: Plan): string {
+  if (p.slug === 'trial') return 'Gratis'
+  if (p.precio_mensual_neto == null) return 'A consultar'
+  return `$${Number(p.precio_mensual_neto).toLocaleString('es-AR')} /mes + IVA`
+}
+
+function colaboradoresLabel(p: Plan): string {
+  if (p.max_colaboradores == null) return 'Colaboradores ilimitados'
+  if (p.max_colaboradores === 0) return 'Sin colaboradores'
+  return `Hasta ${p.max_colaboradores} colaboradores`
+}
+
+const fmt = (n: number | null) => (n == null ? 'Ilimitados' : String(n))
 
 export function OnboardingWizard({
   userEmail,
   fullName,
+  planes,
 }: {
   userEmail: string
   fullName: string | null
+  planes: Plan[]
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
-  const [step, setStep] = useState<Step>(1)
+  const [step, setStep] = useState<Step>('plan')
   const [error, setError] = useState<string | null>(null)
-  const [empresaId, setEmpresaId] = useState<string | null>(null)
-  const [empresaNombre, setEmpresaNombre] = useState<string>('')
+  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null)
+  const [invitedCount, setInvitedCount] = useState(0)
+  const [inviteKey, setInviteKey] = useState(0)
 
   const primerNombre = fullName?.trim().split(/\s+/)[0] ?? null
+  const allPlanes = planes.some(p => p.slug === 'trial') ? planes : [FREE_PLAN, ...planes]
 
-  function handleConsultora(formData: FormData) {
+  const seats = selectedPlan
+    ? selectedPlan.max_colaboradores == null ? 999 : selectedPlan.max_colaboradores + 1
+    : 1
+  const allowsColaboradores = !!selectedPlan && (selectedPlan.max_colaboradores == null || selectedPlan.max_colaboradores > 0)
+
+  function pickPlan(p: Plan) {
+    setSelectedPlan(p)
+    setError(null)
+    setStep('datos')
+  }
+
+  function handleDatos(formData: FormData) {
+    if (!selectedPlan) return
+    formData.set('plan_slug', selectedPlan.slug)
     setError(null)
     startTransition(async () => {
       const result = await createMyConsultora(formData)
-      if (result.success) setStep(2)
-      else setError(result.error)
-    })
-  }
-
-  function handleEmpresa(formData: FormData) {
-    setError(null)
-    startTransition(async () => {
-      const result = await createOnboardingEmpresa(formData)
       if (result.success) {
-        setEmpresaId(result.data.id)
-        setEmpresaNombre((formData.get('razon_social') as string)?.trim() ?? '')
-        setStep(3)
+        setStep(allowsColaboradores ? 'equipo' : 'listo')
       } else {
         setError(result.error)
       }
     })
   }
 
-  function handleEstablecimiento(formData: FormData) {
-    if (!empresaId) {
-      setStep(4)
-      return
-    }
-    setError(null)
-    startTransition(async () => {
-      const result = await createOnboardingEstablecimiento(empresaId, formData)
-      if (result.success) setStep(4)
-      else setError(result.error)
-    })
-  }
-
   return (
     <div className="min-h-screen bg-surface-base flex items-center justify-center p-4">
-      <div className="w-full max-w-lg">
+      <div className="w-full max-w-2xl">
         {/* Bienvenida */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-14 h-14 bg-brand-primary rounded-2xl mb-4">
             <Sparkles className="h-7 w-7 text-white" aria-hidden="true" />
           </div>
           <h1 className="text-2xl font-bold text-text-primary">
-            {step === 4
+            {step === 'listo'
               ? `¡Todo listo${primerNombre ? `, ${primerNombre}` : ''}!`
               : `¡Bienvenido${primerNombre ? `, ${primerNombre}` : ''}!`}
           </h1>
           <p className="text-text-secondary text-sm mt-1">
-            {step === 4
-              ? 'Tu espacio de trabajo ya está armado.'
-              : 'En 3 pasos cortos dejamos tu plataforma lista para usar.'}
+            {step === 'plan' && 'Elegí tu plan para empezar.'}
+            {step === 'datos' && 'Cargá los datos de tu consultora o estudio profesional.'}
+            {step === 'equipo' && 'Sumá a tu equipo (opcional).'}
+            {step === 'listo' && 'Tu plataforma está lista para usar.'}
           </p>
         </div>
 
         {/* Stepper */}
-        {step < 4 && (
-          <nav aria-label="Pasos de configuración" className="mb-8">
-            <ol className="flex items-center justify-center gap-2 list-none">
-              {STEPS.map((s, i) => {
-                const Icon = s.icon
-                const done = step > s.n
-                const active = step === s.n
+        {step !== 'listo' && (
+          <nav aria-label="Pasos" className="mb-8">
+            <ol className="flex items-center justify-center gap-2 list-none text-xs">
+              {([['plan', 'Plan'], ['datos', 'Datos'], ['equipo', 'Equipo']] as const).map(([id, label], i) => {
+                const order = { plan: 0, datos: 1, equipo: 2, listo: 3 }
+                const done = order[step] > i
+                const active = step === id
                 return (
-                  <li key={s.n} className="flex items-center gap-2">
-                    <div
-                      className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                        active
-                          ? 'bg-brand-primary text-white'
-                          : done
-                            ? 'bg-success-bg text-success'
-                            : 'bg-surface-sunken text-text-tertiary'
-                      }`}
-                      aria-current={active ? 'step' : undefined}
-                    >
-                      {done ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : <Icon className="h-3.5 w-3.5" aria-hidden="true" />}
-                      <span className="hidden sm:inline">{s.label}</span>
-                    </div>
-                    {i < STEPS.length - 1 && <span className="w-4 h-px bg-border-default" aria-hidden="true" />}
+                  <li key={id} className="flex items-center gap-2">
+                    <span className={`rounded-full px-3 py-1.5 font-medium transition-colors ${
+                      active ? 'bg-brand-primary text-white' : done ? 'bg-success-bg text-success' : 'bg-surface-sunken text-text-tertiary'
+                    }`}>
+                      {done ? '✓ ' : ''}{label}
+                    </span>
+                    {i < 2 && <span className="w-4 h-px bg-border-default" aria-hidden="true" />}
                   </li>
                 )
               })}
@@ -122,107 +132,119 @@ export function OnboardingWizard({
           </nav>
         )}
 
-        <div className="bg-surface-base rounded-2xl border border-border-subtle p-6 shadow-sm">
-          {error && (
-            <div role="alert" className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3 mb-4">
-              {error}
+        {error && (
+          <div role="alert" className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3 mb-4">
+            {error}
+          </div>
+        )}
+
+        {/* Paso 1 — Plan */}
+        {step === 'plan' && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {allPlanes.map(p => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => pickPlan(p)}
+                className="text-left rounded-2xl border border-border-default bg-surface-base p-5 hover:border-brand-primary hover:ring-1 hover:ring-brand-primary transition-all"
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-semibold text-text-primary">{p.nombre}</span>
+                  <Building2 className="h-4 w-4 text-text-tertiary" aria-hidden="true" />
+                </div>
+                <p className="text-brand-primary font-bold text-sm">{precioLabel(p)}</p>
+                <ul className="mt-3 space-y-1 text-xs text-text-secondary">
+                  <li>• {fmt(p.max_empresas)} empresas</li>
+                  <li>• {fmt(p.max_establecimientos)} establecimientos</li>
+                  <li>• {colaboradoresLabel(p)}</li>
+                </ul>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Paso 2 — Datos */}
+        {step === 'datos' && selectedPlan && (
+          <div className="bg-surface-base rounded-2xl border border-border-subtle p-6 shadow-sm">
+            <p className="text-xs text-text-tertiary mb-4">
+              Plan elegido: <strong className="text-text-primary">{selectedPlan.nombre}</strong> · {precioLabel(selectedPlan)}{' '}
+              <button type="button" onClick={() => setStep('plan')} className="text-brand-primary hover:underline ml-1">cambiar</button>
+            </p>
+            <form action={handleDatos} className="space-y-4">
+              <Input label="Nombre de tu consultora o estudio" name="nombre" required placeholder="Sigmetría HyS" autoFocus />
+              <Input label="CUIT" name="cuit" placeholder="30-12345678-9" />
+              <Input label="Email de contacto" name="email" type="email" defaultValue={userEmail} placeholder="info@consultora.com" />
+              <Input label="Teléfono" name="telefono" placeholder="+54 11 1234-5678" />
+              <Button type="submit" disabled={isPending} className="w-full">
+                {isPending ? 'Activando tu plan…' : `Activar ${selectedPlan.nombre} →`}
+              </Button>
+            </form>
+            {selectedPlan.slug !== 'trial' && (
+              <p className="mt-3 text-xs text-text-tertiary text-center">
+                En la versión final acá iría el pago. Por ahora, elegir el plan lo activa directamente.
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Paso 3 — Equipo */}
+        {step === 'equipo' && (
+          <div className="bg-surface-base rounded-2xl border border-border-subtle p-6 shadow-sm">
+            <div className="flex items-center gap-2 mb-1">
+              <Briefcase className="h-5 w-5 text-brand-primary" aria-hidden="true" />
+              <h2 className="font-semibold text-text-primary">Sumá a tu equipo</h2>
             </div>
-          )}
+            <p className="text-text-secondary text-sm mb-4">
+              Creá las cuentas de tus colaboradores y asignales permisos. Cada uno recibe un link para
+              entrar, definir su contraseña y completar su perfil profesional.
+            </p>
 
-          {/* Paso 1 — Consultora */}
-          {step === 1 && (
-            <>
-              <h2 className="font-semibold text-text-primary mb-1">Creá tu consultora</h2>
-              <p className="text-text-secondary text-sm mb-4">
-                Es tu espacio de trabajo. Al crearla se activa tu <strong className="text-text-primary">mes de prueba gratis</strong> automáticamente.
-              </p>
-              <form action={handleConsultora} className="space-y-4">
-                <Input label="Nombre de la consultora" name="nombre" required placeholder="Sigmetría HyS" autoFocus />
-                <Input label="CUIT" name="cuit" placeholder="30-12345678-9" />
-                <Input label="Email de contacto" name="email" type="email" defaultValue={userEmail} placeholder="info@consultora.com" />
-                <Input label="Teléfono" name="telefono" placeholder="+54 11 1234-5678" />
-                <Button type="submit" disabled={isPending} className="w-full">
-                  {isPending ? 'Creando…' : 'Crear mi consultora →'}
-                </Button>
-              </form>
-            </>
-          )}
+            <InviteUsuarioForm
+              key={inviteKey}
+              action={inviteUsuario}
+              seatsUsed={1 + invitedCount}
+              seatsMax={seats}
+              personas={[]}
+              onSuccess={() => setInvitedCount(c => c + 1)}
+            />
 
-          {/* Paso 2 — Primera empresa */}
-          {step === 2 && (
-            <>
-              <h2 className="font-semibold text-text-primary mb-1">Sumá tu primera empresa cliente</h2>
-              <p className="text-text-secondary text-sm mb-4">
-                Es la empresa a la que le vas a gestionar la Higiene y Seguridad. Podés sumar más después.
-              </p>
-              <form action={handleEmpresa} className="space-y-4">
-                <Input label="Razón social" name="razon_social" required placeholder="Acme S.A." autoFocus />
-                <Input label="CUIT" name="cuit" placeholder="30-12345678-9" />
-                <Button type="submit" disabled={isPending} className="w-full">
-                  {isPending ? 'Guardando…' : 'Agregar empresa →'}
-                </Button>
-              </form>
-              <button
-                type="button"
-                onClick={() => setStep(4)}
-                disabled={isPending}
-                className="mt-3 w-full text-center text-sm text-text-tertiary hover:text-text-secondary transition-colors"
-              >
-                Lo hago después →
-              </button>
-            </>
-          )}
-
-          {/* Paso 3 — Primer establecimiento */}
-          {step === 3 && (
-            <>
-              <h2 className="font-semibold text-text-primary mb-1">
-                Primer establecimiento{empresaNombre ? ` de ${empresaNombre}` : ''}
-              </h2>
-              <p className="text-text-secondary text-sm mb-4">
-                Una planta, oficina u obra de esta empresa. Es donde vas a cargar gestiones, documentos y riesgos.
-              </p>
-              <form action={handleEstablecimiento} className="space-y-4">
-                <Input label="Nombre del establecimiento" name="nombre" required placeholder="Planta Norte" autoFocus />
-                <Input label="Domicilio" name="domicilio" placeholder="Av. Siempre Viva 742" />
-                <Button type="submit" disabled={isPending} className="w-full">
-                  {isPending ? 'Guardando…' : 'Agregar establecimiento →'}
-                </Button>
-              </form>
-              <button
-                type="button"
-                onClick={() => setStep(4)}
-                disabled={isPending}
-                className="mt-3 w-full text-center text-sm text-text-tertiary hover:text-text-secondary transition-colors"
-              >
-                Lo hago después →
-              </button>
-            </>
-          )}
-
-          {/* Paso 4 — Listo */}
-          {step === 4 && (
-            <div className="text-center py-4 space-y-4">
-              <div className="inline-flex items-center justify-center w-14 h-14 bg-success-bg rounded-full">
-                <Check className="h-7 w-7 text-success" aria-hidden="true" />
-              </div>
-              <div>
-                <h2 className="font-semibold text-text-primary">Tu prueba gratis de 1 mes ya está activa</h2>
-                <p className="text-text-secondary text-sm mt-1">
-                  Entrá a tu panel y empezá a cargar lo que necesites. Cuando quieras, invitás a tu equipo desde Usuarios.
-                </p>
-              </div>
-              <Button onClick={() => router.push('/dashboard/empresas')} className="w-full">
-                Ir a mi panel →
+            <div className="flex items-center justify-between gap-3 mt-5 pt-4 border-t border-border-subtle">
+              {invitedCount > 0 ? (
+                <button type="button" onClick={() => setInviteKey(k => k + 1)} className="text-sm text-brand-primary hover:underline">
+                  + Invitar otro colaborador
+                </button>
+              ) : <span />}
+              <Button onClick={() => setStep('listo')} variant="ghost">
+                {invitedCount > 0 ? 'Terminar →' : 'Lo hago después →'}
               </Button>
             </div>
-          )}
-        </div>
+            {invitedCount > 0 && (
+              <p className="mt-2 text-xs text-success">{invitedCount} invitación{invitedCount !== 1 ? 'es' : ''} generada{invitedCount !== 1 ? 's' : ''}.</p>
+            )}
+          </div>
+        )}
 
-        {step < 4 && (
-          <p className="text-center text-xs text-text-tertiary mt-6">
-            Paso {step} de 3 · Podés saltar los pasos opcionales y completarlos más tarde
-          </p>
+        {/* Paso 4 — Listo */}
+        {step === 'listo' && (
+          <div className="bg-surface-base rounded-2xl border border-border-subtle p-6 shadow-sm text-center space-y-4">
+            <div className="inline-flex items-center justify-center w-14 h-14 bg-success-bg rounded-full">
+              <Check className="h-7 w-7 text-success" aria-hidden="true" />
+            </div>
+            <div>
+              <h2 className="font-semibold text-text-primary">
+                {selectedPlan && selectedPlan.slug !== 'trial'
+                  ? `Plan ${selectedPlan.nombre} activo`
+                  : 'Tu prueba gratis está activa'}
+              </h2>
+              <p className="text-text-secondary text-sm mt-1">
+                Sos el Admin de tu consultora. Entrá a tu panel para cargar empresas, establecimientos y
+                empezar a gestionar. {invitedCount > 0 && 'Tus colaboradores ya pueden entrar con su link.'}
+              </p>
+            </div>
+            <Button onClick={() => router.push('/dashboard/empresas')} className="w-full">
+              Ir a mi panel →
+            </Button>
+          </div>
         )}
       </div>
     </div>

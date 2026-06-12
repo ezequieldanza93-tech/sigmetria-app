@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import { OnboardingWizard } from './onboarding-wizard'
 
 export default async function OnboardingPage() {
@@ -16,6 +17,14 @@ export default async function OnboardingPage() {
     .maybeSingle()
   if (membership) redirect('/dashboard/empresas')
 
+  // Planes para el selector (catálogo) — service client para no depender de RLS.
+  const service = createServiceClient()
+  const { data: planes } = await service
+    .from('plans')
+    .select('id, nombre, slug, tipo, precio_mensual_neto, max_colaboradores, max_empresas, max_establecimientos, descripcion_corta')
+    .eq('is_visible', true)
+    .order('sort_order', { ascending: true, nullsFirst: true })
+
   const fullName = (user.user_metadata?.full_name as string | undefined) ?? null
-  return <OnboardingWizard userEmail={user.email ?? ''} fullName={fullName} />
+  return <OnboardingWizard userEmail={user.email ?? ''} fullName={fullName} planes={planes ?? []} />
 }
