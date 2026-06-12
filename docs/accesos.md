@@ -157,11 +157,12 @@ solo `is_developer()`.
   firmada (`MFA_COOKIE_SECRET`), TTL 24h.
 - **Enforcement** (`middleware.ts` ~línea 85): obligatorio para
   `full_access_main` y `responsable_estandares`. Si falta MFA → redirige a `/mfa/verify`.
-- **Bypass de testing GATEADO (Prompt 4):** `lib/auth/test-mfa-bypass.ts` ahora
-  exige `ALLOW_MFA_TEST_BYPASS === 'true'` para que el bypass de cuentas
-  `@sigmetria.app` aplique. **Por defecto (y en producción, donde NO debe
-  setearse la env var) el bypass está DESACTIVADO** → el MFA real rige para todas
-  las cuentas. Ver §7 env vars. El login normal no se toca.
+- **Bypass de testing — FASE DE ARMADO (ACTIVO por defecto):** `lib/auth/test-mfa-bypass.ts`.
+  Mientras la app está en armado (sin suscriptores ni datos reales), el bypass está **ACTIVO por
+  defecto** y cubre las cuentas `@sigmetria.app` + una allowlist puntual (la cuenta del fundador;
+  ampliable con `MFA_BYPASS_EMAILS`). **KILL-SWITCH para compliance/launch:**
+  `ALLOW_MFA_TEST_BYPASS=false` → el MFA real por OTP se exige a TODAS las cuentas (Art. 4.5).
+  Ver §7. El login normal no se toca; el bypass del middleware no depende del email ni del cookie.
 - **Cambio de email:** `lib/actions/email-change.ts` (OTP al nuevo email,
   `email_change_challenges`, single-use, 15 min). Solo `full_access_main`.
   **Hueco abierto:** no revoca sesiones activas — ver §6.2.
@@ -252,8 +253,9 @@ solo `is_developer()`.
 
 | Env var | Default | Efecto |
 |---|---|---|
-| `ALLOW_MFA_TEST_BYPASS` | ausente / cualquier ≠ `'true'` | Bypass MFA de testing **DESACTIVADO** (MFA real rige). **No setear en producción.** |
-| `ALLOW_MFA_TEST_BYPASS=true` | — | Habilita el bypass SOLO para cuentas `@sigmetria.app` (entornos de testing/preview). |
+| `ALLOW_MFA_TEST_BYPASS` | ausente → **bypass ACTIVO** (fase de armado) | Bypass MFA activo para `@sigmetria.app` + allowlist. |
+| `ALLOW_MFA_TEST_BYPASS=false` | — | **KILL-SWITCH:** desactiva el bypass → MFA real por OTP para todas las cuentas. Setear antes del launch/compliance. |
+| `MFA_BYPASS_EMAILS` | ausente | Allowlist extra de emails (coma-separadas) que bypassean, además de `@sigmetria.app` y la cuenta del fundador hardcodeada. |
 
 ---
 
