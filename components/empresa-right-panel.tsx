@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Building2 } from 'lucide-react'
+import { EstablecimientoIcon } from '@/components/icons/establecimiento-icon'
 import { EmpresaStakeholdersTab } from '@/components/empresa-stakeholders-tab'
 
 interface Establecimiento {
@@ -108,7 +108,7 @@ export function EmpresaRightPanel({
         <>
           {!establecimientos.length ? (
             <div className="bg-surface-base rounded-xl border border-border-subtle p-12 text-center">
-              <Building2 size={40} strokeWidth={1.5} className="mx-auto text-text-tertiary mb-3" aria-hidden="true" />
+              <EstablecimientoIcon size={40} strokeWidth={1.5} className="mx-auto text-text-tertiary mb-3" aria-hidden="true" />
               <p className="text-text-secondary">No hay establecimientos registrados</p>
               {puedeEditar && (
                 <Link

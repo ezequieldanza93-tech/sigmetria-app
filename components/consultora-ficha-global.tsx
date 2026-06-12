@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import Link from 'next/link'
+import { EstablecimientoIcon } from '@/components/icons/establecimiento-icon'
 import {
   ChevronDown,
   ChevronRight,
@@ -11,7 +12,6 @@ import {
   Phone,
   Globe,
   Hash,
-  MapPin,
   ExternalLink,
   Users,
   Briefcase,
@@ -420,7 +420,7 @@ export function ConsultoraFichaGlobal({ consultora, empresas, usuario, userRole,
                             key={est.id}
                             className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-surface-base transition-colors"
                           >
-                            <MapPin size={14} className="text-text-tertiary shrink-0" aria-hidden="true" />
+                            <EstablecimientoIcon size={14} className="text-text-tertiary shrink-0" aria-hidden="true" />
                             <span className="text-sm text-text-secondary truncate flex-1">
                               {est.nombre}
                             </span>

@@ -6,7 +6,8 @@ import { cn } from '@/lib/utils'
 import { SubcontratistaInfoTab } from '@/components/subcontratista/subcontratista-info-tab'
 import { SubcontratistaDocumentosTab } from '@/components/subcontratista/subcontratista-documentos-tab'
 import { SubcontratistaEstablecimientosTab } from '@/components/subcontratista/subcontratista-establecimientos-tab'
-import { FileText, MapPin, Info } from 'lucide-react'
+import { FileText, Info } from 'lucide-react'
+import { EstablecimientoIcon } from '@/components/icons/establecimiento-icon'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -16,7 +17,7 @@ interface Props {
 const TABS = [
   { id: 'info', label: 'Información', icon: Info },
   { id: 'documentos', label: 'Documentos', icon: FileText },
-  { id: 'establecimientos', label: 'Establecimientos', icon: MapPin },
+  { id: 'establecimientos', label: 'Establecimientos', icon: EstablecimientoIcon },
 ] as const
 
 type Tab = (typeof TABS)[number]['id']

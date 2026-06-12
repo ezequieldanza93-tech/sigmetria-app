@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { ChevronDown, ChevronRight, Building2 } from 'lucide-react'
+import { ChevronDown, ChevronRight } from 'lucide-react'
+import { EstablecimientoIcon } from '@/components/icons/establecimiento-icon'
 import { SectoresTab } from '@/components/establecimiento/sectores-tab'
 import { StakeholdersTab } from '@/components/establecimiento/stakeholders-tab'
 import { AsistenciaTab } from '@/components/establecimiento/asistencia-tab'
@@ -166,7 +167,7 @@ export function EmpresaFichaEstablecimientos({ empresaId, establecimientos, canW
               <span className="text-text-tertiary shrink-0">
                 {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
               </span>
-              <Building2 size={16} className="text-sig-500 shrink-0" aria-hidden="true" />
+              <EstablecimientoIcon size={16} className="text-sig-500 shrink-0" aria-hidden="true" />
               <span className="font-medium text-text-primary truncate flex-1">{est.nombre}</span>
             </button>
 
