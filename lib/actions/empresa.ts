@@ -32,6 +32,16 @@ const empresaActionSchema = z.object({
   informacion_general: z.string().nullable().optional(),
 })
 
+// Mapea los errores de Zod a { campo: mensaje } para feedback por campo (cruz roja).
+function zodFieldErrors(error: z.ZodError): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const issue of error.issues) {
+    const key = String(issue.path[0] ?? '')
+    if (key && !out[key]) out[key] = issue.message
+  }
+  return out
+}
+
 function extractFields(formData: FormData): Record<string, string> {
   const fieldNames = [
     'razon_social', 'tipo_identidad_impositiva', 'cuit', 'rubro_id',
@@ -166,7 +176,7 @@ export async function createEmpresa(_prev: EmpresaFormState | null, formData: Fo
 
   const parsed = validateFormData(empresaActionSchema, formData)
   if (!parsed.success) {
-    return { success: false, error: formatZodErrors(parsed.error), fields }
+    return { success: false, error: formatZodErrors(parsed.error), fieldErrors: zodFieldErrors(parsed.error), fields }
   }
 
   const { latitude, longitude } = await resolveCoordenadas(supabase, fields)
@@ -230,7 +240,7 @@ export async function updateEmpresa(id: string, _prev: EmpresaFormState | null, 
 
   const parsed = validateFormData(empresaActionSchema, formData)
   if (!parsed.success) {
-    return { success: false, error: formatZodErrors(parsed.error), fields }
+    return { success: false, error: formatZodErrors(parsed.error), fieldErrors: zodFieldErrors(parsed.error), fields }
   }
 
   const logos = await processLogoUploads(

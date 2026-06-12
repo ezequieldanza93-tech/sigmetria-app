@@ -4,12 +4,14 @@ import { SelectHTMLAttributes, forwardRef } from 'react'
 interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   label?: string
   error?: string
+  /** true = campo válido → borde verde. Se ignora si hay error. */
+  valid?: boolean
   options: { value: string; label: string }[]
   placeholder?: string
 }
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
-  ({ className, label, error, id, options, placeholder, ...props }, ref) => {
+  ({ className, label, error, valid, id, options, placeholder, ...props }, ref) => {
     const selectId = id ?? label?.toLowerCase().replace(/\s+/g, '-')
     return (
       <div className="flex flex-col gap-1.5">
@@ -22,11 +24,13 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
         <select
           ref={ref}
           id={selectId}
+          aria-invalid={error ? true : undefined}
           className={cn(
             'w-full border border-border-default rounded-lg px-3 py-2 text-sm text-text-primary bg-surface-base',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)] focus-visible:border-transparent',
             'disabled:bg-surface-sunken disabled:text-text-tertiary',
             error && 'border-[var(--danger)] focus-visible:ring-[var(--danger)]',
+            valid && !error && 'border-green-500',
             className,
           )}
           {...props}

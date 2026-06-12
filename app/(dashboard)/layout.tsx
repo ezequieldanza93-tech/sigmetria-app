@@ -9,6 +9,7 @@ import { FloatingAvatar } from '@/components/layout/floating-avatar'
 import { ChatWidget } from '@/components/agent/chat-widget'
 import { GestionLauncher } from '@/components/gestion-launcher'
 import { BannerPastDueWrapper } from '@/components/billing/banner-past-due-wrapper'
+import { TrialCountdown } from '@/components/billing/trial-countdown'
 import { PreviewProvider } from '@/lib/contexts/preview-context'
 import { EffectiveRoleProvider } from '@/lib/contexts/effective-role-context'
 import { getEffectiveRole } from '@/lib/auth/effective-role'
@@ -51,14 +52,21 @@ export default async function DashboardLayout({ children }: { children: React.Re
   // Checkear si la suscripción está en past_due para mostrar banner
   let isPastDue = false
   let pastDueGraceUntil: string | null = null
+  let trialEndsAt: string | null = null
   if (membership) {
     try {
       const admin = createAdminClient()
       const { data: sub } = await admin
         .from('subscriptions')
-        .select('estado, past_due_grace_until')
+        .select('estado, past_due_grace_until, trial_ends_at')
         .eq('consultora_id', membership.consultora_id)
         .single()
+
+      if (sub?.estado === 'trialing' && sub.trial_ends_at) {
+        trialEndsAt = typeof sub.trial_ends_at === 'string'
+          ? sub.trial_ends_at
+          : sub.trial_ends_at.toISOString()
+      }
 
       if (sub?.estado === 'past_due') {
         isPastDue = true
@@ -102,6 +110,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       {isPastDue && (
         <BannerPastDueWrapper graceUntil={pastDueGraceUntil} />
       )}
+      {trialEndsAt && <TrialCountdown endsAt={trialEndsAt} />}
       <DevicePreviewPanel>{children}</DevicePreviewPanel>
       <ContextualBottomNav />
       <GestionLauncher />

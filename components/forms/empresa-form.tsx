@@ -32,8 +32,6 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
   const [localidades, setLocalidades] = useState<Localidad[]>([])
   const [rubros, setRubros] = useState<Rubro[]>([])
   const [selectedProvincia, setSelectedProvincia] = useState(empresa?.localidades?.provincia ?? '')
-  const [selectedArtId, setSelectedArtId] = useState(empresa?.art_id ?? '')
-  const [selectedRubroId, setSelectedRubroId] = useState(empresa?.rubro_id ?? '')
   const [showAddArt, setShowAddArt] = useState(false)
   const [newArtName, setNewArtName] = useState('')
   const [addArtPending, setAddArtPending] = useState(false)
@@ -41,19 +39,45 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
 
   const formRef = useRef<HTMLFormElement>(null)
   const fieldErrors = useMemo(() => (state as FormState | null)?.fieldErrors ?? {}, [state])
-  const values = (state as FormState | null)?.fields ?? {}
+  const submitted = state !== null
 
+  // ── Campos controlados: NO se borran al fallar la action (React 19 resetea los
+  //    inputs no controlados; estos persisten porque viven en estado). ───────────
+  const [form, setForm] = useState<Record<string, string>>(() => ({
+    razon_social: empresa?.razon_social ?? '',
+    tipo_identidad_impositiva: (empresa?.tipo_identidad_impositiva as string | undefined) ?? '',
+    cuit: empresa?.cuit ?? '',
+    rubro_id: (empresa?.rubro_id as string | undefined) ?? '',
+    domicilio: empresa?.domicilio ?? '',
+    localidad_id: (empresa?.localidad_id as string | undefined) ?? '',
+    codigo_postal: empresa?.codigo_postal ?? '',
+    latitude: empresa?.latitude != null ? String(empresa.latitude) : '',
+    longitude: empresa?.longitude != null ? String(empresa.longitude) : '',
+    art_id: (empresa?.art_id as string | undefined) ?? '',
+    art_numero_contrato: empresa?.art_numero_contrato ?? '',
+    informacion_general: (empresa?.informacion_general as string | undefined) ?? '',
+  }))
+
+  const set = (name: string) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+      setForm(f => ({ ...f, [name]: e.target.value }))
+
+  // Belt-and-suspenders: si la action devolvió los valores (error), re-aplicarlos.
   useEffect(() => {
-    const stateRubroId = (state as FormState | null)?.fields?.rubro_id
-    if (stateRubroId) setSelectedRubroId(stateRubroId)
+    const f = (state as FormState | null)?.fields
+    if (f && Object.keys(f).length > 0) setForm(prev => ({ ...prev, ...f }))
   }, [state])
+
+  // Feedback por campo: error (cruz roja) / valid (tilde verde, tras intentar enviar).
+  function fb(name: string) {
+    const error = fieldErrors[name]
+    return { error, valid: submitted && !error && !!form[name]?.trim() }
+  }
 
   useEffect(() => {
     if (Object.keys(fieldErrors).length > 0 && formRef.current) {
       const firstErrorField = Object.keys(fieldErrors)[0]
-      const firstErrorEl = formRef.current.querySelector<HTMLElement>(
-        `[name="${firstErrorField}"]`
-      )
+      const firstErrorEl = formRef.current.querySelector<HTMLElement>(`[name="${firstErrorField}"]`)
       firstErrorEl?.focus()
     }
   }, [fieldErrors])
@@ -88,13 +112,6 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
   const provincias = [...new Set(localidades.map(l => l.provincia))].sort()
   const localidadesFiltradas = localidades.filter(l => l.provincia === selectedProvincia)
 
-  function fieldValue(name: string): string {
-    if (name === 'rubro_id' && (values.rubro_id || empresa?.rubro_id)) {
-      return values.rubro_id ?? empresa?.rubro_id ?? ''
-    }
-    return values[name] ?? (empresa as Record<string, string | undefined>)?.[name] ?? ''
-  }
-
   async function handleAddArt() {
     if (!empresa?.id || !newArtName.trim()) return
     setAddArtPending(true)
@@ -107,7 +124,7 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
     }
     const newArt = result.data as { id: string; nombre: string }
     setArtOrgs(prev => [...prev, newArt].sort((a, b) => a.nombre.localeCompare(b.nombre)))
-    setSelectedArtId(newArt.id)
+    setForm(f => ({ ...f, art_id: newArt.id }))
     setNewArtName('')
     setShowAddArt(false)
   }
@@ -117,51 +134,62 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
       {state && !state.success && state.error && (
         <div role="alert" className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3">
           {state.error}
+          {Object.keys(fieldErrors).length > 0 && (
+            <span className="block mt-1 text-xs">Revisá los campos marcados en rojo. Lo que cargaste bien quedó guardado. ✓</span>
+          )}
         </div>
       )}
 
       <Input
         label="Razón Social"
         name="razon_social"
-        defaultValue={fieldValue('razon_social')}
+        value={form.razon_social}
+        onChange={set('razon_social')}
         required
         placeholder="Empresa S.A."
-        error={fieldErrors.razon_social}
+        {...fb('razon_social')}
       />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Select
           label="Tipo identidad impositiva"
           name="tipo_identidad_impositiva"
-          defaultValue={fieldValue('tipo_identidad_impositiva')}
+          value={form.tipo_identidad_impositiva}
+          onChange={set('tipo_identidad_impositiva')}
           options={[
             { value: 'CUIT', label: 'CUIT' },
             { value: 'CUIL', label: 'CUIL' },
             { value: 'CDI', label: 'CDI' },
           ]}
           placeholder="—"
+          {...fb('tipo_identidad_impositiva')}
         />
         <Input
           label="Código único impositivo"
           name="cuit"
-          defaultValue={fieldValue('cuit')}
+          value={form.cuit}
+          onChange={set('cuit')}
           placeholder="20-12345678-9"
+          {...fb('cuit')}
         />
         <Select
           label="Rubro"
           name="rubro_id"
-          value={selectedRubroId}
-          onChange={e => setSelectedRubroId(e.target.value)}
+          value={form.rubro_id}
+          onChange={set('rubro_id')}
           options={rubros.map(r => ({ value: r.id, label: r.nombre }))}
           placeholder="Seleccionar rubro..."
+          {...fb('rubro_id')}
         />
       </div>
 
       <Input
         label="Domicilio"
         name="domicilio"
-        defaultValue={fieldValue('domicilio')}
+        value={form.domicilio}
+        onChange={set('domicilio')}
         placeholder="Av. Corrientes 1234"
+        {...fb('domicilio')}
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -175,33 +203,41 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
         <Select
           label="Localidad"
           name="localidad_id"
-          defaultValue={fieldValue('localidad_id')}
+          value={form.localidad_id}
+          onChange={set('localidad_id')}
           options={localidadesFiltradas.map(l => ({ value: l.id, label: l.nombre }))}
           placeholder={selectedProvincia ? 'Seleccionar localidad...' : 'Elegí provincia primero'}
           disabled={!selectedProvincia}
+          {...fb('localidad_id')}
         />
       </div>
 
       <Input
         label="Código Postal"
         name="codigo_postal"
-        defaultValue={fieldValue('codigo_postal')}
+        value={form.codigo_postal}
+        onChange={set('codigo_postal')}
         placeholder="1001"
         className="w-32"
+        {...fb('codigo_postal')}
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Input
           label="Latitud"
           name="latitude"
-          defaultValue={fieldValue('latitude')}
+          value={form.latitude}
+          onChange={set('latitude')}
           placeholder="-34.6037"
+          {...fb('latitude')}
         />
         <Input
           label="Longitud"
           name="longitude"
-          defaultValue={fieldValue('longitude')}
+          value={form.longitude}
+          onChange={set('longitude')}
           placeholder="-58.3816"
+          {...fb('longitude')}
         />
       </div>
 
@@ -210,10 +246,11 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
           <Select
             label="ART"
             name="art_id"
-            value={selectedArtId}
-            onChange={e => setSelectedArtId(e.target.value)}
+            value={form.art_id}
+            onChange={set('art_id')}
             options={artOrgs.map(o => ({ value: o.id, label: o.nombre }))}
             placeholder="Seleccionar ART..."
+            {...fb('art_id')}
           />
           {empresa?.id && !showAddArt && (
             <button
@@ -259,8 +296,10 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
         <Input
           label="Nº de contrato ART"
           name="art_numero_contrato"
-          defaultValue={fieldValue('art_numero_contrato')}
+          value={form.art_numero_contrato}
+          onChange={set('art_numero_contrato')}
           placeholder="Nº de contrato"
+          {...fb('art_numero_contrato')}
         />
       </div>
 
@@ -290,7 +329,8 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
         <textarea
           id="empresa-informacion-general"
           name="informacion_general"
-          defaultValue={fieldValue('informacion_general')}
+          value={form.informacion_general}
+          onChange={set('informacion_general')}
           rows={3}
           className="w-full border border-border-default rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500 focus:border-transparent resize-none"
           placeholder="Descripción, notas o información adicional de la empresa…"
