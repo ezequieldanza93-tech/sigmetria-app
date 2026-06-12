@@ -181,9 +181,16 @@ export async function createEmpresa(_prev: EmpresaFormState | null, formData: Fo
 
   const { latitude, longitude } = await resolveCoordenadas(supabase, fields)
 
-  const { data: inserted, error } = await supabase
+  // Id generado en el server: insertamos SIN RETURNING (.select()) a propósito.
+  // El RETURNING dispararía la policy de SELECT (has_empresa_read_access, STABLE),
+  // que reconsulta empresas con el snapshot previo al INSERT → no ve la fila nueva
+  // → rechaza con 42501. El WITH CHECK (can_create_empresa) sigue siendo el gate.
+  const empresaId = crypto.randomUUID()
+
+  const { error } = await supabase
     .from('empresas')
     .insert({
+      id: empresaId,
       consultora_id: membership!.consultora_id,
       razon_social: fields.razon_social.trim(),
       tipo_identidad_impositiva: fields.tipo_identidad_impositiva || null,
@@ -198,14 +205,12 @@ export async function createEmpresa(_prev: EmpresaFormState | null, formData: Fo
       art_numero_contrato: fields.art_numero_contrato || null,
       informacion_general: fields.informacion_general || null,
     })
-    .select('id')
-    .single()
 
   if (error) return { success: false, error: error.message, fields }
 
   const logos = await processLogoUploads(
     membership!.consultora_id,
-    inserted.id,
+    empresaId,
     formData,
     { logo_small_url: null, logo_destacado_url: null },
   )
@@ -217,7 +222,7 @@ export async function createEmpresa(_prev: EmpresaFormState | null, formData: Fo
         ...(logos.logo_small_url !== undefined && { logo_small_url: logos.logo_small_url }),
         ...(logos.logo_destacado_url !== undefined && { logo_destacado_url: logos.logo_destacado_url }),
       })
-      .eq('id', inserted.id)
+      .eq('id', empresaId)
   }
 
   revalidatePath('/dashboard/empresas')
