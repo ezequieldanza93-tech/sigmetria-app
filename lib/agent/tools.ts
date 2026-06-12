@@ -37,9 +37,12 @@ Parámetros: razon_social (obligatorio), cuit, domicilio, email, telefono (opcio
       if (!user) return JSON.stringify({ success: false, error: 'No autenticado' })
       const { data: membership } = await supabase.from('consultoras_members').select('consultora_id').eq('user_id', user.id).eq('is_active', true).maybeSingle()
       if (!membership) return JSON.stringify({ success: false, error: 'Sin consultora' })
-      const { data, error } = await supabase.from('empresas').insert({ razon_social, cuit, domicilio, email, telefono, consultora_id: membership.consultora_id }).select('id').single()
+      // Id generado + insert SIN RETURNING: el .select() dispararía la policy de
+      // SELECT (has_empresa_read_access, STABLE) sobre la fila nueva → 42501.
+      const empresaId = crypto.randomUUID()
+      const { error } = await supabase.from('empresas').insert({ id: empresaId, razon_social, cuit, domicilio, email, telefono, consultora_id: membership.consultora_id })
       if (error) return JSON.stringify({ success: false, error: error.message })
-      return JSON.stringify({ success: true, id: data.id, message: `Empresa "${razon_social}" creada correctamente` })
+      return JSON.stringify({ success: true, id: empresaId, message: `Empresa "${razon_social}" creada correctamente` })
     },
   }),
 

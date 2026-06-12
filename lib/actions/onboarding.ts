@@ -134,15 +134,16 @@ export async function createOnboardingEmpresa(
 
   const cuit = (formData.get('cuit') as string)?.trim() || null
 
-  const { data, error } = await supabase
+  // Id generado en server + insert SIN RETURNING (.select()): el RETURNING dispara
+  // la policy de SELECT (has_empresa_read_access, STABLE) sobre la fila nueva → 42501.
+  const empresaId = crypto.randomUUID()
+  const { error } = await supabase
     .from('empresas')
-    .insert({ consultora_id: membership.consultora_id, razon_social: razonSocial, cuit })
-    .select('id')
-    .single()
+    .insert({ id: empresaId, consultora_id: membership.consultora_id, razon_social: razonSocial, cuit })
   if (error) return { success: false, error: error.message }
 
   revalidatePath('/dashboard/empresas')
-  return { success: true, data: { id: data.id } }
+  return { success: true, data: { id: empresaId } }
 }
 
 /**
@@ -163,15 +164,15 @@ export async function createOnboardingEstablecimiento(
 
   const domicilio = (formData.get('domicilio') as string)?.trim() || null
 
-  const { data, error } = await supabase
+  // Id generado + insert SIN RETURNING (mismo motivo: has_establecimiento_read_access STABLE).
+  const establecimientoId = crypto.randomUUID()
+  const { error } = await supabase
     .from('establecimientos')
-    .insert({ empresa_id: empresaId, nombre, domicilio })
-    .select('id')
-    .single()
+    .insert({ id: establecimientoId, empresa_id: empresaId, nombre, domicilio })
   if (error) return { success: false, error: error.message }
 
   const sectores = SECTORES_PREDEFINIDOS.map(nombreSector => ({
-    establecimiento_id: data.id,
+    establecimiento_id: establecimientoId,
     nombre: nombreSector,
     es_custom: false,
     cantidad_trabajadores: 0,
@@ -179,5 +180,5 @@ export async function createOnboardingEstablecimiento(
   await supabase.from('establecimientos_sectores').insert(sectores)
 
   revalidatePath(`/dashboard/empresas/${empresaId}`)
-  return { success: true, data: { id: data.id } }
+  return { success: true, data: { id: establecimientoId } }
 }

@@ -186,9 +186,16 @@ export async function createEstablecimiento(
 
   const { latitud, longitud } = await parseUbicacion(ubicacion_gmaps ?? null, domicilio ?? null)
 
-  const { data, error } = await supabase
+  // Id generado en el server + insert SIN RETURNING (.select()) a propósito:
+  // el RETURNING dispara la policy de SELECT (has_establecimiento_read_access,
+  // STABLE) que reconsulta con el snapshot previo al INSERT y no ve la fila nueva
+  // → 42501. El WITH CHECK (has_empresa_write_access) sigue siendo el gate.
+  const establecimientoId = crypto.randomUUID()
+
+  const { error } = await supabase
     .from('establecimientos')
     .insert({
+      id: establecimientoId,
       empresa_id: empresaId,
       nombre,
       tipo_id: tipo_id ?? null,
@@ -202,8 +209,6 @@ export async function createEstablecimiento(
       aplica_iso_45001: aplica_iso_45001 === 'on',
       cantidad_trabajadores: cantidad_trabajadores ?? null,
     })
-    .select('id')
-    .single()
 
   if (error) return { success: false, error: error.message }
 
@@ -215,16 +220,16 @@ export async function createEstablecimiento(
 
   const foto = formData.get('foto') as File | null
   const photo_site = foto && empresaConsultora?.consultora_id
-    ? await uploadFoto(supabase, foto, empresaConsultora.consultora_id, data.id)
+    ? await uploadFoto(supabase, foto, empresaConsultora.consultora_id, establecimientoId)
     : null
   if (photo_site) {
-    await supabase.from('establecimientos').update({ photo_site }).eq('id', data.id)
+    await supabase.from('establecimientos').update({ photo_site }).eq('id', establecimientoId)
   }
 
   if (empresaConsultora?.consultora_id) {
     const plans = await processFloorPlans(
       empresaConsultora.consultora_id,
-      data.id,
+      establecimientoId,
       formData,
       { plano_url: null, floor_plan_cad_url: null },
     )
@@ -236,15 +241,15 @@ export async function createEstablecimiento(
           ...(plans.plano_url !== undefined && { plano_url: plans.plano_url }),
           ...(plans.floor_plan_cad_url !== undefined && { floor_plan_cad_url: plans.floor_plan_cad_url }),
         })
-        .eq('id', data.id)
+        .eq('id', establecimientoId)
     }
   }
 
-  await saveHorarios(supabase, data.id, formData)
-  await saveRespuestas(supabase, data.id, formData)
+  await saveHorarios(supabase, establecimientoId, formData)
+  await saveRespuestas(supabase, establecimientoId, formData)
 
   const sectores = SECTORES_PREDEFINIDOS.map(nombre => ({
-    establecimiento_id: data.id,
+    establecimiento_id: establecimientoId,
     nombre,
     es_custom: false,
     cantidad_trabajadores: 0,
@@ -252,7 +257,7 @@ export async function createEstablecimiento(
   await supabase.from('establecimientos_sectores').insert(sectores)
 
   revalidatePath(`/dashboard/empresas/${empresaId}`)
-  redirect(`/dashboard/empresas/${empresaId}/establecimientos/${data.id}`)
+  redirect(`/dashboard/empresas/${empresaId}/establecimientos/${establecimientoId}`)
 }
 
 export async function updateEstablecimiento(
