@@ -303,26 +303,15 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <FileUploadInput
-          name="logo_small"
-          label="Logo pequeño"
-          accept="image/png,image/jpeg,image/webp,image/svg+xml"
-          maxSizeMB={2}
-          currentUrl={publicAssetUrl('logos', empresa?.logo_small_url)}
-          helpText="PNG, JPG, WEBP o SVG. Máx 2 MB."
-          kind="image"
-        />
-        <FileUploadInput
-          name="logo_destacado"
-          label="Logo destacado"
-          accept="image/png,image/jpeg,image/webp,image/svg+xml"
-          maxSizeMB={2}
-          currentUrl={publicAssetUrl('logos', empresa?.logo_destacado_url)}
-          helpText="PNG, JPG, WEBP o SVG. Máx 2 MB."
-          kind="image"
-        />
-      </div>
+      <FileUploadInput
+        name="logo_destacado"
+        label="Logo"
+        accept="image/png,image/jpeg,image/webp,image/svg+xml"
+        maxSizeMB={2}
+        currentUrl={publicAssetUrl('logos', empresa?.logo_destacado_url ?? empresa?.logo_small_url)}
+        helpText="PNG, JPG, WEBP o SVG. Máx 2 MB. La app lo adapta a cada tamaño."
+        kind="image"
+      />
 
       <div>
         <label htmlFor="empresa-informacion-general" className="text-sm font-medium text-text-secondary block mb-1">Información general</label>

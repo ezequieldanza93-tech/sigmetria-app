@@ -95,6 +95,7 @@ declare module 'lucide-react' {
   export const Moon: Icon
   export const Network: Icon
   export const Package: Icon
+  export const Paperclip: Icon
   export const PenLine: Icon
   export const Pencil: Icon
   export const Phone: Icon

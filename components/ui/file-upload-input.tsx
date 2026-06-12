@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react'
 import NextImage from 'next/image'
-import { Upload, X, FileText, Image as ImageIcon, ExternalLink, Camera } from 'lucide-react'
+import { X, FileText, Image as ImageIcon, ExternalLink, Camera, Paperclip } from 'lucide-react'
 import { useIsMobile } from '@/lib/hooks/use-is-mobile'
 
 interface Props {
@@ -162,13 +162,16 @@ export function FileUploadInput({
 
       <div className="flex flex-wrap items-center gap-2">
         {(() => {
+          // Botones de ícono, sin texto: clip = adjuntar archivo, cámara = sacar foto.
           const btnClass =
-            'inline-flex items-center gap-2 px-3 py-2 bg-surface-elevated border border-border-default rounded-lg text-sm text-text-primary hover:bg-surface-sunken cursor-pointer transition-colors'
+            'inline-flex items-center justify-center w-10 h-10 bg-surface-elevated border border-border-default rounded-lg text-text-primary hover:bg-surface-sunken cursor-pointer transition-colors'
+          const elegirLabel = isImage
+            ? 'Adjuntar imagen'
+            : showCurrent || showNew ? 'Cambiar archivo' : 'Adjuntar archivo'
 
           const elegir = (
-            <label key="elegir" htmlFor={`fileinp_${name}`} className={btnClass}>
-              {isImage ? <ImageIcon size={16} aria-hidden="true" /> : <Upload size={16} aria-hidden="true" />}
-              {isImage ? 'Elegir foto' : showCurrent || showNew ? 'Cambiar archivo' : 'Seleccionar archivo'}
+            <label key="elegir" htmlFor={`fileinp_${name}`} className={btnClass} title={elegirLabel} aria-label={elegirLabel}>
+              <Paperclip size={18} aria-hidden="true" />
             </label>
           )
 
@@ -178,9 +181,10 @@ export function FileUploadInput({
               type="button"
               onClick={() => captureRef.current?.click()}
               className={btnClass}
+              title="Sacar foto"
+              aria-label="Sacar foto"
             >
-              <Camera size={16} aria-hidden="true" />
-              Sacar foto
+              <Camera size={18} aria-hidden="true" />
             </button>
           )
 
