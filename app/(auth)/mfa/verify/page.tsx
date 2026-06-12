@@ -78,6 +78,9 @@ export default function MfaVerifyPage() {
           </h1>
           <p className="text-text-secondary text-sm mt-2">
             Te enviamos un código de 6 dígitos a tu email registrado.
+            <span className="block mt-1 text-text-tertiary">
+              Si no lo ves en unos minutos, revisá la carpeta de <strong>spam</strong> o correo no deseado.
+            </span>
           </p>
         </div>
 
@@ -90,7 +93,7 @@ export default function MfaVerifyPage() {
             {emailSent && (
               <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/50 border border-green-200 dark:border-green-900 rounded-lg px-3 py-2.5 mb-4">
                 <CheckCircle2 size={14} className="flex-shrink-0" aria-hidden="true" />
-                Código enviado. Revisá tu bandeja de entrada.
+                Código enviado. Revisá tu bandeja de entrada (y la carpeta de spam si no lo ves).
               </div>
             )}
 
