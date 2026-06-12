@@ -3,9 +3,10 @@ import { createClient } from '@/lib/supabase/server'
 import { getSimulatedRole, type SwitchableRole } from '@/lib/actions/change-role'
 import type { UserRole, SystemRole } from '@/lib/types'
 
-// Emails autorizados a simular roles (además de super admins y system_role='developer').
+// Emails autorizados a simular roles, además de super admins y system_role='developer'.
 // El rol simulado vive en la cookie httpOnly `__role_sim` (ver lib/actions/change-role.ts).
-const DEV_EMAILS = new Set<string>(['ezequieldanza93@gmail.com'])
+// (Se sacó la cuenta del fundador: ahora prueba como CLIENTE real, sin el simulador de roles.)
+const DEV_EMAILS = new Set<string>([])
 
 export interface EffectiveRole {
   userId: string
