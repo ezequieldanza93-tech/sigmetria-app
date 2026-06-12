@@ -20,9 +20,9 @@ import { createMfaCookie, MFA_COOKIE_NAME, MFA_COOKIE_TTL_MS } from '@/lib/mfa-c
 const TEST_DOMAIN_SUFFIX = '@sigmetria.app'
 
 // Cuentas puntuales (sin dominio @sigmetria.app) que también bypassean en fase de
-// armado. La del fundador va hardcodeada para no depender de env; se pueden sumar
-// más con `MFA_BYPASS_EMAILS` (coma-separadas). TEMPORAL — quitar antes del launch.
-const EXTRA_BYPASS_EMAILS = ['ezequieldanza93@gmail.com']
+// armado. Se suman con `MFA_BYPASS_EMAILS` (coma-separadas). TEMPORAL.
+// (La cuenta del fundador se sacó: ahora quiere recibir el 2FA real al mail.)
+const EXTRA_BYPASS_EMAILS: string[] = []
 
 function extraBypassEmails(): string[] {
   const fromEnv = (process.env.MFA_BYPASS_EMAILS ?? '')
