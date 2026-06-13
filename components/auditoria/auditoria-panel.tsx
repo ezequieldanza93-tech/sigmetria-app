@@ -12,19 +12,11 @@ import { Select } from '@/components/ui/select'
 import { useToast } from '@/lib/hooks/use-toast'
 import {
   verificarCadena, getHistorialEntidad, getFlujoPorTrace,
+  listAuditEmpresas, listAuditEstablecimientos,
+  listAuditRecorridas, listAuditObservaciones,
   type VerificacionCadena, type AuditTrailRow,
+  type AuditOpcion, type AuditOpcionLabel,
 } from '@/lib/actions/auditoria'
-
-// Tablas auditables (las que el trigger de trazabilidad SRT registra).
-const TABLAS_AUDITABLES: { value: string; label: string }[] = [
-  { value: 'gestiones_registros', label: 'Registros de gestiones' },
-  { value: 'gestiones_observaciones', label: 'Observaciones de gestiones' },
-  { value: 'gestiones_establecimientos', label: 'Gestiones por establecimiento' },
-  { value: 'firmas', label: 'Firmas' },
-  { value: 'empresas', label: 'Empresas' },
-  { value: 'establecimientos', label: 'Establecimientos' },
-  { value: 'incidentes', label: 'Incidentes' },
-]
 
 const ACCION_BADGE: Record<string, string> = {
   INSERT: 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400',
@@ -182,12 +174,35 @@ function CadenaTab() {
 
 // ── Tab 2: Historial de entidad ──────────────────────────────────────────────
 
+// ¿Qué querés auditar? — define la tabla auditable destino y, si hace falta,
+// un selector adicional (recorrida / observación).
+type Objetivo = 'empresa' | 'establecimiento' | 'recorrida' | 'observacion'
+
+const OBJETIVOS: { value: Objetivo; label: string }[] = [
+  { value: 'empresa', label: 'La empresa' },
+  { value: 'establecimiento', label: 'El establecimiento' },
+  { value: 'recorrida', label: 'Una recorrida' },
+  { value: 'observacion', label: 'Una observación' },
+]
+
+// El objetivo elegido se traduce a la tabla auditable real del audit_log.
+const TABLA_POR_OBJETIVO: Record<Objetivo, string> = {
+  empresa: 'empresas',
+  establecimiento: 'establecimientos',
+  recorrida: 'gestiones_registros',
+  observacion: 'gestiones_observaciones',
+}
+
 function HistorialTab({ prefillTabla = '', prefillId = '' }: { prefillTabla?: string; prefillId?: string }) {
-  const [tabla, setTabla] = useState(prefillTabla)
-  const [registroId, setRegistroId] = useState(prefillId)
   const [isPending, startTransition] = useTransition()
   const [filas, setFilas] = useState<AuditTrailRow[] | null>(null)
   const { error: toastError } = useToast()
+
+  // Si llegamos con prefill (botón contextual "Ver historial"), mostramos el
+  // historial directo sin obligar a pasar por la cascada. El auditor puede
+  // pulsar "Buscar otro registro" para entrar al modo manual por nombres.
+  const tienePrefill = !!(prefillTabla && prefillId.trim())
+  const [modoManual, setModoManual] = useState(!tienePrefill)
 
   function buscar(tablaArg: string, registroIdArg: string) {
     startTransition(async () => {
@@ -201,15 +216,11 @@ function HistorialTab({ prefillTabla = '', prefillId = '' }: { prefillTabla?: st
     })
   }
 
-  function handleBuscar() {
-    buscar(tabla, registroId)
-  }
-
   // Prefill por URL: si llegamos con tabla + id, disparamos la búsqueda al montar.
   const autoBuscado = useRef(false)
   useEffect(() => {
     if (autoBuscado.current) return
-    if (prefillTabla && prefillId.trim()) {
+    if (tienePrefill) {
       autoBuscado.current = true
       buscar(prefillTabla, prefillId)
     }
@@ -218,33 +229,206 @@ function HistorialTab({ prefillTabla = '', prefillId = '' }: { prefillTabla?: st
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-border-default p-5 space-y-4">
-        <p className="text-xs text-text-tertiary max-w-2xl">
-          Reconstruí el historial inmutable de un registro puntual: cada evento con su fecha,
-          quién lo hizo y qué cambió (antes → después).
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_auto] gap-3 sm:items-end">
-          <Select
-            label="Tabla"
-            placeholder="Elegí una tabla…"
-            options={TABLAS_AUDITABLES}
-            value={tabla}
-            onChange={e => setTabla(e.target.value)}
-          />
-          <Input
-            label="ID del registro"
-            placeholder="00000000-0000-0000-0000-000000000000"
-            value={registroId}
-            onChange={e => setRegistroId(e.target.value)}
-          />
-          <Button onClick={handleBuscar} disabled={isPending || !tabla || !registroId.trim()}>
-            {isPending ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />}
-            Buscar
-          </Button>
+      {modoManual ? (
+        <CascadaSelector
+          isPending={isPending}
+          onResolver={(tabla, id) => buscar(tabla, id)}
+        />
+      ) : (
+        <div className="rounded-xl border border-border-default p-5 flex items-center justify-between gap-4">
+          <p className="text-xs text-text-tertiary">
+            Mostrando el historial del registro abierto desde la pantalla anterior.
+          </p>
+          <button
+            type="button"
+            onClick={() => { setModoManual(true); setFilas(null) }}
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-brand-primary hover:underline shrink-0"
+          >
+            <Search size={13} />
+            Buscar otro registro
+          </button>
         </div>
-      </div>
+      )}
 
       <EventosTabla filas={filas} isPending={isPending} mostrarTabla={false} />
+    </div>
+  )
+}
+
+/**
+ * Cascada de selección por NOMBRES para que el auditor llegue a un registro sin
+ * tipear ni ver un UUID: Empresa → Establecimiento → ¿Qué auditar? →
+ * (Recorrida | Observación). El id resuelto se le pasa a onResolver junto con
+ * la tabla auditable; el auditor nunca lo ve.
+ */
+function CascadaSelector({
+  isPending, onResolver,
+}: {
+  isPending: boolean
+  onResolver: (tabla: string, id: string) => void
+}) {
+  const { error: toastError } = useToast()
+
+  const [empresas, setEmpresas] = useState<AuditOpcion[]>([])
+  const [establecimientos, setEstablecimientos] = useState<AuditOpcion[]>([])
+  const [recorridas, setRecorridas] = useState<AuditOpcionLabel[]>([])
+  const [observaciones, setObservaciones] = useState<AuditOpcionLabel[]>([])
+
+  const [empresaId, setEmpresaId] = useState('')
+  const [establecimientoId, setEstablecimientoId] = useState('')
+  const [objetivo, setObjetivo] = useState<Objetivo | ''>('')
+  const [registroFinalId, setRegistroFinalId] = useState('')
+
+  const [cargandoEmpresas, setCargandoEmpresas] = useState(true)
+  const [cargandoEstabs, setCargandoEstabs] = useState(false)
+  const [cargandoLista, setCargandoLista] = useState(false)
+
+  // Carga inicial de empresas.
+  useEffect(() => {
+    let activo = true
+    listAuditEmpresas().then(r => {
+      if (!activo) return
+      if (r.success) setEmpresas(r.data)
+      else toastError(r.error)
+      setCargandoEmpresas(false)
+    })
+    return () => { activo = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Al elegir empresa: reseteamos lo de abajo y cargamos sus establecimientos.
+  function handleEmpresa(id: string) {
+    setEmpresaId(id)
+    setEstablecimientoId('')
+    setObjetivo('')
+    setRegistroFinalId('')
+    setEstablecimientos([])
+    setRecorridas([])
+    setObservaciones([])
+    if (!id) return
+    setCargandoEstabs(true)
+    listAuditEstablecimientos(id).then(r => {
+      if (r.success) setEstablecimientos(r.data)
+      else toastError(r.error)
+      setCargandoEstabs(false)
+    })
+  }
+
+  function handleEstablecimiento(id: string) {
+    setEstablecimientoId(id)
+    setObjetivo('')
+    setRegistroFinalId('')
+    setRecorridas([])
+    setObservaciones([])
+  }
+
+  // Al elegir el objetivo: si es recorrida/observación, cargamos su lista.
+  function handleObjetivo(value: string) {
+    const obj = value as Objetivo | ''
+    setObjetivo(obj)
+    setRegistroFinalId('')
+    setRecorridas([])
+    setObservaciones([])
+    if (obj === 'recorrida' && establecimientoId) {
+      setCargandoLista(true)
+      listAuditRecorridas(establecimientoId).then(r => {
+        if (r.success) setRecorridas(r.data)
+        else toastError(r.error)
+        setCargandoLista(false)
+      })
+    } else if (obj === 'observacion' && establecimientoId) {
+      setCargandoLista(true)
+      listAuditObservaciones(establecimientoId).then(r => {
+        if (r.success) setObservaciones(r.data)
+        else toastError(r.error)
+        setCargandoLista(false)
+      })
+    }
+  }
+
+  // Resuelve la tabla + id final según el objetivo y dispara la búsqueda.
+  function verHistorial() {
+    if (!objetivo) return
+    const tabla = TABLA_POR_OBJETIVO[objetivo]
+    const id =
+      objetivo === 'empresa' ? empresaId
+      : objetivo === 'establecimiento' ? establecimientoId
+      : registroFinalId
+    if (!id) return
+    onResolver(tabla, id)
+  }
+
+  const necesitaSeleccionFinal = objetivo === 'recorrida' || objetivo === 'observacion'
+  const puedeVer =
+    !!objetivo &&
+    (objetivo === 'empresa' ? !!empresaId
+      : objetivo === 'establecimiento' ? !!establecimientoId
+      : !!registroFinalId)
+
+  return (
+    <div className="rounded-xl border border-border-default p-5 space-y-4">
+      <p className="text-xs text-text-tertiary max-w-2xl">
+        Llegá al registro navegando por nombres: elegí la empresa, el establecimiento y
+        qué querés auditar. Reconstruimos el historial inmutable —cada evento con su fecha,
+        quién lo hizo y qué cambió— sin que tengas que conocer ningún identificador interno.
+      </p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <Select
+          label="Empresa"
+          placeholder={cargandoEmpresas ? 'Cargando empresas…' : 'Elegí una empresa…'}
+          options={empresas.map(e => ({ value: e.id, label: e.nombre }))}
+          value={empresaId}
+          disabled={cargandoEmpresas}
+          onChange={e => handleEmpresa(e.target.value)}
+        />
+        <Select
+          label="Establecimiento"
+          placeholder={
+            !empresaId ? 'Elegí primero una empresa'
+            : cargandoEstabs ? 'Cargando establecimientos…'
+            : establecimientos.length === 0 ? 'Sin establecimientos'
+            : 'Elegí un establecimiento…'
+          }
+          options={establecimientos.map(e => ({ value: e.id, label: e.nombre }))}
+          value={establecimientoId}
+          disabled={!empresaId || cargandoEstabs}
+          onChange={e => handleEstablecimiento(e.target.value)}
+        />
+      </div>
+
+      <Select
+        label="¿Qué querés auditar?"
+        placeholder={!establecimientoId ? 'Elegí primero un establecimiento' : 'Elegí qué auditar…'}
+        options={OBJETIVOS.map(o => ({ value: o.value, label: o.label }))}
+        value={objetivo}
+        disabled={!establecimientoId}
+        onChange={e => handleObjetivo(e.target.value)}
+      />
+
+      {necesitaSeleccionFinal && (
+        <Select
+          label={objetivo === 'recorrida' ? 'Recorrida' : 'Observación'}
+          placeholder={
+            cargandoLista ? 'Cargando…'
+            : (objetivo === 'recorrida' ? recorridas : observaciones).length === 0
+              ? `Sin ${objetivo === 'recorrida' ? 'recorridas' : 'observaciones'} registradas`
+              : `Elegí una ${objetivo === 'recorrida' ? 'recorrida' : 'observación'}…`
+          }
+          options={(objetivo === 'recorrida' ? recorridas : observaciones)
+            .map(o => ({ value: o.id, label: o.label }))}
+          value={registroFinalId}
+          disabled={cargandoLista}
+          onChange={e => setRegistroFinalId(e.target.value)}
+        />
+      )}
+
+      <div>
+        <Button onClick={verHistorial} disabled={isPending || !puedeVer}>
+          {isPending ? <Loader2 size={15} className="animate-spin" /> : <History size={15} />}
+          Ver historial
+        </Button>
+      </div>
     </div>
   )
 }
@@ -287,9 +471,15 @@ function FlujoTab({ prefillTrace = '' }: { prefillTrace?: string }) {
   return (
     <div className="space-y-4">
       <div className="rounded-xl border border-border-default p-5 space-y-4">
+        <div className="inline-flex items-center gap-1.5 rounded-full bg-surface-elevated px-2.5 py-1 text-[11px] font-medium text-text-tertiary">
+          <Network size={12} />
+          Modo avanzado
+        </div>
         <p className="text-xs text-text-tertiary max-w-2xl">
           Un <span className="font-medium">trace_id</span> agrupa todos los eventos de una misma
           operación, aunque toquen varias tablas. Reconstruí el flujo completo en orden cronológico.
+          {' '}Esta vista es técnica: para una auditoría habitual usá el <span className="font-medium">Historial
+          de entidad</span> (navegás por nombres) o los botones “Ver historial” de cada pantalla.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto] gap-3 sm:items-end">
           <Input
