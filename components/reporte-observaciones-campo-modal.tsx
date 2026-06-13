@@ -119,7 +119,7 @@ export function ReporteObservacionesCampoButton({ establecimientoId }: { estable
         className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-brand-primary text-white hover:opacity-90 transition-opacity"
       >
         <FileText size={14} />
-        Emitir reporte de observaciones de campo
+        Emitir reporte de observaciones
       </button>
       {open && <ReporteObservacionesCampoModal establecimientoId={establecimientoId} onClose={() => setOpen(false)} />}
     </>
@@ -228,8 +228,8 @@ function ReporteObservacionesCampoModal({
   }
 
   const filename = data
-    ? `reporte-observaciones-campo-${slug(data.encabezado.establecimiento)}-${slug(periodoLabel)}.pdf`
-    : 'reporte-observaciones-campo.pdf'
+    ? `reporte-observaciones-${slug(data.encabezado.establecimiento)}-${slug(periodoLabel)}.pdf`
+    : 'reporte-observaciones.pdf'
 
   /** Genera el PDF del nodo una sola vez y lo cachea. */
   async function asegurarPdf(): Promise<Blob | null> {
@@ -301,7 +301,7 @@ function ReporteObservacionesCampoModal({
   }
 
   return (
-    <Modal open title="Reporte de observaciones de campo" onClose={onClose} size="full">
+    <Modal open title="Reporte de observaciones" onClose={onClose} size="full">
       <div className="space-y-4 max-h-[85vh] overflow-y-auto pr-1">
         {error && (
           <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-3 py-2">{error}</div>
@@ -468,7 +468,7 @@ const ReporteDocumento = forwardRef<HTMLDivElement, {
     <div ref={ref} className="bg-white text-gray-900" style={{ padding: '10mm', fontSize: '12px', lineHeight: 1.5 }}>
       {/* Encabezado */}
       <div style={{ borderBottom: '2px solid #111827', paddingBottom: '10px', marginBottom: '14px' }}>
-        <h1 style={{ fontSize: '18px', fontWeight: 700, margin: 0 }}>Reporte de Observaciones de Campo</h1>
+        <h1 style={{ fontSize: '18px', fontWeight: 700, margin: 0 }}>Reporte de Observaciones</h1>
         <table style={{ width: '100%', marginTop: '8px', fontSize: '12px' }}>
           <tbody>
             <tr>

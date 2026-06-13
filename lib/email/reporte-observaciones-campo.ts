@@ -40,7 +40,7 @@ export async function sendReporteObservacionesCampoEmail({
 
   const resend = new Resend(process.env.RESEND_API_KEY)
 
-  const subject = `[Sigmetría] Reporte de observaciones de campo — ${establecimiento} (${periodoLabel})`
+  const subject = `[Sigmetría] Reporte de observaciones — ${establecimiento} (${periodoLabel})`
 
   const linkBtn = pdfUrl
     ? `<div style="margin-top:24px">
@@ -54,12 +54,12 @@ export async function sendReporteObservacionesCampoEmail({
   const html = `
     <div style="font-family:system-ui,sans-serif;max-width:600px;margin:0 auto;padding:24px">
       <div style="border:1px solid #e5e7eb;border-radius:8px;padding:16px 20px;margin-bottom:24px">
-        <h2 style="color:#111827;margin:0 0 4px">Reporte de observaciones de campo</h2>
+        <h2 style="color:#111827;margin:0 0 4px">Reporte de observaciones</h2>
         <p style="color:#374151;margin:0;font-size:14px"><strong>${cliente}</strong> · ${establecimiento}</p>
         <p style="color:#6b7280;margin:4px 0 0;font-size:13px">${periodoLabel}</p>
       </div>
 
-      <p style="color:#374151">Adjuntamos el reporte de observaciones de campo del período indicado en formato PDF.</p>
+      <p style="color:#374151">Adjuntamos el reporte de observaciones del período indicado en formato PDF.</p>
       ${comentario ? `<p style="color:#374151;background:#f9fafb;border-left:3px solid #d1d5db;padding:8px 12px;font-style:italic">${comentario}</p>` : ''}
       ${linkBtn}
 
