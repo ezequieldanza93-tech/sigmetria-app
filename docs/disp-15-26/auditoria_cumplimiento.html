@@ -80,13 +80,14 @@
 
   <h2>1. Resumen ejecutivo</h2>
   <p class="lead">De los <b>11 estándares</b> del Anexo I de la Disp. 15/2026, la plataforma <b>cumple
-  técnicamente 7</b>, tiene <b>2 parciales</b> (pendientes de configuración/infra externa), <b>1 no aplica</b>
+  técnicamente 8</b> (uno de ellos —PWA/offline, estándar 6— recién implementado y pendiente de verificación
+  en navegador), tiene <b>1 parcial</b> (Disponibilidad, por config/infra externa), <b>1 no aplica</b>
   (biometría) y <b>1 depende de un trámite externo</b> (certificación). El <b>núcleo mínimo exigido para el
   Registro Provisorio</b> —Almacenamiento (1), Trazabilidad (2) y Portabilidad (3)— está <b>operativo</b>.</p>
 
   <div class="grid">
-    <div class="kpi"><div class="n">7</div><div class="l">Cumple</div></div>
-    <div class="kpi"><div class="n">2</div><div class="l">Parcial</div></div>
+    <div class="kpi"><div class="n">8</div><div class="l">Cumple</div></div>
+    <div class="kpi"><div class="n">1</div><div class="l">Parcial</div></div>
     <div class="kpi"><div class="n">1</div><div class="l">No aplica</div></div>
     <div class="kpi"><div class="n">1</div><div class="l">Trámite externo</div></div>
   </div>
@@ -120,9 +121,9 @@
       <tr><td>1</td><td>Almacenamiento</td><td><span class="badge b-ok">CUMPLE*</span></td><td>Backup externo cifrado + recuperación probada. Finos de config: PITR, credenciales R2.</td></tr>
       <tr><td>2</td><td>Trazabilidad y cadena de custodia</td><td><span class="badge b-ok">CUMPLE</span></td><td>Audit log inmutable + hash chain SHA-256 sobre todo el flujo. Cadena ÍNTEGRA.</td></tr>
       <tr><td>3</td><td>Portabilidad</td><td><span class="badge b-ok">CUMPLE</span></td><td>Export por empresa (CSV+JSON+binarios+checksums) + worker async.</td></tr>
-      <tr><td>4</td><td>Disponibilidad</td><td><span class="badge b-warn">PARCIAL</span></td><td>Healthcheck + cola offline. Falta monitor de uptime externo, PITR, Service Worker.</td></tr>
+      <tr><td>4</td><td>Disponibilidad</td><td><span class="badge b-warn">PARCIAL</span></td><td>Healthcheck + cola offline + Service Worker (offline). Falta: monitor de uptime externo + PITR (config).</td></tr>
       <tr><td>5</td><td>Accesibilidad (incl. organismo de control)</td><td><span class="badge b-ok">CUMPLE</span></td><td>Acceso web por roles + QR + rol de solo lectura para la SRT (verificado).</td></tr>
-      <tr><td>6</td><td>Omnicanalidad</td><td><span class="badge b-warn">PARCIAL</span></td><td>Web responsive + QR + email + cola offline. Falta PWA/Service Worker (bug React #418).</td></tr>
+      <tr><td>6</td><td>Omnicanalidad</td><td><span class="badge b-ok">CUMPLE*</span></td><td>Web responsive + QR + email + PWA instalable + offline (Service Worker network-first, anti-#418). Pendiente: verificación en navegador.</td></tr>
       <tr><td>7</td><td>Interoperabilidad</td><td><span class="badge b-ok">CUMPLE</span></td><td>API v1 con API key + rate limit + scoping por consultora, documentada (OpenAPI).</td></tr>
       <tr><td>8</td><td>Auditoría y verificabilidad</td><td><span class="badge b-ok">CUMPLE</span></td><td>Verificación de cadena + historial + reconstrucción por trace, desde la app.</td></tr>
       <tr><td>9</td><td>Autocontrol</td><td><span class="badge b-ok">CUMPLE</span></td><td>Constraints validados + inconsistencias + alertas + umbrales editables.</td></tr>
@@ -161,8 +162,8 @@
   <div class="std">
     <div class="top"><h3>4 · Disponibilidad</h3><span class="badge b-warn">PARCIAL</span></div>
     <div class="body">
-      <div class="row"><div class="k">Implementado</div><div>Healthcheck <code>/api/health</code> (200) y cola offline en el cliente.</div></div>
-      <div class="row"><div class="k">Pendiente</div><div>Monitor de uptime externo conectado al healthcheck; PITR; re-habilitar el Service Worker (hoy deshabilitado por un bug de hidratación React #418).</div></div>
+      <div class="row"><div class="k">Implementado</div><div>Healthcheck <code>/api/health</code> (200), cola offline en el cliente y <b>Service Worker</b> (resiliencia offline; estrategia network-first anti-#418, ver estándar 6).</div></div>
+      <div class="row"><div class="k">Pendiente</div><div>Monitor de uptime externo conectado al healthcheck + PITR (Supabase Pro). Ambos son <b>configuración/infra, no código</b>.</div></div>
     </div>
   </div>
 
@@ -176,10 +177,10 @@
   </div>
 
   <div class="std">
-    <div class="top"><h3>6 · Omnicanalidad</h3><span class="badge b-warn">PARCIAL</span></div>
+    <div class="top"><h3>6 · Omnicanalidad</h3><span class="badge b-ok">CUMPLE*</span></div>
     <div class="body">
-      <div class="row"><div class="k">Implementado</div><div>App web responsive + QR + email; cola offline.</div></div>
-      <div class="row"><div class="k">Pendiente</div><div>PWA / Service Worker (mismo bloqueo que el estándar 4: bug React #418).</div></div>
+      <div class="row"><div class="k">Implementado</div><div>App web responsive + QR + email + cola offline + <b>PWA instalable con Service Worker</b>. El SW usa <b>network-first para las navegaciones</b> (nunca cachea HTML → resuelve de raíz el React #418 que lo tenía deshabilitado) y cache-first solo para assets inmutables (<code>/_next/static</code>). Manifest e íconos ya presentes.</div></div>
+      <div class="row"><div class="k">Pendiente</div><div>Verificación en navegador (instalación como PWA + funcionamiento offline + ausencia de #418). Es comportamiento de caché del lado del cliente que debe confirmarse en uso real.</div></div>
     </div>
   </div>
 

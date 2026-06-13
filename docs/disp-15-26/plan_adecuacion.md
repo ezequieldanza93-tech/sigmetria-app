@@ -85,6 +85,14 @@
 > **Estándar 7 (Interoperabilidad):** documentada la API `/api/v1` en `api_interoperabilidad.md` (4
 > endpoints GET, auth por API key `Authorization: Bearer`, rate limit 60/min, scoping por consultora,
 > OpenAPI 3.0.3 en `/api/v1/docs`).
+>
+> **Estándares 4 (Disponibilidad) y 6 (Omnicanalidad) — Service Worker re-habilitado:** se reemplazó el
+> kill-switch por un **Service Worker real** (`public/sw.js`) con estrategia **network-first para las
+> navegaciones** (nunca cachea HTML → resuelve de raíz el React #418 que lo tenía deshabilitado) +
+> cache-first solo para `/_next/static` (inmutables). Registro desde `layout.tsx`; header `no-cache` en
+> `/sw.js`. Habilita **PWA instalable + offline** (manifest ya existía). Est. 6 → **cumple\*** (pendiente
+> verificación en navegador). Est. 4 sigue **parcial**: el SW suma resiliencia offline, pero resta el
+> monitor de uptime externo + PITR (config, no código).
 
 ---
 

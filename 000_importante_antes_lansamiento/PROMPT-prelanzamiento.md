@@ -96,15 +96,19 @@ falta un monitor externo que lo vigile y alerte.
 - `[AGENTE]` Confirmá que `/api/health` responde 200 y documentá el monitor en `docs/`.
 **Verificación:** el monitor muestra el servicio "up" y avisa si cae.
 
-### 6. Resolver bug React #418 → re-habilitar Service Worker `[AGENTE]`
-**Por qué:** estándares 4 (Disponibilidad) y 6 (Omnicanalidad) están **parciales** porque el
-Service Worker está **deshabilitado** (kill-switch en `public/sw.js`) por un bug de hidratación
-React #418. Resolverlo habilita PWA + offline.
-**Pasos `[AGENTE]`:**
-- Investigá la causa real del React #418 (mismatch de hidratación server/client) — NO re-habilites
-  el SW sin resolver el bug (la regla está en `CLAUDE.md`).
-- Arreglá el mismatch, re-habilitá el SW con cuidado, probá PWA + cola offline.
-**Verificación:** SW activo sin errores de hidratación; la app instala como PWA y funciona offline.
+### 6. Service Worker / PWA — YA RE-HABILITADO, solo falta verificar `[VOS — verificar]`
+**Estado:** ✅ HECHO en código (2026-06-13). Se reemplazó el kill-switch por un Service Worker real
+(`public/sw.js`) con estrategia **network-first para las navegaciones** (nunca cachea HTML → resuelve
+de raíz el React #418) + cache-first solo para `/_next/static` (assets inmutables). Registro en
+`layout.tsx`; header `no-cache` en `/sw.js`. Habilita **PWA instalable + offline**. Cierra el código
+de los estándares 4 y 6.
+**Lo único que falta `[VOS]` — verificar en el navegador** (es caché del cliente, no se puede testear headless):
+- DevTools → Application → Service Workers: debe figurar `/sw.js` **activado**.
+- Navegá varias páginas después de un deploy nuevo → **NO** debe aparecer el React #418 (pantalla en blanco / crash de hidratación).
+- DevTools → Network → "Offline" → recargá: debe mostrar la página `/offline`.
+- En Chrome/móvil debe ofrecerse "Instalar app" / "Agregar a pantalla de inicio".
+**Si reaparece el #418:** avisale al agente — habría que confirmar que NINGUNA navegación se cachea
+(la regla de oro: las navegaciones SIEMPRE van a la red).
 
 ### 7. Contratar un Certificador 4.0 inscripto `[VOS]` — trámite
 **Por qué:** estándar 11 (Certificación) — es el objetivo del **Registro Definitivo**. Depende de
