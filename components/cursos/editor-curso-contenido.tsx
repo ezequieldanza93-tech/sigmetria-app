@@ -21,13 +21,14 @@ export function EditorCursoContenido({ cursoId, modulos, onRefresh }: EditorCurs
 
   async function handleCrearModulo(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    const fd = new FormData(e.currentTarget)
+    const form = e.currentTarget
+    const fd = new FormData(form)
     fd.set('curso_id', cursoId)
     const res = await crearModulo(null, fd)
     if (!res.success) { toast.error(res.error); return }
     toast.success('Módulo creado')
     onRefresh()
-    e.currentTarget.reset()
+    form.reset()
   }
 
   async function handleEliminarModulo(moduloId: string) {
@@ -40,13 +41,14 @@ export function EditorCursoContenido({ cursoId, modulos, onRefresh }: EditorCurs
 
   async function handleCrearLeccion(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    const fd = new FormData(e.currentTarget)
-    fd.set('modulo_id', (e.currentTarget as HTMLFormElement).dataset.moduloId!)
+    const form = e.currentTarget
+    const fd = new FormData(form)
+    fd.set('modulo_id', form.dataset.moduloId!)
     const res = await crearLeccion(null, fd)
     if (!res.success) { toast.error(res.error); return }
     toast.success('Lección creada')
     onRefresh()
-    e.currentTarget.reset()
+    form.reset()
   }
 
   async function handleEliminarLeccion(leccionId: string) {

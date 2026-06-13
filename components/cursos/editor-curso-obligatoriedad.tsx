@@ -26,13 +26,14 @@ export function EditorObligatoriedad({ cursoId, reglas, onRefresh }: EditorOblig
 
   async function handleCrearRegla(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    const fd = new FormData(e.currentTarget)
+    const form = e.currentTarget
+    const fd = new FormData(form)
     fd.set('curso_id', cursoId)
     const res = await definirObligatoriedad(null, fd)
     if (!res.success) { toast.error(res.error); return }
     toast.success('Regla creada')
     onRefresh()
-    e.currentTarget.reset()
+    form.reset()
   }
 
   async function handleEliminarRegla(id: string) {

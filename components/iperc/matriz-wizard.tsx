@@ -68,8 +68,9 @@ export function IpercMatrizWizard({ establecimientoId, canWrite }: Props) {
       <Modal open={sectorModal} onClose={() => setSectorModal(false)} title="Nuevo Sector">
         <form onSubmit={async (e) => {
           e.preventDefault()
-          await createSector.mutateAsync(new FormData(e.currentTarget))
-          e.currentTarget.reset()
+          const form = e.currentTarget
+          await createSector.mutateAsync(new FormData(form))
+          form.reset()
           setSectorModal(false)
         }} className="flex flex-col gap-4">
           <Input name="nombre" label="Nombre del Sector" required />
@@ -115,8 +116,9 @@ export function IpercMatrizWizard({ establecimientoId, canWrite }: Props) {
               <Modal open={procesoModal === sector.id} onClose={() => setProcesoModal(null)} title="Nuevo Proceso">
                 <form onSubmit={async (e) => {
                   e.preventDefault()
-                  await createProceso.mutateAsync({ sectorId: sector.id, formData: new FormData(e.currentTarget) })
-                  e.currentTarget.reset()
+                  const form = e.currentTarget
+                  await createProceso.mutateAsync({ sectorId: sector.id, formData: new FormData(form) })
+                  form.reset()
                   setProcesoModal(null)
                 }} className="flex flex-col gap-4">
                   <Input name="nombre" label="Nombre del Proceso" required />
@@ -148,8 +150,9 @@ export function IpercMatrizWizard({ establecimientoId, canWrite }: Props) {
                       <Modal open={tareaModal === proceso.id} onClose={() => setTareaModal(null)} title="Nueva Tarea">
                         <form onSubmit={async (e) => {
                           e.preventDefault()
-                          await createTarea.mutateAsync({ procesoId: proceso.id, formData: new FormData(e.currentTarget) })
-                          e.currentTarget.reset()
+                          const form = e.currentTarget
+                          await createTarea.mutateAsync({ procesoId: proceso.id, formData: new FormData(form) })
+                          form.reset()
                           setTareaModal(null)
                         }} className="flex flex-col gap-4">
                           <Input name="nombre" label="Nombre de la Tarea" required />

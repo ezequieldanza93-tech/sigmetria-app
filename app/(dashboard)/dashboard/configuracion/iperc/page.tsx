@@ -70,8 +70,9 @@ function PeligrosTab() {
       <Modal open={modal} onClose={() => setModal(false)} title="Nuevo Peligro">
         <form onSubmit={async (e) => {
           e.preventDefault()
-          await createPeligro.mutateAsync(new FormData(e.currentTarget))
-          e.currentTarget.reset()
+          const form = e.currentTarget
+          await createPeligro.mutateAsync(new FormData(form))
+          form.reset()
           setModal(false)
         }} className="flex flex-col gap-4">
           <Input name="nombre" label="Nombre" required />
@@ -107,9 +108,10 @@ function RiesgosTab() {
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    const formData = new FormData(e.currentTarget)
+    const form = e.currentTarget
+    const formData = new FormData(form)
     await createRiesgo.mutateAsync(formData)
-    e.currentTarget.reset()
+    form.reset()
     setModal(false)
   }
 
