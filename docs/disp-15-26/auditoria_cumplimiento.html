@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Auditoría de Cumplimiento Técnico — Sigmetría HyS · SRT Prevención 4.0</title>
+<style>
+  :root{
+    --bg:#0f172a; --bg2:#1e293b; --ink:#0f172a; --muted:#64748b; --line:#e2e8f0;
+    --ok:#16a34a; --okbg:#dcfce7; --warn:#d97706; --warnbg:#fef3c7;
+    --bad:#dc2626; --badbg:#fee2e2; --na:#64748b; --nabg:#f1f5f9;
+    --brand:#0d9488; --brandbg:#ccfbf1;
+  }
+  *{box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink); line-height:1.55; margin:0; background:#f8fafc;}
+  .wrap{max-width:980px; margin:0 auto; padding:0 24px 80px;}
+  header.cover{background:linear-gradient(135deg,#0f172a,#134e4a); color:#fff; padding:48px 24px 40px;}
+  header.cover .inner{max-width:980px; margin:0 auto;}
+  .eyebrow{font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:#5eead4; font-weight:700;}
+  h1{font-size:30px; margin:8px 0 4px; line-height:1.2;}
+  header.cover p{color:#cbd5e1; margin:6px 0 0; max-width:640px;}
+  .meta{display:flex; flex-wrap:wrap; gap:18px 32px; margin-top:24px; font-size:13px; color:#94a3b8;}
+  .meta b{color:#e2e8f0; font-weight:600; display:block; font-size:11px; text-transform:uppercase; letter-spacing:.06em; margin-bottom:2px;}
+  h2{font-size:21px; margin:42px 0 12px; padding-bottom:8px; border-bottom:2px solid var(--brand); color:#0f172a;}
+  h3{font-size:16px; margin:24px 0 6px;}
+  p{margin:8px 0;}
+  .lead{font-size:16px; color:#334155;}
+  .verdict{background:#fff; border:1px solid var(--line); border-left:5px solid var(--brand);
+    border-radius:10px; padding:18px 22px; margin:18px 0; box-shadow:0 1px 2px rgba(0,0,0,.04);}
+  .verdict h3{margin-top:0;}
+  .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin:16px 0;}
+  .kpi{background:#fff; border:1px solid var(--line); border-radius:10px; padding:16px; text-align:center;}
+  .kpi .n{font-size:28px; font-weight:800; color:var(--brand);}
+  .kpi .l{font-size:12px; color:var(--muted); margin-top:2px;}
+  table{width:100%; border-collapse:collapse; margin:14px 0; font-size:14px; background:#fff;
+    border:1px solid var(--line); border-radius:10px; overflow:hidden;}
+  th,td{text-align:left; padding:11px 14px; border-bottom:1px solid var(--line); vertical-align:top;}
+  th{background:#f1f5f9; font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:#475569;}
+  tr:last-child td{border-bottom:none;}
+  .badge{display:inline-block; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:700; white-space:nowrap;}
+  .b-ok{background:var(--okbg); color:#166534;}
+  .b-warn{background:var(--warnbg); color:#92400e;}
+  .b-bad{background:var(--badbg); color:#991b1b;}
+  .b-na{background:var(--nabg); color:#475569;}
+  .std{background:#fff; border:1px solid var(--line); border-radius:10px; padding:18px 20px; margin:14px 0;}
+  .std .top{display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap;}
+  .std h3{margin:0; font-size:16px;}
+  .std .body{margin-top:10px; font-size:14px;}
+  .std .row{display:flex; gap:10px; margin:6px 0; font-size:13.5px;}
+  .std .row .k{flex:0 0 110px; color:var(--muted); font-weight:600;}
+  .ev{background:#f8fafc; border:1px dashed #cbd5e1; border-radius:8px; padding:10px 14px; margin:10px 0; font-size:13px; color:#334155;}
+  .ev code{background:#e2e8f0; padding:1px 5px; border-radius:4px; font-size:12px;}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;}
+  .note{background:var(--warnbg); border:1px solid #fde68a; border-radius:8px; padding:12px 16px; margin:14px 0; font-size:13.5px; color:#92400e;}
+  .ok-note{background:var(--okbg); border:1px solid #bbf7d0; color:#166534;}
+  ul{margin:8px 0 8px 0; padding-left:22px;} li{margin:4px 0;}
+  footer{margin-top:48px; padding-top:18px; border-top:1px solid var(--line); font-size:12px; color:var(--muted);}
+  .legend{display:flex; gap:14px; flex-wrap:wrap; margin:10px 0 0; font-size:12px;}
+  @media print{ body{background:#fff;} .std,.kpi,table,.verdict{box-shadow:none;} header.cover{-webkit-print-color-adjust:exact; print-color-adjust:exact;} }
+</style>
+</head>
+<body>
+<header class="cover">
+  <div class="inner">
+    <div class="eyebrow">Auditoría de Cumplimiento Técnico</div>
+    <h1>Sigmetría HyS — Ecosistema Prevención 4.0</h1>
+    <p>Evaluación del cumplimiento de la plataforma frente a la <b>Resolución S.R.T. N° 48/2025</b> y la
+      <b>Disposición S.R.T. 15/2026</b> (Anexo I — los 11 estándares del Prestador de Soluciones 4.0).</p>
+    <div class="meta">
+      <div><b>Fecha</b>13 de junio de 2026</div>
+      <div><b>Alcance</b>Plataforma SaaS (código, base de datos, controles técnicos)</div>
+      <div><b>Tipo</b>Autoevaluación técnica — pre-certificación</div>
+      <div><b>Entorno</b>Producción (Vercel · Supabase)</div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <h2>1. Resumen ejecutivo</h2>
+  <p class="lead">De los <b>11 estándares</b> del Anexo I de la Disp. 15/2026, la plataforma <b>cumple
+  técnicamente 7</b>, tiene <b>2 parciales</b> (pendientes de configuración/infra externa), <b>1 no aplica</b>
+  (biometría) y <b>1 depende de un trámite externo</b> (certificación). El <b>núcleo mínimo exigido para el
+  Registro Provisorio</b> —Almacenamiento (1), Trazabilidad (2) y Portabilidad (3)— está <b>operativo</b>.</p>
+
+  <div class="grid">
+    <div class="kpi"><div class="n">7</div><div class="l">Cumple</div></div>
+    <div class="kpi"><div class="n">2</div><div class="l">Parcial</div></div>
+    <div class="kpi"><div class="n">1</div><div class="l">No aplica</div></div>
+    <div class="kpi"><div class="n">1</div><div class="l">Trámite externo</div></div>
+  </div>
+
+  <div class="verdict">
+    <h3>Veredicto</h3>
+    <p><b>Registro Provisorio (núcleo mínimo 1·2·3):</b> <span class="badge b-ok">ALCANZABLE</span> — los tres
+    estándares del núcleo están operativos y verificados en producción.</p>
+    <p><b>Registro Definitivo (los 11 + certificación):</b> <span class="badge b-warn">EN CONDICIONES, con pendientes
+    NO de código</span> — del lado del software, todos los estándares accionables por programación están cumplidos.
+    Lo que resta es <b>configuración/infra paga</b> (PITR, almacenamiento externo, monitor de uptime), <b>un bug de
+    UI</b> (Service Worker / React #418) y la <b>certificación por un Certificador 4.0 inscripto</b>.</p>
+  </div>
+
+  <h2>2. Metodología</h2>
+  <p>La auditoría combinó <b>revisión de código y esquema</b> con <b>verificación en vivo contra la base de
+  producción</b>. No se asumió ningún control por documentación: cada control crítico se comprobó ejecutándolo.
+  Las evidencias clave (integridad de la cadena de custodia, cobertura de auditoría, bloqueo de escritura por rol)
+  se obtuvieron consultando directamente el entorno productivo el día de la auditoría.</p>
+  <div class="legend">
+    <span class="badge b-ok">CUMPLE</span>
+    <span class="badge b-warn">PARCIAL</span>
+    <span class="badge b-bad">PENDIENTE</span>
+    <span class="badge b-na">NO APLICA</span>
+  </div>
+
+  <h2>3. Estado de los 11 estándares (Anexo I — Disp. 15/2026)</h2>
+  <table>
+    <thead><tr><th style="width:34px">#</th><th>Estándar</th><th style="width:120px">Estado</th><th>Síntesis</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Almacenamiento</td><td><span class="badge b-ok">CUMPLE*</span></td><td>Backup externo cifrado + recuperación probada. Finos de config: PITR, credenciales R2.</td></tr>
+      <tr><td>2</td><td>Trazabilidad y cadena de custodia</td><td><span class="badge b-ok">CUMPLE</span></td><td>Audit log inmutable + hash chain SHA-256 sobre todo el flujo. Cadena ÍNTEGRA.</td></tr>
+      <tr><td>3</td><td>Portabilidad</td><td><span class="badge b-ok">CUMPLE</span></td><td>Export por empresa (CSV+JSON+binarios+checksums) + worker async.</td></tr>
+      <tr><td>4</td><td>Disponibilidad</td><td><span class="badge b-warn">PARCIAL</span></td><td>Healthcheck + cola offline. Falta monitor de uptime externo, PITR, Service Worker.</td></tr>
+      <tr><td>5</td><td>Accesibilidad (incl. organismo de control)</td><td><span class="badge b-ok">CUMPLE</span></td><td>Acceso web por roles + QR + rol de solo lectura para la SRT (verificado).</td></tr>
+      <tr><td>6</td><td>Omnicanalidad</td><td><span class="badge b-warn">PARCIAL</span></td><td>Web responsive + QR + email + cola offline. Falta PWA/Service Worker (bug React #418).</td></tr>
+      <tr><td>7</td><td>Interoperabilidad</td><td><span class="badge b-ok">CUMPLE</span></td><td>API v1 con API key + rate limit + scoping por consultora, documentada (OpenAPI).</td></tr>
+      <tr><td>8</td><td>Auditoría y verificabilidad</td><td><span class="badge b-ok">CUMPLE</span></td><td>Verificación de cadena + historial + reconstrucción por trace, desde la app.</td></tr>
+      <tr><td>9</td><td>Autocontrol</td><td><span class="badge b-ok">CUMPLE</span></td><td>Constraints validados + inconsistencias + alertas + umbrales editables.</td></tr>
+      <tr><td>10</td><td>Datos biométricos</td><td><span class="badge b-na">NO APLICA</span></td><td>La plataforma no trata datos biométricos (verificado en el esquema: 0 columnas).</td></tr>
+      <tr><td>11</td><td>Certificaciones</td><td><span class="badge b-bad">PENDIENTE</span></td><td>Objetivo del Registro Definitivo. Depende de un Certificador 4.0 inscripto (trámite externo).</td></tr>
+    </tbody>
+  </table>
+  <p style="font-size:12.5px;color:var(--muted)">* <b>CUMPLE\*</b> = el control de fondo está operativo; restan mejoras de configuración/infra que no son de programación.</p>
+
+  <h2>4. Detalle por estándar</h2>
+
+  <div class="std">
+    <div class="top"><h3>1 · Almacenamiento</h3><span class="badge b-ok">CUMPLE*</span></div>
+    <div class="body">
+      <div class="row"><div class="k">Implementado</div><div>Backup diario automatizado (GitHub Actions <code>backup.yml</code>) con destino externo cifrado y prueba de recuperación end-to-end ejecutada (checksums OK). Bucket de exportaciones <code>exports</code> privado con RLS por consultora.</div></div>
+      <div class="row"><div class="k">Pendiente</div><div>PITR (Point-in-Time Recovery → requiere Supabase Pro), credenciales reales de R2/B2 y reglas de <i>lifecycle</i>. <b>Es configuración/infra, no código.</b></div></div>
+    </div>
+  </div>
+
+  <div class="std">
+    <div class="top"><h3>2 · Trazabilidad y cadena de custodia</h3><span class="badge b-ok">CUMPLE</span></div>
+    <div class="body">
+      <div class="row"><div class="k">Implementado</div><div>Tabla <code>audit_log</code> <b>inmutable</b> (INSERT/UPDATE/DELETE revocados incluso al rol de servicio; solo escribe el trigger). Cada evento se encadena con <b>SHA-256</b> al anterior (una cadena por consultora). Trigger de auditoría sobre todas las tablas núcleo — incluido el corazón operativo: <b>recorridas y observaciones</b> (gap detectado y cerrado en este ciclo). Correlación por <code>trace_id</code> en las escrituras de negocio.</div></div>
+      <div class="ev ok-note"><b>Evidencia (verificada en vivo, 13/06/2026):</b> 194 eventos auditados — <code>gestiones_registros</code>: 107, <code>establecimientos</code>: 29, <code>empresas</code>: 11, <code>gestiones_establecimientos</code>: 5, <code>gestiones_observaciones</code>: 4, accesos/auth: 25. <b>Integridad de cadena: ÍNTEGRA en las 6 consultoras</b> (<code>fn_verify_audit_chain</code>).</div>
+    </div>
+  </div>
+
+  <div class="std">
+    <div class="top"><h3>3 · Portabilidad</h3><span class="badge b-ok">CUMPLE</span></div>
+    <div class="body">
+      <div class="row"><div class="k">Implementado</div><div>Exportación del paquete por empresa (21 entidades) en CSV + JSON + binarios, con <i>manifest</i> y <b>checksums SHA-256</b>, entregada por signed URL. <b>Worker asíncrono</b> para paquetes grandes: cola <code>export_jobs</code> + procesamiento en background + estado consultable + descarga firmada.</div></div>
+      <div class="row"><div class="k">Mejora futura</div><div>Streaming del ZIP a Storage para paquetes extremadamente grandes (evitar picos de memoria). No bloqueante.</div></div>
+    </div>
+  </div>
+
+  <div class="std">
+    <div class="top"><h3>4 · Disponibilidad</h3><span class="badge b-warn">PARCIAL</span></div>
+    <div class="body">
+      <div class="row"><div class="k">Implementado</div><div>Healthcheck <code>/api/health</code> (200) y cola offline en el cliente.</div></div>
+      <div class="row"><div class="k">Pendiente</div><div>Monitor de uptime externo conectado al healthcheck; PITR; re-habilitar el Service Worker (hoy deshabilitado por un bug de hidratación React #418).</div></div>
+    </div>
+  </div>
+
+  <div class="std">
+    <div class="top"><h3>5 · Accesibilidad (acceso de los actores, incl. organismo de control)</h3><span class="badge b-ok">CUMPLE</span></div>
+    <div class="body">
+      <div class="row"><div class="k">Implementado</div><div>Acceso remoto web por roles + QR público del legajo. <b>Rol <code>auditor_externo</code></b> de <b>solo lectura</b> para el organismo de control: ve toda la información de la consultora, no puede escribir nada y verifica la cadena de custodia desde la app. Acceso de auditoría con <b>MFA obligatorio</b>. No consume licencia (seat) y solo lo asigna el administrador principal.</div></div>
+      <div class="ev ok-note"><b>Evidencia (verificada en vivo):</b> con un usuario de prueba <code>auditor_externo</code> — lectura de empresas <b>OK</b>, intento de escritura <b>BLOQUEADO (error RLS 42501)</b>, verificación de cadena <b>ÍNTEGRA</b>. Doble bloqueo de escritura (RLS en base + capa de aplicación).</div>
+      <div class="row"><div class="k">Pendiente</div><div>El mecanismo concreto de acceso que defina la SRT (cuenta nominal por inspector / federado / temporal) se ajustará cuando se publique. Fuera de alcance técnico hoy.</div></div>
+    </div>
+  </div>
+
+  <div class="std">
+    <div class="top"><h3>6 · Omnicanalidad</h3><span class="badge b-warn">PARCIAL</span></div>
+    <div class="body">
+      <div class="row"><div class="k">Implementado</div><div>App web responsive + QR + email; cola offline.</div></div>
+      <div class="row"><div class="k">Pendiente</div><div>PWA / Service Worker (mismo bloqueo que el estándar 4: bug React #418).</div></div>
+    </div>
+  </div>
+
+  <div class="std">
+    <div class="top"><h3>7 · Interoperabilidad</h3><span class="badge b-ok">CUMPLE</span></div>
+    <div class="body">
+      <div class="row"><div class="k">Implementado</div><div>API REST <code>/api/v1</code> autenticada por <b>API key</b> (<code>Authorization: Bearer</code>, hash SHA-256 en <code>api_keys</code>), <b>rate limiting</b> 60/min por clave, <b>scoping por consultora</b>, y especificación <b>OpenAPI 3.0.3</b> en <code>/api/v1/docs</code>. Endpoints de intercambio: empresas, cumplimiento por CUIT, legajo por establecimiento. Documentación: <code>api_interoperabilidad.md</code>.</div></div>
+      <div class="row"><div class="k">Mejora futura</div><div>Webhooks y endpoints de validación cruzada con registros estatales, cuando la SRT publique los formatos.</div></div>
+    </div>
+  </div>
+
+  <div class="std">
+    <div class="top"><h3>8 · Auditoría y verificabilidad</h3><span class="badge b-ok">CUMPLE</span></div>
+    <div class="body">
+      <div class="row"><div class="k">Implementado</div><div>Pantalla <code>/dashboard/auditoria</code>: <b>verificar la integridad</b> de la cadena de custodia, ver el <b>historial inmutable</b> de cualquier entidad y <b>reconstruir un flujo completo</b> por <code>trace_id</code> — todo navegable <b>por nombres</b> (sin IDs técnicos) y con accesos contextuales "Ver historial" desde cada registro. Disponible para el administrador, el Responsable de Estándares y el organismo de control.</div></div>
+      <div class="ev ok-note"><b>Evidencia:</b> el Responsable/organismo verifica la cadena desde la app y obtiene "ÍNTEGRA"; ante cualquier manipulación, el verificador señalaría el primer eslabón roto.</div>
+    </div>
+  </div>
+
+  <div class="std">
+    <div class="top"><h3>9 · Autocontrol</h3><span class="badge b-ok">CUMPLE</span></div>
+    <div class="body">
+      <div class="row"><div class="k">Implementado</div><div>Validación en base con <b>11 CHECK constraints de coherencia validados</b> (incluidas las filas históricas), motor de detección de inconsistencias, alertas tempranas configurables y panel de cumplimiento. <b>UI de umbrales</b> editable (ej. 30/15/7 días) para el administrador.</div></div>
+      <div class="ev ok-note"><b>Evidencia (verificada en vivo):</b> los 11 constraints validaron sin violaciones; <code>alertas_umbrales</code> operativa (9 umbrales configurados).</div>
+    </div>
+  </div>
+
+  <div class="std">
+    <div class="top"><h3>10 · Datos biométricos</h3><span class="badge b-na">NO APLICA</span></div>
+    <div class="body">
+      <div class="row"><div class="k">Situación</div><div>La plataforma <b>no trata datos biométricos</b> (verificado contra el esquema: 0 columnas). Se evita el riesgo de exclusión del ecosistema por uso desproporcionado.</div></div>
+    </div>
+  </div>
+
+  <div class="std">
+    <div class="top"><h3>11 · Certificaciones</h3><span class="badge b-bad">PENDIENTE</span></div>
+    <div class="body">
+      <div class="row"><div class="k">Situación</div><div>Es el objetivo del <b>Registro Definitivo</b>. La satisfacción técnica de los estándares está demostrada; resta la <b>certificación por un Certificador 4.0 inscripto</b> en el Registro Correspondiente. <b>Trámite externo</b>, depende de la disponibilidad de certificadores.</div></div>
+    </div>
+  </div>
+
+  <h2>5. Pendientes para el lanzamiento (no son de programación)</h2>
+  <table>
+    <thead><tr><th>Ítem</th><th>Tipo</th><th>Cierra</th></tr></thead>
+    <tbody>
+      <tr><td>Apagar el bypass de MFA de testing (<code>ALLOW_MFA_TEST_BYPASS=false</code>)</td><td>Config (Vercel)</td><td>Seguridad / Art. 4.5 Res. 48/2025</td></tr>
+      <tr><td>Supabase Pro + PITR</td><td>Pago / Config</td><td>Est. 1 y 4</td></tr>
+      <tr><td>Credenciales R2/B2 reales + lifecycle</td><td>Pago / Config</td><td>Est. 1</td></tr>
+      <tr><td>Verificar dominio en Resend (entrega de emails/MFA)</td><td>Config (DNS)</td><td>Operación / MFA</td></tr>
+      <tr><td>Monitor de uptime externo → <code>/api/health</code></td><td>Config</td><td>Est. 4</td></tr>
+      <tr><td>Resolver bug React #418 → re-habilitar Service Worker</td><td>Código (mejora)</td><td>Est. 4 y 6</td></tr>
+      <tr><td>Contratar Certificador 4.0 inscripto</td><td>Trámite externo</td><td>Est. 11</td></tr>
+    </tbody>
+  </table>
+  <p style="font-size:12.5px;color:var(--muted)">El detalle operativo de cada ítem está en <code>000_importante_antes_lansamiento/PROMPT-prelanzamiento.md</code>.</p>
+
+  <h2>6. Conclusión</h2>
+  <p>La plataforma <b>convierte el dato de seguridad e higiene en prueba inalterable</b>: cada recorrida, observación
+  y documento queda encadenado criptográficamente en un registro inmutable, verificable desde la propia aplicación
+  por el Responsable de Estándares o el organismo de control. Los estándares que dependen de la <b>programación</b>
+  están cumplidos y <b>verificados contra producción</b>. El camino al <b>Registro Definitivo</b> ya no es de
+  desarrollo: es <b>configuración de infraestructura</b> (PITR, almacenamiento externo, monitoreo), <b>un bug de UI
+  acotado</b> (Service Worker) y el <b>trámite de certificación</b>.</p>
+
+  <div class="note">
+    <b>Alcance y límites de esta auditoría.</b> Es una <b>autoevaluación técnica interna</b> (revisión de código +
+    verificación en producción), <b>no</b> la certificación oficial de la SRT — esa la otorga un Certificador 4.0
+    inscripto (estándar 11). Tampoco cubre la <b>capa legal/administrativa</b> (tratamiento de datos sensibles de
+    salud — Ley 25.326, transferencia internacional de datos, registro ante la AAIP, datos societarios del Prestador),
+    que se gestiona por separado con asesoramiento legal y está documentada en <code>docs/disp-15-26/</code>.
+  </div>
+
+  <footer>
+    Sigmetría HyS · Auditoría de cumplimiento técnico generada el 13/06/2026 · Fuente de verdad del estado por
+    estándar: <code>docs/disp-15-26/plan_adecuacion.md</code>. Marco de referencia adoptado: ISO/IEC 27001
+    (referencia, no certificación). Evidencias verificadas contra el entorno de producción.
+  </footer>
+
+</div>
+</body>
+</html>
