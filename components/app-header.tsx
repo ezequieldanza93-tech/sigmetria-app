@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Sun, Moon, LogOut, ShieldCheck, MessageSquare, Wifi, WifiOff, Download, Keyboard, Home, BookMarked, KeyRound, User, Users } from 'lucide-react'
+import { Sun, Moon, LogOut, ShieldCheck, MessageSquare, Wifi, WifiOff, Download, Keyboard, Home, BookMarked, KeyRound, User, Users, Trash2 } from 'lucide-react'
 import { SystemRole, UserRole, ROLE_LABELS, ROLE_COLORS, canManageUsers } from '@/lib/types'
 import { RoleSwitcher } from '@/components/layout/role-switcher'
 import { LanguageSwitcher } from '@/components/layout/language-switcher'
@@ -367,6 +367,9 @@ export function AppHeader({
                       <DropdownItem href="/dashboard/usuarios" icon={Users} label="Usuarios" role="menuitem" />
                     )}
                     <DropdownItem href="/dashboard/configuracion/api-keys" icon={KeyRound} label="API Keys" role="menuitem" />
+                    {(userRole === 'full_access_main' || isSuperAdmin) && (
+                      <DropdownItem href="/dashboard/papelera" icon={Trash2} label="Papelera de reciclaje" role="menuitem" />
+                    )}
                   </div>
                 )}
 

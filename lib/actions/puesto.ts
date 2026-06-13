@@ -39,9 +39,12 @@ export async function deletePuesto(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
+  // Soft-delete (is_active=false), no DELETE físico: la papelera (Disp. 15/2026)
+  // restringe el borrado físico a developer. El puesto desaparece de los listados
+  // (filtran is_active=true) sin destruir el dato.
   const { error } = await supabase
     .from('puestos_de_trabajo')
-    .delete()
+    .update({ is_active: false })
     .eq('id', puestoId)
 
   if (error) return { success: false, error: error.message }

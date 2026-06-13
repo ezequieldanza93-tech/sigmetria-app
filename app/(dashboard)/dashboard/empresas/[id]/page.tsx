@@ -11,6 +11,8 @@ import { EmpresaFichaEstablecimientos } from '@/components/empresa-ficha-estable
 import { EmpresaMapaEstablecimientos } from '@/components/empresa-mapa-establecimientos'
 import { AnalyticsDashboard } from '@/components/analytics/real/analytics-dashboard'
 import { ExportEmpresaButton } from '@/components/export/export-empresa-button'
+import { BorrarEntidadButton } from '@/components/papelera/borrar-entidad-button'
+import { EstadoActivoToggle } from '@/components/papelera/estado-activo-toggle'
 import { GestionesAggregate } from '@/components/aggregate/gestiones-aggregate'
 import { SeguimientoAggregate } from '@/components/aggregate/seguimiento-aggregate'
 import { getGestionesAggregate, getSeguimientoAggregate } from '@/lib/queries/aggregate'
@@ -50,6 +52,7 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
   if (!empresa) notFound()
 
   const puedeEditar = canWrite(effective.effectiveUserRole, effective.effectiveSystemRole)
+  const esAdminPrincipal = effective.effectiveUserRole === 'full_access_main' || effective.isSuperAdmin === true
 
   // Fetch data by section
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -252,6 +255,10 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
                   </Link>
                 )}
                 {puedeEditar && <ExportEmpresaButton empresaId={id} />}
+                {esAdminPrincipal && <EstadoActivoToggle tabla="empresas" id={id} activo={empresa.is_active as boolean} />}
+                {esAdminPrincipal && (
+                  <BorrarEntidadButton tabla="empresas" id={id} nombre={empresa.razon_social as string} redirectTo="/dashboard/empresas" />
+                )}
                 {(() => {
                   const e = empresa as typeof empresa & { latitude?: number | null; longitude?: number | null }
                   return (
