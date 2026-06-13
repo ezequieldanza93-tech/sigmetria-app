@@ -237,11 +237,13 @@ export async function listAuditEstablecimientos(
     .maybeSingle()
   if (!empresa) return { success: false, error: 'Empresa no encontrada o sin acceso' }
 
+  // OJO: la tabla `establecimientos` NO tiene columna `is_active` (a diferencia de
+  // `empresas`). Filtrar por ella rompía la query → "no hay establecimientos".
+  // El auditor ve TODOS los establecimientos de la empresa.
   const { data, error } = await supabase
     .from('establecimientos')
     .select('id, nombre')
     .eq('empresa_id', empresaId)
-    .eq('is_active', true)
     .order('nombre', { ascending: true })
   if (error) return { success: false, error: error.message }
 
