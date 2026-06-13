@@ -6,8 +6,8 @@ const withNextIntl = createNextIntlPlugin('./i18n/request.ts')
 
 // 'unsafe-eval' fuera: ninguna lib del bundle lo necesita (recharts moderno
 // no usa eval, jspdf y html2canvas tampoco). 'unsafe-inline' se mantiene
-// porque layout.tsx inyecta SW_CLEANUP_SCRIPT y THEME_INIT_SCRIPT inline;
-// migrar a nonce cuando se elimine el kill switch del service worker.
+// porque layout.tsx inyecta SW_REGISTER_SCRIPT y THEME_INIT_SCRIPT inline;
+// migrar a nonce a futuro.
 const cspDirectives = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline'",
@@ -25,11 +25,10 @@ const cspDirectives = [
 
 const csp = cspDirectives.join('; ')
 
-// Serwist temporarily disabled — see public/sw.js (kill switch SW).
-// Previous Serwist config cached HTML navigations, causing React #418
-// after deploys. The kill switch SW purges everything and unregisters
-// itself; once all browsers have been cleaned, we can reintroduce
-// Serwist with NetworkOnly for navigations.
+// PWA: Service Worker propio en public/sw.js (network-first para navegaciones,
+// cache-first solo para /_next/static). NO cachea HTML → no reintroduce el React #418
+// que causaba el Serwist anterior (que cacheaba navegaciones). Registrado desde
+// layout.tsx (SW_REGISTER_SCRIPT); su activate purga las cachés viejas.
 
 const nextConfig: NextConfig = {
   transpilePackages: ['recharts'],
@@ -71,6 +70,15 @@ const nextConfig: NextConfig = {
         source: '/:path*',
         has: [{ type: 'header', key: 'RSC', value: '1' }],
         headers: [{ key: 'Cache-Control', value: 'no-store' }],
+      },
+      {
+        // El script del Service Worker debe revalidarse SIEMPRE para que los updates
+        // del SW propaguen sin quedar pegados a una versión vieja en caché HTTP.
+        source: '/sw.js',
+        headers: [
+          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
+          { key: 'Service-Worker-Allowed', value: '/' },
+        ],
       },
     ]
   },

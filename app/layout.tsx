@@ -90,25 +90,16 @@ const THEME_INIT_SCRIPT = `
 })();
 `.trim()
 
-// SW cleanup: a previous Serwist config cached HTML/JS chunks, causing React #418
-// (hydration mismatch) after deploys. Any browser that still has a SW registered
-// must be cleaned up. This runs before any React code; if a SW is found, it is
-// unregistered, caches are purged, the captured-errors log is cleared, and the
-// page is reloaded fresh.
-const SW_CLEANUP_SCRIPT = `
+// Registro del Service Worker (PWA). El SW (public/sw.js) usa network-first para las
+// NAVEGACIONES (nunca cachea HTML → no reintroduce el React #418 que tenía el Serwist
+// viejo) y cache-first solo para /_next/static (assets inmutables con hash). Su activate
+// purga las cachés viejas, así que los browsers que tenían el SW kill-switch quedan limpios.
+const SW_REGISTER_SCRIPT = `
 (function() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.getRegistrations().then(function(regs) {
-    if (!regs || regs.length === 0) return;
-    Promise.all(regs.map(function(r) { return r.unregister(); }))
-      .then(function() { return caches && caches.keys ? caches.keys() : []; })
-      .then(function(names) { return Promise.all((names || []).map(function(n) { return caches.delete(n); })); })
-      .then(function() {
-        try { localStorage.removeItem('__sig_errors__'); } catch (e) {}
-        location.reload();
-      })
-      .catch(function() { location.reload(); });
-  }).catch(function() {});
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('/sw.js').catch(function() {});
+  });
 })();
 `.trim()
 
@@ -118,7 +109,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang={locale} className={`${poppins.variable} ${montserrat.variable}`} suppressHydrationWarning>
       <head suppressHydrationWarning>
-        <script dangerouslySetInnerHTML={{ __html: SW_CLEANUP_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: SW_REGISTER_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body suppressHydrationWarning className="bg-surface-base text-text-primary antialiased font-body">
