@@ -1,27 +1,35 @@
 'use client'
 
 /**
- * Reporte de Observaciones de Campo — emisión por período.
+ * Reporte de Observaciones — emisión por período (diario / semanal / mensual),
+ * a nivel ESTABLECIMIENTO o EMPRESA (consolidado de todos sus establecimientos).
  *
- * Botón "Emitir reporte de observaciones de campo" → modal con selector de período
- * (diario / semanal / mensual). Al generar, consolida las observaciones del
- * establecimiento cuya recorrida cae en el período (server action), arma la vista
- * previa y produce un PDF (html2canvas + jsPDF, mismo enfoque que el ejecutor de
- * reporte fotográfico). Permite descargar, compartir el link y enviar por email.
+ * Antes de emitir permite FILTRAR por quién relevó y por responsable de cierre
+ * (uno / varios / todos), para entregarle a cada responsable su lista de
+ * subsanaciones. El PDF se arma por HOJAS A4 (generarProtocoloPdf): hoja 1 =
+ * encabezado + resumen; hojas siguientes = 2 observaciones por página con FOTO
+ * GRANDE. Permite descargar, compartir el link y enviar por email.
  *
  * NO toca la carga ni el marcado de observaciones: solo consume gestiones_observaciones.
  */
 
-import { forwardRef, useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, type CSSProperties } from 'react'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
+import { MultiSelectFilter } from '@/components/ui/multi-select-filter'
 import { signBucketPaths } from '@/lib/storage/sign-client'
+import { generarProtocoloPdf } from '@/lib/pdf/protocolo-pdf'
 import {
   obtenerDatosReporteObservacionesCampo,
+  obtenerDatosReporteObservacionesEmpresa,
   emitirReporteObservacionesCampo,
+} from '@/lib/actions/reporte-observaciones-campo'
+import {
+  construirResumenObservaciones,
   type ReporteObsCampoData,
   type ReporteObsCampoItem,
-} from '@/lib/actions/reporte-observaciones-campo'
+  type ReporteObsCampoResumen,
+} from '@/lib/reportes/observaciones-campo-tipos'
 import {
   type ModoPeriodo,
   type SemanaDelMes,
@@ -36,23 +44,25 @@ import {
   FileText, CalendarDays, Download, Copy, Send, CheckCircle, Loader2, Mail,
 } from 'lucide-react'
 
+type Nivel = 'establecimiento' | 'empresa'
+
 const MESES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ]
 
-// Color del punto por nivel de severidad (coincide con observaciones_categorias.color).
+// Dimensiones de hoja A4 a 96dpi (mismas que usan los protocolos de medición).
+const PAGE_W = 794
+const PAGE_H = 1123
+
 const NIVEL_COLOR: Record<number, string> = {
-  1: '#FFFFFF', // Oportunidades de mejora
-  2: '#FACC15', // Acción inmediata media
-  3: '#EA580C', // Acción inmediata alta
-  4: '#DC2626', // Acción inmediata crítica
+  1: '#FFFFFF', 2: '#FACC15', 3: '#EA580C', 4: '#DC2626',
 }
 const ESTADO_COLOR: Record<string, string> = {
-  Planificado: '#0369a1',
-  Vencido: '#dc2626',
-  Cerrado: '#15803d',
+  Planificado: '#0369a1', Vencido: '#dc2626', Cerrado: '#15803d',
 }
+
+const SIN_ASIGNAR = 'Sin asignar'
 
 /** Convierte una URL (signed) a data-URI base64 para que html2canvas no choque con CORS. */
 async function urlToDataUrl(url: string): Promise<string | null> {
@@ -70,36 +80,6 @@ async function urlToDataUrl(url: string): Promise<string | null> {
   }
 }
 
-/**
- * Genera el PDF (multipágina A4) del nodo y devuelve un Blob BINARIO.
- *
- * Devolvemos Blob (no data-URI base64) para enviarlo crudo al server action: el
- * base64 infla ~33% y un reporte MENSUAL con muchas fotos reventaría el
- * serverActions.bodySizeLimit. scale 1.5 + JPEG 0.82 mantiene el documento
- * legible pero acota el tamaño (el texto de un reporte no necesita 2x retina).
- */
-async function generarPdfBlob(node: HTMLElement): Promise<Blob> {
-  const { default: html2canvas } = await import('html2canvas')
-  const { default: jsPDF } = await import('jspdf')
-  const canvas = await html2canvas(node, { scale: 1.5, useCORS: true, logging: false, backgroundColor: '#ffffff' })
-  const imgData = canvas.toDataURL('image/jpeg', 0.82)
-  const pdf = new jsPDF('p', 'mm', 'a4')
-  const pdfW = pdf.internal.pageSize.getWidth()
-  const pageH = pdf.internal.pageSize.getHeight()
-  const pdfH = (canvas.height * pdfW) / canvas.width
-  let heightLeft = pdfH
-  let position = 0
-  pdf.addImage(imgData, 'JPEG', 0, position, pdfW, pdfH)
-  heightLeft -= pageH
-  while (heightLeft > 0) {
-    position = heightLeft - pdfH
-    pdf.addPage()
-    pdf.addImage(imgData, 'JPEG', 0, position, pdfW, pdfH)
-    heightLeft -= pageH
-  }
-  return pdf.output('blob')
-}
-
 function slug(s: string): string {
   return s
     .normalize('NFD')
@@ -109,7 +89,22 @@ function slug(s: string): string {
     .toLowerCase()
 }
 
+function chunk<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = []
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size))
+  return out
+}
+
+// ─── Botones públicos ───────────────────────────────────────────────────────
 export function ReporteObservacionesCampoButton({ establecimientoId }: { establecimientoId: string }) {
+  return <ReporteButtonBase nivel="establecimiento" id={establecimientoId} />
+}
+
+export function ReporteObservacionesEmpresaButton({ empresaId }: { empresaId: string }) {
+  return <ReporteButtonBase nivel="empresa" id={empresaId} />
+}
+
+function ReporteButtonBase({ nivel, id }: { nivel: Nivel; id: string }) {
   const [open, setOpen] = useState(false)
   return (
     <>
@@ -121,19 +116,13 @@ export function ReporteObservacionesCampoButton({ establecimientoId }: { estable
         <FileText size={14} />
         Emitir reporte de observaciones
       </button>
-      {open && <ReporteObservacionesCampoModal establecimientoId={establecimientoId} onClose={() => setOpen(false)} />}
+      {open && <ReporteModal nivel={nivel} id={id} onClose={() => setOpen(false)} />}
     </>
   )
 }
 
-function ReporteObservacionesCampoModal({
-  establecimientoId,
-  onClose,
-}: {
-  establecimientoId: string
-  onClose: () => void
-}) {
-  // Período se inicializa en efecto (evita mismatch SSR con new Date()).
+// ─── Modal ────────────────────────────────────────────────────────────────────
+function ReporteModal({ nivel, id, onClose }: { nivel: Nivel; id: string; onClose: () => void }) {
   const [modo, setModo] = useState<ModoPeriodo>('mensual')
   const [year, setYear] = useState<number | null>(null)
   const [month0, setMonth0] = useState(0)
@@ -147,6 +136,10 @@ function ReporteObservacionesCampoModal({
   const [periodoLabel, setPeriodoLabel] = useState('')
   const [fotoUrls, setFotoUrls] = useState<Map<string, string>>(new Map())
 
+  // Filtros pre-emisión (null = todos).
+  const [relevadoSel, setRelevadoSel] = useState<Set<string> | null>(null)
+  const [cierreSel, setCierreSel] = useState<Set<string> | null>(null)
+
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null)
   const [pdfSignedUrl, setPdfSignedUrl] = useState<string | null>(null)
   const [linkCopiado, setLinkCopiado] = useState(false)
@@ -155,7 +148,7 @@ function ReporteObservacionesCampoModal({
   const [enviando, setEnviando] = useState(false)
   const [emailOk, setEmailOk] = useState(false)
 
-  const reportRef = useRef<HTMLDivElement>(null)
+  const hojasRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const now = new Date()
@@ -178,7 +171,6 @@ function ReporteObservacionesCampoModal({
       const r = rangoMensual(year, month0)
       return { ...r, label: labelPeriodo('mensual', r, { month0, year }) }
     }
-    // semanal
     const r = rangoSemanal(year, month0, semanaNumero)
     if (!r) return null
     const sem = semanas.find(s => s.numero === semanaNumero)
@@ -193,12 +185,16 @@ function ReporteObservacionesCampoModal({
     setPdfBlob(null)
     setPdfSignedUrl(null)
     setEmailOk(false)
+    setRelevadoSel(null)
+    setCierreSel(null)
     try {
-      const res = await obtenerDatosReporteObservacionesCampo(establecimientoId, rango.desde, rango.hasta)
+      const res = nivel === 'empresa'
+        ? await obtenerDatosReporteObservacionesEmpresa(id, rango.desde, rango.hasta)
+        : await obtenerDatosReporteObservacionesCampo(id, rango.desde, rango.hasta)
       if (!res.success) { setError(res.error); setLoading(false); return }
       const d = res.data
 
-      // Firmamos y bajamos a data-URI todas las fotos (foto de obs + evidencia de cierre).
+      // Firmamos y bajamos a data-URI las fotos (de obs + evidencia de cierre).
       const paths = new Set<string>()
       for (const it of d.items) {
         if (it.fotoPath) paths.add(it.fotoPath)
@@ -227,16 +223,59 @@ function ReporteObservacionesCampoModal({
     }
   }
 
+  // ── Opciones de filtro derivadas de los datos del período ──
+  const relevadoOpciones = useMemo(() => {
+    if (!data) return []
+    const s = new Set<string>()
+    for (const it of data.items) s.add(it.relevadoPor ?? SIN_ASIGNAR)
+    return Array.from(s).sort().map(v => ({ value: v, label: v }))
+  }, [data])
+
+  const cierreOpciones = useMemo(() => {
+    if (!data) return []
+    const s = new Set<string>()
+    for (const it of data.items) s.add(it.responsableCierre ?? SIN_ASIGNAR)
+    return Array.from(s).sort().map(v => ({ value: v, label: v }))
+  }, [data])
+
+  const itemsFiltrados = useMemo(() => {
+    if (!data) return []
+    return data.items.filter(it => {
+      const rel = it.relevadoPor ?? SIN_ASIGNAR
+      const cie = it.responsableCierre ?? SIN_ASIGNAR
+      if (relevadoSel && !relevadoSel.has(rel)) return false
+      if (cierreSel && !cierreSel.has(cie)) return false
+      return true
+    })
+  }, [data, relevadoSel, cierreSel])
+
+  const resumenFiltrado: ReporteObsCampoResumen = useMemo(
+    () => construirResumenObservaciones(itemsFiltrados),
+    [itemsFiltrados],
+  )
+
+  const hojasDetalle = useMemo(() => chunk(itemsFiltrados, 2), [itemsFiltrados])
+
+  function onFiltroChange(setter: (s: Set<string> | null) => void, next: Set<string>) {
+    setter(next)
+    setPdfBlob(null) // invalida el PDF cacheado: cambió el set de observaciones
+  }
+
   const filename = data
-    ? `reporte-observaciones-${slug(data.encabezado.establecimiento)}-${slug(periodoLabel)}.pdf`
+    ? `reporte-observaciones-${slug(data.encabezado.cliente || data.encabezado.establecimiento)}-${slug(periodoLabel)}.pdf`
     : 'reporte-observaciones.pdf'
 
-  /** Genera el PDF del nodo una sola vez y lo cachea. */
   async function asegurarPdf(): Promise<Blob | null> {
     if (pdfBlob) return pdfBlob
-    const node = reportRef.current
-    if (!node) return null
-    const blob = await generarPdfBlob(node)
+    const cont = hojasRef.current
+    if (!cont) return null
+    const hojas = Array.from(cont.children).filter(
+      (el): el is HTMLElement => el instanceof HTMLElement,
+    )
+    if (hojas.length === 0) return null
+    // escala 1.5: nitidez suficiente para fotos grandes sin inflar el PDF.
+    const pdf = await generarProtocoloPdf({ hojas, escala: 1.5 })
+    const blob = pdf.output('blob')
     setPdfBlob(blob)
     return blob
   }
@@ -251,18 +290,29 @@ function ReporteObservacionesCampoModal({
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+    // Diferimos el revoke: revocar en el mismo tick que click() aborta la descarga
+    // en Firefox / algunos Chromium (baja un archivo de 0 bytes).
+    setTimeout(() => URL.revokeObjectURL(url), 0)
   }
 
   async function subirYObtenerLink(conEmail: boolean): Promise<void> {
     if (!data) return
     const blob = await asegurarPdf()
     if (!blob) { setError('No se pudo generar el PDF.'); return }
+    // Guard de tamaño: el server action tiene bodySizeLimit (25mb). Un consolidado
+    // de empresa con muchas fotos puede superarlo → avisamos accionable en vez de
+    // dejar que falle con un error opaco de red. La descarga local no pasa por acá.
+    const MAX_BYTES = 23 * 1024 * 1024
+    if (blob.size > MAX_BYTES) {
+      setError('El reporte es demasiado pesado para compartir/enviar (supera el límite del servidor). Acotá el período o filtrá por responsable de cierre. La descarga local (botón "Descargar PDF") sigue disponible.')
+      return
+    }
     setEnviando(true)
     setError(null)
     try {
       const fd = new FormData()
-      fd.set('establecimiento_id', establecimientoId)
+      if (nivel === 'empresa') fd.set('empresa_id', id)
+      else fd.set('establecimiento_id', id)
       fd.set('pdf', blob, filename)
       fd.set('filename', filename)
       fd.set('periodo_label', periodoLabel)
@@ -300,14 +350,18 @@ function ReporteObservacionesCampoModal({
     setError(null)
   }
 
+  const tituloModal = nivel === 'empresa'
+    ? 'Reporte de observaciones (empresa)'
+    : 'Reporte de observaciones'
+
   return (
-    <Modal open title="Reporte de observaciones" onClose={onClose} size="full">
+    <Modal open title={tituloModal} onClose={onClose} size="full">
       <div className="space-y-4 max-h-[85vh] overflow-y-auto pr-1">
         {error && (
           <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-3 py-2">{error}</div>
         )}
 
-        {/* ── CONFIG: selector de período ─────────────────────────── */}
+        {/* ── CONFIG ───────────────────────────────────────────── */}
         {step === 'config' && (
           <div className="space-y-4">
             <div>
@@ -378,7 +432,7 @@ function ReporteObservacionesCampoModal({
           </div>
         )}
 
-        {/* ── RESULT: preview + acciones ──────────────────────────── */}
+        {/* ── RESULT ───────────────────────────────────────────── */}
         {step === 'result' && data && (
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -390,10 +444,29 @@ function ReporteObservacionesCampoModal({
                   <Download size={14} className="inline mr-1.5" /> Descargar PDF
                 </Button>
                 <Button type="button" variant="secondary" onClick={() => subirYObtenerLink(false)} disabled={enviando}>
-                  {enviando && !destinatarios ? <Loader2 size={14} className="inline mr-1.5 animate-spin" /> : <Copy size={14} className="inline mr-1.5" />}
-                  Generar link
+                  <Copy size={14} className="inline mr-1.5" /> Generar link
                 </Button>
               </div>
+            </div>
+
+            {/* Filtros pre-emisión */}
+            <div className="flex flex-wrap items-center gap-2 border border-border-subtle rounded-lg p-3">
+              <span className="text-xs font-medium text-text-secondary">Filtrar:</span>
+              <MultiSelectFilter
+                label="Relevado por"
+                options={relevadoOpciones}
+                selected={relevadoSel ?? new Set(relevadoOpciones.map(o => o.value))}
+                onChange={s => onFiltroChange(setRelevadoSel, s)}
+              />
+              <MultiSelectFilter
+                label="Resp. de cierre"
+                options={cierreOpciones}
+                selected={cierreSel ?? new Set(cierreOpciones.map(o => o.value))}
+                onChange={s => onFiltroChange(setCierreSel, s)}
+              />
+              <span className="text-xs text-text-tertiary ml-auto">
+                {itemsFiltrados.length} de {data.items.length} observaciones
+              </span>
             </div>
 
             {pdfSignedUrl && (
@@ -431,14 +504,19 @@ function ReporteObservacionesCampoModal({
                   ? <span className="text-xs text-success inline-flex items-center gap-1"><CheckCircle size={14} /> Email enviado</span>
                   : <span className="text-xs text-text-tertiary">El PDF se adjunta automáticamente.</span>}
                 <Button type="button" onClick={() => subirYObtenerLink(true)} disabled={enviando || !destinatarios.trim()}>
-                  {enviando && destinatarios ? <><Loader2 size={14} className="inline mr-1.5 animate-spin" /> Enviando…</> : <><Send size={14} className="inline mr-1.5" /> Enviar</>}
+                  {enviando ? <><Loader2 size={14} className="inline mr-1.5 animate-spin" /> Enviando…</> : <><Send size={14} className="inline mr-1.5" /> Enviar</>}
                 </Button>
               </div>
             </div>
 
-            {/* Vista previa = nodo del PDF */}
-            <div className="border border-border-subtle rounded-lg overflow-hidden">
-              <ReporteDocumento ref={reportRef} data={data} periodoLabel={periodoLabel} fotoUrls={fotoUrls} />
+            {/* Vista previa = hojas del PDF (WYSIWYG). Cada hijo directo = 1 página A4. */}
+            <div className="overflow-auto border border-border-subtle rounded-lg bg-gray-100 p-4">
+              <div ref={hojasRef} className="space-y-4 mx-auto" style={{ width: PAGE_W }}>
+                <HojaResumen data={data} resumen={resumenFiltrado} periodoLabel={periodoLabel} />
+                {hojasDetalle.map((par, i) => (
+                  <HojaDetalle key={i} items={par} fotoUrls={fotoUrls} indexBase={i * 2} nivel={nivel} />
+                ))}
+              </div>
             </div>
           </div>
         )}
@@ -447,44 +525,49 @@ function ReporteObservacionesCampoModal({
   )
 }
 
-// ─── Documento del reporte (se renderiza a PDF) ─────────────────────────────
-const ReporteDocumento = forwardRef<HTMLDivElement, {
+// ─── Hojas A4 ──────────────────────────────────────────────────────────────
+const hojaBaseStyle: CSSProperties = {
+  width: PAGE_W,
+  minHeight: PAGE_H,
+  backgroundColor: '#ffffff',
+  color: '#111827',
+  fontFamily: 'Helvetica, Arial, sans-serif',
+  fontSize: 13,
+  lineHeight: 1.5,
+  padding: 44,
+  boxSizing: 'border-box',
+}
+
+function HojaResumen({
+  data,
+  resumen,
+  periodoLabel,
+}: {
   data: ReporteObsCampoData
+  resumen: ReporteObsCampoResumen
   periodoLabel: string
-  fotoUrls: Map<string, string>
-}>(function ReporteDocumento({ data, periodoLabel, fotoUrls }, ref) {
-  const { encabezado, items, resumen } = data
-
-  // Agrupar el detalle por tipo (nivel desc: crítica → oportunidad).
-  const grupos = new Map<number, ReporteObsCampoItem[]>()
-  for (const it of items) {
-    const nivel = it.categoriaNivel ?? 0
-    if (!grupos.has(nivel)) grupos.set(nivel, [])
-    grupos.get(nivel)!.push(it)
-  }
-  const nivelesOrdenados = Array.from(grupos.keys()).sort((a, b) => b - a)
-
+}) {
+  const { encabezado } = data
   return (
-    <div ref={ref} className="bg-white text-gray-900" style={{ padding: '10mm', fontSize: '12px', lineHeight: 1.5 }}>
-      {/* Encabezado */}
-      <div style={{ borderBottom: '2px solid #111827', paddingBottom: '10px', marginBottom: '14px' }}>
-        <h1 style={{ fontSize: '18px', fontWeight: 700, margin: 0 }}>Reporte de Observaciones</h1>
-        <table style={{ width: '100%', marginTop: '8px', fontSize: '12px' }}>
+    <div style={hojaBaseStyle}>
+      <div style={{ borderBottom: '3px solid #111827', paddingBottom: 12, marginBottom: 18 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>Reporte de Observaciones</h1>
+        <table style={{ width: '100%', marginTop: 10, fontSize: 13 }}>
           <tbody>
             <tr>
-              <td style={{ color: '#6b7280', paddingRight: '8px' }}>Cliente:</td>
+              <td style={{ color: '#6b7280', paddingRight: 8, width: 110 }}>Cliente:</td>
               <td style={{ fontWeight: 600 }}>{encabezado.cliente}</td>
-              <td style={{ color: '#6b7280', paddingRight: '8px' }}>Período:</td>
+              <td style={{ color: '#6b7280', paddingRight: 8, width: 110 }}>Período:</td>
               <td style={{ fontWeight: 600 }}>{periodoLabel}</td>
             </tr>
             <tr>
-              <td style={{ color: '#6b7280', paddingRight: '8px' }}>Establecimiento:</td>
+              <td style={{ color: '#6b7280', paddingRight: 8 }}>Establecimiento:</td>
               <td style={{ fontWeight: 600 }}>{encabezado.establecimiento}</td>
-              <td style={{ color: '#6b7280', paddingRight: '8px' }}>Profesional:</td>
+              <td style={{ color: '#6b7280', paddingRight: 8 }}>Profesional:</td>
               <td style={{ fontWeight: 600 }}>{encabezado.profesional}</td>
             </tr>
             <tr>
-              <td style={{ color: '#6b7280', paddingRight: '8px' }}>Emisión:</td>
+              <td style={{ color: '#6b7280', paddingRight: 8 }}>Emisión:</td>
               <td style={{ fontWeight: 600 }}>{encabezado.fechaEmision}</td>
               <td colSpan={2} />
             </tr>
@@ -493,110 +576,128 @@ const ReporteDocumento = forwardRef<HTMLDivElement, {
       </div>
 
       {resumen.total === 0 ? (
-        <div style={{ textAlign: 'center', padding: '32px 0', color: '#6b7280' }}>
+        <div style={{ textAlign: 'center', padding: '40px 0', color: '#6b7280', fontSize: 15 }}>
           Sin observaciones en el período.
         </div>
       ) : (
         <>
-          {/* Resumen */}
-          <div style={{ marginBottom: '16px' }}>
-            <h2 style={{ fontSize: '14px', fontWeight: 700, margin: '0 0 6px' }}>Resumen</h2>
-            <p style={{ margin: '0 0 8px' }}>Total de observaciones: <strong>{resumen.total}</strong></p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '24px' }}>
-              <div>
-                <p style={{ fontWeight: 600, margin: '0 0 4px', color: '#374151' }}>Por tipo</p>
-                {resumen.porTipo.map(t => (
-                  <div key={t.nivel} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: NIVEL_COLOR[t.nivel] ?? '#d1d5db', border: '1px solid #9ca3af', display: 'inline-block' }} />
-                    <span>{t.nombre}: <strong>{t.count}</strong></span>
-                  </div>
-                ))}
-              </div>
-              <div>
-                <p style={{ fontWeight: 600, margin: '0 0 4px', color: '#374151' }}>Por estado</p>
-                {(['Vencido', 'Planificado', 'Cerrado'] as const).map(e => (
-                  <div key={e} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: ESTADO_COLOR[e], display: 'inline-block' }} />
-                    <span>{e}: <strong>{resumen.porEstado[e]}</strong></span>
-                  </div>
-                ))}
-              </div>
-              <div>
-                <p style={{ fontWeight: 600, margin: '0 0 4px', color: '#374151' }}>Por responsable</p>
-                {resumen.porResponsable.map(r => (
-                  <div key={r.nombre}>{r.nombre}: <strong>{r.count}</strong></div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Detalle agrupado por tipo */}
-          <div>
-            <h2 style={{ fontSize: '14px', fontWeight: 700, margin: '0 0 8px' }}>Detalle de observaciones</h2>
-            {nivelesOrdenados.map(nivel => {
-              const grupo = grupos.get(nivel)!
-              const nombreTipo = grupo[0]?.categoriaNombre ?? `Nivel ${nivel}`
-              return (
-                <div key={nivel} style={{ marginBottom: '12px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f3f4f6', padding: '4px 8px', borderRadius: '4px', marginBottom: '6px' }}>
-                    <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: NIVEL_COLOR[nivel] ?? '#d1d5db', border: '1px solid #9ca3af', display: 'inline-block' }} />
-                    <strong>{nombreTipo}</strong>
-                    <span style={{ color: '#6b7280' }}>({grupo.length})</span>
-                  </div>
-                  {grupo.map((it, idx) => (
-                    <ObservacionBloque key={it.id} item={it} index={idx} fotoUrls={fotoUrls} />
-                  ))}
+          <h2 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 8px' }}>Resumen</h2>
+          <p style={{ margin: '0 0 12px' }}>Total de observaciones: <strong>{resumen.total}</strong></p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 36 }}>
+            <div>
+              <p style={{ fontWeight: 600, margin: '0 0 6px', color: '#374151' }}>Por tipo</p>
+              {resumen.porTipo.map(t => (
+                <div key={t.nivel} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                  <span style={{ width: 12, height: 12, borderRadius: '50%', background: NIVEL_COLOR[t.nivel] ?? '#d1d5db', border: '1px solid #9ca3af', display: 'inline-block' }} />
+                  <span>{t.nombre}: <strong>{t.count}</strong></span>
                 </div>
-              )
-            })}
+              ))}
+            </div>
+            <div>
+              <p style={{ fontWeight: 600, margin: '0 0 6px', color: '#374151' }}>Por estado</p>
+              {(['Vencido', 'Planificado', 'Cerrado'] as const).map(e => (
+                <div key={e} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                  <span style={{ width: 12, height: 12, borderRadius: '50%', background: ESTADO_COLOR[e], display: 'inline-block' }} />
+                  <span>{e}: <strong>{resumen.porEstado[e]}</strong></span>
+                </div>
+              ))}
+            </div>
+            <div>
+              <p style={{ fontWeight: 600, margin: '0 0 6px', color: '#374151' }}>Por responsable</p>
+              {resumen.porResponsable.map(r => (
+                <div key={r.nombre} style={{ marginBottom: 2 }}>{r.nombre}: <strong>{r.count}</strong></div>
+              ))}
+            </div>
           </div>
         </>
       )}
-
-      <div style={{ marginTop: '16px', borderTop: '1px solid #e5e7eb', paddingTop: '8px', fontSize: '10px', color: '#9ca3af' }}>
-        Generado por Sigmetría · Sistema de gestión de Higiene y Seguridad.
-      </div>
     </div>
   )
-})
+}
 
-function ObservacionBloque({
-  item,
-  index,
+function HojaDetalle({
+  items,
   fotoUrls,
+  indexBase,
+  nivel,
+}: {
+  items: ReporteObsCampoItem[]
+  fotoUrls: Map<string, string>
+  indexBase: number
+  nivel: Nivel
+}) {
+  return (
+    <div style={{ ...hojaBaseStyle, display: 'flex', flexDirection: 'column', gap: 18 }}>
+      {items.map((it, i) => (
+        <ObsBloqueGrande key={it.id} item={it} numero={indexBase + i + 1} fotoUrls={fotoUrls} nivel={nivel} />
+      ))}
+    </div>
+  )
+}
+
+function Campo({ label, value }: { label: string; value: string | null | undefined }) {
+  return (
+    <div style={{ marginBottom: 2 }}>
+      <span style={{ color: '#6b7280' }}>{label}: </span>
+      <strong>{value && value.trim() ? value : '—'}</strong>
+    </div>
+  )
+}
+
+function ObsBloqueGrande({
+  item,
+  numero,
+  fotoUrls,
+  nivel,
 }: {
   item: ReporteObsCampoItem
-  index: number
+  numero: number
   fotoUrls: Map<string, string>
+  nivel: Nivel
 }) {
   const foto = item.fotoPath ? fotoUrls.get(item.fotoPath) : null
   const fotoCierre = item.evidenciaCierrePath ? fotoUrls.get(item.evidenciaCierrePath) : null
   return (
-    <div style={{ display: 'flex', gap: '10px', padding: '8px', border: '1px solid #e5e7eb', borderRadius: '6px', marginBottom: '6px', breakInside: 'avoid' }}>
-      {foto && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={foto} alt="Observación" style={{ width: '120px', height: '90px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #d1d5db', flexShrink: 0 }} />
-      )}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ margin: '0 0 4px', fontWeight: 600 }}>{index + 1}. {item.descripcion}</p>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', color: '#374151', fontSize: '11px' }}>
-          {item.clasificacionNombre && <span>Riesgo: <strong>{item.clasificacionNombre}</strong></span>}
-          <span>Responsable: <strong>{item.responsable ?? 'Sin asignar'}</strong></span>
-          <span>Plazo: <strong>{fmtFechaCorta(item.fechaPlazo)}</strong></span>
-          {item.fechaEjecutada && <span>Recorrida: <strong>{fmtFechaCorta(item.fechaEjecutada)}</strong></span>}
-          {item.sectorNombre && <span>Sector: <strong>{item.sectorNombre}</strong></span>}
-          {item.puestoNombre && <span>Puesto: <strong>{item.puestoNombre}</strong></span>}
-          <span style={{ color: ESTADO_COLOR[item.estado] }}>Estado: <strong>{item.estado}</strong></span>
-        </div>
-        {item.estado === 'Cerrado' && (
-          <div style={{ marginTop: '4px', fontSize: '11px', color: '#15803d', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span>✓ Cerrada el {fmtFechaCorta(item.fechaCierre)}{item.responsableCierre ? ` por ${item.responsableCierre}` : ''}</span>
-            {fotoCierre && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={fotoCierre} alt="Evidencia de cierre" style={{ width: '60px', height: '45px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #86efac' }} />
-            )}
-          </div>
+    <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden', flex: 1, display: 'flex', flexDirection: 'column' }}>
+      {/* Cabecera de la observación: número + tipo */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#f3f4f6' }}>
+        <span style={{ width: 14, height: 14, borderRadius: '50%', background: NIVEL_COLOR[item.categoriaNivel ?? 0] ?? '#d1d5db', border: '1px solid #9ca3af', display: 'inline-block' }} />
+        <strong style={{ fontSize: 14 }}>#{numero} · {item.categoriaNombre ?? 'Sin tipo'}</strong>
+        <span style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 600, color: ESTADO_COLOR[item.estado] }}>{item.estado}</span>
+      </div>
+
+      <div style={{ display: 'flex', gap: 14, padding: 12 }}>
+        {foto && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={foto}
+            alt={`Observación ${numero}`}
+            style={{ width: 320, height: 300, objectFit: 'cover', borderRadius: 6, border: '1px solid #d1d5db', flexShrink: 0 }}
+          />
         )}
+        <div style={{ flex: 1, minWidth: 0, fontSize: 12.5 }}>
+          <p style={{ margin: '0 0 8px', fontSize: 13.5 }}>
+            <span style={{ color: '#6b7280' }}>Comentario: </span>{item.descripcion}
+          </p>
+          {nivel === 'empresa' && <Campo label="Establecimiento" value={item.establecimientoNombre} />}
+          <Campo label="Gestión" value={item.gestionNombre} />
+          <Campo label="Tipo de riesgo" value={item.clasificacionNombre} />
+          <Campo label="Relevado por" value={item.relevadoPor} />
+          <Campo label="Día relevado" value={fmtFechaCorta(item.fechaEjecutada)} />
+          <Campo label="Responsable de cierre" value={item.responsableCierre} />
+          <Campo label="Fecha límite de cierre" value={fmtFechaCorta(item.fechaPlazo)} />
+          {item.sectorNombre && <Campo label="Sector" value={item.sectorNombre} />}
+          {item.puestoNombre && <Campo label="Puesto" value={item.puestoNombre} />}
+          {item.estado === 'Cerrado' && (
+            <div style={{ marginTop: 6, color: '#15803d' }}>
+              <span>✓ Cerrada el {fmtFechaCorta(item.fechaCierre)}</span>
+              {fotoCierre && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={fotoCierre} alt="Evidencia de cierre" style={{ display: 'block', marginTop: 6, width: 160, height: 120, objectFit: 'cover', borderRadius: 4, border: '1px solid #86efac' }} />
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

@@ -150,7 +150,7 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
 
       {section === 'gestiones' && <GestionesAggregate rows={gestionesRows} title={`Gestiones (${empresa.razon_social})`} />}
 
-      {section === 'seguimiento' && <SeguimientoAggregate rows={seguimientoRows} />}
+      {section === 'seguimiento' && <SeguimientoAggregate rows={seguimientoRows} empresaId={id} />}
 
       {section === 'dashboard' && (
         <div className="p-6">

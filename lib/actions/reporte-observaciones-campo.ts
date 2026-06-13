@@ -18,66 +18,18 @@
  */
 
 import { createClient } from '@/lib/supabase/server'
-import { consultoraIdFromEstablecimiento, tenantStoragePath } from '@/lib/storage/tenant-path'
+import { consultoraIdFromEstablecimiento, consultoraIdFromEmpresa, tenantStoragePath } from '@/lib/storage/tenant-path'
 import { sendReporteObservacionesCampoEmail } from '@/lib/email/reporte-observaciones-campo'
+import {
+  construirResumenObservaciones,
+  type EstadoObservacion,
+  type ReporteObsCampoData,
+  type ReporteObsCampoEncabezado,
+  type ReporteObsCampoItem,
+} from '@/lib/reportes/observaciones-campo-tipos'
 import type { ActionResult } from '@/lib/types'
 
 const PDF_SIGNED_TTL_SECONDS = 60 * 60
-
-export type EstadoObservacion = 'Planificado' | 'Vencido' | 'Cerrado'
-
-export interface ReporteObsCampoItem {
-  id: string
-  descripcion: string
-  /** Severidad: "Acción inmediata crítica/alta/media" | "Oportunidades de mejora". */
-  categoriaNombre: string | null
-  /** 1 (oportunidad) … 4 (crítica). Para ordenar y colorear. */
-  categoriaNivel: number | null
-  /** Color hex de la categoría (de observaciones_categorias.color). */
-  categoriaColor: string | null
-  /** Tipo de riesgo (observaciones_clasificaciones), opcional. */
-  clasificacionNombre: string | null
-  /** Responsable de subsanar ("Apellido, Nombre"). */
-  responsable: string | null
-  /** Plazo de corrección (gestiones_observaciones.fecha_planificada). */
-  fechaPlazo: string
-  /** Fecha real de la recorrida (gestiones_registros.fecha_ejecutada). */
-  fechaEjecutada: string | null
-  estado: EstadoObservacion
-  fechaCierre: string | null
-  responsableCierre: string | null
-  sectorNombre: string | null
-  puestoNombre: string | null
-  gestionNombre: string | null
-  /** PATH (no URL) de la foto con marcas en bucket `documentos`. El cliente lo firma. */
-  fotoPath: string | null
-  /** PATH (no URL) de la evidencia de cierre en bucket `documentos`. El cliente lo firma. */
-  evidenciaCierrePath: string | null
-}
-
-export interface ReporteObsCampoResumen {
-  total: number
-  /** Conteo por tipo/severidad, ordenado crítica → oportunidad. */
-  porTipo: { nombre: string; nivel: number; count: number }[]
-  /** Conteo por estado. */
-  porEstado: Record<EstadoObservacion, number>
-  /** Conteo por responsable, ordenado descendente. */
-  porResponsable: { nombre: string; count: number }[]
-}
-
-export interface ReporteObsCampoEncabezado {
-  cliente: string
-  establecimiento: string
-  profesional: string
-  /** DD/MM/YYYY. */
-  fechaEmision: string
-}
-
-export interface ReporteObsCampoData {
-  encabezado: ReporteObsCampoEncabezado
-  items: ReporteObsCampoItem[]
-  resumen: ReporteObsCampoResumen
-}
 
 /** Estado de la observación según hoy (mismo criterio que ActuarView). */
 function calcularEstado(fechaPlanificada: string, fechaCierre: string | null, hoyStr: string): EstadoObservacion {
@@ -95,79 +47,63 @@ function nombrePersona(p: { nombre: string; apellido: string } | null | undefine
  * Consolida las observaciones de campo de un establecimiento dentro del rango
  * [desde, hasta] (inclusivo), filtrando por la fecha de ejecución de la recorrida.
  */
-export async function obtenerDatosReporteObservacionesCampo(
-  establecimientoId: string,
+type SupaClient = Awaited<ReturnType<typeof createClient>>
+
+function hoyStrLocal(): string {
+  const hoy = new Date()
+  return `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`
+}
+
+function fechaEmisionLocal(): string {
+  const hoy = new Date()
+  return `${String(hoy.getDate()).padStart(2, '0')}/${String(hoy.getMonth() + 1).padStart(2, '0')}/${hoy.getFullYear()}`
+}
+
+/**
+ * Consulta + mapea las observaciones de UNA O VARIAS establecimientos cuya
+ * recorrida (gestiones_registros) se ejecutó dentro del rango [desde, hasta].
+ * Reutilizable por el reporte de establecimiento y el de empresa.
+ *
+ * Trae además: quién relevó (responsable del registro) y el nombre del
+ * establecimiento (clave para el consolidado de empresa). Lanza Error si la
+ * consulta falla (el caller lo envuelve en ActionResult).
+ */
+async function consultarItemsObservaciones(
+  supabase: SupaClient,
+  estIds: string[],
   desde: string,
   hasta: string,
-): Promise<ActionResult<ReporteObsCampoData>> {
-  if (!establecimientoId) return { success: false, error: 'Establecimiento requerido' }
-  if (!desde || !hasta) return { success: false, error: 'Rango de fechas requerido' }
+  hoyStr: string,
+): Promise<ReporteObsCampoItem[]> {
+  if (estIds.length === 0) return []
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'No autenticado' }
-
-  // ── Encabezado: establecimiento + cliente (empresa) + profesional ──────────
-  const [{ data: estData }, { data: profileData }] = await Promise.all([
-    supabase
-      .from('establecimientos')
-      .select('nombre, empresas(razon_social)')
-      .eq('id', establecimientoId)
-      .maybeSingle(),
-    supabase.from('profiles').select('full_name').eq('id', user.id).maybeSingle(),
-  ])
-
-  if (!estData) return { success: false, error: 'No se encontró el establecimiento' }
-  const empresa = estData.empresas as { razon_social: string } | { razon_social: string }[] | null
-  const empresaRow = Array.isArray(empresa) ? empresa[0] : empresa
-
-  const hoy = new Date()
-  const hoyStr = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`
-
-  const encabezado: ReporteObsCampoEncabezado = {
-    cliente: empresaRow?.razon_social ?? '—',
-    establecimiento: estData.nombre ?? '—',
-    profesional: profileData?.full_name ?? user.email ?? '—',
-    fechaEmision: `${String(hoy.getDate()).padStart(2, '0')}/${String(hoy.getMonth() + 1).padStart(2, '0')}/${hoy.getFullYear()}`,
-  }
-
-  // ── Recorridas ejecutadas del establecimiento dentro del rango ─────────────
   const { data: rgData, error: rgError } = await supabase
     .from('gestiones_registros')
     .select(`
       id,
       fecha_ejecutada,
+      responsable:personas_directorio!responsable_id(nombre, apellido),
       gestiones_establecimientos!inner(
         establecimiento_id,
+        establecimientos(nombre),
         gestiones(nombre)
       )
     `)
-    .eq('gestiones_establecimientos.establecimiento_id', establecimientoId)
+    .in('gestiones_establecimientos.establecimiento_id', estIds)
     .not('fecha_ejecutada', 'is', null)
     .gte('fecha_ejecutada', desde)
     .lte('fecha_ejecutada', hasta)
     .order('fecha_ejecutada', { ascending: true })
 
-  if (rgError) return { success: false, error: rgError.message }
+  if (rgError) throw new Error(rgError.message)
 
-  const registros = (rgData ?? []) as unknown as {
-    id: string
-    fecha_ejecutada: string | null
-    gestiones_establecimientos: { gestiones: { nombre: string } | null } | null
-  }[]
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  const registros = (rgData ?? []) as any[]
+  if (registros.length === 0) return []
 
-  const emptyData: ReporteObsCampoData = {
-    encabezado,
-    items: [],
-    resumen: { total: 0, porTipo: [], porEstado: { Planificado: 0, Vencido: 0, Cerrado: 0 }, porResponsable: [] },
-  }
-
-  if (registros.length === 0) return { success: true, data: emptyData }
-
-  const rgMap = new Map(registros.map(rg => [rg.id, rg]))
+  const rgMap = new Map<string, any>(registros.map(rg => [rg.id, rg]))
   const rgIds = registros.map(rg => rg.id)
 
-  // ── Observaciones de esas recorridas ───────────────────────────────────────
   const { data: obsData, error: obsError } = await supabase
     .from('gestiones_observaciones')
     .select(`
@@ -184,11 +120,16 @@ export async function obtenerDatosReporteObservacionesCampo(
     .in('registro_gestion_id', rgIds)
     .order('fecha_planificada', { ascending: true })
 
-  if (obsError) return { success: false, error: obsError.message }
+  if (obsError) throw new Error(obsError.message)
 
-  /* eslint-disable @typescript-eslint/no-explicit-any */
   const items: ReporteObsCampoItem[] = ((obsData ?? []) as any[]).map(o => {
     const rg = rgMap.get(o.registro_gestion_id)
+    const ge = rg?.gestiones_establecimientos
+    const geRow = Array.isArray(ge) ? ge[0] : ge
+    const estRel = geRow?.establecimientos
+    const estRow = Array.isArray(estRel) ? estRel[0] : estRel
+    const gestRel = geRow?.gestiones
+    const gestRow = Array.isArray(gestRel) ? gestRel[0] : gestRel
     const categoria = o.observaciones_categorias as { nombre: string; nivel: number; color: string } | null
     const clasificacion = o.observaciones_clasificaciones as { nombre: string } | null
     const sector = o.establecimientos_sectores as { nombre: string } | null
@@ -209,7 +150,9 @@ export async function obtenerDatosReporteObservacionesCampo(
       responsableCierre: nombrePersona(o.responsable_cierre),
       sectorNombre: sector?.nombre ?? null,
       puestoNombre: puesto?.nombre ?? null,
-      gestionNombre: rg?.gestiones_establecimientos?.gestiones?.nombre ?? null,
+      gestionNombre: gestRow?.nombre ?? null,
+      establecimientoNombre: estRow?.nombre ?? null,
+      relevadoPor: nombrePersona(rg?.responsable),
       fotoPath: o.foto_url ?? null,
       evidenciaCierrePath: o.evidencia_cierre_url ?? null,
     }
@@ -218,33 +161,86 @@ export async function obtenerDatosReporteObservacionesCampo(
 
   // Orden de presentación: por severidad (crítica → oportunidad), luego por fecha de plazo.
   items.sort((a, b) => (b.categoriaNivel ?? 0) - (a.categoriaNivel ?? 0) || a.fechaPlazo.localeCompare(b.fechaPlazo))
+  return items
+}
 
-  // ── Resumen ─────────────────────────────────────────────────────────────────
-  const porTipoMap = new Map<number, { nombre: string; nivel: number; count: number }>()
-  const porEstado: Record<EstadoObservacion, number> = { Planificado: 0, Vencido: 0, Cerrado: 0 }
-  const porResponsableMap = new Map<string, number>()
+/**
+ * Consolida las observaciones de UN establecimiento dentro del rango, filtrando
+ * por la fecha de ejecución de la recorrida.
+ */
+export async function obtenerDatosReporteObservacionesCampo(
+  establecimientoId: string,
+  desde: string,
+  hasta: string,
+): Promise<ActionResult<ReporteObsCampoData>> {
+  if (!establecimientoId) return { success: false, error: 'Establecimiento requerido' }
+  if (!desde || !hasta) return { success: false, error: 'Rango de fechas requerido' }
 
-  for (const it of items) {
-    if (it.categoriaNivel != null) {
-      const prev = porTipoMap.get(it.categoriaNivel)
-      if (prev) prev.count++
-      else porTipoMap.set(it.categoriaNivel, { nombre: it.categoriaNombre ?? `Nivel ${it.categoriaNivel}`, nivel: it.categoriaNivel, count: 1 })
-    }
-    porEstado[it.estado]++
-    const resp = it.responsable ?? 'Sin asignar'
-    porResponsableMap.set(resp, (porResponsableMap.get(resp) ?? 0) + 1)
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'No autenticado' }
+
+  const [{ data: estData }, { data: profileData }] = await Promise.all([
+    supabase.from('establecimientos').select('nombre, empresas(razon_social)').eq('id', establecimientoId).maybeSingle(),
+    supabase.from('profiles').select('full_name').eq('id', user.id).maybeSingle(),
+  ])
+  if (!estData) return { success: false, error: 'No se encontró el establecimiento' }
+  const empresa = estData.empresas as { razon_social: string } | { razon_social: string }[] | null
+  const empresaRow = Array.isArray(empresa) ? empresa[0] : empresa
+
+  const encabezado: ReporteObsCampoEncabezado = {
+    cliente: empresaRow?.razon_social ?? '—',
+    establecimiento: estData.nombre ?? '—',
+    profesional: profileData?.full_name ?? user.email ?? '—',
+    fechaEmision: fechaEmisionLocal(),
   }
 
-  const resumen: ReporteObsCampoResumen = {
-    total: items.length,
-    porTipo: Array.from(porTipoMap.values()).sort((a, b) => b.nivel - a.nivel),
-    porEstado,
-    porResponsable: Array.from(porResponsableMap.entries())
-      .map(([nombre, count]) => ({ nombre, count }))
-      .sort((a, b) => b.count - a.count || a.nombre.localeCompare(b.nombre)),
+  try {
+    const items = await consultarItemsObservaciones(supabase, [establecimientoId], desde, hasta, hoyStrLocal())
+    return { success: true, data: { encabezado, items, resumen: construirResumenObservaciones(items) } }
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : 'Error al consultar observaciones' }
+  }
+}
+
+/**
+ * Consolida las observaciones de TODOS los establecimientos de una empresa dentro
+ * del rango (mismo criterio: fecha de ejecución de la recorrida).
+ */
+export async function obtenerDatosReporteObservacionesEmpresa(
+  empresaId: string,
+  desde: string,
+  hasta: string,
+): Promise<ActionResult<ReporteObsCampoData>> {
+  if (!empresaId) return { success: false, error: 'Empresa requerida' }
+  if (!desde || !hasta) return { success: false, error: 'Rango de fechas requerido' }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'No autenticado' }
+
+  const [{ data: empresaData }, { data: estList }, { data: profileData }] = await Promise.all([
+    supabase.from('empresas').select('razon_social').eq('id', empresaId).maybeSingle(),
+    supabase.from('establecimientos').select('id').eq('empresa_id', empresaId).neq('status', 'cancelled'),
+    supabase.from('profiles').select('full_name').eq('id', user.id).maybeSingle(),
+  ])
+  if (!empresaData) return { success: false, error: 'No se encontró la empresa' }
+
+  const estIds = ((estList ?? []) as { id: string }[]).map(e => e.id)
+
+  const encabezado: ReporteObsCampoEncabezado = {
+    cliente: empresaData.razon_social ?? '—',
+    establecimiento: `Todos los establecimientos (${estIds.length})`,
+    profesional: profileData?.full_name ?? user.email ?? '—',
+    fechaEmision: fechaEmisionLocal(),
   }
 
-  return { success: true, data: { encabezado, items, resumen } }
+  try {
+    const items = await consultarItemsObservaciones(supabase, estIds, desde, hasta, hoyStrLocal())
+    return { success: true, data: { encabezado, items, resumen: construirResumenObservaciones(items) } }
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : 'Error al consultar observaciones' }
+  }
 }
 
 export interface EmitirReporteResult {
@@ -273,6 +269,7 @@ export async function emitirReporteObservacionesCampo(
   if (!user) return { success: false, error: 'No autenticado' }
 
   const establecimientoId = (formData.get('establecimiento_id') as string) || ''
+  const empresaId = (formData.get('empresa_id') as string) || ''
   const pdfFile = formData.get('pdf') as File | null
   const filename = ((formData.get('filename') as string) || 'reporte-observaciones-campo.pdf').replace(/[^\w.\-]+/g, '_')
   const periodoLabel = (formData.get('periodo_label') as string) || ''
@@ -281,7 +278,7 @@ export async function emitirReporteObservacionesCampo(
   const clienteNombre = (formData.get('cliente') as string) || ''
   const establecimientoNombre = (formData.get('establecimiento') as string) || ''
 
-  if (!establecimientoId) return { success: false, error: 'Establecimiento requerido' }
+  if (!establecimientoId && !empresaId) return { success: false, error: 'Establecimiento o empresa requerido' }
   if (!pdfFile || pdfFile.size === 0) return { success: false, error: 'PDF vacío' }
 
   // El cliente sube el PDF como Blob BINARIO (no base64) para no inflar el body
@@ -289,11 +286,17 @@ export async function emitirReporteObservacionesCampo(
   const pdfBuffer = Buffer.from(await pdfFile.arrayBuffer())
   if (pdfBuffer.length === 0) return { success: false, error: 'PDF vacío' }
 
-  const consultoraId = await consultoraIdFromEstablecimiento(supabase, establecimientoId)
-  if (!consultoraId) return { success: false, error: 'No se pudo resolver la consultora del establecimiento' }
+  // Tenant del path: del establecimiento (reporte por establecimiento) o de la
+  // empresa (consolidado de empresa). El primer segmento {consultora_id} hace
+  // matchear la RLS de lectura del bucket privado.
+  const consultoraId = establecimientoId
+    ? await consultoraIdFromEstablecimiento(supabase, establecimientoId)
+    : await consultoraIdFromEmpresa(supabase, empresaId)
+  if (!consultoraId) return { success: false, error: 'No se pudo resolver la consultora' }
 
+  const entityId = establecimientoId || empresaId
   const ts = Date.now()
-  const path = tenantStoragePath(consultoraId, 'reportes-observaciones-campo', establecimientoId, `${ts}.pdf`)
+  const path = tenantStoragePath(consultoraId, 'reportes-observaciones-campo', entityId, `${ts}.pdf`)
   const { data: upload, error: uploadError } = await supabase.storage
     .from('documentos')
     .upload(path, pdfBuffer, { upsert: false, contentType: 'application/pdf' })

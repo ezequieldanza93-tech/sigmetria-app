@@ -1,7 +1,14 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { MultiSelectFilter } from '@/components/ui/multi-select-filter'
+
+// Pesado (html2canvas + jsPDF): solo se carga al abrir el reporte.
+const ReporteObservacionesEmpresaButton = dynamic(
+  () => import('@/components/reporte-observaciones-campo-modal').then(m => m.ReporteObservacionesEmpresaButton),
+  { ssr: false },
+)
 
 export interface SeguimientoAggregateRow {
   id: string
@@ -20,6 +27,8 @@ interface Props {
   rows: SeguimientoAggregateRow[]
   showEmpresaFilter?: boolean
   showEstablecimientoFilter?: boolean
+  /** Si se pasa, muestra el botón "Emitir reporte de observaciones" (consolidado de empresa). */
+  empresaId?: string
 }
 
 type Estado = 'Cerrado' | 'Vencido' | 'Planificado'
@@ -49,6 +58,7 @@ export function SeguimientoAggregate({
   rows,
   showEmpresaFilter = false,
   showEstablecimientoFilter = true,
+  empresaId,
 }: Props) {
   // null = "Todos" (sin filtrar). Estado arranca con default explícito
   // (Planificado + Vencido) para ocultar los cerrados de entrada.
@@ -85,6 +95,7 @@ export function SeguimientoAggregate({
     <div className="px-6 py-6 space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="text-lg font-semibold text-text-primary mr-4">Seguimiento de observaciones</h2>
+        {empresaId && <ReporteObservacionesEmpresaButton empresaId={empresaId} />}
         {showEmpresaFilter && (
           <MultiSelectFilter label="Empresa" options={empresaOptions} selected={empresaSel ?? new Set(empresaOptions.map(o => o.value))} onChange={setEmpresaSel} />
         )}
