@@ -33,7 +33,7 @@ const csp = cspDirectives.join('; ')
 const nextConfig: NextConfig = {
   transpilePackages: ['recharts'],
   experimental: {
-    serverActions: { bodySizeLimit: '10mb' },
+    serverActions: { bodySizeLimit: '25mb' },
     optimizePackageImports: [
       'lucide-react',
       '@supabase/supabase-js',

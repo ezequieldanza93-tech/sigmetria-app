@@ -4,9 +4,16 @@ import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { useSignedUrls } from '@/lib/storage/sign-client'
+import dynamic from 'next/dynamic'
 import { CierreObservacionModal } from '@/components/cierre-observacion-modal'
 import { MultiSelectFilter } from '@/components/ui/multi-select-filter'
 import type { ObservacionGestion } from '@/lib/types'
+
+// Pesado (html2canvas + jsPDF): solo se carga al abrir el reporte.
+const ReporteObservacionesCampoButton = dynamic(
+  () => import('@/components/reporte-observaciones-campo-modal').then(m => m.ReporteObservacionesCampoButton),
+  { ssr: false },
+)
 
 interface ObsRow extends ObservacionGestion {
   fecha_ejecutada?: string | null
@@ -265,9 +272,12 @@ export function ActuarView({ establecimientoId, canWrite = true }: { establecimi
     return (
       <div className="bg-surface-elevated rounded-xl border border-border-subtle p-12 text-center">
         <p className="font-semibold text-text-primary">Seguimiento de Observaciones</p>
-        <p className="text-sm text-text-tertiary mt-1">
+        <p className="text-sm text-text-tertiary mt-1 mb-4">
           No hay observaciones de gestiones ejecutadas.
         </p>
+        <div className="flex justify-center">
+          <ReporteObservacionesCampoButton establecimientoId={establecimientoId} />
+        </div>
       </div>
     )
   }
@@ -293,6 +303,12 @@ export function ActuarView({ establecimientoId, canWrite = true }: { establecimi
 
   return (
     <div>
+      {/* Título + emisión de reporte por período */}
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+        <h2 className="text-sm font-semibold text-text-primary">Seguimiento de Observaciones</h2>
+        <ReporteObservacionesCampoButton establecimientoId={establecimientoId} />
+      </div>
+
       {/* Search + Filters */}
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <input
