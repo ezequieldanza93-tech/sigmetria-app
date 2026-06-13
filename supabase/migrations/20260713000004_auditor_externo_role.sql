@@ -1,0 +1,13 @@
+-- ============================================================
+-- Estándar 5 (SRT Disp. 15/2026) — acceso de SOLO LECTURA para el organismo de control.
+--
+-- Crea el rol `auditor_externo`. Ya está cableado por STRING en las policies de
+-- audit_log / audit_chain_state (migr 20260612000001/02 y 20260702000001), que lo
+-- contemplaban "si el rol existe". Acá se crea el valor del enum.
+--
+-- ADD VALUE va AISLADO en su propia migración: PostgreSQL no permite USAR el valor
+-- nuevo del enum en la misma transacción que lo crea. La migración siguiente
+-- (20260713000005) ya lo usa en las funciones de lectura. Mismo patrón que el alta de
+-- `responsable_estandares` (20260527000005) y `viewer_observaciones` (20260701000002).
+-- ============================================================
+ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'auditor_externo';
