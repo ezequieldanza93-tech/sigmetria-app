@@ -1,6 +1,6 @@
 'use client'
 
-import { Building2, ClipboardList, BarChart3, BookOpen, Eye, Contact, ScrollText } from 'lucide-react'
+import { Building2, ClipboardList, BarChart3, BookOpen, Eye, Contact, ScrollText, MessageSquare } from 'lucide-react'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { SectionsShell } from '@/components/layout/sections-shell'
 import type { SectionItem } from '@/components/layout/sections-sidebar'
@@ -50,9 +50,10 @@ export function ConsultoraShell({ children }: ConsultoraShellProps) {
     ? (raw as Section)
     : 'empresas'
 
-  const onCrm = pathname?.startsWith('/dashboard/crm') ?? false
+  const onComentarios = pathname?.startsWith('/dashboard/crm/comentarios') ?? false
+  const onCrm = !onComentarios && (pathname?.startsWith('/dashboard/crm') ?? false)
   const onAuditoria = pathname?.startsWith('/dashboard/auditoria') ?? false
-  const activeId: string = onCrm ? 'crm' : onAuditoria ? 'auditoria' : sectionActive
+  const activeId: string = onComentarios ? 'comentarios' : onCrm ? 'crm' : onAuditoria ? 'auditoria' : sectionActive
   const showCrm = isCrmAdmin(eff?.email)
   const showAuditoria =
     eff?.isSuperAdmin === true ||
@@ -93,7 +94,10 @@ export function ConsultoraShell({ children }: ConsultoraShellProps) {
       href: `${baseUrl}?section=dashboard`,
     },
     ...(showCrm
-      ? ([{ id: 'crm', label: 'CRM', icon: Contact, href: '/dashboard/crm' }] as SectionItem[])
+      ? ([
+          { id: 'crm', label: 'CRM', icon: Contact, href: '/dashboard/crm' },
+          { id: 'comentarios', label: 'Comentarios', icon: MessageSquare, href: '/dashboard/crm/comentarios' },
+        ] as SectionItem[])
       : []),
     ...(showAuditoria
       ? ([{ id: 'auditoria', label: 'Auditoría', icon: ScrollText, href: '/dashboard/auditoria' }] as SectionItem[])
