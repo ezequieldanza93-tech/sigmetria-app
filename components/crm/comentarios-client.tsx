@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useTransition } from 'react'
-import { CheckCircle, Trash2, Search, MessageSquare } from 'lucide-react'
+import { CheckCircle, Trash2, Search } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
