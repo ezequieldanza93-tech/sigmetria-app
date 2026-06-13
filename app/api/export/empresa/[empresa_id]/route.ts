@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { consultoraIdFromEmpresa } from '@/lib/storage/tenant-path'
@@ -7,6 +7,12 @@ import { parseExportScope } from '@/lib/export/scoping'
 import { buildEmpresaExportPackage, exportFilename } from '@/lib/export/build-package'
 import { storeExportAndSign } from '@/lib/export/store-and-sign'
 import { sendExportListoEmail } from '@/lib/email/export-listo'
+import { exportJobRunUrl } from '@/lib/export/worker-url'
+
+// Fast-path: paquetes chicos se generan y descargan en el mismo request. Damos
+// margen amplio (Vercel PRO) para que el sync no haga timeout antes de decidir.
+export const runtime = 'nodejs'
+export const maxDuration = 300
 
 /**
  * Export de portabilidad por empresa (Res. SRT 48/2025).
@@ -62,7 +68,58 @@ export async function GET(
 
   const consultoraId = await consultoraIdFromEmpresa(supabase, empresaId)
 
-  // ── Armar el paquete (RLS activa vía cliente de sesión) ──
+  // ── SLOW-PATH (worker async): si el front pide modo job (?async=1), NO
+  // generamos el ZIP en este request. Encolamos un export_job (pending),
+  // devolvemos { modo:'job', jobId } de inmediato y disparamos el worker en
+  // background con after(). El worker arma + guarda + firma + emailea. El front
+  // hace polling a /api/export/jobs/<id> hasta ready/error.
+  if (scope.async) {
+    if (!consultoraId) {
+      return NextResponse.json(
+        { error: 'No se pudo resolver la consultora de la empresa' },
+        { status: 400 },
+      )
+    }
+
+    const admin = createAdminClient()
+    const { data: job, error: insErr } = await admin
+      .from('export_jobs')
+      .insert({
+        consultora_id: consultoraId,
+        empresa_id: empresaId,
+        solicitado_por: user.id,
+        estado: 'pending',
+        scope: scope as unknown as Record<string, unknown>,
+      })
+      .select('id')
+      .single()
+
+    if (insErr || !job) {
+      console.error('[export] no se pudo encolar el job:', insErr)
+      return NextResponse.json({ error: 'No se pudo encolar la exportación' }, { status: 500 })
+    }
+
+    const jobId = job.id as string
+    const runUrl = exportJobRunUrl(jobId, req)
+    const secret = process.env.CRON_SECRET
+
+    // Disparo best-effort en background. Si after() no llega a ejecutar el
+    // fetch (cold start raro), el cron de reconciliación marca el job en error.
+    after(async () => {
+      try {
+        await fetch(runUrl, {
+          method: 'POST',
+          headers: secret ? { Authorization: `Bearer ${secret}` } : {},
+        })
+      } catch (e) {
+        console.error('[export] disparo del worker falló (lo recupera el cron):', e)
+      }
+    })
+
+    return NextResponse.json({ modo: 'job', jobId })
+  }
+
+  // ── FAST-PATH (sync): paquetes chicos. Armamos el ZIP en el request.
   let pkg
   try {
     pkg = await buildEmpresaExportPackage(supabase, empresaId, scope)
@@ -93,7 +150,10 @@ export async function GET(
     omitidas: pkg.omitidas.map(o => o.entidad),
   }
 
-  const debeSerAsync = scope.async || pkg.zip.byteLength > ASYNC_BYTES_THRESHOLD
+  // Aunque vino por fast-path (sync), si el ZIP resultó grande lo entregamos por
+  // link (no transferimos un binario enorme por HTTP). scope.async ya se manejó
+  // antes como job: acá solo queda el umbral por bytes.
+  const debeSerAsync = pkg.zip.byteLength > ASYNC_BYTES_THRESHOLD
 
   // ── ENTREGA ASÍNCRONA: guardar en bucket + signed URL + email ──
   if (debeSerAsync && consultoraId) {

@@ -73,6 +73,18 @@
 > validan también las filas existentes; verificado en prod: los 11 sin violaciones. (b) Se agregó la
 > **UI de umbrales** de alerta temprana en `/dashboard/cumplimiento` (solo Admin Principal): listar,
 > agregar, prender/apagar y borrar umbrales (ej. 30/15/7 días). Verificado el camino de escritura.
+>
+> **Estándar 3 (Portabilidad):** cerrado el pendiente del **worker async de export**. (a) Fast-path:
+> `maxDuration=300` en la ruta + descarga de binarios paralelizada → cubre la mayoría sin timeout.
+> (b) Slow-path real para paquetes grandes: tabla `export_jobs` (cola) + worker disparado por
+> `after()` (`/api/export/jobs/[id]/run`) + endpoint de estado con signed URL + polling en la UI +
+> reconciliación de jobs colgados en el cron de limpieza. Verificado el DB layer (encolar/RLS/RPC).
+> Caveat conocido: el ZIP aún se buffea en memoria (OOM posible en paquetes enormes) → fix futuro =
+> streaming a Storage.
+>
+> **Estándar 7 (Interoperabilidad):** documentada la API `/api/v1` en `api_interoperabilidad.md` (4
+> endpoints GET, auth por API key `Authorization: Bearer`, rate limit 60/min, scoping por consultora,
+> OpenAPI 3.0.3 en `/api/v1/docs`).
 
 ---
 

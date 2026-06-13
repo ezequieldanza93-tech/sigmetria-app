@@ -39,6 +39,35 @@ import { extractStorageRefs, dedupeRefs, type StorageRef } from './storage-refs'
 
 type Row = Record<string, unknown>
 
+/**
+ * Aplica `fn` a cada item con un límite de concurrencia. Mantiene el ORDEN del
+ * input en el output (results[i] ↔ items[i]) → no afecta checksums ni el manifest.
+ *
+ * Por qué: la descarga de binarios serial (un await por archivo) es el cuello de
+ * botella del export. Paralelizar con un cap (~6) baja la latencia varias veces
+ * sin saturar Storage ni la memoria del runtime.
+ */
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length)
+  let cursor = 0
+  const workers = new Array(Math.min(limit, items.length)).fill(0).map(async () => {
+    while (true) {
+      const index = cursor++
+      if (index >= items.length) return
+      results[index] = await fn(items[index], index)
+    }
+  })
+  await Promise.all(workers)
+  return results
+}
+
+/** Concurrencia máxima para la descarga de binarios de Storage. */
+const DOWNLOAD_CONCURRENCY = 6
+
 export interface BuildResult {
   zip: Uint8Array
   empresaNombre: string | null
@@ -231,26 +260,57 @@ export async function buildEmpresaExportPackage(
   }
 
   // ── 3. Descargar binarios originales de Storage ───────────────────────────
+  // Descarga PARALELA con cap de concurrencia (antes era serial = cuello de
+  // botella). mapWithConcurrency preserva el orden de `refs`, así que el ZIP y
+  // los fileEntries quedan en el MISMO orden que la versión serial → no cambian
+  // checksums ni el formato del paquete.
   let totalArchivos = 0
   if (requestScope.incluyeArchivos) {
     const refs = dedupeRefs(allRefs)
-    for (const ref of refs) {
-      const { data, error } = await supabase.storage.from(ref.bucket).download(ref.path)
-      if (error || !data) {
-        omitidas.push({ entidad: `archivo:${ref.bucket}/${ref.path}`, motivo: error?.message ?? 'no descargable' })
+
+    type DownloadedFile =
+      | { ok: true; entry: ManifestFileEntry; zipPath: string; bytes: Uint8Array }
+      | { ok: false; entidad: string; motivo: string }
+
+    const downloaded = await mapWithConcurrency<StorageRef, DownloadedFile>(
+      refs,
+      DOWNLOAD_CONCURRENCY,
+      async (ref) => {
+        const { data, error } = await supabase.storage.from(ref.bucket).download(ref.path)
+        if (error || !data) {
+          return {
+            ok: false,
+            entidad: `archivo:${ref.bucket}/${ref.path}`,
+            motivo: error?.message ?? 'no descargable',
+          }
+        }
+        const arrayBuf = await data.arrayBuffer()
+        const bytes = new Uint8Array(arrayBuf)
+        const zipPath = `archivos/${ref.bucket}/${ref.path}`
+        return {
+          ok: true,
+          zipPath,
+          bytes,
+          entry: {
+            path: zipPath,
+            kind: 'binary',
+            entity: ref.entity,
+            bytes: bytes.byteLength,
+            sha256: await sha256Hex(bytes),
+          },
+        }
+      },
+    )
+
+    // Escribir al ZIP en orden (la escritura a JSZip y a los arrays NO es
+    // concurrente → resultado determinista, idéntico al serial).
+    for (const result of downloaded) {
+      if (!result.ok) {
+        omitidas.push({ entidad: result.entidad, motivo: result.motivo })
         continue
       }
-      const arrayBuf = await data.arrayBuffer()
-      const bytes = new Uint8Array(arrayBuf)
-      const zipPath = `archivos/${ref.bucket}/${ref.path}`
-      zip.file(zipPath, bytes)
-      fileEntries.push({
-        path: zipPath,
-        kind: 'binary',
-        entity: ref.entity,
-        bytes: bytes.byteLength,
-        sha256: await sha256Hex(bytes),
-      })
+      zip.file(result.zipPath, result.bytes)
+      fileEntries.push(result.entry)
       totalArchivos++
     }
   }

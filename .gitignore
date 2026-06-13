@@ -13,6 +13,7 @@ yarn-debug.log*
 yarn-error.log*
 .vercel
 .claude/
+.playwright-mcp/
 supabase/.temp/
 
 /playwright-report/

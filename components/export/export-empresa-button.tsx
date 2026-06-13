@@ -41,8 +41,43 @@ export function ExportEmpresaButton({ empresaId }: Props) {
     }
     if (formato !== 'both') qs.set('formato', formato)
     if (!incluirArchivos) qs.set('archivos', '0')
+    // Incluir archivos originales = paquete potencialmente grande → modo job
+    // (worker async): el backend encola, responde { modo:'job', jobId } y
+    // generamos en segundo plano. Evita timeout/OOM en el request.
+    if (incluirArchivos) qs.set('async', '1')
     const query = qs.toString()
     return `/api/export/empresa/${empresaId}${query ? `?${query}` : ''}`
+  }
+
+  /**
+   * Polling del estado del job hasta ready (abre el signed URL) o error.
+   * Intervalo ~4s. Sin timeout duro en el cliente: el cron de reconciliación
+   * marca como error los jobs colgados, así que el polling siempre converge.
+   */
+  async function pollJob(jobId: string): Promise<void> {
+    while (true) {
+      await new Promise(r => setTimeout(r, 4000))
+      const res = await fetch(`/api/export/jobs/${jobId}`)
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        throw new Error(json.error ?? 'No se pudo consultar el estado de la exportación')
+      }
+      const json = (await res.json()) as {
+        estado: 'pending' | 'processing' | 'ready' | 'error'
+        signedUrl?: string | null
+        error?: string | null
+      }
+      if (json.estado === 'ready' && json.signedUrl) {
+        window.open(json.signedUrl, '_blank', 'noopener,noreferrer')
+        success('Tu exportación está lista. Te enviamos también el enlace por email.')
+        setDone(true)
+        return
+      }
+      if (json.estado === 'error') {
+        throw new Error(json.error ?? 'La exportación falló. Intentá de nuevo.')
+      }
+      // pending / processing → seguimos esperando.
+    }
   }
 
   async function handleExport() {
@@ -57,9 +92,22 @@ export function ExportEmpresaButton({ empresaId }: Props) {
 
       const contentType = res.headers.get('Content-Type') ?? ''
 
-      // Modo async: el backend devuelve JSON con un signed URL temporal.
+      // Respuesta JSON: puede ser modo job (worker async) o entrega por link.
       if (contentType.includes('application/json')) {
-        const json = (await res.json()) as { signedUrl?: string }
+        const json = (await res.json()) as {
+          modo?: string
+          jobId?: string
+          signedUrl?: string
+        }
+
+        // Modo job: el backend encoló; hacemos polling hasta ready/error.
+        if (json.modo === 'job' && json.jobId) {
+          success('Estamos generando tu exportación en segundo plano…')
+          await pollJob(json.jobId)
+          return
+        }
+
+        // Entrega directa por link (paquete grande detectado en el fast-path).
         if (json.signedUrl) {
           window.open(json.signedUrl, '_blank', 'noopener,noreferrer')
           success('Tu exportación está lista. Te enviamos también el enlace por email.')

@@ -13,13 +13,15 @@ import { startCronRun, finishCronRun } from '@/lib/cron/cron-log'
  * `Authorization: Bearer ${CRON_SECRET}`. Para activarlo, declarar en vercel.json:
  *   { "crons": [{ "path": "/api/cron/limpiar-exports", "schedule": "0 * * * *" }] }
  *
- * NOTA — worker async completo (PENDIENTE): hoy la generación del paquete es
- * SÍNCRONA (el guardado en bucket + signed URL ya funcionan en el route). El
- * disparo de generación en background por cola/cron queda como patrón pendiente:
- * cuando se implemente, este endpoint es el lugar natural para drenar la cola.
+ * RECONCILIACIÓN del worker async (Estándar 3, SRT Disp. 15/2026): además del
+ * GC del bucket, este cron marca como `error` los export_jobs colgados en
+ * pending/processing por más de RECONCILIA_MINUTOS (el worker no completó —
+ * after() no llegó a correr, cold start raro, etc.). Reusa este slot: NO se
+ * agrega un cron nuevo.
  */
 
 const RETENCION_HORAS = 24
+const RECONCILIA_MINUTOS = 15
 
 export async function GET(request: Request) {
   const auth = request.headers.get('authorization')
@@ -72,6 +74,22 @@ export async function GET(request: Request) {
     }
   }
 
-  await finishCronRun(admin, runId, 'success', { filas: borrados, errores })
-  return NextResponse.json({ borrados, errores })
+  // ── Reconciliación de jobs colgados (worker async no completó) ──
+  let jobsReconciliados = 0
+  try {
+    const { data, error: recErr } = await admin.rpc('export_jobs_reconciliar', {
+      p_minutos: RECONCILIA_MINUTOS,
+    })
+    if (recErr) errores.push(`reconciliar: ${recErr.message}`)
+    else jobsReconciliados = (data as number) ?? 0
+  } catch (e) {
+    errores.push(`reconciliar: ${e instanceof Error ? e.message : 'excepción'}`)
+  }
+
+  await finishCronRun(admin, runId, 'success', {
+    filas: borrados,
+    jobs_reconciliados: jobsReconciliados,
+    errores,
+  })
+  return NextResponse.json({ borrados, jobsReconciliados, errores })
 }
