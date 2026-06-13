@@ -58,6 +58,15 @@
 > Con esto, los pendientes finos de los estándares **2 (Trazabilidad)** y **8 (Auditoría)**
 > quedan **cerrados** del lado del software. Restan los `trace_id` históricos previos al cableado
 > (las filas viejas no se reencadenan: comportamiento normal).
+>
+> **Estándar 5 (Accesibilidad — organismo de control):** se creó el rol `auditor_externo` (solo
+> lectura). Lee TODA la información de la consultora, **no puede escribir nada** (doble bloqueo:
+> RLS por construcción + capa de app `canWrite`), y verifica la cadena de custodia desde
+> `/dashboard/auditoria`. MFA obligatorio. El Admin Principal lo asigna desde la invitación de
+> usuarios ("Auditor — organismo de control"). **Verificado en prod** con usuario de prueba: LEE,
+> escritura BLOQUEADA (42501), ve la cadena (ÍNTEGRA). Queda **funcional**; el mecanismo concreto
+> de acceso que defina la SRT (cuenta nominal por inspector / federado / temporal) se ajustará
+> cuando la SRT lo publique (fuera de alcance técnico hoy).
 
 ---
 
