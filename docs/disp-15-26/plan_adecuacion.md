@@ -29,6 +29,38 @@
 
 ---
 
+> ### Actualización 2026-06-13 — cierre de pendientes de Trazabilidad y Auditoría (est. 2 y 8)
+>
+> **Hallazgo crítico corregido:** se detectó (y verificó contra prod) que el flujo central
+> —recorridas y observaciones— **no generaba ninguna entrada en `audit_log`**: el trigger de
+> auditoría se había colgado de los nombres viejos de las tablas (`registro_gestiones` /
+> `observaciones_gestiones`), renombradas antes del despliegue de la auditoría, y la migración
+> los salteó. Con 183 recorridas + 27 observaciones + 47 gestiones-establecimiento reales, había
+> **0 filas auditadas** de ese flujo. La cadena de custodia NO cubría el corazón operativo.
+>
+> **Corregido (migraciones `20260713000002` y `20260713000003`, verificado en prod):**
+> - Trigger de auditoría colgado en los nombres reales (`gestiones_registros`,
+>   `gestiones_observaciones`, `gestiones_establecimientos`, `firmas`, `gestiones`).
+> - `fn_resolve_consultora_id` extendida para resolver el tenant de las tablas de gestiones por
+>   su FK → caen en la cadena de su consultora, no en la global.
+> - Fix de tablas particionadas (`gestiones_registros`): se registra el nombre de la tabla raíz
+>   (`pg_partition_root`), no la partición.
+>
+> **`trace_id` cableado:** las 13 server actions de recorridas/observaciones/firmas pasaron a
+> usar `createAuditedClient` → cada flujo queda correlacionado por un `trace_id`. (Verificado: el
+> header llega al trigger y se registra.)
+>
+> **UI de auditoría:** nueva pantalla `/dashboard/auditoria` (gateada a `full_access_main`,
+> `full_access_branch`, `responsable_estandares` y developer/super-admin) con: verificar
+> integridad de la cadena, historial inmutable de una entidad, y reconstrucción de un flujo por
+> `trace_id`. El Responsable de Estándares ya puede verificar la cadena desde la app.
+>
+> Con esto, los pendientes finos de los estándares **2 (Trazabilidad)** y **8 (Auditoría)**
+> quedan **cerrados** del lado del software. Restan los `trace_id` históricos previos al cableado
+> (las filas viejas no se reencadenan: comportamiento normal).
+
+---
+
 ## 2. Plan hacia el Registro Provisorio (núcleo mínimo: estándares 1, 2 y 3)
 
 | Acción | Descripción | Criterio de verificación | Plazo (meses) | Dependencia |
