@@ -1,8 +1,13 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { ActionResult } from '@/lib/types'
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const SEVERIDADES = ['info', 'warning', 'critical'] as const
+type Severidad = (typeof SEVERIDADES)[number]
 
 /**
  * Autocontrol y alertas — Res. SRT 48/2025 Art. 4.9.
@@ -141,4 +146,104 @@ export async function refrescarAutocontrol(): Promise<ActionResult<{ alertas: nu
   if (error) return { success: false, error: error.message }
 
   return { success: true, data: { alertas: (data as number) ?? 0 } }
+}
+
+// ── Edición de umbrales de alerta temprana (estándar 9 — Autocontrol) ─────────
+// Escritura gateada a full_access_main de la consultora o super_admin. La RLS
+// (policy "alertas_umbrales: write") ya exige lo mismo a nivel base: acá
+// gateamos en el server action para dar un error claro antes de tocar la DB.
+
+/** Resuelve la consultora del usuario y si puede editar umbrales (admin-only). */
+async function getUmbralEditorContext(): Promise<{
+  supabase: Awaited<ReturnType<typeof createClient>>
+  consultoraId: string | null
+  canEdit: boolean
+}> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { supabase, consultoraId: null, canEdit: false }
+
+  const [{ data: profile }, { data: membership }] = await Promise.all([
+    supabase.from('profiles').select('is_super_admin').eq('id', user.id).maybeSingle(),
+    supabase
+      .from('consultoras_members')
+      .select('consultora_id, role')
+      .eq('user_id', user.id)
+      .eq('is_active', true)
+      .maybeSingle(),
+  ])
+
+  const isSuperAdmin = profile?.is_super_admin === true
+  const consultoraId = (membership?.consultora_id as string | undefined) ?? null
+  const canEdit = isSuperAdmin || membership?.role === 'full_access_main'
+  return { supabase, consultoraId, canEdit }
+}
+
+/**
+ * Inserta un umbral o, si ya existe ese `dias_antes` para la consultora,
+ * actualiza su severidad (maneja el UNIQUE(consultora_id, dias_antes) vía upsert).
+ */
+export async function upsertUmbral(
+  dias_antes: number,
+  severidad: Severidad,
+): Promise<ActionResult> {
+  if (!Number.isInteger(dias_antes) || dias_antes <= 0) {
+    return { success: false, error: 'Los días deben ser un entero mayor a 0' }
+  }
+  if (!SEVERIDADES.includes(severidad)) {
+    return { success: false, error: 'Severidad inválida' }
+  }
+
+  const { supabase, consultoraId, canEdit } = await getUmbralEditorContext()
+  if (!consultoraId) return { success: false, error: 'Sin consultora asignada' }
+  if (!canEdit) return { success: false, error: 'No autorizado' }
+
+  const { error } = await supabase
+    .from('alertas_umbrales')
+    .upsert(
+      { consultora_id: consultoraId, dias_antes, severidad },
+      { onConflict: 'consultora_id,dias_antes' },
+    )
+  if (error) return { success: false, error: error.message }
+
+  revalidatePath('/dashboard/cumplimiento')
+  return { success: true, data: null }
+}
+
+/** Prende o apaga un umbral existente (scopeado a la consultora del usuario). */
+export async function toggleUmbral(id: string, activo: boolean): Promise<ActionResult> {
+  if (!UUID_RE.test(id)) return { success: false, error: 'Umbral inválido' }
+
+  const { supabase, consultoraId, canEdit } = await getUmbralEditorContext()
+  if (!consultoraId) return { success: false, error: 'Sin consultora asignada' }
+  if (!canEdit) return { success: false, error: 'No autorizado' }
+
+  const { error } = await supabase
+    .from('alertas_umbrales')
+    .update({ activo })
+    .eq('id', id)
+    .eq('consultora_id', consultoraId)
+  if (error) return { success: false, error: error.message }
+
+  revalidatePath('/dashboard/cumplimiento')
+  return { success: true, data: null }
+}
+
+/** Borra un umbral (scopeado a la consultora del usuario). */
+export async function deleteUmbral(id: string): Promise<ActionResult> {
+  if (!UUID_RE.test(id)) return { success: false, error: 'Umbral inválido' }
+
+  const { supabase, consultoraId, canEdit } = await getUmbralEditorContext()
+  if (!consultoraId) return { success: false, error: 'Sin consultora asignada' }
+  if (!canEdit) return { success: false, error: 'No autorizado' }
+
+  const { error } = await supabase
+    .from('alertas_umbrales')
+    .delete()
+    .eq('id', id)
+    .eq('consultora_id', consultoraId)
+  if (error) return { success: false, error: error.message }
+
+  revalidatePath('/dashboard/cumplimiento')
+  return { success: true, data: null }
 }

@@ -67,6 +67,12 @@
 > escritura BLOQUEADA (42501), ve la cadena (ÍNTEGRA). Queda **funcional**; el mecanismo concreto
 > de acceso que defina la SRT (cuenta nominal por inspector / federado / temporal) se ajustará
 > cuando la SRT lo publique (fuera de alcance técnico hoy).
+>
+> **Estándar 9 (Autocontrol):** cerrados sus dos pendientes finos. (a) Se **VALIDARON** los 11 CHECK
+> constraints de coherencia de fechas que estaban `NOT VALID` (migr `20260714000001`) — ahora
+> validan también las filas existentes; verificado en prod: los 11 sin violaciones. (b) Se agregó la
+> **UI de umbrales** de alerta temprana en `/dashboard/cumplimiento` (solo Admin Principal): listar,
+> agregar, prender/apagar y borrar umbrales (ej. 30/15/7 días). Verificado el camino de escritura.
 
 ---
 
