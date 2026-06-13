@@ -821,6 +821,15 @@ export function isFreeViewerRole(role: UserRole | null | undefined): boolean {
   return role != null && FREE_VIEWER_ROLES.includes(role)
 }
 
+// ¿El rol consume un seat del plan? Los free-viewers NO. El `auditor_externo`
+// (organismo de control, solo lectura) TAMPOCO consume seat, pero —a diferencia de
+// los free-viewers— solo lo asigna el Admin Principal (mantiene su gating de rol con
+// cargo). Desacopla "no consume seat" de "lo puede invitar un colaborador".
+export function consumesSeat(role: UserRole | null | undefined): boolean {
+  if (role == null) return false
+  return !isFreeViewerRole(role) && role !== 'auditor_externo'
+}
+
 // El Admin (full_access_main) gestiona todo el equipo; los colaboradores
 // (full_access_branch / colaborador) SOLO pueden crear usuarios viewer.
 export function canInviteViewers(role: UserRole | null, systemRole: SystemRole): boolean {

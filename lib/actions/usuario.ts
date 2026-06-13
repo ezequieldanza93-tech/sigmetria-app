@@ -5,7 +5,7 @@ import { createClient as createServerClient } from '@/lib/supabase/server'
 import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import type { ActionResult, UserRole, SystemRole } from '@/lib/types'
-import { canManageUsers, canInviteViewers, isFreeViewerRole } from '@/lib/types'
+import { canManageUsers, canInviteViewers, isFreeViewerRole, consumesSeat } from '@/lib/types'
 import { validateFormData, formatZodErrors } from '@/lib/validation/helpers'
 import { userRole } from '@/lib/validation/schemas'
 
@@ -67,14 +67,15 @@ export async function inviteUsuario(_prevState: ActionResult<InviteResult> | nul
     return { success: false, error: 'Solo el Admin Principal puede crear Administradores o Colaboradores' }
   }
 
-  // Control de seats: solo cuentan los roles con cargo. Los viewers son gratis.
-  if (!targetIsViewer && consultoraId) {
+  // Control de seats: solo cuentan los roles con cargo. El auditor del organismo de
+  // control (solo lectura) NO consume seat, igual que los viewers.
+  if (consumesSeat(role) && consultoraId) {
     const [{ data: members }, { data: consultora }] = await Promise.all([
       supabase.from('consultoras_members').select('role').eq('consultora_id', consultoraId).eq('is_active', true),
       supabase.from('consultoras').select('seats_max').eq('id', consultoraId).single(),
     ])
     const seatsMax = consultora?.seats_max ?? 3
-    const seatsUsed = (members ?? []).filter(m => !isFreeViewerRole(m.role as UserRole)).length
+    const seatsUsed = (members ?? []).filter(m => consumesSeat(m.role as UserRole)).length
     if (seatsUsed >= seatsMax) {
       return { success: false, error: `SEATS_LIMIT:${seatsUsed}:${seatsMax}` }
     }

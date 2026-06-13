@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireOrigin } from '@/lib/csrf'
 import type { UserRole, SystemRole } from '@/lib/types'
-import { canManageUsers, canInviteViewers, isFreeViewerRole } from '@/lib/types'
+import { canManageUsers, canInviteViewers, isFreeViewerRole, consumesSeat } from '@/lib/types'
 import { z } from 'zod'
 
 const inviteSchema = z.object({
@@ -52,8 +52,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Solo el Admin Principal puede crear Administradores o Colaboradores' }, { status: 403 })
   }
 
-  // Control de seats: solo cuentan los roles con cargo; los viewers son gratis.
-  if (!targetIsViewer) {
+  // Control de seats: solo cuentan los roles con cargo. El auditor del organismo de
+  // control (solo lectura) NO consume seat, igual que los viewers.
+  if (consumesSeat(role as UserRole)) {
     const [{ data: members }, { data: consultora }] = await Promise.all([
       supabase
         .from('consultoras_members')
@@ -67,7 +68,7 @@ export async function POST(request: NextRequest) {
         .single(),
     ])
     const seatsMax = consultora?.seats_max ?? 3
-    const seatsUsed = (members ?? []).filter(m => !isFreeViewerRole(m.role as UserRole)).length
+    const seatsUsed = (members ?? []).filter(m => consumesSeat(m.role as UserRole)).length
     if (seatsUsed >= seatsMax) {
       return NextResponse.json({ error: `SEATS_LIMIT:${seatsUsed}:${seatsMax}` }, { status: 400 })
     }
