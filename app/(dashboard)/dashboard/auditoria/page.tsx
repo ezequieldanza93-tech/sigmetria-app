@@ -14,6 +14,7 @@ const AUDIT_ROLES: UserRole[] = [
   'full_access_main',
   'full_access_branch',
   'responsable_estandares',
+  'auditor_externo',
 ]
 
 /**

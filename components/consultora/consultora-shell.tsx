@@ -9,7 +9,7 @@ import { isCrmAdmin } from '@/lib/auth/crm-access'
 import type { UserRole } from '@/lib/types'
 
 // Roles con acceso a la auditoría (espejo del gate de la página y la action).
-const AUDIT_ROLES: UserRole[] = ['full_access_main', 'full_access_branch', 'responsable_estandares']
+const AUDIT_ROLES: UserRole[] = ['full_access_main', 'full_access_branch', 'responsable_estandares', 'auditor_externo']
 
 interface ConsultoraShellProps {
   children: React.ReactNode

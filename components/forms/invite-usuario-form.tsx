@@ -43,6 +43,7 @@ const ROLE_CARDS: { key: FriendlyRoleKey; label: string; desc: string }[] = [
   { key: 'colaborador', label: 'Colaborador', desc: 'Carga y edita gestiones, documentos y riesgos. Usa un seat del plan.' },
   { key: 'visualizador', label: 'Visualizador', desc: 'Ve y comenta, no modifica. Acceso por empresa/establecimiento.' },
   { key: 'viewer_obs', label: 'Viewer de Observaciones', desc: 'Ve y cierra solo SUS observaciones. Para trabajadores y capataces.' },
+  { key: 'auditor', label: 'Auditor — Organismo de control (solo lectura)', desc: 'Acceso de lectura a toda la consultora para el organismo de control (SRT). No modifica nada.' },
 ]
 
 function InviteLinkView({ link, role }: { link: string; role: string }) {
@@ -273,6 +274,13 @@ export function InviteUsuarioForm({ action, onSuccess, viewerOnly = false, seats
         <p className="text-xs text-text-tertiary">
           Su alcance máximo es <strong>nivel empresa</strong> (nunca toda la consultora). Definí las empresas o
           establecimientos puntuales desde <strong>Gestionar acceso</strong> después de crearlo.
+        </p>
+      )}
+
+      {friendly === 'auditor' && (
+        <p className="text-xs text-text-tertiary">
+          Acceso de <strong>solo lectura a toda la consultora</strong> para el organismo de control (SRT).
+          No puede crear, editar ni borrar nada, y se le exige segundo factor (MFA) al ingresar.
         </p>
       )}
 

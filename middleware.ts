@@ -53,7 +53,7 @@ export async function middleware(request: NextRequest) {
 
   // ── MFA enforcement por email — Art. 4.5 Res. SRT 48/2025 ───────────────
   // Segundo factor via OTP por email. Sin app externa requerida.
-  // Roles obligatorios: full_access_main, responsable_estandares
+  // Roles obligatorios: full_access_main, responsable_estandares, auditor_externo
   // Cookie mfa_verified: HMAC firmada (MFA_COOKIE_SECRET), TTL 24h
   const isMfaPage = pathname.startsWith('/mfa/')
 
@@ -91,7 +91,7 @@ export async function middleware(request: NextRequest) {
           .eq('is_active', true)
           .maybeSingle()
 
-        if (member && ['full_access_main', 'responsable_estandares'].includes(member.role)) {
+        if (member && ['full_access_main', 'responsable_estandares', 'auditor_externo'].includes(member.role)) {
           return NextResponse.redirect(new URL('/mfa/verify', request.url))
         }
       } catch {

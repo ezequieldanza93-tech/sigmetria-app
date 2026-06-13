@@ -8,7 +8,7 @@ export const metadata = {
   title: 'Seguridad — Sigmetría HyS',
 }
 
-const MFA_REQUIRED_ROLES = ['full_access_main', 'responsable_estandares']
+const MFA_REQUIRED_ROLES = ['full_access_main', 'responsable_estandares', 'auditor_externo']
 
 export default async function SeguridadPage() {
   const supabase = await createClient()

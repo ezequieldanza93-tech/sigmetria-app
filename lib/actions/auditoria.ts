@@ -20,6 +20,7 @@ const AUDIT_ROLES: UserRole[] = [
   'full_access_main',
   'full_access_branch',
   'responsable_estandares',
+  'auditor_externo',
 ]
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i

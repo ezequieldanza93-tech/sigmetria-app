@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 import type { UserRole } from '@/lib/types'
 
 // Roles con acceso a la auditoría (espejo del gate del nav, la página y la action).
-const AUDIT_ROLES: UserRole[] = ['full_access_main', 'full_access_branch', 'responsable_estandares']
+const AUDIT_ROLES: UserRole[] = ['full_access_main', 'full_access_branch', 'responsable_estandares', 'auditor_externo']
 
 interface AuditHistorialLinkProps {
   /** Tabla auditable (ej: 'empresas', 'establecimientos', 'gestiones_registros'). */

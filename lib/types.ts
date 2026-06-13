@@ -8,6 +8,7 @@ export type UserRole =
   | 'visualizador_comentarista'
   | 'responsable_estandares'
   | 'viewer_observaciones'
+  | 'auditor_externo'
 
 export type TipoEstablecimiento =
   | 'industria'
@@ -743,6 +744,7 @@ export const ROLE_LABELS: Record<UserRole | SystemRole, string> = {
   visualizador_comentarista: 'Visualizador Comentarista',
   responsable_estandares: 'Resp. de Estándares',
   viewer_observaciones: 'Viewer de Observaciones',
+  auditor_externo: 'Auditor (organismo de control)',
 }
 
 export const ROLE_COLORS: Record<UserRole | 'developer', string> = {
@@ -755,6 +757,7 @@ export const ROLE_COLORS: Record<UserRole | 'developer', string> = {
   visualizador_comentarista: 'bg-teal-100 text-teal-800',
   responsable_estandares: 'bg-indigo-100 text-indigo-800',
   viewer_observaciones: 'bg-amber-100 text-amber-800',
+  auditor_externo: 'bg-slate-100 text-slate-800',
 }
 
 export const RIESGO_NIVEL_COLORS: Record<RiesgoNivel, string> = {
@@ -826,7 +829,7 @@ export function canInviteViewers(role: UserRole | null, systemRole: SystemRole):
 }
 
 // ── Roles amigables (mapea los 7 roles internos a 3 categorías + compliance) ──
-export type FriendlyRoleKey = 'admin' | 'colaborador' | 'visualizador' | 'viewer_obs'
+export type FriendlyRoleKey = 'admin' | 'colaborador' | 'visualizador' | 'viewer_obs' | 'auditor'
 export type ScopeKey = 'todo' | 'especifico'
 
 export interface FriendlyRole {
@@ -846,6 +849,7 @@ export function roleToFriendly(role: UserRole | 'developer' | null | undefined):
     case 'visualizador_comentarista': return { label: 'Visualizador', scope: 'Ve y comenta', color: 'bg-teal-100 text-teal-800' }
     case 'viewer_observaciones': return { label: 'Viewer de Observaciones', scope: 'Solo sus observaciones', color: 'bg-amber-100 text-amber-800' }
     case 'responsable_estandares': return { label: 'Resp. de Estándares', scope: 'Compliance SRT', color: 'bg-indigo-100 text-indigo-800' }
+    case 'auditor_externo': return { label: 'Auditor', scope: 'Organismo de control (solo lectura)', color: 'bg-slate-100 text-slate-800' }
     default: return { label: 'Sin rol', color: 'bg-surface-elevated text-text-secondary' }
   }
 }
@@ -858,6 +862,8 @@ export function resolveUserRole(friendly: FriendlyRoleKey, scope: ScopeKey): Use
   if (friendly === 'colaborador') return scope === 'todo' ? 'full_access_branch' : 'colaborador'
   // El viewer de observaciones está scopeado por "responsable", no por empresa.
   if (friendly === 'viewer_obs') return 'viewer_observaciones'
+  // Auditor del organismo de control: solo lectura consultora-wide, nunca escribe.
+  if (friendly === 'auditor') return 'auditor_externo'
   return 'visualizador_comentarista'
 }
 
