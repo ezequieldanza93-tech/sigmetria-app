@@ -5,8 +5,9 @@ import { createClient } from '@/lib/supabase/client'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { SectorForm } from '@/components/forms/sector-form'
-import { updateSectorTrabajadores, createSectorCustom, deleteSector } from '@/lib/actions/sector'
-import { createPuesto, deletePuesto } from '@/lib/actions/puesto'
+import { updateSectorTrabajadores, createSectorCustom } from '@/lib/actions/sector'
+import { createPuesto } from '@/lib/actions/puesto'
+import { BorrarEntidadButton } from '@/components/papelera/borrar-entidad-button'
 import { removeTrabajadorFromPuesto, assignTrabajadorToPuesto } from '@/lib/actions/trabajador'
 import { addEppToPuesto, removeEppFromPuesto } from '@/lib/actions/epp-por-puesto'
 import { TrabajadorModal } from '@/components/trabajador-modal'
@@ -253,14 +254,14 @@ function PuestoRow({
   empresaId,
   canWrite,
   canDelete,
-  onDeleted,
+  esAdminPrincipal,
 }: {
   puesto: PuestoDeTrabajo
   establecimientoId: string
   empresaId: string
   canWrite: boolean
   canDelete: boolean
-  onDeleted: () => void
+  esAdminPrincipal: boolean
 }) {
   const [open, setOpen] = useState(false)
   const [personas, setPersonas] = useState<TrabajadorPuesto[] | null>(null)
@@ -303,13 +304,6 @@ function PuestoRow({
     })
   }
 
-  function handleDeletePuesto() {
-    startTransition(async () => {
-      await deletePuesto(puesto.id, establecimientoId, empresaId)
-      onDeleted()
-    })
-  }
-
   const eppAction = addEppToPuesto.bind(null, puesto.id, establecimientoId, empresaId)
 
   return (
@@ -339,14 +333,10 @@ function PuestoRow({
             <span className="text-xs bg-sig-50 text-sig-700 font-medium px-1.5 py-0.5 rounded">{epp.length} EPP</span>
           )}
         </button>
-        {canDelete && (
-          <button
-            onClick={handleDeletePuesto}
-            disabled={isPending}
-            className="text-xs text-red-400 hover:text-danger transition-colors"
-          >
-            Eliminar
-          </button>
+        {esAdminPrincipal && (
+          <div className="flex items-center gap-1.5 shrink-0">
+            <BorrarEntidadButton tabla="puestos_de_trabajo" id={puesto.id} nombre={puesto.nombre} />
+          </div>
         )}
       </div>
 
@@ -473,14 +463,14 @@ function SectorRow({
   empresaId,
   canWrite,
   canDelete,
-  onDeleted,
+  esAdminPrincipal,
 }: {
   sector: SectorEstablecimiento
   establecimientoId: string
   empresaId: string
   canWrite: boolean
   canDelete: boolean
-  onDeleted: () => void
+  esAdminPrincipal: boolean
 }) {
   const [open, setOpen] = useState(false)
   const [puestos, setPuestos] = useState<PuestoDeTrabajo[] | null>(null)
@@ -494,7 +484,7 @@ function SectorRow({
     const supabase = createClient()
     supabase
       .from('puestos_de_trabajo')
-      .select('id, nombre, tipo')
+      .select('id, nombre, tipo, is_active')
       .eq('sector_id', sector.id)
       .eq('is_active', true)
       .order('nombre')
@@ -507,13 +497,6 @@ function SectorRow({
     startTransition(async () => {
       await updateSectorTrabajadores(sectorId, val, establecimientoId, empresaId)
       setEditingId(null)
-    })
-  }
-
-  function handleDeleteSector() {
-    startTransition(async () => {
-      await deleteSector(sector.id, establecimientoId, empresaId)
-      onDeleted()
     })
   }
 
@@ -559,14 +542,10 @@ function SectorRow({
           </button>
         )}
 
-        {canDelete && sector.es_custom && (
-          <button
-            onClick={handleDeleteSector}
-            disabled={isPending}
-            className="text-xs text-red-400 hover:text-danger transition-colors"
-          >
-            Eliminar
-          </button>
+        {esAdminPrincipal && (
+          <div className="flex items-center gap-1.5 shrink-0">
+            <BorrarEntidadButton tabla="establecimientos_sectores" id={sector.id} nombre={sector.nombre} />
+          </div>
         )}
       </div>
 
@@ -588,7 +567,7 @@ function SectorRow({
                   empresaId={empresaId}
                   canWrite={canWrite}
                   canDelete={canDelete}
-                  onDeleted={() => setPuestos(prev => prev?.filter(p => p.id !== puesto.id) ?? null)}
+                  esAdminPrincipal={esAdminPrincipal}
                 />
               ))}
             </div>
@@ -623,13 +602,18 @@ interface SectoresTabProps {
   empresaId: string
   canWrite: boolean
   canDelete: boolean
+  /** Admin principal (full_access_main) o super admin: habilita papelera + toggle por fila. */
+  esAdminPrincipal?: boolean
 }
 
-export function SectoresTab({ sectores, establecimientoId, empresaId, canWrite, canDelete }: SectoresTabProps) {
+export function SectoresTab({ sectores, establecimientoId, empresaId, canWrite, canDelete, esAdminPrincipal = false }: SectoresTabProps) {
   const [showModal, setShowModal] = useState(false)
   const [localSectores, setLocalSectores] = useState(sectores)
   const [workerCounts, setWorkerCounts] = useState<{ operativo: number; administrativo: number } | null>(null)
   const sectorAction = createSectorCustom.bind(null, establecimientoId, empresaId)
+
+  // Mantener la lista en sync con el server tras un router.refresh() (papelera/toggle).
+  useEffect(() => { setLocalSectores(sectores) }, [sectores])
 
   useEffect(() => {
     const supabase = createClient()
@@ -688,7 +672,7 @@ export function SectoresTab({ sectores, establecimientoId, empresaId, canWrite, 
               empresaId={empresaId}
               canWrite={canWrite}
               canDelete={canDelete}
-              onDeleted={() => setLocalSectores(prev => prev.filter(s => s.id !== sector.id))}
+              esAdminPrincipal={esAdminPrincipal}
             />
           ))}
         </div>

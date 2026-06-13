@@ -14,6 +14,8 @@ import { LegajoTab } from '@/components/establecimiento/legajo-tab'
 import { InfoTab } from '@/components/establecimiento/info-tab'
 import { MapaRiesgoTab } from '@/components/iperc/mapa-riesgo-tab'
 import { AuditHistorialLink } from '@/components/auditoria/audit-historial-link'
+import { EstadoActivoToggle } from '@/components/papelera/estado-activo-toggle'
+import { BorrarEntidadButton } from '@/components/papelera/borrar-entidad-button'
 import type {
   Establecimiento,
   SectorEstablecimiento,
@@ -37,6 +39,10 @@ interface EstablecimientoTabsProps {
   empresaId: string
   canWrite: boolean
   canDelete: boolean
+  /** Admin principal (full_access_main) o super admin: habilita papelera + toggle de estado. */
+  esAdminPrincipal?: boolean
+  establecimientoNombre?: string
+  establecimientoStatus?: string | null
   sectores: SectorEstablecimiento[]
   incidentes: Incidente[]
   inspecciones: Inspeccion[]
@@ -74,6 +80,9 @@ export function EstablecimientoTabs({
   empresaId,
   canWrite,
   canDelete,
+  esAdminPrincipal = false,
+  establecimientoNombre,
+  establecimientoStatus,
   sectores,
   incidentes,
   inspecciones,
@@ -151,7 +160,24 @@ export function EstablecimientoTabs({
           })}
         </div>
 
-        <AuditHistorialLink tabla="establecimientos" id={establecimientoId} className="shrink-0" />
+        <div className="flex items-center gap-2 shrink-0">
+          {esAdminPrincipal && (
+            <EstadoActivoToggle
+              tabla="establecimientos"
+              id={establecimientoId}
+              activo={establecimientoStatus === 'active'}
+            />
+          )}
+          {esAdminPrincipal && (
+            <BorrarEntidadButton
+              tabla="establecimientos"
+              id={establecimientoId}
+              nombre={establecimientoNombre ?? establecimiento.nombre}
+              redirectTo={`/dashboard/empresas/${empresaId}`}
+            />
+          )}
+          <AuditHistorialLink tabla="establecimientos" id={establecimientoId} className="shrink-0" />
+        </div>
       </div>
 
       <div
@@ -175,6 +201,7 @@ export function EstablecimientoTabs({
           empresaId={empresaId}
           canWrite={canWrite}
           canDelete={canDelete}
+          esAdminPrincipal={esAdminPrincipal}
         />
       )}
       {active === 'stakeholders' && (

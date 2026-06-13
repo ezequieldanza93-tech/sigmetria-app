@@ -39,7 +39,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
     { data: empresa },
   ] = await Promise.all([
     getEffectiveRole(),
-    supabase.from('establecimientos').select('id, nombre, latitud, longitud, photo_site, plano_url, domicilio, codigo_postal, actividad_principal, cantidad_trabajadores, description, aplica_iso_45001, created_at, establecimientos_tipos!tipo_id(id, codigo, nombre), localidades!localidad_id(nombre, provincia)').eq('id', estId).single(),
+    supabase.from('establecimientos').select('id, nombre, status, latitud, longitud, photo_site, plano_url, domicilio, codigo_postal, actividad_principal, cantidad_trabajadores, description, aplica_iso_45001, created_at, establecimientos_tipos!tipo_id(id, codigo, nombre), localidades!localidad_id(nombre, provincia)').eq('id', estId).single(),
     supabase.from('empresas').select('id, razon_social').eq('id', empresaId).single(),
   ])
 
@@ -49,6 +49,8 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
   const userCanWrite =
     canWrite(effective.effectiveUserRole, effective.effectiveSystemRole) ||
     effective.isSuperAdmin === true
+  const esAdminPrincipal =
+    effective.effectiveUserRole === 'full_access_main' || effective.isSuperAdmin === true
 
   // Section-specific data fetching
   let sectores: SectorEstablecimiento[] = []
@@ -209,6 +211,9 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
             empresaId={empresaId}
             canWrite={userCanWrite}
             canDelete={false}
+            esAdminPrincipal={esAdminPrincipal}
+            establecimientoNombre={establecimiento.nombre}
+            establecimientoStatus={(establecimiento as { status?: string }).status ?? null}
             sectores={sectores}
             incidentes={incidentes}
             inspecciones={inspecciones}
