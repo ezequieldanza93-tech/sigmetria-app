@@ -10,6 +10,7 @@ import { createPersonaDirectorio } from '@/lib/actions/persona-directorio'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { FotoInput } from '@/components/ui/foto-input'
+import { AuditHistorialLink } from '@/components/auditoria/audit-historial-link'
 import { Send } from 'lucide-react'
 import type { ObservacionGestion, ObservacionComentario, ObservacionFotoCliente } from '@/lib/types'
 
@@ -396,7 +397,10 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
 
         {/* Observación */}
         <div>
-          <p className="text-sm text-text-tertiary mb-0.5">Observación</p>
+          <div className="flex items-center justify-between gap-3 mb-0.5">
+            <p className="text-sm text-text-tertiary">Observación</p>
+            <AuditHistorialLink tabla="gestiones_observaciones" id={obs.id} className="shrink-0" />
+          </div>
           <p className="text-sm font-medium text-text-primary">{obs.descripcion}</p>
           {obs.foto_url && getUrl(obs.foto_url) && (
             <div className="relative mt-3 w-full aspect-[4/3] rounded-xl overflow-hidden border border-border-subtle">

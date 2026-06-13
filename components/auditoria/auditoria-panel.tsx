@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
+import { useSearchParams } from 'next/navigation'
 import {
   ShieldCheck, ShieldAlert, History, Network, Search, Loader2,
   CheckCircle2, ChevronDown, ChevronRight,
@@ -43,7 +44,20 @@ function formatFecha(iso: string | null) {
 type Tab = 'cadena' | 'historial' | 'flujo'
 
 export function AuditoriaPanel() {
-  const [tab, setTab] = useState<Tab>('cadena')
+  const searchParams = useSearchParams()
+  // Prefill por URL: ?tabla=&id= abre Historial; ?trace= abre Flujo.
+  // Sin params, arranca como siempre en "Verificar cadena".
+  const prefillTabla = searchParams.get('tabla') ?? ''
+  const prefillId = searchParams.get('id') ?? ''
+  const prefillTrace = searchParams.get('trace') ?? ''
+
+  const tabInicial: Tab = prefillTrace
+    ? 'flujo'
+    : prefillTabla || prefillId
+      ? 'historial'
+      : 'cadena'
+
+  const [tab, setTab] = useState<Tab>(tabInicial)
 
   const TABS: { id: Tab; label: string; icon: React.ComponentType<{ size?: number; className?: string }> }[] = [
     { id: 'cadena', label: 'Verificar cadena', icon: ShieldCheck },
@@ -86,8 +100,8 @@ export function AuditoriaPanel() {
       </div>
 
       {tab === 'cadena' && <CadenaTab />}
-      {tab === 'historial' && <HistorialTab />}
-      {tab === 'flujo' && <FlujoTab />}
+      {tab === 'historial' && <HistorialTab prefillTabla={prefillTabla} prefillId={prefillId} />}
+      {tab === 'flujo' && <FlujoTab prefillTrace={prefillTrace} />}
     </div>
   )
 }
@@ -168,16 +182,16 @@ function CadenaTab() {
 
 // ── Tab 2: Historial de entidad ──────────────────────────────────────────────
 
-function HistorialTab() {
-  const [tabla, setTabla] = useState('')
-  const [registroId, setRegistroId] = useState('')
+function HistorialTab({ prefillTabla = '', prefillId = '' }: { prefillTabla?: string; prefillId?: string }) {
+  const [tabla, setTabla] = useState(prefillTabla)
+  const [registroId, setRegistroId] = useState(prefillId)
   const [isPending, startTransition] = useTransition()
   const [filas, setFilas] = useState<AuditTrailRow[] | null>(null)
   const { error: toastError } = useToast()
 
-  function handleBuscar() {
+  function buscar(tablaArg: string, registroIdArg: string) {
     startTransition(async () => {
-      const r = await getHistorialEntidad(tabla, registroId.trim())
+      const r = await getHistorialEntidad(tablaArg, registroIdArg.trim())
       if (r.success) {
         setFilas(r.data)
       } else {
@@ -186,6 +200,21 @@ function HistorialTab() {
       }
     })
   }
+
+  function handleBuscar() {
+    buscar(tabla, registroId)
+  }
+
+  // Prefill por URL: si llegamos con tabla + id, disparamos la búsqueda al montar.
+  const autoBuscado = useRef(false)
+  useEffect(() => {
+    if (autoBuscado.current) return
+    if (prefillTabla && prefillId.trim()) {
+      autoBuscado.current = true
+      buscar(prefillTabla, prefillId)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <div className="space-y-4">
@@ -222,15 +251,15 @@ function HistorialTab() {
 
 // ── Tab 3: Flujo por trace_id ────────────────────────────────────────────────
 
-function FlujoTab() {
-  const [traceId, setTraceId] = useState('')
+function FlujoTab({ prefillTrace = '' }: { prefillTrace?: string }) {
+  const [traceId, setTraceId] = useState(prefillTrace)
   const [isPending, startTransition] = useTransition()
   const [filas, setFilas] = useState<AuditTrailRow[] | null>(null)
   const { error: toastError } = useToast()
 
-  function handleBuscar() {
+  function buscar(traceIdArg: string) {
     startTransition(async () => {
-      const r = await getFlujoPorTrace(traceId.trim())
+      const r = await getFlujoPorTrace(traceIdArg.trim())
       if (r.success) {
         setFilas(r.data)
       } else {
@@ -239,6 +268,21 @@ function FlujoTab() {
       }
     })
   }
+
+  function handleBuscar() {
+    buscar(traceId)
+  }
+
+  // Prefill por URL: si llegamos con ?trace=, reconstruimos el flujo al montar.
+  const autoBuscado = useRef(false)
+  useEffect(() => {
+    if (autoBuscado.current) return
+    if (prefillTrace.trim()) {
+      autoBuscado.current = true
+      buscar(prefillTrace)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <div className="space-y-4">

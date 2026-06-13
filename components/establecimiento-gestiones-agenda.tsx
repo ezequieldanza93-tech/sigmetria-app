@@ -29,6 +29,7 @@ import {
 } from '@/lib/actions/gestion-establecimiento'
 import { ejecutarGestion, crearObservaciones } from '@/lib/actions/registro-gestion'
 import { PersonaSelector } from '@/components/persona-selector'
+import { AuditHistorialLink } from '@/components/auditoria/audit-historial-link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 
 
@@ -1119,11 +1120,14 @@ function EjecucionModal({
           </div>
         )}
 
-        <div className="bg-surface-base rounded-lg px-3 py-2 text-sm text-text-secondary">
-          <span className="font-medium">{registro.ge_gestion_nombre ?? '—'}</span>
-          {registro.ge_categoria_nombre && (
-            <span className="text-text-tertiary"> · {registro.ge_categoria_nombre}</span>
-          )}
+        <div className="bg-surface-base rounded-lg px-3 py-2 text-sm text-text-secondary flex items-center justify-between gap-3">
+          <div>
+            <span className="font-medium">{registro.ge_gestion_nombre ?? '—'}</span>
+            {registro.ge_categoria_nombre && (
+              <span className="text-text-tertiary"> · {registro.ge_categoria_nombre}</span>
+            )}
+          </div>
+          <AuditHistorialLink tabla="gestiones_registros" id={registro.id} className="shrink-0" />
         </div>
 
         <div>

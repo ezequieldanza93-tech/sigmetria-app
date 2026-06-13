@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { EstablecimientoIcon } from '@/components/icons/establecimiento-icon'
 import { EmpresaStakeholdersTab } from '@/components/empresa-stakeholders-tab'
+import { AuditHistorialLink } from '@/components/auditoria/audit-historial-link'
 
 interface Establecimiento {
   id: string
@@ -85,20 +86,25 @@ export function EmpresaRightPanel({
           </button>
         </div>
 
-        {puedeEditar && activeTab === 'establecimientos' && (
-          <div className="flex items-center gap-2">
-            <Link
-              href={`/dashboard/empresas/${empresaId}/editar`}
-              className="inline-flex items-center gap-1.5 border border-border-default text-text-secondary hover:bg-surface-elevated hover:text-text-primary text-sm font-medium px-3 py-2 rounded-lg transition-colors"
-            >
-              Editar empresa
-            </Link>
-            <Link
-              href={`/dashboard/empresas/${empresaId}/establecimientos/nuevo`}
-              className="inline-flex items-center gap-1.5 bg-sig-500 hover:bg-sig-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-            >
-              <span>+</span> Nuevo Establecimiento
-            </Link>
+        {activeTab === 'establecimientos' && (
+          <div className="flex items-center gap-3">
+            <AuditHistorialLink tabla="empresas" id={empresaId} />
+            {puedeEditar && (
+              <>
+                <Link
+                  href={`/dashboard/empresas/${empresaId}/editar`}
+                  className="inline-flex items-center gap-1.5 border border-border-default text-text-secondary hover:bg-surface-elevated hover:text-text-primary text-sm font-medium px-3 py-2 rounded-lg transition-colors"
+                >
+                  Editar empresa
+                </Link>
+                <Link
+                  href={`/dashboard/empresas/${empresaId}/establecimientos/nuevo`}
+                  className="inline-flex items-center gap-1.5 bg-sig-500 hover:bg-sig-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                >
+                  <span>+</span> Nuevo Establecimiento
+                </Link>
+              </>
+            )}
           </div>
         )}
       </div>

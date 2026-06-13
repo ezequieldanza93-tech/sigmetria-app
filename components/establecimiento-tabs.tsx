@@ -13,6 +13,7 @@ import { FeedbackTab } from '@/components/establecimiento/feedback-tab'
 import { LegajoTab } from '@/components/establecimiento/legajo-tab'
 import { InfoTab } from '@/components/establecimiento/info-tab'
 import { MapaRiesgoTab } from '@/components/iperc/mapa-riesgo-tab'
+import { AuditHistorialLink } from '@/components/auditoria/audit-historial-link'
 import type {
   Establecimiento,
   SectorEstablecimiento,
@@ -103,12 +104,12 @@ export function EstablecimientoTabs({
 
   return (
     <div>
-      <div 
-        role="tablist" 
-        aria-label="Secciones del establecimiento"
-        className="border-b border-border-subtle mb-6"
-      >
-        <div className="flex gap-1 overflow-x-auto scrollbar-hide">
+      <div className="flex items-center justify-between gap-4 border-b border-border-subtle mb-6">
+        <div
+          role="tablist"
+          aria-label="Secciones del establecimiento"
+          className="flex gap-1 overflow-x-auto scrollbar-hide"
+        >
           {TABS.map(tab => {
             const isActive = tab.id === active
             return (
@@ -149,6 +150,8 @@ export function EstablecimientoTabs({
             )
           })}
         </div>
+
+        <AuditHistorialLink tabla="establecimientos" id={establecimientoId} className="shrink-0" />
       </div>
 
       <div
