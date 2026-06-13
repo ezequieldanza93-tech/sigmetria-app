@@ -1,12 +1,12 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createAuditedClient } from '@/lib/audit/trace'
 import type { ActionResult } from '@/lib/types'
 
 export async function firmarGestion(
   gestionEstablecimientoId: string
 ): Promise<ActionResult<{ firma_id: string }>> {
-  const supabase = await createClient()
+  const { client: supabase } = await createAuditedClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 

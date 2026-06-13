@@ -2,6 +2,7 @@
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { createAuditedClient } from '@/lib/audit/trace'
 import type { ActionResult, GrupoGestion, CategoriaGestion } from '@/lib/types'
 import { validateFormData, formatZodErrors } from '@/lib/validation/helpers'
 
@@ -25,7 +26,7 @@ export async function planificarGestion(
   _prev: ActionResult<null> | null,
   formData: FormData
 ): Promise<ActionResult<null>> {
-  const supabase = await createClient()
+  const { client: supabase } = await createAuditedClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
@@ -72,7 +73,7 @@ export async function planificarGestionNueva(
   _prev: ActionResult<null> | null,
   formData: FormData
 ): Promise<ActionResult<null>> {
-  const supabase = await createClient()
+  const { client: supabase } = await createAuditedClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
@@ -118,7 +119,7 @@ export async function addGestionToEstablecimiento(
   gestionId: string,
   establecimientoId: string
 ): Promise<ActionResult<null>> {
-  const supabase = await createClient()
+  const { client: supabase } = await createAuditedClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
@@ -136,7 +137,7 @@ export async function addGestionToEstablecimiento(
 export async function removeGestionFromEstablecimiento(
   gestionEstablecimientoId: string
 ): Promise<ActionResult<null>> {
-  const supabase = await createClient()
+  const { client: supabase } = await createAuditedClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
@@ -223,7 +224,7 @@ export async function planificarGestionLote(
   responsableId: string | null,
   notas: string | null,
 ): Promise<ActionResult<{ count: number }>> {
-  const supabase = await createClient()
+  const { client: supabase } = await createAuditedClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
   if (!gestionId) return { success: false, error: 'Gestión requerida' }
@@ -289,7 +290,7 @@ export async function planificarGestionNuevaLote(
   responsableId: string | null,
   notas: string | null,
 ): Promise<ActionResult<{ count: number }>> {
-  const supabase = await createClient()
+  const { client: supabase } = await createAuditedClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 

@@ -1,6 +1,6 @@
 'use server'
 import { z } from 'zod'
-import { createClient } from '@/lib/supabase/server'
+import { createAuditedClient } from '@/lib/audit/trace'
 import { consultoraIdFromRegistroGestion, tenantStoragePath } from '@/lib/storage/tenant-path'
 import type { ActionResult } from '@/lib/types'
 import { validateFormData, formatZodErrors } from '@/lib/validation/helpers'
@@ -25,7 +25,7 @@ export async function createRegistroGestion(
   _prev: ActionResult<null> | null,
   formData: FormData
 ): Promise<ActionResult<null>> {
-  const supabase = await createClient()
+  const { client: supabase } = await createAuditedClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
@@ -50,7 +50,7 @@ export async function ejecutarGestion(
   _prev: ActionResult<null> | null,
   formData: FormData
 ): Promise<ActionResult<null>> {
-  const supabase = await createClient()
+  const { client: supabase } = await createAuditedClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
@@ -108,7 +108,7 @@ export async function crearObservaciones(
     foto?: File | null
   }>
 ): Promise<ActionResult<null>> {
-  const supabase = await createClient()
+  const { client: supabase } = await createAuditedClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 

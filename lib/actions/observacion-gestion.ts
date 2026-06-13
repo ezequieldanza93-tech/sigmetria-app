@@ -1,5 +1,5 @@
 'use server'
-import { createClient } from '@/lib/supabase/server'
+import { createAuditedClient } from '@/lib/audit/trace'
 import { consultoraIdFromRegistroGestion, tenantStoragePath } from '@/lib/storage/tenant-path'
 import type { ActionResult } from '@/lib/types'
 
@@ -7,7 +7,7 @@ export async function createObservacionGestion(
   _prev: ActionResult<null> | null,
   formData: FormData
 ): Promise<ActionResult<null>> {
-  const supabase = await createClient()
+  const { client: supabase } = await createAuditedClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
@@ -37,7 +37,7 @@ export async function actualizarCategoriaObservacion(
   id: string,
   categoriaId: string
 ): Promise<ActionResult<null>> {
-  const supabase = await createClient()
+  const { client: supabase } = await createAuditedClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
@@ -58,7 +58,7 @@ export async function cerrarObservacion(
   responsableCierreId: string | null,
   evidencia: File | null = null
 ): Promise<ActionResult<null>> {
-  const supabase = await createClient()
+  const { client: supabase } = await createAuditedClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
