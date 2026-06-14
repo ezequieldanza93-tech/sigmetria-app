@@ -2,6 +2,7 @@
 
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import type { ActionResult, Feedback } from '@/lib/types'
 
 // ---- Schemas ----
@@ -50,11 +51,18 @@ async function subirScreenshot(
   feedbackId: string,
 ): Promise<string | null> {
   try {
-    const supabase = await createClient()
+    // Usar el admin client (service role) para bypassear la RLS del bucket.
+    // La sesión del usuario no se propaga confiablemente al server action,
+    // lo que hace que la RLS de INSERT bloquee el upload con el cliente normal.
+    // La seguridad se mantiene por path: reportes/{feedbackId}/screenshot.{ext}
+    const supabaseAdmin = createAdminClient()
 
     // Extraer la parte base64 del data URL (data:image/png;base64,<data>)
     const matches = dataUrl.match(/^data:(image\/\w+);base64,(.+)$/)
-    if (!matches || matches.length < 3) return null
+    if (!matches || matches.length < 3) {
+      console.error('[reporte-problema] screenshot upload failed: data URL inválido o sin prefijo base64')
+      return null
+    }
 
     const mimeType = matches[1]
     const base64Data = matches[2]
@@ -64,16 +72,20 @@ async function subirScreenshot(
     // Convertir base64 a Buffer
     const buffer = Buffer.from(base64Data, 'base64')
 
-    const { error } = await supabase.storage
+    const { error } = await supabaseAdmin.storage
       .from('feedback-adjuntos')
       .upload(path, buffer, {
         contentType: mimeType,
         upsert: true,
       })
 
-    if (error) return null
+    if (error) {
+      console.error('[reporte-problema] screenshot upload failed:', error.message, error)
+      return null
+    }
     return path
-  } catch {
+  } catch (err) {
+    console.error('[reporte-problema] screenshot upload failed (excepción):', err)
     return null
   }
 }
