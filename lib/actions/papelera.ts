@@ -273,6 +273,10 @@ export async function restaurarDePapelera(tabla: string, id: string): Promise<Ac
   if (eRow) return { success: false, error: eRow.message }
   const ts = (row as { deleted_at: string | null } | null)?.deleted_at
   if (!ts) return { success: false, error: 'El registro no está en la papelera' }
+  // Purga lógica: pasados los 90 días ya no se puede restaurar.
+  if (new Date(ts).getTime() <= Date.now() - PAPELERA_RETENCION_DIAS * 86400000) {
+    return { success: false, error: `Pasaron los ${PAPELERA_RETENCION_DIAS} días: este registro ya no se puede restaurar` }
+  }
 
   const restore = { deleted_at: null, deleted_by: null, deleted_reason: null }
 
@@ -375,6 +379,9 @@ export async function listarPapelera(): Promise<ActionResult<PapeleraItem[]>> {
 
   const items: PapeleraItem[] = []
   const hoy = Date.now()
+  // Purga lógica: lo que superó la retención (90d) ya no aparece en la papelera
+  // (sin borrado físico — la fila queda para auditoría).
+  const limite90 = new Date(hoy - PAPELERA_RETENCION_DIAS * 86400000).toISOString()
   const diasRestantes = (deletedAt: string): number => {
     const fin = new Date(deletedAt).getTime() + PAPELERA_RETENCION_DIAS * 24 * 60 * 60 * 1000
     return Math.max(0, Math.ceil((fin - hoy) / (24 * 60 * 60 * 1000)))
@@ -386,6 +393,7 @@ export async function listarPapelera(): Promise<ActionResult<PapeleraItem[]>> {
     let q = admin.from('empresas')
       .select('id, razon_social, deleted_at, deleted_reason, consultora_id, profiles:deleted_by(full_name)')
       .not('deleted_at', 'is', null)
+      .gt('deleted_at', limite90)
     if (!esSuper) q = q.eq('consultora_id', consultoraId!)
     const { data } = await q
     for (const r of (data ?? []) as any[]) {
@@ -402,6 +410,7 @@ export async function listarPapelera(): Promise<ActionResult<PapeleraItem[]>> {
     let q = admin.from('establecimientos')
       .select('id, nombre, deleted_at, deleted_reason, empresas!inner(razon_social, consultora_id), profiles:deleted_by(full_name)')
       .not('deleted_at', 'is', null)
+      .gt('deleted_at', limite90)
     if (!esSuper) q = q.eq('empresas.consultora_id', consultoraId!)
     const { data } = await q
     for (const r of (data ?? []) as any[]) {
@@ -419,6 +428,7 @@ export async function listarPapelera(): Promise<ActionResult<PapeleraItem[]>> {
     let q = admin.from('establecimientos_sectores')
       .select('id, nombre, deleted_at, deleted_reason, establecimientos!inner(nombre, empresas!inner(razon_social, consultora_id)), profiles:deleted_by(full_name)')
       .not('deleted_at', 'is', null)
+      .gt('deleted_at', limite90)
     if (!esSuper) q = q.eq('establecimientos.empresas.consultora_id', consultoraId!)
     const { data } = await q
     for (const r of (data ?? []) as any[]) {
@@ -436,6 +446,7 @@ export async function listarPapelera(): Promise<ActionResult<PapeleraItem[]>> {
     let q = admin.from('puestos_de_trabajo')
       .select('id, nombre, deleted_at, deleted_reason, establecimientos_sectores!inner(nombre, establecimientos!inner(empresas!inner(consultora_id))), profiles:deleted_by(full_name)')
       .not('deleted_at', 'is', null)
+      .gt('deleted_at', limite90)
     if (!esSuper) q = q.eq('establecimientos_sectores.establecimientos.empresas.consultora_id', consultoraId!)
     const { data } = await q
     for (const r of (data ?? []) as any[]) {

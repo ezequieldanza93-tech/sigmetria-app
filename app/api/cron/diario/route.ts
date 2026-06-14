@@ -22,6 +22,7 @@ const JOBS = [
   '/api/cron/expirar-past-due',
   '/api/cron/aplicar-cambios-plan',
   '/api/cron/limpiar-exports',
+  '/api/cron/papelera-purga',
 ] as const
 
 function baseUrl(): string {
