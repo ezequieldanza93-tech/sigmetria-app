@@ -30,16 +30,19 @@ export default async function EmpresasPage({ searchParams }: Props) {
   if (!effective) redirect('/login')
 
   // Empresas list (with linked establecimientos) — para la sidebar y los aggregators.
+  // NOTA: NO filtramos por estado en la fuente. Traemos is_active (empresa) y status
+  // (establecimiento) para que la ficha global filtre client-side con su toggle.
   const { data: empresasRaw } = await supabase
     .from('empresas')
-    .select('id, razon_social, establecimientos(id, nombre)')
+    .select('id, razon_social, is_active, establecimientos(id, nombre, status)')
     .order('razon_social')
     .limit(500)
 
   type EmpresaWithEst = {
     id: string
     razon_social: string
-    establecimientos: { id: string; nombre: string }[] | null
+    is_active: boolean
+    establecimientos: { id: string; nombre: string; status?: 'active' | 'on_hold' | 'cancelled' }[] | null
   }
   const empresas = (empresasRaw ?? []) as unknown as EmpresaWithEst[]
 
@@ -84,7 +87,12 @@ export default async function EmpresasPage({ searchParams }: Props) {
   const fichaEmpresas = empresas.map(e => ({
     id: e.id,
     razon_social: e.razon_social,
-    establecimientos: e.establecimientos ?? [],
+    is_active: e.is_active,
+    establecimientos: (e.establecimientos ?? []).map(es => ({
+      id: es.id,
+      nombre: es.nombre,
+      status: es.status,
+    })),
   }))
   const puedeEditar = canWrite(effective.effectiveUserRole, effective.effectiveSystemRole)
 

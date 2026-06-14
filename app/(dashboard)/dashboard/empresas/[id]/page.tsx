@@ -110,7 +110,7 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
         .order('nombre'),
       supabase
         .from('establecimientos')
-        .select('id, nombre, latitud, longitud, domicilio, establecimientos_tipos!tipo_id(codigo, nombre)')
+        .select('id, nombre, status, latitud, longitud, domicilio, establecimientos_tipos!tipo_id(codigo, nombre)')
         .eq('empresa_id', id)
         .neq('status', 'cancelled')
         .order('nombre'),
@@ -301,7 +301,7 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
               <div className="border-t border-border-subtle pt-4">
                 <EmpresaFichaEstablecimientos
                   empresaId={id}
-                  establecimientos={(establecimientos ?? []).map((e) => ({ id: e.id, nombre: e.nombre }))}
+                  establecimientos={(establecimientos ?? []).map((e) => ({ id: e.id, nombre: e.nombre, status: e.status }))}
                   canWrite={puedeEditar}
                 />
               </div>

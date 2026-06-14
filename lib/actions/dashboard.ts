@@ -59,6 +59,7 @@ export async function getDashboardKpis(widgetKeys: WidgetKey[]): Promise<ActionR
       .from('establecimientos')
       .select('id')
       .in('empresa_id', empresaIds)
+      .eq('status', 'active')
     return (data ?? []).map(e => e.id)
   }
 

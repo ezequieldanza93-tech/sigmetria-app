@@ -62,7 +62,21 @@ const ACCION_COLORS: Record<string, string> = {
   DELETE: 'bg-danger-bg text-danger',
 }
 
-export default async function ReportesPage() {
+// Toggle de estado a nivel consultora. Default: solo activas.
+// 'activas' → is_active true · 'inactivas' → is_active false · 'todas' → sin filtro.
+type EstadoFiltro = 'activas' | 'inactivas' | 'todas'
+const ESTADOS_VALIDOS: readonly EstadoFiltro[] = ['activas', 'inactivas', 'todas']
+
+interface Props {
+  searchParams: Promise<{ estado?: string }>
+}
+
+export default async function ReportesPage({ searchParams }: Props) {
+  const { estado: estadoRaw } = await searchParams
+  const estadoSel: EstadoFiltro = (ESTADOS_VALIDOS as readonly string[]).includes(estadoRaw ?? '')
+    ? (estadoRaw as EstadoFiltro)
+    : 'activas'
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -82,17 +96,25 @@ export default async function ReportesPage() {
   if (!consultoraId && !isSuperAdmin) redirect('/dashboard')
 
   // ── Empresas ─────────────────────────────────────────────────────────────
+  // Traemos TODAS (sin filtrar en la fuente) y filtramos en JS según el toggle,
+  // para que el control de estado siga siendo bookmarkable y no rompa la query.
   const { data: empresasRaw } = await supabase
     .from('empresas')
-    .select('id, razon_social, cuit')
+    .select('id, razon_social, cuit, is_active')
     .eq('consultora_id', consultoraId!)
     .order('razon_social')
 
-  const empresas = empresasRaw ?? []
+  const empresasTodas = empresasRaw ?? []
+  const empresasFiltradas = empresasTodas.filter(e => {
+    if (estadoSel === 'activas') return e.is_active
+    if (estadoSel === 'inactivas') return !e.is_active
+    return true // 'todas'
+  })
+  const empresas = empresasFiltradas
   const empresaIds = empresas.map(e => e.id)
 
   if (empresaIds.length === 0) {
-    return <EmptyState />
+    return <EmptyState estadoSel={estadoSel} hayEmpresas={empresasTodas.length > 0} />
   }
 
   // ── Establecimientos (para mapear a empresa) ──────────────────────────────
@@ -226,14 +248,43 @@ export default async function ReportesPage() {
     <div className="px-6 py-6 max-w-7xl space-y-8">
 
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
           <h1 className="text-xl font-semibold text-text-primary">Módulo de Reportes</h1>
           <p className="text-sm text-text-tertiary mt-0.5">Art. 5 Res. SRT 48/2025 — Supervisión de cumplimiento técnico-normativo</p>
+          {/* Auditoría (Disp. 15/2026): cuando se incluyen inactivas, dejarlo explícito. */}
+          {estadoSel !== 'activas' && (
+            <p className="text-xs text-warning font-medium mt-1">
+              Mostrando: {estadoSel === 'inactivas' ? 'solo empresas inactivas' : 'incluye empresas inactivas'}
+            </p>
+          )}
         </div>
-        <span className="text-xs font-medium bg-indigo-100 text-indigo-800 rounded-full px-3 py-1 shrink-0">
-          Responsable de Estándares
-        </span>
+        <div className="flex items-center gap-3 shrink-0">
+          {/* Toggle de estado: form GET → bookmarkable, sin estado de cliente. */}
+          <form method="get" className="flex items-center gap-2">
+            <label htmlFor="estado" className="text-xs text-text-tertiary">Estado</label>
+            <select
+              id="estado"
+              name="estado"
+              defaultValue={estadoSel}
+              aria-label="Filtrar empresas por estado"
+              className="bg-surface-base border border-border-default rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-sig-500/40 focus:border-sig-500 transition-shadow"
+            >
+              <option value="activas">Activas</option>
+              <option value="inactivas">Inactivas</option>
+              <option value="todas">Todas</option>
+            </select>
+            <button
+              type="submit"
+              className="text-xs font-medium bg-sig-500 hover:bg-sig-700 text-white px-3 py-2 rounded-lg transition-colors"
+            >
+              Aplicar
+            </button>
+          </form>
+          <span className="text-xs font-medium bg-indigo-100 text-indigo-800 rounded-full px-3 py-1">
+            Responsable de Estándares
+          </span>
+        </div>
       </div>
 
       {/* KPI row */}
@@ -418,14 +469,35 @@ function KpiCard({ label, value, total, color }: { label: string; value: number;
   )
 }
 
-function EmptyState() {
+function EmptyState({ estadoSel = 'activas', hayEmpresas = false }: { estadoSel?: EstadoFiltro; hayEmpresas?: boolean }) {
+  // Distinguimos "no hay empresas" de "el filtro de estado no devolvió resultados".
+  const filtrado = hayEmpresas && estadoSel !== 'todas'
   return (
     <div className="px-6 py-6 max-w-7xl">
       <h1 className="text-xl font-semibold text-text-primary mb-2">Módulo de Reportes</h1>
       <div className="border border-border-subtle rounded-xl p-12 text-center mt-6">
         <FileCheck size={40} className="mx-auto mb-4 text-text-tertiary" strokeWidth={1.5} />
-        <p className="text-sm text-text-secondary font-medium">No hay empresas registradas en la consultora</p>
-        <p className="text-xs text-text-tertiary mt-1">Agregá empresas para generar reportes de cumplimiento</p>
+        {filtrado ? (
+          <>
+            <p className="text-sm text-text-secondary font-medium">
+              No hay empresas {estadoSel === 'activas' ? 'activas' : 'inactivas'} en la consultora
+            </p>
+            <p className="text-xs text-text-tertiary mt-1">
+              Probá cambiar el filtro de estado para ver todas las empresas.
+            </p>
+            <Link
+              href="/dashboard/reportes?estado=todas"
+              className="inline-block mt-4 text-xs font-medium text-brand-primary hover:underline"
+            >
+              Ver todas las empresas
+            </Link>
+          </>
+        ) : (
+          <>
+            <p className="text-sm text-text-secondary font-medium">No hay empresas registradas en la consultora</p>
+            <p className="text-xs text-text-tertiary mt-1">Agregá empresas para generar reportes de cumplimiento</p>
+          </>
+        )}
       </div>
     </div>
   )

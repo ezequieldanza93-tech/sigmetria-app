@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { EstablecimientoIcon } from '@/components/icons/establecimiento-icon'
 import { SectoresTab } from '@/components/establecimiento/sectores-tab'
@@ -22,6 +22,7 @@ import {
 interface EstablecimientoLite {
   id: string
   nombre: string
+  status?: 'active' | 'on_hold' | 'cancelled'
 }
 
 interface Props {
@@ -82,6 +83,23 @@ export function EmpresaFichaEstablecimientos({ empresaId, establecimientos, canW
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [subTab, setSubTab] = useState<Record<string, Tab>>({})
   const [loadState, setLoadState] = useState<Record<string, LoadState>>({})
+  // Por defecto SOLO activos. El usuario puede elegir inactivos (on_hold) o todos.
+  const [estadoSel, setEstadoSel] = useState<string>('activos')
+
+  // Filtrado client-side por status: 'cancelled' SIEMPRE fuera (no debería llegar,
+  // la query ya hace .neq), 'active' = activos, 'on_hold' = inactivos.
+  const establecimientosFiltrados = useMemo(
+    () =>
+      establecimientos.filter(est => {
+        if (est.status === 'cancelled') return false
+        if (estadoSel === 'activos' && est.status === 'on_hold') return false
+        if (estadoSel === 'inactivos' && est.status === 'active') return false
+        return true
+      }),
+    [establecimientos, estadoSel]
+  )
+
+  const selectCls = 'bg-surface-base border border-border-default rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-sig-500/40 focus:border-sig-500 transition-shadow'
 
   const loadFicha = useCallback(
     async (estId: string) => {
@@ -139,16 +157,34 @@ export function EmpresaFichaEstablecimientos({ empresaId, establecimientos, canW
 
   return (
     <div className="space-y-2">
-      <h3 className="text-sm font-semibold text-text-secondary dark:text-white mb-1">
-        Fichas de establecimientos
-      </h3>
+      <div className="flex items-center justify-between gap-3 flex-wrap mb-1">
+        <h3 className="text-sm font-semibold text-text-secondary dark:text-white">
+          Fichas de establecimientos
+        </h3>
+        <select
+          value={estadoSel}
+          onChange={e => setEstadoSel(e.target.value)}
+          aria-label="Filtrar por estado"
+          className={selectCls}
+        >
+          <option value="activos">Activos</option>
+          <option value="inactivos">Inactivos</option>
+          <option value="todos">Todos</option>
+        </select>
+      </div>
       <p className="text-xs text-text-tertiary mb-3">
-        {establecimientos.length}{' '}
-        {establecimientos.length === 1 ? 'establecimiento' : 'establecimientos'} — clic para ver sus
-        datos
+        {establecimientosFiltrados.length}{' '}
+        {establecimientosFiltrados.length === 1 ? 'establecimiento' : 'establecimientos'} — clic para
+        ver sus datos
       </p>
 
-      {establecimientos.map(est => {
+      {establecimientosFiltrados.length === 0 ? (
+        <p className="text-sm text-text-tertiary">
+          {estadoSel === 'inactivos'
+            ? 'No hay establecimientos inactivos.'
+            : 'No hay establecimientos activos.'}
+        </p>
+      ) : establecimientosFiltrados.map(est => {
         const isOpen = expanded.has(est.id)
         const active: Tab = subTab[est.id] ?? 'info'
         const state: LoadState = loadState[est.id] ?? { status: 'idle' }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { EstablecimientoIcon } from '@/components/icons/establecimiento-icon'
 import {
@@ -40,7 +40,8 @@ import type { Icon as LucideIcon } from 'lucide-react'
 interface EmpresaConEstablecimientos {
   id: string
   razon_social: string
-  establecimientos: { id: string; nombre: string }[]
+  is_active: boolean
+  establecimientos: { id: string; nombre: string; status?: 'active' | 'on_hold' | 'cancelled' }[]
 }
 
 interface UsuarioInfo {
@@ -155,6 +156,30 @@ export function ConsultoraFichaGlobal({ consultora, empresas, usuario, userRole,
     ? Object.entries(consultora.social_links).filter(([, v]) => typeof v === 'string' && v)
     : []
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  // Por defecto SOLO activas (a nivel consultora). El usuario puede elegir inactivas o todas.
+  const [estadoSel, setEstadoSel] = useState<string>('activas')
+
+  // Filtrado client-side. Empresas → is_active. Establecimientos anidados → status:
+  // 'cancelled' SIEMPRE fuera; según el toggle se muestran active / on_hold / ambos.
+  const empresasFiltradas = useMemo(() => {
+    return empresas
+      .filter(emp => {
+        if (estadoSel === 'activas' && !emp.is_active) return false
+        if (estadoSel === 'inactivas' && emp.is_active) return false
+        return true
+      })
+      .map(emp => ({
+        ...emp,
+        establecimientos: emp.establecimientos.filter(est => {
+          if (est.status === 'cancelled') return false
+          if (estadoSel === 'activas' && est.status === 'on_hold') return false
+          if (estadoSel === 'inactivas' && est.status === 'active') return false
+          return true
+        }),
+      }))
+  }, [empresas, estadoSel])
+
+  const selectCls = 'bg-surface-base border border-border-default rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-sig-500/40 focus:border-sig-500 transition-shadow'
 
   const toggle = useCallback((id: string) => {
     setExpanded(prev => {
@@ -354,11 +379,25 @@ export function ConsultoraFichaGlobal({ consultora, empresas, usuario, userRole,
 
       {/* Nivel 1 — Empresas */}
       <section className="space-y-2">
-        <div className="flex items-baseline justify-between">
-          <h2 className="text-sm font-semibold text-text-secondary dark:text-white">Empresas</h2>
-          <span className="text-xs text-text-tertiary">
-            {empresas.length} {empresas.length === 1 ? 'empresa' : 'empresas'}
-          </span>
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-baseline gap-2">
+            <h2 className="text-sm font-semibold text-text-secondary dark:text-white">Empresas</h2>
+            <span className="text-xs text-text-tertiary">
+              {empresasFiltradas.length} {empresasFiltradas.length === 1 ? 'empresa' : 'empresas'}
+            </span>
+          </div>
+          {empresas.length > 0 && (
+            <select
+              value={estadoSel}
+              onChange={e => setEstadoSel(e.target.value)}
+              aria-label="Filtrar por estado"
+              className={selectCls}
+            >
+              <option value="activas">Activas</option>
+              <option value="inactivas">Inactivas</option>
+              <option value="todas">Todas</option>
+            </select>
+          )}
         </div>
 
         {empresas.length === 0 ? (
@@ -368,9 +407,18 @@ export function ConsultoraFichaGlobal({ consultora, empresas, usuario, userRole,
               Esta consultora todavía no tiene empresas cargadas.
             </p>
           </div>
+        ) : empresasFiltradas.length === 0 ? (
+          <div className="bg-surface-base border border-border-subtle rounded-xl px-4 py-10 text-center">
+            <Building2 size={28} className="mx-auto text-text-tertiary mb-2" aria-hidden="true" />
+            <p className="text-sm text-text-tertiary">
+              {estadoSel === 'inactivas'
+                ? 'No hay empresas inactivas.'
+                : 'No hay empresas activas.'}
+            </p>
+          </div>
         ) : (
           <div className="space-y-2">
-            {empresas.map(emp => {
+            {empresasFiltradas.map(emp => {
               const isOpen = expanded.has(emp.id)
               const count = emp.establecimientos.length
 
