@@ -37,6 +37,21 @@ export function ReportProblemModal({ open, tipo, onClose }: ReportProblemModalPr
         return html2canvas(document.body, {
           useCORS: true,
           scale: 0.5,
+          imageTimeout: 2000,
+          ignoreElements: (el) => {
+            // Saltear mapas Leaflet — los tiles OSM son cross-origin sin CORS
+            // y contaminan (taint) el canvas → toDataURL() lanza SecurityError
+            const cl = (el as HTMLElement).classList
+            if (
+              cl &&
+              (cl.contains('leaflet-container') ||
+                cl.contains('leaflet-tile') ||
+                cl.contains('leaflet-tile-container') ||
+                cl.contains('leaflet-pane'))
+            )
+              return true
+            return false
+          },
           onclone: (clonedDoc) => {
             clonedDoc.body.style.zoom = '1'
             clonedDoc.documentElement.style.zoom = '1'
@@ -134,9 +149,9 @@ export function ReportProblemModal({ open, tipo, onClose }: ReportProblemModalPr
     setStatus('enviando')
     setErrorMsg('')
 
-    // Auto-contexto
+    // Auto-contexto — siempre incluimos __sig_errors__ (tipo 'error' o 'idea')
+    // para que los errores de captura de screenshot queden visibles en cualquier reporte
     const erroresJs = (() => {
-      if (tipo !== 'error') return []
       try {
         const raw = localStorage.getItem('__sig_errors__')
         return raw ? JSON.parse(raw) : []
@@ -278,7 +293,10 @@ export function ReportProblemModal({ open, tipo, onClose }: ReportProblemModalPr
             )}
 
             {!screenshotDataUrl && !estaCapturando && (
-              <p className="text-xs text-text-tertiary">Sin captura. Podés pegar una imagen (Ctrl/Cmd+V) o adjuntarla.</p>
+              <p className="text-xs text-text-tertiary">
+                No se pudo capturar la pantalla automáticamente (puede haber mapas u otras imágenes que lo impiden).
+                Pegá una captura con Ctrl/Cmd+V, adjuntala, o describí el problema en el texto.
+              </p>
             )}
 
             <button

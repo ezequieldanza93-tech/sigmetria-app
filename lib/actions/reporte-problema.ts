@@ -131,7 +131,7 @@ export async function enviarReporteProblema(input: {
     viewport: contexto.viewport,
     consultora_nombre: contexto.consultoraNombre ?? null,
     screenshot_path: screenshotPath,
-    errores_js: tipo === 'error' ? (contexto.erroresJs ?? []) : [],
+    errores_js: contexto.erroresJs ?? [],
   }
 
   // 7. Insertar en tabla feedback usando el ID pre-generado
