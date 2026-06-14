@@ -347,3 +347,93 @@ export async function planificarGestionNuevaLote(
 
   return { success: true, data: { count: registros.length } }
 }
+
+/**
+ * Planificación en lote de VARIAS gestiones existentes con las MISMAS fechas.
+ * Por cada gestionId: get-or-create gestiones_establecimientos, luego acumula
+ * todos los registros y hace un insert masivo único al final. El trigger BEFORE
+ * INSERT auto-numera `secuencia` por (gestion_establecimiento_id, fecha_planificada).
+ */
+export async function planificarGestionesLote(
+  gestionIds: string[],
+  establecimientoId: string,
+  fechas: string[],
+  responsableId: string | null,
+  notas: string | null,
+): Promise<ActionResult<{ count: number }>> {
+  const { client: supabase } = await createAuditedClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'No autenticado' }
+
+  if (!Array.isArray(gestionIds) || gestionIds.length === 0) {
+    return { success: false, error: 'Seleccioná al menos una gestión' }
+  }
+  if (!establecimientoId) return { success: false, error: 'Establecimiento requerido' }
+
+  if (!Array.isArray(fechas) || fechas.length === 0) {
+    return { success: false, error: 'Seleccioná al menos una fecha' }
+  }
+  if (fechas.length > MAX_FECHAS_LOTE) {
+    return { success: false, error: `Demasiadas ocurrencias (máximo ${MAX_FECHAS_LOTE})` }
+  }
+  if (!fechas.every(f => typeof f === 'string' && FECHA_RE.test(f))) {
+    return { success: false, error: 'Hay fechas con formato inválido' }
+  }
+
+  const todosLosRegistros: {
+    gestion_establecimiento_id: string
+    fecha_planificada: string
+    responsable_id: string | null
+    notas: string | null
+  }[] = []
+
+  for (const gestionId of gestionIds) {
+    // Get or create gestion_establecimiento (mismo patrón que planificarGestionLote)
+    let geId: string
+    const { data: existing } = await supabase
+      .from('gestiones_establecimientos')
+      .select('id')
+      .eq('gestion_id', gestionId)
+      .eq('establecimiento_id', establecimientoId)
+      .maybeSingle()
+
+    if (existing) {
+      geId = existing.id
+    } else {
+      const { data: created, error: geInsertError } = await supabase
+        .from('gestiones_establecimientos')
+        .insert({ gestion_id: gestionId, establecimiento_id: establecimientoId })
+        .select('id')
+        .single()
+      if (geInsertError) return { success: false, error: `Error vinculando gestión ${gestionId}: ${geInsertError.message}` }
+      geId = created.id
+    }
+
+    for (const fecha of fechas) {
+      todosLosRegistros.push({
+        gestion_establecimiento_id: geId,
+        fecha_planificada: fecha,
+        responsable_id: responsableId || null,
+        notas: notas || null,
+      })
+    }
+  }
+
+  const CHUNK_SIZE = 500
+  let totalInsertados = 0
+  for (let i = 0; i < todosLosRegistros.length; i += CHUNK_SIZE) {
+    const chunk = todosLosRegistros.slice(i, i + CHUNK_SIZE)
+    const { error: chunkError } = await supabase.from('gestiones_registros').insert(chunk)
+    if (chunkError) {
+      return {
+        success: false,
+        error: `Error en chunk ${Math.floor(i / CHUNK_SIZE) + 1}: ${chunkError.message}. La operación quedó incompleta (${totalInsertados} de ${todosLosRegistros.length} registros insertados).`,
+      }
+    }
+    totalInsertados += chunk.length
+  }
+
+  revalidatePath(`/dashboard/empresas/[id]/establecimientos/${establecimientoId}`, 'page')
+
+  return { success: true, data: { count: totalInsertados } }
+}
