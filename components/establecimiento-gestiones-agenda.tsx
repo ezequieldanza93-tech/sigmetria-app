@@ -24,6 +24,7 @@ import { createPortal } from 'react-dom'
 import {
   planificarGestionNuevaLote,
   planificarGestionLote,
+  planificarGestionesLote,
   createGrupoGestion,
   createCategoriaGestion,
 } from '@/lib/actions/gestion-establecimiento'
@@ -133,28 +134,51 @@ function fmtFecha(year: number, month0: number, dia: number): string {
   return `${year}-${mm}-${dd}`
 }
 
+const MAX_FECHAS_LOTE = 366
+
 /**
  * Genera el set de fechas (YYYY-MM-DD) a partir del año, los meses elegidos y el patrón.
- * - mensual: 1 ocurrencia por mes = último día del mes.
+ * - mensual: 1 ocurrencia por mes. Si diaMes === 'ultimo' → último día del mes.
+ *   Si es un número 1–31 → ese día específico (clamp al último día del mes si supera).
  * - porMes: N ocurrencias por mes distribuidas parejo → dia_k = round(D * k / N), k=1..N.
  *   (N=1 → último día; N=4, D=30 → 8,15,23,30).
- * - diaSemana: todas las fechas del mes que caen en el día de semana elegido (0=Lun..6=Dom).
+ * - diaSemana: todas las fechas del mes que caen en CUALQUIERA de los días indicados
+ *   en diasSemana (array de 0=Lun..6=Dom). Default: [5] (Sábado).
+ * Límite: MAX_FECHAS_LOTE (366). Resultado ordenado y deduplicado.
  */
 function generarFechasLote(
   year: number,
   meses: number[],
   patron: PatronLote,
   cantidad: number,
+  /** @deprecated usar diasSemana[] para patrón diaSemana */
   diaSemana: number,
+  diaMes?: number | 'ultimo',
+  diasSemana?: number[],
 ): string[] {
   const mesesOrdenados = [...meses].sort((a, b) => a - b)
   const out: string[] = []
+
+  // Defensa en profundidad: si el patrón es diaSemana y no hay días seleccionados, no generar nada
+  if (patron === 'diaSemana' && (!diasSemana || diasSemana.length === 0)) return []
+
+  // Normalizar parámetros para multi-día de semana
+  const diasSemanaEfectivos: number[] = diasSemana && diasSemana.length > 0
+    ? diasSemana
+    : [diaSemana]
+  const diasSemanaSet = new Set(diasSemanaEfectivos)
 
   for (const m of mesesOrdenados) {
     const D = diasEnMes(year, m)
 
     if (patron === 'mensual') {
-      out.push(fmtFecha(year, m, D))
+      let dia: number
+      if (!diaMes || diaMes === 'ultimo') {
+        dia = D
+      } else {
+        dia = Math.min(diaMes as number, D)
+      }
+      out.push(fmtFecha(year, m, dia))
     } else if (patron === 'porMes') {
       const N = Math.max(1, Math.floor(cantidad))
       const vistos = new Set<number>()
@@ -170,14 +194,19 @@ function generarFechasLote(
       }
     } else {
       for (let dia = 1; dia <= D; dia++) {
-        if (diaSemanaLun0(year, m, dia) === diaSemana) {
+        if (diasSemanaSet.has(diaSemanaLun0(year, m, dia))) {
           out.push(fmtFecha(year, m, dia))
         }
       }
     }
+
+    // Cortar si ya llegamos al límite
+    if (out.length >= MAX_FECHAS_LOTE) break
   }
 
-  return out
+  // Deduplicar y ordenar (por si hubiera solapamientos edge-case)
+  const deduped = Array.from(new Set(out)).sort()
+  return deduped.slice(0, MAX_FECHAS_LOTE)
 }
 
 const COL_WIDTHS_KEY = 'gestiones_col_widths'
@@ -366,7 +395,10 @@ function GeneradorFechasLote({
   // Patrón
   const [patron, setPatron] = useState<PatronLote>('mensual')
   const [cantidad, setCantidad] = useState(2)
-  const [diaSemana, setDiaSemana] = useState(5) // 5 = Sábado (0=Lun..6=Dom)
+  // Para mensual: día específico o 'ultimo'
+  const [diaMes, setDiaMes] = useState<'ultimo' | number>('ultimo')
+  // Para diaSemana: multi-select (array de 0=Lun..6=Dom). Default: [5] = Sábado
+  const [diasSemana, setDiasSemana] = useState<number[]>([5])
 
   // Preview editable
   const [ocurrencias, setOcurrencias] = useState<OcurrenciaDraft[]>([])
@@ -386,18 +418,38 @@ function GeneradorFechasLote({
     setMeses(todosLosMeses ? new Set() : new Set(Array.from({ length: 12 }, (_, i) => i)))
   }
 
-  // Regenera el preview cuando cambian año/meses/patrón/cantidad/díaSemana.
+  function toggleDiaSemana(d: number) {
+    setDiasSemana(prev =>
+      prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]
+    )
+  }
+
+  function seleccionarLunesViernes() {
+    setDiasSemana([0, 1, 2, 3, 4])
+  }
+
+  function seleccionarTodos() {
+    setDiasSemana([0, 1, 2, 3, 4, 5, 6])
+  }
+
+  // Regenera el preview cuando cambian año/meses/patrón/cantidad/díaMes/diasSemana.
   // Pisa ediciones manuales (documentado arriba).
   const mesesKey = Array.from(meses).sort((a, b) => a - b).join(',')
+  const diasSemanaKey = [...diasSemana].sort((a, b) => a - b).join(',')
   useEffect(() => {
     const mesesArr = mesesKey ? mesesKey.split(',').map(Number) : []
     if (mesesArr.length === 0) {
       setOcurrencias([])
       return
     }
-    const fechas = generarFechasLote(anio, mesesArr, patron, cantidad, diaSemana)
+    if (patron === 'diaSemana' && diasSemana.length === 0) {
+      setOcurrencias([])
+      return
+    }
+    // Pasamos diaSemana=5 como legacy (ignorado en favor de diasSemana[])
+    const fechas = generarFechasLote(anio, mesesArr, patron, cantidad, 5, diaMes, diasSemana)
     setOcurrencias(fechas.map(fecha => ({ id: idRef.current++, fecha })))
-  }, [anio, mesesKey, patron, cantidad, diaSemana])
+  }, [anio, mesesKey, patron, cantidad, diaMes, diasSemanaKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleChangeFecha(id: number, fecha: string) {
     setOcurrencias(prev => prev.map(o => (o.id === id ? { ...o, fecha } : o)))
@@ -475,18 +527,38 @@ function GeneradorFechasLote({
       {/* PATRÓN */}
       <div className="border-t border-border-subtle pt-3 space-y-2">
         <label className="text-sm font-medium text-text-secondary block">Patrón de repetición</label>
-        <div className="space-y-2 text-sm">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="radio"
-              name="patron"
-              checked={patron === 'mensual'}
-              onChange={() => setPatron('mensual')}
-              className="accent-sig-500"
-            />
-            <span>1 vez por mes (último día del mes)</span>
-          </label>
+        <div className="space-y-3 text-sm">
+          {/* 1 vez por mes */}
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="patron"
+                checked={patron === 'mensual'}
+                onChange={() => setPatron('mensual')}
+                className="accent-sig-500"
+              />
+              <span>1 vez por mes</span>
+            </label>
+            {patron === 'mensual' && (
+              <div className="mt-2 ml-6 flex items-center gap-2">
+                <label className="text-xs text-text-secondary">Día:</label>
+                <select
+                  value={diaMes === 'ultimo' ? 'ultimo' : String(diaMes)}
+                  onChange={e => setDiaMes(e.target.value === 'ultimo' ? 'ultimo' : Number(e.target.value))}
+                  className="border border-border-default rounded-lg px-2 py-1 text-sm bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500"
+                >
+                  <option value="ultimo">Último día del mes</option>
+                  {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                    <option key={d} value={d}>Día {d}</option>
+                  ))}
+                </select>
+                <span className="text-xs text-text-tertiary">(se ajusta si el mes tiene menos días)</span>
+              </div>
+            )}
+          </div>
 
+          {/* N veces por mes */}
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="radio"
@@ -507,25 +579,74 @@ function GeneradorFechasLote({
             )}
           </label>
 
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="radio"
-              name="patron"
-              checked={patron === 'diaSemana'}
-              onChange={() => setPatron('diaSemana')}
-              className="accent-sig-500"
-            />
-            <span>Por día de semana</span>
+          {/* Días de semana (multi) */}
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="patron"
+                checked={patron === 'diaSemana'}
+                onChange={() => setPatron('diaSemana')}
+                className="accent-sig-500"
+              />
+              <span>Días de la semana</span>
+            </label>
             {patron === 'diaSemana' && (
-              <select
-                value={diaSemana}
-                onChange={e => setDiaSemana(Number(e.target.value))}
-                className="border border-border-default rounded-lg px-2 py-1 text-sm bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500"
-              >
-                {DIAS_SEMANA.map((d, i) => <option key={d} value={i}>{d}</option>)}
-              </select>
+              <div className="mt-2 ml-6 space-y-2">
+                <div className="flex flex-wrap gap-1.5">
+                  {DIAS_SEMANA.map((d, i) => {
+                    const sel = diasSemana.includes(i)
+                    return (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => toggleDiaSemana(i)}
+                        className={`text-xs px-2.5 py-1 rounded-lg border transition-colors ${
+                          sel
+                            ? 'bg-sig-500 text-white border-sig-500'
+                            : 'bg-surface-base text-text-secondary border-border-default hover:bg-gray-50'
+                        }`}
+                      >
+                        {d.slice(0, 3)}
+                      </button>
+                    )
+                  })}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={seleccionarLunesViernes}
+                    className="text-xs text-sig-600 hover:text-sig-800 hover:underline"
+                  >
+                    Lun a Vie
+                  </button>
+                  <span className="text-text-tertiary text-xs">·</span>
+                  <button
+                    type="button"
+                    onClick={seleccionarTodos}
+                    className="text-xs text-sig-600 hover:text-sig-800 hover:underline"
+                  >
+                    Todos
+                  </button>
+                  {diasSemana.length > 0 && (
+                    <>
+                      <span className="text-text-tertiary text-xs">·</span>
+                      <button
+                        type="button"
+                        onClick={() => setDiasSemana([])}
+                        className="text-xs text-text-tertiary hover:text-danger hover:underline"
+                      >
+                        Ninguno
+                      </button>
+                    </>
+                  )}
+                </div>
+                {diasSemana.length === 0 && (
+                  <p className="text-xs text-amber-600">Seleccioná al menos un día.</p>
+                )}
+              </div>
             )}
-          </label>
+          </div>
         </div>
       </div>
 
@@ -577,7 +698,6 @@ function BibliotecaForm({
 }) {
   const [filterGrupo, setFilterGrupo] = useState('')
   const [filterCat, setFilterCat] = useState('')
-  const [gestionId, setGestionId] = useState('')
   const [notas, setNotas] = useState('')
   const [responsableId, setResponsableId] = useState<string | null>(null)
 
@@ -614,13 +734,39 @@ function BibliotecaForm({
     setFilterCat('')
   }
 
+  // ── Multi-selección de gestiones ──────────────────────────────────────────
+  const [gestionIds, setGestionIds] = useState<Set<string>>(new Set())
+
+  function toggleGestion(id: string) {
+    setGestionIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  // Resetear selección al cambiar filtros
+  function handleGrupoCambio(v: string) {
+    handleGrupoChange(v)
+    setGestionIds(new Set())
+  }
+
+  function handleCatCambio(v: string) {
+    setFilterCat(v)
+    setGestionIds(new Set())
+  }
+
+  const gestionesSeleccionadas = gestionIds.size
   const total = fechas.length
+  const totalRegistros = gestionesSeleccionadas * total
 
   function handleSubmit() {
-    if (!gestionId || total === 0) return
+    if (gestionIds.size === 0 || total === 0) return
     setError(null)
     startTransition(async () => {
-      const res = await planificarGestionLote(gestionId, establecimientoId, fechas, responsableId, notas.trim() || null)
+      const ids = Array.from(gestionIds)
+      const res = await planificarGestionesLote(ids, establecimientoId, fechas, responsableId, notas.trim() || null)
       if (!res.success) {
         setError(res.error)
         return
@@ -644,83 +790,137 @@ function BibliotecaForm({
           No se encontraron gestiones en la librería.
         </div>
       ) : (
-        <>
-          {/* Filtros + select de gestión */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="text-sm font-medium text-text-secondary block mb-1">Grupo</label>
-              <select value={filterGrupo} onChange={e => handleGrupoChange(e.target.value)} className={selectCls}>
-                <option value="">Todos</option>
-                {grupos.map(g => <option key={g} value={g}>{g}</option>)}
-              </select>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* ── Columna izquierda: QUÉ ── */}
+          <div className="space-y-4">
+            <p className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">Qué planificar</p>
+
+            {/* Filtros */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium text-text-secondary block mb-1">Grupo</label>
+                <select value={filterGrupo} onChange={e => handleGrupoCambio(e.target.value)} className={selectCls}>
+                  <option value="">Todos</option>
+                  {grupos.map(g => <option key={g} value={g}>{g}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-text-secondary block mb-1">Categoría</label>
+                <select value={filterCat} onChange={e => handleCatCambio(e.target.value)} className={selectCls}>
+                  <option value="">Todas</option>
+                  {cats.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
             </div>
+
+            {/* Lista multi-checkbox de gestiones */}
             <div>
-              <label className="text-sm font-medium text-text-secondary block mb-1">Categoría</label>
-              <select value={filterCat} onChange={e => setFilterCat(e.target.value)} className={selectCls}>
-                <option value="">Todas</option>
-                {cats.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-sm font-medium text-text-secondary">
+                  Gestiones *
+                  <span className="text-xs text-text-tertiary font-normal ml-1">(elegí una o más)</span>
+                </label>
+                {gestionesFiltradas.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (gestionIds.size === gestionesFiltradas.length) {
+                        setGestionIds(new Set())
+                      } else {
+                        setGestionIds(new Set(gestionesFiltradas.map(g => g.id)))
+                      }
+                    }}
+                    className="text-xs text-sig-600 hover:text-sig-800 hover:underline"
+                  >
+                    {gestionIds.size === gestionesFiltradas.length ? 'Ninguna' : 'Todas'}
+                  </button>
+                )}
+              </div>
+              <div className="border border-border-default rounded-lg divide-y divide-border-subtle max-h-52 overflow-y-auto">
+                {gestionesFiltradas.length === 0 ? (
+                  <p className="text-xs text-text-tertiary px-3 py-2">Sin gestiones para los filtros elegidos.</p>
+                ) : (
+                  gestionesFiltradas.map(g => {
+                    const sel = gestionIds.has(g.id)
+                    return (
+                      <label
+                        key={g.id}
+                        className={`flex items-center gap-2 px-3 py-2 text-sm cursor-pointer transition-colors ${
+                          sel ? 'bg-sig-50' : 'hover:bg-gray-50'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={sel}
+                          onChange={() => toggleGestion(g.id)}
+                          className="accent-sig-500 shrink-0"
+                        />
+                        <span className="truncate">{g.nombre}</span>
+                      </label>
+                    )
+                  })
+                )}
+              </div>
+              {gestionesSeleccionadas > 0 && total > 0 && (
+                <p className="text-xs text-text-secondary mt-1">
+                  {gestionesSeleccionadas} {gestionesSeleccionadas === 1 ? 'gestión' : 'gestiones'} × {total} {total === 1 ? 'fecha' : 'fechas'} = <strong className="text-sig-700">{totalRegistros} registros</strong>
+                </p>
+              )}
+            </div>
+
+            {/* Responsable */}
+            <div>
+              <label className="text-sm font-medium text-text-secondary block mb-1">
+                Responsable
+                <span className="text-xs text-text-tertiary font-normal ml-1">(opcional)</span>
+              </label>
+              <PersonaSelector
+                name="responsable_id_lote"
+                value={responsableId}
+                onChange={setResponsableId}
+                placeholder="Buscar responsable…"
+              />
+            </div>
+
+            {/* Notas */}
+            <div>
+              <label className="text-sm font-medium text-text-secondary block mb-1">Notas</label>
+              <textarea
+                value={notas}
+                onChange={e => setNotas(e.target.value)}
+                rows={3}
+                className="w-full border border-border-default rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sig-500"
+              />
             </div>
           </div>
 
-          <div>
-            <label className="text-sm font-medium text-text-secondary block mb-1">Gestión *</label>
-            <select value={gestionId} onChange={e => setGestionId(e.target.value)} required className={selectCls}>
-              <option value="">Seleccionar gestión…</option>
-              {gestionesFiltradas.map(g => (
-                <option key={g.id} value={g.id}>{g.nombre}</option>
-              ))}
-            </select>
+          {/* ── Columna derecha: CUÁNDO ── */}
+          <div className="space-y-4">
+            <p className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">Cuándo</p>
+            <GeneradorFechasLote onChange={handleFechasChange} />
           </div>
-        </>
+        </div>
       )}
 
-      {/* PERÍODO + PATRÓN + PREVIEW (generador reutilizable) */}
-      <GeneradorFechasLote onChange={handleFechasChange} />
-
-      {/* RESPONSABLE (opcional) */}
-      <div className="border-t border-border-subtle pt-3">
-        <label className="text-sm font-medium text-text-secondary block mb-1">
-          Responsable
-          <span className="text-xs text-text-tertiary font-normal ml-1">(opcional)</span>
-        </label>
-        <PersonaSelector
-          name="responsable_id_lote"
-          value={responsableId}
-          onChange={setResponsableId}
-          placeholder="Buscar responsable…"
-        />
-      </div>
-
-      {/* NOTAS */}
-      <div>
-        <label className="text-sm font-medium text-text-secondary block mb-1">Notas</label>
-        <textarea
-          value={notas}
-          onChange={e => setNotas(e.target.value)}
-          rows={2}
-          className="w-full border border-border-default rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sig-500"
-        />
-      </div>
-
-      <div className="flex gap-3 pt-1">
+      <div className="flex flex-wrap gap-3 pt-1 border-t border-border-subtle">
         <Button
           type="button"
           onClick={handleSubmit}
-          disabled={isPending || !gestionId || total === 0}
+          disabled={isPending || gestionIds.size === 0 || total === 0}
         >
-          {isPending ? 'Guardando…' : `Planificar ${total} ${total === 1 ? 'gestión' : 'gestiones'}`}
+          {isPending
+            ? 'Guardando…'
+            : gestionesSeleccionadas > 0
+              ? `Planificar ${gestionesSeleccionadas} ${gestionesSeleccionadas === 1 ? 'gestión' : 'gestiones'}`
+              : 'Planificar gestiones'}
         </Button>
         <Button type="button" variant="secondary" onClick={onClose}>Cancelar</Button>
-      </div>
-
-      <div className="border-t border-border-subtle pt-3">
         <button
           type="button"
           onClick={onSwitchToNueva}
-          className="text-xs text-sig-600 hover:text-sig-800 hover:underline"
+          className="ml-auto text-xs text-sig-600 hover:text-sig-800 hover:underline self-center"
         >
-          ¿No encontrás la gestión? → Crear nueva gestión
+          ¿No encontrás la gestión? → Crear nueva
         </button>
       </div>
     </div>
@@ -845,114 +1045,124 @@ function NuevaGestionForm({
         </div>
       )}
 
-      <div>
-        <label className="text-sm font-medium text-text-secondary block mb-1">Nombre de la gestión *</label>
-        <input
-          type="text"
-          value={nombre}
-          onChange={e => setNombre(e.target.value)}
-          required
-          placeholder="Ej: Simulacro de Evacuación"
-          className={`${selectCls} ${showValidation && !nombre.trim() ? selectErrCls : ''}`}
-        />
-        <p className="text-xs text-text-tertiary mt-1">Se agregará a la librería global de gestiones.</p>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* ── Columna izquierda: QUÉ ── */}
+        <div className="space-y-4">
+          <p className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">Qué crear</p>
+
+          <div>
+            <label className="text-sm font-medium text-text-secondary block mb-1">Nombre de la gestión *</label>
+            <input
+              type="text"
+              value={nombre}
+              onChange={e => setNombre(e.target.value)}
+              required
+              placeholder="Ej: Simulacro de Evacuación"
+              className={`${selectCls} ${showValidation && !nombre.trim() ? selectErrCls : ''}`}
+            />
+            <p className="text-xs text-text-tertiary mt-1">Se agregará a la librería global de gestiones.</p>
+          </div>
+
+          {/* Grupo */}
+          <div>
+            <label className="text-sm font-medium text-text-secondary block mb-1">Grupo *</label>
+            <select
+              value={selectedGrupoId}
+              onChange={handleGrupoSelect}
+              className={`${selectCls} ${showValidation && !selectedGrupoId ? selectErrCls : ''}`}
+            >
+              <option value="">Seleccionar grupo…</option>
+              {localGrupos.map(g => <option key={g.id} value={g.id}>{g.nombre}</option>)}
+              <option value="__create__">+ Crear nuevo grupo</option>
+            </select>
+            {showValidation && !selectedGrupoId && (
+              <p className="text-xs text-danger mt-1">Grupo requerido</p>
+            )}
+            {creandoGrupo && (
+              <InlineCreator
+                placeholder="Nombre del nuevo grupo"
+                onConfirm={handleCrearGrupo}
+                onCancel={() => { setCreandoGrupo(false); setErrorGrupo('') }}
+                error={errorGrupo}
+              />
+            )}
+          </div>
+
+          {/* Categoría */}
+          <div>
+            <label className="text-sm font-medium text-text-secondary block mb-1">Categoría *</label>
+            <select
+              value={selectedCatId}
+              onChange={handleCatSelect}
+              disabled={!selectedGrupoId}
+              className={`${selectCls} disabled:opacity-50 disabled:cursor-not-allowed ${showValidation && !selectedCatId ? selectErrCls : ''}`}
+            >
+              <option value="">{selectedGrupoId ? 'Seleccionar categoría…' : 'Seleccioná un grupo primero'}</option>
+              {catsFiltradas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+              {selectedGrupoId && <option value="__create__">+ Crear nueva categoría</option>}
+            </select>
+            {showValidation && !selectedCatId && (
+              <p className="text-xs text-danger mt-1">Categoría requerida</p>
+            )}
+            {creandoCat && (
+              <InlineCreator
+                placeholder="Nombre de la nueva categoría"
+                onConfirm={handleCrearCat}
+                onCancel={() => { setCreandoCat(false); setErrorCat('') }}
+                error={errorCat}
+              />
+            )}
+          </div>
+
+          {/* Responsable */}
+          <div>
+            <label className="text-sm font-medium text-text-secondary block mb-1">
+              Responsable
+              <span className="text-xs text-text-tertiary font-normal ml-1">(opcional)</span>
+            </label>
+            <PersonaSelector
+              name="responsable_id_nueva"
+              value={responsableId}
+              onChange={setResponsableId}
+              placeholder="Buscar responsable…"
+            />
+          </div>
+
+          {/* Notas */}
+          <div>
+            <label className="text-sm font-medium text-text-secondary block mb-1">Notas</label>
+            <textarea
+              value={notas}
+              onChange={e => setNotas(e.target.value)}
+              rows={3}
+              className={`${selectCls} resize-none`}
+            />
+          </div>
+
+          {!selectedCatId && (
+            <p className="text-xs text-amber-600">
+              {!selectedGrupoId ? 'Seleccioná un Grupo y una Categoría para continuar.' : 'Seleccioná una Categoría para continuar.'}
+            </p>
+          )}
+        </div>
+
+        {/* ── Columna derecha: CUÁNDO ── */}
+        <div className="space-y-4">
+          <p className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">Cuándo</p>
+          <GeneradorFechasLote onChange={handleFechasChange} />
+        </div>
       </div>
 
-      {/* Grupo */}
-      <div>
-        <label className="text-sm font-medium text-text-secondary block mb-1">Grupo *</label>
-        <select
-          value={selectedGrupoId}
-          onChange={handleGrupoSelect}
-          className={`${selectCls} ${showValidation && !selectedGrupoId ? selectErrCls : ''}`}
-        >
-          <option value="">Seleccionar grupo…</option>
-          {localGrupos.map(g => <option key={g.id} value={g.id}>{g.nombre}</option>)}
-          <option value="__create__">+ Crear nuevo grupo</option>
-        </select>
-        {showValidation && !selectedGrupoId && (
-          <p className="text-xs text-danger mt-1">Grupo requerido</p>
-        )}
-        {creandoGrupo && (
-          <InlineCreator
-            placeholder="Nombre del nuevo grupo"
-            onConfirm={handleCrearGrupo}
-            onCancel={() => { setCreandoGrupo(false); setErrorGrupo('') }}
-            error={errorGrupo}
-          />
-        )}
-      </div>
-
-      {/* Categoría */}
-      <div>
-        <label className="text-sm font-medium text-text-secondary block mb-1">Categoría *</label>
-        <select
-          value={selectedCatId}
-          onChange={handleCatSelect}
-          disabled={!selectedGrupoId}
-          className={`${selectCls} disabled:opacity-50 disabled:cursor-not-allowed ${showValidation && !selectedCatId ? selectErrCls : ''}`}
-        >
-          <option value="">{selectedGrupoId ? 'Seleccionar categoría…' : 'Seleccioná un grupo primero'}</option>
-          {catsFiltradas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-          {selectedGrupoId && <option value="__create__">+ Crear nueva categoría</option>}
-        </select>
-        {showValidation && !selectedCatId && (
-          <p className="text-xs text-danger mt-1">Categoría requerida</p>
-        )}
-        {creandoCat && (
-          <InlineCreator
-            placeholder="Nombre de la nueva categoría"
-            onConfirm={handleCrearCat}
-            onCancel={() => { setCreandoCat(false); setErrorCat('') }}
-            error={errorCat}
-          />
-        )}
-      </div>
-
-      {/* PERÍODO + PATRÓN + PREVIEW (generador reutilizable) */}
-      <GeneradorFechasLote onChange={handleFechasChange} />
-
-      {/* RESPONSABLE (opcional) */}
-      <div className="border-t border-border-subtle pt-3">
-        <label className="text-sm font-medium text-text-secondary block mb-1">
-          Responsable
-          <span className="text-xs text-text-tertiary font-normal ml-1">(opcional)</span>
-        </label>
-        <PersonaSelector
-          name="responsable_id_nueva"
-          value={responsableId}
-          onChange={setResponsableId}
-          placeholder="Buscar responsable…"
-        />
-      </div>
-
-      {/* NOTAS */}
-      <div>
-        <label className="text-sm font-medium text-text-secondary block mb-1">Notas</label>
-        <textarea
-          value={notas}
-          onChange={e => setNotas(e.target.value)}
-          rows={2}
-          className={`${selectCls} resize-none`}
-        />
-      </div>
-
-      <div className="flex gap-3 pt-1">
+      <div className="flex gap-3 pt-1 border-t border-border-subtle">
         <Button
           type="button"
           onClick={handleSubmit}
           disabled={isPending || !nombre.trim() || !selectedCatId || total === 0}
         >
-          {isPending ? 'Guardando…' : `Crear y planificar ${total} ${total === 1 ? 'gestión' : 'gestiones'}`}
+          {isPending ? 'Guardando…' : `Crear y planificar ${total} ${total === 1 ? 'fecha' : 'fechas'}`}
         </Button>
         <Button type="button" variant="secondary" onClick={onClose}>Cancelar</Button>
       </div>
-
-      {!selectedCatId && (
-        <p className="text-xs text-amber-600">
-          {!selectedGrupoId ? 'Seleccioná un Grupo y una Categoría para continuar.' : 'Seleccioná una Categoría para continuar.'}
-        </p>
-      )}
     </div>
   )
 }
@@ -2912,7 +3122,7 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
       )}
 
       {showPlanificarModal && (
-        <Modal open title="Planificar nueva gestión" onClose={() => setShowPlanificarModal(false)}>
+        <Modal open title="Planificar nueva gestión" onClose={() => setShowPlanificarModal(false)} size="full">
           <PlanificarFlow
             establecimientoId={establecimientoId}
             grupos={grupos}
