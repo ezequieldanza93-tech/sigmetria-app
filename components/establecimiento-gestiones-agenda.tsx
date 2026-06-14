@@ -697,6 +697,7 @@ function BibliotecaForm({
 }) {
   const [filterGrupo, setFilterGrupo] = useState('')
   const [filterCat, setFilterCat] = useState('')
+  const [busqueda, setBusqueda] = useState('')
   const [notas, setNotas] = useState('')
   const [responsableId, setResponsableId] = useState<string | null>(null)
 
@@ -727,6 +728,20 @@ function BibliotecaForm({
     if (filterCat && g.gestiones_categorias?.nombre !== filterCat) return false
     return true
   })
+
+  function normalizar(s: string) {
+    return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+  }
+
+  const terminoBusqueda = normalizar(busqueda.trim())
+  const gestionesVisibles = terminoBusqueda
+    ? gestionesFiltradas.filter(g => {
+        if (normalizar(g.nombre).includes(terminoBusqueda)) return true
+        if (normalizar(g.gestiones_categorias?.nombre ?? '').includes(terminoBusqueda)) return true
+        if (normalizar(g.gestiones_categorias?.gestiones_grupos?.nombre ?? '').includes(terminoBusqueda)) return true
+        return false
+      })
+    : gestionesFiltradas
 
   function handleGrupoChange(v: string) {
     setFilterGrupo(v)
@@ -819,27 +834,61 @@ function BibliotecaForm({
                   Gestiones *
                   <span className="text-xs text-text-tertiary font-normal ml-1">(elegí una o más)</span>
                 </label>
-                {gestionesFiltradas.length > 0 && (
+                {gestionesVisibles.length > 0 && (
                   <button
                     type="button"
                     onClick={() => {
-                      if (gestionIds.size === gestionesFiltradas.length) {
-                        setGestionIds(new Set())
+                      const visiblesIds = new Set(gestionesVisibles.map(g => g.id))
+                      const todasVisiblesSeleccionadas = gestionesVisibles.every(g => gestionIds.has(g.id))
+                      if (todasVisiblesSeleccionadas) {
+                        setGestionIds(prev => {
+                          const next = new Set(prev)
+                          visiblesIds.forEach(id => next.delete(id))
+                          return next
+                        })
                       } else {
-                        setGestionIds(new Set(gestionesFiltradas.map(g => g.id)))
+                        setGestionIds(prev => {
+                          const next = new Set(prev)
+                          visiblesIds.forEach(id => next.add(id))
+                          return next
+                        })
                       }
                     }}
                     className="text-xs text-sig-600 hover:text-sig-800 hover:underline"
                   >
-                    {gestionIds.size === gestionesFiltradas.length ? 'Ninguna' : 'Todas'}
+                    {gestionesVisibles.every(g => gestionIds.has(g.id)) ? 'Ninguna' : 'Todas'}
                   </button>
                 )}
               </div>
+
+              {/* Buscador de texto */}
+              <div className="relative mb-2">
+                <input
+                  type="text"
+                  value={busqueda}
+                  onChange={e => setBusqueda(e.target.value)}
+                  placeholder="Buscar gestión…"
+                  className="w-full border border-border-default rounded-lg pl-3 pr-8 py-2 text-sm bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500"
+                />
+                {busqueda && (
+                  <button
+                    type="button"
+                    onClick={() => setBusqueda('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary"
+                    aria-label="Limpiar búsqueda"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
               <div className="border border-border-default rounded-lg divide-y divide-border-subtle max-h-52 overflow-y-auto">
                 {gestionesFiltradas.length === 0 ? (
                   <p className="text-xs text-text-tertiary px-3 py-2">Sin gestiones para los filtros elegidos.</p>
+                ) : gestionesVisibles.length === 0 ? (
+                  <p className="text-xs text-text-tertiary px-3 py-2">No se encontraron gestiones con ese texto.</p>
                 ) : (
-                  gestionesFiltradas.map(g => {
+                  gestionesVisibles.map(g => {
                     const sel = gestionIds.has(g.id)
                     return (
                       <label
@@ -860,9 +909,12 @@ function BibliotecaForm({
                   })
                 )}
               </div>
-              {gestionesSeleccionadas > 0 && total > 0 && (
+              {gestionesSeleccionadas > 0 && (
                 <p className="text-xs text-text-secondary mt-1">
-                  {gestionesSeleccionadas} {gestionesSeleccionadas === 1 ? 'gestión' : 'gestiones'} × {total} {total === 1 ? 'fecha' : 'fechas'} = <strong className="text-sig-700">{totalRegistros} registros</strong>
+                  <strong className="text-sig-700">{gestionesSeleccionadas} {gestionesSeleccionadas === 1 ? 'gestión seleccionada' : 'gestiones seleccionadas'}</strong>
+                  {total > 0 && (
+                    <> × {total} {total === 1 ? 'fecha' : 'fechas'} = <strong className="text-sig-700">{totalRegistros} registros</strong></>
+                  )}
                 </p>
               )}
             </div>
