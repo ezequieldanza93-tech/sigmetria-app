@@ -43,6 +43,14 @@ function savePos(pos: Pos) {
   } catch {}
 }
 
+// Detecta soporte de Popover API en el browser
+function supportsPopover(): boolean {
+  return (
+    typeof HTMLElement !== 'undefined' &&
+    typeof (HTMLElement.prototype as unknown as Record<string, unknown>).showPopover === 'function'
+  )
+}
+
 export function FloatingReportButtons() {
   const [mounted, setMounted] = useState(false)
   const [pos, setPos] = useState<Pos>({ x: 0, y: 0 })
@@ -52,6 +60,7 @@ export function FloatingReportButtons() {
   const containerRef = useRef<HTMLDivElement>(null)
   const errorBtnRef = useRef<HTMLButtonElement>(null)
   const ideaBtnRef = useRef<HTMLButtonElement>(null)
+  const popoverSupported = useRef(false)
 
   // Estado de drag
   const dragging = useRef(false)
@@ -64,6 +73,52 @@ export function FloatingReportButtons() {
     setPos(saved ?? defaultPos())
     setMounted(true)
   }, [])
+
+  // Popover API — montar en top layer al arrancar
+  useEffect(() => {
+    if (!mounted) return
+    const el = containerRef.current
+    if (!el) return
+
+    if (supportsPopover()) {
+      popoverSupported.current = true
+      try {
+        el.showPopover()
+      } catch {
+        // Fallback silencioso — el z-index actúa como respaldo
+      }
+      return () => {
+        try {
+          el.hidePopover()
+        } catch {}
+      }
+    }
+  }, [mounted])
+
+  // Re-promoción: cuando cualquier <dialog> llama showModal(), volver a poner
+  // el botón encima (re-hide + re-show lo lleva al tope del top layer)
+  useEffect(() => {
+    if (!mounted) return
+
+    const orig = HTMLDialogElement.prototype.showModal
+
+    HTMLDialogElement.prototype.showModal = function (...args: []) {
+      orig.apply(this, args)
+      // rAF para que el dialog ya esté en el top layer antes de re-promoverse
+      requestAnimationFrame(() => {
+        const el = containerRef.current
+        if (!el || !popoverSupported.current) return
+        try {
+          el.hidePopover()
+          el.showPopover()
+        } catch {}
+      })
+    }
+
+    return () => {
+      HTMLDialogElement.prototype.showModal = orig
+    }
+  }, [mounted])
 
   // Clampear al viewport en resize
   useEffect(() => {
@@ -143,16 +198,28 @@ export function FloatingReportButtons() {
 
   return (
     <>
-      {/* Píldora flotante con dos botones */}
+      {/* Píldora flotante con dos botones — vive en el top layer via Popover API */}
       <div
         ref={containerRef}
+        // popover="manual": el browser lo promueve al top layer; lo controlamos
+        // manualmente con showPopover/hidePopover desde los useEffect de arriba
+        popover="manual"
         style={{
+          // Sobreescribir los estilos UA de [popover] que centran el elemento:
+          // el UA aplica `position:fixed; inset:0; margin:auto` → rompe el drag.
+          // Forzamos la posición del drag y anulamos margin e inset.
           position: 'fixed',
+          margin: 0,
+          inset: 'auto',
           left: pos.x,
           top: pos.y,
-          zIndex: 9999,
+          zIndex: 9999, // Fallback para browsers sin Popover API
           touchAction: 'none',
           userSelect: 'none',
+          // Eliminar el backdrop por defecto del popover
+          background: 'transparent',
+          border: 'none',
+          padding: 0,
         }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}

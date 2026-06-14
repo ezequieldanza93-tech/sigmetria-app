@@ -14,6 +14,14 @@ interface ReportProblemModalProps {
 
 type Status = 'idle' | 'capturando' | 'enviando' | 'exito' | 'error'
 
+// Detecta soporte de Popover API en el browser
+function supportsPopover(): boolean {
+  return (
+    typeof HTMLElement !== 'undefined' &&
+    typeof (HTMLElement.prototype as unknown as Record<string, unknown>).showPopover === 'function'
+  )
+}
+
 export function ReportProblemModal({ open, tipo, onClose }: ReportProblemModalProps) {
   const [resumen, setResumen] = useState('')
   const [descripcion, setDescripcion] = useState('')
@@ -23,6 +31,22 @@ export function ReportProblemModal({ open, tipo, onClose }: ReportProblemModalPr
 
   const backdropRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Popover API — sincronizar visibilidad del top layer con la prop `open`
+  useEffect(() => {
+    const el = backdropRef.current
+    if (!el || !supportsPopover()) return
+
+    if (open) {
+      try {
+        el.showPopover()
+      } catch {}
+    } else {
+      try {
+        el.hidePopover()
+      } catch {}
+    }
+  }, [open])
 
   // Auto-captura de screenshot al abrir
   useEffect(() => {
@@ -208,12 +232,26 @@ export function ReportProblemModal({ open, tipo, onClose }: ReportProblemModalPr
   const estaCapturando = status === 'capturando'
 
   return (
+    /*
+     * Popover=manual + inset:0/margin:0 → ocupa toda la ventana sin el centrado
+     * UA de [popover]. Como se abre DESPUÉS del dialog activo, showPopover() lo
+     * lleva al tope del top layer → siempre visible sobre cualquier formulario.
+     * z-[99998] actúa como fallback en browsers sin Popover API.
+     */
     <div
       ref={backdropRef}
       data-sig-report-ui=""
+      popover="manual"
       onClick={handleBackdropClick}
       className="fixed inset-0 z-[99998] flex items-center justify-center p-4"
-      style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
+      style={{
+        // Anular los estilos UA de [popover] (`position:fixed; inset:0; margin:auto`)
+        // para que `inset-0` de Tailwind funcione como overlay full-screen
+        inset: 0,
+        margin: 0,
+        background: 'rgba(0,0,0,0.6)',
+        backdropFilter: 'blur(4px)',
+      }}
     >
       <div
         className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto bg-surface-base border border-border-subtle rounded-2xl shadow-2xl flex flex-col"
