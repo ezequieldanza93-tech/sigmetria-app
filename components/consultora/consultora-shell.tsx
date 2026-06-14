@@ -104,6 +104,14 @@ export function ConsultoraShell({ children }: ConsultoraShellProps) {
       icon: BarChart3,
       href: `${baseUrl}?section=dashboard`,
     },
+    ...(showAuditoria
+      ? ([{ id: 'auditoria', label: 'Auditoría', icon: ScrollText, href: '/dashboard/auditoria' }] as SectionItem[])
+      : []),
+    // ── Marketing: al fondo del sidebar ──
+    // Contenido: full_access de cualquier consultora (multi-tenant).
+    // CRM + Comentarios: solo staff de Sigmetría (isCrmAdmin) → la moderación del
+    // blog de Sigmetría NO aparece para otras consultoras. Mismo gate que la página
+    // y la RLS, así sidebar y server quedan sincronizados.
     ...(showContenido
       ? ([{ id: 'contenido', label: 'Contenido', icon: Megaphone, href: '/dashboard/contenido' }] as SectionItem[])
       : []),
@@ -112,9 +120,6 @@ export function ConsultoraShell({ children }: ConsultoraShellProps) {
           { id: 'crm', label: 'CRM', icon: Contact, href: '/dashboard/crm' },
           { id: 'comentarios', label: 'Comentarios', icon: MessageSquare, href: '/dashboard/crm/comentarios' },
         ] as SectionItem[])
-      : []),
-    ...(showAuditoria
-      ? ([{ id: 'auditoria', label: 'Auditoría', icon: ScrollText, href: '/dashboard/auditoria' }] as SectionItem[])
       : []),
   ]
 
