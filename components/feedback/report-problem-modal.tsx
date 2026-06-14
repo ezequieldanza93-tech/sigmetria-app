@@ -51,7 +51,20 @@ export function ReportProblemModal({ open, tipo, onClose }: ReportProblemModalPr
     import('html2canvas')
       .then((mod) => {
         const html2canvas = mod.default
-        return html2canvas(document.body, {
+
+        // Si hay un <dialog open> que NO sea el del reporte (formularios de la app
+        // que usan showModal y viven en el top layer), capturamos ese elemento
+        // directamente — html2canvas no renderiza bien el top layer cuando el target
+        // es document.body, pero sí cuando le pasamos el elemento explícitamente.
+        const dialogsAbiertos = Array.from(document.querySelectorAll('dialog[open]')).filter(
+          (d) => !d.hasAttribute('data-sig-report-ui'),
+        ) as HTMLElement[]
+        const target =
+          dialogsAbiertos.length > 0
+            ? dialogsAbiertos[dialogsAbiertos.length - 1] // el más "arriba" / último en DOM
+            : document.body
+
+        return html2canvas(target, {
           useCORS: true,
           scale: 0.5,
           imageTimeout: 2000,
@@ -59,6 +72,7 @@ export function ReportProblemModal({ open, tipo, onClose }: ReportProblemModalPr
             // Excluir el dialog del reporte y su contenido para que la captura
             // muestre la pantalla de atrás, no el formulario de reporte en sí.
             // El atributo data-sig-report-ui cubre el <dialog> raíz y todo su árbol.
+            // Sigue siendo útil cuando el target es document.body.
             const htmlEl = el as HTMLElement
             if (
               htmlEl.hasAttribute('data-sig-report-ui') ||
