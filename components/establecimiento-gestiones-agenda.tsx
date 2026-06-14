@@ -23,7 +23,6 @@ import dynamic from 'next/dynamic'
 import { createPortal } from 'react-dom'
 import {
   planificarGestionNuevaLote,
-  planificarGestionLote,
   planificarGestionesLote,
   createGrupoGestion,
   createCategoriaGestion,
