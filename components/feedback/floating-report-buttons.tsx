@@ -118,15 +118,23 @@ export function FloatingReportButtons() {
     if (!dragging.current) return
     dragging.current = false
 
+    // Liberar captura de puntero antes de leer elementFromPoint
+    try {
+      containerRef.current?.releasePointerCapture(e.pointerId)
+    } catch {}
+
     if (!moved.current) {
-      // Fue un click — determinar qué botón se clickeó por el target
-      const target = e.target as Node
-      if (errorBtnRef.current?.contains(target) || errorBtnRef.current === target) {
-        setTipo('error')
-        setModalOpen(true)
-      } else if (ideaBtnRef.current?.contains(target) || ideaBtnRef.current === target) {
-        setTipo('idea')
-        setModalOpen(true)
+      // Fue un click — usar coordenadas para obtener el elemento real bajo el puntero
+      // (e.target no sirve: con pointer capture apunta al contenedor capturador, no al botón)
+      const realTarget = document.elementFromPoint(e.clientX, e.clientY)
+      if (realTarget !== null) {
+        if (errorBtnRef.current?.contains(realTarget)) {
+          setTipo('error')
+          setModalOpen(true)
+        } else if (ideaBtnRef.current?.contains(realTarget)) {
+          setTipo('idea')
+          setModalOpen(true)
+        }
       }
     }
   }
