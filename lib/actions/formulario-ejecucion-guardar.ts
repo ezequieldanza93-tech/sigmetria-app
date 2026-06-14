@@ -40,22 +40,16 @@ export async function guardarBorrador(
     return { success: false, error: 'No hay respuestas para guardar' }
   }
 
-  const { error: deleteError } = await supabase
-    .from('formularios_items_respuestas')
-    .delete()
-    .eq('respuesta_id', respuestaId)
-
-  if (deleteError) return { success: false, error: 'Error al limpiar respuestas: ' + deleteError.message }
-
   const { error: insertError } = await supabase
     .from('formularios_items_respuestas')
-    .insert(
+    .upsert(
       itemResponses.map(ir => ({
         respuesta_id: respuestaId,
         item_id: ir.item_id,
         answer: ir.answer,
         comment: ir.comment,
-      }))
+      })),
+      { onConflict: 'respuesta_id,item_id' }
     )
 
   if (insertError) return { success: false, error: 'Error al guardar respuestas: ' + insertError.message }
