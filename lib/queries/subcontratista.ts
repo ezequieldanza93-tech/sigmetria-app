@@ -136,7 +136,7 @@ export function useConsultoraEstablecimientos(enabled = true) {
         .from('establecimientos')
         .select('id, nombre, empresas!empresa_id(razon_social)')
         .eq('empresas.consultora_id', member.consultora_id)
-        .neq('status', 'cancelled')
+        .eq('status', 'active')
         .order('nombre')
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -61,6 +61,7 @@ Opcional: podés filtrar por empresa_id si el usuario pregunta por una empresa e
       if (!membership) return JSON.stringify({ error: 'Sin consultora' })
       let query = supabase.from('establecimientos').select('id, nombre, direccion, status, created_at, empresas!inner(id, razon_social)')
         .eq('empresas.consultora_id', membership.consultora_id)
+        .neq('status', 'cancelled')
       if (empresa_id) query = query.eq('empresa_id', empresa_id)
       const { data } = await query.order('nombre')
       return JSON.stringify(data ?? [])

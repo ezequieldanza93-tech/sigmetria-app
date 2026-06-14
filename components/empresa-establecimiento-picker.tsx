@@ -61,6 +61,7 @@ export function EmpresaEstablecimientoPicker({
     supabase
       .from('empresas')
       .select('id, razon_social')
+      .eq('is_active', true)
       .order('razon_social')
       .then(({ data }) => {
         setEmpresas((data ?? []) as EmpresaOption[])
@@ -82,6 +83,7 @@ export function EmpresaEstablecimientoPicker({
       .from('establecimientos')
       .select('id, nombre')
       .eq('empresa_id', empresaId)
+      .eq('status', 'active')
       .order('nombre')
       .then(({ data }) => {
         setEstablecimientos((data ?? []) as EstablecimientoOption[])

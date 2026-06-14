@@ -103,7 +103,7 @@ export default async function UserAccesoPage({ params }: Props) {
 
   let empresas: EmpresaConEstablecimientos[] = (empresasRaw ?? []).map(e => ({
     ...e,
-    establecimientos: ((e.establecimientos ?? []) as Establecimiento[]).filter(est => est.status !== 'cancelled'),
+    establecimientos: ((e.establecimientos ?? []) as Establecimiento[]).filter(est => est.status === 'active'),
     puedeEmpresaEntera: true,
   }))
 

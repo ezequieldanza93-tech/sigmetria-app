@@ -109,7 +109,9 @@ export async function listEstablecimientos(
 
   const { data: ests } = await supabase
     .from('establecimientos').select('id, nombre, status, empresa_id')
-    .in('empresa_id', empresas.map(e => e.id)).order('nombre')
+    .in('empresa_id', empresas.map(e => e.id))
+    .neq('status', 'cancelled')
+    .order('nombre')
   if (!ests) return null
 
   const empMap = new Map(empresas.map(e => [e.id, e.razon_social]))

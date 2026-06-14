@@ -38,6 +38,7 @@ function PersonaForm({
       .from('establecimientos')
       .select('*')
       .eq('empresa_id', selectedEmpresaId)
+      .neq('status', 'cancelled')
       .order('nombre')
       .then(({ data }) => setEstablecimientos((data as unknown as Establecimiento[]) ?? []))
   }, [selectedEmpresaId])

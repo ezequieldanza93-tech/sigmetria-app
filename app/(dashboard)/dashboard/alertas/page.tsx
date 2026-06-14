@@ -94,7 +94,7 @@ export default function AlertasPage() {
     // También cargar lista de empresas para el filtro
     async function loadEmpresas() {
       const supabase = createClient()
-      const { data } = await supabase.from('empresas').select('id, nombre').order('nombre')
+      const { data } = await supabase.from('empresas').select('id, nombre').eq('is_active', true).order('nombre')
       setEmpresas((data ?? []) as unknown as Empresa[])
     }
     loadEmpresas()
