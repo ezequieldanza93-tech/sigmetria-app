@@ -203,6 +203,7 @@ interface ClasifForm {
   sustanciaIds: string[]
   tieneInternacion: boolean
   gasesMedicinales: boolean
+  tieneDepositoTelonesUtileria: boolean
 }
 
 function clasifVacia(): ClasifForm {
@@ -212,6 +213,7 @@ function clasifVacia(): ClasifForm {
     litrosInflamables: '', kgBateriasLitio: '', estacionesCargaEv: false,
     prestaServicioVehiculosElectricos: false, procesosSoldadura: false, sustanciaIds: [],
     tieneInternacion: false, gasesMedicinales: false,
+    tieneDepositoTelonesUtileria: false,
   }
 }
 
@@ -403,21 +405,37 @@ export function PresentacionAutoproteccionEjecutorModal({
       sustanciaIds,
       tieneInternacion: flag('tiene_internacion'),
       gasesMedicinales: flag('gases_medicinales'),
+      tieneDepositoTelonesUtileria: flag('tiene_deposito_telones_utileria'),
     })
 
     // Si ya se clasificó (grupo persistido), reconstruir el resultado para
     // habilitar los pasos siguientes al retomar.
     const grupo = p.grupo_calculado as number | null | undefined
     if (grupo) {
+      // Los requisitos técnicos se persisten al clasificar (columna text[]).
+      // Hidratarlos evita que las secciones de subida (FDS, simulación de
+      // evacuación, etc.) desaparezcan al retomar un borrador Grupo 3.
+      const reqsPersistidos = p.requisitos_tecnicos
+      const requisitosTecnicos = Array.isArray(reqsPersistidos)
+        ? reqsPersistidos.map(String)
+        : []
       setResultado({
         grupo,
         motivo: str('clasificacion_motivo'),
         viaTramite: str('via_tramite'),
         admiteRevalida: p.admite_revalida ? 'si' : 'no',
-        requisitosTecnicos: [],
+        requisitosTecnicos,
         requiereProfesional: grupo >= 2,
         requiereExcepcionTad: str('via_tramite') === 'excepcion_cultural',
       })
+
+      // Restaurar el paso guardado (paso_actual), clampeado al rango válido
+      // de pasos del grupo. Solo cuando hay clasificación, para no aterrizar
+      // en un paso inexistente.
+      const pasosDelGrupo = buildSteps(grupo)
+      const pasoGuardado = Number(p.paso_actual) || 0
+      const pasoRestaurado = Math.max(0, Math.min(pasoGuardado, pasosDelGrupo.length - 1))
+      setStepIdx(pasoRestaurado)
     }
 
     // Tablas hijas.
@@ -577,7 +595,10 @@ export function PresentacionAutoproteccionEjecutorModal({
 
     setClasificando(true)
     try {
-      const input: ClasificacionInput = {
+      // El campo `tieneDepositoTelonesUtileria` solo aplica a SALAS_JUEGO
+      // (la norma excluye esos casos del Grupo 1). Lo aceptan tanto el server
+      // action como el motor de clasificación; acá se agrega de forma opcional.
+      const input: ClasificacionInput & { tieneDepositoTelonesUtileria?: boolean } = {
         usoCodigo: clasif.usoCodigo,
         superficieCubiertaM2: num0(clasif.superficieCubiertaM2),
         superficieAireLibreM2: numOpt(clasif.superficieAireLibreM2),
@@ -595,6 +616,9 @@ export function PresentacionAutoproteccionEjecutorModal({
           .filter((c): c is string => !!c),
         tieneInternacion: clasif.tieneInternacion,
         gasesMedicinales: clasif.gasesMedicinales,
+        tieneDepositoTelonesUtileria: clasif.usoCodigo === 'SALAS_JUEGO'
+          ? clasif.tieneDepositoTelonesUtileria
+          : undefined,
       }
       const res = await clasificarPresentacion(presentacionId, input, clasif.sustanciaIds)
       if (!res.success) { setError(res.error); return }
@@ -1054,6 +1078,15 @@ export function PresentacionAutoproteccionEjecutorModal({
                 <CheckRow label="(Sanitario) ¿Usa gases medicinales?" checked={clasif.gasesMedicinales} disabled={!canWrite}
                   onChange={v => setClasif(p => ({ ...p, gasesMedicinales: v }))} />
               </div>
+
+              {/* Salas de juego */}
+              {clasif.usoCodigo === 'SALAS_JUEGO' && (
+                <div>
+                  <CheckRow label="¿Posee depósito, telones, telas inflamables o artículos de utilería?" checked={clasif.tieneDepositoTelonesUtileria} disabled={!canWrite}
+                    onChange={v => setClasif(p => ({ ...p, tieneDepositoTelonesUtileria: v }))} />
+                  <Ayuda>La norma excluye estos casos del Grupo 1.</Ayuda>
+                </div>
+              )}
 
               {canWrite && (
                 <div>

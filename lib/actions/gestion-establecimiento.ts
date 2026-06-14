@@ -5,6 +5,29 @@ import { createClient } from '@/lib/supabase/server'
 import { createAuditedClient } from '@/lib/audit/trace'
 import type { ActionResult, GrupoGestion, CategoriaGestion } from '@/lib/types'
 import { validateFormData, formatZodErrors } from '@/lib/validation/helpers'
+import { esSapAplicable } from '@/lib/actions/aplicabilidad-normativa'
+
+// Guard server-side: la gestión del Sistema de Autoprotección (tipo
+// presentacion_autoproteccion) solo puede planificarse/agregarse en
+// establecimientos donde aplica (CABA + habilitación + no obra). Backstop de la
+// aplicabilidad jurisdiccional — la UI ya filtra, pero esto la enforça en datos.
+async function sapGuard(
+  supabase: Awaited<ReturnType<typeof createAuditedClient>>['client'],
+  gestionIds: string[],
+  establecimientoId: string | undefined,
+): Promise<string | null> {
+  const ids = gestionIds.filter(Boolean)
+  if (ids.length === 0 || !establecimientoId) return null
+  const { data: sapGest } = await supabase
+    .from('gestiones')
+    .select('id')
+    .in('id', ids)
+    .eq('tipo_ejecucion', 'presentacion_autoproteccion')
+  if (!sapGest || sapGest.length === 0) return null
+  const r = await esSapAplicable(establecimientoId)
+  if (!r.aplica) return `No se puede planificar el Sistema de Autoprotección en este establecimiento. ${r.motivo}`
+  return null
+}
 
 const planificarGestionSchema = z.object({
   gestion_id: z.string().min(1, { error: 'Gestión requerida' }),
@@ -35,6 +58,9 @@ export async function planificarGestion(
     return { success: false, error: formatZodErrors(parsed.error) }
   }
   const { gestion_id: gestionId, establecimiento_id: establecimientoId, fecha_planificada: fechaPlanificada, responsable_id: responsableId, notas } = parsed.data
+
+  const sapErr = await sapGuard(supabase, [gestionId], establecimientoId)
+  if (sapErr) return { success: false, error: sapErr }
 
   // Get or create gestion_establecimiento (single query)
   let geId: string
@@ -122,6 +148,9 @@ export async function addGestionToEstablecimiento(
   const { client: supabase } = await createAuditedClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
+
+  const sapErr = await sapGuard(supabase, [gestionId], establecimientoId)
+  if (sapErr) return { success: false, error: sapErr }
 
   const { error } = await supabase
     .from('gestiones_establecimientos')
@@ -229,6 +258,9 @@ export async function planificarGestionLote(
   if (!user) return { success: false, error: 'No autenticado' }
   if (!gestionId) return { success: false, error: 'Gestión requerida' }
   if (!establecimientoId) return { success: false, error: 'Establecimiento requerido' }
+
+  const sapErr = await sapGuard(supabase, [gestionId], establecimientoId)
+  if (sapErr) return { success: false, error: sapErr }
 
   if (!Array.isArray(fechas) || fechas.length === 0) {
     return { success: false, error: 'Seleccioná al menos una fecha' }
@@ -369,6 +401,9 @@ export async function planificarGestionesLote(
     return { success: false, error: 'Seleccioná al menos una gestión' }
   }
   if (!establecimientoId) return { success: false, error: 'Establecimiento requerido' }
+
+  const sapErr = await sapGuard(supabase, gestionIds, establecimientoId)
+  if (sapErr) return { success: false, error: sapErr }
 
   if (!Array.isArray(fechas) || fechas.length === 0) {
     return { success: false, error: 'Seleccioná al menos una fecha' }

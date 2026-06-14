@@ -92,8 +92,14 @@ describe('1. ADMINISTRACION_OFICINAS', () => {
     expect(r.grupo).toBe(3)
     expect(r.motivo).toMatch(/subsuelo/)
   })
-  it('subsuelo SIN actividad no sube de grupo', () => {
-    expect(clasif('ADMINISTRACION_OFICINAS', { superficieCubiertaM2: 200, tieneSubsuelo: true, actividadEnSubsuelo: false }).grupo).toBe(1)
+  it('G3: SOLA PRESENCIA de subsuelo (sin actividad) fuerza G3 — oficina chica 400 m², 0 pisos', () => {
+    const r = clasif('ADMINISTRACION_OFICINAS', { superficieCubiertaM2: 400, pisosElevados: 0, tieneSubsuelo: true, actividadEnSubsuelo: false })
+    expect(r.grupo).toBe(3)
+    expect(r.motivo).toMatch(/subsuelo/)
+    expect(r.requisitosTecnicos).toEqual(['fds'])
+  })
+  it('sin subsuelo y ≤500 sigue en G1', () => {
+    expect(clasif('ADMINISTRACION_OFICINAS', { superficieCubiertaM2: 200, tieneSubsuelo: false }).grupo).toBe(1)
   })
   it('admite revalida: si', () => {
     expect(clasif('ADMINISTRACION_OFICINAS', { superficieCubiertaM2: 200 }).admiteRevalida).toBe('si')
@@ -385,8 +391,15 @@ describe('15. DEPOSITO (sin G1)', () => {
   it('G3: >200 L', () => {
     expect(clasif('DEPOSITO', { superficieCubiertaM2: 100, litrosInflamables: 201 }).grupo).toBe(3)
   })
-  it('G3: sustancias', () => {
-    expect(clasif('DEPOSITO', { superficieCubiertaM2: 100, sustanciasPeligrosas: ['CORROSIVO'] }).grupo).toBe(3)
+  it('G3: sustancias QUIMICO/EXPLOSIVO sí disparan G3', () => {
+    expect(clasif('DEPOSITO', { superficieCubiertaM2: 100, sustanciasPeligrosas: ['QUIMICO'] }).grupo).toBe(3)
+    expect(clasif('DEPOSITO', { superficieCubiertaM2: 100, sustanciasPeligrosas: ['EXPLOSIVO'] }).grupo).toBe(3)
+  })
+  it('G2: TOXICO/CORROSIVO/OXIDANTE solos NO disparan G3 (queda en G2)', () => {
+    // La norma para DEPÓSITO solo lista químico/biológico/radiológico/explosión para forzar G3.
+    expect(clasif('DEPOSITO', { superficieCubiertaM2: 100, pisosElevados: 1, sustanciasPeligrosas: ['TOXICO'] }).grupo).toBe(2)
+    expect(clasif('DEPOSITO', { superficieCubiertaM2: 100, pisosElevados: 1, sustanciasPeligrosas: ['CORROSIVO'] }).grupo).toBe(2)
+    expect(clasif('DEPOSITO', { superficieCubiertaM2: 100, pisosElevados: 1, sustanciasPeligrosas: ['OXIDANTE'] }).grupo).toBe(2)
   })
   it('revalida condicional', () => {
     expect(clasif('DEPOSITO', { superficieCubiertaM2: 100 }).admiteRevalida).toBe('condicional')
@@ -653,8 +666,15 @@ describe('27. INDUSTRIA (sin G1)', () => {
   it('G3: >200 L', () => {
     expect(clasif('INDUSTRIA', { superficieCubiertaM2: 100, litrosInflamables: 201 }).grupo).toBe(3)
   })
-  it('G3: sustancias', () => {
+  it('G3: sustancias QUIMICO/EXPLOSIVO sí disparan G3', () => {
     expect(clasif('INDUSTRIA', { superficieCubiertaM2: 100, sustanciasPeligrosas: ['EXPLOSIVO'] }).grupo).toBe(3)
+    expect(clasif('INDUSTRIA', { superficieCubiertaM2: 100, sustanciasPeligrosas: ['QUIMICO'] }).grupo).toBe(3)
+  })
+  it('G2: TOXICO/CORROSIVO/OXIDANTE solos NO disparan G3 (queda en G2)', () => {
+    // La norma para INDUSTRIA solo lista químico/biológico/radiológico/explosión para forzar G3.
+    expect(clasif('INDUSTRIA', { superficieCubiertaM2: 100, pisosElevados: 1, sustanciasPeligrosas: ['TOXICO'] }).grupo).toBe(2)
+    expect(clasif('INDUSTRIA', { superficieCubiertaM2: 100, pisosElevados: 1, sustanciasPeligrosas: ['CORROSIVO'] }).grupo).toBe(2)
+    expect(clasif('INDUSTRIA', { superficieCubiertaM2: 100, pisosElevados: 1, sustanciasPeligrosas: ['OXIDANTE'] }).grupo).toBe(2)
   })
   it('G3: procesos de soldadura', () => {
     const r = clasif('INDUSTRIA', { superficieCubiertaM2: 100, procesosSoldadura: true })
@@ -786,6 +806,15 @@ describe('36. SALAS_JUEGO', () => {
     const r = clasif('SALAS_JUEGO', { superficieCubiertaM2: 100, tieneSubsuelo: true, actividadEnSubsuelo: true })
     expect(r.grupo).toBe(3)
     expect(r.requisitosTecnicos).toEqual(['fds', 'simulacion_evacuacion'])
+  })
+  it('≤500 con depósito/telones/utilería → G2 (excluido de G1)', () => {
+    const r = clasif('SALAS_JUEGO', { superficieCubiertaM2: 400, tieneDepositoTelonesUtileria: true })
+    expect(r.grupo).toBe(2)
+    expect(r.motivo).toMatch(/dep[óo]sito\/telones\/utiler[íi]a/i)
+  })
+  it('≤500 sin el flag → G1 (comportamiento por defecto)', () => {
+    expect(clasif('SALAS_JUEGO', { superficieCubiertaM2: 400 }).grupo).toBe(1)
+    expect(clasif('SALAS_JUEGO', { superficieCubiertaM2: 400, tieneDepositoTelonesUtileria: false }).grupo).toBe(1)
   })
 })
 

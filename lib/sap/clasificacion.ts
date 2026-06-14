@@ -35,6 +35,7 @@ export interface ClasificacionInput {
   sustanciasPeligrosas?: string[] // codigos: QUIMICO, BIOLOGICO, RADIOLOGICO, EXPLOSIVO, TOXICO, CORROSIVO, OXIDANTE
   tieneInternacion?: boolean // sanitario
   gasesMedicinales?: boolean // sanitario
+  tieneDepositoTelonesUtileria?: boolean // salas de juego: excluye de Grupo 1
 }
 
 export type RequisitoTecnico =
@@ -189,10 +190,27 @@ function soloGrupo3(reqs: RequisitoTecnico[]): Evaluador {
 // ---------------------------------------------------------------------------
 
 const USOS: Readonly<Record<string, UsoDef>> = {
-  // 1. ADMINISTRACION_OFICINAS — G1 ≤500; G2 >500–1000; G3 >1000 O subsuelo act. Req: FDS en G3.
+  // 1. ADMINISTRACION_OFICINAS — G1 ≤500; G2 >500–1000; G3 >1000 O posee subsuelo. Req: FDS en G3.
+  //     NOTA: el Anexo I dispara G3 si "posea uno o más subsuelos en los cuales se desarrolle actividad
+  //     O sean destinados a cocheras, bauleras o depósito". El input no distingue el destino del subsuelo,
+  //     por lo que la lectura fiel y conservadora es: la SOLA PRESENCIA de subsuelo fuerza G3
+  //     (no requiere actividadEnSubsuelo).
   ADMINISTRACION_OFICINAS: {
     admiteRevalida: 'si',
-    evaluar: porSuperficie({ g1Max: 500, g2Max: 1000, subsueloFuerzaG3: true, reqG3: ['fds'] }),
+    evaluar: (i) => {
+      const sup = num(i.superficieCubiertaM2)
+      if (bool(i.tieneSubsuelo))
+        return {
+          grupo: 3,
+          motivo: 'Grupo 3: posee subsuelo (cochera/baulera/depósito o actividad)',
+          requisitos: ['fds'],
+        }
+      if (sup > 1000)
+        return { grupo: 3, motivo: `Grupo 3: superficie cubierta ${sup} m² supera los 1000 m²`, requisitos: ['fds'] }
+      if (sup > 500)
+        return { grupo: 2, motivo: `Grupo 2: superficie cubierta ${sup} m² entre 500 y 1000 m²`, requisitos: [] }
+      return { grupo: 1, motivo: `Grupo 1: superficie cubierta ${sup} m² no supera los 500 m²`, requisitos: [] }
+    },
   },
 
   // 2. ACT_RELIGIOSAS — G1 ≤500; G2 >500–1500; G3 >1500 O subsuelo act. Req: FDS en G3.
@@ -387,24 +405,27 @@ const USOS: Readonly<Record<string, UsoDef>> = {
     },
   },
 
-  // 15. DEPOSITO — sin G1. G2: (≤1 piso) O ≤1000; inflamables ≤200 y sin sustancias.
-  //     G3: (2+ pisos) O >1000 O >200 L O sustancias. Req: ninguno.
+  // 15. DEPOSITO — sin G1. G2: (≤1 piso) O ≤1000; inflamables ≤200 y sin sustancias de riesgo.
+  //     G3: (2+ pisos) O >1000 O >200 L O sustancias QUIMICO/BIOLOGICO/RADIOLOGICO/EXPLOSIVO. Req: ninguno.
+  //     NOTA: la norma para DEPÓSITO solo lista químico/biológico/radiológico/explosión para forzar G3
+  //     (Anexo I: "riesgos químicos, biológicos o radiológicos y de explosión"). TOXICO/CORROSIVO/OXIDANTE
+  //     solos NO disparan G3 en este uso.
   DEPOSITO: {
     admiteRevalida: 'condicional',
     evaluar: (i) => {
       const sup = num(i.superficieCubiertaM2)
       const pisos = num(i.pisosElevados)
       const inflam = num(i.litrosInflamables)
-      const sust = tieneSustanciasPeligrosas(i)
+      const sustG3: readonly SustanciaPeligrosa[] = ['QUIMICO', 'BIOLOGICO', 'RADIOLOGICO', 'EXPLOSIVO']
       if (pisos >= 2)
         return { grupo: 3, motivo: `Grupo 3: ${pisos} pisos elevados (2 o más)`, requisitos: [] }
       if (sup > 1000)
         return { grupo: 3, motivo: `Grupo 3: superficie cubierta ${sup} m² supera los 1000 m²`, requisitos: [] }
       if (inflam > 200)
         return { grupo: 3, motivo: `Grupo 3: ${inflam} L de inflamables supera los 200 L`, requisitos: [] }
-      if (sust)
-        return { grupo: 3, motivo: 'Grupo 3: presencia de sustancias peligrosas', requisitos: [] }
-      return { grupo: 2, motivo: `Grupo 2: ${pisos} piso (hasta 1) o ${sup} m² (hasta 1000), inflamables ≤200 y sin sustancias`, requisitos: [] }
+      if (tieneAlgunaSustancia(i, sustG3))
+        return { grupo: 3, motivo: 'Grupo 3: presencia de sustancias peligrosas (químico/biológico/radiológico/explosivo)', requisitos: [] }
+      return { grupo: 2, motivo: `Grupo 2: ${pisos} piso (hasta 1) o ${sup} m² (hasta 1000), inflamables ≤200 y sin sustancias de riesgo`, requisitos: [] }
     },
   },
 
@@ -612,9 +633,12 @@ const USOS: Readonly<Record<string, UsoDef>> = {
     },
   },
 
-  // 27. INDUSTRIA — sin G1. G2: (≤1 piso) O ≤1000; inflamables ≤200, sin sustancias, litio 20–50.
-  //     G3: (2+ pisos) O >1000 O >200 L O sustancias O procesos soldadura O litio >50.
+  // 27. INDUSTRIA — sin G1. G2: (≤1 piso) O ≤1000; inflamables ≤200, sin sustancias de riesgo, litio 20–50.
+  //     G3: (2+ pisos) O >1000 O >200 L O sustancias QUIMICO/BIOLOGICO/RADIOLOGICO/EXPLOSIVO O procesos soldadura O litio >50.
   //     Req: brigada_emergencias en G3.
+  //     NOTA: la norma para INDUSTRIA solo lista químico/biológico/radiológico/explosión para forzar G3
+  //     (Anexo I: "riesgos químicos, biológicos o radiológicos, de explosión"). TOXICO/CORROSIVO/OXIDANTE
+  //     solos NO disparan G3 en este uso.
   INDUSTRIA: {
     admiteRevalida: 'no',
     evaluar: (i) => {
@@ -623,20 +647,20 @@ const USOS: Readonly<Record<string, UsoDef>> = {
       const inflam = num(i.litrosInflamables)
       const litio = num(i.kgBateriasLitio)
       const soldadura = bool(i.procesosSoldadura)
-      const sust = tieneSustanciasPeligrosas(i)
+      const sustG3: readonly SustanciaPeligrosa[] = ['QUIMICO', 'BIOLOGICO', 'RADIOLOGICO', 'EXPLOSIVO']
       if (pisos >= 2)
         return { grupo: 3, motivo: `Grupo 3: ${pisos} pisos elevados (2 o más)`, requisitos: ['brigada_emergencias'] }
       if (sup > 1000)
         return { grupo: 3, motivo: `Grupo 3: superficie cubierta ${sup} m² supera los 1000 m²`, requisitos: ['brigada_emergencias'] }
       if (inflam > 200)
         return { grupo: 3, motivo: `Grupo 3: ${inflam} L de inflamables supera los 200 L`, requisitos: ['brigada_emergencias'] }
-      if (sust)
-        return { grupo: 3, motivo: 'Grupo 3: presencia de sustancias peligrosas', requisitos: ['brigada_emergencias'] }
+      if (tieneAlgunaSustancia(i, sustG3))
+        return { grupo: 3, motivo: 'Grupo 3: presencia de sustancias peligrosas (químico/biológico/radiológico/explosivo)', requisitos: ['brigada_emergencias'] }
       if (soldadura)
         return { grupo: 3, motivo: 'Grupo 3: procesos de soldadura', requisitos: ['brigada_emergencias'] }
       if (litio > 50)
         return { grupo: 3, motivo: `Grupo 3: ${litio} kg de baterías de litio supera los 50 kg`, requisitos: ['brigada_emergencias'] }
-      return { grupo: 2, motivo: `Grupo 2: ${pisos} piso (hasta 1) o ${sup} m² (hasta 1000), inflamables ≤200, sin sustancias, litio ≤50`, requisitos: [] }
+      return { grupo: 2, motivo: `Grupo 2: ${pisos} piso (hasta 1) o ${sup} m² (hasta 1000), inflamables ≤200, sin sustancias de riesgo, litio ≤50`, requisitos: [] }
     },
   },
 
@@ -724,13 +748,25 @@ const USOS: Readonly<Record<string, UsoDef>> = {
     },
   },
 
-  // 36. SALAS_JUEGO — G1: ≤500 (y sin depósito/telas inflamables/utilería — flag no presente en input).
+  // 36. SALAS_JUEGO — G1: ≤500 y SIN depósito/telones/telas inflamables/utilería.
   //     G2: >500–1000; G3: >1000 O subsuelo act. Req: simulacion_evacuacion + FDS en G3.
-  //     NOTA: el flag "depósito/telas inflamables/utilería" no existe en el input; se asume
-  //     G1 posible salvo que caiga por m² o subsuelo. Documentado por trazabilidad.
+  //     NOTA: el Anexo I excluye de Grupo 1 a las salas que posean "depósito, telones, telas inflamables
+  //     o artículos de utilería". Cuando el flag tieneDepositoTelonesUtileria está activo, el mínimo es G2.
   SALAS_JUEGO: {
     admiteRevalida: 'no',
-    evaluar: porSuperficie({ g1Max: 500, g2Max: 1000, subsueloFuerzaG3: true, reqG3: ['simulacion_evacuacion', 'fds'] }),
+    evaluar: (i) => {
+      const sup = num(i.superficieCubiertaM2)
+      const depUtileria = bool(i.tieneDepositoTelonesUtileria)
+      if (subsueloConActividad(i))
+        return { grupo: 3, motivo: 'Grupo 3: actividad en subsuelo', requisitos: ['simulacion_evacuacion', 'fds'] }
+      if (sup > 1000)
+        return { grupo: 3, motivo: `Grupo 3: superficie cubierta ${sup} m² supera los 1000 m²`, requisitos: ['simulacion_evacuacion', 'fds'] }
+      if (sup > 500)
+        return { grupo: 2, motivo: `Grupo 2: superficie cubierta ${sup} m² entre 500 y 1000 m²`, requisitos: [] }
+      if (depUtileria)
+        return { grupo: 2, motivo: `Grupo 2: superficie cubierta ${sup} m² (hasta 500) pero posee depósito/telones/utilería: excluido de Grupo 1`, requisitos: [] }
+      return { grupo: 1, motivo: `Grupo 1: superficie cubierta ${sup} m² no supera los 500 m²`, requisitos: [] }
+    },
   },
 
   // 37. SANITARIO — G1: PB y ≤300, sin internación y sin gases.

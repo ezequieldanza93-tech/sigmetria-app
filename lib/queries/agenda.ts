@@ -157,7 +157,7 @@ export function useCatalogo() {
     queryFn: async () => {
       const supabase = createClient()
       const [gesRes, gruRes, catRes] = await Promise.all([
-        supabase.from('gestiones').select('id, nombre, categoria_id, aplica_por_iso, tiene_entregable, gestiones_categorias(id, nombre, gestiones_grupos(nombre))').order('nombre'),
+        supabase.from('gestiones').select('id, nombre, categoria_id, aplica_por_iso, tiene_entregable, tipo_ejecucion, gestiones_categorias(id, nombre, gestiones_grupos(nombre))').order('nombre'),
         supabase.from('gestiones_grupos').select('id, nombre').order('nombre'),
         supabase.from('gestiones_categorias').select('id, nombre, grupo_id').order('nombre'),
       ])

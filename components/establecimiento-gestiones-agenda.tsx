@@ -6,6 +6,7 @@ import { useQueryClient, useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { useSignedUrls, signBucketPaths } from '@/lib/storage/sign-client'
 import { useCanWrite, useGestionesEstablecimiento, useRegistrosGestion, useCatalogo } from '@/lib/queries/agenda'
+import { esSapAplicable } from '@/lib/actions/aplicabilidad-normativa'
 import { calcularEstadoGestion } from '@/lib/types'
 import type { EstadoGestion, Gestion, CategoriaGestion, GrupoGestion, RegistroGestion, Riesgo } from '@/lib/types'
 import { Button } from '@/components/ui/button'
@@ -2324,8 +2325,17 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
   const geIds = gestionesEst?.map(g => g.id) ?? []
   const { data: rawRegistros } = useRegistrosGestion(geIds.length > 0 ? geIds : undefined, year ?? 0)
   const { data: catalogo } = useCatalogo()
+  const { data: sapAplica } = useQuery({
+    queryKey: ['sap-aplica', establecimientoId],
+    queryFn: () => esSapAplicable(establecimientoId).then(r => r.aplica),
+    staleTime: 1000 * 60 * 5,
+  })
 
-  const todasGestiones = (catalogo?.gestiones ?? []) as unknown as Gestion[]
+  // La gestión del SAP (presentacion_autoproteccion) solo se ofrece donde aplica
+  // (CABA + habilitación + no obra). El guard server-side es el backstop real.
+  const todasGestiones = ((catalogo?.gestiones ?? []) as unknown as Gestion[]).filter(
+    g => g.tipo_ejecucion !== 'presentacion_autoproteccion' || sapAplica === true,
+  )
   const grupos = (catalogo?.grupos ?? []) as unknown as GrupoGestion[]
   const categorias = (catalogo?.categorias ?? []) as unknown as CategoriaGestion[]
 

@@ -87,7 +87,20 @@ export async function getOrCreatePresentacion(establecimientoId: string): Promis
     .select('id')
     .single()
 
-  if (error || !created) return { success: false, error: error?.message ?? 'No se pudo crear la presentación' }
+  if (error || !created) {
+    // TOCTOU: otra request concurrente pudo crearla (índice único parcial). Reintentar SELECT.
+    const { data: again } = await supabase
+      .from('sap_presentaciones')
+      .select('id')
+      .eq('establecimiento_id', establecimientoId)
+      .is('deleted_at', null)
+      .neq('estado', 'vencido')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (again) return { success: true, data: { presentacionId: again.id } }
+    return { success: false, error: error?.message ?? 'No se pudo crear la presentación' }
+  }
   return { success: true, data: { presentacionId: created.id } }
 }
 
@@ -143,6 +156,7 @@ const clasificarSchema = z.object({
   sustanciasPeligrosas: z.array(z.string()).optional(),
   tieneInternacion: z.boolean().optional(),
   gasesMedicinales: z.boolean().optional(),
+  tieneDepositoTelonesUtileria: z.boolean().optional(),
 })
 
 export async function clasificarPresentacion(
@@ -187,9 +201,14 @@ export async function clasificarPresentacion(
       kg_baterias_litio: parsed.data.kgBateriasLitio ?? null,
       estaciones_carga_ev: parsed.data.estacionesCargaEv ?? false,
       presta_servicio_ve: parsed.data.prestaServicioVehiculosElectricos ?? false,
+      procesos_soldadura: parsed.data.procesosSoldadura ?? false,
+      tiene_internacion: parsed.data.tieneInternacion ?? false,
+      gases_medicinales: parsed.data.gasesMedicinales ?? false,
+      tiene_deposito_telones_utileria: parsed.data.tieneDepositoTelonesUtileria ?? false,
       grupo_calculado: result.grupo,
       admite_revalida: result.admiteRevalida !== 'no',
       clasificacion_motivo: result.motivo,
+      requisitos_tecnicos: result.requisitosTecnicos,
       via_tramite: viaTramite,
       estado: 'en_progreso',
     })
@@ -198,7 +217,10 @@ export async function clasificarPresentacion(
   if (error) return { success: false, error: error.message }
 
   // Guardar sustancias peligrosas seleccionadas (replace-all)
-  if (sustanciaIds) await replaceSustancias(presentacionId, sustanciaIds)
+  if (sustanciaIds) {
+    const sustErr = await replaceSustancias(presentacionId, sustanciaIds)
+    if (sustErr) return { success: false, error: sustErr }
+  }
 
   return {
     success: true,
@@ -214,14 +236,19 @@ export async function clasificarPresentacion(
   }
 }
 
-async function replaceSustancias(presentacionId: string, sustanciaIds: string[]) {
+/** Reemplaza las sustancias de una presentación. Devuelve mensaje de error o null. */
+async function replaceSustancias(presentacionId: string, sustanciaIds: string[]): Promise<string | null> {
   const { supabase } = await getUser()
-  await supabase.from('sap_presentaciones_sustancias').delete().eq('presentacion_id', presentacionId)
-  if (sustanciaIds.length) {
-    await supabase.from('sap_presentaciones_sustancias').insert(
-      sustanciaIds.map((sustancia_id) => ({ presentacion_id: presentacionId, sustancia_id })),
+  const { error: delErr } = await supabase.from('sap_presentaciones_sustancias').delete().eq('presentacion_id', presentacionId)
+  if (delErr) return delErr.message
+  const unique = Array.from(new Set(sustanciaIds))
+  if (unique.length) {
+    const { error: insErr } = await supabase.from('sap_presentaciones_sustancias').insert(
+      unique.map((sustancia_id) => ({ presentacion_id: presentacionId, sustancia_id })),
     )
+    if (insErr) return insErr.message
   }
+  return null
 }
 
 // ─── Guardado parcial de la cabecera (borrador) ─────────────
@@ -330,8 +357,8 @@ export async function guardarSimulacros(presentacionId: string, items: Simulacro
 }
 
 export async function guardarSustancias(presentacionId: string, sustanciaIds: string[]): Promise<ActionResult<null>> {
-  await replaceSustancias(presentacionId, sustanciaIds)
-  return { success: true, data: null }
+  const err = await replaceSustancias(presentacionId, sustanciaIds)
+  return err ? { success: false, error: err } : { success: true, data: null }
 }
 
 // ─── Documentos (Storage privado sap-autoproteccion) ────────
