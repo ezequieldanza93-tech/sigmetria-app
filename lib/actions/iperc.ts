@@ -28,13 +28,11 @@ async function getConsultoraId(): Promise<ActionResult<string>> {
 
 export async function getPeligrosLibrary(): Promise<ActionResult<any[]>> {
   const supabase = await createClient()
-  const cId = await getConsultoraId()
-  if (!cId.success) return cId
 
+  // RLS devuelve los genéricos (consultora_id IS NULL) + los propios de la consultora.
   const { data, error } = await supabase
     .from('iperc_peligros_library')
     .select('*')
-    .eq('consultora_id', cId.data)
     .order('factor')
     .order('nombre')
 
@@ -105,13 +103,11 @@ export async function deletePeligro(id: string): Promise<ActionResult<null>> {
 
 export async function getRiesgosLibrary(): Promise<ActionResult<any[]>> {
   const supabase = await createClient()
-  const cId = await getConsultoraId()
-  if (!cId.success) return cId
 
+  // RLS devuelve los genéricos (consultora_id IS NULL) + los propios de la consultora.
   const { data, error } = await supabase
     .from('iperc_riesgos_library')
     .select('*')
-    .eq('consultora_id', cId.data)
     .order('tipo')
     .order('nombre')
 
@@ -184,13 +180,11 @@ export async function getMedidasControl(
   search?: string
 ): Promise<ActionResult<any[]>> {
   const supabase = await createClient()
-  const cId = await getConsultoraId()
-  if (!cId.success) return cId
 
+  // RLS devuelve las genéricas (consultora_id IS NULL) + las propias de la consultora.
   let query = supabase
     .from('medidas_control')
     .select('*')
-    .eq('consultora_id', cId.data)
     .eq('activo', true)
 
   if (search) {
@@ -208,13 +202,11 @@ export async function getMedidasControl(
 
 export async function getMedidasControlTop(): Promise<ActionResult<any[]>> {
   const supabase = await createClient()
-  const cId = await getConsultoraId()
-  if (!cId.success) return cId
 
+  // RLS devuelve las genéricas (consultora_id IS NULL) + las propias de la consultora.
   const { data, error } = await supabase
     .from('medidas_control')
     .select('*')
-    .eq('consultora_id', cId.data)
     .eq('activo', true)
     .order('veces_usada', { ascending: false })
     .limit(20)
@@ -264,13 +256,12 @@ export async function deleteMedidaControl(id: string): Promise<ActionResult<null
 
 export async function getConsecuencias(): Promise<ActionResult<any[]>> {
   const supabase = await createClient()
-  const cId = await getConsultoraId()
-  if (!cId.success) return cId
 
+  // Escala genérica única: siempre las globales (consultora_id IS NULL).
   const { data, error } = await supabase
     .from('iperc_consecuencias')
     .select('*, iperc_consecuencia_items(*)')
-    .eq('consultora_id', cId.data)
+    .is('consultora_id', null)
     .order('orden')
 
   if (error) return { success: false, error: error.message }
@@ -279,13 +270,12 @@ export async function getConsecuencias(): Promise<ActionResult<any[]>> {
 
 export async function getProbabilidades(): Promise<ActionResult<any[]>> {
   const supabase = await createClient()
-  const cId = await getConsultoraId()
-  if (!cId.success) return cId
 
+  // Escala genérica única: siempre las globales (consultora_id IS NULL).
   const { data, error } = await supabase
     .from('iperc_probabilidades')
     .select('*')
-    .eq('consultora_id', cId.data)
+    .is('consultora_id', null)
     .order('orden')
 
   if (error) return { success: false, error: error.message }
@@ -294,13 +284,12 @@ export async function getProbabilidades(): Promise<ActionResult<any[]>> {
 
 export async function getNivelesRiesgo(): Promise<ActionResult<any[]>> {
   const supabase = await createClient()
-  const cId = await getConsultoraId()
-  if (!cId.success) return cId
 
+  // Escala genérica única: siempre las globales (consultora_id IS NULL).
   const { data, error } = await supabase
     .from('iperc_niveles_riesgo')
     .select('*')
-    .eq('consultora_id', cId.data)
+    .is('consultora_id', null)
     .order('valor_min')
 
   if (error) return { success: false, error: error.message }
@@ -545,7 +534,7 @@ export async function calcularNivelRiesgoAction(
   const [probRes, consRes, nivelesRes] = await Promise.all([
     supabase.from('iperc_probabilidades').select('valor_numerico').eq('id', probabilidadId).single(),
     supabase.from('iperc_consecuencias').select('valor_numerico').eq('id', consecuenciaId).single(),
-    supabase.from('iperc_niveles_riesgo').select('*'),
+    supabase.from('iperc_niveles_riesgo').select('*').is('consultora_id', null),
   ])
 
   if (probRes.error || consRes.error) return { success: false, error: 'Error al obtener valores' }

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { createClient } from '@/lib/supabase/client'
 import { createProducto, deleteProducto } from '@/lib/actions/producto'
+import { useEffectiveRoleContext } from '@/lib/contexts/effective-role-context'
 import type { Producto, CategoriaProducto, Organizacion, ActionResult, Unidad } from '@/lib/types'
 
 function ProductoForm({
@@ -82,6 +83,9 @@ export default function ProductosPage() {
   const [unidades, setUnidades] = useState<Unidad[]>([])
   const [activeCategoria, setActiveCategoria] = useState<string>('todos')
   const [showModal, setShowModal] = useState(false)
+  // Los productos genéricos (consultora_id IS NULL) son base de Sigmetría:
+  // solo el staff los borra; el resto los ve como solo-lectura.
+  const isStaff = useEffectiveRoleContext()?.isSuperAdmin ?? false
 
   function load() {
     const supabase = createClient()
@@ -176,7 +180,19 @@ export default function ProductosPage() {
             <tbody className="divide-y divide-gray-50">
               {filtered.map(p => (
                 <tr key={p.id} className="hover:bg-surface-base">
-                  <td className="px-5 py-3.5 font-medium text-text-primary">{p.nombre}</td>
+                  <td className="px-5 py-3.5 font-medium text-text-primary">
+                    <div className="flex items-center gap-2">
+                      {p.nombre}
+                      {p.consultora_id === null && (
+                        <span
+                          className="text-xs font-medium px-2 py-0.5 rounded-full bg-[var(--info-bg)] text-[var(--info)]"
+                          title="Provisto por Sigmetría — compartido con todas las consultoras"
+                        >
+                          Base
+                        </span>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-5 py-3.5">
                     <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-sig-50 text-sig-700">
                       {p.productos_categorias?.nombre ?? '—'}
@@ -187,12 +203,14 @@ export default function ProductosPage() {
                     {p.tamano ? `${p.tamano} ${p.unidades?.simbolo ?? ''}`.trim() : '—'}
                   </td>
                   <td className="px-5 py-3.5 text-right">
-                    <button
-                      onClick={() => handleDelete(p.id)}
-                      className="text-xs text-red-400 hover:text-danger"
-                    >
-                      Eliminar
-                    </button>
+                    {(p.consultora_id !== null || isStaff) && (
+                      <button
+                        onClick={() => handleDelete(p.id)}
+                        className="text-xs text-red-400 hover:text-danger"
+                      >
+                        Eliminar
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

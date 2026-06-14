@@ -9,6 +9,28 @@ import { Select } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { IPERC_FACTORES, IPERC_RIESGO_TIPOS } from '@/lib/constants'
 import { NIVEL_RIESGO_BADGE } from '@/lib/types'
+import { useEffectiveRoleContext } from '@/lib/contexts/effective-role-context'
+
+// Un ítem es genérico (base de Sigmetría) cuando consultora_id IS NULL.
+// Los genéricos los administra solo el staff; el resto los ve como solo-lectura.
+function useIsStaff() {
+  return useEffectiveRoleContext()?.isSuperAdmin ?? false
+}
+
+function BaseBadge() {
+  return (
+    <Badge variant="info" className="shrink-0">Base</Badge>
+  )
+}
+
+// Nota mostrada arriba de las escalas (genéricas únicas, solo lectura).
+function EscalaNota() {
+  return (
+    <p className="text-xs text-text-tertiary mb-3">
+      Escala estándar de Sigmetría — compartida por todas las consultoras (solo lectura).
+    </p>
+  )
+}
 
 type Tab = 'peligros' | 'riesgos' | 'medidas' | 'consecuencias' | 'probabilidades' | 'niveles'
 
@@ -60,6 +82,7 @@ function PeligrosTab() {
   const createPeligro = useCreatePeligro()
   const deletePeligro = useDeletePeligro()
   const [modal, setModal] = useState(false)
+  const isStaff = useIsStaff()
 
   return (
     <div>
@@ -88,10 +111,15 @@ function PeligrosTab() {
           {(peligros ?? []).map((p: any) => (
             <div key={p.id} className="flex items-center justify-between p-3 bg-surface-base border rounded-lg">
               <div>
-                <p className="font-medium">{p.nombre}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium">{p.nombre}</p>
+                  {p.consultora_id === null && <BaseBadge />}
+                </div>
                 <Badge>{p.factor}</Badge>
               </div>
-              <Button variant="ghost" size="sm" onClick={() => deletePeligro.mutate(p.id)}>Eliminar</Button>
+              {(p.consultora_id !== null || isStaff) && (
+                <Button variant="ghost" size="sm" onClick={() => deletePeligro.mutate(p.id)}>Eliminar</Button>
+              )}
             </div>
           ))}
         </div>
@@ -105,6 +133,7 @@ function RiesgosTab() {
   const createRiesgo = useCreateRiesgoLib()
   const deleteRiesgo = useDeleteRiesgoLib()
   const [modal, setModal] = useState(false)
+  const isStaff = useIsStaff()
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -136,10 +165,15 @@ function RiesgosTab() {
           {(riesgos ?? []).map((r: any) => (
             <div key={r.id} className="flex items-center justify-between p-3 bg-surface-base border rounded-lg">
               <div>
-                <p className="font-medium">{r.nombre}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium">{r.nombre}</p>
+                  {r.consultora_id === null && <BaseBadge />}
+                </div>
                 <Badge variant="info">{r.tipo}</Badge>
               </div>
-              <Button variant="ghost" size="sm" onClick={() => deleteRiesgo.mutate(r.id)}>Eliminar</Button>
+              {(r.consultora_id !== null || isStaff) && (
+                <Button variant="ghost" size="sm" onClick={() => deleteRiesgo.mutate(r.id)}>Eliminar</Button>
+              )}
             </div>
           ))}
         </div>
@@ -154,6 +188,7 @@ function MedidasTab() {
   const deleteMedida = useDeleteMedidaControl()
   const [modal, setModal] = useState(false)
   const [texto, setTexto] = useState('')
+  const isStaff = useIsStaff()
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -191,10 +226,15 @@ function MedidasTab() {
           {(medidas ?? []).map((m: any) => (
             <div key={m.id} className="flex items-center justify-between p-3 bg-surface-base border rounded-lg">
               <div className="flex-1">
-                <p className="font-medium">{m.texto}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium">{m.texto}</p>
+                  {m.consultora_id === null && <BaseBadge />}
+                </div>
                 <p className="text-xs text-text-tertiary">Usada {m.veces_usada} veces</p>
               </div>
-              <Button variant="ghost" size="sm" onClick={() => deleteMedida.mutate(m.id)}>Eliminar</Button>
+              {(m.consultora_id !== null || isStaff) && (
+                <Button variant="ghost" size="sm" onClick={() => deleteMedida.mutate(m.id)}>Eliminar</Button>
+              )}
             </div>
           ))}
         </div>
@@ -209,7 +249,9 @@ function ConsecuenciasTab() {
   if (isLoading) return <p>Cargando...</p>
 
   return (
-    <div className="grid gap-4">
+    <div>
+      <EscalaNota />
+      <div className="grid gap-4">
       {(consecuencias ?? []).map((c: any) => (
         <div key={c.id} className="p-4 bg-surface-base border rounded-lg">
           <div className="flex items-center gap-2 mb-2">
@@ -223,6 +265,7 @@ function ConsecuenciasTab() {
           </div>
         </div>
       ))}
+      </div>
     </div>
   )
 }
@@ -233,13 +276,16 @@ function ProbabilidadesTab() {
   if (isLoading) return <p>Cargando...</p>
 
   return (
-    <div className="grid gap-3">
-      {(probabilidades ?? []).map((p: any) => (
-        <div key={p.id} className="flex items-center justify-between p-4 bg-surface-base border rounded-lg">
-          <span className="font-medium">{p.nivel}</span>
-          <Badge>Valor: {p.valor_numerico}</Badge>
-        </div>
-      ))}
+    <div>
+      <EscalaNota />
+      <div className="grid gap-3">
+        {(probabilidades ?? []).map((p: any) => (
+          <div key={p.id} className="flex items-center justify-between p-4 bg-surface-base border rounded-lg">
+            <span className="font-medium">{p.nivel}</span>
+            <Badge>Valor: {p.valor_numerico}</Badge>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
@@ -250,19 +296,22 @@ function NivelesTab() {
   if (isLoading) return <p>Cargando...</p>
 
   return (
-    <div className="grid gap-4">
-      {(niveles ?? []).map((n: any) => (
-        <div key={n.id} className="p-4 bg-surface-base border rounded-lg" style={{ borderLeftColor: n.color, borderLeftWidth: 4 }}>
-          <div className="flex items-center gap-2 mb-2">
-            <h3 className="font-semibold">{n.nombre}</h3>
-            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${NIVEL_RIESGO_BADGE[n.nombre as keyof typeof NIVEL_RIESGO_BADGE] || ''}`}>
-              {n.valor_ref}
-            </span>
+    <div>
+      <EscalaNota />
+      <div className="grid gap-4">
+        {(niveles ?? []).map((n: any) => (
+          <div key={n.id} className="p-4 bg-surface-base border rounded-lg" style={{ borderLeftColor: n.color, borderLeftWidth: 4 }}>
+            <div className="flex items-center gap-2 mb-2">
+              <h3 className="font-semibold">{n.nombre}</h3>
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${NIVEL_RIESGO_BADGE[n.nombre as keyof typeof NIVEL_RIESGO_BADGE] || ''}`}>
+                {n.valor_ref}
+              </span>
+            </div>
+            <p className="text-xs text-text-secondary mb-1">Rango: {n.valor_min} - {n.valor_max} | Valor ref: {n.valor_ref}</p>
+            <p className="text-sm text-text-secondary">{n.acciones_requeridas}</p>
           </div>
-          <p className="text-xs text-text-secondary mb-1">Rango: {n.valor_min} - {n.valor_max} | Valor ref: {n.valor_ref}</p>
-          <p className="text-sm text-text-secondary">{n.acciones_requeridas}</p>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   )
 }

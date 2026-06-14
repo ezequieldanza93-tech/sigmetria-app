@@ -411,6 +411,7 @@ export interface Producto {
   descripcion: string | null
   marca_id: string | null
   categoria_id: string
+  consultora_id: string | null
   tamano: number | null
   unidad_id: string | null
   unidades?: { nombre: string; simbolo: string } | null
@@ -1533,7 +1534,7 @@ export type IpercNivelRiesgoNombre =
 
 export interface IpercConsecuencia {
   id: string
-  consultora_id: string
+  consultora_id: string | null
   nivel: IpercConsecuenciaNivel
   valor_numerico: number
   orden: number
@@ -1550,7 +1551,7 @@ export interface IpercConsecuenciaItem {
 
 export interface IpercProbabilidad {
   id: string
-  consultora_id: string
+  consultora_id: string | null
   nivel: IpercProbabilidadNivel
   valor_numerico: number
   orden: number
@@ -1559,7 +1560,7 @@ export interface IpercProbabilidad {
 
 export interface IpercNivelRiesgo {
   id: string
-  consultora_id: string
+  consultora_id: string | null
   nombre: IpercNivelRiesgoNombre
   valor_ref: number
   valor_min: number
@@ -1571,7 +1572,7 @@ export interface IpercNivelRiesgo {
 
 export interface IpercPeligro {
   id: string
-  consultora_id: string
+  consultora_id: string | null
   nombre: string
   factor: IpercFactor
   created_at: string
@@ -1579,7 +1580,7 @@ export interface IpercPeligro {
 
 export interface IpercRiesgo {
   id: string
-  consultora_id: string
+  consultora_id: string | null
   nombre: string
   tipo: IpercRiesgoTipo
   created_at: string
@@ -1587,7 +1588,7 @@ export interface IpercRiesgo {
 
 export interface MedidaControl {
   id: string
-  consultora_id: string
+  consultora_id: string | null
   texto: string
   activo: boolean
   veces_usada: number

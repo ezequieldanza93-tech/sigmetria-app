@@ -12,6 +12,17 @@ export async function createProducto(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
+  // El producto nuevo nace como propio de la consultora del usuario (no genérico).
+  // Los genéricos (consultora_id NULL) los administra el staff de Sigmetría.
+  const { data: member } = await supabase
+    .from('consultoras_members')
+    .select('consultora_id')
+    .eq('user_id', user.id)
+    .eq('is_active', true)
+    .maybeSingle()
+
+  if (!member) return { success: false, error: 'Sin membresía activa' }
+
   const nombre = (formData.get('nombre') as string)?.trim()
   const categoriaId = formData.get('categoria_id') as string
 
@@ -28,6 +39,7 @@ export async function createProducto(
     categoria_id: categoriaId,
     tamano: tamano && !isNaN(tamano) ? tamano : null,
     unidad_id: (formData.get('unidad_id') as string) || null,
+    consultora_id: member.consultora_id,
   })
 
   if (error) return { success: false, error: error.message }
