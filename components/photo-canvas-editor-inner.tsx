@@ -24,10 +24,10 @@ const COLORS = [
 ]
 
 const BRUSH_SIZES = [4, 8, 12, 16] as const
-const TEXT_SIZES = [24, 36, 48, 60] as const
+const TEXT_SIZES = [12, 16, 20, 24, 36] as const
 const DEFAULT_COLOR = '#000000'
 const DEFAULT_BRUSH = 4
-const DEFAULT_TEXT_SIZE = 24
+const DEFAULT_TEXT_SIZE = 20
 // Stamps de un click: tilde verde / cruz roja, fondo transparente.
 const STAMP_SIZE = 48
 const STAMP_VERDE = '#16A34A'
