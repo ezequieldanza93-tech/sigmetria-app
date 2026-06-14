@@ -1,7 +1,12 @@
 import 'server-only'
 import { createClient } from '@/lib/supabase/server'
+import type { EstablecimientoStatus } from '@/lib/types'
 import type { GestionAggregateRow } from '@/components/aggregate/gestiones-aggregate'
 import type { SeguimientoAggregateRow } from '@/components/aggregate/seguimiento-aggregate'
+
+// Estado por defecto cuando la fila no resuelve el establecimiento/empresa
+// (no debería pasar con joins !inner, pero el toggle necesita un valor concreto).
+const FALLBACK_STATUS: EstablecimientoStatus = 'active'
 
 interface EstabContext {
   id: string
@@ -29,6 +34,10 @@ export async function getGestionesAggregate(establecimientos: EstabContext[]): P
         gestiones!inner(
           nombre,
           gestiones_categorias(nombre, gestiones_grupos(nombre))
+        ),
+        establecimientos!inner(
+          status,
+          empresas!inner(is_active)
         )
       )
     `)
@@ -53,10 +62,16 @@ export async function getGestionesAggregate(establecimientos: EstabContext[]): P
           gestiones_grupos: { nombre: string } | null
         } | null
       }
+      // Estado de la entidad cargado para el toggle de la vista (carry-state-in-rows).
+      establecimientos: {
+        status: EstablecimientoStatus | null
+        empresas: { is_active: boolean | null } | null
+      } | null
     }
   }>).map(row => {
     const estId = row.gestiones_establecimientos.establecimiento_id
     const ctx = ctxMap.get(estId)
+    const estado = row.gestiones_establecimientos.establecimientos
     return {
       registro_id: row.id,
       empresa_id: ctx?.empresa_id ?? '',
@@ -72,6 +87,8 @@ export async function getGestionesAggregate(establecimientos: EstabContext[]): P
       responsable_nombre: row.responsable
         ? `${row.responsable.nombre ?? ''} ${row.responsable.apellido ?? ''}`.trim() || null
         : null,
+      empresa_is_active: estado?.empresas?.is_active ?? true,
+      establecimiento_status: estado?.status ?? FALLBACK_STATUS,
     }
   })
 }
@@ -90,7 +107,11 @@ export async function getSeguimientoAggregate(establecimientos: EstabContext[]):
       fecha_ejecutada,
       gestiones_establecimientos!inner(
         establecimiento_id,
-        gestiones!inner(nombre)
+        gestiones!inner(nombre),
+        establecimientos!inner(
+          status,
+          empresas!inner(is_active)
+        )
       )
     `)
     .not('fecha_ejecutada', 'is', null)
@@ -102,6 +123,11 @@ export async function getSeguimientoAggregate(establecimientos: EstabContext[]):
     gestiones_establecimientos: {
       establecimiento_id: string
       gestiones: { nombre: string } | null
+      // Estado de la entidad cargado para el toggle de la vista (carry-state-in-rows).
+      establecimientos: {
+        status: EstablecimientoStatus | null
+        empresas: { is_active: boolean | null } | null
+      } | null
     }
   }>
 
@@ -137,6 +163,7 @@ export async function getSeguimientoAggregate(establecimientos: EstabContext[]):
     const reg = regMap.get(o.registro_gestion_id)
     const estId = reg?.gestiones_establecimientos.establecimiento_id ?? ''
     const ctx = ctxMap.get(estId)
+    const estado = reg?.gestiones_establecimientos.establecimientos
     return {
       id: o.id,
       empresa_id: ctx?.empresa_id ?? '',
@@ -150,6 +177,8 @@ export async function getSeguimientoAggregate(establecimientos: EstabContext[]):
       responsable_nombre: o.personas_directorio
         ? `${o.personas_directorio.nombre ?? ''} ${o.personas_directorio.apellido ?? ''}`.trim() || null
         : null,
+      empresa_is_active: estado?.empresas?.is_active ?? true,
+      establecimiento_status: estado?.status ?? FALLBACK_STATUS,
     }
   })
 }

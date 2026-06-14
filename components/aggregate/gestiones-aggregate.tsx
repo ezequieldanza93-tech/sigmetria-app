@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Play, Search, List, CalendarDays, Columns, ArrowUpDown, Layers, Plus, X, ChevronRight, ChevronDown } from 'lucide-react'
 import { MultiSelectFilter } from '@/components/ui/multi-select-filter'
 import { calcularEstadoGestion } from '@/lib/types'
-import type { EstadoGestion } from '@/lib/types'
+import type { EstadoGestion, EstablecimientoStatus } from '@/lib/types'
 
 export interface GestionAggregateRow {
   registro_id: string
@@ -20,7 +20,38 @@ export interface GestionAggregateRow {
   fecha_ejecutada: string | null
   fecha_vencimiento: string | null
   responsable_nombre: string | null
+  /** Estado de la EMPRESA dueña del establecimiento de esta fila. */
+  empresa_is_active: boolean
+  /** Estado del ESTABLECIMIENTO de esta fila (enum establishment_status). */
+  establecimiento_status: EstablecimientoStatus
 }
+
+// ─── Toggle de estado de ENTIDAD (empresa/establecimiento) ───────────────────
+// Distinto y adicional al filtro de estado de la GESTIÓN (Realizado/Pendiente/
+// Planificado). Réplica de la semántica ya en prod en consultora-ficha-global.
+type EntidadEstado = 'activas' | 'inactivas' | 'todas'
+
+// Una fila CARGA el estado de su entidad (carry-state-in-rows). Como cada fila
+// es exactamente (gestión × 1 establecimiento × 1 empresa), no hay agregación
+// multi-establecimiento: el predicado es escalar por fila.
+//   - 'activas' (default): empresa activa Y establecimiento 'active'.
+//   - 'inactivas': NO cancelled Y (empresa inactiva O establecimiento ≠ 'active').
+//   - 'todas': todo, salvo 'cancelled'.
+// En TODOS los casos 'cancelled' queda fuera (estado terminal ≈ removido).
+function matchEntidadEstado(
+  empresaActiva: boolean,
+  status: EstablecimientoStatus,
+  sel: EntidadEstado,
+): boolean {
+  if (status === 'cancelled') return false
+  const esActiva = empresaActiva && status === 'active'
+  if (sel === 'activas') return esActiva
+  if (sel === 'inactivas') return !esActiva
+  return true
+}
+
+const ENTIDAD_SELECT_CLS =
+  'bg-surface-base border border-border-default rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-sig-500/40 focus:border-sig-500 transition-shadow'
 
 type ViewMode = 'tabla' | 'calendario' | 'kanban'
 type SortDir = 'asc' | 'desc'
@@ -126,6 +157,8 @@ export function GestionesAggregate({
   const [empresaSel, setEmpresaSel] = useState<Set<string> | null>(null)
   const [estSel, setEstSel] = useState<Set<string> | null>(null)
   const [estadoSel, setEstadoSel] = useState<Set<string> | null>(null)
+  // Toggle de estado de ENTIDAD — default 'activas' (solo lo vigente).
+  const [entidadSel, setEntidadSel] = useState<EntidadEstado>('activas')
   const [grupoSel, setGrupoSel] = useState<Set<string> | null>(null)
   const [categoriaSel, setCategoriaSel] = useState<Set<string> | null>(null)
   const [responsableSel, setResponsableSel] = useState<Set<string> | null>(null)
@@ -193,6 +226,7 @@ export function GestionesAggregate({
     const q = search.trim().toLowerCase()
     return rows.filter(r => {
       if (!r.fecha_planificada) return false
+      if (!matchEntidadEstado(r.empresa_is_active, r.establecimiento_status, entidadSel)) return false
       if (dateRange) {
         // Modo rango exacto: ignora año/tiles de mes, filtra por fecha exacta.
         if (r.fecha_planificada < dateRange.from || r.fecha_planificada > dateRange.to) return false
@@ -213,7 +247,7 @@ export function GestionesAggregate({
       }
       return true
     })
-  }, [rows, anio, selectedMonths, dateRange, empresaSel, estSel, estadoSel, grupoSel, categoriaSel, responsableSel, search])
+  }, [rows, anio, selectedMonths, dateRange, entidadSel, empresaSel, estSel, estadoSel, grupoSel, categoriaSel, responsableSel, search])
 
   // Ordenamiento multi-columna con precedencia (sorts[0] manda, luego [1], luego [2]).
   const sorted = useMemo(() => {
@@ -269,6 +303,7 @@ export function GestionesAggregate({
     if (dateRange) return counts
     const q = search.trim().toLowerCase()
     for (const r of rows) {
+      if (!matchEntidadEstado(r.empresa_is_active, r.establecimiento_status, entidadSel)) continue
       if (r.fecha_planificada && new Date(r.fecha_planificada).getFullYear() !== anio) continue
       if (empresaSel !== null && !empresaSel.has(r.empresa_id)) continue
       if (estSel !== null && !estSel.has(r.establecimiento_id)) continue
@@ -284,7 +319,7 @@ export function GestionesAggregate({
       if (month >= 0 && month < 12) counts[month]++
     }
     return counts
-  }, [rows, anio, dateRange, empresaSel, estSel, estadoSel, grupoSel, categoriaSel, responsableSel, search])
+  }, [rows, anio, dateRange, entidadSel, empresaSel, estSel, estadoSel, grupoSel, categoriaSel, responsableSel, search])
 
   // Helper para calcular rangos de fechas en formato YYYY-MM-DD (comparación lexicográfica).
   function toIsoDate(d: Date): string {
@@ -335,7 +370,17 @@ export function GestionesAggregate({
           <span className="text-xs text-gray-400 tabular-nums">{anio + 1}</span>
         </div>
 
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          <select
+            value={entidadSel}
+            onChange={e => setEntidadSel(e.target.value as EntidadEstado)}
+            aria-label="Filtrar por estado de empresa/establecimiento"
+            className={ENTIDAD_SELECT_CLS}
+          >
+            <option value="activas">Activas</option>
+            <option value="inactivas">Inactivas</option>
+            <option value="todas">Todas</option>
+          </select>
           <span className="text-xs text-text-tertiary whitespace-nowrap">{filtered.length} de {rows.length}</span>
         </div>
       </div>

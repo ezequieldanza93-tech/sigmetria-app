@@ -69,7 +69,7 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
   if (['establecimientos', 'dashboard', 'gestiones', 'seguimiento'].includes(section)) {
     const { data } = await supabase
       .from('establecimientos')
-      .select('id, nombre, domicilio, establecimientos_tipos!tipo_id(nombre), localidades!localidad_id(nombre, provincia), cantidad_trabajadores, establecimientos_sectores(cantidad_trabajadores)')
+      .select('id, nombre, status, domicilio, establecimientos_tipos!tipo_id(nombre), localidades!localidad_id(nombre, provincia), cantidad_trabajadores, establecimientos_sectores(cantidad_trabajadores)')
       .eq('empresa_id', id)
       .neq('status', 'cancelled')
       .order('nombre')
@@ -160,7 +160,13 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
           <AnalyticsDashboard
             level="empresa"
             empresaId={id}
-            establecimientos={establecimientos.map(e => ({ id: e.id, nombre: e.nombre }))}
+            establecimientos={establecimientos.map(e => ({
+              id: e.id,
+              nombre: e.nombre,
+              // status del establecimiento + is_active de ESTA empresa para el toggle de entidad.
+              status: (e.status as 'active' | 'on_hold' | 'cancelled' | undefined) ?? 'active',
+              empresaIsActive: empresa.is_active as boolean,
+            }))}
           />
         </div>
       )}

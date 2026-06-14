@@ -4,6 +4,8 @@ import React from 'react'
 import { MultiSelectFilter } from '@/components/ui/multi-select-filter'
 import type { ResponsableOption } from '@/lib/actions/analytics'
 
+type EstadoEntidad = 'activas' | 'inactivas' | 'todas'
+
 interface AnalyticsFiltersProps {
   year: number
   month: number | null
@@ -12,6 +14,9 @@ interface AnalyticsFiltersProps {
   onYearChange: (y: number) => void
   onMonthChange: (m: number | null) => void
   onResponsableChange: (id: string | null) => void
+  // Toggle de estado de entidad (empresa/establecimiento). Solo a nivel empresa/consultora.
+  estadoEntidad?: EstadoEntidad
+  onEstadoEntidadChange?: (e: EstadoEntidad) => void
   establecimientos?: { id: string; nombre: string }[]
   selectedEstIds?: string[]
   onEstablecimientosChange?: (ids: string[]) => void
@@ -32,6 +37,8 @@ export function AnalyticsFilters({
   onYearChange,
   onMonthChange,
   onResponsableChange,
+  estadoEntidad,
+  onEstadoEntidadChange,
   establecimientos,
   selectedEstIds,
   onEstablecimientosChange,
@@ -41,6 +48,20 @@ export function AnalyticsFilters({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
+      {/* Estado de entidad (empresa/establecimiento) — distinto del estado de la gestión */}
+      {estadoEntidad !== undefined && onEstadoEntidadChange && (
+        <select
+          value={estadoEntidad}
+          onChange={e => onEstadoEntidadChange(e.target.value as EstadoEntidad)}
+          aria-label="Filtrar por estado de entidad"
+          className={SELECT_CLASS}
+        >
+          <option value="activas">Activas</option>
+          <option value="inactivas">Inactivas</option>
+          <option value="todas">Todas</option>
+        </select>
+      )}
+
       {/* Año */}
       <select
         value={year}

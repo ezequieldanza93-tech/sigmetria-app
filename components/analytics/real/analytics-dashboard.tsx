@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useTransition, useCallback } from 'react'
+import { useState, useEffect, useTransition, useCallback, useMemo } from 'react'
 import { AnalyticsFilters } from './analytics-filters'
 import { AnalyticsSkeleton } from './analytics-skeleton'
 import { ScorecardReal } from './scorecard-real'
@@ -24,12 +24,25 @@ import {
   computeObservacionMetrics,
 } from '@/lib/analytics-compute'
 
+// Estado de entidad para el toggle de analítica (filtrado client-side).
+// 'activas' (default): empresa activa Y establecimiento.status === 'active'.
+// 'inactivas': empresa inactiva O establecimiento.status === 'on_hold'.
+// 'todas': todo salvo 'cancelled' (estado terminal, siempre excluido).
+type EstadoEntidad = 'activas' | 'inactivas' | 'todas'
+
+interface EstablecimientoEntidad {
+  id: string
+  nombre: string
+  status?: 'active' | 'on_hold' | 'cancelled'
+  empresaIsActive?: boolean
+}
+
 interface AnalyticsDashboardProps {
   level: 'establecimiento' | 'empresa' | 'consultora'
   establecimientoId?: string
   empresaId?: string
   consultoraId?: string
-  establecimientos?: { id: string; nombre: string }[]
+  establecimientos?: EstablecimientoEntidad[]
   initialYear?: number
 }
 
@@ -46,10 +59,38 @@ export function AnalyticsDashboard({
   const [year, setYear] = useState<number | null>(null)
   const [month, setMonth] = useState<number | null>(null)
   const [responsableId, setResponsableId] = useState<string | null>(null)
+  // Toggle de ESTADO DE ENTIDAD (empresa/establecimiento). Default 'activas' a nivel
+  // consultora/empresa. Es distinto y adicional al multi-select de establecimientos.
+  const [estadoEntidad, setEstadoEntidad] = useState<EstadoEntidad>('activas')
   const [selectedEstIds, setSelectedEstIds] = useState<string[]>(() => {
     if (level === 'establecimiento' && establecimientoId) return [establecimientoId]
     return establecimientos.map(e => e.id)
   })
+
+  // Universo de establecimientos permitido por el toggle de estado de entidad.
+  // 'cancelled' SIEMPRE fuera. A nivel establecimiento el toggle no aplica.
+  const entityAllowedEsts = useMemo(() => {
+    if (level === 'establecimiento') return establecimientos
+    return establecimientos.filter(e => {
+      const status = e.status ?? 'active'
+      if (status === 'cancelled') return false
+      const empActiva = e.empresaIsActive ?? true
+      if (estadoEntidad === 'activas') return empActiva && status === 'active'
+      if (estadoEntidad === 'inactivas') return !empActiva || status === 'on_hold'
+      return true // 'todas' → cualquiera salvo cancelled (ya filtrado arriba)
+    })
+  }, [establecimientos, estadoEntidad, level])
+
+  const entityAllowedIds = useMemo(
+    () => new Set(entityAllowedEsts.map(e => e.id)),
+    [entityAllowedEsts],
+  )
+
+  // Opciones del multi-select: solo establecimientos dentro del estado de entidad activo.
+  const filterableEsts = useMemo(
+    () => entityAllowedEsts.map(e => ({ id: e.id, nombre: e.nombre })),
+    [entityAllowedEsts],
+  )
 
   const [responsables, setResponsables] = useState<ResponsableOption[]>([])
   const [gestionRows, setGestionRows] = useState<GestionRow[]>([])
@@ -65,13 +106,17 @@ export function AnalyticsDashboard({
     setYear(initialYear ?? new Date().getFullYear())
   }, [initialYear])
 
-  // Determine actual establecimientoIds for queries
+  // establecimientoIds EFECTIVOS para las queries:
+  // - nivel establecimiento → siempre el id propio (toggle no aplica).
+  // - resto → intersección entre la selección manual del multi-select y el
+  //   universo permitido por el toggle de estado de entidad. Si no hay selección
+  //   manual, se usa todo el universo permitido por el toggle.
   const establecimientoIds =
     level === 'establecimiento' && establecimientoId
       ? [establecimientoId]
       : selectedEstIds.length > 0
-      ? selectedEstIds
-      : establecimientos.map(e => e.id)
+      ? selectedEstIds.filter(id => entityAllowedIds.has(id))
+      : entityAllowedEsts.map(e => e.id)
 
   // Load responsables once
   useEffect(() => {
@@ -144,7 +189,9 @@ export function AnalyticsDashboard({
           onYearChange={setYear}
           onMonthChange={setMonth}
           onResponsableChange={setResponsableId}
-          establecimientos={level !== 'establecimiento' ? establecimientos : undefined}
+          estadoEntidad={level !== 'establecimiento' ? estadoEntidad : undefined}
+          onEstadoEntidadChange={level !== 'establecimiento' ? setEstadoEntidad : undefined}
+          establecimientos={level !== 'establecimiento' ? filterableEsts : undefined}
           selectedEstIds={level !== 'establecimiento' ? selectedEstIds : undefined}
           onEstablecimientosChange={level !== 'establecimiento' ? setSelectedEstIds : undefined}
         />

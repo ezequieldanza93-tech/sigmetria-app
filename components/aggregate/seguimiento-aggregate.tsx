@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { MultiSelectFilter } from '@/components/ui/multi-select-filter'
+import type { EstablecimientoStatus } from '@/lib/types'
 
 // Pesado (html2canvas + jsPDF): solo se carga al abrir el reporte.
 const ReporteObservacionesEmpresaButton = dynamic(
@@ -21,7 +22,35 @@ export interface SeguimientoAggregateRow {
   fecha_planificada: string
   fecha_cierre: string | null
   responsable_nombre: string | null
+  /** Estado de la EMPRESA dueña del establecimiento de esta fila. */
+  empresa_is_active: boolean
+  /** Estado del ESTABLECIMIENTO de esta fila (enum establishment_status). */
+  establecimiento_status: EstablecimientoStatus
 }
+
+// ─── Toggle de estado de ENTIDAD (empresa/establecimiento) ───────────────────
+// Distinto y adicional al filtro de estado de la OBSERVACIÓN (Cerrado/Vencido/
+// Planificado). Réplica de la semántica ya en prod en consultora-ficha-global.
+type EntidadEstado = 'activas' | 'inactivas' | 'todas'
+
+// Cada fila es (observación × 1 establecimiento × 1 empresa): predicado escalar.
+//   - 'activas' (default): empresa activa Y establecimiento 'active'.
+//   - 'inactivas': NO cancelled Y (empresa inactiva O establecimiento ≠ 'active').
+//   - 'todas': todo, salvo 'cancelled' (estado terminal ≈ removido).
+function matchEntidadEstado(
+  empresaActiva: boolean,
+  status: EstablecimientoStatus,
+  sel: EntidadEstado,
+): boolean {
+  if (status === 'cancelled') return false
+  const esActiva = empresaActiva && status === 'active'
+  if (sel === 'activas') return esActiva
+  if (sel === 'inactivas') return !esActiva
+  return true
+}
+
+const ENTIDAD_SELECT_CLS =
+  'bg-surface-base border border-border-default rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-sig-500/40 focus:border-sig-500 transition-shadow'
 
 interface Props {
   rows: SeguimientoAggregateRow[]
@@ -65,6 +94,8 @@ export function SeguimientoAggregate({
   const [empresaSel, setEmpresaSel] = useState<Set<string> | null>(null)
   const [estSel, setEstSel] = useState<Set<string> | null>(null)
   const [estadoSel, setEstadoSel] = useState<Set<string> | null>(new Set(['Planificado', 'Vencido']))
+  // Toggle de estado de ENTIDAD — default 'activas' (solo lo vigente).
+  const [entidadSel, setEntidadSel] = useState<EntidadEstado>('activas')
 
   const empresaOptions = useMemo(() => {
     const map = new Map<string, string>()
@@ -84,12 +115,13 @@ export function SeguimientoAggregate({
 
   const filtered = useMemo(() => {
     return rows.filter(r => {
+      if (!matchEntidadEstado(r.empresa_is_active, r.establecimiento_status, entidadSel)) return false
       if (empresaSel !== null && !empresaSel.has(r.empresa_id)) return false
       if (estSel !== null && !estSel.has(r.establecimiento_id)) return false
       if (estadoSel !== null && !estadoSel.has(getEstado(r))) return false
       return true
     })
-  }, [rows, empresaSel, estSel, estadoSel])
+  }, [rows, entidadSel, empresaSel, estSel, estadoSel])
 
   return (
     <div className="px-6 py-6 space-y-4">
@@ -113,7 +145,19 @@ export function SeguimientoAggregate({
           selected={estadoSel ?? new Set(ESTADOS)}
           onChange={setEstadoSel}
         />
-        <span className="text-xs text-text-tertiary ml-auto">{filtered.length} de {rows.length}</span>
+        <div className="ml-auto flex items-center gap-2">
+          <select
+            value={entidadSel}
+            onChange={e => setEntidadSel(e.target.value as EntidadEstado)}
+            aria-label="Filtrar por estado de empresa/establecimiento"
+            className={ENTIDAD_SELECT_CLS}
+          >
+            <option value="activas">Activas</option>
+            <option value="inactivas">Inactivas</option>
+            <option value="todas">Todas</option>
+          </select>
+          <span className="text-xs text-text-tertiary whitespace-nowrap">{filtered.length} de {rows.length}</span>
+        </div>
       </div>
 
       <div className="bg-surface-elevated border border-border-subtle rounded-xl overflow-hidden">

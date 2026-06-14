@@ -52,6 +52,10 @@ export default async function EmpresasPage({ searchParams }: Props) {
       nombre: es.nombre,
       empresa_id: e.id,
       empresa_razon_social: e.razon_social,
+      // Estado de entidad para el toggle del dashboard de analítica (filtrado client-side).
+      // Los agregadores ignoran estos campos extra (solo leen id/nombre/empresa_*).
+      status: es.status ?? 'active',
+      empresaIsActive: e.is_active,
     })),
   )
 
@@ -124,7 +128,12 @@ export default async function EmpresasPage({ searchParams }: Props) {
           <AnalyticsDashboard
             level="consultora"
             consultoraId={effective.consultoraId ?? undefined}
-            establecimientos={estContext.map(e => ({ id: e.id, nombre: e.nombre }))}
+            establecimientos={estContext.map(e => ({
+              id: e.id,
+              nombre: e.nombre,
+              status: e.status,
+              empresaIsActive: e.empresaIsActive,
+            }))}
           />
         </div>
       )}
