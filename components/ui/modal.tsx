@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useId, useRef } from 'react'
+import { MessageSquareWarning } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface ModalProps {
@@ -32,6 +33,12 @@ export function Modal({ open, onClose, title, children, className, size = 'defau
     }
   }, [open])
 
+  function handleReportar() {
+    window.dispatchEvent(
+      new CustomEvent('sig:open-reporte', { detail: { tipo: 'error' } })
+    )
+  }
+
   return (
     <dialog
       ref={dialogRef}
@@ -53,13 +60,27 @@ export function Modal({ open, onClose, title, children, className, size = 'defau
       <div className="md:p-6 max-md:flex max-md:flex-col max-md:h-full">
         <div className="flex items-center justify-between md:mb-5 max-md:shrink-0 max-md:p-4 max-md:border-b max-md:border-border-subtle">
           <h2 id={titleId} className="text-base sm:text-lg font-semibold text-text-primary truncate pr-2">{title}</h2>
-          <button
-            onClick={onClose}
-            aria-label="Cerrar"
-            className="text-text-tertiary hover:text-text-primary transition-colors text-xl leading-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary rounded"
-          >
-            &times;
-          </button>
+          <div className="flex items-center gap-1 shrink-0">
+            {/* Botón Reportar — dispara sig:open-reporte desde dentro del dialog,
+                donde sí es clickeable. FloatingReportButtons escucha el evento
+                y abre el modal de reporte (showModal sobre este dialog). */}
+            <button
+              type="button"
+              onClick={handleReportar}
+              aria-label="Reportar un problema con este formulario"
+              title="Reportar un problema"
+              className="p-1.5 rounded-lg text-text-tertiary hover:text-text-primary hover:bg-surface-subtle transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary rounded"
+            >
+              <MessageSquareWarning size={16} strokeWidth={1.75} />
+            </button>
+            <button
+              onClick={onClose}
+              aria-label="Cerrar"
+              className="text-text-tertiary hover:text-text-primary transition-colors text-xl leading-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary rounded"
+            >
+              &times;
+            </button>
+          </div>
         </div>
         {/* En desktop el wrapper es `contents` (no afecta el layout actual);
             en móvil se vuelve el área scrolleable del full-screen. */}
