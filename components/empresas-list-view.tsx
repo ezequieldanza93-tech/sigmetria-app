@@ -36,7 +36,8 @@ export function EmpresasListView({
 }) {
   const [search, setSearch] = useState('')
   const [rubroSel, setRubroSel] = useState<string>('todos')
-  const [estadoSel, setEstadoSel] = useState<string>('todas')
+  // Por defecto SOLO activas (a nivel consultora). El usuario puede elegir inactivas o todas.
+  const [estadoSel, setEstadoSel] = useState<string>('activas')
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
   const rubroOptions = useMemo(() => {
@@ -77,11 +78,12 @@ export function EmpresasListView({
     })
   }
 
-  const hasFilters = search || rubroSel !== 'todos' || estadoSel !== 'todas'
+  // 'activas' es el default → no cuenta como filtro aplicado; "Limpiar" vuelve a activas.
+  const hasFilters = search || rubroSel !== 'todos' || estadoSel !== 'activas'
   const clearFilters = () => {
     setSearch('')
     setRubroSel('todos')
-    setEstadoSel('todas')
+    setEstadoSel('activas')
   }
 
   const selectCls = 'bg-surface-base border border-border-default rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-sig-500/40 focus:border-sig-500 transition-shadow'
@@ -146,9 +148,9 @@ export function EmpresasListView({
             aria-label="Filtrar por estado"
             className={selectCls}
           >
-            <option value="todas">Todas</option>
             <option value="activas">Activas</option>
             <option value="inactivas">Inactivas</option>
+            <option value="todas">Todas</option>
           </select>
 
           {hasFilters && (
