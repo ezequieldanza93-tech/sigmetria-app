@@ -39,9 +39,18 @@ export function ReportProblemModal({ open, tipo, onClose }: ReportProblemModalPr
           scale: 0.5,
           imageTimeout: 2000,
           ignoreElements: (el) => {
+            // Excluir el modal de reporte y su backdrop para que la captura
+            // muestre la pantalla de atrás, no el formulario en sí
+            const htmlEl = el as HTMLElement
+            if (
+              htmlEl.hasAttribute('data-sig-report-ui') ||
+              !!htmlEl.closest('[data-sig-report-ui]')
+            )
+              return true
+
             // Saltear mapas Leaflet — los tiles OSM son cross-origin sin CORS
             // y contaminan (taint) el canvas → toDataURL() lanza SecurityError
-            const cl = (el as HTMLElement).classList
+            const cl = htmlEl.classList
             if (
               cl &&
               (cl.contains('leaflet-container') ||
@@ -201,6 +210,7 @@ export function ReportProblemModal({ open, tipo, onClose }: ReportProblemModalPr
   return (
     <div
       ref={backdropRef}
+      data-sig-report-ui=""
       onClick={handleBackdropClick}
       className="fixed inset-0 z-[99998] flex items-center justify-center p-4"
       style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
@@ -343,7 +353,7 @@ export function ReportProblemModal({ open, tipo, onClose }: ReportProblemModalPr
             </button>
             <button
               type="submit"
-              disabled={estaEnviando || status === 'exito' || !resumen.trim() || !descripcion.trim()}
+              disabled={estaEnviando || estaCapturando || status === 'exito' || !resumen.trim() || !descripcion.trim()}
               className={cn(
                 'flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors',
                 tipo === 'error'
@@ -352,7 +362,12 @@ export function ReportProblemModal({ open, tipo, onClose }: ReportProblemModalPr
                 'disabled:opacity-50 disabled:cursor-not-allowed'
               )}
             >
-              {estaEnviando ? (
+              {estaCapturando ? (
+                <>
+                  <Loader2 size={15} className="animate-spin" />
+                  Capturando pantalla...
+                </>
+              ) : estaEnviando ? (
                 <>
                   <Loader2 size={15} className="animate-spin" />
                   Enviando...
