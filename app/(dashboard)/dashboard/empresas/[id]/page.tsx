@@ -202,9 +202,21 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
                     <p className="text-sm text-text-tertiary mt-0.5">{(empresa.empresas_rubros as unknown as { nombre: string }).nombre}</p>
                   )}
                 </div>
-                <span className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${empresa.is_active ? 'bg-success-bg text-success' : 'bg-surface-elevated text-text-secondary'}`}>
-                  {empresa.is_active ? 'Activa' : 'Inactiva'}
-                </span>
+                {esAdminPrincipal ? (
+                  <div className="shrink-0 flex flex-col items-end gap-1">
+                    <p className="text-text-tertiary text-xs font-medium">Estado</p>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${empresa.is_active ? 'bg-success-bg text-success' : 'bg-surface-elevated text-text-secondary border border-border-default'}`}>
+                        {empresa.is_active ? 'Activa' : 'Inactiva'}
+                      </span>
+                      <EstadoActivoToggle tabla="empresas" id={id} activo={empresa.is_active as boolean} />
+                    </div>
+                  </div>
+                ) : (
+                  <span className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${empresa.is_active ? 'bg-success-bg text-success' : 'bg-surface-elevated text-text-secondary'}`}>
+                    {empresa.is_active ? 'Activa' : 'Inactiva'}
+                  </span>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4 text-sm">
@@ -261,7 +273,6 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
                   </Link>
                 )}
                 {puedeEditar && <ExportEmpresaButton empresaId={id} />}
-                {esAdminPrincipal && <EstadoActivoToggle tabla="empresas" id={id} activo={empresa.is_active as boolean} />}
                 {esAdminPrincipal && (
                   <BorrarEntidadButton tabla="empresas" id={id} nombre={empresa.razon_social as string} redirectTo="/dashboard/empresas" />
                 )}
