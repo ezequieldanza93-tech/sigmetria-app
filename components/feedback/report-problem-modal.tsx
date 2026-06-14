@@ -34,14 +34,41 @@ export function ReportProblemModal({ open, tipo, onClose }: ReportProblemModalPr
     import('html2canvas')
       .then((mod) => {
         const html2canvas = mod.default
-        return html2canvas(document.body, { useCORS: true, scale: 0.5 })
+        return html2canvas(document.body, {
+          useCORS: true,
+          scale: 0.5,
+          onclone: (clonedDoc) => {
+            clonedDoc.body.style.zoom = '1'
+            clonedDoc.documentElement.style.zoom = '1'
+          },
+        })
       })
       .then((canvas) => {
         setScreenshotDataUrl(canvas.toDataURL('image/png'))
         setStatus('idle')
       })
-      .catch(() => {
-        // Si falla la captura, simplemente seguimos sin screenshot
+      .catch((err: unknown) => {
+        // Logueamos para diagnóstico — la captura falla silenciosamente en
+        // producción sin esto, lo que hace imposible rastrear la causa raíz
+        console.warn('[ReportModal] screenshot capture failed:', err)
+
+        // Registramos en el mismo array que captura errores JS globales
+        try {
+          const raw = localStorage.getItem('__sig_errors__')
+          const existentes: unknown[] = raw ? (JSON.parse(raw) as unknown[]) : []
+          const entrada = {
+            type: 'screenshot_capture_error',
+            message: err instanceof Error ? err.message : String(err),
+            timestamp: new Date().toISOString(),
+          }
+          // Máximo 50 entradas — rotamos desde el frente
+          const actualizados = [...existentes, entrada].slice(-50)
+          localStorage.setItem('__sig_errors__', JSON.stringify(actualizados))
+        } catch {
+          // localStorage puede fallar en modo privado u origin bloqueado — lo ignoramos
+        }
+
+        // Fallback graceful: el reporte se puede enviar sin screenshot
         setStatus('idle')
       })
   }, [open])
