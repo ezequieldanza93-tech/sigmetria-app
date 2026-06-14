@@ -1,11 +1,12 @@
 'use client'
 
-import { Building2, ClipboardList, BarChart3, BookOpen, Eye, Contact, ScrollText, MessageSquare } from 'lucide-react'
+import { Building2, ClipboardList, BarChart3, BookOpen, Eye, Contact, ScrollText, MessageSquare, Megaphone } from 'lucide-react'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { SectionsShell } from '@/components/layout/sections-shell'
 import type { SectionItem } from '@/components/layout/sections-sidebar'
 import { useEffectiveRoleContext } from '@/lib/contexts/effective-role-context'
 import { isCrmAdmin } from '@/lib/auth/crm-access'
+import { canAccessContenido } from '@/lib/contenido/access'
 import type { UserRole } from '@/lib/types'
 
 // Roles con acceso a la auditoría (espejo del gate de la página y la action).
@@ -53,8 +54,18 @@ export function ConsultoraShell({ children }: ConsultoraShellProps) {
   const onComentarios = pathname?.startsWith('/dashboard/crm/comentarios') ?? false
   const onCrm = !onComentarios && (pathname?.startsWith('/dashboard/crm') ?? false)
   const onAuditoria = pathname?.startsWith('/dashboard/auditoria') ?? false
-  const activeId: string = onComentarios ? 'comentarios' : onCrm ? 'crm' : onAuditoria ? 'auditoria' : sectionActive
+  const onContenido = pathname?.startsWith('/dashboard/contenido') ?? false
+  const activeId: string = onComentarios
+    ? 'comentarios'
+    : onCrm
+      ? 'crm'
+      : onContenido
+        ? 'contenido'
+        : onAuditoria
+          ? 'auditoria'
+          : sectionActive
   const showCrm = isCrmAdmin(eff?.email)
+  const showContenido = canAccessContenido(eff?.userRole, eff?.systemRole)
   const showAuditoria =
     eff?.isSuperAdmin === true ||
     eff?.systemRole === 'developer' ||
@@ -93,6 +104,9 @@ export function ConsultoraShell({ children }: ConsultoraShellProps) {
       icon: BarChart3,
       href: `${baseUrl}?section=dashboard`,
     },
+    ...(showContenido
+      ? ([{ id: 'contenido', label: 'Contenido', icon: Megaphone, href: '/dashboard/contenido' }] as SectionItem[])
+      : []),
     ...(showCrm
       ? ([
           { id: 'crm', label: 'CRM', icon: Contact, href: '/dashboard/crm' },

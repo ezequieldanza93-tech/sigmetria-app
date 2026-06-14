@@ -25,6 +25,8 @@ export type AssetBucket =
   | 'cursos-material'
   | 'cursos-portadas'
   | 'cursos-certificados'
+  | 'contenido'
+  | 'sap-autoproteccion'
 
 /**
  * Nombre de cualquier bucket REAL de la app (no solo los que se suben con
@@ -70,4 +72,8 @@ export const BUCKET_IS_PUBLIC: Record<StorageBucket, boolean> = {
   subcontratistas: false,
   'cursos-material': false,
   'cursos-certificados': false,
+  // Módulo Contenido: media de redes (imágenes/videos) por consultora. Privado.
+  contenido: false,
+  // Sistema de Autoprotección (Ley 5920 CABA): documentación del trámite. Privado.
+  'sap-autoproteccion': false,
 }

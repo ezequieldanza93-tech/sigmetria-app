@@ -77,6 +77,10 @@ const ReporteFotograficoEjecutorModal = dynamic(
   () => import('@/components/reporte-fotografico-ejecutor-modal').then(m => m.ReporteFotograficoEjecutorModal),
   { ssr: false }
 )
+const PresentacionAutoproteccionEjecutorModal = dynamic(
+  () => import('@/components/presentacion-autoproteccion-ejecutor-modal').then(m => m.PresentacionAutoproteccionEjecutorModal),
+  { ssr: false }
+)
 const MedicionIluminacionEjecutorModal = dynamic(
   () => import('@/components/medicion-iluminacion-ejecutor-modal').then(m => m.MedicionIluminacionEjecutorModal),
   { ssr: false }
@@ -1604,6 +1608,7 @@ function AgendaActionsCell({
   onExecuteMedicionPat,
   onExecuteMedicionRuido,
   onExecuteMedicionIluminacion,
+  onExecutePresentacionAutoproteccion,
   onLoadEvidence,
   onToggleLegajo,
   onEjecutarCapacitacion,
@@ -1617,6 +1622,7 @@ function AgendaActionsCell({
   onExecuteMedicionPat: () => void
   onExecuteMedicionRuido: () => void
   onExecuteMedicionIluminacion: () => void
+  onExecutePresentacionAutoproteccion: () => void
   onLoadEvidence: () => void
   onToggleLegajo: () => void | Promise<void>
   /** Solo para gestiones de categoría Capacitaciones: abre el flujo de capacitación LMS. */
@@ -1762,6 +1768,23 @@ function AgendaActionsCell({
           </div>,
           document.body
         )}
+      </div>
+    )
+  }
+
+  // Gestión tipo presentacion_autoproteccion → wizard del Sistema de Autoprotección
+  // (trámite vivo: se abre siempre para continuar/ver, esté o no "ejecutado").
+  if (r.ge_tipo_ejecucion === 'presentacion_autoproteccion') {
+    return (
+      <div className="flex items-center justify-center">
+        <button
+          title="Abrir el trámite del Sistema de Autoprotección"
+          onClick={onExecutePresentacionAutoproteccion}
+          className={`${primaryBtn} ${primaryActive}`}
+        >
+          <FileCheck size={14} />
+          <span className="hidden sm:inline">{r.fecha_ejecutada ? 'Ver / continuar' : 'Abrir trámite'}</span>
+        </button>
       </div>
     )
   }
@@ -2225,6 +2248,7 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
   const [executingMedicionPat, setExecutingMedicionPat] = useState<FullRegistro | null>(null)
   const [executingMedicionRuido, setExecutingMedicionRuido] = useState<FullRegistro | null>(null)
   const [executingMedicionIluminacion, setExecutingMedicionIluminacion] = useState<FullRegistro | null>(null)
+  const [executingPresentacionAutoproteccion, setExecutingPresentacionAutoproteccion] = useState<FullRegistro | null>(null)
   const [executingCapacitacion, setExecutingCapacitacion] = useState<FullRegistro | null>(null)
   const [showPlanificarModal, setShowPlanificarModal] = useState(false)
   const [showReporteModal, setShowReporteModal] = useState(false)
@@ -2446,7 +2470,10 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
   // el resto (y las ya ejecutadas) siguen con el flujo estándar (EjecucionModal).
   function openRegistro(r: FullRegistro) {
     const yaEjecutada = !!(r.fecha_ejecutada || r.evidencia_url)
-    if (r.ge_tipo_ejecucion === 'reporte_fotografico' && !yaEjecutada && canWrite) {
+    if (r.ge_tipo_ejecucion === 'presentacion_autoproteccion') {
+      // Trámite vivo: siempre abre el wizard (continuar/ver), aun ya "ejecutado".
+      setExecutingPresentacionAutoproteccion(r)
+    } else if (r.ge_tipo_ejecucion === 'reporte_fotografico' && !yaEjecutada && canWrite) {
       setExecutingReporte(r)
     } else if (r.ge_tipo_ejecucion === 'medicion_carga_termica' && !yaEjecutada && canWrite) {
       setExecutingMedicionCargaTermica(r)
@@ -2505,6 +2532,7 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
               onExecuteMedicionPat={() => setExecutingMedicionPat(r)}
               onExecuteMedicionRuido={() => setExecutingMedicionRuido(r)}
               onExecuteMedicionIluminacion={() => setExecutingMedicionIluminacion(r)}
+              onExecutePresentacionAutoproteccion={() => setExecutingPresentacionAutoproteccion(r)}
               onLoadEvidence={() => setEditingRegistro(r)}
               onEjecutarCapacitacion={
                 r.ge_categoria_nombre === CATEGORIA_CAPACITACIONES
@@ -3100,6 +3128,18 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
           establecimientoNombre={establecimientoNombre}
           onClose={() => setExecutingReporte(null)}
           onSuccess={() => { setExecutingReporte(null); queryClient.invalidateQueries({ queryKey: ['gestiones-establecimiento', establecimientoId, year] }); queryClient.invalidateQueries({ queryKey: ['registros-gestion'] }) }}
+        />
+      )}
+
+      {executingPresentacionAutoproteccion && (
+        <PresentacionAutoproteccionEjecutorModal
+          establecimientoId={establecimientoId}
+          registroId={executingPresentacionAutoproteccion.id}
+          gestionEstablecimientoId={executingPresentacionAutoproteccion.ge_id ?? ''}
+          rgFechaPlanificada={executingPresentacionAutoproteccion.fecha_planificada}
+          canWrite={canWrite}
+          onClose={() => setExecutingPresentacionAutoproteccion(null)}
+          onSuccess={() => { setExecutingPresentacionAutoproteccion(null); queryClient.invalidateQueries({ queryKey: ['gestiones-establecimiento', establecimientoId, year] }); queryClient.invalidateQueries({ queryKey: ['registros-gestion'] }) }}
         />
       )}
 

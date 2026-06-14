@@ -948,6 +948,16 @@ export interface CategoriaGestion {
   gestiones_grupos?: { nombre: string } | null
 }
 
+export type TipoEjecucion =
+  | 'estandar'
+  | 'reporte_fotografico'
+  | 'medicion_iluminacion'
+  | 'medicion_ruido'
+  | 'medicion_carga_termica'
+  | 'calculo_carga_fuego'
+  | 'medicion_pat'
+  | 'presentacion_autoproteccion'
+
 export interface Gestion {
   id: string
   nombre: string
@@ -956,6 +966,7 @@ export interface Gestion {
   created_at: string
   aplica_por_iso: boolean
   tiene_entregable: boolean
+  tipo_ejecucion?: TipoEjecucion
   gestiones_categorias?: { nombre: string; gestiones_grupos?: { nombre: string } | null } | null
 }
 

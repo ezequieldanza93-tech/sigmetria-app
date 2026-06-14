@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { addGestionToEstablecimiento } from '@/lib/actions/gestion-establecimiento'
 import { getGestionesAplicables } from '@/lib/actions/aplicabilidad'
+import { getGestionesPresentacionAplicables } from '@/lib/actions/aplicabilidad-normativa'
 import { createRegistroGestion, ejecutarGestion } from '@/lib/actions/registro-gestion'
 import { createObservacionGestion, cerrarObservacion } from '@/lib/actions/observacion-gestion'
 import { calcularEstadoGestion } from '@/lib/types'
@@ -272,7 +273,12 @@ export function GestionesTab({ establecimientoId, canWrite }: GestionesTabProps)
       await loadObservaciones(regData.map(r => r.id))
     }
     init()
-    getGestionesAplicables(establecimientoId).then(data => setTodasGestiones(data)).catch(() => setTodasGestiones([]))
+    Promise.all([
+      getGestionesAplicables(establecimientoId),
+      getGestionesPresentacionAplicables(establecimientoId),
+    ])
+      .then(([aplicables, presentaciones]) => setTodasGestiones([...aplicables, ...presentaciones]))
+      .catch(() => setTodasGestiones([]))
   }, [establecimientoId])
 
   const PHVA_ITEMS: { id: PHVASection; label: string; icon: string }[] = [

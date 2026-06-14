@@ -20,11 +20,13 @@ declare module 'lucide-react' {
   export const BellRing: Icon
   export const BookMarked: Icon
   export const BookOpen: Icon
+  export const Bookmark: Icon
   export const Bot: Icon
   export const Brain: Icon
-  export const Bug: Icon
   export const Briefcase: Icon
+  export const Bug: Icon
   export const Building2: Icon
+  export const Calendar: Icon
   export const CalendarClock: Icon
   export const CalendarDays: Icon
   export const Camera: Icon
@@ -58,6 +60,8 @@ declare module 'lucide-react' {
   export const FileCheck: Icon
   export const FileSignature: Icon
   export const FileText: Icon
+  export const FileWarning: Icon
+  export const Film: Icon
   export const Filter: Icon
   export const Flame: Icon
   export const FolderOpen: Icon
@@ -73,6 +77,7 @@ declare module 'lucide-react' {
   export const History: Icon
   export const Home: Icon
   export const Image: Icon
+  export const ImageOff: Icon
   export const ImagePlus: Icon
   export const Info: Icon
   export const Kanban: Icon
@@ -84,19 +89,26 @@ declare module 'lucide-react' {
   export const Library: Icon
   export const Lightbulb: Icon
   export const List: Icon
+  export const ListChecks: Icon
   export const Loader2: Icon
   export const Lock: Icon
   export const LogOut: Icon
   export const Mail: Icon
   export const Map: Icon
   export const MapPin: Icon
+  export const Maximize2: Icon
+  export const Megaphone: Icon
   export const Menu: Icon
+  export const MessageCircle: Icon
   export const MessageSquare: Icon
   export const MessageSquareWarning: Icon
   export const Mic: Icon
   export const MicOff: Icon
   export const Minus: Icon
+  export const Monitor: Icon
   export const Moon: Icon
+  export const MoreHorizontal: Icon
+  export const Music2: Icon
   export const Network: Icon
   export const Package: Icon
   export const Paperclip: Icon
@@ -113,16 +125,20 @@ declare module 'lucide-react' {
   export const ScrollText: Icon
   export const Search: Icon
   export const Send: Icon
+  export const ServerCog: Icon
   export const Settings2: Icon
   export const Share2: Icon
   export const Shield: Icon
   export const ShieldAlert: Icon
   export const ShieldCheck: Icon
+  export const Siren: Icon
+  export const Smartphone: Icon
   export const Sparkles: Icon
   export const Star: Icon
   export const Sun: Icon
   export const Tag: Icon
   export const Thermometer: Icon
+  export const ThumbsUp: Icon
   export const Trash2: Icon
   export const TrendingDown: Icon
   export const TrendingUp: Icon
@@ -139,7 +155,4 @@ declare module 'lucide-react' {
   export const X: Icon
   export const XCircle: Icon
   export const Zap: Icon
-  export const ListChecks: Icon
-  export const ServerCog: Icon
-  export const FileWarning: Icon
 }

@@ -19,6 +19,8 @@ export type EntityType =
   | 'denuncia'
   | 'subcontratista'
   | 'curso'
+  | 'contenido'
+  | 'sap'
 
 interface BucketConfig {
   maxBytes: number
@@ -39,6 +41,8 @@ const BUCKETS: Record<AssetBucket, BucketConfig> = {
   'cursos-material':    { maxBytes: 500 * 1024 * 1024, mimes: ['video/mp4','video/webm','application/pdf','image/png','image/jpeg','image/webp'], public: false },
   'cursos-portadas':    { maxBytes: 5 * 1024 * 1024, mimes: ['image/png','image/jpeg','image/webp'],                                            public: true  },
   'cursos-certificados':{ maxBytes: 5 * 1024 * 1024, mimes: ['application/pdf'],                                                                 public: false },
+  contenido:            { maxBytes: 300 * 1024 * 1024, mimes: ['image/png','image/jpeg','image/webp','image/gif','video/mp4','video/quicktime','video/webm'], public: false },
+  'sap-autoproteccion': { maxBytes: 50 * 1024 * 1024, mimes: ['application/pdf','image/png','image/jpeg','image/webp','image/heic','video/mp4','video/quicktime','video/webm','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'], public: false },
 }
 
 const EXT_BY_MIME: Record<string, string> = {
@@ -46,7 +50,11 @@ const EXT_BY_MIME: Record<string, string> = {
   'image/jpeg': 'jpg',
   'image/webp': 'webp',
   'image/svg+xml': 'svg',
+  'image/gif': 'gif',
   'application/pdf': 'pdf',
+  'video/mp4': 'mp4',
+  'video/quicktime': 'mov',
+  'video/webm': 'webm',
 }
 
 function extFromMime(mime: string, fallbackName: string): string {
