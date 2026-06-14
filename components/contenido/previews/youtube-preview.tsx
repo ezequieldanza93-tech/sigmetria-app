@@ -170,7 +170,7 @@ function PhoneFrame({ mobile, children }: { mobile: boolean; children: React.Rea
   }
   return (
     <div className="mx-auto w-[320px] rounded-[2.5rem] border-[10px] border-neutral-900 bg-neutral-900 shadow-xl">
-      <div className="overflow-hidden rounded-[1.9rem] bg-white">
+      <div className="max-h-[640px] overflow-y-auto overflow-x-hidden rounded-[1.9rem] bg-white">
         <div className="relative">
           <div className="absolute left-1/2 top-1.5 z-10 h-4 w-24 -translate-x-1/2 rounded-full bg-neutral-900" />
           {children}

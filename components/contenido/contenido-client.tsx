@@ -159,6 +159,10 @@ export function ContenidoClient({ catalogos, publicaciones, consultoraNombre }: 
         perfilNombre={consultoraNombre}
         onClose={() => setDetailPub(null)}
         onEdit={handleEdit}
+        onDeleted={() => {
+          setDetailPub(null)
+          router.refresh()
+        }}
       />
     </div>
   )

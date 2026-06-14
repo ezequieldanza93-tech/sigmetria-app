@@ -1,13 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { Pencil, CalendarClock } from 'lucide-react'
+import { Pencil, CalendarClock, Trash2, Loader2 } from 'lucide-react'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { PublicacionPreview } from '@/components/contenido/publicacion-preview'
 import { PreviewToggle } from '@/components/contenido/preview-toggle'
 import { DownloadButton } from '@/components/contenido/download-button'
 import { buildPreviewMedia } from '@/lib/contenido/preview-media'
+import { deletePublicacion } from '@/lib/actions/contenido'
+import { toast } from '@/lib/hooks/use-toast'
 import {
   defaultPreviewView,
   ESTADO_LABELS,
@@ -23,6 +25,7 @@ interface PublicacionDetailProps {
   perfilNombre: string
   onClose: () => void
   onEdit: (pub: ContenidoPublicacionFull) => void
+  onDeleted: () => void
 }
 
 function formatFecha(iso: string | null): string {
@@ -38,8 +41,24 @@ function formatFecha(iso: string | null): string {
   })
 }
 
-export function PublicacionDetail({ pub, getUrl, perfilNombre, onClose, onEdit }: PublicacionDetailProps) {
+export function PublicacionDetail({ pub, getUrl, perfilNombre, onClose, onEdit, onDeleted }: PublicacionDetailProps) {
   const [view, setView] = useState(pub ? defaultPreviewView(pub.canal.slug) : 'mobile')
+  const [confirming, setConfirming] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  async function handleDelete() {
+    if (!pub) return
+    setDeleting(true)
+    const result = await deletePublicacion(pub.id)
+    setDeleting(false)
+    if (result.success) {
+      toast.success('Publicación eliminada')
+      onDeleted()
+    } else {
+      toast.error(result.error)
+      setConfirming(false)
+    }
+  }
 
   if (!pub) return null
   const media = buildPreviewMedia(pub.media, getUrl)
@@ -107,6 +126,27 @@ export function PublicacionDetail({ pub, getUrl, perfilNombre, onClose, onEdit }
             >
               <Pencil size={16} /> Editar publicación
             </Button>
+
+            {confirming ? (
+              <div className="flex items-center gap-2 rounded-lg border border-[var(--danger)] bg-[var(--danger-bg)] p-2">
+                <span className="flex-1 text-xs text-[var(--danger)]">¿Eliminar esta publicación? No se puede deshacer.</span>
+                <Button type="button" variant="destructive" size="sm" onClick={handleDelete} disabled={deleting}>
+                  {deleting && <Loader2 size={14} className="animate-spin" />} Eliminar
+                </Button>
+                <Button type="button" variant="ghost" size="sm" onClick={() => setConfirming(false)} disabled={deleting}>
+                  Cancelar
+                </Button>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full text-[var(--danger)] hover:bg-[var(--danger-bg)]"
+                onClick={() => setConfirming(true)}
+              >
+                <Trash2 size={16} /> Eliminar publicación
+              </Button>
+            )}
           </div>
         </div>
       </div>

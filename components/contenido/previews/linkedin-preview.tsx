@@ -175,7 +175,7 @@ function Action({ icon, label }: { icon: React.ReactNode; label: string }) {
 function PhoneFrame({ children }: { children: React.ReactNode }) {
   return (
     <div className="mx-auto w-[330px] rounded-[2.5rem] border-[10px] border-neutral-900 bg-neutral-900 shadow-xl">
-      <div className={cn('overflow-hidden rounded-[1.9rem] bg-neutral-100 p-2')}>{children}</div>
+      <div className={cn('max-h-[640px] overflow-y-auto overflow-x-hidden rounded-[1.9rem] bg-neutral-100 p-2')}>{children}</div>
     </div>
   )
 }
