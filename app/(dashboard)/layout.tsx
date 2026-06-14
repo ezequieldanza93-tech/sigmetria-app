@@ -8,6 +8,7 @@ import { ContextualBottomNav } from '@/components/layout/contextual-bottom-nav'
 import { FloatingAvatar } from '@/components/layout/floating-avatar'
 import { ChatWidget } from '@/components/agent/chat-widget'
 import { GestionLauncher } from '@/components/gestion-launcher'
+import { FloatingReportButtons } from '@/components/feedback/floating-report-buttons'
 import { BannerPastDueWrapper } from '@/components/billing/banner-past-due-wrapper'
 import { TrialCountdown } from '@/components/billing/trial-countdown'
 import { PreviewProvider } from '@/lib/contexts/preview-context'
@@ -115,6 +116,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       <ContextualBottomNav />
       <GestionLauncher />
       <ChatWidget />
+      <FloatingReportButtons />
     </SidebarWrapper>
     <FloatingAvatar
       fullName={profile?.full_name ?? user.email ?? 'Usuario'}

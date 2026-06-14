@@ -22,6 +22,7 @@ declare module 'lucide-react' {
   export const BookOpen: Icon
   export const Bot: Icon
   export const Brain: Icon
+  export const Bug: Icon
   export const Briefcase: Icon
   export const Building2: Icon
   export const CalendarClock: Icon
@@ -72,6 +73,7 @@ declare module 'lucide-react' {
   export const History: Icon
   export const Home: Icon
   export const Image: Icon
+  export const ImagePlus: Icon
   export const Info: Icon
   export const Kanban: Icon
   export const KeyRound: Icon
