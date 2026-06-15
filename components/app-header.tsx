@@ -16,6 +16,7 @@ import { useNetworkStatus } from '@/lib/hooks/use-network-status'
 import { useInstallPrompt } from '@/components/install-pwa'
 import { useShortcutAction } from '@/lib/contexts/shortcuts-context'
 import { ShortcutTooltip } from '@/components/ui/shortcut-tooltip'
+import { useIsMobile } from '@/lib/hooks/use-is-mobile'
 
 interface AppHeaderProps {
   fullName: string
@@ -53,6 +54,8 @@ export function AppHeader({
   const [tipoLabel, setTipoLabel] = useState<string | null>(null)
   const { isOnline } = useNetworkStatus()
   const { install, isInstalled, canInstall } = useInstallPrompt()
+  // Los atajos de teclado son solo desktop: ocultamos su acceso en mobile.
+  const isMobile = useIsMobile()
   const [menuOpen, setMenuOpen] = useState(false)
   const [roleSimOpen, setRoleSimOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -392,7 +395,9 @@ export function AppHeader({
                   <DropdownItem href="/dashboard/perfil" icon={User} label="Mi perfil" role="menuitem" />
                   <DropdownItem href="/dashboard/configuracion/seguridad" icon={ShieldCheck} label="Seguridad" role="menuitem" />
                   <DropdownItem href="/dashboard/tutoriales" icon={BookMarked} label="Tutoriales de Uso" role="menuitem" />
-                  <DropdownItem href="/dashboard/atajos" icon={Keyboard} label="Atajos de teclado" role="menuitem" />
+                  {!isMobile && (
+                    <DropdownItem href="/dashboard/atajos" icon={Keyboard} label="Atajos de teclado" role="menuitem" />
+                  )}
                 </div>
 
                 <div className="border-t border-border-subtle">

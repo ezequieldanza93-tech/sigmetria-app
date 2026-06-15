@@ -8,6 +8,7 @@ import {
   type ShortcutDef,
   type ShortcutCategory,
 } from '@/lib/constants/shortcuts'
+import { useIsMobile } from '@/lib/hooks/use-is-mobile'
 import { cn } from '@/lib/utils'
 
 // ── Keyboard key visual ───────────────────────────────────────────────────────
@@ -116,6 +117,8 @@ function CategorySection({
 
 export function ShortcutsReference() {
   const [search, setSearch] = useState('')
+  // Los atajos son solo desktop: en mobile mostramos un aviso, no la referencia.
+  const isMobile = useIsMobile()
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim()
@@ -142,6 +145,25 @@ export function ShortcutsReference() {
   )
 
   const totalVisible = filtered.length
+
+  // En mobile no hay teclado físico: la referencia de atajos no aplica.
+  if (isMobile) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-12">
+        <div className="rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-5 flex gap-3 text-center sm:text-left">
+          <AlertTriangle size={20} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5 mx-auto sm:mx-0" />
+          <div className="space-y-1.5">
+            <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">Atajos solo en desktop</p>
+            <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
+              Los atajos de teclado están disponibles únicamente en dispositivos con mouse y teclado
+              (pantallas ≥1024px). En mobile la app funciona con la interfaz táctil habitual: usá la
+              barra inferior y el menú para moverte entre secciones.
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 space-y-8">

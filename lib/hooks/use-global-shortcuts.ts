@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useShortcuts } from '@/lib/contexts/shortcuts-context'
+import { useIsMobile } from '@/lib/hooks/use-is-mobile'
 import { SHORTCUT_KEY_MAP } from '@/lib/constants/shortcuts'
 import { toast } from '@/lib/hooks/use-toast'
 
@@ -55,6 +56,8 @@ export function useGlobalShortcuts() {
   const { emit } = useShortcuts()
   const router = useRouter()
   const pathname = usePathname()
+  // En mobile no hay teclado: ni siquiera registramos el listener.
+  const isMobile = useIsMobile()
 
   // Keep stable refs so the keydown listener never needs to be re-added
   const pathnameRef = useRef(pathname)
@@ -77,8 +80,12 @@ export function useGlobalShortcuts() {
     }
   }, [pathname])
 
-  // Register the single global keydown listener (runs once on mount)
+  // Register the single global keydown listener.
+  // On mobile we never attach it (no keyboard → no shortcuts).
+  // Re-runs if the viewport crosses the mobile breakpoint.
   useEffect(() => {
+    if (isMobile) return
+
     function handleKeyDown(e: KeyboardEvent) {
       if (!isDesktop()) return
       if (isEditableTarget(e.target)) return
@@ -148,6 +155,6 @@ export function useGlobalShortcuts() {
 
     window.addEventListener('keydown', handleKeyDown, { capture: true })
     return () => window.removeEventListener('keydown', handleKeyDown, { capture: true })
-    // Empty deps: runs once, uses refs for all mutable values
-  }, [])
+    // Only depends on isMobile: uses refs for all other mutable values
+  }, [isMobile])
 }
