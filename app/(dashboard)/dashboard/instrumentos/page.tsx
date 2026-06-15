@@ -8,6 +8,7 @@ import { createInstrumento, updateInstrumento, deleteInstrumento } from '@/lib/a
 import { createMarcaInline } from '@/lib/actions/organizacion'
 import { InstrumentoModal } from '@/components/instrumento-modal'
 import { PersonaSelector } from '@/components/persona-selector'
+import { FileUploadInput } from '@/components/ui/file-upload-input'
 import type { InstrumentoMedicion, TipoInstrumentoMedicion, Organizacion, ActionResult } from '@/lib/types'
 
 type MarcaOption = { id: string; nombre: string }
@@ -41,6 +42,9 @@ function InstrumentoForm({
   const [newMarcaNombre, setNewMarcaNombre] = useState('')
   const [creatingMarca, setCreatingMarca] = useState(false)
   const [createMarcaError, setCreateMarcaError] = useState<string | null>(null)
+  // El certificado sólo se ofrece al dar de alta. Las renovaciones se cargan después
+  // desde la pestaña "Calibraciones" del detalle del instrumento.
+  const [showCertificado, setShowCertificado] = useState(false)
 
   async function handleCreateMarca() {
     if (!newMarcaNombre.trim()) return
@@ -141,6 +145,53 @@ function InstrumentoForm({
         <label className="text-sm font-medium text-text-secondary block mb-1">Dueño</label>
         <PersonaSelector name="dueño_id" value={dueñoId} onChange={setDueñoId} placeholder="Buscar persona (dueño del instrumento)…" />
       </div>
+
+      {/* Certificado de calibración OPCIONAL — sólo al dar de alta. */}
+      {!instrumento && (
+        <div className="border border-border-subtle rounded-lg p-3 bg-surface-base">
+          {!showCertificado ? (
+            <button
+              type="button"
+              onClick={() => setShowCertificado(true)}
+              className="text-sm text-sig-500 hover:text-sig-700 font-medium"
+            >
+              + Certificado de calibración (opcional)
+            </button>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-text-secondary">Certificado de calibración (opcional)</p>
+                <button
+                  type="button"
+                  onClick={() => setShowCertificado(false)}
+                  className="text-xs text-text-tertiary hover:text-text-secondary"
+                >
+                  Quitar
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-medium text-text-secondary block mb-1">Fecha emisión</label>
+                  <input name="cert_fecha_emision" type="date" className="w-full border border-border-default rounded px-2 py-1.5 text-sm" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-text-secondary block mb-1">Fecha vencimiento</label>
+                  <input name="cert_fecha_vencimiento" type="date" className="w-full border border-border-default rounded px-2 py-1.5 text-sm" />
+                </div>
+              </div>
+              <FileUploadInput
+                name="certificado"
+                label="Archivo del certificado"
+                accept="application/pdf,image/png,image/jpeg"
+                maxSizeMB={5}
+                helpText="PDF, PNG o JPG. Máx 5 MB. Si cargás el certificado, completá ambas fechas."
+                kind="document"
+              />
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="flex justify-end">
         <Button type="submit" disabled={pending}>{pending ? 'Guardando…' : 'Guardar'}</Button>
       </div>

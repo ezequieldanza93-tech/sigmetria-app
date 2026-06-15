@@ -2,7 +2,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { uploadAsset } from '@/lib/storage/upload'
-import type { ActionResult } from '@/lib/types'
+import type { ActionResult, CertificadoCalibracion } from '@/lib/types'
 
 export async function createCertificadoCalibracion(
   _prev: ActionResult<null> | null,
@@ -70,4 +70,34 @@ export async function createCertificadoCalibracion(
 
   revalidatePath('/dashboard/instrumentos')
   return { success: true, data: null }
+}
+
+/**
+ * Devuelve el certificado de calibración VIGENTE más reciente de un instrumento:
+ * el primer registro con `activo = true` ordenado por `fecha_emision` DESC, o `null`
+ * si el instrumento todavía no tiene certificados vigentes.
+ *
+ * Pensado para que los protocolos de medición traigan el último certificado vigente.
+ * Un instrumento puede acumular varios certificados en el tiempo (renovaciones);
+ * el alta marca como `activo = false` los anteriores, así que sólo queda uno activo.
+ */
+export async function getCertificadoVigente(
+  instrumentoId: string
+): Promise<CertificadoCalibracion | null> {
+  if (!instrumentoId) return null
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
+  const { data } = await supabase
+    .from('certificados_calibracion')
+    .select('id, instrumento_id, fecha_emision, fecha_vencimiento, organismo_emisor_id, certificado_url, activo, created_at')
+    .eq('instrumento_id', instrumentoId)
+    .eq('activo', true)
+    .order('fecha_emision', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  return (data as unknown as CertificadoCalibracion | null) ?? null
 }
