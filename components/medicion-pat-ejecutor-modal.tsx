@@ -74,6 +74,16 @@ const STEP_LABELS: Record<WizardStep, string> = {
   listo: 'Listo',
 }
 
+// Metodologías estándar de medición de puesta a tierra.
+const METODOLOGIA_OPCIONES = [
+  'Caída de potencial (62%) — 3 electrodos',
+  'Wenner — 4 electrodos',
+  'Schlumberger — 4 electrodos',
+  'Método selectivo (pinza)',
+  'Método de lazo / sin picas (pinza)',
+  'Dos puntos',
+] as const
+
 // Opciones de los selects del protocolo.
 const ECT_OPCIONES: Ect[] = ['TT', 'TN-S', 'TN-C', 'TN-C-S', 'IT']
 const CONDICION_TERRENO_OPCIONES = ['Seco', 'Húmedo', 'Saturado', 'Rocoso', 'Arenoso', 'Arcilloso'] as const
@@ -234,7 +244,12 @@ export function MedicionPatEjecutorModal({
   // Firma a mano del profesional (dataURL PNG base64) dibujada en el paso de revisión.
   // Opcional: si está vacía no se firma, pero no bloquea el cierre del protocolo.
   const [firmaSvg, setFirmaSvg] = useState<string | null>(null)
+  // `metodologia` guarda el valor final (texto) que se envía al server action y al PDF.
+  // `metodologiaSelector` guarda la opción elegida en el <select>: una de METODOLOGIA_OPCIONES,
+  // 'Otro' (para texto libre), o '' (sin elegir). Se inicializa en '' y se hidrata cuando
+  // un PAT viejo trae un valor que no está en la lista → se marca 'Otro'.
   const [metodologia, setMetodologia] = useState('')
+  const [metodologiaSelector, setMetodologiaSelector] = useState('')
   const [fechaMedicion, setFechaMedicion] = useState(rgFechaPlanificada || '')
   const [fechaMedicionFin, setFechaMedicionFin] = useState('')
   const [horaInicio, setHoraInicio] = useState('')
@@ -829,13 +844,39 @@ export function MedicionPatEjecutorModal({
                 </div>
                 <div>
                   <label className={labelCls}>Metodología</label>
-                  <input
-                    type="text"
+                  <select
                     className={inputCls}
-                    value={metodologia}
-                    onChange={e => setMetodologia(e.target.value)}
-                    placeholder="Ej: método de caída de potencial (regla 62%)…"
-                  />
+                    value={metodologiaSelector}
+                    onChange={e => {
+                      const v = e.target.value
+                      setMetodologiaSelector(v)
+                      // Si elige una opción estándar, el valor de texto es esa opción.
+                      // Si elige "Otro", dejamos el texto libre tal como estaba (o vacío).
+                      // Si limpia la selección, vaciamos el texto.
+                      if (v === '' || v === 'Otro') {
+                        if (v === '') setMetodologia('')
+                        // 'Otro': no pisamos el texto libre ya escrito
+                      } else {
+                        setMetodologia(v)
+                      }
+                    }}
+                  >
+                    <option value="">Sin especificar…</option>
+                    {METODOLOGIA_OPCIONES.map(o => (
+                      <option key={o} value={o}>{o}</option>
+                    ))}
+                    <option value="Otro">Otro (especificar)</option>
+                  </select>
+                  {metodologiaSelector === 'Otro' && (
+                    <input
+                      type="text"
+                      className={`${inputCls} mt-2`}
+                      value={metodologia}
+                      onChange={e => setMetodologia(e.target.value)}
+                      placeholder="Describí la metodología utilizada…"
+                      autoFocus
+                    />
+                  )}
                 </div>
               </div>
             </section>
