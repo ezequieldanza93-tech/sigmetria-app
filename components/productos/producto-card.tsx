@@ -9,9 +9,11 @@ interface ProductoCardProps {
   producto: Producto
   onDelete?: (id: string) => void
   canDelete?: boolean
+  /** Cantidad de filas agrupadas bajo este nombre+marca. Si > 1 muestra badge ×N. */
+  count?: number
 }
 
-export function ProductoCard({ producto: p, onDelete, canDelete }: ProductoCardProps) {
+export function ProductoCard({ producto: p, onDelete, canDelete, count }: ProductoCardProps) {
   // foto_url puede ser URL absoluta (import Airtable) o path de storage.
   // publicAssetUrl maneja ambos casos: si es absoluta la devuelve tal cual,
   // si es path la construye como URL pública del bucket 'productos-epp'.
@@ -32,6 +34,12 @@ export function ProductoCard({ producto: p, onDelete, canDelete }: ProductoCardP
         ) : (
           <span className="text-5xl text-text-tertiary/20 font-bold uppercase select-none">
             {p.nombre.slice(0, 2)}
+          </span>
+        )}
+        {/* Badge de agrupación: visible solo cuando hay más de 1 fila con mismo nombre+marca */}
+        {count !== undefined && count > 1 && (
+          <span className="absolute top-2 right-2 bg-black/60 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none">
+            ×{count}
           </span>
         )}
       </div>

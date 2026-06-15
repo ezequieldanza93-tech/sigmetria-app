@@ -126,6 +126,34 @@ function ProductoForm({
   )
 }
 
+// ─── Agrupación visual ────────────────────────────────────────────────────────
+// Agrupa por clave `nombre + marca_id`. Representante: el primero que tenga foto_url;
+// si ninguno la tiene, el primero del grupo. NO modifica ni borra datos de la base.
+
+interface ProductoAgrupado {
+  representante: Producto
+  count: number
+}
+
+function agruparProductos(lista: Producto[]): ProductoAgrupado[] {
+  const mapa = new Map<string, Producto[]>()
+  for (const p of lista) {
+    const clave = `${p.nombre.trim().toLowerCase()}||${p.marca_id ?? ''}`
+    const grupo = mapa.get(clave)
+    if (grupo) {
+      grupo.push(p)
+    } else {
+      mapa.set(clave, [p])
+    }
+  }
+  const resultado: ProductoAgrupado[] = []
+  for (const grupo of mapa.values()) {
+    const conFoto = grupo.find(p => !!p.foto_url)
+    resultado.push({ representante: conFoto ?? grupo[0], count: grupo.length })
+  }
+  return resultado
+}
+
 // ─── Página principal ──────────────────────────────────────────────────────────
 
 export default function ProductosPage() {
@@ -187,8 +215,13 @@ export default function ProductosPage() {
     setProductos(prev => prev?.filter(p => p.id !== id) ?? null)
   }
 
+  // Agrupación visual: se aplica DESPUÉS del filtrado. Cada "tarjeta" representa
+  // un grupo nombre+marca. El conteo en el encabezado refleja tarjetas (grupos), no filas.
+  const agrupados: ProductoAgrupado[] | null = filtered === null ? null : agruparProductos(filtered)
+
   const totalCount = productos?.length ?? 0
   const filteredCount = filtered?.length ?? 0
+  const agrupadosCount = agrupados?.length ?? 0
 
   return (
     <div className="p-6 md:p-8 max-w-6xl mx-auto">
@@ -200,7 +233,9 @@ export default function ProductosPage() {
             Catálogo de EPP y otros productos de seguridad
             {productos !== null && (
               <span className="ml-2 text-text-tertiary">
-                ({filteredCount === totalCount ? totalCount : `${filteredCount} de ${totalCount}`})
+                ({filteredCount < totalCount
+                  ? `${agrupadosCount} de ${totalCount}`
+                  : agrupadosCount})
               </span>
             )}
           </p>
@@ -263,22 +298,24 @@ export default function ProductosPage() {
       </div>
 
       {/* Contenido */}
-      {filtered === null ? (
+      {agrupados === null ? (
         <div className="bg-surface-base rounded-xl border border-border-subtle p-8 text-center text-text-tertiary">
           Cargando…
         </div>
-      ) : filtered.length === 0 ? (
+      ) : agrupados.length === 0 ? (
         <div className="bg-surface-base rounded-xl border border-border-subtle p-8 text-center text-text-tertiary">
           No hay productos que coincidan con los filtros.
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {filtered.map(p => (
+          {agrupados.map(({ representante, count }) => (
             <ProductoCard
-              key={p.id}
-              producto={p}
-              canDelete={p.consultora_id !== null || isStaff}
+              key={representante.id}
+              producto={representante}
+              canDelete={representante.consultora_id !== null || isStaff}
               onDelete={handleDelete}
+              count={count}
+              // Nota: en grupos con duplicados, handleDelete borra solo el representante (limitación conocida del modo agrupación visual).
             />
           ))}
         </div>
