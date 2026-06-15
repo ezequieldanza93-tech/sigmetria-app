@@ -9,18 +9,24 @@ interface ProductoCardProps {
   producto: Producto
   onDelete?: (id: string) => void
   canDelete?: boolean
+  /** Abre el detalle (galería + variantes + fichas). */
+  onOpen?: (p: Producto) => void
   /** Cantidad de filas agrupadas bajo este nombre+marca. Si > 1 muestra badge ×N. */
   count?: number
 }
 
-export function ProductoCard({ producto: p, onDelete, canDelete, count }: ProductoCardProps) {
-  // foto_url puede ser URL absoluta (import Airtable) o path de storage.
-  // publicAssetUrl maneja ambos casos: si es absoluta la devuelve tal cual,
-  // si es path la construye como URL pública del bucket 'productos-epp'.
+export function ProductoCard({ producto: p, onDelete, canDelete, onOpen, count }: ProductoCardProps) {
+  // foto_url puede ser URL absoluta (import Airtable / catálogo de proveedor) o
+  // path de storage. publicAssetUrl maneja ambos: si es absoluta la devuelve tal
+  // cual, si es path la construye como URL pública del bucket 'productos-epp'.
   const imgSrc = publicAssetUrl('productos-epp', p.foto_url)
+  const nVariantes = p.producto_variantes?.[0]?.count ?? 0
 
   return (
-    <div className="group bg-surface-elevated border border-border-subtle rounded-xl overflow-hidden hover:shadow-md hover:border-brand-primary/30 transition-all duration-200 flex flex-col">
+    <div
+      onClick={() => onOpen?.(p)}
+      className="group bg-surface-elevated border border-border-subtle rounded-xl overflow-hidden hover:shadow-md hover:border-brand-primary/30 transition-all duration-200 flex flex-col cursor-pointer"
+    >
       {/* Foto del producto */}
       <div className="h-44 bg-surface-sunken flex items-center justify-center overflow-hidden relative">
         {imgSrc ? (
@@ -60,24 +66,32 @@ export function ProductoCard({ producto: p, onDelete, canDelete, count }: Produc
           {p.nombre}
         </h3>
 
-        {/* Metadata: marca + tamaño */}
+        {/* Metadata: proveedor/marca + variantes + tamaño */}
         <div className="flex items-center gap-2 text-xs text-text-tertiary flex-wrap mt-auto">
-          {p.organizaciones_externas?.nombre && (
-            <span className="font-medium text-text-secondary">{p.organizaciones_externas.nombre}</span>
+          {p.proveedor?.nombre ? (
+            <span className="font-medium text-text-secondary">{p.proveedor.nombre}</span>
+          ) : p.marca?.nombre ? (
+            <span className="font-medium text-text-secondary">{p.marca.nombre}</span>
+          ) : null}
+          {nVariantes > 0 && (
+            <>
+              {(p.proveedor?.nombre || p.marca?.nombre) && <span>·</span>}
+              <span className="font-medium text-sig-600">{nVariantes} {nVariantes === 1 ? 'variante' : 'variantes'}</span>
+            </>
           )}
           {p.tamano && (
             <>
-              {p.organizaciones_externas?.nombre && <span>·</span>}
+              {(p.proveedor?.nombre || p.marca?.nombre || nVariantes > 0) && <span>·</span>}
               <span>{p.tamano} {p.unidades?.simbolo ?? ''}</span>
             </>
           )}
         </div>
 
-        {/* Acción eliminar (solo quien puede) */}
+        {/* Acción eliminar (solo quien puede) — no dispara el detalle */}
         {canDelete && onDelete && (
           <button
             type="button"
-            onClick={() => onDelete(p.id)}
+            onClick={(e) => { e.stopPropagation(); onDelete(p.id) }}
             className="mt-1 text-xs text-red-400 hover:text-danger text-right self-end"
           >
             Eliminar

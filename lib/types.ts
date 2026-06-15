@@ -414,6 +414,9 @@ export interface Producto {
   nombre: string
   descripcion: string | null
   marca_id: string | null
+  proveedor_id: string | null
+  codigo: string | null
+  url_origen: string | null
   categoria_id: string
   consultora_id: string | null
   tamano: number | null
@@ -425,7 +428,39 @@ export interface Producto {
   created_at: string
   updated_at: string
   productos_categorias?: { nombre: string } | null
-  organizaciones_externas?: { nombre: string } | null
+  // Embeds desambiguados: marca_id y proveedor_id apuntan a organizaciones_externas.
+  marca?: { nombre: string } | null
+  proveedor?: { nombre: string } | null
+  // Count de variantes (PostgREST embed `producto_variantes(count)`).
+  producto_variantes?: { count: number }[]
+}
+
+export interface ProductoVariante {
+  id: string
+  producto_id: string
+  sku: string | null
+  codigo: string | null
+  talle: string | null
+  color: string | null
+  atributos: Record<string, unknown>
+  orden: number
+  is_active: boolean
+  created_at: string
+}
+
+export interface ProductoAsset {
+  id: string
+  producto_id: string
+  tipo: 'foto' | 'ficha_tecnica'
+  bucket: string
+  path_storage: string
+  url_origen: string | null
+  filename: string | null
+  mime_type: string | null
+  tamano_bytes: number | null
+  orden: number
+  is_principal: boolean
+  created_at: string
 }
 
 export interface EppPorPuesto {
@@ -1827,3 +1862,52 @@ export interface ProrrataResult {
 export type ActionResult<T = null> =
   | { success: true; data: T }
   | { success: false; error: string; data?: unknown }
+
+// ---- Catálogo de documentos (Fase 1 Legajo Técnico) ----
+
+export type NivelDocumento =
+  | 'empresa'
+  | 'empresa_establecimiento'
+  | 'establecimiento'
+  | 'persona'
+  | 'persona_empresa'
+  | 'persona_establecimiento'
+
+export type VigenciaTipo = 'unica_vez' | 'periodica'
+
+export type Jurisdiccion = 'nacional' | 'provincial' | 'municipal'
+
+export type PeriodicidadDocumento =
+  | 'mensual' | 'semanal' | 'semestral' | 'anual' | 'cada_6_anios'
+  | 'no_vence' | 'vto_aviso_obra' | 'vto_inicio_obra' | 'por_gestion' | 'fecha_vto'
+
+/** Fila del catálogo establecimientos_tipos (id + codigo + nombre) */
+export interface TipoEstablecimientoItem {
+  id: string
+  codigo: string
+  nombre: string
+}
+
+/** Fila del catálogo global documentos_tipos con las columnas de Fase 1 */
+export interface DocumentoTipoConfig {
+  id: string
+  nombre: string
+  descripcion: string | null
+  aplica_empresa: boolean
+  aplica_establecimiento: boolean
+  aplica_empleado: boolean
+  pais_id: string | null
+  categoria_legajo: string | null
+  periodicidad: PeriodicidadDocumento | null
+  is_active: boolean
+  // Columnas nuevas — Fase 1
+  nivel: NivelDocumento | null
+  vigencia_tipo: VigenciaTipo | null
+  jurisdiccion: Jurisdiccion | null
+  jurisdiccion_provincia: string | null
+  jurisdiccion_municipio: string | null
+  requiere_alerta: boolean
+  dias_alerta: number
+  // IDs de tipos de establecimiento a los que aplica (vacío = todos)
+  tipos_establecimiento_ids: string[]
+}

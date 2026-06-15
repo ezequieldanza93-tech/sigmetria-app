@@ -1,0 +1,178 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import Image from 'next/image'
+import { FileText, ExternalLink } from 'lucide-react'
+import { Modal } from '@/components/ui/modal'
+import { createClient } from '@/lib/supabase/client'
+import { publicAssetUrl } from '@/lib/storage/asset-url'
+import { OrigenBadge } from '@/components/ui/origen-filter'
+import type { Producto, ProductoVariante, ProductoAsset } from '@/lib/types'
+
+/**
+ * Detalle de un producto EPP: galería de fotos, variantes (talle/color) y
+ * fichas técnicas. Carga assets + variantes on-demand al abrir (no inflar el
+ * listado de cientos de productos con joins pesados).
+ */
+export function ProductoDetalle({
+  producto,
+  open,
+  onClose,
+}: {
+  producto: Producto | null
+  open: boolean
+  onClose: () => void
+}) {
+  const [variantes, setVariantes] = useState<ProductoVariante[]>([])
+  const [assets, setAssets] = useState<ProductoAsset[]>([])
+  const [loading, setLoading] = useState(false)
+  const [fotoActiva, setFotoActiva] = useState(0)
+
+  useEffect(() => {
+    if (!open || !producto) return
+    setLoading(true)
+    setFotoActiva(0)
+    const sb = createClient()
+    Promise.all([
+      sb.from('producto_variantes').select('*').eq('producto_id', producto.id).eq('is_active', true).order('orden').order('talle'),
+      sb.from('producto_assets').select('*').eq('producto_id', producto.id).order('tipo').order('orden'),
+    ]).then(([v, a]) => {
+      setVariantes((v.data as unknown as ProductoVariante[]) ?? [])
+      setAssets((a.data as unknown as ProductoAsset[]) ?? [])
+      setLoading(false)
+    })
+  }, [open, producto])
+
+  if (!producto) return null
+
+  const fotos = assets.filter(a => a.tipo === 'foto')
+  const fichas = assets.filter(a => a.tipo === 'ficha_tecnica')
+  // Galería: assets de foto si hay; si no, el foto_url principal como fallback.
+  const fotoUrls = (fotos.length > 0
+    ? fotos.map(a => publicAssetUrl(a.bucket, a.path_storage))
+    : [publicAssetUrl('productos-epp', producto.foto_url)]
+  ).filter((u): u is string => !!u)
+
+  const talles = [...new Set(variantes.map(v => v.talle).filter((t): t is string => !!t))]
+  const colores = [...new Set(variantes.map(v => v.color).filter((c): c is string => !!c))]
+
+  return (
+    <Modal open={open} onClose={onClose} title={producto.nombre}>
+      <div className="space-y-4">
+        {/* Galería de fotos */}
+        {fotoUrls.length > 0 && (
+          <div>
+            <div className="relative h-64 bg-surface-sunken rounded-lg overflow-hidden border border-border-subtle">
+              <Image
+                src={fotoUrls[fotoActiva] ?? fotoUrls[0]}
+                alt={producto.nombre}
+                fill
+                sizes="500px"
+                className="object-contain"
+              />
+            </div>
+            {fotoUrls.length > 1 && (
+              <div className="flex gap-2 mt-2 overflow-x-auto pb-1">
+                {fotoUrls.map((u, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setFotoActiva(i)}
+                    className={`relative h-14 w-14 shrink-0 rounded border-2 overflow-hidden transition-colors ${i === fotoActiva ? 'border-sig-500' : 'border-border-subtle hover:border-border-default'}`}
+                  >
+                    <Image src={u} alt="" fill sizes="56px" className="object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Badges: origen + categoría + proveedor */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <OrigenBadge consultoraId={producto.consultora_id} />
+          {producto.productos_categorias?.nombre && (
+            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-sig-50 text-sig-700">
+              {producto.productos_categorias.nombre}
+            </span>
+          )}
+          {producto.proveedor?.nombre && (
+            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">
+              {producto.proveedor.nombre}
+            </span>
+          )}
+        </div>
+
+        {/* Código + marca */}
+        {(producto.codigo || producto.marca?.nombre) && (
+          <div className="flex items-center gap-3 text-xs text-text-tertiary">
+            {producto.codigo && <span>Código: <span className="font-medium text-text-secondary">{producto.codigo}</span></span>}
+            {producto.marca?.nombre && <span>Marca: <span className="font-medium text-text-secondary">{producto.marca.nombre}</span></span>}
+          </div>
+        )}
+
+        {/* Descripción */}
+        {producto.descripcion && (
+          <p className="text-sm text-text-secondary leading-relaxed line-clamp-[8] whitespace-pre-line">
+            {producto.descripcion}
+          </p>
+        )}
+
+        {/* Variantes: talles */}
+        {talles.length > 0 && (
+          <div>
+            <p className="text-xs font-medium text-text-secondary mb-1.5">Talles disponibles ({talles.length})</p>
+            <div className="flex gap-1.5 flex-wrap">
+              {talles.map(t => (
+                <span key={t} className="px-2.5 py-1 rounded-md border border-border-default text-sm text-text-primary bg-surface-base">
+                  {t}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Variantes: colores */}
+        {colores.length > 0 && (
+          <div>
+            <p className="text-xs font-medium text-text-secondary mb-1.5">Colores ({colores.length})</p>
+            <div className="flex gap-1.5 flex-wrap">
+              {colores.map(c => (
+                <span key={c} className="px-2.5 py-1 rounded-md border border-border-default text-sm text-text-primary bg-surface-base">
+                  {c}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Fichas técnicas */}
+        {fichas.length > 0 && (
+          <div>
+            <p className="text-xs font-medium text-text-secondary mb-1.5">Fichas técnicas</p>
+            <div className="space-y-1">
+              {fichas.map(f => {
+                const url = publicAssetUrl(f.bucket, f.path_storage)
+                return (
+                  <a
+                    key={f.id}
+                    href={url ?? '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-sm text-sig-600 hover:text-sig-700 hover:underline"
+                  >
+                    <FileText size={14} aria-hidden="true" />
+                    {f.filename ?? 'Ficha técnica'}
+                    <ExternalLink size={12} aria-hidden="true" />
+                  </a>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {loading && <p className="text-sm text-text-tertiary">Cargando detalle…</p>}
+      </div>
+    </Modal>
+  )
+}

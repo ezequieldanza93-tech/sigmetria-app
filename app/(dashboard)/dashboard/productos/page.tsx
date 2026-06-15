@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useActionState, useRef } from 'react'
+import { useState, useEffect, useActionState, useRef, useMemo } from 'react'
 import Image from 'next/image'
 import { Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -11,6 +11,7 @@ import { createProducto, deleteProducto } from '@/lib/actions/producto'
 import { useEffectiveRoleContext } from '@/lib/contexts/effective-role-context'
 import { OrigenFilter, pasaOrigen, type OrigenFiltro } from '@/components/ui/origen-filter'
 import { ProductoCard } from '@/components/productos/producto-card'
+import { ProductoDetalle } from '@/components/productos/producto-detalle'
 import type { Producto, CategoriaProducto, Organizacion, ActionResult, Unidad } from '@/lib/types'
 
 // ─── Formulario de creación ────────────────────────────────────────────────────
@@ -195,6 +196,8 @@ export default function ProductosPage() {
   const [activeMarca, setActiveMarca] = useState<string>('todas')
   const [busqueda, setBusqueda] = useState<string>('')
   const [origen, setOrigen] = useState<OrigenFiltro>('todos')
+  const [activeProveedor, setActiveProveedor] = useState<string>('todos')
+  const [detalle, setDetalle] = useState<Producto | null>(null)
   const [showModal, setShowModal] = useState(false)
   const roleCtx = useEffectiveRoleContext()
   // isSuperAdmin: puede borrar genéricos desde la lista (existía antes).
@@ -206,7 +209,7 @@ export default function ProductosPage() {
     const supabase = createClient()
     supabase
       .from('productos')
-      .select('*, productos_categorias(nombre), organizaciones_externas(nombre), unidades(nombre, simbolo)')
+      .select('*, productos_categorias(nombre), marca:organizaciones_externas!productos_marca_id_fkey(nombre), proveedor:organizaciones_externas!productos_proveedor_id_fkey(nombre), unidades(nombre, simbolo), producto_variantes(count)')
       .eq('is_active', true)
       .range(0, 999)
       .order('nombre')
@@ -230,13 +233,21 @@ export default function ProductosPage() {
       .then(({ data }) => setUnidades((data ?? []) as unknown as Unidad[]))
   }, [])
 
-  // Filtrado client-side (~261 productos, perfecto para filtros sin round-trips)
+  // Proveedores presentes en el catálogo (derivados de los productos cargados).
+  const proveedores = useMemo(() => {
+    const map = new Map<string, string>()
+    productos?.forEach(p => { if (p.proveedor_id && p.proveedor?.nombre) map.set(p.proveedor_id, p.proveedor.nombre) })
+    return [...map.entries()].map(([id, nombre]) => ({ id, nombre })).sort((a, b) => a.nombre.localeCompare(b.nombre))
+  }, [productos])
+
+  // Filtrado client-side (cientos de productos, perfecto para filtros sin round-trips)
   const termino = busqueda.trim().toLowerCase()
   const filtered = productos === null
     ? null
     : productos.filter(p =>
         (activeCategoria === 'todos' || p.categoria_id === activeCategoria) &&
         (activeMarca === 'todas' || p.marca_id === activeMarca) &&
+        (activeProveedor === 'todos' || p.proveedor_id === activeProveedor) &&
         pasaOrigen(p.consultora_id, origen) &&
         (!termino || p.nombre.toLowerCase().includes(termino))
       )
@@ -306,8 +317,23 @@ export default function ProductosPage() {
         ))}
       </div>
 
-      {/* Filtro: marca + origen en la misma línea */}
+      {/* Filtro: proveedor + marca + origen en la misma línea */}
       <div className="flex items-center gap-4 mb-6 flex-wrap">
+        {proveedores.length > 0 && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-text-tertiary shrink-0">Proveedor:</span>
+            <select
+              value={activeProveedor}
+              onChange={e => setActiveProveedor(e.target.value)}
+              className="border border-border-default rounded-lg px-2 py-1 text-xs bg-surface-base focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
+            >
+              <option value="todos">Todos</option>
+              {proveedores.map(pv => (
+                <option key={pv.id} value={pv.id}>{pv.nombre}</option>
+              ))}
+            </select>
+          </div>
+        )}
         {marcas.length > 0 && (
           <div className="flex items-center gap-2">
             <span className="text-xs text-text-tertiary shrink-0">Marca:</span>
@@ -346,6 +372,7 @@ export default function ProductosPage() {
               producto={representante}
               canDelete={representante.consultora_id !== null || isStaff}
               onDelete={handleDelete}
+              onOpen={setDetalle}
               count={count}
               // Nota: en grupos con duplicados, handleDelete borra solo el representante (limitación conocida del modo agrupación visual).
             />
@@ -363,6 +390,9 @@ export default function ProductosPage() {
           isStaffDeveloper={isStaffDeveloper}
         />
       </Modal>
+
+      {/* Modal detalle: galería + variantes (talle/color) + fichas técnicas */}
+      <ProductoDetalle producto={detalle} open={detalle !== null} onClose={() => setDetalle(null)} />
     </div>
   )
 }
