@@ -11,6 +11,7 @@ import { GestionLauncher } from '@/components/gestion-launcher'
 import { FloatingReportButtons } from '@/components/feedback/floating-report-buttons'
 import { BannerPastDueWrapper } from '@/components/billing/banner-past-due-wrapper'
 import { TrialCountdown } from '@/components/billing/trial-countdown'
+import { GeoConsentModal } from '@/components/legal/geo-consent-modal'
 import { PreviewProvider } from '@/lib/contexts/preview-context'
 import { EffectiveRoleProvider } from '@/lib/contexts/effective-role-context'
 import { getEffectiveRole } from '@/lib/auth/effective-role'
@@ -27,7 +28,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (!user) redirect('/login')
 
   const [{ data: profile }, effective] = await Promise.all([
-    supabase.from('profiles').select('full_name').eq('id', user.id).single(),
+    supabase.from('profiles').select('full_name, accepted_geo_consent_at').eq('id', user.id).single(),
     getEffectiveRole(),
   ])
 
@@ -51,6 +52,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
   } = effective
 
   const membership = membershipConsultoraId ? { consultora_id: membershipConsultoraId } : null
+
+  // Roles que completan gestiones y por lo tanto deben ver el aviso de geo-sello.
+  const ROLES_OPERATIVOS = new Set(['full_access_main', 'full_access_branch', 'colaborador'])
+  const mostrarGeoConsent =
+    !!membership &&
+    !!effectiveUserRole &&
+    ROLES_OPERATIVOS.has(effectiveUserRole) &&
+    !profile?.accepted_geo_consent_at
 
   // Checkear si la suscripción está en past_due para mostrar banner
   let isPastDue = false
@@ -122,6 +131,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       <GestionLauncher />
       <ChatWidget />
       <FloatingReportButtons />
+      {mostrarGeoConsent && <GeoConsentModal />}
     </SidebarWrapper>
     <FloatingAvatar
       fullName={profile?.full_name ?? user.email ?? 'Usuario'}

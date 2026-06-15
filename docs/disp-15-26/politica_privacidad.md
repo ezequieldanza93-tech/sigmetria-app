@@ -86,16 +86,51 @@ Aplicamos medidas de seguridad reales (las que la plataforma tiene implementadas
 - **Copias de respaldo** cifradas y prueba de recuperación realizada.
 - **Registro de auditoría inmutable** de las operaciones.
 
-## 8. No usamos datos biométricos
+## 8. Registro de geolocalización al completar gestiones
+
+<!-- REVISAR CON ABOGADO antes de publicar: base de licitud, proporcionalidad, art. 5 Ley 25.326. -->
+
+Cuando un usuario completa una **gestión** (checklist, protocolo, reporte) desde la plataforma,
+Sigmetría captura y almacena la **ubicación del dispositivo** en ese momento. Los datos registrados
+son: latitud, longitud, precisión estimada (en metros) y timestamp de captura.
+
+**Finalidad:** verificar dónde se realizó cada tarea, a efectos de control de cumplimiento de la
+consultora y de auditoría de la SRT u organismo de control competente. Constituye un mecanismo
+anti-fraude que garantiza la integridad del registro de gestión.
+
+**Quiénes acceden a este dato:**
+- El administrador principal y los responsables de estándares de la consultora (en el panel de
+  auditoría de gestiones).
+- El personal autorizado de Sigmetría ante requerimiento de auditoría interna.
+- Los organismos de control (SRT u otros) ante requerimiento formal al responsable del tratamiento.
+
+**Qué sucede si no se obtiene la ubicación:** si el usuario niega el permiso de geolocalización
+o el GPS del dispositivo falla, la gestión igual se puede completar. Queda registrado que no se
+obtuvo la ubicación (`sin_permiso`, `no_soportado` o `error` según el caso). No se bloquea el
+trabajo.
+
+**No es seguimiento continuo:** la geolocalización solo se captura en el momento puntual de
+completar una gestión, no de forma permanente ni en segundo plano.
+
+**Base de licitud:** interés legítimo del empleador / responsable de la prestación del servicio
+de HyS en verificar el lugar de ejecución de las tareas obligatorias; y cumplimiento de
+obligaciones legales ante la SRT. `[REVISAR CON ABOGADO: confirmar base de licitud aplicable
+y si corresponde consentimiento expreso adicional — Ley 25.326, arts. 5 y 6]`.
+
+**Aviso al usuario:** los usuarios con roles operativos (quienes completan gestiones) ven un
+aviso informativo obligatorio la primera vez que acceden al dashboard, y su aceptación queda
+registrada con timestamp y versión del texto.
+
+## 9. No usamos datos biométricos
 
 Sigmetría **no trata datos biométricos** (huella, rostro, etc.). La autenticación es por
 contraseña y código de verificación al email.
 
-## 9. Menores de edad
+## 10. Menores de edad
 
 La plataforma es de uso profesional (B2B). No está dirigida a menores ni trata sus datos.
 
-## 10. Cambios en esta política
+## 11. Cambios en esta política
 
 Podemos actualizar esta política. Publicaremos la versión vigente con su fecha. Versión actual:
 borrador v1 · `[FECHA — PLACEHOLDER]`.

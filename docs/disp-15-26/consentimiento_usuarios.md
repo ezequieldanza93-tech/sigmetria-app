@@ -23,4 +23,36 @@ Al crear tu cuenta en **Sigmetría HyS**, declarás que leíste y aceptás la
 
 ☐ Leí y acepto la Política de Privacidad y los Términos de Uso.
 
+---
+
+## Aviso de registro de geolocalización al completar gestiones
+
+<!-- REVISAR CON ABOGADO: este aviso se muestra como modal obligatorio (no se puede cerrar sin
+     aceptar) la primera vez que un usuario con rol operativo accede al dashboard. Se registra
+     quién aceptó y cuándo (profiles.accepted_geo_consent_at + geo_consent_version = 'v1').
+     Verificar si corresponde tratarlo como consentimiento separado o como parte del consentimiento
+     general de uso — Ley 25.326, art. 5. -->
+
+Texto del aviso mostrado en pantalla (versión `v1`):
+
+> Cuando completás una gestión (checklists, protocolos, reportes), Sigmetría registra la
+> ubicación de tu dispositivo en ese momento. Sirve para verificar dónde se realizó cada tarea
+> (control de tu consultora y, si corresponde, de la SRT).
+>
+> - No bloquea tu trabajo: si negás el permiso de ubicación o el GPS falla, igual podés
+>   completar la gestión (queda registrado que no se obtuvo la ubicación).
+> - Solo se registra al completar gestiones, no de forma continua.
+
+**Quiénes ven este aviso:** usuarios con roles `full_access_main`, `full_access_branch` y
+`colaborador` (roles que completan gestiones). Los usuarios viewer no lo ven.
+
+**Cuándo se muestra:** una única vez, al ingresar al dashboard, cuando
+`profiles.accepted_geo_consent_at` es `NULL`. Al hacer clic en "Entendido y continuar" se
+registra el timestamp y la versión del texto (`geo_consent_version = 'v1'`) en la tabla
+`profiles`. El modal no puede cerrarse sin aceptar (no tiene X ni cierra al hacer clic fuera).
+
+**Actualización del aviso:** si el texto o las condiciones cambian, se crea una nueva versión
+(ej: `v2`) y se puede re-solicitar el aviso a todos los usuarios que aceptaron versiones
+anteriores.
+
 > Fecha de versión: `[FECHA — PLACEHOLDER]`.
