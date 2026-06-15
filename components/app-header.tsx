@@ -242,9 +242,9 @@ export function AppHeader({
         )}
 
         {/* Center: user name + role — centrado absoluto respecto a toda la fila */}
-        <div className="absolute left-1/2 -translate-x-1/2 hidden sm:block text-center pointer-events-none select-none">
+        <div className="absolute left-1/2 -translate-x-1/2 hidden md:block text-center pointer-events-none select-none">
           <p
-            className="text-sm font-semibold text-text-primary whitespace-nowrap"
+            className="text-sm font-semibold text-text-primary truncate max-w-[200px]"
             style={{ fontFamily: 'Montserrat, system-ui' }}
           >
             {fullName}
@@ -259,7 +259,7 @@ export function AppHeader({
         <div className="flex-1" />
 
         {/* Right: notifications + weather + network + install + consultora + dark mode + avatar */}
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-3 shrink-0 min-w-0">
 
           {/* Network status icon */}
           <span
