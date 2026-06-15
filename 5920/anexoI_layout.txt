@@ -1,0 +1,984 @@
+                                          ANEXO I
+         CUADRO DE CLASIFICACIÓN DE ESTABLECIMIENTOS
+
+1. USOS
+
+ADMINISTRACIÓN / OFICINAS
+
+INCLUYE: Edificio de escritorios y oficinas, bibliotecas, Asociación Gremial, Mutual, Edificios
+Públicos, de bien público, corporaciones, cámaras, colegios/consejos profesionales, empresa de
+servicios de seguridad; empresas de consultoría y/o asesoría profesional, establecimientos de las
+fuerzas de seguridad nacional o local sin espacios para detención de personas, organismos de
+respuesta a emergencias nacional o local, establecimientos pertenecientes a las FF.AA.
+
+GRUPO 1: Comprende los establecimientos cuya superficie cubierta no exceda los 500 m2.
+
+GRUPO 2: Comprende los establecimientos cuya superficie cubierta sea superior a 500 m2 y no
+supere los 1000 m2.
+
+GRUPO 3: Comprende los establecimientos cuya superficie cubierta sea superior a 1000 m2 o
+cuando posea uno o más subsuelos en los cuales se desarrolle actividad o sean destinados a
+cocheras, bauleras o depósito.
+Para este grupo, se requiere la evaluación mediante un programa informático de dinámica del
+humo y evolución del fuego del tipo FDS o similar, planteando diferentes hipótesis según el foco y
+de acuerdo a su probabilidad de ocurrencia, el que deberá poseer informe final y conclusiones
+respecto a la viabilidad del sistema de autoprotección en virtud de los resultados obtenidos en el
+mismo.
+
+En los edificios en los que coexistan diversas actividades bajo el régimen de propiedad horizontal,
+se deberá plantear el sistema de autoprotección como una única unidad funcional de manera
+integral.
+En el caso que una unidad funcional tenga su acceso/salida directamente a la vía pública y no
+tenga comunicación con el resto de las instalaciones del edificio, podrá tramitar Sistema de
+Autoprotección de manera individual.
+
+ACTIVIDADES RELIGIOSAS
+
+INCLUYE: Capillas ­ Iglesias ­ Templos ­ Mezquitas - Lugares de Culto.
+
+GRUPO1: Comprende los establecimientos cuya superficie cubierta no exceda los 500 m2.
+
+GRUPO2: Establecimientos cuya superficie cubierta supere los 500 m2 hasta 1500 m2.
+
+GRUPO3: Establecimientos cuya superficie cubierta sea superior a 1500 m2, o que cuente con uno
+o más subsuelos en los cuales se desarrolle la actividad.
+Para este grupo, se requiere la evaluación mediante un programa informático de dinámica del
+humo y evolución del fuego del tipo FDS o similar, planteando diferentes hipótesis según el foco y
+de acuerdo a su probabilidad de ocurrencia, el que deberá poseer informe final y conclusiones
+respecto a la viabilidad del sistema de autoprotección en virtud de los resultados obtenidos en el
+mismo.
+
+ACTIVIDADES CULTURALES
+
+INCLUYE: Museos - Exposiciones permanentes ­ Centro CultuIFr-a2l025-05133538-GCABA-DGDCIV
+
+         Página 1 de 18
+GRUPO1: Comprende los establecimientos cuya superficie cubierta no exceda los 500 m2.
+
+GRUPO2: Establecimientos cuya superficie cubierta sea mayor a los 500m2 cubiertos y no supere
+los 1500 m2.
+
+GRUPO3: Establecimientos cuya superficie cubierta sea superior a 1500 m2, o que cuente con uno
+o más subsuelos en los cuales se desarrolle la actividad.
+
+ACTIVIDADES ESPECIALES
+
+INCLUYE: Establecimientos para investigación científica y técnica; Producción de radioisótopos
+para empleo en medicina, industria, agricultura, ganadería y biología y la investigación básica y
+aplicada; Gestión, procesamiento y disposición final de residuos radiactivos; Laboratorios
+industriales.
+
+GRUPO1: No contemplado para el presente uso.
+
+GRUPO2: Establecimientos de planta baja y hasta un máximo de un (1) piso elevado o cuya
+superficie cubierta no supere los 600 m2 o posea un subsuelo en donde no se desarrolle actividad
+principal o secundaria que sustente a la anterior. Cuando cuenten con líquidos inflamables hasta un
+máximo de 200 litros.
+
+GRUPO3: Establecimientos de planta baja, dos (2) pisos o más, o cuando su superficie cubierta
+sea superior a 600 m2, o cuando la actividad se desarrolle en subsuelos. Cuando cuenten con más
+de 200 litros de líquidos inflamables almacenados o como parte de la actividad. Cuando utilicen
+sustancias que impliquen riesgo químico, biológico, radiactivo, corrosivo u oxidante.
+Se requiere la formación de Brigada de Emergencias a los fines de controlar los posibles siniestros
+con los medios técnicos disponibles y según los riesgos presentes en función de las actividades y
+sustancias involucradas.
+
+BANCOS
+
+INCLUYE:
+Entidades Bancarias; Casas de cambio, Bolsa de Valores y de Comercio, Financieras.
+
+GRUPO1: Establecimientos de planta baja y cuya superficie cubierta total no exceda los 300 m2
+cubiertos. Podrán poseer un subsuelo y/o un entrepiso en las siguientes condiciones:
+
+a. SUSBSUELO, cuya superficie cubierta sea de hasta 50 m2 (incluidos dentro de los 300m2), y se
+encuentren destinados a:
+1) Depósito de elementos o mobiliario en desuso, en donde NO se desarrolle ninguna tarea
+principal ni secundaria que sostenga a la actividad principal, ni exista la circulación de personas
+ajenas al establecimiento.
+2) Ubicación de Servicios Sanitarios.
+3) Ubicación del Vestuario del Personal.
+4) Espacio libre de uso.
+No se podrán incluir los subsuelos en los cuales se almacenen sustancias peligrosas y/o
+inflamables, acorde a lo establecido en el presente Anexo del Cuadro de Clasificación de
+Establecimientos.
+Lo antes determinado, será aplicable para aquellas actividades con una carga de fuego
+determinada para: R3 hasta 15kg/m2; R4 y R5 hasta una carga de fuego determinada de 30 kg/m2.
+
+b. ENTREPISO, cuya superficie cubierta sea de hasta 50 m2 (incluidos dentro de los 300m2) que
+
+se encuentren destinados a:                   IF-2025-05133538-GCABA-DGDCIV
+
+                                              Página 2 de 18
+1) Depósito de elementos o mobiliario en desuso, en donde NO se desarrolle ninguna tarea
+principal ni secundaria que sostenga a la actividad principal, ni exista la circulación de personas
+ajenas al establecimiento.
+2) Ubicación de Servicios Sanitarios.
+3) Espacio libre de uso.
+
+Aplicables para aquellas actividades con una carga de fuego determinada para: R3 hasta 15kg/m2;
+R4 y R5 hasta una carga de fuego determinada de 30 kg/m2.
+
+GRUPO2: Establecimientos de planta baja y hasta un máximo de tres (3) pisos elevados, cuya
+superficie cubierta no supere los 1500 m2, o cuando la actividad se desarrolle en un subsuelo.
+
+GRUPO3: Establecimientos de planta baja y cuatro (4) pisos o más o cuando su superficie cubierta
+sea superior a 1500 m2, o se desarrolle en dos (2) o más subsuelos.
+
+Se requiere la evaluación mediante un programa informático de dinámica del humo y evolución del
+fuego del tipo FDS o similar, planteando diferentes hipótesis según el foco y de acuerdo a su
+probabilidad de ocurrencia, el que deberá poseer informe final y conclusiones respecto a la
+viabilidad del sistema de autoprotección en virtud de los resultados obtenidos en el mismo.
+
+BARES ­ RESTAURANTES ­ CANTINAS
+
+INCLUYE: Locales habilitados bajo los rubros: Café, Bar, Restaurante, Cantina, Casa de Lunch,
+Despacho de Bebidas, Whiskería, Cervecería y afines.
+
+GRUPO1: Comprende los establecimientos cuya superficie cubierta no exceda los 500 m2.
+
+GRUPO2: Establecimientos cuya superficie cubierta sea superior a 500 m2 hasta 1000 m2.
+
+GRUPO3: Establecimientos cuya superficie cubierta sea superior a 1000 m2, o cuando la actividad
+se desarrolle en subsuelos.
+
+CASAS DE FIESTAS PRIVADAS
+
+INCLUYE: Establecimiento de diversión destinado a su alquiler por personas, instituciones u
+organizaciones para la celebración de eventos familiares, sociales, culturales o corporativos, etc.
+
+GRUPO 1: Establecimientos de planta baja, cuya superficie cubierta no supere los 300 m2.
+
+GRUPO 2: Establecimientos de planta baja y hasta un máximo de dos (2) pisos o con una
+superficie cubierta de hasta 1000 m2.
+
+GRUPO 3: Establecimientos de planta baja y cuatro (4) pisos o más, o cuando su superficie
+cubierta sea superior a 1000 m2 o posea subsuelo en el cual se desarrolle la actividad.
+
+Se requiere la evaluación mediante un programa informático de dinámica del humo y evolución del
+fuego del tipo FDS o similar, planteando diferentes hipótesis según el foco y de acuerdo a su
+probabilidad de ocurrencia, el que deberá poseer informe final y conclusiones respecto a la
+viabilidad del sistema de autoprotección en virtud de los resultados obtenidos en el mismo.
+
+CASAS DE FIESTAS PRIVADAS INFANTILES
+                                                                                           IF-2025-05133538-GCABA-DGDCIV
+
+INCLUYE: Peloteros, casas de fiestas infantiles, salas/salones de eventos, etc.
+
+                                                                                           Página 3 de 18
+GRUPO1: No contemplado para el presente uso.
+
+GRUPO2: Establecimientos de planta baja y hasta un máximo de dos (2) pisos elevados o
+superficie cubierta de hasta 700 m2.
+
+GRUPO3: Establecimientos de planta baja y tres (3) pisos o más, o cuando su superficie cubierta
+sea superior a 700 m2 o que la actividad se desarrolle en subsuelos.
+
+Se requiere la evaluación mediante un programa informático de dinámica del humo y evolución del
+fuego del tipo FDS o similar, planteando diferentes hipótesis según el foco y de acuerdo a su
+probabilidad, el que deberá poseer informe final y conclusiones respecto a la viabilidad del sistema
+de autoprotección en virtud de los resultados obtenidos en el mismo.
+
+CENTROS Y SALONES DE EXPOSICIONES
+
+INCLUYE: Sitios de asambleas, auditorios, centro de eventos, salón de exposiciones, etc.
+
+GRUPO1: No contemplado para el presente uso.
+
+GRUPO2: Establecimientos de planta baja y hasta un máximo de un (1) piso elevado y cuya
+superficie cubierta no supere los 1000m2.
+
+GRUPO3: Establecimientos de más de 1000 m2 de superficie cubierta o que cuente con dos (2) o
+más pisos elevados o que la actividad desarrolle en subsuelos de manera parcial o total.
+
+Se requiere:
+
+a. Cálculo de medios de salida mediante programa informático de simulación gráfica de movimiento
+de personas y multitudes (Ej. Pathfinder, Exodus, Legionevac, etc.), el que deberá poseer informe
+final y conclusiones respecto a la viabilidad del sistema de autoprotección en virtud de los
+resultados obtenidos en el mismo.
+b. Evaluación mediante un programa informático de dinámica del humo y evolución del fuego del
+tipo FDS o similar, planteando diferentes hipótesis según el foco y de acuerdo a su probabilidad, el
+que deberá poseer informe final y conclusiones respecto a la viabilidad del sistema de
+autoprotección en virtud de los resultados obtenidos en el mismo.
+
+CIRCO RODANTE
+
+GRUPO 1: No admitido para el presente uso.
+
+GRUPO 2: No admitido para el presente uso.
+
+GRUPO 3: Serán consideras así todo los casos del presente uso.
+
+Se requiere cálculo de medios de salida mediante programa informático de simulación gráfica de
+movimiento de personas y multitudes (Ej. Pathfinder, Exodus, Legionevac, etc.), el que deberá
+poseer informe final y conclusiones respecto a la viabilidad del sistema de autoprotección en virtud
+de los resultados obtenidos en el mismo.
+
+CLUB DEPORTIVO AL AIRE LIBRE
+                                                                                           IF-2025-05133538-GCABA-DGDCIV
+
+GRUPO 1: Establecimientos que cuenten con superficie cubierta que no supere los 500 m2.
+
+                                                                                           Página 4 de 18
+GRUPO 2: Establecimientos que cuenten con superficie cubierta comprendida entre los 500 y 1000
+m2.
+
+GRUPO 3: Establecimientos que cuenten con superficie cubierta que supere los 1000 m2.
+
+CLUBES Y LOCALES PARA PRÁCTICA DE DEPORTES
+
+INCLUYE: Cancha de Tenis; Cancha de Paddle; Cancha de Frontón c/raqueta; Cancha de Mini
+futbol o Futbol; Voleibol, Hándbol, Natatorio; Juego de Bolos; Pista de Patinaje; Pista para rodados
+infantiles; Juegos mecánicos Infantiles; Tiro; Polígono de Tiro; Cancha de Golf, deportes náuticos.
+
+GRUPO 1: Establecimientos cuya superficie cubierta no supere los 500 m2.
+
+GRUPO 2: Establecimientos cuya superficie cubierta sea superior a 500 m2 y hasta 1500 m2.
+
+GRUPO 3: Establecimientos cuya superficie cubierta sea superior a 1500 m2.
+
+CLUB SOCIAL, CULTURAL Y DEPORTIVO CUBIERTO
+
+GRUPO 1: Establecimientos cuya superficie cubierta no supere los 500 m2.
+
+GRUPO 2: Establecimientos cuya superficie cubierta sea superior a 500 m2 y hasta 1000 m2.
+
+GRUPO 3: Establecimientos cuya superficie cubierta sea superior a 1000 m2.
+
+COMERCIO - LOCALES COMERCIALES
+
+INCLUYE: Comercio minorista; comercio mayorista; supermercados; hipermercados; kioscos;
+negocios de venta de mercadería al público; gimnasios; agencia de loterías; empresas fúnebres;
+casa de velatorios; remis; oficina de correo; vivero; venta de productos alimenticios; rotiserías sin
+consumo en el local; óptica y fotografía; Lavadero de artículos varios; Venta y reparación de
+celulares; etc.
+
+GRUPO 1: Establecimientos cuya superficie cubierta no supere los 500 m2, que no expendan o
+trafiquen sustancias químicas o biológicas peligrosas como por ejemplo: explosivos, pirotécnica,
+inflamables, tóxicas, corrosivas u oxidantes.
+
+GRUPO 2: Establecimientos cuya superficie cubierta sea superior a 500 m2 y hasta 1000 m2 o
+cuando expendan o utilicen sustancias inflamables hasta 200 litros y que no utilicen sustancias
+peligrosas que impliquen riesgos químicos, biológicos o radiológicos, de explosión como por
+ejemplo: sustancias explosivas (pirotecnia); riesgo de incendio por fuga térmica (baterías de litio
+ion) en cantidades de entre 20 y 50 kg.; tóxicas, corrosivas u oxidantes y que no posean estaciones
+de carga para vehículos eléctricos.
+
+GRUPO 3: Establecimientos cuya superficie cubierta sea superior a 1000 m2, o cuando la actividad
+se desarrolle en subsuelos o cuando empleen, expendan, utilicen como parte de procesos, más de
+200 litros de sustancias líquidas inflamables o materiales peligrosos que impliquen riesgos
+químicos, biológicos o radiológicos, de explosión como por ejemplo: sustancias explosivas
+(pirotecnia); riesgo de incendio por fuga térmica (baterías de litio ion) en una cantidad mayor a los
+50 kg.; tóxicas, corrosivas u oxidantes. Cuando posean eIsFt-a20c2io5n-0e5s13d35e38c-GarCgAaBApa-DraGDvCeIhVículos
+eléctricos.
+
+                                                                                           Página 5 de 18
+Se requiere la evaluación mediante un programa informático de dinámica del humo y evolución del
+fuego del tipo FDS o similar, planteando diferentes hipótesis según el foco y de acuerdo a su
+probabilidad, el que deberá poseer informe final y conclusiones respecto a la viabilidad del sistema
+de autoprotección en virtud de los resultados obtenidos en el mismo.
+
+Nota: NO ADMITEN REVÁLIDA DE SAP los locales comerciales en los cuales se acopien y/o
+expendan sustancias químicas, bilógicas, radiactivas, explosivas (Ley 20.429, Dcto. 3302/83),
+inflamables, tóxicas, corrosivas u oxidantes y otras que generen riesgo de incendio por fuga
+térmica (baterías de litio ion).
+
+DEPÓSITO
+
+GRUPO 1: No contemplado para el presente uso.
+
+GRUPO 2: Establecimientos de planta baja y hasta un máximo de un (1) piso elevado o cuya
+superficie cubierta no supere los 1000 m2. Cuando cuenten con líquidos inflamables hasta un
+máximo de 200 litros y no se almacenen sustancias peligrosas que impliquen riesgos químicos,
+biológicos o radiológicos y de explosión.
+
+GRUPO 3: Establecimientos de planta baja y dos (2) pisos o más, o cuando su superficie cubierta
+sea superior a 1000 m2. Cuando cuenten con más de 200 litros de líquidos inflamables
+almacenados o como parte de la actividad y/o se almacenen sustancias peligrosas que impliquen
+riesgos químicos, biológicos o radiológicos y de explosión, como por ejemplo: sustancias
+explosivas (pirotecnia) o por sobrecalentamiento (baterías de iones de litio).
+
+Nota: Si se almacenan maquinarias, sustancias peligrosas, inflamables o altamente combustibles,
+alimentos y medicamentos, NO ADMITE REVÁLIDA DEL SAP.
+
+ESCUELAS E INSTITUCIONES EDUCATIVAS
+
+INCLUYE: Escuelas, salas de aprendizaje, centros e institutos de capacitación, universidades.
+Escuela primaria, secundaria, terciaria, universitaria y superior; institutos técnicos; escuela de
+educación especial. Escuela colegio con internado.
+
+GRUPO 1: No contemplado para el presente uso.
+
+GRUPO 2: Establecimientos de planta baja y hasta un máximo de tres (3) pisos elevados, cuya
+superficie cubierta no supere los 1500 m2 o que se desarrolle en un subsuelo.
+
+GRUPO 3: Establecimientos de cuatro (4) pisos o más, o cuando su superficie cubierta sea
+superior a 1500 m2 o que cuente con dos o más subsuelos.
+
+Se requiere:
+
+a. Cálculo de medios de salida mediante programa informático de simulación gráfica de movimiento
+de personas y multitudes (Ej. Pathfinder, Exodus, Legionevac, etc.), el que deberá poseer informe
+final y conclusiones respecto a la viabilidad del sistema de autoprotección en virtud de los
+resultados obtenidos en el mismo.
+
+b. En salones de actos, auditorio, bibliotecas y otros sectores donde por su carga de fuego o
+cantidad de ocupantes pongan en riesgo la seguridad humIFa-n20a25y-/0o51e3s3t5r3u8c-GtuCrAaBeAd-iDliGciDaCaIVnte un
+posible incendio, se requiere la evaluación mediante un programa informático de dinámica del
+
+                                                                                           Página 6 de 18
+humo y evolución del fuego del tipo FDS o similar, planteando diferentes hipótesis según el foco y
+de acuerdo a su probabilidad de ocurrencia, el que deberá poseer informe final y conclusiones
+respecto a la viabilidad del sistema de autoprotección en virtud de los resultados obtenidos en el
+mismo.
+
+Nota: NO ADMITE REVÁLIDA DEL SAP.
+
+ESPECTÁCULOS Y DIVERSIONES
+
+CINE, TEATROS, CINE-TEATRO
+
+INCLUYE: Cines, teatros, salas teatrales barriales.
+
+GRUPO 1: No contemplado para el presente uso.
+
+GRUPO 2: Establecimientos de planta baja y hasta un máximo de un (1) piso elevado, cuya
+superficie cubierta no supere los 600 m2, siempre que no cuenten con desarrollo de la actividad en
+subsuelos.
+
+GRUPO 3: Establecimientos que cuenten con dos (2) o más pisos elevados, cuya superficie
+cubierta supere los 600 m2.
+Serán incluidos en el presente Grupo, cuando cuenten con subsuelos en los que se desarrolle la
+actividad o bien que tengan funcionalidad relacionada al uso.
+
+Se requiere:
+a. Cálculo de medios de salida mediante programa informático de simulación gráfica de movimiento
+de personas y multitudes (Ej. Pathfinder, Exodus, Legionevac, etc.), el que deberá poseer informe
+final y conclusiones respecto a la viabilidad del sistema de autoprotección en virtud de los
+resultados obtenidos en el mismo.
+
+b. Evaluación mediante un programa informático de dinámica del humo y evolución del fuego del
+tipo FDS o similar, planteando diferentes hipótesis según el foco y de acuerdo a su probabilidad de
+ocurrencia, el que deberá poseer informe final y conclusiones respecto a la viabilidad del sistema
+de autoprotección en virtud de los resultados obtenidos en el mismo.
+
+Nota: NO ADMITE REVÁLIDA DEL SAP.
+
+ESTACIÓN DE SERVICIO
+
+GRUPO 1: No contemplado para el presente uso.
+
+GRUPO 2: Establecimientos de planta baja o cuando su superficie cubierta no supere los 500 m2.
+
+GRUPO 3: Establecimientos que cuenten con pisos elevados o cuando su superficie cubierta sea
+superior a 500 m2. Cuando posean estaciones de carga para vehículos eléctricos.
+
+Nota: NO ADMITE REVÁLIDA DEL SAP.
+
+ESTADIOS
+
+INCLUYE: Estadios de Fútbol según Ley 5847/17 (Régimen integral para eventos futbolísticos de la
+
+Ciudad Autónoma de Buenos Aires).
+
+                                                     IF-2025-05133538-GCABA-DGDCIV
+
+GRUPO 1: No contemplado para el presente uso.
+
+                                                     Página 7 de 18
+GRUPO 2: No contemplado para el presente uso.
+
+GRUPO3: Todos los casos serán considerados en el presente grupo.
+
+Se requiere cálculo de medios de salida mediante programa informático de simulación gráfica de
+movimiento de personas y multitudes (Ej. Pathfinder, Exodus, Legionevac, etc.), por la capacidad
+máxima de asistentes habilitado, el que deberá poseer informe final y conclusiones respecto a la
+viabilidad del sistema de autoprotección en virtud de los resultados obtenidos en el mismo.
+
+Nota: NO ADMITE REVÁLIDA DEL SAP.
+
+EVENTOS NO MASIVOS
+
+Se encuentran dentro de esta categoría, aquellos eventos (espectáculos públicos o de diversión
+pública) cuya concentración sea desde las 150 las 999 personas, según indica el artículo 18 de la
+Resolución 02/AGC/2017 o la normativa que la reemplace en el futuro (Ver Anexo IV).
+
+GRUPO 1: No contemplado para el presente uso.
+
+GRUPO 2: Establecimientos de planta baja y hasta un máximo de un piso con una superficie
+cubierta de hasta 500 m2. Espacios abiertos en donde el lugar destinado al público, a los artistas,
+técnicos, auxiliares, etc., tengan un perímetro definido con barreras físicas y control de acceso
+hasta 1000 m2.
+
+GRUPO 3: Establecimientos de planta baja y dos (2) pisos o más, o con una superficie cubierta de
+de más de 500m2, o cuando el evento se desarrolle en uno o más subsuelos. Espacios abiertos en
+donde el lugar destinado al público, a los artistas, técnicos, auxiliares, etc., tengan un perímetro
+definido con barreras físicas y control de acceso de más de 1000 m2.
+
+Se requiere:
+a. Cálculo de medios de salida mediante programa informático de simulación gráfica de movimiento
+de personas y multitudes (Ej. Pathfinder, Exodus, Legionevac, etc.), el que deberá poseer informe
+final y conclusiones respecto a la viabilidad del sistema de autoprotección en virtud de los
+resultados obtenidos en el mismo.
+
+Nota: NO ADMITE REVÁLIDA DEL SAP.
+
+GALERÍA COMERCIAL / SHOPPING
+
+INCLUYE: Galerías comerciales, mercados, ferias, exposiciones, shopping, paseo de compras, etc.
+
+GRUPO 1: No contemplado para el presente uso.
+
+GRUPO 2: Establecimientos de planta baja y hasta un máximo de un (1) piso elevado, cuya
+superficie cubierta no supere los 1000 m2. Cuando existan locales con riesgo de incendio por fuga
+térmica proveniente de baterías de litio ion en una cantidad de hasta 50 kg. y no posean
+estacionamiento cubierto con estaciones de carga para vehículos eléctricos.
+
+GRUPO 3: Establecimientos de dos (2) pisos o más, o cuando su superficie cubierta sea superior a
+1000 m2 o se desarrolle en subsuelos. Cuando existan locales con riesgo de incendio por fuga
+térmica proveniente de baterías de litio ion en una cantidad mayor a los 50 kg. y posean
+estacionamiento cubierto con estaciones de carga para vehícuIlFo-s20e2lé5-c0t5ri1c3o3s5.38-GCABA-DGDCIV
+
+                                                                                           Página 8 de 18
+Se requiere:
+a. Cálculo de medios de salida mediante programa informático de simulación gráfica de movimiento
+de personas y multitudes (Ej. Pathfinder, Exodus, Legionevac, etc.), el que deberá poseer informe
+final y conclusiones respecto a la viabilidad del sistema de autoprotección en virtud de los
+resultados obtenidos en el mismo.
+
+b. En subsuelos, cocheras, patios de comida, salas de cine y otros sectores donde por su carga de
+fuego o cantidad de ocupantes pongan en riesgo la seguridad humana ante un posible incendio, la
+evaluación mediante un programa informático de dinámica del humo y evolución del fuego del tipo
+FDS o similar, planteando diferentes hipótesis según el foco y de acuerdo a su probabilidad de
+ocurrencia, el que deberá poseer informe final y conclusiones respecto a la viabilidad del sistema
+de autoprotección en virtud de los resultados obtenidos en el mismo.
+
+Nota: NO ADMITE REVÁLIDA DEL SAP.
+
+GARAGES / ESTACIONAMIENTOS
+
+INCLUYE: Garage comercial, playa de estacionamiento. Garage para camiones, ómnibus,
+colectivos y moto vehículos. Playa de contenedores.
+
+GRUPO 1: Establecimientos cuya superficie cubierta no supere los 500 m2 y no posea estaciones
+de carga para vehículos eléctricos. Cuando la actividad se desarrolle al aire libre hasta una
+superficie de 1500 m2.
+
+GRUPO 2: Establecimientos cuya superficie cubierta sea superior a 500 m2 y hasta 1000 m2 y no
+posea estaciones de carga para vehículos eléctricos. Cuando la actividad se desarrolle al aire libre
+en una superficie de 1500 m2 y hasta 5.000 m2 o cuando se desarrolle en un subsuelo.
+
+GRUPO 3: Establecimientos cuya superficie cubierta sea superior a 1000 m2 o que cuente con dos
+o más subsuelos y cuente con estaciones de carga para vehículos eléctricos. Cuando la actividad
+se desarrolle al aire libre en una superficie mayor a los 5.000 m2.
+
+Para los establecimientos con dos o más subsuelos, se requiere la evaluación mediante un
+programa informático de dinámica del humo y evolución del fuego del tipo FDS o similar, de la
+totalidad del inmueble, planteando diferentes hipótesis según el foco y de acuerdo a su
+probabilidad de ocurrencia, el que deberá poseer informe final y conclusiones respecto a la
+viabilidad del sistema de autoprotección en virtud de los resultados obtenidos en el mismo.
+
+Nota: NO ADMITE REVÁLIDA DEL SAP cuando sea parte de un edificio.
+
+GERIÁTRICOS Y ASILOS
+
+INCLUYE: Residencia para personas mayores auto válidas con autonomía psicofísica; Hogar de
+día para personas mayores auto válidas con autonomía física.
+
+GRUPO 1: No contemplado para el presente uso.
+
+GRUPO 2: Establecimientos de planta baja y hasta un máximo de un (1) piso elevado o cuya
+superficie cubierta no supere los 600 m2.
+
+GRUPO 3: Establecimientos de planta baja y dos (2) pisos o ImF-á2s0,25o-0c5u1a33n5d3o8-sGuCAsuBpAe-rDfiGciDeCcIuVbierta
+sea superior a 600 m2 o cuando la actividad se desarrolle en subsuelos.
+
+                                                                                           Página 9 de 18
+Se requiere la evaluación mediante un programa informático de dinámica del humo y evolución del
+fuego del tipo FDS o similar, planteando diferentes hipótesis según el foco y de acuerdo a su
+probabilidad de ocurrencia, el que deberá poseer informe final y conclusiones respecto a la
+viabilidad del sistema de autoprotección en virtud de los resultados obtenidos en el mismo.
+
+Nota: NO ADMITE REVÁLIDA DEL SAP.
+
+HOGARES, RESIDENCIAS
+
+INCLUYE: Hogar de Residencia: Solo están autorizados a albergar hasta cuatro (4) personas
+mayores.
+
+GRUPO1: Establecimientos de una planta baja, cuya superficie cubierta no supere los 300 m2.
+
+GRUPO2: Establecimientos de planta baja y hasta un máximo de un (1) piso elevado o cuya
+superficie cubierta no supere los 600 m2.
+
+GRUPO3: Establecimientos de dos (2) pisos o más, o cuando su superficie cubierta sea superior
+los 600 m2.
+
+Nota: NO ADMITE REVÁLIDA DEL SAP.
+
+HOGAR DE NIÑOS
+
+INCLUYE: Hogar de niñas, niñas y adolescentes; Paradores para niñas, niños y adolescentes;
+Centro de día y noche. Convento.
+
+GRUPO 1: No contemplado para el presente uso.
+
+GRUPO 2: Establecimientos de planta baja y hasta un máximo de un (1) piso elevado o cuya
+superficie cubierta no supere los 600 m2.
+
+GRUPO 3: Establecimientos de planta baja y dos (2) pisos o más, o cuando su superficie cubierta
+sea superior a 600 m2 o cuando la actividad se desarrolle en subsuelos.
+
+En subsuelos, se requiere la evaluación mediante un programa informático de dinámica del humo y
+evolución del fuego del tipo FDS o similar, planteando diferentes hipótesis según el foco y de
+acuerdo a su probabilidad de ocurrencia, el que deberá poseer informe final y conclusiones
+respecto a la viabilidad del sistema de autoprotección en virtud de los resultados obtenidos en el
+mismo.
+
+Nota: NO ADMITE REVÁLIDA DEL SAP.
+
+HOTEL ­ ALOJAMIENTO ­ HOSPEDAJE
+
+INCLUYE:
+Hotel Familiar, albergues transitorios, hoteles (todas las categorías), Apart, RentApart Hotel (todas
+las categorías); Hostal, Hospedaje (todas las categorías); Casas de pensión, Hotel Residencial;
+Residencia de Estudiantes.
+
+GRUPO1: No contemplado para el presente uso.  IF-2025-05133538-GCABA-DGDCIV
+
+                                              Página 10 de 18
+GRUPO2: Establecimientos de planta baja y hasta un máximo de tres (3) pisos elevado o plantas
+sobre rasante, cuya superficie cubierta no supere los 1500 m2 o que la actividad se desarrolle en
+un subsuelo.
+
+GRUPO3: Establecimientos de planta baja y cuatro (4) pisos o más, o cuando su superficie cubierta
+sea superior a 1500 m2, o se desarrolle en dos (2) o más subsuelos.
+
+a. Se requiere la evaluación mediante un programa informático de dinámica del humo y evolución
+del fuego del tipo FDS o similar, planteando diferentes hipótesis según el foco y de acuerdo a su
+probabilidad de ocurrencia, el que deberá poseer informe final y conclusiones respecto a la
+viabilidad del sistema de autoprotección en virtud de los resultados obtenidos en el mismo.
+
+b. Se requiere el cálculo de medios de salida mediante programa informático de simulación gráfica
+de movimiento de personas y multitudes (Ej. Pathfinder, Exodus, Legionevac, etc.), el que deberá
+poseer informe final y conclusiones respecto a la viabilidad del sistema de autoprotección en virtud
+de los resultados obtenidos en el mismo.
+
+INDUSTRIA
+
+INCLUYE: Actividades de manufactura de materia prima como ser: fabricas, talleres
+(electromecánica; herrería; recarga de extintores portátiles, metalmecánica, etc.), frigoríficos,
+confección de textiles, imprentas, encuadernación, laboratorios con producción, ensamblado de
+partes, elaboración de productos alimenticios, etc.
+
+GRUPO 1: No contemplado para el presente uso.
+
+GRUPO 2: Establecimientos de planta baja y hasta un máximo de un (1) piso elevado o cuya
+superficie cubierta no supere los 1000 m2. Cuando cuenten con líquidos inflamables hasta un
+máximo de 200 litros y no se utilicen sustancias peligrosas que impliquen riesgos químicos,
+biológicos o radiológicos. Cuando exista riesgo de incendio por fuga térmica proveniente de
+baterías de litio ion en una cantidad entre los 20 y 50 kg.
+
+GRUPO 3: Establecimientos de planta baja y dos (2) pisos o más, o cuando su superficie cubierta
+sea superior a 1000 m2. Cuando cuenten con más de 200 litros de líquidos inflamables
+almacenados o como parte de la actividad y/o se almacenen o utilicen sustancias peligrosas que
+impliquen riesgos químicos, biológicos o radiológicos, de explosión como por ejemplo: sustancias
+explosivas (pirotecnia). Cuando existan procesos de soldadura. Cuando exista riesgo de incendio
+por fuga térmica proveniente de baterías de litio ion en una cantidad mayor a los 50 kg.
+
+Se requiere la formación de Brigada de lucha contra incendios/emergencias a los fines de controlar
+el siniestro con los medios técnicos disponibles. Sus integrantes, estarán capacitados por personal
+perteneciente a los cuerpos de bomberos correspondientes a las fuerzas de seguridad oficiales de
+Nación, C.A.B.A., Provincia de Buenos Aires o Cuerpos de Bomberos Voluntarios reconocidos por
+la Dirección General de Defensa Civil, según se indica en el Anexo IV.
+
+Nota: NO ADMITE REVÁLIDA DEL SAP.
+
+JARDÍN DE INFANTES ­ ESCUELA INFANTIL ­ JARDÍN MATERNAL
+
+GRUPO 1: No contemplado para el presente uso.
+
+GRUPO 2: Establecimientos de planta baja y hasta un máIFxi-m20o25d-0e51u33n53(81-)GCpiAsBoAe-DleGvDadCoIV, cuya
+superficie cubierta no supere los 1000 m2.
+
+                                                                                           Página 11 de 18
+GRUPO 3: Establecimientos de planta baja y dos (2) pisos o más, o cuando su superficie cubierta
+sea superior a 1000 m2 o que cuente con uno o más subsuelos.
+
+a. Se requiere el cálculo de medios de salida mediante programa informático de simulación gráfica
+de movimiento de personas y multitudes (Ej. Pathfinder, Exodus, Legionevac, etc.), el que deberá
+poseer informe final y conclusiones respecto a la viabilidad del sistema de autoprotección en virtud
+de los resultados obtenidos en el mismo.
+
+b. En salones de actos, auditorio, bibliotecas, subsuelos en donde se desarrolle la actividad y otros
+sectores donde por su carga de fuego o cantidad de ocupantes pongan en riesgo la seguridad
+humana y/o estructura edilicia ante un posible incendio, se requiere la evaluación mediante un
+programa informático de dinámica del humo y evolución del fuego del tipo FDS o similar,
+planteando diferentes hipótesis según el foco y de acuerdo a su probabilidad de ocurrencia, el que
+deberá poseer informe final y conclusiones respecto a la viabilidad del sistema de autoprotección
+en virtud de los resultados obtenidos en el mismo.
+
+Nota: NO ADMITE REVÁLIDA DEL SAP.
+
+LOCALES BAILABLES
+
+INCLUYE: Salas de conciertos; salas de baile; Casas de Baile A, B y C.
+
+GRUPO 1 y 2: No contemplado para el presente uso.
+
+GRUPO 3: En todos los casos. Se requiere:
+
+a. Cálculo de medios de salida mediante programa informático de simulación gráfica de movimiento
+de personas y multitudes (Ej. Pathfinder, Exodus, Legionevac, etc.), el que deberá poseer informe
+final y conclusiones respecto a la viabilidad del sistema de autoprotección en virtud de los
+resultados obtenidos en el mismo.
+
+b. Evaluación mediante un programa informático de dinámica del humo y evolución del fuego del
+tipo FDS o similar, planteando diferentes hipótesis según el foco y de acuerdo a su probabilidad de
+ocurrencia, el que deberá poseer informe final y conclusiones respecto a la viabilidad del sistema
+de autoprotección en virtud de los resultados obtenidos en el mismo.
+
+Nota: NO ADMITE REVÁLIDA DEL SAP.
+
+PENITENCIARIA Y LUGARES DE DETENCIÓN DE PERSONAS
+
+INCLUYE: Lugares de detención de personas de manera permanente o transitoria; Reformatorios.
+
+GRUPOS 1 Y 2: No contemplados para el presente uso.
+
+GRUPO3: En todos los casos. Se requiere:
+
+a. Cálculo de medios de salida mediante programa informático de simulación gráfica de movimiento
+de personas y multitudes (Ej. Pathfinder, Exodus, Legionevac, etc.), el que deberá poseer informe
+final y conclusiones respecto a la viabilidad del sistema de autoprotección en virtud de los
+resultados obtenidos en el mismo.
+
+                                                                                           IF-2025-05133538-GCABA-DGDCIV
+
+                                                                                           Página 12 de 18
+b. Evaluación mediante un programa informático de dinámica del humo y evolución del fuego del
+tipo FDS o similar, planteando diferentes hipótesis según el foco y de acuerdo a su probabilidad de
+ocurrencia, el que deberá poseer informe final y conclusiones respecto a la viabilidad del sistema
+de autoprotección en virtud de los resultados obtenidos en el mismo.
+
+Nota: NO ADMITE REVÁLIDA DEL SAP.
+
+POLÍGONOS DE TIRO
+
+Grupo 1 y 2: No admitido para el presente uso.
+
+Grupo 3: En todos los casos. Se requiere:
+
+a. Cálculo de medios de salida mediante programa informático de simulación gráfica de movimiento
+de personas y multitudes (Ej. Pathfinder, Exodus, Legionevac, etc.), el que deberá poseer informe
+final y conclusiones respecto a la viabilidad del sistema de autoprotección en virtud de los
+resultados obtenidos en el mismo.
+
+b. Evaluación mediante un programa informático de dinámica del humo y evolución del fuego del
+tipo FDS o similar, planteando diferentes hipótesis según el foco y de acuerdo a su probabilidad de
+ocurrencia, el que deberá poseer informe final y conclusiones respecto a la viabilidad del sistema
+de autoprotección en virtud de los resultados obtenidos en el mismo, cuando posea subsuelo y/o
+locales comerciales.
+
+c. Deberá cumplir la totalidad de las condiciones exigidas en el Código de Edificación ­
+Reglamento Técnico RT-030802-020302-02, Punto 1 Pólvora, Explosivos y Afines (Art. 3.8.2.2.4
+C.E.).
+
+PREDIOS PARA ENTRENAMIENTO - PRÁCTICAS DEPORTIVAS - OTROS
+
+INCLUYE: Kartódromo; Autódromo, Hipódromo, Velódromo, Zoológico, Botánico, Planetario,
+Autocine.
+
+GRUPO 1: Establecimientos cuya superficie cubierta no supere los 500 m2.
+
+GRUPO 2: Establecimientos cuya superficie cubierta sea superior a 500 m2 y hasta 1000 m2.
+
+GRUPO 3: Establecimientos cuya superficie cubierta sea superior a 1000 m2.
+
+RESIDENCIA PARA PERSONAS QUE REQUIEREN ASISTENCIA
+
+INCLUYE: Residencia u hogar de día para niños o personas mayores que requieran cuidados
+especiales por discapacidad física; trastornos de conducta, padecimientos mentales, dificultades de
+integración social. Taller protegido.
+
+GRUPO 1: No contemplado para el presente uso.
+
+GRUPO 2: Establecimientos de planta baja o cuya superficie cubierta no supere los 600 m2.
+
+GRUPO3: Establecimientos de planta baja y un (1) piso o más, o cuando su superficie cubierta sea
+superior a 600 m2 o cuando la actividad se desarrolle en subsuIFe-l2o0s2.5-05133538-GCABA-DGDCIV
+
+                                                                                           Página 13 de 18
+Se requiere la evaluación mediante un programa informático de dinámica del humo y evolución del
+fuego del tipo FDS o similar, planteando diferentes hipótesis según el foco y de acuerdo a su
+probabilidad de ocurrencia, el que deberá poseer informe final y conclusiones respecto a la
+viabilidad del sistema de autoprotección en virtud de los resultados obtenidos en el mismo.
+
+Nota: NO ADMITE REVÁLIDA DEL SAP.
+
+REFUGIOS NOCTURNOS
+
+INCLUYE: Refugios nocturnos de caridad, hogares de día, hogares de tránsito, asilos, internados.
+
+GRUPOS 1 Y 2: No contemplados para el presente uso.
+
+GRUPO3: En todos los casos.
+
+Nota: NO ADMITE REVÁLIDA DEL SAP.
+
+REPRESENTACIONES EXTRANJERAS:
+
+INCLUYE: Embajadas, Consulados, Oficina de Negocios.
+
+GRUPO 1: Establecimientos cuya superficie cubierta no supere los 500 m2.
+
+GRUPO 2: Establecimientos cuya superficie cubierta no supere los 800 m2.
+
+GRUPO 3: Establecimientos cuya superficie cubierta sea superior a 1000 m2 o cuando la actividad
+se desarrolle en subsuelos.
+
+SALAS DE JUEGO
+
+INCLUYE: Salas de Apuestas Hípicas; Sala de Loto, Bingo Familiar o de Salón; Billares/pool;
+Bowling; Casinos.
+
+GRUPO 1: Establecimientos de hasta 500 m2 cubiertos de superficie, que no posea depósito,
+telones, telas inflamables o artículos de utilería.
+
+GRUPO 2: Establecimientos cuya superficie cubierta sea de más de 500 m2 y hasta 1000 m2.
+
+GRUPO 3: Establecimientos cuya superficie cubierta supere los 1000 m2, o cuando posea uno o
+más subsuelos.
+
+Se requiere:
+
+a. Cálculo de medios de salida mediante programa informático de simulación gráfica de movimiento
+de personas y multitudes (Ej. Pathfinder, Exodus, Legión Evac., etc.), el que deberá poseer informe
+final y conclusiones respecto a la viabilidad del sistema de autoprotección en virtud de los
+resultados obtenidos en el mismo.
+
+b. Evaluación mediante un programa informático de dinámica del humo y evolución del fuego del
+tipo FDS o similar, planteando diferentes hipótesis según el foco y de acuerdo a su probabilidad
+de ocurrencia, el que deberá poseer informe final y concluIFs-i2o0n2e5s-05r1e3s3p5e3c8t-oGCaABlaA-vDiaGbDilCidIVad del
+sistema de autoprotección en virtud de los resultados obtenidos en el mismo.
+
+                                                                                           Página 14 de 18
+Nota: NO ADMITE REVÁLIDA DEL SAP.
+
+SANITARIO
+
+INCLUYE: Clínicas, Centros Médicos, Consultorios médicos, odontológicos, Laboratorios de
+prótesis dentales/análisis clínicos, maternidad, Hospital de día; Centro de día; Instituto de
+Rehabilitación; Clínica Veterinaria; Consultorio Veterinario; Vacunatorio, Centro de Salud de Acción
+Comunitaria (CESAC).
+
+GRUPO 1: Comprende establecimientos de consultorios o centros médicos de atención
+ambulatoria o laboratorios de planta baja, cuya superficie cubierta no exceda los 300 m2, siempre
+que no cuenten con internación y que no posean líneas, tubos y/o sistemas de provisión de
+oxígeno u otros gases medicinales.
+
+GRUPO 2: Comprende establecimientos de planta baja y hasta tres (3) pisos elevados, o cuya
+superficie cubierta sea superior a los 300 m2 y no supere los 1500 m2, siempre que no cuenten
+con internación y que no posean líneas, tubos y/o sistemas de provisión de oxígeno u otros gases
+medicinales.
+
+GRUPO 3: Comprende establecimientos de planta baja y cuatro (4) pisos elevados o más y cuya
+superficie cubierta sea superior a los 1500 m2 o bien establecimientos que cuenten con internación
+o que posean líneas, tubos y/o sistemas de provisión de oxígeno u otros gases medicinales.
+
+Se requiere:
+a. Evaluación mediante un programa informático de dinámica del humo y evolución del fuego del
+tipo FDS o similar, planteando diferentes hipótesis según el foco y de acuerdo a su probabilidad, el
+que deberá poseer informe final y conclusiones respecto a la viabilidad del sistema de
+autoprotección en virtud de los resultados obtenidos en el mismo.
+
+b. Para los establecimientos con internación, la conformación de Brigada de Emergencias
+destinada al control del siniestro o crisis.
+
+Nota: NO ADMITE REVÁLIDA DEL SAP.
+
+TALLER MECÁNICO - PINTURA - SERVICE AUTOMOTOR
+
+INCLUYE: Taller mecánico para automóviles, motovehículos y embarcaciones. Servicios de
+reparación de chapa y pintura. Servicios rápidos para automóviles. Lubricentro. Talleres afines para
+embellecimiento automotor.
+
+GRUPO 1: Establecimientos cuya superficie cubierta no supere los 500 m2 y no presten servicios a
+Vehículos Eléctricos Híbridos (HEV); Vehículos Eléctricos Híbridos Enchufables (PHEV), Vehículos
+Eléctricos (EV); Vehículos Eléctricos Especiales (NEV) y Vehículos Eléctricos de Rango Extendido
+(EREV).
+
+GRUPO 2: Establecimientos cuya superficie cubierta sea superior a 500m2 y hasta 1000 m2.
+Cuando cuenten con líquidos inflamables hasta un máximo de 200 litros, considerando los
+utilizados como insumo y la capacidad máxima de combustible almacenado en cada uno de los
+vehículos dispuestos en su interior y no presten servicios a Vehículos Eléctricos Híbridos (HEV);
+Vehículos Eléctricos Híbridos Enchufables (PHEV), Vehículos Eléctricos (EV); Vehículos Eléctricos
+Especiales (NEV) y Vehículos Eléctricos de Rango Extendido (IEF-R20E2V5)-0. 5133538-GCABA-DGDCIV
+
+                                                                                           Página 15 de 18
+GRUPO 3: Establecimientos cuya superficie cubierta sea superior a 1000 m2 o posea subsuelo.
+Cuando cuenten con más de 200 litros de líquidos inflamables, considerando los utilizados como
+insumo y la capacidad máxima de combustible almacenado en cada uno de los vehículos
+dispuestos en su interior. Cuando presten servicios a Vehículos Eléctricos Híbridos (HEV);
+Vehículos Eléctricos Híbridos Enchufables (PHEV), Vehículos Eléctricos (EV); Vehículos Eléctricos
+Especiales (NEV) y Vehículos Eléctricos de Rango Extendido (EREV).
+Se requiere la evaluación mediante un programa informático de dinámica del humo y evolución del
+fuego del tipo FDS o similar, planteando diferentes hipótesis según el foco y de acuerdo a su
+probabilidad de ocurrencia, el que deberá poseer informe final y conclusiones respecto a la
+viabilidad del sistema de autoprotección en virtud de los resultados obtenidos en el mismo.
+
+TELEVISIÓN
+
+INCLUYE: Estudios de grabación con y sin concurso de público, estudios de televisión con y sin
+concurso de público, radios, salas de grabación, salas de ensayos, estudios de filmación; estudios
+de radio.
+
+GRUPO 1: Establecimientos cuya superficie cubierta no supere los 500 m2.
+
+GRUPO 2: Comprende establecimientos cuya su superficie cubierta sea superior a los 500 m2 y no
+supere los 1000 m2.
+
+GRUPO 3: Comprende establecimientos cuya superficie cubierta sea superior a los 1000 m2 o
+cuando la actividad se desarrolle en uno o más subsuelos.
+
+Cuando la actividad se desarrolle en subsuelo, se requiere la evaluación mediante un programa
+informático de dinámica del humo y evolución del fuego del tipo FDS o similar, planteando
+diferentes hipótesis según el foco y de acuerdo a su probabilidad de ocurrencia, el que deberá
+poseer informe final y conclusiones respecto a la viabilidad del sistema de autoprotección en virtud
+de los resultados obtenidos en el mismo.
+
+Nota: NO ADMITE REVÁLIDA DEL SAP.
+
+TRANSPORTE PÚBLICO
+
+INCLUYE: Terminal de transporte carretero, aéreo, ferroviario y fluvial.
+
+Grupo 1 y 2: No admitido para el presente uso.
+
+Grupo 3: En todos los casos. Se requiere:
+
+a. Cálculo de medios de salida mediante programa informático de simulación gráfica de movimiento
+de personas y multitudes (Ej. Pathfinder, Exodus, Legionevac, etc.), el que deberá poseer informe
+final y conclusiones respecto a la viabilidad del sistema de autoprotección en virtud de los
+resultados obtenidos en el mismo.
+
+b. Evaluación mediante un programa informático de dinámica del humo y evolución del fuego del
+tipo FDS o similar, planteando diferentes hipótesis según el foco y de acuerdo a su probabilidad de
+ocurrencia, el que deberá poseer informe final y conclusiones respecto a la viabilidad del sistema
+de autoprotección en virtud de los resultados obtenidos en el mismo, cuando posea subsuelo y/o
+locales comerciales.
+
+                                                IF-2025-05133538-GCABA-DGDCIV
+
+USOS CULTURALES
+
+                                                Página 16 de 18
+a. CLUB DE MUSICA EN VIVO
+
+INCLUYE: Club de música en vivo; Peña o Salón milonga. Local de música y canto con una
+ocupación máxima de 350 localidades.
+
+GRUPO1: No contemplado para el presente uso.
+
+GRUPO2: Establecimientos de planta baja y cuya superficie cubierta no supere los 500 m2.
+
+GRUPO3: Establecimientos de planta baja, un (1) piso o más, o cuando su superficie cubierta sea
+superior a 500 m2 o cuando la actividad se desarrolle en subsuelos.
+
+Se requiere la evaluación mediante un programa informático de dinámica del humo y evolución del
+fuego del tipo FDS o similar, planteando diferentes hipótesis según el foco y de acuerdo a su
+probabilidad de ocurrencia, el que deberá poseer informe final y conclusiones respecto a la
+viabilidad del sistema de autoprotección en virtud de los resultados obtenidos en el mismo.
+
+b. ESPACIO CULTURAL INDEPENDIENTE (acorde a Ley 6063, artículo 34).
+
+GRUPO 1: Espacios cuya superficie total no exceda los 300 m2 cubiertos en planta baja. Para el
+caso que el establecimiento cuente con un entrepiso, deberá cumplir las siguientes condiciones:
+a) La superficie cubierta deberá ser de hasta 50 m2 incluida dentro de la superficie máxima
+permitida;
+b) Uso como depósito de materiales, insumos y mobiliario, en donde NO se desarrolle ninguna
+tarea que sostenga a la actividad principal, ni exista la circulación de personas ajenas al
+establecimiento;
+c) Ubicación de Servicios Sanitarios;
+d) Espacio libre de uso.
+
+Aplicables para aquellas actividades con una carga de fuego determinada para R3: hasta 15kg/m2;
+R4 y R5: hasta una carga de fuego determinada de 30 kg/m2.
+
+Requiere tramitación vía excepción por TAD. Ver Anexo V.
+
+GRUPO 2: Establecimientos de planta baja y cuya superficie cubierta no supere los 500 m2.
+
+GRUPO 3: Establecimientos de planta baja, un (1) piso o más, o cuando su superficie cubierta sea
+superior a 500 m2 o cuando la actividad se desarrolle en subsuelos.
+
+Se requiere el cálculo de medios de salida mediante programa informático de simulación gráfica de
+movimiento de personas y multitudes (Ej. Pathfinder, Exodus, Legionevac, etc.), por la capacidad
+máxima de asistentes habilitado, el que deberá poseer informe final y conclusiones respecto a la
+viabilidad del sistema de autoprotección en virtud de los resultados obtenidos en el mismo.
+
+c. OTROS USOS CULTURALES
+
+INCLUYE: Sala de teatro independiente, espacio no convencional, espacio experimental, espacio
+multifuncional en el que se realicen manifestaciones artísticas que signifiquen espectáculos con
+participación real y directa de intérpretes, en cualquiera de sus modalidades sea comedia, drama,
+teatro musical, lírico, de títeres, leído, de cámara, espectáculos musicales y/o de danzas y en los
+que se tomen en cuenta únicamente la calidad del espectáculo o el interés del mismo como
+vehículo difusor de cultura.
+
+                                                                                           IF-2025-05133538-GCABA-DGDCIV
+GRUPO1: Establecimientos cuya superficie cubierta no supere los 500 m2.
+
+                                                                                           Página 17 de 18
+GRUPO2: Establecimientos cuya superficie cubierta no supere los 700 m2.
+GRUPO3: Establecimientos cuya superficie cubierta sea superior a 700 m2 o cuando la actividad
+se desarrolle en subsuelos.
+Se requiere el cálculo de medios de salida mediante programa informático de simulación gráfica de
+movimiento de personas y multitudes (Ej. Pathfinder, Exodus, Legionevac, etc.), por la capacidad
+máxima de asistentes habilitado, el que deberá poseer informe final y conclusiones respecto a la
+viabilidad del sistema de autoprotección en virtud de los resultados obtenidos en el mismo.
+
+2. OBSERVACIÓN TÉCNICA
+CRITERIO TÉCNICO EN RELACIÓN A Grupo 1 y ACTIVIDAD EN EL SUBSUELO
+
+La DDJJ del Anexo II de la presente norma, aplica para todos aquellos establecimientos que posean
+hasta 500 m2 de superficie cubierta, no se encuentren en el listado enunciado en el párrafo segundo
+del artículo 3º de la Ley 5920 y no posean subsuelo/sótano en donde se desarrolle la actividad
+librada al uso.
+Los 500m2 de superficie cubierta incluye a la totalidad del establecimiento, salvo lo indicado para el
+caso que exista actividad en él o los subsuelos/sótanos en caso de corresponder.
+Se entiende como "actividad en el subsuelo" cuando en dicho plano se desarrollen de manera total o
+parcial los rubros habilitados al uso indicados en la plancheta como, por ejemplo: Cocina,
+elaboración de panificados, atención de clientes, probadores/cambiadores, cajas para el cobro,
+depósito de mercaderías, oficina, etc., o de otra actividad relacionada, las cuales involucren la
+presencia de personal propio o de terceros de forma total o parcial dentro del horario de
+funcionamiento del establecimiento.
+Si en el depósito se acopian mercaderías que son utilizadas para las actividades habilitadas y de ello
+se desprende que existe personal (propio o extraño) que accede a dicho plano para allí dejarlas o
+retirarlas para llevarlas a los otros planos, debe ser considerado el establecimiento como Grupo 3.
+
+                                                                                           IF-2025-05133538-GCABA-DGDCIV
+
+                                                                                           Página 18 de 18
+                                  G O B I E R N O DE LA C I U D A D DE B U E N O S A I R E S
+                                                          Hoja Adicional de Firmas
+                                                                Informe gráfico
+
+Número: IF-2025-05133538-GCABA-DGDCIV
+                                                              Buenos Aires, Miércoles 22 de Enero de 2025
+
+Referencia: ANEXO I -CUADRO DE CLASIFICACIÓN DE ESTABLECIMIENTOS
+El documento fue importado por el sistema GEDO con un total de 18 pagina/s.
+
+ Digitally signed by Comunicaciones Oficiales
+ Date: 2025.01.22 13:43:03 -03:00
+
+Alberto Angel Carita
+Director General
+D.G.DEFENSA CIVIL
+MINISTERIO DE SEGURIDAD
+
+                                                                                                                                                                                                 Digitally signed by Comunicaciones Oficiales
+                                                                                                                                                                                                 Date: 2025.01.22 13:43:05 -03:00
+
