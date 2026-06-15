@@ -11,8 +11,8 @@ import {
   createGrupoGestion, updateGrupoGestion, deleteGrupoGestion,
   createCategoriaGestion, updateCategoriaGestion, deleteCategoriaGestion,
   createGestion, updateGestion, deleteGestion,
-  LIMITE_GRUPOS, LIMITE_CATEGORIAS,
 } from '@/lib/actions/gestiones-libreria'
+import { LIMITE_GRUPOS, LIMITE_CATEGORIAS } from '@/lib/gestiones/limites'
 
 type Nivel = 'grupo' | 'categoria' | 'gestion'
 interface ModalState {

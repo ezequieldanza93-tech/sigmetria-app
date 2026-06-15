@@ -3,13 +3,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import type { ActionResult } from '@/lib/types'
+import { LIMITE_GRUPOS, LIMITE_CATEGORIAS } from '@/lib/gestiones/limites'
 
 const LIB_PATH = '/dashboard/libreria-gestiones'
-
-// Límites de items PROPIOS por consultora (para conservar orden/estructura
-// y reportes comparables). Reflejan el trigger en DB.
-export const LIMITE_GRUPOS = 4
-export const LIMITE_CATEGORIAS = 14
 
 async function getConsultoraId(): Promise<ActionResult<string>> {
   const supabase = await createClient()
