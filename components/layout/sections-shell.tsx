@@ -38,7 +38,7 @@ export function SectionsShell({ items, marketingItems, activeId, ariaLabel, chil
   }
 
   const contentStyle: React.CSSProperties = {
-    paddingLeft: expanded ? expandedWidth : undefined,
+    ['--sidebar-w' as string]: expanded ? `${expandedWidth}px` : undefined,
     transition: isResizing ? 'none' : undefined,
   }
 
@@ -56,7 +56,7 @@ export function SectionsShell({ items, marketingItems, activeId, ariaLabel, chil
         ariaLabel={ariaLabel}
       />
       <div
-        className={`transition-[padding] duration-200 ${!expanded ? 'lg:pl-14' : ''}`}
+        className={`transition-[padding] duration-200 ${expanded ? 'lg:pl-[var(--sidebar-w)]' : 'lg:pl-14'}`}
         style={contentStyle}
       >
         {children}
