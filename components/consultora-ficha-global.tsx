@@ -19,19 +19,11 @@ import {
   UserCog,
   CreditCard,
   FileCheck,
-  Network,
-  Shield,
-  ClipboardList,
-  ListChecks,
   Package,
-  GraduationCap,
-  BookOpen,
-  BarChart2,
   Settings2,
   CalendarClock,
   MessageSquare,
   Map,
-  Scale,
   Pencil,
 } from 'lucide-react'
 import Image from 'next/image'
@@ -101,8 +93,6 @@ function antiguedad(desde: string | null): string | null {
  */
 export function ConsultoraFichaGlobal({ consultora, empresas, usuario, userRole, isSuperAdmin = false }: Props) {
   const canEditConsultora = userRole === 'full_access_main' || isSuperAdmin
-  const canManageCursos =
-    userRole === 'full_access_main' || userRole === 'full_access_branch' || isSuperAdmin
   const canVerReportes =
     userRole === 'full_access_main' || userRole === 'responsable_estandares' || isSuperAdmin
 
@@ -116,29 +106,6 @@ export function ConsultoraFichaGlobal({ consultora, empresas, usuario, userRole,
         { href: '/dashboard/billing', icon: CreditCard, label: 'Suscripción' },
         ...(canVerReportes
           ? [{ href: '/dashboard/reportes', icon: FileCheck, label: 'Reportes' }]
-          : []),
-      ],
-    },
-    {
-      label: 'Directorio',
-      items: [
-        { href: '/dashboard/personas', icon: Users, label: 'Personas' },
-        { href: '/dashboard/organizaciones-externas', icon: Network, label: 'Organizaciones' },
-      ],
-    },
-    {
-      label: 'Librerías',
-      items: [
-        { href: '/dashboard/productos', icon: Shield, label: 'Elementos de Protección' },
-        { href: '/dashboard/configuracion/iperc', icon: ClipboardList, label: 'Librería IPERC' },
-        { href: '/dashboard/libreria-gestiones', icon: ListChecks, label: 'Librería de Gestiones' },
-        { href: '/dashboard/configuracion/normativa-legal', icon: Scale, label: 'Normativa Legal' },
-        { href: '/dashboard/cursos', icon: GraduationCap, label: 'Mis Cursos' },
-        ...(canManageCursos
-          ? [
-              { href: '/dashboard/cursos/admin', icon: BookOpen, label: 'Administrar Cursos' },
-              { href: '/dashboard/cursos/compliance', icon: BarChart2, label: 'Compliance' },
-            ]
           : []),
       ],
     },
@@ -355,7 +322,7 @@ export function ConsultoraFichaGlobal({ consultora, empresas, usuario, userRole,
       </header>
 
       {/* Accesos directos — grupos de navegación */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {navGroups.map(group => (
           <div
             key={group.label}

@@ -1,6 +1,6 @@
 'use client'
 
-import { Building2, ClipboardList, BarChart3, BookOpen, Eye, Contact, ScrollText, MessageSquare, Megaphone, ArrowLeft } from 'lucide-react'
+import { Building2, ClipboardList, BarChart3, BookOpen, Eye, Contact, ScrollText, MessageSquare, Megaphone, ArrowLeft, Users, Library } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { SectionsShell } from '@/components/layout/sections-shell'
@@ -13,6 +13,25 @@ import type { UserRole } from '@/lib/types'
 // Roles con acceso a la auditoría (espejo del gate de la página y la action).
 const AUDIT_ROLES: UserRole[] = ['full_access_main', 'full_access_branch', 'responsable_estandares', 'auditor_externo']
 
+// Rutas de las secciones Directorio y Librerías, ahora items del sidebar
+// (antes vivían en la ficha global). El highlight del sidebar las marca activas.
+const DIRECTORIO_PREFIXES = [
+  '/dashboard/personas',
+  '/dashboard/organizaciones-externas',
+] as const
+
+const LIBRERIA_PREFIXES = [
+  '/dashboard/productos',
+  '/dashboard/configuracion/iperc',
+  '/dashboard/libreria-gestiones',
+  '/dashboard/configuracion/normativa-legal',
+  '/dashboard/cursos',
+] as const
+
+function matchesPrefix(pathname: string, prefixes: readonly string[]): boolean {
+  return prefixes.some(prefix => pathname.startsWith(prefix))
+}
+
 // Prefijos de rutas que se abren DESDE la ficha global de la consultora.
 // Cuando el pathname empieza por alguno de estos, el menú destaca "Ficha"
 // y se muestra el link "← Volver a la ficha".
@@ -22,15 +41,16 @@ const FICHA_SUBPAGE_PREFIXES = [
   '/dashboard/usuarios',
   '/dashboard/billing',
   '/dashboard/reportes',
-  '/dashboard/personas',
-  '/dashboard/organizaciones-externas',
-  '/dashboard/productos',
-  '/dashboard/cursos',
   '/dashboard/mapas',
 ] as const
 
 function esFichaSubpage(pathname: string | null): boolean {
   if (!pathname) return false
+  // Directorio y Librerías son secciones del sidebar, no de la ficha. Algunas
+  // de sus rutas viven bajo /dashboard/configuracion (iperc, normativa-legal),
+  // así que se excluyen explícitamente antes del match de ficha.
+  if (matchesPrefix(pathname, DIRECTORIO_PREFIXES)) return false
+  if (matchesPrefix(pathname, LIBRERIA_PREFIXES)) return false
   return FICHA_SUBPAGE_PREFIXES.some(prefix => pathname.startsWith(prefix))
 }
 
@@ -79,6 +99,8 @@ export function ConsultoraShell({ children }: ConsultoraShellProps) {
   const onCrm = !onComentarios && (pathname?.startsWith('/dashboard/crm') ?? false)
   const onAuditoria = pathname?.startsWith('/dashboard/auditoria') ?? false
   const onContenido = pathname?.startsWith('/dashboard/contenido') ?? false
+  const onDirectorio = pathname ? matchesPrefix(pathname, DIRECTORIO_PREFIXES) : false
+  const onLibreria = pathname ? matchesPrefix(pathname, LIBRERIA_PREFIXES) : false
   const activeId: string = onComentarios
     ? 'comentarios'
     : onCrm
@@ -87,10 +109,19 @@ export function ConsultoraShell({ children }: ConsultoraShellProps) {
         ? 'contenido'
         : onAuditoria
           ? 'auditoria'
-          : esFicha
-            ? 'ficha'
-            : sectionActive
+          : onDirectorio
+            ? 'directorio'
+            : onLibreria
+              ? 'libreria'
+              : esFicha
+                ? 'ficha'
+                : sectionActive
   const showCrm = isCrmAdmin(eff?.email)
+  // Mismo gate que la ficha: administrar cursos y compliance solo para full_access + superAdmin.
+  const canManageCursos =
+    eff?.isSuperAdmin === true ||
+    eff?.userRole === 'full_access_main' ||
+    eff?.userRole === 'full_access_branch'
   const showContenido = canAccessContenido(eff?.userRole, eff?.systemRole)
   const showAuditoria =
     eff?.isSuperAdmin === true ||
@@ -133,6 +164,38 @@ export function ConsultoraShell({ children }: ConsultoraShellProps) {
     ...(showAuditoria
       ? ([{ id: 'auditoria', label: 'Auditoría', icon: ScrollText, href: '/dashboard/auditoria' }] as SectionItem[])
       : []),
+    // ── Directorio y Librerías: secciones expandibles a nivel consultora ──
+    // Antes vivían en la ficha global; ahora son items del sidebar, arriba de
+    // Marketing. El highlight de la sección se calcula con onDirectorio/onLibreria.
+    {
+      id: 'directorio',
+      label: 'Directorio',
+      icon: Users,
+      defaultOpen: onDirectorio,
+      children: [
+        { id: 'dir-personas', label: 'Personas', href: '/dashboard/personas' },
+        { id: 'dir-organizaciones', label: 'Organizaciones externas', href: '/dashboard/organizaciones-externas' },
+      ],
+    },
+    {
+      id: 'libreria',
+      label: 'Librerías',
+      icon: Library,
+      defaultOpen: onLibreria,
+      children: [
+        { id: 'lib-productos', label: 'Elementos de Protección', href: '/dashboard/productos' },
+        { id: 'lib-iperc', label: 'Librería IPERC', href: '/dashboard/configuracion/iperc' },
+        { id: 'lib-gestiones', label: 'Librería de Gestiones', href: '/dashboard/libreria-gestiones' },
+        { id: 'lib-normativa', label: 'Normativa Legal', href: '/dashboard/configuracion/normativa-legal' },
+        { id: 'lib-cursos', label: 'Mis Cursos', href: '/dashboard/cursos' },
+        ...(canManageCursos
+          ? [
+              { id: 'lib-cursos-admin', label: 'Administrar Cursos', href: '/dashboard/cursos/admin' },
+              { id: 'lib-cursos-compliance', label: 'Compliance', href: '/dashboard/cursos/compliance' },
+            ]
+          : []),
+      ],
+    },
   ]
 
   // ── Marketing: sección fija al pie del sidebar, sobre el botón contraer ──
