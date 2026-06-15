@@ -4,6 +4,7 @@ import { useActionState, useRef, useEffect, useState, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import { FileUploadInput } from '@/components/ui/file-upload-input'
 import { createClient } from '@/lib/supabase/client'
 import { createPrivateArt } from '@/lib/actions/empresa'
@@ -172,11 +173,11 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
           placeholder="20-12345678-9"
           {...fb('cuit')}
         />
-        <Select
+        <SearchableSelect
           label="Rubro"
           name="rubro_id"
           value={form.rubro_id}
-          onChange={set('rubro_id')}
+          onChange={v => setForm(f => ({ ...f, rubro_id: v }))}
           options={rubros.map(r => ({ value: r.id, label: r.nombre }))}
           placeholder="Seleccionar rubro..."
           {...fb('rubro_id')}
@@ -193,18 +194,21 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Select
+        <SearchableSelect
           label="Provincia"
           value={selectedProvincia}
-          onChange={e => setSelectedProvincia(e.target.value)}
+          onChange={v => {
+            setSelectedProvincia(v)
+            setForm(f => ({ ...f, localidad_id: '' }))
+          }}
           options={provincias.map(p => ({ value: p, label: p }))}
           placeholder="Seleccionar provincia..."
         />
-        <Select
+        <SearchableSelect
           label="Localidad"
           name="localidad_id"
           value={form.localidad_id}
-          onChange={set('localidad_id')}
+          onChange={v => setForm(f => ({ ...f, localidad_id: v }))}
           options={localidadesFiltradas.map(l => ({ value: l.id, label: l.nombre }))}
           placeholder={selectedProvincia ? 'Seleccionar localidad...' : 'Elegí provincia primero'}
           disabled={!selectedProvincia}

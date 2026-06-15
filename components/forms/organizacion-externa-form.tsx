@@ -4,6 +4,7 @@ import { useActionState, useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import { createClient } from '@/lib/supabase/client'
 import {
   useOrganizacionTipos,
@@ -48,6 +49,7 @@ export function OrganizacionExternaForm({ action }: Props) {
 
   const [preguntas, setPreguntas] = useState<PreguntaRiesgo[]>([])
   const [respuestas, setRespuestas] = useState<Record<string, boolean>>({})
+  const [selectedRubroId, setSelectedRubroId] = useState('')
   const [selectedProvincia, setSelectedProvincia] = useState('')
   const [selectedLocalidadId, setSelectedLocalidadId] = useState('')
   const [selectedArtId, setSelectedArtId] = useState('')
@@ -75,6 +77,7 @@ export function OrganizacionExternaForm({ action }: Props) {
     setSelectedTipoId(id)
     setSelectedTipoNombre(tipo?.nombre ?? '')
     // Reset subcontratista state when changing tipo
+    setSelectedRubroId('')
     setSelectedProvincia('')
     setSelectedLocalidadId('')
     setSelectedArtId('')
@@ -143,11 +146,12 @@ export function OrganizacionExternaForm({ action }: Props) {
               placeholder="—"
             />
             <Input label="Código único impositivo" name="cuit" placeholder="20-12345678-9" />
-            <Select
+            <SearchableSelect
               label="Rubro *"
               name="rubro_id"
-              defaultValue=""
               required
+              value={selectedRubroId}
+              onChange={setSelectedRubroId}
               options={rubros.map(r => ({ value: r.id, label: r.nombre }))}
               placeholder="Seleccionar rubro…"
             />
@@ -157,18 +161,18 @@ export function OrganizacionExternaForm({ action }: Props) {
           <SectionTitle>Ubicación</SectionTitle>
           <Input label="Domicilio" name="domicilio" placeholder="Av. Corrientes 1234" />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Select
+            <SearchableSelect
               label="Provincia"
               value={selectedProvincia}
-              onChange={e => { setSelectedProvincia(e.target.value); setSelectedLocalidadId('') }}
+              onChange={v => { setSelectedProvincia(v); setSelectedLocalidadId('') }}
               options={provincias.map(p => ({ value: p, label: p }))}
               placeholder="Seleccionar provincia…"
             />
-            <Select
+            <SearchableSelect
               label="Localidad"
               name="localidad_id"
               value={selectedLocalidadId}
-              onChange={e => setSelectedLocalidadId(e.target.value)}
+              onChange={setSelectedLocalidadId}
               options={localidadesFiltradas.map(l => ({ value: l.id, label: l.nombre }))}
               placeholder={selectedProvincia ? 'Seleccionar localidad…' : 'Elegí provincia primero'}
               disabled={!selectedProvincia}

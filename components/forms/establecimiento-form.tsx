@@ -4,6 +4,7 @@ import { useActionState, useState, useEffect, useRef, useMemo } from 'react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import { FileUploadInput } from '@/components/ui/file-upload-input'
 import { createClient } from '@/lib/supabase/client'
 import { useSignedUrls } from '@/lib/storage/sign-client'
@@ -430,46 +431,28 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
         />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="provincia-select" className="text-sm font-medium text-text-secondary">
-              Provincia
-            </label>
-            <select
-              id="provincia-select"
-              value={selectedProvincia}
-              onChange={e => {
-                setSelectedProvincia(e.target.value)
-                setSelectedLocalidadId('')
-              }}
-              className="w-full border border-border-default rounded-lg px-3 py-2 text-sm text-text-primary bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500"
-            >
-              <option value="">Seleccionar provincia...</option>
-              {provincias.map(p => (
-                <option key={p} value={p}>{p}</option>
-              ))}
-            </select>
-          </div>
+          <SearchableSelect
+            id="provincia-select"
+            label="Provincia"
+            value={selectedProvincia}
+            onChange={v => {
+              setSelectedProvincia(v)
+              setSelectedLocalidadId('')
+            }}
+            options={provincias.map(p => ({ value: p, label: p }))}
+            placeholder="Seleccionar provincia..."
+          />
 
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="localidad-select" className="text-sm font-medium text-text-secondary">
-              Localidad
-            </label>
-            <select
-              id="localidad-select"
-              name="localidad_id"
-              value={selectedLocalidadId}
-              onChange={e => setSelectedLocalidadId(e.target.value)}
-              disabled={!selectedProvincia}
-              className="w-full border border-border-default rounded-lg px-3 py-2 text-sm text-text-primary bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500 disabled:bg-surface-sunken disabled:text-text-tertiary"
-            >
-              <option value="">
-                {selectedProvincia ? 'Seleccionar localidad...' : 'Elegí provincia primero'}
-              </option>
-              {localidadesFiltradas.map(l => (
-                <option key={l.id} value={l.id}>{l.nombre}</option>
-              ))}
-            </select>
-          </div>
+          <SearchableSelect
+            id="localidad-select"
+            label="Localidad"
+            name="localidad_id"
+            value={selectedLocalidadId}
+            onChange={setSelectedLocalidadId}
+            options={localidadesFiltradas.map(l => ({ value: l.id, label: l.nombre }))}
+            placeholder={selectedProvincia ? 'Seleccionar localidad...' : 'Elegí provincia primero'}
+            disabled={!selectedProvincia}
+          />
         </div>
 
         <Input
