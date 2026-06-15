@@ -20,6 +20,9 @@ const establecimientoActionSchema = z.object({
   ubicacion_gmaps: z.string().nullable().optional(),
   aplica_iso_45001: z.literal('on').optional(),
   cantidad_trabajadores: z.coerce.number().int().min(0).nullable().optional(),
+  cantidad_trabajadores_operativos: z.coerce.number().int().min(0).nullable().optional(),
+  cantidad_trabajadores_administrativos: z.coerce.number().int().min(0).nullable().optional(),
+  categoria_hys: z.enum(['A', 'B', 'C']).nullable().optional(),
 })
 
 async function geocode(query: string): Promise<{ latitud: number | null; longitud: number | null }> {
@@ -182,7 +185,7 @@ export async function createEstablecimiento(
   if (!parsed.success) {
     return { success: false, error: formatZodErrors(parsed.error) }
   }
-  const { nombre, tipo_id, domicilio, localidad_id, codigo_postal, actividad_principal, description, ubicacion_gmaps, aplica_iso_45001, cantidad_trabajadores } = parsed.data
+  const { nombre, tipo_id, domicilio, localidad_id, codigo_postal, actividad_principal, description, ubicacion_gmaps, aplica_iso_45001, cantidad_trabajadores, cantidad_trabajadores_operativos, cantidad_trabajadores_administrativos, categoria_hys } = parsed.data
 
   const { latitud, longitud } = await parseUbicacion(ubicacion_gmaps ?? null, domicilio ?? null)
 
@@ -208,6 +211,9 @@ export async function createEstablecimiento(
       longitud,
       aplica_iso_45001: aplica_iso_45001 === 'on',
       cantidad_trabajadores: cantidad_trabajadores ?? null,
+      cantidad_trabajadores_operativos: cantidad_trabajadores_operativos ?? null,
+      cantidad_trabajadores_administrativos: cantidad_trabajadores_administrativos ?? null,
+      categoria_hys: categoria_hys ?? null,
     })
 
   if (error) return { success: false, error: error.message }
@@ -274,7 +280,7 @@ export async function updateEstablecimiento(
   if (!parsed.success) {
     return { success: false, error: formatZodErrors(parsed.error) }
   }
-  const { nombre, tipo_id, domicilio, localidad_id, codigo_postal, actividad_principal, description, ubicacion_gmaps, aplica_iso_45001, cantidad_trabajadores } = parsed.data
+  const { nombre, tipo_id, domicilio, localidad_id, codigo_postal, actividad_principal, description, ubicacion_gmaps, aplica_iso_45001, cantidad_trabajadores, cantidad_trabajadores_operativos, cantidad_trabajadores_administrativos, categoria_hys } = parsed.data
 
   const { latitud, longitud } = await parseUbicacion(ubicacion_gmaps ?? null, domicilio ?? null)
 
@@ -315,6 +321,9 @@ export async function updateEstablecimiento(
       longitud,
       aplica_iso_45001: aplica_iso_45001 === 'on',
       cantidad_trabajadores: cantidad_trabajadores ?? null,
+      cantidad_trabajadores_operativos: cantidad_trabajadores_operativos ?? null,
+      cantidad_trabajadores_administrativos: cantidad_trabajadores_administrativos ?? null,
+      categoria_hys: categoria_hys ?? null,
       ...(photo_site !== undefined && { photo_site }),
       ...(plansUpdate.plano_url !== undefined && { plano_url: plansUpdate.plano_url }),
       ...(plansUpdate.floor_plan_cad_url !== undefined && { floor_plan_cad_url: plansUpdate.floor_plan_cad_url }),

@@ -240,6 +240,9 @@ export interface Establecimiento {
   localidad_id: string | null
   actividad_principal: string | null
   cantidad_trabajadores: number | null
+  cantidad_trabajadores_operativos: number | null
+  cantidad_trabajadores_administrativos: number | null
+  categoria_hys: 'A' | 'B' | 'C' | null
   description: string | null
   latitud: number | null
   longitud: number | null

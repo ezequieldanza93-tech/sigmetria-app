@@ -11,6 +11,7 @@ import { uploadPlanoEstablecimiento, deletePlanoEstablecimiento } from '@/lib/ac
 import { useSignedUrls } from '@/lib/storage/sign-client'
 import { WeatherPanel } from '@/components/weather-panel'
 import type { Establecimiento, HorarioEstablecimiento } from '@/lib/types'
+import { calcularEquivalentes, calcularHorasProfesionalHyS } from '@/lib/hys/calculo-1338'
 
 const DIAS: Record<number, string> = {
   1: 'Lunes', 2: 'Martes', 3: 'Miércoles',
@@ -52,7 +53,8 @@ export function InfoTab({ establecimiento, canWrite, empresaId }: Props) {
     if (deleteState?.success) setPlanoUrl(null)
   }, [deleteState])
 
-  const tipo = (establecimiento.establecimientos_tipos as { nombre: string } | null)?.nombre
+  const tipo = (establecimiento.establecimientos_tipos as { nombre: string; codigo?: string } | null)?.nombre
+  const tipoCodigo = (establecimiento.establecimientos_tipos as { codigo?: string } | null)?.codigo
   const localidad = (establecimiento.localidades as { nombre: string; provincia: string } | null)
   const ubicacion = [establecimiento.domicilio, localidad?.nombre, localidad?.provincia, establecimiento.codigo_postal]
     .filter(Boolean).join(', ')
@@ -120,11 +122,52 @@ export function InfoTab({ establecimiento, canWrite, empresaId }: Props) {
             <SectionHeader icon={<Users size={14} />} title="Trabajadores" />
             <div className="divide-y divide-border-subtle">
               <Row
-                label="Cantidad declarada"
-                hint="manual"
-                value={establecimiento.cantidad_trabajadores != null
-                  ? String(establecimiento.cantidad_trabajadores)
+                label="Operativos (producción)"
+                hint="Dec. 1338/96"
+                value={establecimiento.cantidad_trabajadores_operativos != null
+                  ? String(establecimiento.cantidad_trabajadores_operativos)
                   : '—'}
+              />
+              <Row
+                label="Administrativos"
+                hint="Dec. 1338/96"
+                value={establecimiento.cantidad_trabajadores_administrativos != null
+                  ? String(establecimiento.cantidad_trabajadores_administrativos)
+                  : '—'}
+              />
+              {(establecimiento.cantidad_trabajadores_operativos != null || establecimiento.cantidad_trabajadores_administrativos != null) && (
+                <Row
+                  label="Trabajadores equivalentes"
+                  hint="Art. 4"
+                  value={(() => {
+                    const eq = calcularEquivalentes(
+                      establecimiento.cantidad_trabajadores_operativos ?? 0,
+                      establecimiento.cantidad_trabajadores_administrativos ?? 0,
+                    )
+                    return eq % 1 === 0 ? String(eq) : eq.toFixed(1)
+                  })()}
+                />
+              )}
+              <Row
+                label="Horas HyS mensuales"
+                hint="Art. 12"
+                value={(() => {
+                  if (tipoCodigo === 'CONSTRUCCION') {
+                    return <span className="text-amber-700 text-xs font-medium">Se calcula según Res. SRT 231/96</span>
+                  }
+                  if (establecimiento.cantidad_trabajadores_operativos == null && establecimiento.cantidad_trabajadores_administrativos == null) {
+                    return '—'
+                  }
+                  if (!establecimiento.categoria_hys) {
+                    return <span className="text-text-tertiary text-xs">Definí la categoría A/B/C</span>
+                  }
+                  const eq = calcularEquivalentes(
+                    establecimiento.cantidad_trabajadores_operativos ?? 0,
+                    establecimiento.cantidad_trabajadores_administrativos ?? 0,
+                  )
+                  const horas = calcularHorasProfesionalHyS(eq, establecimiento.categoria_hys)
+                  return <span className="font-semibold">{horas} hs/mes <span className="font-normal text-text-tertiary text-xs">(cat. {establecimiento.categoria_hys})</span></span>
+                })()}
               />
               <Row
                 label="ISO 45001"

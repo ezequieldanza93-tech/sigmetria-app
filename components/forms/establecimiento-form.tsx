@@ -316,7 +316,7 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
       { id: 'localidad',      label: 'Localidad',                  done: selectedLocalidadId.length > 0, section: 2 },
       { id: 'codigo_postal',  label: 'Código postal',              done: fieldValue('codigo_postal').length > 0, section: 2 },
       { id: 'actividad',      label: 'Actividad principal',        done: fieldValue('actividad_principal').length > 0, section: 2 },
-      { id: 'trabajadores',   label: 'Cantidad de trabajadores',   done: fieldValue('cantidad_trabajadores').length > 0, section: 2 },
+      { id: 'trabajadores',   label: 'Dotación HyS (operativos)',  done: fieldValue('cantidad_trabajadores_operativos').length > 0, section: 2 },
       { id: 'horarios',       label: 'Horarios de actividad',      done: algunDiaActivo, section: 2 },
       { id: 'ubicacion',      label: 'Ubicación en Google Maps',   done: ubicacionGmaps.length > 0 || yaTieneCoords, section: 2 },
       { id: 'descripcion',    label: 'Información del establecimiento', done: fieldValue('description').length > 0, section: 3 },
@@ -486,14 +486,51 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
           placeholder="Manufactura de piezas metálicas"
         />
 
-        <Input
-          label="Cantidad de trabajadores (manual)"
-          name="cantidad_trabajadores"
-          type="number"
-          min="0"
-          defaultValue={establecimiento?.cantidad_trabajadores != null ? String(establecimiento.cantidad_trabajadores) : ''}
-          placeholder="Ej: 45"
-        />
+        <div className="space-y-3">
+          <p className="text-sm font-medium text-text-secondary">
+            Dotación del servicio de HyS{' '}
+            <span className="font-normal text-text-tertiary">(Dec. 1338/96, Art. 4)</span>
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <Input
+              label="Trabajadores operativos (producción)"
+              name="cantidad_trabajadores_operativos"
+              type="number"
+              min="0"
+              defaultValue={establecimiento?.cantidad_trabajadores_operativos != null ? String(establecimiento.cantidad_trabajadores_operativos) : ''}
+              placeholder="Ej: 40"
+            />
+            <Input
+              label="Trabajadores administrativos"
+              name="cantidad_trabajadores_administrativos"
+              type="number"
+              min="0"
+              defaultValue={establecimiento?.cantidad_trabajadores_administrativos != null ? String(establecimiento.cantidad_trabajadores_administrativos) : ''}
+              placeholder="Ej: 10"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-text-secondary block mb-1">
+              Categoría de riesgo{' '}
+              <span className="font-normal text-text-tertiary">(Dec. 1338/96, Art. 12)</span>
+            </label>
+            <select
+              name="categoria_hys"
+              defaultValue={establecimiento?.categoria_hys ?? ''}
+              className="w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500"
+            >
+              <option value="">Seleccionar categoría...</option>
+              <option value="A">A — Riesgo bajo</option>
+              <option value="B">B — Riesgo medio</option>
+              <option value="C">C — Riesgo alto</option>
+            </select>
+            <div className="mt-2 p-3 bg-surface-sunken rounded-lg border border-border-subtle text-xs text-text-secondary space-y-1">
+              <p><strong>A (bajo):</strong> Capítulos 5, 6, 11, 12, 14, 18 al 21 del Anexo I, Dec. 351/79.</p>
+              <p><strong>B (medio):</strong> Capítulos 5, 6, 7 y 11 al 21 del Anexo I, Dec. 351/79.</p>
+              <p><strong>C (alto):</strong> Capítulos 5 al 21 del Anexo I, Dec. 351/79.</p>
+            </div>
+          </div>
+        </div>
 
         <div>
           <label className="text-sm font-medium text-text-secondary block mb-2">Horario por día</label>
