@@ -21,8 +21,10 @@ import {
   type FranjaQf,
   type MaterialCarga,
 } from '@/lib/calculo-carga-fuego/calculos'
+import { firmarProtocolo } from '@/lib/actions/firmar-protocolo'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
+import { FirmaCanvas } from '@/components/firmas/firma-canvas'
 import {
   Flame, Building2, Layers, FileText, Plus, Trash2,
   ChevronLeft, ChevronRight, CheckCircle, Loader2,
@@ -106,6 +108,8 @@ interface ProtocoloPdfData {
   ventilacion: Ventilacion
   observacionesGenerales: string | null
   firmante: string | null
+  /** DataURL (PNG base64) de la firma dibujada a mano. null = sin firma. */
+  firmaImg: string | null
   filasMateriales: PdfFilaMaterial[]
   totalEquiv: number
   qf: number | null
@@ -194,6 +198,11 @@ export function CalculoCargaFuegoEjecutorModal({
 
   // ── Hoja 1: datos ───────────────────────────────────────────────────
   const [firmante, setFirmante] = useState('')
+  // DNI del profesional firmante: lo necesita firmarProtocolo para vincular la
+  // firma a la persona del directorio. Opcional — sin DNI no se registra la firma.
+  const [firmanteDni, setFirmanteDni] = useState('')
+  // Firma dibujada a mano del profesional (dataURL PNG base64). null = sin firma.
+  const [firmaSvg, setFirmaSvg] = useState<string | null>(null)
   const [sectorIncendio, setSectorIncendio] = useState('')
   const [superficie, setSuperficie] = useState('')
   const [ventilacion, setVentilacion] = useState<Ventilacion>('natural')
@@ -532,6 +541,27 @@ export function CalculoCargaFuegoEjecutorModal({
       const result = await crearCalculoCargaFuego(fd)
       if (!result.success) { setError(result.error); setSaving(false); return }
 
+      // Firma a mano del profesional (NO bloqueante): si dibujó algo y cargó su DNI,
+      // la registramos contra la cabecera recién creada vía la tabla polimórfica
+      // `firmas`. Un fallo acá no rompe el cierre del cálculo: solo se loguea.
+      if (firmaSvg && firmanteDni.trim()) {
+        try {
+          const firmaRes = await firmarProtocolo({
+            entidadTipo: 'calculo_carga_fuego',
+            entidadId: result.data.calculoId,
+            firmaSvgData: firmaSvg,
+            nombre: firmante,
+            dni: firmanteDni.trim(),
+            rol: 'Profesional',
+          })
+          if (!firmaRes.success) {
+            console.error('[calculoCargaFuego] No se pudo registrar la firma:', firmaRes.error)
+          }
+        } catch (firmaErr) {
+          console.error('[calculoCargaFuego] Error inesperado al registrar la firma:', firmaErr)
+        }
+      }
+
       setStep('listo')
       onSuccess()
     } catch (err) {
@@ -569,6 +599,7 @@ export function CalculoCargaFuegoEjecutorModal({
       ventilacion,
       observacionesGenerales: observacionesGenerales || null,
       firmante: firmante || null,
+      firmaImg: firmaSvg,
       filasMateriales,
       totalEquiv,
       qf,
@@ -582,7 +613,7 @@ export function CalculoCargaFuegoEjecutorModal({
     }
   }, [
     materialesValidos, estCtx, sectorIncendio, superficieNum, ventilacion,
-    observacionesGenerales, firmante, totalEquiv, qf, franja, riesgo,
+    observacionesGenerales, firmante, firmaSvg, totalEquiv, qf, franja, riesgo,
     fExigido, potencialA, potencialB, conclusiones, recomendaciones,
   ])
 
@@ -732,6 +763,17 @@ export function CalculoCargaFuegoEjecutorModal({
                     value={firmante}
                     onChange={e => setFirmante(e.target.value)}
                     placeholder="Ing. Juan Pérez — Mat. 1234"
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>DNI del firmante</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    className={inputCls}
+                    value={firmanteDni}
+                    onChange={e => setFirmanteDni(e.target.value)}
+                    placeholder="Para registrar la firma a mano (opcional)"
                   />
                 </div>
                 <div>
@@ -1239,6 +1281,15 @@ export function CalculoCargaFuegoEjecutorModal({
                 </div>
               </ReviewSection>
             )}
+
+            {/* Firma a mano del profesional (deseable, no obligatoria) */}
+            <ReviewSection title="Firma del profesional">
+              <p className="text-xs text-text-tertiary mb-2">
+                Dibujá tu firma. Quedará registrada en el cálculo y se incluirá en el PDF. Es opcional: si la dejás vacía, el cálculo se guarda igual.
+                {!firmanteDni.trim() && ' Para registrarla, cargá el DNI del firmante en la hoja Datos.'}
+              </p>
+              <FirmaCanvas onDataChange={setFirmaSvg} />
+            </ReviewSection>
           </div>
         )}
 
@@ -1432,12 +1483,22 @@ function PdfCampo({ label, value }: { label: string; value: string | null }) {
   )
 }
 
-function PdfFirma({ firmante }: { firmante: string | null }) {
+function PdfFirma({ firmante, firmaImg }: { firmante: string | null; firmaImg?: string | null }) {
   return (
     <div style={{ marginTop: 40 }}>
-      <div style={{ width: 280, borderTop: `1px solid ${PDF_INK}`, paddingTop: 6 }}>
-        <p style={{ margin: 0, fontWeight: 600 }}>{dash(firmante)}</p>
-        <p style={{ margin: '2px 0 0', fontSize: 10, color: PDF_MUTED }}>Firma · Aclaración · Matrícula / Registro</p>
+      <div style={{ width: 280 }}>
+        {firmaImg && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={firmaImg}
+            alt="Firma del profesional"
+            style={{ display: 'block', height: 60, objectFit: 'contain', borderBottom: `1px solid ${PDF_INK}`, paddingBottom: 2 }}
+          />
+        )}
+        <div style={{ borderTop: firmaImg ? 'none' : `1px solid ${PDF_INK}`, paddingTop: 6 }}>
+          <p style={{ margin: 0, fontWeight: 600 }}>{dash(firmante)}</p>
+          <p style={{ margin: '2px 0 0', fontSize: 10, color: PDF_MUTED }}>Firma · Aclaración · Matrícula / Registro</p>
+        </div>
       </div>
     </div>
   )
@@ -1496,7 +1557,7 @@ function ProtocoloCargaFuegoHojas({
           <PdfCampo label="Observaciones" value={data.observacionesGenerales} />
         </PdfSeccion>
 
-        <PdfFirma firmante={data.firmante} />
+        <PdfFirma firmante={data.firmante} firmaImg={data.firmaImg} />
       </HojaA4>
 
       {/* ── HOJA 2: MATERIALES ────────────────────────────────────── */}
@@ -1577,7 +1638,7 @@ function ProtocoloCargaFuegoHojas({
         <PdfSeccion titulo="Recomendaciones">
           <p style={{ margin: 0, whiteSpace: 'pre-wrap', minHeight: 60 }}>{dash(data.recomendaciones)}</p>
         </PdfSeccion>
-        <PdfFirma firmante={data.firmante} />
+        <PdfFirma firmante={data.firmante} firmaImg={data.firmaImg} />
       </HojaA4>
     </div>
   )

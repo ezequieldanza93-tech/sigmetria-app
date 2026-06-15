@@ -12,10 +12,12 @@ import {
   type SectorConPuestos,
 } from '@/lib/actions/medicion-pat'
 import { getCertificadoVigente } from '@/lib/actions/certificado'
+import { firmarProtocolo } from '@/lib/actions/firmar-protocolo'
 import { useSignedUrls } from '@/lib/storage/sign-client'
 import { raMaxTT, cumpleToma } from '@/lib/medicion-pat/calculos'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
+import { FirmaCanvas } from '@/components/firmas/firma-canvas'
 import { PersonaRolSelector } from '@/components/persona-rol-selector'
 import { pickClasificacionDefault } from '@/lib/medicion/clasificacion-default'
 import type { CertificadoCalibracion } from '@/lib/types'
@@ -148,6 +150,8 @@ interface ProtocoloPdfData {
   horaFin: string | null
   observacionesGenerales: string | null
   firmante: string | null
+  /** DataURL (PNG base64) de la firma a mano del profesional, si la dibujó. */
+  firmaSvg: string | null
   filasGrilla: PdfFilaGrilla[]
   conclusiones: string | null
   recomendaciones: string | null
@@ -224,6 +228,12 @@ export function MedicionPatEjecutorModal({
   // con datos viejos y para el PDF / payload; se deriva del nombre de la persona elegida.
   const [firmantePersonaId, setFirmantePersonaId] = useState('')
   const [firmante, setFirmante] = useState('')
+  // DNI del firmante: lo necesita firmarProtocolo para resolver el trabajador del
+  // directorio y desambiguar la re-firma (una firma por persona + protocolo).
+  const [firmanteDni, setFirmanteDni] = useState('')
+  // Firma a mano del profesional (dataURL PNG base64) dibujada en el paso de revisión.
+  // Opcional: si está vacía no se firma, pero no bloquea el cierre del protocolo.
+  const [firmaSvg, setFirmaSvg] = useState<string | null>(null)
   const [metodologia, setMetodologia] = useState('')
   const [fechaMedicion, setFechaMedicion] = useState(rgFechaPlanificada || '')
   const [fechaMedicionFin, setFechaMedicionFin] = useState('')
@@ -546,6 +556,27 @@ export function MedicionPatEjecutorModal({
       const result = await crearMedicionPat(fd)
       if (!result.success) { setError(result.error); setSaving(false); return }
 
+      // Firma a mano del profesional (opcional). El protocolo ya quedó guardado:
+      // si la firma falla NO se rompe el cierre, sólo se loguea. Requiere DNI para
+      // resolver el trabajador y desambiguar la re-firma.
+      if (firmaSvg && firmanteDni) {
+        try {
+          const firmaResult = await firmarProtocolo({
+            entidadTipo: 'medicion_pat',
+            entidadId: result.data.medicionId,
+            firmaSvgData: firmaSvg,
+            nombre: firmante,
+            dni: firmanteDni,
+            rol: 'Profesional',
+          })
+          if (!firmaResult.success) {
+            console.error('[medicionPat] No se pudo registrar la firma:', firmaResult.error)
+          }
+        } catch (firmaErr) {
+          console.error('[medicionPat] Error inesperado al firmar el protocolo:', firmaErr)
+        }
+      }
+
       setStep('listo')
       onSuccess()
     } catch (err) {
@@ -623,6 +654,7 @@ export function MedicionPatEjecutorModal({
       horaFin: horaFin || null,
       observacionesGenerales: observacionesGenerales || null,
       firmante: firmante || null,
+      firmaSvg,
       filasGrilla,
       conclusiones: conclusiones || null,
       recomendaciones: recomendaciones || null,
@@ -630,7 +662,7 @@ export function MedicionPatEjecutorModal({
   }, [
     instrumentos, instrumentoId, certificadoVigente, tomas, sectores,
     estCtx, metodologia, fechaMedicion, fechaMedicionFin, horaInicio, horaFin,
-    observacionesGenerales, firmante, conclusiones, recomendaciones,
+    observacionesGenerales, firmante, firmaSvg, conclusiones, recomendaciones,
   ])
 
   // ── Render: post-guardado ───────────────────────────────────────────
@@ -787,6 +819,8 @@ export function MedicionPatEjecutorModal({
                       // `firmante` (texto) se deriva del nombre de la persona: alimenta el PDF
                       // y conserva el contrato con datos viejos sin un campo extra de matrícula.
                       setFirmante(p ? `${p.apellido}, ${p.nombre}` : '')
+                      // DNI para la firma a mano (firmarProtocolo). Puede ser null si la persona no lo tiene.
+                      setFirmanteDni(p?.dni ?? '')
                     }}
                     placeholder="Buscar persona del directorio…"
                   />
@@ -1260,6 +1294,17 @@ export function MedicionPatEjecutorModal({
               <ReadOnly label="Conclusiones" value={conclusiones} block />
               <ReadOnly label="Recomendaciones" value={recomendaciones} block />
             </ReviewSection>
+
+            {/* Firma a mano del profesional (opcional) */}
+            <ReviewSection title="Firma del profesional">
+              <p className="text-xs text-text-tertiary mb-3">
+                Dibujá tu firma a mano (opcional). Se incluye en el PDF del protocolo.
+                {!firmanteDni && firmante && (
+                  <span className="text-amber-700"> El firmante elegido no tiene DNI cargado: la firma no se podrá registrar hasta que lo completes en el directorio.</span>
+                )}
+              </p>
+              <FirmaCanvas onDataChange={setFirmaSvg} />
+            </ReviewSection>
           </div>
         )}
 
@@ -1522,10 +1567,20 @@ function PdfCampo({ label, value }: { label: string; value: string | null }) {
   )
 }
 
-function PdfFirma({ firmante }: { firmante: string | null }) {
+function PdfFirma({ firmante, firmaSvg }: { firmante: string | null; firmaSvg?: string | null }) {
   return (
     <div style={{ marginTop: 40 }}>
-      <div style={{ width: 280, borderTop: `1px solid ${PDF_INK}`, paddingTop: 6 }}>
+      {firmaSvg && (
+        // Firma a mano rasterizada (dataURL PNG). Va ARRIBA de la aclaración/matrícula,
+        // con una línea inferior que hace de pie de firma sobre el nombre.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={firmaSvg}
+          alt="Firma del profesional"
+          style={{ display: 'block', height: 60, width: 'auto', maxWidth: 280, objectFit: 'contain', borderBottom: `1px solid ${PDF_INK}` }}
+        />
+      )}
+      <div style={{ width: 280, borderTop: firmaSvg ? 'none' : `1px solid ${PDF_INK}`, paddingTop: 6 }}>
         <p style={{ margin: 0, fontWeight: 600 }}>{dash(firmante)}</p>
         <p style={{ margin: '2px 0 0', fontSize: 10, color: PDF_MUTED }}>Firma · Aclaración · Matrícula / Registro</p>
       </div>
@@ -1598,7 +1653,7 @@ function ProtocoloPatHojas({
           <PdfCampo label="Observaciones" value={data.observacionesGenerales} />
         </PdfSeccion>
 
-        <PdfFirma firmante={data.firmante} />
+        <PdfFirma firmante={data.firmante} firmaSvg={data.firmaSvg} />
       </HojaA4>
 
       {/* ── HOJA 2: GRILLA ────────────────────────────────────────── */}
@@ -1658,7 +1713,7 @@ function ProtocoloPatHojas({
         <PdfSeccion titulo="Recomendaciones">
           <p style={{ margin: 0, whiteSpace: 'pre-wrap', minHeight: 60 }}>{dash(data.recomendaciones)}</p>
         </PdfSeccion>
-        <PdfFirma firmante={data.firmante} />
+        <PdfFirma firmante={data.firmante} firmaSvg={data.firmaSvg} />
       </HojaA4>
     </div>
   )

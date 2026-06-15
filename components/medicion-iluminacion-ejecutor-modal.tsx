@@ -24,11 +24,13 @@ import {
   generalRequeridaLocalizada,
 } from '@/lib/medicion-iluminacion/calculos'
 import { getCertificadoVigente } from '@/lib/actions/certificado'
+import { firmarProtocolo } from '@/lib/actions/firmar-protocolo'
 import { useSignedUrls } from '@/lib/storage/sign-client'
 import { pickClasificacionDefault } from '@/lib/medicion/clasificacion-default'
 import type { CertificadoCalibracion } from '@/lib/types'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
+import { FirmaCanvas } from '@/components/firmas/firma-canvas'
 import { PersonaRolSelector } from '@/components/persona-rol-selector'
 import {
   Lightbulb, Building2, Grid3X3, FileText, Plus, Trash2,
@@ -143,6 +145,8 @@ interface ProtocoloPdfData {
   alturaCriterio: AlturaCriterio
   observacionesGenerales: string | null
   firmante: string | null
+  /** DataURL (PNG base64) de la firma dibujada a mano. null = sin firma. */
+  firmaSvg: string | null
   filasGrilla: PdfFilaGrilla[]
   conclusiones: string | null
   recomendaciones: string | null
@@ -324,6 +328,10 @@ export function MedicionIluminacionEjecutorModal({
   // Firmante: persona del directorio. `firmante` (texto) se deriva del nombre.
   const [firmantePersonaId, setFirmantePersonaId] = useState('')
   const [firmante, setFirmante] = useState('')
+  // DNI del firmante (de la persona del directorio): lo necesita firmarProtocolo.
+  const [firmanteDni, setFirmanteDni] = useState('')
+  // Firma dibujada a mano del profesional (dataURL PNG base64). null = sin firma.
+  const [firmaSvg, setFirmaSvg] = useState<string | null>(null)
   const [metodologia, setMetodologia] = useState('')
   const [fechaMedicion, setFechaMedicion] = useState(rgFechaPlanificada || '')
   const [horaInicio, setHoraInicio] = useState('')
@@ -720,6 +728,27 @@ export function MedicionIluminacionEjecutorModal({
       const result = await crearMedicionIluminacion(fd)
       if (!result.success) { setError(result.error); setSaving(false); return }
 
+      // Firma a mano del profesional (opcional, NO bloqueante). Si el profesional
+      // dibujó su firma, la registramos contra la cabecera recién creada. Un error
+      // de firma no debe romper el cierre del protocolo: lo logueamos y seguimos.
+      if (firmaSvg && firmante) {
+        try {
+          const firmaResult = await firmarProtocolo({
+            entidadTipo: 'medicion_iluminacion',
+            entidadId: result.data.medicionId,
+            firmaSvgData: firmaSvg,
+            nombre: firmante,
+            dni: firmanteDni,
+            rol: 'Profesional',
+          })
+          if (!firmaResult.success) {
+            console.error('[medicionIluminacion] No se pudo registrar la firma:', firmaResult.error)
+          }
+        } catch (firmaErr) {
+          console.error('[medicionIluminacion] Error al registrar la firma:', firmaErr)
+        }
+      }
+
       setStep('listo')
       onSuccess()
     } catch (err) {
@@ -799,6 +828,7 @@ export function MedicionIluminacionEjecutorModal({
       alturaCriterio,
       observacionesGenerales: observacionesGenerales || null,
       firmante: firmante || null,
+      firmaSvg,
       filasGrilla,
       conclusiones: conclusiones || null,
       recomendaciones: recomendaciones || null,
@@ -806,7 +836,7 @@ export function MedicionIluminacionEjecutorModal({
   }, [
     instrumentos, instrumentoId, certificadoVigente, puntos, resumenes,
     sectores, estCtx, metodologia, fechaMedicion, horaInicio, horaFin, condiciones,
-    alturaCriterio, observacionesGenerales, firmante, conclusiones, recomendaciones,
+    alturaCriterio, observacionesGenerales, firmante, firmaSvg, conclusiones, recomendaciones,
   ])
 
   // ── Render: post-guardado ───────────────────────────────────────────
@@ -961,6 +991,7 @@ export function MedicionIluminacionEjecutorModal({
                     onChange={p => {
                       setFirmantePersonaId(p?.id ?? '')
                       setFirmante(p ? `${p.apellido}, ${p.nombre}` : '')
+                      setFirmanteDni(p?.dni ?? '')
                     }}
                     placeholder="Buscar persona del directorio…"
                   />
@@ -1620,6 +1651,21 @@ export function MedicionIluminacionEjecutorModal({
                 </div>
               </ReviewSection>
             )}
+
+            {/* Firma a mano del profesional (opcional, no bloquea el guardado) */}
+            <ReviewSection title="Firma del profesional">
+              <p className="text-xs text-text-tertiary mb-3">
+                {firmante
+                  ? <>Firmando como <span className="font-medium text-text-secondary">{firmante}</span>. Dibujá la firma abajo (opcional).</>
+                  : 'Dibujá la firma del profesional abajo (opcional).'}
+              </p>
+              <FirmaCanvas onDataChange={setFirmaSvg} />
+              {firmaSvg && (
+                <p className="text-xs text-success mt-2 flex items-center gap-1.5">
+                  <Check size={13} /> Firma capturada. Se incluirá en el protocolo.
+                </p>
+              )}
+            </ReviewSection>
           </div>
         )}
 
@@ -1869,12 +1915,22 @@ function PdfCampo({ label, value }: { label: string; value: string | null }) {
   )
 }
 
-function PdfFirma({ firmante }: { firmante: string | null }) {
+function PdfFirma({ firmante, firmaSvg }: { firmante: string | null; firmaSvg: string | null }) {
   return (
     <div style={{ marginTop: 40 }}>
-      <div style={{ width: 280, borderTop: `1px solid ${PDF_INK}`, paddingTop: 6 }}>
-        <p style={{ margin: 0, fontWeight: 600 }}>{dash(firmante)}</p>
-        <p style={{ margin: '2px 0 0', fontSize: 10, color: PDF_MUTED }}>Firma · Aclaración · Matrícula / Registro</p>
+      <div style={{ width: 280 }}>
+        {firmaSvg && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={firmaSvg}
+            alt="Firma del profesional"
+            style={{ display: 'block', height: 60, width: 'auto', maxWidth: 280, borderBottom: `1px solid ${PDF_INK}` }}
+          />
+        )}
+        <div style={firmaSvg ? { paddingTop: 6 } : { borderTop: `1px solid ${PDF_INK}`, paddingTop: 6 }}>
+          <p style={{ margin: 0, fontWeight: 600 }}>{dash(firmante)}</p>
+          <p style={{ margin: '2px 0 0', fontSize: 10, color: PDF_MUTED }}>Firma · Aclaración · Matrícula / Registro</p>
+        </div>
       </div>
     </div>
   )
@@ -1954,7 +2010,7 @@ function ProtocoloIluminacionHojas({
           <PdfCampo label="Observaciones" value={data.observacionesGenerales} />
         </PdfSeccion>
 
-        <PdfFirma firmante={data.firmante} />
+        <PdfFirma firmante={data.firmante} firmaSvg={data.firmaSvg} />
       </HojaA4>
 
       {/* ── HOJA 2: GRILLA ────────────────────────────────────────── */}
@@ -2009,7 +2065,7 @@ function ProtocoloIluminacionHojas({
         <PdfSeccion titulo="Recomendaciones">
           <p style={{ margin: 0, whiteSpace: 'pre-wrap', minHeight: 60 }}>{dash(data.recomendaciones)}</p>
         </PdfSeccion>
-        <PdfFirma firmante={data.firmante} />
+        <PdfFirma firmante={data.firmante} firmaSvg={data.firmaSvg} />
       </HojaA4>
     </div>
   )

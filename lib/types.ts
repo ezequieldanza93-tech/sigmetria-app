@@ -417,6 +417,8 @@ export interface Producto {
   consultora_id: string | null
   tamano: number | null
   unidad_id: string | null
+  foto_url: string | null
+  airtable_id: string | null
   unidades?: { nombre: string; simbolo: string } | null
   is_active: boolean
   created_at: string
@@ -1291,7 +1293,7 @@ export interface UserDashboardWidget {
 }
 
 // ---- Firmas ----
-export type FirmaEntidadTipo = 'gestion' | 'capacitacion' | 'permiso_trabajo' | 'entrega_epp' | 'curso_certificado'
+export type FirmaEntidadTipo = 'gestion' | 'capacitacion' | 'permiso_trabajo' | 'entrega_epp' | 'curso_certificado' | 'medicion_pat' | 'medicion_iluminacion' | 'medicion_ruido' | 'medicion_carga_termica' | 'calculo_carga_fuego'
 export type FirmaFirmanteTipo = 'usuario_interno' | 'trabajador'
 
 export interface Firma {
@@ -1531,6 +1533,11 @@ export const FIRMA_ENTIDAD_LABELS: Record<FirmaEntidadTipo, string> = {
   permiso_trabajo: 'Permiso de Trabajo',
   entrega_epp: 'Entrega de EPP',
   curso_certificado: 'Certificado de Curso',
+  medicion_pat: 'Medición de Puesta a Tierra',
+  medicion_iluminacion: 'Medición de Iluminación',
+  medicion_ruido: 'Medición de Ruido',
+  medicion_carga_termica: 'Medición de Carga Térmica',
+  calculo_carga_fuego: 'Cálculo de Carga de Fuego',
 }
 
 // ---- IPERC ----

@@ -31,6 +31,8 @@ import type { CertificadoCalibracion } from '@/lib/types'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { PersonaRolSelector } from '@/components/persona-rol-selector'
+import { FirmaCanvas } from '@/components/firmas/firma-canvas'
+import { firmarProtocolo } from '@/lib/actions/firmar-protocolo'
 import {
   Building2, FileText, Plus, Trash2,
   ChevronLeft, ChevronRight, CheckCircle, XCircle, Loader2,
@@ -345,6 +347,8 @@ interface ProtocoloCargaTermicaPdfData {
   representanteEmpresa: string | null
   observacionesGenerales: string | null
   firmante: string | null
+  /** Firma a mano del profesional (dataURL PNG). null = sin firma dibujada. */
+  firmaImg: string | null
   // Planilla B — estudio
   puestos: PdfPuesto[]
   // Planilla C — conclusiones
@@ -387,6 +391,12 @@ export function MedicionCargaTermicaEjecutorModal({
   // Firmante: persona del directorio. `firmante` (texto) se deriva del nombre.
   const [firmantePersonaId, setFirmantePersonaId] = useState('')
   const [firmante, setFirmante] = useState('')
+  // Nombre/DNI crudos del firmante (para la firma a mano → firmarProtocolo).
+  const [firmanteNombre, setFirmanteNombre] = useState('')
+  const [firmanteDni, setFirmanteDni] = useState('')
+  // Firma a mano del profesional (dataURL PNG) capturada en el paso de revisión.
+  // Es deseable, no obligatoria: NO bloquea el cierre del protocolo.
+  const [firmaSvg, setFirmaSvg] = useState<string | null>(null)
   const [fechaMedicion, setFechaMedicion] = useState(rgFechaPlanificada || '')
   const [fechaMedicionFin, setFechaMedicionFin] = useState('')
   const [horaInicio, setHoraInicio] = useState('')
@@ -727,6 +737,7 @@ export function MedicionCargaTermicaEjecutorModal({
       representanteEmpresa: representanteEmpresa || null,
       observacionesGenerales: observacionesGenerales || null,
       firmante: firmante || null,
+      firmaImg: firmaSvg,
       puestos: puestosPdf,
       conclusionesAclimatado: conclusionesAclimatado || null,
       conclusionesNoAclimatado: conclusionesNoAclimatado || null,
@@ -737,7 +748,7 @@ export function MedicionCargaTermicaEjecutorModal({
     tmActividades, varRopa, estCtx, fechaMedicion, fechaMedicionFin, horaInicio,
     horaFin, turnos, atmTempMax, atmTempMin, atmHumedad, atmPresion, atmViento,
     fuenteDatosAtm, condicionesPuesto, representanteTrabajadores,
-    representanteEmpresa, observacionesGenerales, firmante,
+    representanteEmpresa, observacionesGenerales, firmante, firmaSvg,
     conclusionesAclimatado, conclusionesNoAclimatado, recomendaciones,
   ])
 
@@ -898,6 +909,27 @@ export function MedicionCargaTermicaEjecutorModal({
 
       const result = await crearMedicionCargaTermica(fd)
       if (!result.success) { setError(result.error); setSaving(false); return }
+
+      // Firma a mano del profesional (NO bloqueante): si el técnico dibujó algo,
+      // la registramos contra la cabecera recién creada vía la tabla polimórfica
+      // `firmas`. Un fallo acá no rompe el cierre del protocolo: solo se loguea.
+      if (firmaSvg && firmanteDni.trim()) {
+        try {
+          const firmaRes = await firmarProtocolo({
+            entidadTipo: 'medicion_carga_termica',
+            entidadId: result.data.medicionId,
+            firmaSvgData: firmaSvg,
+            nombre: firmanteNombre || firmante,
+            dni: firmanteDni,
+            rol: 'Profesional',
+          })
+          if (!firmaRes.success) {
+            console.error('[medicionCargaTermica] No se pudo registrar la firma:', firmaRes.error)
+          }
+        } catch (firmaErr) {
+          console.error('[medicionCargaTermica] Error inesperado al registrar la firma:', firmaErr)
+        }
+      }
 
       setStep('listo')
       onSuccess()
@@ -1070,6 +1102,8 @@ export function MedicionCargaTermicaEjecutorModal({
                     onChange={p => {
                       setFirmantePersonaId(p?.id ?? '')
                       setFirmante(p ? `${p.apellido}, ${p.nombre}` : '')
+                      setFirmanteNombre(p ? `${p.apellido}, ${p.nombre}` : '')
+                      setFirmanteDni(p?.dni ?? '')
                     }}
                     placeholder="Buscar persona del directorio…"
                   />
@@ -1675,6 +1709,14 @@ export function MedicionCargaTermicaEjecutorModal({
                 </div>
               </ReviewSection>
             )}
+
+            {/* Firma a mano del profesional (deseable, no obligatoria) */}
+            <ReviewSection title="Firma del profesional">
+              <p className="text-xs text-text-tertiary mb-2">
+                Dibujá tu firma. Quedará registrada en el protocolo y se incluirá en el PDF. Es opcional: si la dejás vacía, el protocolo se guarda igual.
+              </p>
+              <FirmaCanvas onDataChange={setFirmaSvg} />
+            </ReviewSection>
           </div>
         )}
 
@@ -1911,12 +1953,22 @@ function PdfCampo({ label, value }: { label: string; value: string | null }) {
   )
 }
 
-function PdfFirma({ firmante }: { firmante: string | null }) {
+function PdfFirma({ firmante, firmaImg }: { firmante: string | null; firmaImg?: string | null }) {
   return (
     <div style={{ marginTop: 40 }}>
-      <div style={{ width: 280, borderTop: `1px solid ${PDF_INK}`, paddingTop: 6 }}>
-        <p style={{ margin: 0, fontWeight: 600 }}>{dash(firmante)}</p>
-        <p style={{ margin: '2px 0 0', fontSize: 10, color: PDF_MUTED }}>Firma · Aclaración · Matrícula / Registro</p>
+      <div style={{ width: 280 }}>
+        {firmaImg && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={firmaImg}
+            alt="Firma del profesional"
+            style={{ display: 'block', height: 60, maxWidth: 280, objectFit: 'contain', borderBottom: `1px solid ${PDF_INK}` }}
+          />
+        )}
+        <div style={{ borderTop: firmaImg ? 'none' : `1px solid ${PDF_INK}`, paddingTop: 6 }}>
+          <p style={{ margin: 0, fontWeight: 600 }}>{dash(firmante)}</p>
+          <p style={{ margin: '2px 0 0', fontSize: 10, color: PDF_MUTED }}>Firma · Aclaración · Matrícula / Registro</p>
+        </div>
       </div>
     </div>
   )
@@ -2018,7 +2070,7 @@ function ProtocoloCargaTermicaHojas({
           <PdfCampo label="Observaciones" value={data.observacionesGenerales} />
         </PdfSeccion>
 
-        <PdfFirma firmante={data.firmante} />
+        <PdfFirma firmante={data.firmante} firmaImg={data.firmaImg} />
       </HojaA4>
 
       {/* ── PLANILLA B: ESTUDIO (una hoja por puesto/GHE) ──────────── */}
@@ -2120,7 +2172,7 @@ function ProtocoloCargaTermicaHojas({
         <PdfSeccion titulo="Recomendaciones">
           <p style={{ margin: 0, whiteSpace: 'pre-wrap', minHeight: 50 }}>{dash(data.recomendaciones)}</p>
         </PdfSeccion>
-        <PdfFirma firmante={data.firmante} />
+        <PdfFirma firmante={data.firmante} firmaImg={data.firmaImg} />
       </HojaA4>
     </div>
   )
