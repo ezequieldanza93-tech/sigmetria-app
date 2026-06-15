@@ -1,29 +1,46 @@
 'use client'
 
-import { useState, useEffect, useActionState, useRef, useMemo } from 'react'
+import { useState, useEffect, useActionState, useRef } from 'react'
 import Image from 'next/image'
-import { Search } from 'lucide-react'
+import { Search, Filter, Layers, Shield, ShieldCheck, Package } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { FotoInput } from '@/components/ui/foto-input'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import { createClient } from '@/lib/supabase/client'
 import { createProducto, deleteProducto } from '@/lib/actions/producto'
 import { useEffectiveRoleContext } from '@/lib/contexts/effective-role-context'
+import { useCatalogoArbol } from '@/lib/queries/producto-catalogo'
 import { OrigenFilter, pasaOrigen, type OrigenFiltro } from '@/components/ui/origen-filter'
 import { ProductoCard } from '@/components/productos/producto-card'
 import { ProductoDetalle } from '@/components/productos/producto-detalle'
-import type { Producto, CategoriaProducto, Organizacion, ActionResult, Unidad } from '@/lib/types'
+import {
+  CatalogoCascadeForm,
+  categoriasDeClase,
+  componentesDeCategoria,
+  type CatalogoArbol,
+} from '@/components/productos/catalogo-cascade'
+import type { Producto, Organizacion, ActionResult, Unidad, ProductoClase } from '@/lib/types'
+
+// Ícono por clase (por nombre genérico). Fallback Package para clases propias.
+function iconoClase(nombre: string) {
+  const n = nombre.toLowerCase()
+  if (n.startsWith('epp')) return Shield
+  if (n.startsWith('epc')) return ShieldCheck
+  if (n.startsWith('equip')) return Package
+  return Layers
+}
 
 // ─── Formulario de creación ────────────────────────────────────────────────────
 
 function ProductoForm({
-  categorias,
+  arbol,
   marcas,
   unidades,
   onSuccess,
   isStaffDeveloper,
 }: {
-  categorias: CategoriaProducto[]
+  arbol: CatalogoArbol
   marcas: Organizacion[]
   unidades: Unidad[]
   onSuccess: () => void
@@ -34,6 +51,12 @@ function ProductoForm({
     null as ActionResult<null> | null
   )
   const [fotoPreview, setFotoPreview] = useState<string | null>(null)
+  // Cascada clase → categoría → componente (controlada, para resets en cadena).
+  const [claseId, setClaseId] = useState('')
+  const [categoriaId, setCategoriaId] = useState('')
+  const [componenteId, setComponenteId] = useState('')
+  const [marcaId, setMarcaId] = useState('')
+  const [unidadId, setUnidadId] = useState('')
   // Para staff developer: controla si el producto será genérico (base Sigmetría) o propio.
   // Para consultoras normales esta variable no se usa — siempre propio.
   const [esGenerico, setEsGenerico] = useState(false)
@@ -57,6 +80,17 @@ function ProductoForm({
     const dt = new DataTransfer()
     dt.items.add(file)
     if (fotoInputRef.current) fotoInputRef.current.files = dt.files
+  }
+
+  // Resets en cadena: clase nueva → limpia categoría y componente; categoría nueva → limpia componente.
+  function handleClase(v: string) {
+    setClaseId(v)
+    setCategoriaId('')
+    setComponenteId('')
+  }
+  function handleCategoria(v: string) {
+    setCategoriaId(v)
+    setComponenteId('')
   }
 
   return (
@@ -95,35 +129,43 @@ function ProductoForm({
         <input name="nombre" required className="w-full border border-border-default rounded-lg px-3 py-2 text-sm" placeholder="Ej: Casco de seguridad" />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="text-sm font-medium text-text-secondary block mb-1">Categoría *</label>
-          <select name="categoria_id" required className="w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base">
-            <option value="">Seleccioná…</option>
-            {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="text-sm font-medium text-text-secondary block mb-1">Marca</label>
-          <select name="marca_id" className="w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base">
-            <option value="">Sin marca</option>
-            {marcas.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
-          </select>
-        </div>
-      </div>
+      {/* Clasificación en cascada: clase → categoría → componente.
+          esGenerico (solo staff developer) hace que la creación inline cree ítems base. */}
+      <CatalogoCascadeForm
+        arbol={arbol}
+        claseId={claseId}
+        categoriaId={categoriaId}
+        componenteId={componenteId}
+        onClaseChange={handleClase}
+        onCategoriaChange={handleCategoria}
+        onComponenteChange={setComponenteId}
+        esGenerico={esGenerico}
+      />
 
       <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="text-sm font-medium text-text-secondary block mb-1">Tamaño</label>
-          <input name="tamano" type="number" step="0.01" min="0" className="w-full border border-border-default rounded-lg px-3 py-2 text-sm" placeholder="Ej: 500" />
-        </div>
-        <div>
-          <label className="text-sm font-medium text-text-secondary block mb-1">Unidad</label>
-          <select name="unidad_id" className="w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base">
-            <option value="">—</option>
-            {unidades.map(u => <option key={u.id} value={u.id}>{u.nombre} ({u.simbolo})</option>)}
-          </select>
-        </div>
+        <SearchableSelect
+          label="Marca"
+          name="marca_id"
+          value={marcaId}
+          onChange={setMarcaId}
+          placeholder="Sin marca"
+          options={marcas.map(m => ({ value: m.id, label: m.nombre }))}
+          emptyText="Sin marcas."
+        />
+        <SearchableSelect
+          label="Unidad"
+          name="unidad_id"
+          value={unidadId}
+          onChange={setUnidadId}
+          placeholder="—"
+          options={unidades.map(u => ({ value: u.id, label: `${u.nombre} (${u.simbolo})` }))}
+          emptyText="Sin unidades."
+        />
+      </div>
+
+      <div>
+        <label className="text-sm font-medium text-text-secondary block mb-1">Tamaño</label>
+        <input name="tamano" type="number" step="0.01" min="0" className="w-full border border-border-default rounded-lg px-3 py-2 text-sm" placeholder="Ej: 500" />
       </div>
 
       <div>
@@ -189,10 +231,13 @@ function agruparProductos(lista: Producto[]): ProductoAgrupado[] {
 
 export default function ProductosPage() {
   const [productos, setProductos] = useState<Producto[] | null>(null)
-  const [categorias, setCategorias] = useState<CategoriaProducto[]>([])
   const [marcas, setMarcas] = useState<Organizacion[]>([])
   const [unidades, setUnidades] = useState<Unidad[]>([])
+  // Cascada de filtros tipo MercadoLibre: clase → categoría → componente.
+  const [activeClase, setActiveClase] = useState<string>('todos')
   const [activeCategoria, setActiveCategoria] = useState<string>('todos')
+  const [activeComponente, setActiveComponente] = useState<string>('todos')
+  // Facetas secundarias (estilo ML, en panel lateral).
   const [activeMarca, setActiveMarca] = useState<string>('todas')
   const [busqueda, setBusqueda] = useState<string>('')
   const [origen, setOrigen] = useState<OrigenFiltro>('todos')
@@ -204,6 +249,14 @@ export default function ProductosPage() {
   const isStaff = roleCtx?.isSuperAdmin ?? false
   // isStaffDeveloper: puede crear productos GENÉRICOS (base Sigmetría). Matchea is_developer() en RLS.
   const isStaffDeveloper = roleCtx?.systemRole === 'developer'
+
+  // Árbol del catálogo (clase → categoría → componente), híbrido base + propios.
+  const arbolQuery = useCatalogoArbol()
+  const arbol: CatalogoArbol = {
+    clases: arbolQuery.data?.clases ?? [],
+    categorias: arbolQuery.data?.categorias ?? [],
+    componentes: arbolQuery.data?.componentes ?? [],
+  }
 
   function load() {
     const supabase = createClient()
@@ -219,8 +272,6 @@ export default function ProductosPage() {
   useEffect(() => {
     load()
     const supabase = createClient()
-    supabase.from('productos_categorias').select('*').order('nombre')
-      .then(({ data }) => setCategorias(data ?? []))
     supabase.from('organizaciones_externas').select('id, nombre, tipo_id, organizaciones_tipos(nombre)')
       .range(0, 99)
       .eq('is_active', true).order('nombre')
@@ -233,19 +284,37 @@ export default function ProductosPage() {
       .then(({ data }) => setUnidades((data ?? []) as unknown as Unidad[]))
   }, [])
 
-  // Proveedores presentes en el catálogo (derivados de los productos cargados).
-  const proveedores = useMemo(() => {
-    const map = new Map<string, string>()
-    productos?.forEach(p => { if (p.proveedor_id && p.proveedor?.nombre) map.set(p.proveedor_id, p.proveedor.nombre) })
-    return [...map.entries()].map(([id, nombre]) => ({ id, nombre })).sort((a, b) => a.nombre.localeCompare(b.nombre))
-  }, [productos])
+  // Clases para tabs: separamos Equipamiento (librería aparte) de las protecciones (EPP/EPC).
+  const equipamientoClases = arbol.clases.filter(cl => cl.nombre.toLowerCase().startsWith('equip'))
+  const proteccionClases = arbol.clases.filter(cl => !cl.nombre.toLowerCase().startsWith('equip'))
 
-  // Filtrado client-side (cientos de productos, perfecto para filtros sin round-trips)
+  // Cascada de filtros: categorías de la clase activa; componentes de la categoría activa.
+  const categoriasVisibles = activeClase === 'todos'
+    ? arbol.categorias
+    : categoriasDeClase(arbol.categorias, activeClase)
+  const componentesVisibles = activeCategoria === 'todos'
+    ? []
+    : componentesDeCategoria(arbol.componentes, activeCategoria)
+
+  // Set de categorías que pertenecen a la clase activa (para filtrar productos por clase).
+  const categoriaIdsDeClase = new Set(categoriasVisibles.map(c => c.id))
+
+  // Proveedores presentes en el catálogo (derivados de los productos cargados).
+  const proveedoresMap = new Map<string, string>()
+  productos?.forEach(p => { if (p.proveedor_id && p.proveedor?.nombre) proveedoresMap.set(p.proveedor_id, p.proveedor.nombre) })
+  const proveedores = [...proveedoresMap.entries()]
+    .map(([id, nombre]) => ({ id, nombre }))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre))
+
+  // Filtrado client-side (cientos de productos, perfecto para filtros sin round-trips).
   const termino = busqueda.trim().toLowerCase()
   const filtered = productos === null
     ? null
     : productos.filter(p =>
+        // Clase: el producto pasa si su categoría pertenece a la clase activa.
+        (activeClase === 'todos' || categoriaIdsDeClase.has(p.categoria_id)) &&
         (activeCategoria === 'todos' || p.categoria_id === activeCategoria) &&
+        (activeComponente === 'todos' || p.componente_id === activeComponente) &&
         (activeMarca === 'todas' || p.marca_id === activeMarca) &&
         (activeProveedor === 'todos' || p.proveedor_id === activeProveedor) &&
         pasaOrigen(p.consultora_id, origen) &&
@@ -258,6 +327,17 @@ export default function ProductosPage() {
     setProductos(prev => prev?.filter(p => p.id !== id) ?? null)
   }
 
+  // Cambiar de clase resetea categoría y componente (cascada).
+  function selectClase(claseId: string) {
+    setActiveClase(claseId)
+    setActiveCategoria('todos')
+    setActiveComponente('todos')
+  }
+  function selectCategoria(categoriaId: string) {
+    setActiveCategoria(categoriaId)
+    setActiveComponente('todos')
+  }
+
   // Agrupación visual: se aplica DESPUÉS del filtrado. Cada "tarjeta" representa
   // un grupo nombre+marca. El conteo en el encabezado refleja tarjetas (grupos), no filas.
   const agrupados: ProductoAgrupado[] | null = filtered === null ? null : agruparProductos(filtered)
@@ -266,6 +346,21 @@ export default function ProductosPage() {
   const filteredCount = filtered?.length ?? 0
   const agrupadosCount = agrupados?.length ?? 0
 
+  // Renderiza un tab de clase con su ícono.
+  function ClaseTab({ clase }: { clase: ProductoClase }) {
+    const Icon = iconoClase(clase.nombre)
+    const active = activeClase === clase.id
+    return (
+      <button
+        onClick={() => selectClase(clase.id)}
+        className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors ${active ? 'bg-sig-500 text-white border-sig-500 shadow-sm' : 'border-border-default text-text-secondary hover:bg-surface-base'}`}
+      >
+        <Icon size={15} aria-hidden="true" />
+        {clase.nombre}
+      </button>
+    )
+  }
+
   return (
     <div className="p-6 md:p-8 max-w-6xl mx-auto">
       {/* Encabezado */}
@@ -273,7 +368,7 @@ export default function ProductosPage() {
         <div>
           <h1 className="text-2xl font-bold text-text-primary">Productos</h1>
           <p className="text-sm text-text-secondary mt-1">
-            Catálogo de EPP y otros productos de seguridad
+            Catálogo de protecciones y equipamiento
             {productos !== null && (
               <span className="ml-2 text-text-tertiary">
                 ({filteredCount < totalCount
@@ -286,30 +381,45 @@ export default function ProductosPage() {
         <Button onClick={() => setShowModal(true)}>+ Nuevo Producto</Button>
       </div>
 
-      {/* Barra de búsqueda */}
-      <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" size={15} />
-        <input
-          type="search"
-          value={busqueda}
-          onChange={e => setBusqueda(e.target.value)}
-          placeholder="Buscar por nombre…"
-          className="w-full pl-9 pr-3 py-2 border border-border-default rounded-lg text-sm bg-surface-base focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
-        />
+      {/* ── Nivel 1: CLASE (tabs destacados, Equipamiento separado) ── */}
+      <div className="flex items-center gap-2 mb-4 flex-wrap">
+        <button
+          onClick={() => selectClase('todos')}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors ${activeClase === 'todos' ? 'bg-gray-900 text-white border-gray-900 shadow-sm' : 'border-border-default text-text-secondary hover:bg-surface-base'}`}
+        >
+          <Layers size={15} aria-hidden="true" />
+          Todo el catálogo
+        </button>
+
+        {proteccionClases.length > 0 && (
+          <>
+            <span className="text-text-tertiary/40 select-none px-1">|</span>
+            {proteccionClases.map(cl => <ClaseTab key={cl.id} clase={cl} />)}
+          </>
+        )}
+
+        {/* Equipamiento como librería aparte de las protecciones. */}
+        {equipamientoClases.length > 0 && (
+          <>
+            <span className="text-text-tertiary/40 select-none px-1">|</span>
+            <span className="text-xs text-text-tertiary uppercase tracking-wide self-center">Librería aparte:</span>
+            {equipamientoClases.map(cl => <ClaseTab key={cl.id} clase={cl} />)}
+          </>
+        )}
       </div>
 
-      {/* Filtros: categoría */}
-      <div className="flex gap-1 mb-3 flex-wrap">
+      {/* ── Nivel 2: CATEGORÍA (filtrada por la clase elegida) ── */}
+      <div className="flex gap-1 mb-2 flex-wrap">
         <button
-          onClick={() => setActiveCategoria('todos')}
+          onClick={() => selectCategoria('todos')}
           className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${activeCategoria === 'todos' ? 'bg-gray-900 text-white border-gray-900' : 'border-border-default text-text-secondary hover:bg-surface-base'}`}
         >
-          Todas las categorías
+          {activeClase === 'todos' ? 'Todas las categorías' : 'Todas'}
         </button>
-        {categorias.map(c => (
+        {categoriasVisibles.map(c => (
           <button
             key={c.id}
-            onClick={() => setActiveCategoria(c.id)}
+            onClick={() => selectCategoria(c.id)}
             className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${activeCategoria === c.id ? 'bg-sig-500 text-white border-sig-500' : 'border-border-default text-text-secondary hover:bg-surface-base'}`}
           >
             {c.nombre}
@@ -317,73 +427,116 @@ export default function ProductosPage() {
         ))}
       </div>
 
-      {/* Filtro: proveedor + marca + origen en la misma línea */}
-      <div className="flex items-center gap-4 mb-6 flex-wrap">
-        {proveedores.length > 0 && (
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-text-tertiary shrink-0">Proveedor:</span>
-            <select
-              value={activeProveedor}
-              onChange={e => setActiveProveedor(e.target.value)}
-              className="border border-border-default rounded-lg px-2 py-1 text-xs bg-surface-base focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
+      {/* ── Nivel 3: COMPONENTE (solo si la categoría elegida tiene componentes) ── */}
+      {componentesVisibles.length > 0 && (
+        <div className="flex gap-1 mb-4 flex-wrap pl-3 border-l-2 border-sig-200">
+          <button
+            onClick={() => setActiveComponente('todos')}
+            className={`px-2.5 py-0.5 text-xs rounded-full border transition-colors ${activeComponente === 'todos' ? 'bg-sig-600 text-white border-sig-600' : 'border-border-subtle text-text-tertiary hover:bg-surface-base'}`}
+          >
+            Todos los componentes
+          </button>
+          {componentesVisibles.map(co => (
+            <button
+              key={co.id}
+              onClick={() => setActiveComponente(co.id)}
+              className={`px-2.5 py-0.5 text-xs rounded-full border transition-colors ${activeComponente === co.id ? 'bg-sig-600 text-white border-sig-600' : 'border-border-subtle text-text-tertiary hover:bg-surface-base'}`}
             >
-              <option value="todos">Todos</option>
-              {proveedores.map(pv => (
-                <option key={pv.id} value={pv.id}>{pv.nombre}</option>
-              ))}
-            </select>
-          </div>
-        )}
-        {marcas.length > 0 && (
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-text-tertiary shrink-0">Marca:</span>
-            <select
-              value={activeMarca}
-              onChange={e => setActiveMarca(e.target.value)}
-              className="border border-border-default rounded-lg px-2 py-1 text-xs bg-surface-base focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
-            >
-              <option value="todas">Todas</option>
-              {marcas.map(m => (
-                <option key={m.id} value={m.id}>{m.nombre}</option>
-              ))}
-            </select>
-          </div>
-        )}
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-text-tertiary">Origen:</span>
-          <OrigenFilter value={origen} onChange={setOrigen} />
-        </div>
-      </div>
-
-      {/* Contenido */}
-      {agrupados === null ? (
-        <div className="bg-surface-base rounded-xl border border-border-subtle p-8 text-center text-text-tertiary">
-          Cargando…
-        </div>
-      ) : agrupados.length === 0 ? (
-        <div className="bg-surface-base rounded-xl border border-border-subtle p-8 text-center text-text-tertiary">
-          No hay productos que coincidan con los filtros.
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {agrupados.map(({ representante, count }) => (
-            <ProductoCard
-              key={representante.id}
-              producto={representante}
-              canDelete={representante.consultora_id !== null || isStaff}
-              onDelete={handleDelete}
-              onOpen={setDetalle}
-              count={count}
-              // Nota: en grupos con duplicados, handleDelete borra solo el representante (limitación conocida del modo agrupación visual).
-            />
+              {co.nombre}
+            </button>
           ))}
         </div>
       )}
 
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* ── Panel lateral de facetas secundarias (estilo ML) ── */}
+        <aside className="lg:w-56 shrink-0 space-y-4">
+          {/* Búsqueda */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" size={15} />
+            <input
+              type="search"
+              value={busqueda}
+              onChange={e => setBusqueda(e.target.value)}
+              placeholder="Buscar por nombre…"
+              className="w-full pl-9 pr-3 py-2 border border-border-default rounded-lg text-sm bg-surface-base focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
+            />
+          </div>
+
+          <div className="rounded-xl border border-border-subtle bg-surface-elevated p-4 space-y-4">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-text-secondary uppercase tracking-wide">
+              <Filter size={13} aria-hidden="true" />
+              Filtros
+            </div>
+
+            {/* Origen */}
+            <div>
+              <p className="text-xs text-text-tertiary mb-1.5">Origen</p>
+              <OrigenFilter value={origen} onChange={setOrigen} className="flex-wrap" />
+            </div>
+
+            {/* Proveedor */}
+            {proveedores.length > 0 && (
+              <div>
+                <p className="text-xs text-text-tertiary mb-1.5">Proveedor</p>
+                <SearchableSelect
+                  value={activeProveedor === 'todos' ? '' : activeProveedor}
+                  onChange={v => setActiveProveedor(v || 'todos')}
+                  placeholder="Todos"
+                  options={proveedores.map(pv => ({ value: pv.id, label: pv.nombre }))}
+                  emptyText="Sin proveedores."
+                />
+              </div>
+            )}
+
+            {/* Marca */}
+            {marcas.length > 0 && (
+              <div>
+                <p className="text-xs text-text-tertiary mb-1.5">Marca</p>
+                <SearchableSelect
+                  value={activeMarca === 'todas' ? '' : activeMarca}
+                  onChange={v => setActiveMarca(v || 'todas')}
+                  placeholder="Todas"
+                  options={marcas.map(m => ({ value: m.id, label: m.nombre }))}
+                  emptyText="Sin marcas."
+                />
+              </div>
+            )}
+          </div>
+        </aside>
+
+        {/* ── Grilla de productos ── */}
+        <div className="flex-1 min-w-0">
+          {agrupados === null ? (
+            <div className="bg-surface-base rounded-xl border border-border-subtle p-8 text-center text-text-tertiary">
+              Cargando…
+            </div>
+          ) : agrupados.length === 0 ? (
+            <div className="bg-surface-base rounded-xl border border-border-subtle p-8 text-center text-text-tertiary">
+              No hay productos que coincidan con los filtros.
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {agrupados.map(({ representante, count }) => (
+                <ProductoCard
+                  key={representante.id}
+                  producto={representante}
+                  canDelete={representante.consultora_id !== null || isStaff}
+                  onDelete={handleDelete}
+                  onOpen={setDetalle}
+                  count={count}
+                  // Nota: en grupos con duplicados, handleDelete borra solo el representante (limitación conocida del modo agrupación visual).
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Modal crear */}
       <Modal open={showModal} onClose={() => setShowModal(false)} title="Nuevo Producto">
         <ProductoForm
-          categorias={categorias}
+          arbol={arbol}
           marcas={marcas}
           unidades={unidades}
           onSuccess={() => { setShowModal(false); load() }}

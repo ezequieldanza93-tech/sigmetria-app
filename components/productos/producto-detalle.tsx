@@ -111,10 +111,10 @@ export function ProductoDetalle({
           </div>
         )}
 
-        {/* Descripción */}
+        {/* Descripción — algunos imports traen tags HTML literales; los strippeamos a texto plano. */}
         {producto.descripcion && (
           <p className="text-sm text-text-secondary leading-relaxed line-clamp-[8] whitespace-pre-line">
-            {producto.descripcion}
+            {producto.descripcion.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ')}
           </p>
         )}
 

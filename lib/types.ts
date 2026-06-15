@@ -402,10 +402,31 @@ export interface DirectorioPersona {
   organizaciones_externas?: { nombre: string } | null
 }
 
+// ── Catálogo de protecciones — jerarquía de 3 niveles (híbrida base/propios) ──
+// CLASE (nivel 1) → CATEGORÍA (nivel 2) → COMPONENTE (intermedio) → PRODUCTO
+export interface ProductoClase {
+  id: string
+  nombre: string
+  descripcion: string | null
+  consultora_id: string | null // NULL = base Sigmetría, <id> = propia de la consultora
+  created_at: string
+}
+
+export interface ProductoComponente {
+  id: string
+  categoria_id: string
+  nombre: string
+  descripcion: string | null
+  consultora_id: string | null // NULL = base Sigmetría, <id> = propio de la consultora
+  created_at: string
+}
+
 export interface CategoriaProducto {
   id: string
   nombre: string
   descripcion: string | null
+  clase_id: string | null // Clase (nivel 1) a la que pertenece
+  consultora_id: string | null // NULL = base Sigmetría, <id> = propia de la consultora
   created_at: string
 }
 
@@ -418,6 +439,7 @@ export interface Producto {
   codigo: string | null
   url_origen: string | null
   categoria_id: string
+  componente_id: string | null // Componente (intermedio). NULL = sin reclasificar. La clase se deriva vía categoria.
   consultora_id: string | null
   tamano: number | null
   unidad_id: string | null

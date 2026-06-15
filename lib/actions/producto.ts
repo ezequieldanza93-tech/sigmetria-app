@@ -45,6 +45,7 @@ export async function createProducto(
       descripcion: (formData.get('descripcion') as string) || null,
       marca_id: (formData.get('marca_id') as string) || null,
       categoria_id: categoriaId,
+      componente_id: (formData.get('componente_id') as string) || null,
       tamano: tamano && !isNaN(tamano) ? tamano : null,
       unidad_id: (formData.get('unidad_id') as string) || null,
       consultora_id: null, // genérico: propiedad de Sigmetría
@@ -99,6 +100,7 @@ export async function createProducto(
     descripcion: (formData.get('descripcion') as string) || null,
     marca_id: (formData.get('marca_id') as string) || null,
     categoria_id: categoriaId,
+    componente_id: (formData.get('componente_id') as string) || null,
     tamano: tamano && !isNaN(tamano) ? tamano : null,
     unidad_id: (formData.get('unidad_id') as string) || null,
     consultora_id: member.consultora_id,
