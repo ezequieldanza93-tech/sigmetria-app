@@ -1,6 +1,7 @@
 'use client'
 
-import { Building2, ClipboardList, BarChart3, BookOpen, Eye, Contact, ScrollText, MessageSquare, Megaphone } from 'lucide-react'
+import { Building2, ClipboardList, BarChart3, BookOpen, Eye, Contact, ScrollText, MessageSquare, Megaphone, ArrowLeft } from 'lucide-react'
+import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { SectionsShell } from '@/components/layout/sections-shell'
 import type { SectionItem } from '@/components/layout/sections-sidebar'
@@ -11,6 +12,27 @@ import type { UserRole } from '@/lib/types'
 
 // Roles con acceso a la auditoría (espejo del gate de la página y la action).
 const AUDIT_ROLES: UserRole[] = ['full_access_main', 'full_access_branch', 'responsable_estandares', 'auditor_externo']
+
+// Prefijos de rutas que se abren DESDE la ficha global de la consultora.
+// Cuando el pathname empieza por alguno de estos, el menú destaca "Ficha"
+// y se muestra el link "← Volver a la ficha".
+const FICHA_SUBPAGE_PREFIXES = [
+  '/dashboard/configuracion',
+  '/dashboard/instrumentos',
+  '/dashboard/usuarios',
+  '/dashboard/billing',
+  '/dashboard/reportes',
+  '/dashboard/personas',
+  '/dashboard/organizaciones-externas',
+  '/dashboard/productos',
+  '/dashboard/cursos',
+  '/dashboard/mapas',
+] as const
+
+function esFichaSubpage(pathname: string | null): boolean {
+  if (!pathname) return false
+  return FICHA_SUBPAGE_PREFIXES.some(prefix => pathname.startsWith(prefix))
+}
 
 interface ConsultoraShellProps {
   children: React.ReactNode
@@ -46,6 +68,8 @@ export function ConsultoraShell({ children }: ConsultoraShellProps) {
     )
   }
 
+  const esFicha = esFichaSubpage(pathname)
+
   const raw = searchParams.get('section') ?? 'empresas'
   const sectionActive: Section = (SECTIONS as readonly string[]).includes(raw)
     ? (raw as Section)
@@ -63,7 +87,9 @@ export function ConsultoraShell({ children }: ConsultoraShellProps) {
         ? 'contenido'
         : onAuditoria
           ? 'auditoria'
-          : sectionActive
+          : esFicha
+            ? 'ficha'
+            : sectionActive
   const showCrm = isCrmAdmin(eff?.email)
   const showContenido = canAccessContenido(eff?.userRole, eff?.systemRole)
   const showAuditoria =
@@ -133,6 +159,17 @@ export function ConsultoraShell({ children }: ConsultoraShellProps) {
       activeId={activeId}
       ariaLabel="Secciones de la consultora"
     >
+      {esFicha && (
+        <div className="px-4 pt-4 pb-0 sm:px-6 lg:px-8">
+          <Link
+            href="/dashboard/empresas?section=ficha"
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft size={15} aria-hidden="true" />
+            Volver a la ficha
+          </Link>
+        </div>
+      )}
       {children}
     </SectionsShell>
   )
