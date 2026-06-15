@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, X, Check } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { SearchableSelect } from '@/components/ui/searchable-select'
@@ -161,6 +161,16 @@ export function CatalogoCascadeForm({
   esGenerico?: boolean
 }) {
   const qc = useQueryClient()
+
+  // Modo edición: si viene categoriaId pero no claseId (ej. producto existente),
+  // derivamos la clase del árbol para habilitar el select de categoría.
+  useEffect(() => {
+    if (!claseId && categoriaId) {
+      const cat = arbol.categorias.find(c => c.id === categoriaId)
+      if (cat?.clase_id) onClaseChange(cat.clase_id)
+    }
+  }, [categoriaId, claseId]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const categorias = categoriasDeClase(arbol.categorias, claseId)
   const componentes = componentesDeCategoria(arbol.componentes, categoriaId)
 

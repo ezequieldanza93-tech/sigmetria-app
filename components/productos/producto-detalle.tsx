@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
-import { FileText, ExternalLink } from 'lucide-react'
+import { FileText, ExternalLink, Pencil } from 'lucide-react'
 import { Modal } from '@/components/ui/modal'
+import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import { publicAssetUrl } from '@/lib/storage/asset-url'
 import { OrigenBadge } from '@/components/ui/origen-filter'
@@ -19,10 +20,12 @@ export function ProductoDetalle({
   producto,
   open,
   onClose,
+  onEdit,
 }: {
   producto: Producto | null
   open: boolean
   onClose: () => void
+  onEdit?: (p: Producto) => void
 }) {
   const [variantes, setVariantes] = useState<ProductoVariante[]>([])
   const [assets, setAssets] = useState<ProductoAsset[]>([])
@@ -60,6 +63,20 @@ export function ProductoDetalle({
   return (
     <Modal open={open} onClose={onClose} title={producto.nombre}>
       <div className="space-y-4">
+        {/* Botón editar — solo para productos propios de la consultora */}
+        {onEdit && producto.consultora_id !== null && (
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => onEdit(producto)}
+            >
+              <Pencil size={14} className="mr-1.5" aria-hidden="true" />
+              Editar
+            </Button>
+          </div>
+        )}
         {/* Galería de fotos */}
         {fotoUrls.length > 0 && (
           <div>

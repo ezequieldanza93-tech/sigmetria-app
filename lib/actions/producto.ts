@@ -162,6 +162,37 @@ export async function updateProductoFoto(
   return { success: true, data: { path: uploadResult.path } }
 }
 
+export async function updateProducto(id: string, formData: FormData): Promise<ActionResult<null>> {
+  'use server'
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'No autenticado' }
+
+  const nombre = (formData.get('nombre') as string)?.trim()
+  if (!nombre) return { success: false, error: 'El nombre es obligatorio' }
+
+  const categoriaId = formData.get('categoria_id') as string
+  if (!categoriaId) return { success: false, error: 'La categoría es obligatoria' }
+
+  const tamanoStr = formData.get('tamano') as string
+  const tamano = tamanoStr ? parseFloat(tamanoStr) : null
+
+  const { error } = await supabase.from('productos').update({
+    nombre,
+    descripcion: (formData.get('descripcion') as string) || null,
+    marca_id: (formData.get('marca_id') as string) || null,
+    categoria_id: categoriaId,
+    componente_id: (formData.get('componente_id') as string) || null,
+    tamano: tamano && !isNaN(tamano) ? tamano : null,
+    unidad_id: (formData.get('unidad_id') as string) || null,
+  }).eq('id', id)
+
+  if (error) return { success: false, error: error.message }
+
+  revalidatePath('/dashboard/productos')
+  return { success: true, data: null }
+}
+
 export async function deleteProducto(id: string): Promise<ActionResult<null>> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

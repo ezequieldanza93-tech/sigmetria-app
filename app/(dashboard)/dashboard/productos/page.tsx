@@ -8,7 +8,7 @@ import { Modal } from '@/components/ui/modal'
 import { FotoInput } from '@/components/ui/foto-input'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { createClient } from '@/lib/supabase/client'
-import { createProducto, deleteProducto } from '@/lib/actions/producto'
+import { createProducto, deleteProducto, updateProducto } from '@/lib/actions/producto'
 import { useEffectiveRoleContext } from '@/lib/contexts/effective-role-context'
 import { useCatalogoArbol } from '@/lib/queries/producto-catalogo'
 import { OrigenFilter, pasaOrigen, type OrigenFiltro } from '@/components/ui/origen-filter'
@@ -199,6 +199,111 @@ function ProductoForm({
   )
 }
 
+// ─── Formulario de edición ─────────────────────────────────────────────────────
+
+function ProductoEditForm({
+  producto,
+  arbol,
+  marcas,
+  unidades,
+  onSuccess,
+}: {
+  producto: Producto
+  arbol: CatalogoArbol
+  marcas: Organizacion[]
+  unidades: Unidad[]
+  onSuccess: () => void
+}) {
+  const [claseId, setClaseId] = useState('')
+  const [categoriaId, setCategoriaId] = useState(producto.categoria_id ?? '')
+  const [componenteId, setComponenteId] = useState(producto.componente_id ?? '')
+  const [marcaId, setMarcaId] = useState(producto.marca_id ?? '')
+  const [unidadId, setUnidadId] = useState(producto.unidad_id ?? '')
+  const [pending, setPending] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  function handleClase(v: string) {
+    setClaseId(v)
+    setCategoriaId('')
+    setComponenteId('')
+  }
+  function handleCategoria(v: string) {
+    setCategoriaId(v)
+    setComponenteId('')
+  }
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setPending(true)
+    setError(null)
+    const fd = new FormData(e.currentTarget)
+    const res = await updateProducto(producto.id, fd)
+    setPending(false)
+    if (res.success) {
+      onSuccess()
+    } else {
+      setError(res.error)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {error && (
+        <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3">{error}</div>
+      )}
+      <div>
+        <label className="text-sm font-medium text-text-secondary block mb-1">Nombre *</label>
+        <input name="nombre" required defaultValue={producto.nombre} className="w-full border border-border-default rounded-lg px-3 py-2 text-sm" />
+      </div>
+
+      <CatalogoCascadeForm
+        arbol={arbol}
+        claseId={claseId}
+        categoriaId={categoriaId}
+        componenteId={componenteId}
+        onClaseChange={handleClase}
+        onCategoriaChange={handleCategoria}
+        onComponenteChange={setComponenteId}
+      />
+
+      <div className="grid grid-cols-2 gap-3">
+        <SearchableSelect
+          label="Marca"
+          name="marca_id"
+          value={marcaId}
+          onChange={setMarcaId}
+          placeholder="Sin marca"
+          options={marcas.map(m => ({ value: m.id, label: m.nombre }))}
+          emptyText="Sin marcas."
+        />
+        <SearchableSelect
+          label="Unidad"
+          name="unidad_id"
+          value={unidadId}
+          onChange={setUnidadId}
+          placeholder="—"
+          options={unidades.map(u => ({ value: u.id, label: `${u.nombre} (${u.simbolo})` }))}
+          emptyText="Sin unidades."
+        />
+      </div>
+
+      <div>
+        <label className="text-sm font-medium text-text-secondary block mb-1">Tamaño</label>
+        <input name="tamano" type="number" step="0.01" min="0" defaultValue={producto.tamano ?? ''} className="w-full border border-border-default rounded-lg px-3 py-2 text-sm" />
+      </div>
+
+      <div>
+        <label className="text-sm font-medium text-text-secondary block mb-1">Descripción</label>
+        <textarea name="descripcion" rows={2} defaultValue={producto.descripcion ?? ''} className="w-full border border-border-default rounded-lg px-3 py-2 text-sm resize-none" />
+      </div>
+
+      <div className="flex justify-end">
+        <Button type="submit" disabled={pending}>{pending ? 'Guardando…' : 'Guardar cambios'}</Button>
+      </div>
+    </form>
+  )
+}
+
 // ─── Agrupación visual ────────────────────────────────────────────────────────
 // Agrupa por clave `nombre + marca_id`. Representante: el primero que tenga foto_url;
 // si ninguno la tiene, el primero del grupo. NO modifica ni borra datos de la base.
@@ -238,11 +343,11 @@ export default function ProductosPage() {
   const [activeCategoria, setActiveCategoria] = useState<string>('todos')
   const [activeComponente, setActiveComponente] = useState<string>('todos')
   // Facetas secundarias (estilo ML, en panel lateral).
-  const [activeMarca, setActiveMarca] = useState<string>('todas')
+  const [activeMarcaProveedor, setActiveMarcaProveedor] = useState<string>('')
   const [busqueda, setBusqueda] = useState<string>('')
   const [origen, setOrigen] = useState<OrigenFiltro>('todos')
-  const [activeProveedor, setActiveProveedor] = useState<string>('todos')
   const [detalle, setDetalle] = useState<Producto | null>(null)
+  const [editando, setEditando] = useState<Producto | null>(null)
   const [showModal, setShowModal] = useState(false)
   const roleCtx = useEffectiveRoleContext()
   // isSuperAdmin: puede borrar genéricos desde la lista (existía antes).
@@ -299,24 +404,37 @@ export default function ProductosPage() {
   // Set de categorías que pertenecen a la clase activa (para filtrar productos por clase).
   const categoriaIdsDeClase = new Set(categoriasVisibles.map(c => c.id))
 
-  // Proveedores presentes en el catálogo (derivados de los productos cargados).
-  const proveedoresMap = new Map<string, string>()
-  productos?.forEach(p => { if (p.proveedor_id && p.proveedor?.nombre) proveedoresMap.set(p.proveedor_id, p.proveedor.nombre) })
-  const proveedores = [...proveedoresMap.entries()]
-    .map(([id, nombre]) => ({ id, nombre }))
-    .sort((a, b) => a.nombre.localeCompare(b.nombre))
-
   // Filtrado client-side (cientos de productos, perfecto para filtros sin round-trips).
   const termino = busqueda.trim().toLowerCase()
-  const filtered = productos === null
+
+  // Productos que pasan todos los filtros EXCEPTO marca/proveedor (para derivar facetas disponibles).
+  const filteredSinMarcaProv = productos === null
     ? null
     : productos.filter(p =>
-        // Clase: el producto pasa si su categoría pertenece a la clase activa.
         (activeClase === 'todos' || categoriaIdsDeClase.has(p.categoria_id)) &&
         (activeCategoria === 'todos' || p.categoria_id === activeCategoria) &&
         (activeComponente === 'todos' || p.componente_id === activeComponente) &&
-        (activeMarca === 'todas' || p.marca_id === activeMarca) &&
-        (activeProveedor === 'todos' || p.proveedor_id === activeProveedor) &&
+        pasaOrigen(p.consultora_id, origen) &&
+        (!termino || p.nombre.toLowerCase().includes(termino))
+      )
+
+  // Marcas y proveedores presentes en los productos filtrados (sin el filtro de marca/prov).
+  const marcaProvMap = new Map<string, string>()
+  filteredSinMarcaProv?.forEach(p => {
+    if (p.marca_id && p.marca?.nombre) marcaProvMap.set(p.marca_id, p.marca.nombre)
+    if (p.proveedor_id && p.proveedor?.nombre) marcaProvMap.set(p.proveedor_id, p.proveedor.nombre)
+  })
+  const marcasProveedoresOpciones = [...marcaProvMap.entries()]
+    .map(([id, nombre]) => ({ value: id, label: nombre }))
+    .sort((a, b) => a.label.localeCompare(b.label))
+
+  const filtered = productos === null
+    ? null
+    : productos.filter(p =>
+        (activeClase === 'todos' || categoriaIdsDeClase.has(p.categoria_id)) &&
+        (activeCategoria === 'todos' || p.categoria_id === activeCategoria) &&
+        (activeComponente === 'todos' || p.componente_id === activeComponente) &&
+        (!activeMarcaProveedor || p.marca_id === activeMarcaProveedor || p.proveedor_id === activeMarcaProveedor) &&
         pasaOrigen(p.consultora_id, origen) &&
         (!termino || p.nombre.toLowerCase().includes(termino))
       )
@@ -332,10 +450,12 @@ export default function ProductosPage() {
     setActiveClase(claseId)
     setActiveCategoria('todos')
     setActiveComponente('todos')
+    setActiveMarcaProveedor('')
   }
   function selectCategoria(categoriaId: string) {
     setActiveCategoria(categoriaId)
     setActiveComponente('todos')
+    setActiveMarcaProveedor('')
   }
 
   // Agrupación visual: se aplica DESPUÉS del filtrado. Cada "tarjeta" representa
@@ -475,30 +595,16 @@ export default function ProductosPage() {
               <OrigenFilter value={origen} onChange={setOrigen} className="flex-wrap" />
             </div>
 
-            {/* Proveedor */}
-            {proveedores.length > 0 && (
+            {/* Marca / Proveedor (unificado, solo los presentes en el catálogo filtrado) */}
+            {marcasProveedoresOpciones.length > 0 && (
               <div>
-                <p className="text-xs text-text-tertiary mb-1.5">Proveedor</p>
+                <p className="text-xs text-text-tertiary mb-1.5">Marca / Proveedor</p>
                 <SearchableSelect
-                  value={activeProveedor === 'todos' ? '' : activeProveedor}
-                  onChange={v => setActiveProveedor(v || 'todos')}
+                  value={activeMarcaProveedor}
+                  onChange={setActiveMarcaProveedor}
                   placeholder="Todos"
-                  options={proveedores.map(pv => ({ value: pv.id, label: pv.nombre }))}
-                  emptyText="Sin proveedores."
-                />
-              </div>
-            )}
-
-            {/* Marca */}
-            {marcas.length > 0 && (
-              <div>
-                <p className="text-xs text-text-tertiary mb-1.5">Marca</p>
-                <SearchableSelect
-                  value={activeMarca === 'todas' ? '' : activeMarca}
-                  onChange={v => setActiveMarca(v || 'todas')}
-                  placeholder="Todas"
-                  options={marcas.map(m => ({ value: m.id, label: m.nombre }))}
-                  emptyText="Sin marcas."
+                  options={marcasProveedoresOpciones}
+                  emptyText="Sin resultados."
                 />
               </div>
             )}
@@ -545,7 +651,25 @@ export default function ProductosPage() {
       </Modal>
 
       {/* Modal detalle: galería + variantes (talle/color) + fichas técnicas */}
-      <ProductoDetalle producto={detalle} open={detalle !== null} onClose={() => setDetalle(null)} />
+      <ProductoDetalle
+        producto={detalle}
+        open={detalle !== null}
+        onClose={() => setDetalle(null)}
+        onEdit={(p) => { setDetalle(null); setEditando(p) }}
+      />
+
+      {/* Modal edición */}
+      <Modal open={editando !== null} onClose={() => setEditando(null)} title="Editar Producto">
+        {editando && (
+          <ProductoEditForm
+            producto={editando}
+            arbol={arbol}
+            marcas={marcas}
+            unidades={unidades}
+            onSuccess={() => { setEditando(null); load() }}
+          />
+        )}
+      </Modal>
     </div>
   )
 }
