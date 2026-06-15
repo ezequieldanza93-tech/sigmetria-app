@@ -17,7 +17,7 @@ import {
   Camera, BarChart3, FileCheck,
   ClipboardCheck, GraduationCap, Heart, FileText, AlertTriangle,
   ClipboardList, UserPlus, Dumbbell, Kanban, HelpCircle,
-  Play, Upload, Download, BookMarked,
+  Play, Upload, Download, BookMarked, Eye,
   ChevronUp, ChevronDown, Columns, CalendarDays, List, X, Thermometer, Flame, Zap, Volume2, Lightbulb,
 } from 'lucide-react'
 import dynamic from 'next/dynamic'
@@ -106,9 +106,25 @@ const EjecutarCapacitacionModal = dynamic(
   () => import('@/components/cursos/ejecutar-capacitacion-modal').then(m => m.EjecutarCapacitacionModal),
   { ssr: false }
 )
+const MedicionPatViewer = dynamic(
+  () => import('@/components/medicion-pat-viewer').then(m => m.MedicionPatViewer),
+  { ssr: false }
+)
 
 // Categoría de gestiones que habilita el flujo de capacitación (LMS / campus virtual).
 const CATEGORIA_CAPACITACIONES = 'Capacitaciones'
+
+// Tipos de ejecución que son PROTOCOLOS DE MEDICIÓN: se ejecutan con un wizard
+// propio y NO guardan un archivo en evidencia_url (sus datos viven en sus tablas
+// medicion_*). Por eso, una vez ejecutados, su acción correcta es "Ver reporte"
+// (vista read-only del protocolo), no "Cargar" ni "Ejecutar" de nuevo.
+const TIPOS_PROTOCOLO_MEDICION = new Set([
+  'medicion_iluminacion',
+  'medicion_ruido',
+  'medicion_pat',
+  'calculo_carga_fuego',
+  'medicion_carga_termica',
+])
 
 const MONTHS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 const MONTHS_FULL = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
@@ -1610,6 +1626,7 @@ function AgendaActionsCell({
   onExecuteMedicionRuido,
   onExecuteMedicionIluminacion,
   onExecutePresentacionAutoproteccion,
+  onViewReporte,
   onLoadEvidence,
   onToggleLegajo,
   onEjecutarCapacitacion,
@@ -1624,6 +1641,8 @@ function AgendaActionsCell({
   onExecuteMedicionRuido: () => void
   onExecuteMedicionIluminacion: () => void
   onExecutePresentacionAutoproteccion: () => void
+  /** Abre la vista read-only de un protocolo de medición ya ejecutado (hoy: PAT). */
+  onViewReporte?: () => void
   onLoadEvidence: () => void
   onToggleLegajo: () => void | Promise<void>
   /** Solo para gestiones de categoría Capacitaciones: abre el flujo de capacitación LMS. */
@@ -1666,6 +1685,51 @@ function AgendaActionsCell({
   const toggleBtn = 'inline-flex items-center justify-center w-9 h-9 rounded-lg border transition-colors'
   const toggleOn = 'bg-sig-500 border-sig-500 text-white hover:bg-sig-700'
   const toggleOff = 'bg-white border-border-default text-text-tertiary hover:bg-surface-base hover:text-text-secondary'
+
+  const esProtocoloMedicion = TIPOS_PROTOCOLO_MEDICION.has(r.ge_tipo_ejecucion ?? '')
+
+  // Caso: protocolo de medición YA EJECUTADO → "Ver reporte" (read-only).
+  // Estos protocolos guardan sus datos en sus propias tablas (medicion_*) y NO en
+  // evidencia_url, así que NO deben caer en el flujo de "Cargar" ni volver a mostrar
+  // "Ejecutar". Hoy solo el PAT tiene viewer en pantalla (onViewReporte): para el
+  // resto, el guard de abajo evita re-ejecutar y, si hay adjunto, ofrece "Ver".
+  // Esto va ANTES de los bloques por evidencia para ganarles la prioridad.
+  if (yaEjecutada && esProtocoloMedicion) {
+    if (r.ge_tipo_ejecucion === 'medicion_pat' && onViewReporte) {
+      return (
+        <div className="flex items-center justify-center">
+          <button
+            title="Ver el protocolo de puesta a tierra ejecutado"
+            onClick={onViewReporte}
+            className={`${primaryBtn} ${primaryActive}`}
+          >
+            <Eye size={14} />
+            <span className="hidden sm:inline">Ver reporte</span>
+          </button>
+        </div>
+      )
+    }
+    // Otros protocolos de medición ejecutados (aún sin viewer): si dejaron un
+    // adjunto manual, "Ver"; si no, un guion. NUNCA "Ejecutar" de nuevo.
+    if (tieneEvidencia) {
+      return (
+        <div className="flex items-center justify-center">
+          <a
+            href={getUrl(r.evidencia_url) ?? '#'}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Ver/descargar adjunto"
+            className={`${primaryBtn} ${primaryActive}`}
+            aria-disabled={!getUrl(r.evidencia_url)}
+          >
+            <Download size={14} />
+            <span className="hidden sm:inline">Ver</span>
+          </a>
+        </div>
+      )
+    }
+    return <span className="text-xs text-text-tertiary">—</span>
+  }
 
   // Caso: Realizado (con evidencia)
   if (yaEjecutada && tieneEvidencia) {
@@ -2247,6 +2311,7 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
   const [executingMedicionCargaTermica, setExecutingMedicionCargaTermica] = useState<FullRegistro | null>(null)
   const [executingCargaFuego, setExecutingCargaFuego] = useState<FullRegistro | null>(null)
   const [executingMedicionPat, setExecutingMedicionPat] = useState<FullRegistro | null>(null)
+  const [viewingMedicionPat, setViewingMedicionPat] = useState<FullRegistro | null>(null)
   const [executingMedicionRuido, setExecutingMedicionRuido] = useState<FullRegistro | null>(null)
   const [executingMedicionIluminacion, setExecutingMedicionIluminacion] = useState<FullRegistro | null>(null)
   const [executingPresentacionAutoproteccion, setExecutingPresentacionAutoproteccion] = useState<FullRegistro | null>(null)
@@ -2436,7 +2501,25 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
   })
 
   const sortedRegistros = (() => {
-    if (!sortConfig.col) return filteredRegistros
+    // Orden POR DEFECTO (sin sort manual): por ESTADO primero
+    // (Pendiente → Planificado → Realizado) y, dentro de cada estado, por
+    // fecha_planificada ASC (fechas más bajas arriba). Las realizadas desempatan
+    // también por fecha_planificada ASC. Fechas comparadas como ISO (YYYY-MM-DD).
+    if (!sortConfig.col) {
+      const PRIORIDAD_ESTADO: Record<EstadoGestion, number> = {
+        Pendiente: 0,
+        Planificado: 1,
+        Realizado: 2,
+      }
+      return [...filteredRegistros].sort((a, b) => {
+        const ea = calcularEstadoGestion(a.fecha_ejecutada ?? null, a.fecha_planificada)
+        const eb = calcularEstadoGestion(b.fecha_ejecutada ?? null, b.fecha_planificada)
+        const byEstado = PRIORIDAD_ESTADO[ea] - PRIORIDAD_ESTADO[eb]
+        if (byEstado !== 0) return byEstado
+        return (a.fecha_planificada ?? '').localeCompare(b.fecha_planificada ?? '')
+      })
+    }
+    // El usuario clickeó un header → respetamos ESE sort manual (override).
     return [...filteredRegistros].sort((a, b) => {
       let cmp = 0
       switch (sortConfig.col) {
@@ -2551,6 +2634,11 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
               onExecuteMedicionRuido={() => setExecutingMedicionRuido(r)}
               onExecuteMedicionIluminacion={() => setExecutingMedicionIluminacion(r)}
               onExecutePresentacionAutoproteccion={() => setExecutingPresentacionAutoproteccion(r)}
+              onViewReporte={
+                r.ge_tipo_ejecucion === 'medicion_pat'
+                  ? () => setViewingMedicionPat(r)
+                  : undefined
+              }
               onLoadEvidence={() => setEditingRegistro(r)}
               onEjecutarCapacitacion={
                 r.ge_categoria_nombre === CATEGORIA_CAPACITACIONES
@@ -3198,6 +3286,15 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
           gestionEstablecimientoId={executingMedicionPat.gestion_establecimiento_id}
           onClose={() => setExecutingMedicionPat(null)}
           onSuccess={() => { setExecutingMedicionPat(null); queryClient.invalidateQueries({ queryKey: ['gestiones-establecimiento', establecimientoId, year] }); queryClient.invalidateQueries({ queryKey: ['registros-gestion'] }) }}
+        />
+      )}
+
+      {viewingMedicionPat && (
+        <MedicionPatViewer
+          registroId={viewingMedicionPat.id}
+          rgFechaPlanificada={viewingMedicionPat.fecha_planificada}
+          gestionNombre={viewingMedicionPat.ge_gestion_nombre}
+          onClose={() => setViewingMedicionPat(null)}
         />
       )}
 
