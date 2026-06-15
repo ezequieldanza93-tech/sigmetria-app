@@ -239,6 +239,7 @@ export interface Establecimiento {
   codigo_postal: string | null
   localidad_id: string | null
   actividad_principal: string | null
+  actividad_id: string | null
   cantidad_trabajadores: number | null
   cantidad_trabajadores_operativos: number | null
   cantidad_trabajadores_administrativos: number | null

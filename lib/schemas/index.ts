@@ -172,6 +172,7 @@ export const establecimientoSchema = z.object({
   codigo_postal: z.string().nullable(),
   localidad_id: z.string().uuid().nullable(),
   actividad_principal: z.string().nullable(),
+  actividad_id: z.string().uuid().nullable().optional(),
   cantidad_trabajadores: z.number().int().nonnegative().nullable(),
   description: z.string().nullable(),
   latitud: z.number().nullable(),

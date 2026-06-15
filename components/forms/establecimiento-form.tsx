@@ -8,7 +8,7 @@ import { SearchableSelect } from '@/components/ui/searchable-select'
 import { FileUploadInput } from '@/components/ui/file-upload-input'
 import { createClient } from '@/lib/supabase/client'
 import { useSignedUrls } from '@/lib/storage/sign-client'
-import { useLocalidades, useEstablecimientoTipos } from '@/lib/queries/establecimiento-form'
+import { useLocalidades, useEstablecimientoTipos, useActividadesEconomicas } from '@/lib/queries/establecimiento-form'
 import type { Establecimiento, ActionResult, PreguntaRiesgo, EstablecimientoRespuesta } from '@/lib/types'
 import { EstablecimientoProgress, type ProgressCheck } from './establecimiento-progress'
 
@@ -198,11 +198,13 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
   const [state, formAction, isPending] = useActionState(action, null)
   const { data: localidades = [] } = useLocalidades()
   const { data: tipos = [] } = useEstablecimientoTipos()
+  const { data: actividades = [] } = useActividadesEconomicas()
   const [preguntas, setPreguntas] = useState<PreguntaRiesgo[]>([])
   const [respuestas, setRespuestas] = useState<Record<string, boolean>>({})
   const [selectedProvincia, setSelectedProvincia] = useState(establecimiento?.localidades?.provincia ?? '')
   const [selectedTipoId, setSelectedTipoId] = useState(establecimiento?.tipo_id ?? '')
   const [selectedLocalidadId, setSelectedLocalidadId] = useState(establecimiento?.localidad_id ?? '')
+  const [selectedActividadId, setSelectedActividadId] = useState(establecimiento?.actividad_id ?? '')
   const [semana, setSemana] = useState<Record<number, DiaConfig>>(HORARIO_DEFAULT)
   const formRef = useRef<HTMLFormElement>(null)
   const [tick, setTick] = useState(0)
@@ -316,7 +318,7 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
       { id: 'provincia',      label: 'Provincia',                  done: selectedProvincia.length > 0, section: 2 },
       { id: 'localidad',      label: 'Localidad',                  done: selectedLocalidadId.length > 0, section: 2 },
       { id: 'codigo_postal',  label: 'Código postal',              done: fieldValue('codigo_postal').length > 0, section: 2 },
-      { id: 'actividad',      label: 'Actividad principal',        done: fieldValue('actividad_principal').length > 0, section: 2 },
+      { id: 'actividad',      label: 'Actividad principal',        done: selectedActividadId.length > 0, section: 2 },
       { id: 'trabajadores',   label: 'Dotación HyS (operativos)',  done: fieldValue('cantidad_trabajadores_operativos').length > 0, section: 2 },
       { id: 'horarios',       label: 'Horarios de actividad',      done: algunDiaActivo, section: 2 },
       { id: 'ubicacion',      label: 'Ubicación en Google Maps',   done: ubicacionGmaps.length > 0 || yaTieneCoords, section: 2 },
@@ -325,7 +327,7 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
       { id: 'plano_pdf',      label: 'Plano del establecimiento',  done: hasPlanoPdf, section: 3 },
       { id: 'plano_cad',      label: 'Plano CAD editable',         done: hasPlanoCad, section: 3 },
     ]
-  }, [tick, selectedTipoId, selectedProvincia, selectedLocalidadId, semana, respuestas, preguntas, establecimiento?.latitud, establecimiento?.longitud, hasFoto, hasPlanoPdf, hasPlanoCad])
+  }, [tick, selectedTipoId, selectedProvincia, selectedLocalidadId, selectedActividadId, semana, respuestas, preguntas, establecimiento?.latitud, establecimiento?.longitud, hasFoto, hasPlanoPdf, hasPlanoCad])
 
   const sectionStats = useMemo<Record<SectionId, { done: number; total: number }>>(() => {
     const stats: Record<SectionId, { done: number; total: number }> = {
@@ -462,12 +464,26 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
           placeholder="2000"
         />
 
-        <Input
-          label="Actividad Principal"
-          name="actividad_principal"
-          defaultValue={establecimiento?.actividad_principal ?? ''}
-          placeholder="Manufactura de piezas metálicas"
-        />
+        <div>
+          <SearchableSelect
+            id="actividad-select"
+            label="Actividad Principal (CIIU)"
+            name="actividad_id"
+            value={selectedActividadId}
+            onChange={setSelectedActividadId}
+            options={actividades.map(a => ({ value: a.id, label: `${a.codigo} — ${a.nombre}` }))}
+            placeholder="Seleccionar actividad económica..."
+            emptyText="No se encontró la actividad. Buscá por letra o descripción."
+          />
+          {/* Compatibilidad hacia atrás: si el establecimiento tiene texto libre pero no tiene actividad_id */}
+          {establecimiento?.actividad_principal && !selectedActividadId && (
+            <p className="mt-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              Valor anterior: <span className="font-medium">{establecimiento.actividad_principal}</span> — seleccioná una actividad del catálogo para actualizarlo.
+            </p>
+          )}
+          {/* Mantiene el texto libre en la DB para compatibilidad mientras actividad_id sea null */}
+          <input type="hidden" name="actividad_principal" value={establecimiento?.actividad_principal ?? ''} />
+        </div>
 
         <div className="space-y-3">
           <p className="text-sm font-medium text-text-secondary">

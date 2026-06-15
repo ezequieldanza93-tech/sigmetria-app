@@ -16,6 +16,7 @@ const establecimientoActionSchema = z.object({
   localidad_id: z.string().nullable().optional(),
   codigo_postal: z.string().nullable().optional(),
   actividad_principal: z.string().nullable().optional(),
+  actividad_id: z.string().uuid().nullable().optional(),
   description: z.string().nullable().optional(),
   ubicacion_gmaps: z.string().nullable().optional(),
   aplica_iso_45001: z.literal('on').optional(),
@@ -185,7 +186,7 @@ export async function createEstablecimiento(
   if (!parsed.success) {
     return { success: false, error: formatZodErrors(parsed.error) }
   }
-  const { nombre, tipo_id, domicilio, localidad_id, codigo_postal, actividad_principal, description, ubicacion_gmaps, aplica_iso_45001, cantidad_trabajadores, cantidad_trabajadores_operativos, cantidad_trabajadores_administrativos, categoria_hys } = parsed.data
+  const { nombre, tipo_id, domicilio, localidad_id, codigo_postal, actividad_principal, actividad_id, description, ubicacion_gmaps, aplica_iso_45001, cantidad_trabajadores, cantidad_trabajadores_operativos, cantidad_trabajadores_administrativos, categoria_hys } = parsed.data
 
   const { latitud, longitud } = await parseUbicacion(ubicacion_gmaps ?? null, domicilio ?? null)
 
@@ -206,6 +207,7 @@ export async function createEstablecimiento(
       localidad_id: localidad_id ?? null,
       codigo_postal: codigo_postal ?? null,
       actividad_principal: actividad_principal ?? null,
+      actividad_id: actividad_id ?? null,
       description: description ?? null,
       latitud,
       longitud,
@@ -280,7 +282,7 @@ export async function updateEstablecimiento(
   if (!parsed.success) {
     return { success: false, error: formatZodErrors(parsed.error) }
   }
-  const { nombre, tipo_id, domicilio, localidad_id, codigo_postal, actividad_principal, description, ubicacion_gmaps, aplica_iso_45001, cantidad_trabajadores, cantidad_trabajadores_operativos, cantidad_trabajadores_administrativos, categoria_hys } = parsed.data
+  const { nombre, tipo_id, domicilio, localidad_id, codigo_postal, actividad_principal, actividad_id, description, ubicacion_gmaps, aplica_iso_45001, cantidad_trabajadores, cantidad_trabajadores_operativos, cantidad_trabajadores_administrativos, categoria_hys } = parsed.data
 
   const { latitud, longitud } = await parseUbicacion(ubicacion_gmaps ?? null, domicilio ?? null)
 
@@ -316,6 +318,7 @@ export async function updateEstablecimiento(
       localidad_id: localidad_id ?? null,
       codigo_postal: codigo_postal ?? null,
       actividad_principal: actividad_principal ?? null,
+      actividad_id: actividad_id ?? null,
       description: description ?? null,
       latitud,
       longitud,
