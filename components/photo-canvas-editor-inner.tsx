@@ -491,9 +491,9 @@ export default function PhotoCanvasEditorInner({
   )
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2 flex-wrap">
-        <div className="flex items-center gap-1 mr-2">
+    <div className="w-full max-w-full min-w-0 overflow-x-hidden space-y-3">
+      <div className="flex items-center gap-2 flex-wrap w-full min-w-0">
+        <div className="flex items-center gap-1 mr-2 flex-wrap min-w-0">
           <span className="text-xs text-text-secondary mr-1">Herramienta:</span>
           {enableObservacionTool && toolBtn('observacion', '📝 Escribir observación')}
           {toolBtn('arrow', '→ Flecha')}
@@ -506,7 +506,7 @@ export default function PhotoCanvasEditorInner({
           {toolBtn('circle', '○ Círculo')}
         </div>
 
-        <div className="flex items-center gap-1 mr-2">
+        <div className="flex items-center gap-1 mr-2 flex-wrap min-w-0">
           <span className="text-xs text-text-secondary mr-1">Color:</span>
           {COLORS.map(c => (
             <button
@@ -521,7 +521,7 @@ export default function PhotoCanvasEditorInner({
         </div>
 
         {(tool === 'pen' || tool === 'rect' || tool === 'circle' || tool === 'arrow' || (selectedObject && !selectedIsText)) && (
-          <div className="flex items-center gap-1 mr-2">
+          <div className="flex items-center gap-1 mr-2 flex-wrap min-w-0">
             <span className="text-xs text-text-secondary mr-1">Grosor:</span>
             {BRUSH_SIZES.map(s => (
               <button
@@ -537,7 +537,7 @@ export default function PhotoCanvasEditorInner({
         )}
 
         {(tool === 'text' || tool === 'observacion' || selectedIsText) && (
-          <div className="flex items-center gap-1 mr-2">
+          <div className="flex items-center gap-1 mr-2 flex-wrap min-w-0">
             <span className="text-xs text-text-secondary mr-1">Texto:</span>
             {TEXT_SIZES.map(s => (
               <button
@@ -552,7 +552,7 @@ export default function PhotoCanvasEditorInner({
           </div>
         )}
 
-        <div className="ml-auto flex items-center gap-1">
+        <div className="sm:ml-auto flex items-center gap-1 flex-wrap min-w-0">
           {selectedId && (
             <button
               type="button"
