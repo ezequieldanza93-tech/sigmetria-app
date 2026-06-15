@@ -954,6 +954,7 @@ export interface CertificadoCalibracion {
 export interface GrupoGestion {
   id: string
   nombre: string
+  consultora_id: string | null
   created_at: string
 }
 
@@ -962,6 +963,7 @@ export interface CategoriaGestion {
   nombre: string
   grupo_id: string
   descripcion: string | null
+  consultora_id: string | null
   created_at: string
   gestiones_grupos?: { nombre: string } | null
 }
@@ -981,6 +983,7 @@ export interface Gestion {
   nombre: string
   categoria_id: string
   descripcion: string | null
+  consultora_id: string | null
   created_at: string
   aplica_por_iso: boolean
   tiene_entregable: boolean

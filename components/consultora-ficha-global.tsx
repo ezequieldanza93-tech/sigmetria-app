@@ -22,6 +22,7 @@ import {
   Network,
   Shield,
   ClipboardList,
+  ListChecks,
   GraduationCap,
   BookOpen,
   BarChart2,
@@ -129,6 +130,7 @@ export function ConsultoraFichaGlobal({ consultora, empresas, usuario, userRole,
       items: [
         { href: '/dashboard/productos', icon: Shield, label: 'Elementos de Protección' },
         { href: '/dashboard/configuracion/iperc', icon: ClipboardList, label: 'Librería IPERC' },
+        { href: '/dashboard/libreria-gestiones', icon: ListChecks, label: 'Librería de Gestiones' },
         { href: '/dashboard/configuracion/normativa-legal', icon: Scale, label: 'Normativa Legal' },
         { href: '/dashboard/cursos', icon: GraduationCap, label: 'Mis Cursos' },
         ...(canManageCursos
