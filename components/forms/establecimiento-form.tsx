@@ -636,10 +636,10 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
             <FileUploadInput
               name="floor_plan_cad"
               label="Plano (CAD)"
-              accept="application/pdf,image/png,image/jpeg"
+              accept="application/pdf,image/png,image/jpeg,.dwg,.dxf"
               maxSizeMB={20}
               currentUrl={getPlanoUrl(establecimiento?.floor_plan_cad_url)}
-              helpText="Si tenés versión editable. Máx 20 MB."
+              helpText="PDF, DWG, DXF o imagen. Máx 20 MB."
               kind="document"
             />
           </div>

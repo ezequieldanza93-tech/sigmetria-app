@@ -33,7 +33,11 @@ const BUCKETS: Record<AssetBucket, BucketConfig> = {
   consultora:   { maxBytes: 2  * 1024 * 1024, mimes: ['image/png','image/jpeg','image/webp','image/svg+xml'], public: true  },
   firmas:       { maxBytes: 1  * 1024 * 1024, mimes: ['image/png','image/jpeg','image/svg+xml'],              public: false },
   matriculas:   { maxBytes: 5  * 1024 * 1024, mimes: ['image/jpeg','image/png','application/pdf'],            public: false },
-  planos:       { maxBytes: 20 * 1024 * 1024, mimes: ['application/pdf','image/png','image/jpeg'],            public: false },
+  // DWG/DXF: los browsers reportan mimes poco confiables (vacío, octet-stream, o varios
+  // image/vnd.dwg etc.). La validación real es por extensión — ver isAllowedForBucket().
+  planos:       { maxBytes: 20 * 1024 * 1024, mimes: ['application/pdf','image/png','image/jpeg',
+                    'image/vnd.dwg','application/acad','application/dwg',
+                    'application/x-dwg','application/dxf'],                                                   public: false },
   certificados: { maxBytes: 5  * 1024 * 1024, mimes: ['application/pdf','image/png','image/jpeg'],            public: false },
   incidentes:   { maxBytes: 10 * 1024 * 1024, mimes: ['image/jpeg','image/png','image/webp','image/heic'],    public: false },
   denuncias:    { maxBytes: 10 * 1024 * 1024, mimes: ['image/jpeg','image/png','image/webp','image/heic'],    public: false },
@@ -43,6 +47,35 @@ const BUCKETS: Record<AssetBucket, BucketConfig> = {
   'cursos-certificados':{ maxBytes: 5 * 1024 * 1024, mimes: ['application/pdf'],                                                                 public: false },
   contenido:            { maxBytes: 300 * 1024 * 1024, mimes: ['image/png','image/jpeg','image/webp','image/gif','video/mp4','video/quicktime','video/webm'], public: false },
   'sap-autoproteccion': { maxBytes: 50 * 1024 * 1024, mimes: ['application/pdf','image/png','image/jpeg','image/webp','image/heic','video/mp4','video/quicktime','video/webm','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'], public: false },
+}
+
+/**
+ * Extensiones explícitamente permitidas para el bucket `planos`.
+ * Se usan como fallback cuando el mime no es confiable (DWG/DXF en particular).
+ */
+const PLANOS_ALLOWED_EXTS = new Set(['pdf','png','jpg','jpeg','dwg','dxf'])
+
+/**
+ * Valida si un archivo está permitido para un bucket dado.
+ *
+ * Lógica para el bucket `planos`:
+ *   1. Primero intenta por mime (igual que el resto de buckets).
+ *   2. Si el mime no matchea (o es vacío/octet-stream — típico de DWG),
+ *      acepta el archivo cuando su extensión está en PLANOS_ALLOWED_EXTS.
+ *   Esto evita abrir la puerta a octet-stream en general: el chequeo de
+ *   extensión es el discriminante preciso.
+ *
+ * Para el resto de buckets: validación estricta por mime, sin fallback.
+ */
+function isAllowedForBucket(bucket: AssetBucket, cfg: BucketConfig, file: File): boolean {
+  if (cfg.mimes.includes(file.type)) return true
+
+  if (bucket === 'planos') {
+    const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
+    return PLANOS_ALLOWED_EXTS.has(ext)
+  }
+
+  return false
 }
 
 const EXT_BY_MIME: Record<string, string> = {
@@ -107,8 +140,9 @@ export async function uploadAsset(opts: UploadOptions): Promise<UploadResult> {
   if (file.size > cfg.maxBytes) {
     return { ok: false, error: `El archivo supera el límite de ${(cfg.maxBytes / 1024 / 1024).toFixed(1)} MB` }
   }
-  if (!cfg.mimes.includes(file.type)) {
-    return { ok: false, error: `Tipo de archivo no permitido (${file.type}). Permitidos: ${cfg.mimes.join(', ')}` }
+  if (!isAllowedForBucket(bucket, cfg, file)) {
+    const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
+    return { ok: false, error: `Tipo de archivo no permitido (.${ext} / ${file.type || 'sin mime'})` }
   }
 
   const ext = extFromMime(file.type, file.name)
