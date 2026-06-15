@@ -93,11 +93,23 @@ export async function inviteUsuario(_prevState: ActionResult<InviteResult> | nul
   })
 
   if (!response.ok) {
-    const { error } = await response.json().catch(() => ({ error: 'Error al invitar usuario' }))
-    return { success: false, error }
+    let errorMsg = `Error al invitar usuario (HTTP ${response.status})`
+    try {
+      const body = await response.json()
+      if (body?.error) errorMsg = body.error
+    } catch {
+      // el body no es JSON — el mensaje genérico con status es suficiente
+    }
+    console.error('[inviteUsuario] API error:', errorMsg)
+    return { success: false, error: errorMsg }
   }
 
-  const payload = await response.json().catch(() => null) as { link?: string; role?: string } | null
+  let payload: { link?: string; role?: string } | null = null
+  try {
+    payload = await response.json()
+  } catch {
+    console.error('[inviteUsuario] no se pudo parsear la respuesta JSON del API')
+  }
   if (!payload?.link) {
     return { success: false, error: 'No se pudo generar el link de invitación' }
   }
