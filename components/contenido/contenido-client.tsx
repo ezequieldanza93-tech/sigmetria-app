@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, CalendarDays } from 'lucide-react'
+import { Plus, CalendarDays, Share2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { useSignedUrls } from '@/lib/storage/sign-client'
@@ -10,17 +10,19 @@ import { ChannelView } from '@/components/contenido/channel-view'
 import { ContenidoCalendar } from '@/components/contenido/contenido-calendar'
 import { PublicacionForm } from '@/components/contenido/publicacion-form'
 import { PublicacionDetail } from '@/components/contenido/publicacion-detail'
+import { RedesConfig } from '@/components/contenido/redes-config'
 import { CANAL_ACCENT, type CanalSlug, type ContenidoCatalogos, type ContenidoPublicacionFull } from '@/lib/contenido/types'
 
 interface ContenidoClientProps {
   catalogos: ContenidoCatalogos
   publicaciones: ContenidoPublicacionFull[]
   consultoraNombre: string
+  socialLinks: Record<string, string> | null
 }
 
-type ActiveTab = CanalSlug | 'calendario'
+type ActiveTab = CanalSlug | 'calendario' | 'redes'
 
-export function ContenidoClient({ catalogos, publicaciones, consultoraNombre }: ContenidoClientProps) {
+export function ContenidoClient({ catalogos, publicaciones, consultoraNombre, socialLinks }: ContenidoClientProps) {
   const router = useRouter()
   const { canales } = catalogos
 
@@ -116,11 +118,31 @@ export function ContenidoClient({ catalogos, publicaciones, consultoraNombre }: 
           >
             <CalendarDays size={15} /> Calendario
           </button>
+          <button
+            role="tab"
+            aria-selected={activeTab === 'redes'}
+            onClick={() => setActiveTab('redes')}
+            className={cn(
+              'flex shrink-0 items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors',
+              activeTab === 'redes'
+                ? 'border-brand-primary text-brand-primary'
+                : 'border-transparent text-text-tertiary hover:text-text-primary hover:border-border-default',
+            )}
+          >
+            <Share2 size={15} /> Redes
+          </button>
         </div>
       </div>
 
       {/* Contenido del tab activo */}
-      {activeTab === 'calendario' ? (
+      {activeTab === 'redes' ? (
+        <section className="bg-surface-elevated rounded-xl border border-border-subtle p-6">
+          <h2 className="text-sm font-semibold text-text-primary uppercase tracking-wider mb-4">
+            Links de redes sociales
+          </h2>
+          <RedesConfig initialLinks={socialLinks} />
+        </section>
+      ) : activeTab === 'calendario' ? (
         <ContenidoCalendar
           publicaciones={publicaciones}
           canales={canales}

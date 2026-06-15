@@ -106,7 +106,7 @@ export async function updateConsultora(data: {
   email: string | null
   website: string | null
   logo_url: string | null
-  social_links: Record<string, string> | null
+  social_links?: Record<string, string> | null
 }): Promise<ActionResult<Consultora>> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -129,17 +129,22 @@ export async function updateConsultora(data: {
     return { success: false, error: 'Solo el Admin Principal puede editar la información de la consultora' }
   }
 
+  const payload: Record<string, unknown> = {
+    nombre: data.nombre,
+    telefono: data.telefono,
+    email: data.email,
+    website: data.website,
+    logo_url: data.logo_url,
+    updated_at: new Date().toISOString(),
+  }
+  // Solo incluimos social_links en el update si fue pasado explícitamente
+  if ('social_links' in data) {
+    payload.social_links = data.social_links
+  }
+
   const { data: updated, error } = await supabase
     .from('consultoras')
-    .update({
-      nombre: data.nombre,
-      telefono: data.telefono,
-      email: data.email,
-      website: data.website,
-      logo_url: data.logo_url,
-      social_links: data.social_links,
-      updated_at: new Date().toISOString(),
-    })
+    .update(payload)
     .eq('id', membership.consultora_id)
     .select()
     .single()
