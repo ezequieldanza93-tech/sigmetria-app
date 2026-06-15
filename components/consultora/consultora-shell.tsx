@@ -1,6 +1,6 @@
 'use client'
 
-import { Building2, ClipboardList, BarChart3, BookOpen, Eye, Contact, ScrollText, MessageSquare, Megaphone, ArrowLeft, Users, Library } from 'lucide-react'
+import { Building2, ClipboardList, BarChart3, BookOpen, Eye, Contact, ScrollText, MessageSquare, Megaphone, ArrowLeft, Users, Library, FileText } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { SectionsShell } from '@/components/layout/sections-shell'
@@ -25,6 +25,7 @@ const LIBRERIA_PREFIXES = [
   '/dashboard/configuracion/iperc',
   '/dashboard/libreria-gestiones',
   '/dashboard/configuracion/normativa-legal',
+  '/dashboard/configuracion/documentos-catalogo',
   '/dashboard/cursos',
 ] as const
 
@@ -187,6 +188,7 @@ export function ConsultoraShell({ children }: ConsultoraShellProps) {
         { id: 'lib-iperc', label: 'Librería IPERC', href: '/dashboard/configuracion/iperc' },
         { id: 'lib-gestiones', label: 'Librería de Gestiones', href: '/dashboard/libreria-gestiones' },
         { id: 'lib-normativa', label: 'Normativa Legal', href: '/dashboard/configuracion/normativa-legal' },
+        { id: 'lib-docs-catalogo', label: 'Catálogo Documentos', href: '/dashboard/configuracion/documentos-catalogo' },
         { id: 'lib-cursos', label: 'Mis Cursos', href: '/dashboard/cursos' },
         ...(canManageCursos
           ? [

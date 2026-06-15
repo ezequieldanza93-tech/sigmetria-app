@@ -113,6 +113,7 @@ export function ConsultoraFichaGlobal({ consultora, empresas, usuario, userRole,
       label: 'Herramientas',
       items: [
         { href: '/dashboard/configuracion/catalogacion', icon: Settings2, label: 'Catalogación' },
+        { href: '/dashboard/configuracion/documentos-catalogo', icon: FileText, label: 'Catálogo Documentos' },
         { href: '/dashboard/configuracion/vencimientos', icon: CalendarClock, label: 'Vencimientos' },
         { href: '/dashboard/configuracion/feedback', icon: MessageSquare, label: 'Feedback' },
         { href: '/dashboard/mapas', icon: Map, label: 'Mapa de Riesgos' },
