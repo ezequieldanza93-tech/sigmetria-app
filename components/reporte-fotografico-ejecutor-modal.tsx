@@ -13,6 +13,7 @@ import {
   Camera, X, ChevronLeft, ChevronRight, ChevronUp, ChevronDown,
   Trash2, Download, Copy, Share2, CheckCircle, Loader2,
 } from 'lucide-react'
+import { PUNTOS_POR_NIVEL } from '@/lib/reportes/observaciones-campo-tipos'
 
 interface ReporteFotograficoEjecutorModalProps {
   registroId: string
@@ -424,6 +425,14 @@ export function ReporteFotograficoEjecutorModal({
   const waHref = `https://wa.me/?text=${waText}`
 
   const totalObs = fotos.reduce((acc, f) => acc + f.observaciones.filter(o => o.descripcion.trim()).length, 0)
+  const puntajeObs = fotos.reduce((acc, f) => {
+    return acc + f.observaciones
+      .filter(o => o.descripcion.trim() && o.categoria_id)
+      .reduce((s, o) => {
+        const nivel = categorias.find(c => c.id === o.categoria_id)?.nivel ?? 0
+        return s + (PUNTOS_POR_NIVEL[nivel] ?? 0)
+      }, 0)
+  }, 0)
   const stepIdx = STEP_ORDER.indexOf(step)
 
   // ── Render: post-guardado ─────────────────────────────────────────
@@ -440,6 +449,18 @@ export function ReporteFotograficoEjecutorModal({
               Reporte guardado · {fotos.length} {fotos.length === 1 ? 'foto' : 'fotos'}
               {totalObs > 0 && ` · ${totalObs} ${totalObs === 1 ? 'observación' : 'observaciones'}`}
             </p>
+            {totalObs > 0 && (
+              <div className="flex items-center justify-center gap-4 mt-3">
+                <div className="bg-surface-elevated rounded-lg px-4 py-2 text-center border border-border-subtle">
+                  <div className="text-xl font-bold text-text-primary">{totalObs}</div>
+                  <div className="text-xs text-text-tertiary">Observaciones</div>
+                </div>
+                <div className="bg-amber-50 rounded-lg px-4 py-2 text-center border border-amber-200">
+                  <div className="text-xl font-bold text-amber-800">{puntajeObs} pts</div>
+                  <div className="text-xs text-amber-700">Índice de riesgo</div>
+                </div>
+              </div>
+            )}
           </div>
 
           {pdfSignedUrl ? (
@@ -761,6 +782,18 @@ export function ReporteFotograficoEjecutorModal({
                 </p>
                 <p className="text-xs text-gray-500">Fecha planificada: {rgFechaPlanificada}</p>
                 {comentario && <p className="text-sm text-gray-700 italic mt-2">{comentario}</p>}
+                {totalObs > 0 && (
+                  <div className="flex items-center justify-center gap-4 mt-3">
+                    <div className="border border-gray-200 rounded-lg px-5 py-2 text-center bg-gray-50">
+                      <div className="text-2xl font-bold text-gray-900">{totalObs}</div>
+                      <div className="text-xs text-gray-500">Observaciones</div>
+                    </div>
+                    <div className="border border-amber-300 rounded-lg px-5 py-2 text-center bg-amber-50">
+                      <div className="text-2xl font-bold text-amber-800">{puntajeObs} pts</div>
+                      <div className="text-xs text-amber-700">Índice de riesgo</div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* 1 bloque por foto */}

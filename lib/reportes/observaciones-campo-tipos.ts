@@ -8,6 +8,18 @@
  * resumen al filtrar— vive acá.
  */
 
+/**
+ * Puntos asignados por nivel de categoría de observación.
+ * Nivel 1 = Oportunidad de Mejora, 2 = AI Media, 3 = AI Alta, 4 = AI Crítica.
+ * Fuente de verdad única: todos los cálculos de puntaje deben referenciar esta constante.
+ */
+export const PUNTOS_POR_NIVEL: Record<number, number> = {
+  1: 2,
+  2: 4,
+  3: 7,
+  4: 10,
+}
+
 export type EstadoObservacion = 'Planificado' | 'Vencido' | 'Cerrado'
 
 export interface ReporteObsCampoItem {
@@ -45,6 +57,11 @@ export interface ReporteObsCampoItem {
 
 export interface ReporteObsCampoResumen {
   total: number
+  /**
+   * Suma de puntos de todas las observaciones (por nivel × count).
+   * Usa PUNTOS_POR_NIVEL como fuente de verdad.
+   */
+  puntajeTotal: number
   /** Conteo por tipo/severidad, ordenado crítica → oportunidad. */
   porTipo: { nombre: string; nivel: number; count: number }[]
   /** Conteo por estado. */
@@ -84,9 +101,13 @@ export function construirResumenObservaciones(items: ReporteObsCampoItem[]): Rep
     porResponsableMap.set(resp, (porResponsableMap.get(resp) ?? 0) + 1)
   }
 
+  const porTipo = Array.from(porTipoMap.values()).sort((a, b) => b.nivel - a.nivel)
+  const puntajeTotal = porTipo.reduce((sum, t) => sum + (PUNTOS_POR_NIVEL[t.nivel] ?? 0) * t.count, 0)
+
   return {
     total: items.length,
-    porTipo: Array.from(porTipoMap.values()).sort((a, b) => b.nivel - a.nivel),
+    puntajeTotal,
+    porTipo,
     porEstado,
     porResponsable: Array.from(porResponsableMap.entries())
       .map(([nombre, count]) => ({ nombre, count }))

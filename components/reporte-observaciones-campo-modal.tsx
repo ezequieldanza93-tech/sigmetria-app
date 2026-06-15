@@ -582,7 +582,16 @@ function HojaResumen({
       ) : (
         <>
           <h2 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 8px' }}>Resumen</h2>
-          <p style={{ margin: '0 0 12px' }}>Total de observaciones: <strong>{resumen.total}</strong></p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24, marginBottom: 12 }}>
+            <div style={{ background: '#f3f4f6', borderRadius: 8, padding: '8px 18px', textAlign: 'center', minWidth: 120 }}>
+              <div style={{ fontSize: 28, fontWeight: 800, color: '#111827', lineHeight: 1.1 }}>{resumen.total}</div>
+              <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>Observaciones</div>
+            </div>
+            <div style={{ background: '#fef3c7', borderRadius: 8, padding: '8px 18px', textAlign: 'center', minWidth: 120, border: '1px solid #fcd34d' }}>
+              <div style={{ fontSize: 28, fontWeight: 800, color: '#92400e', lineHeight: 1.1 }}>{resumen.puntajeTotal}</div>
+              <div style={{ fontSize: 11, color: '#92400e', marginTop: 2 }}>Índice de riesgo (pts)</div>
+            </div>
+          </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 36 }}>
             <div>
               <p style={{ fontWeight: 600, margin: '0 0 6px', color: '#374151' }}>Por tipo</p>
