@@ -14,6 +14,8 @@ import { TrialCountdown } from '@/components/billing/trial-countdown'
 import { PreviewProvider } from '@/lib/contexts/preview-context'
 import { EffectiveRoleProvider } from '@/lib/contexts/effective-role-context'
 import { getEffectiveRole } from '@/lib/auth/effective-role'
+import { isCrmAdmin } from '@/lib/auth/crm-access'
+import { canAccessContenido } from '@/lib/contenido/access'
 import 'leaflet/dist/leaflet.css'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -113,7 +115,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
       )}
       {trialEndsAt && <TrialCountdown endsAt={trialEndsAt} />}
       <DevicePreviewPanel>{children}</DevicePreviewPanel>
-      <ContextualBottomNav />
+      <ContextualBottomNav
+            showContenido={canAccessContenido(effectiveUserRole, effectiveSystemRole)}
+            showCrm={isCrmAdmin(email)}
+          />
       <GestionLauncher />
       <ChatWidget />
       <FloatingReportButtons />

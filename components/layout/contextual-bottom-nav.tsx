@@ -12,6 +12,9 @@ import {
   Camera,
   Bot,
   Menu,
+  Megaphone,
+  Contact,
+  MessageSquare,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useNavigationLevel } from '@/lib/hooks/use-navigation-level'
@@ -52,6 +55,8 @@ interface MenuItem {
   icon: typeof Home
   action?: ShortcutAction
   section?: string
+  /** Href absoluto (para ítems que navegan fuera del contexto de sección). */
+  href?: string
 }
 
 const MENU_ITEMS: MenuItem[] = [
@@ -63,7 +68,14 @@ const MENU_ITEMS: MenuItem[] = [
 
 // ─── Componente ──────────────────────────────────────────────────────
 
-export function ContextualBottomNav() {
+interface ContextualBottomNavProps {
+  /** Muestra el ítem "Contenido" en el menú hamburguesa (gate canAccessContenido). */
+  showContenido?: boolean
+  /** Muestra los ítems "CRM" y "Comentarios" en el menú hamburguesa (gate isCrmAdmin). */
+  showCrm?: boolean
+}
+
+export function ContextualBottomNav({ showContenido = false, showCrm = false }: ContextualBottomNavProps) {
   const { level, empresaId, establecimientoId } = useNavigationLevel()
   const { emit } = useShortcuts()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -183,7 +195,18 @@ export function ContextualBottomNav() {
           {/* Menú desplegable hacia arriba desde la hamburguesa. */}
           {menuOpen && (
             <div className="absolute bottom-full right-1 mb-2 w-52 overflow-hidden rounded-2xl border border-border-subtle bg-surface-base shadow-xl animate-in fade-in slide-in-from-bottom-2 duration-150">
-              {MENU_ITEMS.map(({ id, label, icon: Icon, action, section }, i) => {
+              {[
+                ...MENU_ITEMS,
+                ...(showContenido
+                  ? [{ id: 'contenido', label: 'Contenido', icon: Megaphone, href: '/dashboard/contenido' } as MenuItem]
+                  : []),
+                ...(showCrm
+                  ? [
+                      { id: 'crm', label: 'CRM', icon: Contact, href: '/dashboard/crm' } as MenuItem,
+                      { id: 'comentarios', label: 'Comentarios', icon: MessageSquare, href: '/dashboard/crm/comentarios' } as MenuItem,
+                    ]
+                  : []),
+              ].map(({ id, label, icon: Icon, action, section, href }, i) => {
                 const rowClasses = cn(
                   'flex w-full items-center gap-3 px-4 py-3 text-sm font-medium',
                   'text-text-secondary hover:bg-brand-muted/30 hover:text-brand-primary',
@@ -194,7 +217,23 @@ export function ContextualBottomNav() {
                   <Icon size={18} strokeWidth={1.75} className="shrink-0 text-text-tertiary" aria-hidden="true" />
                 )
 
-                // Ficha / Dashboard: navegan por Link.
+                // Ítems con href absoluto (Marketing: Contenido, CRM, Comentarios).
+                if (href) {
+                  return (
+                    <Link
+                      key={id}
+                      href={href}
+                      onClick={() => setMenuOpen(false)}
+                      aria-label={label}
+                      className={rowClasses}
+                    >
+                      {iconEl}
+                      <span>{label}</span>
+                    </Link>
+                  )
+                }
+
+                // Ficha / Dashboard: navegan por Link relativo a sección.
                 if (section) {
                   return (
                     <Link
