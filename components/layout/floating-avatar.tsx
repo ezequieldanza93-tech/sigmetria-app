@@ -1,17 +1,13 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useTranslations } from 'next-intl'
-import { LanguageSwitcher } from '@/components/layout/language-switcher'
-import { BarChart2, MessageSquare, ShieldCheck, LogOut } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { useNavigationLevel } from '@/lib/hooks/use-navigation-level'
 import { cn } from '@/lib/utils'
 import { UserRole, SystemRole } from '@/lib/types'
-import { RoleSwitcher } from '@/components/layout/role-switcher'
+import { AvatarMenuContent } from '@/components/layout/avatar-menu-items'
 import { type SwitchableRole } from '@/lib/actions/change-role'
+import { useIsMobile } from '@/lib/hooks/use-is-mobile'
 
 interface FloatingAvatarProps {
   fullName: string
@@ -35,14 +31,10 @@ export function FloatingAvatar({
   canSwitchRole = false,
 }: FloatingAvatarProps) {
   const router = useRouter()
-  const tNav = useTranslations('nav')
-  const { level } = useNavigationLevel()
+  const isMobile = useIsMobile()
   const [menuOpen, setMenuOpen] = useState(false)
   const [roleSimOpen, setRoleSimOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
-
-  // Only show on mobile/tablet, hidden at consultora level
-  const isVisible = level !== 'consultora'
 
   const initials = fullName
     .split(' ')
@@ -67,8 +59,6 @@ export function FloatingAvatar({
     router.push('/login')
     router.refresh()
   }
-
-  if (!isVisible) return null
 
   return (
     <div
@@ -109,101 +99,26 @@ export function FloatingAvatar({
             'border border-border-subtle',
             'rounded-2xl shadow-2xl',
             'z-50 overflow-hidden',
+            'max-h-[80vh] overflow-y-auto',
             'animate-in fade-in slide-in-from-top-2 duration-150',
           )}
         >
-          {/* User info */}
-          <div className="px-4 py-3.5 border-b border-border-subtle">
-            <p className="text-sm font-medium text-text-primary truncate">{fullName}</p>
-            <p className="text-xs text-text-tertiary truncate mt-0.5">{email}</p>
-            {consultoraNombre && (
-              <p className="text-[11px] text-brand-primary font-medium mt-1">
-                {consultoraNombre}
-              </p>
-            )}
-          </div>
-
-          <RoleSwitcher
-            currentRole={userRole}
+          <AvatarMenuContent
+            fullName={fullName}
+            email={email}
+            consultoraNombre={consultoraNombre}
+            userRole={userRole}
             systemRole={systemRole}
             isSuperAdmin={isSuperAdmin}
             simulatedRole={simulatedRole}
             canSwitchRole={canSwitchRole}
-            open={roleSimOpen}
-            onOpenChange={setRoleSimOpen}
+            hideKeyboardShortcuts={isMobile}
+            roleSimOpen={roleSimOpen}
+            onRoleSimOpenChange={setRoleSimOpen}
+            onSignOut={handleLogout}
           />
-
-          {/* La navegación de consultora (Consultora, Directorio, Librerías,
-              Capacitación) vive en la Ficha Global. Acá solo Herramientas
-              (Analytics + accesos de super-admin), igual que el header desktop. */}
-          <div className="max-h-[60vh] overflow-y-auto">
-            <MenuGroup label="Herramientas">
-              <MenuItem href="/dashboard/analytics" icon={BarChart2} label="Analytics" />
-              {isSuperAdmin && (
-                <>
-                  <MenuItem href="/dashboard/admin" icon={ShieldCheck} label={tNav('superAdmin')} />
-                  <MenuItem href="/dashboard/admin/feedback" icon={MessageSquare} label={tNav('feedbackAdmin')} />
-                </>
-              )}
-            </MenuGroup>
-          </div>
-
-          {/* Idioma */}
-          <div className="border-t border-border-subtle">
-            <LanguageSwitcher />
-          </div>
-
-          {/* Logout */}
-          <div className="border-t border-border-subtle">
-            <button
-              onClick={handleLogout}
-              role="menuitem"
-              className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-text-secondary hover:text-text-primary hover:bg-surface-sunken transition-colors"
-            >
-              <LogOut size={16} strokeWidth={1.75} className="text-text-tertiary" />
-              {tNav('logout')}
-            </button>
-          </div>
         </div>
       )}
     </div>
-  )
-}
-
-// ─── Subcomponents ────────────────────────────────────────────────
-
-function MenuGroup({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="py-1 border-b border-border-subtle last:border-b-0">
-      <div className="px-4 py-1.5">
-        <p className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold">
-          {label}
-        </p>
-      </div>
-      {children}
-    </div>
-  )
-}
-
-function MenuItem({
-  href,
-  icon: Icon,
-  label,
-}: {
-  href: string
-  icon: React.ComponentType<{ size?: number; strokeWidth?: number }>
-  label: string
-}) {
-  return (
-    <Link
-      href={href}
-      role="menuitem"
-      className="flex items-center gap-2.5 px-4 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-surface-sunken transition-colors"
-    >
-      <span className="text-text-tertiary shrink-0">
-        <Icon size={16} strokeWidth={1.75} />
-      </span>
-      {label}
-    </Link>
   )
 }

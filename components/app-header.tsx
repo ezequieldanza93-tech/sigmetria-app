@@ -3,12 +3,10 @@
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Sun, Moon, LogOut, ShieldCheck, MessageSquare, Wifi, WifiOff, Download, Keyboard, Home, BookMarked, KeyRound, User, Users, Trash2 } from 'lucide-react'
-import { SystemRole, UserRole, ROLE_LABELS, ROLE_COLORS, canManageUsers } from '@/lib/types'
-import { RoleSwitcher } from '@/components/layout/role-switcher'
-import { LanguageSwitcher } from '@/components/layout/language-switcher'
-import { useTranslations } from 'next-intl'
+import { Sun, Moon, Wifi, WifiOff, Download, Home } from 'lucide-react'
+import { SystemRole, UserRole, ROLE_LABELS, ROLE_COLORS } from '@/lib/types'
 import { type SwitchableRole } from '@/lib/actions/change-role'
+import { AvatarMenuContent } from '@/components/layout/avatar-menu-items'
 import { createClient } from '@/lib/supabase/client'
 import { NotificationDropdown } from '@/components/notification-dropdown'
 import { AlertasBell } from '@/components/alertas/alertas-bell'
@@ -48,7 +46,6 @@ export function AppHeader({
 }: AppHeaderProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const tNav = useTranslations('nav')
   const [crumbs, setCrumbs] = useState<Crumb[]>([])
   const [contextAddress, setContextAddress] = useState<string | null>(null)
   const [tipoLabel, setTipoLabel] = useState<string | null>(null)
@@ -340,98 +337,30 @@ export function AppHeader({
             </ShortcutTooltip>
 
             {menuOpen && (
-              <div 
+              <div
                 id="user-menu"
                 role="menu"
                 aria-label="Menú de usuario"
-                className="absolute right-0 top-full mt-2 w-56 bg-surface-elevated border border-border-subtle rounded-xl shadow-[var(--shadow-lg)] z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-                <div className="px-4 py-3 border-b border-border-subtle">
-                  <p className="text-sm font-medium text-text-primary truncate">{fullName}</p>
-                  <p className="text-xs text-text-tertiary truncate">{email}</p>
-                </div>
-
-                <RoleSwitcher
-                  currentRole={userRole}
+                className="absolute right-0 top-full mt-2 w-56 bg-surface-elevated border border-border-subtle rounded-xl shadow-[var(--shadow-lg)] z-50 animate-in fade-in slide-in-from-top-2 duration-150 overflow-hidden"
+              >
+                <AvatarMenuContent
+                  fullName={fullName}
+                  email={email}
+                  userRole={userRole}
                   systemRole={systemRole}
                   isSuperAdmin={isSuperAdmin}
                   simulatedRole={simulatedRole}
                   canSwitchRole={canSwitchRole}
-                  open={roleSimOpen}
-                  onOpenChange={setRoleSimOpen}
+                  hideKeyboardShortcuts={isMobile}
+                  roleSimOpen={roleSimOpen}
+                  onRoleSimOpenChange={setRoleSimOpen}
+                  onSignOut={handleLogout}
                 />
-
-                {/* Consultora */}
-                {(userRole === 'full_access_main' || canManageUsers(userRole, systemRole) || isSuperAdmin) && (
-                  <div className="py-1 border-b border-border-subtle">
-                    <div className="px-4 py-1.5">
-                      <p className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold">Consultora</p>
-                    </div>
-                    {(canManageUsers(userRole, systemRole) || isSuperAdmin) && (
-                      <DropdownItem href="/dashboard/usuarios" icon={Users} label="Usuarios" role="menuitem" />
-                    )}
-                    <DropdownItem href="/dashboard/configuracion/api-keys" icon={KeyRound} label="API Keys" role="menuitem" />
-                    {(userRole === 'full_access_main' || isSuperAdmin) && (
-                      <DropdownItem href="/dashboard/papelera" icon={Trash2} label="Papelera de reciclaje" role="menuitem" />
-                    )}
-                  </div>
-                )}
-
-                {/* Directorio y Librerías viven en la Ficha Global de consultora
-                    (components/consultora-ficha-global.tsx). NO se duplican acá. */}
-
-                {/* Herramientas */}
-                {isSuperAdmin && (
-                  <div className="py-1 border-b border-border-subtle">
-                    <div className="px-4 py-1.5">
-                      <p className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold">Herramientas</p>
-                    </div>
-                    <DropdownItem href="/dashboard/admin" icon={ShieldCheck} label="Super Admin" role="menuitem" />
-                    <DropdownItem href="/dashboard/admin/feedback" icon={MessageSquare} label="Feedback Admin" role="menuitem" />
-                  </div>
-                )}
-
-                {/* Perfil y ayuda */}
-                <div className="py-1 border-t border-border-subtle">
-                  <DropdownItem href="/dashboard/perfil" icon={User} label="Mi perfil" role="menuitem" />
-                  <DropdownItem href="/dashboard/configuracion/seguridad" icon={ShieldCheck} label="Seguridad" role="menuitem" />
-                  <DropdownItem href="/dashboard/tutoriales" icon={BookMarked} label="Tutoriales de Uso" role="menuitem" />
-                  {!isMobile && (
-                    <DropdownItem href="/dashboard/atajos" icon={Keyboard} label="Atajos de teclado" role="menuitem" />
-                  )}
-                </div>
-
-                <div className="border-t border-border-subtle">
-                  <LanguageSwitcher />
-                </div>
-
-                <button
-                  onClick={handleLogout}
-                  role="menuitem"
-                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-secondary hover:text-text-primary hover:bg-surface-sunken transition-colors rounded-b-xl focus-visible:outline-none focus-visible:bg-surface-sunken"
-                >
-                  <LogOut size={16} strokeWidth={1.75} className="text-text-tertiary" aria-hidden="true" />
-                  {tNav('logout')}
-                </button>
               </div>
             )}
           </div>
         </div>
       </div>
     </header>
-  )
-}
-
-function DropdownItem({ href, icon: Icon, label, role }: { href: string; icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string; 'aria-hidden'?: boolean | 'true' | 'false' }>; label: string; role?: string }) {
-  return (
-    <Link
-      href={href}
-      role={role}
-      className="flex items-center gap-2.5 px-4 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-surface-sunken transition-colors focus-visible:outline-none focus-visible:bg-surface-sunken"
-    >
-      <span className="text-text-tertiary" aria-hidden="true">
-        <Icon size={16} strokeWidth={1.75} />
-      </span>
-      {label}
-    </Link>
   )
 }
