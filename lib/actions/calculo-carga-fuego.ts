@@ -123,6 +123,26 @@ export async function crearCalculoCargaFuego(
   const consultoraId = await consultoraIdFromEstablecimiento(supabase, establecimientoId)
   if (!consultoraId) return { success: false, error: 'No se pudo resolver la consultora del establecimiento' }
 
+  // ── Validación: el sector de incendio debe ser un sector existente del establecimiento ──
+  // Defensa en profundidad del lado servidor: la UI ya ofrece un select cerrado con los
+  // sectores activos, pero acá rechazamos cualquier sector que no coincida con uno real
+  // (los sectores se crean en la ficha del establecimiento, no en este cálculo).
+  if (sectorIncendio) {
+    const { data: sectoresData, error: sectoresError } = await supabase
+      .from('establecimientos_sectores')
+      .select('nombre')
+      .eq('establecimiento_id', establecimientoId)
+      .eq('is_active', true)
+    if (sectoresError) return { success: false, error: 'No se pudieron validar los sectores del establecimiento: ' + sectoresError.message }
+    const nombresSectores = (sectoresData ?? []).map(s => s.nombre as string)
+    if (nombresSectores.length === 0) {
+      return { success: false, error: 'El establecimiento no tiene sectores cargados. Primero creá sectores en su ficha.' }
+    }
+    if (!nombresSectores.includes(sectorIncendio)) {
+      return { success: false, error: 'El sector de incendio no coincide con ningún sector del establecimiento. Elegí uno de la lista.' }
+    }
+  }
+
   const ts = Date.now()
 
   // ── 1. Subir adjuntos opcionales (certificado / plano) → guardamos PATH, no URL ──

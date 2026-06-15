@@ -427,7 +427,9 @@ export function CalculoCargaFuegoEjecutorModal({
     setError(null)
     if (step === 'datos') {
       if (!firmante.trim()) { setError('Cargá el profesional firmante del cálculo.'); return }
-      if (!sectorIncendio.trim()) { setError('Indicá el sector de incendio analizado.'); return }
+      if (sectores.length === 0) { setError('Primero creá sectores en la ficha del establecimiento: el sector de incendio se elige de esa lista.'); return }
+      if (!sectorIncendio.trim()) { setError('Elegí el sector de incendio analizado.'); return }
+      if (!sectores.some(s => s.nombre === sectorIncendio)) { setError('El sector de incendio elegido no existe en el establecimiento. Elegí uno de la lista.'); return }
       if (superficieNum == null || superficieNum <= 0) { setError('Cargá la superficie del sector (m²).'); return }
       setStep('materiales')
     } else if (step === 'materiales') {
@@ -724,18 +726,22 @@ export function CalculoCargaFuegoEjecutorModal({
                 </div>
                 <div>
                   <label className={labelCls}>Sector de incendio <span className="text-danger">*</span></label>
-                  <input
-                    type="text"
-                    className={inputCls}
-                    value={sectorIncendio}
-                    onChange={e => setSectorIncendio(e.target.value)}
-                    placeholder="Ej: Depósito de materiales"
-                    list="ccf-sectores"
-                  />
-                  {sectores.length > 0 && (
-                    <datalist id="ccf-sectores">
-                      {sectores.map(s => <option key={s.id} value={s.nombre} />)}
-                    </datalist>
+                  {sectores.length > 0 ? (
+                    <select
+                      className={inputCls}
+                      value={sectorIncendio}
+                      onChange={e => setSectorIncendio(e.target.value)}
+                    >
+                      <option value="">Elegí un sector…</option>
+                      {sectores.map(s => (
+                        <option key={s.id} value={s.nombre}>{s.nombre}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="rounded-lg border border-amber-300 bg-amber-50/60 px-3 py-2 text-xs text-amber-700 flex items-start gap-1.5">
+                      <Info size={14} className="shrink-0 mt-0.5" />
+                      <span>Primero creá sectores en la ficha del establecimiento. El sector de incendio se elige de esa lista.</span>
+                    </div>
                   )}
                 </div>
                 <div>
