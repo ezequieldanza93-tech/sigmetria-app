@@ -338,13 +338,13 @@ export async function guardarMedios(presentacionId: string, items: MedioInput[])
   return { success: true, data: null }
 }
 
-interface RolInput { rol_id: string; persona_nombre: string; persona_dni?: string; es_suplente?: boolean; piso_sector?: string; capacitado?: boolean }
+interface RolInput { rol_id: string; persona_id: string; persona_nombre?: string; persona_dni?: string; es_suplente?: boolean; piso_sector?: string; capacitado?: boolean }
 export async function guardarRoles(presentacionId: string, items: RolInput[]): Promise<ActionResult<null>> {
   const { supabase } = await getUser()
   await supabase.from('sap_roles').delete().eq('presentacion_id', presentacionId)
   if (items.length) {
     const { error } = await supabase.from('sap_roles').insert(
-      items.map((it) => ({ presentacion_id: presentacionId, rol_id: it.rol_id, persona_nombre: it.persona_nombre, persona_dni: it.persona_dni ?? null, es_suplente: it.es_suplente ?? false, piso_sector: it.piso_sector ?? null, capacitado: it.capacitado ?? false })),
+      items.map((it) => ({ presentacion_id: presentacionId, rol_id: it.rol_id, persona_id: it.persona_id, persona_nombre: it.persona_nombre ?? null, persona_dni: it.persona_dni ?? null, es_suplente: it.es_suplente ?? false, piso_sector: it.piso_sector ?? null, capacitado: it.capacitado ?? false })),
     )
     if (error) return { success: false, error: error.message }
   }

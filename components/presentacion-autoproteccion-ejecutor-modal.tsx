@@ -25,6 +25,8 @@ import { Badge } from '@/components/ui/badge'
 import { Select } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { usePeligrosLibrary } from '@/lib/queries/iperc'
+import { PersonaRolSelector } from '@/components/persona-rol-selector'
+import type { PersonaRolSelectorValue } from '@/components/persona-rol-selector'
 import {
   Building2, FileText, Plus, Trash2, ChevronLeft, ChevronRight, CheckCircle,
   Loader2, Info, ArrowRight, Check, Sparkles, AlertTriangle, Shield, ShieldCheck,
@@ -116,7 +118,7 @@ const nextKey = () => rowSeq++
 interface ActividadRow { key: number; planta: string; actividad: string; superficie_m2: string }
 interface RiesgoRow { key: number; peligro_id: string; peligro?: string; probabilidad: string; severidad: string; propagacion: string }
 interface MedioRow { tipo_id: string; posee: boolean; funciona: boolean; cantidad: string; observaciones: string }
-interface RolRow { key: number; rol_id: string; persona_nombre: string; persona_dni: string; es_suplente: boolean; piso_sector: string; capacitado: boolean }
+interface RolRow { key: number; rol_id: string; persona_id: string; persona_nombre: string; persona_dni: string; es_suplente: boolean; piso_sector: string; capacitado: boolean }
 interface SimulacroRow { key: number; orden: number; fecha: string; hora: string; realizado: boolean; tipo: string; observaciones: string }
 
 // ── Cabecera (campos snake_case del patch) ───────────────────────────────
@@ -336,7 +338,7 @@ export function PresentacionAutoproteccionEjecutorModal({
       }
     })()
     return () => { activo = false }
-  }, [establecimientoId])
+  }, [establecimientoId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Hidratación: vuelca lo persistido al estado del wizard (retomar a medias).
   function hidratar(data: Record<string, unknown>, cat: Catalogos | null) {
@@ -480,6 +482,7 @@ export function PresentacionAutoproteccionEjecutorModal({
     setRoles(rls.map(r => ({
       key: nextKey(),
       rol_id: String(r.rol_id ?? ''),
+      persona_id: r.persona_id == null ? '' : String(r.persona_id),
       persona_nombre: String(r.persona_nombre ?? ''),
       persona_dni: r.persona_dni == null ? '' : String(r.persona_dni),
       es_suplente: r.es_suplente === true,
@@ -704,8 +707,8 @@ export function PresentacionAutoproteccionEjecutorModal({
         case 'roles':
           Object.assign(patch, { medidas_supletorias: cab.medidas_supletorias })
           await guardarRoles(presentacionId, roles
-            .filter(r => r.rol_id && r.persona_nombre.trim())
-            .map(r => ({ rol_id: r.rol_id, persona_nombre: r.persona_nombre, persona_dni: r.persona_dni || undefined, es_suplente: r.es_suplente, piso_sector: r.piso_sector || undefined, capacitado: r.capacitado })))
+            .filter(r => r.rol_id && r.persona_id)
+            .map(r => ({ rol_id: r.rol_id, persona_id: r.persona_id, persona_nombre: r.persona_nombre || undefined, persona_dni: r.persona_dni || undefined, es_suplente: r.es_suplente, piso_sector: r.piso_sector || undefined, capacitado: r.capacitado })))
           break
         case 'g3':
           Object.assign(patch, {
@@ -829,10 +832,10 @@ export function PresentacionAutoproteccionEjecutorModal({
       { id: 'clasif', label: 'Clasificación', done: true },
       { id: 'datos', label: 'Datos del establecimiento y habilitación', done: !!cab.habilitacion_tipo },
       { id: 'profesional', label: 'Profesional interviniente', done: !!cab.profesional_nombre.trim() && !!cab.profesional_matricula.trim() },
-      { id: 'riesgos', label: 'Identificá al menos un riesgo', done: riesgos.some(r => r.peligro.trim()) },
+      { id: 'riesgos', label: 'Identificá al menos un riesgo', done: riesgos.some(r => r.peligro?.trim()) },
       { id: 'medios', label: 'Relevá los medios técnicos', done: medios.some(m => m.posee) },
       { id: 'evacuacion', label: 'Procedimiento de evacuación', done: !!cab.evacuacion_procedimiento.trim() },
-      { id: 'roles', label: 'Asigná los roles de emergencia', done: roles.some(r => r.rol_id && r.persona_nombre.trim()) },
+      { id: 'roles', label: 'Asigná los roles de emergencia', done: roles.some(r => r.rol_id && r.persona_id) },
       { id: 'simulacros', label: 'Cargá los simulacros', done: simulacros.some(s => s.fecha || s.tipo.trim()) },
       { id: 'decl', label: 'Declaraciones finales', done: cab.decl_viabilidad && cab.decl_comunicar_cambios },
     ]
@@ -1418,14 +1421,14 @@ export function PresentacionAutoproteccionEjecutorModal({
               Asigná las personas responsables de actuar en una emergencia (jefe de emergencia, responsable
               de piso, etc.). Indicá si están capacitadas y quién es suplente.
             </Explica>
-            <RepetibleHeader titulo="Roles asignados" onAdd={() => setRoles(p => [...p, { key: nextKey(), rol_id: '', persona_nombre: '', persona_dni: '', es_suplente: false, piso_sector: '', capacitado: false }])} canWrite={canWrite} />
+            <RepetibleHeader titulo="Roles asignados" onAdd={() => setRoles(p => [...p, { key: nextKey(), rol_id: '', persona_id: '', persona_nombre: '', persona_dni: '', es_suplente: false, piso_sector: '', capacitado: false }])} canWrite={canWrite} />
             {roles.length === 0 ? (
               <Vacio texto="Agregá las personas que cumplen cada rol de la estructura de emergencia." />
             ) : (
               <div className="space-y-2">
                 {roles.map(r => (
                   <div key={r.key} className="rounded-lg border border-border-subtle p-3 space-y-2">
-                    <div className="grid grid-cols-1 sm:grid-cols-[1.2fr_1.5fr_1fr_auto] gap-2 items-end">
+                    <div className="grid grid-cols-1 sm:grid-cols-[1.2fr_2fr_auto] gap-2 items-end">
                       <div>
                         <label className={labelCls}>Rol</label>
                         <select className={inputCls} value={r.rol_id} disabled={!canWrite}
@@ -1434,10 +1437,23 @@ export function PresentacionAutoproteccionEjecutorModal({
                           {catalogos?.rolesTipos.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
                         </select>
                       </div>
-                      <Field label="Persona" value={r.persona_nombre} disabled={!canWrite}
-                        onChange={v => setRoles(p => p.map(x => x.key === r.key ? { ...x, persona_nombre: v } : x))} placeholder="Nombre y apellido" />
-                      <Field label="DNI" value={r.persona_dni} disabled={!canWrite}
-                        onChange={v => setRoles(p => p.map(x => x.key === r.key ? { ...x, persona_dni: v } : x))} />
+                      <div>
+                        <label className={labelCls}>Persona</label>
+                        <PersonaRolSelector
+                          value={r.persona_id || null}
+                          disabled={!canWrite}
+                          onChange={(p: PersonaRolSelectorValue | null) => setRoles(prev => prev.map(x =>
+                            x.key === r.key
+                              ? { ...x, persona_id: p?.id ?? '', persona_nombre: p ? `${p.nombre} ${p.apellido}` : '', persona_dni: p?.dni ?? '' }
+                              : x
+                          ))}
+                        />
+                        {r.persona_id && (
+                          <p className="mt-0.5 text-xs text-text-tertiary">
+                            {r.persona_nombre}{r.persona_dni ? ` · DNI ${r.persona_dni}` : ''}
+                          </p>
+                        )}
+                      </div>
                       {canWrite && <BotonQuitar onClick={() => setRoles(p => p.filter(x => x.key !== r.key))} />}
                     </div>
                     <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
