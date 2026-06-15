@@ -640,7 +640,7 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
   if (view === 'edit') {
     return (
       <Modal open title={registro.ge_gestion_nombre ?? 'Ejecutar'} onClose={onClose} size="full">
-        <div className="space-y-5 max-h-[80vh] overflow-y-auto pr-2">
+        <div className="space-y-5 max-md:max-h-none md:max-h-[88vh] overflow-y-auto pr-2">
           {error && (
             <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-3 py-2">{error}</div>
           )}
@@ -762,7 +762,7 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
             </div>
           ))}
 
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 pb-4 sticky bottom-0 bg-surface-base">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pt-1 pb-2 sm:pt-2 sm:pb-3 sticky bottom-0 bg-surface-base">
             <div className="flex flex-wrap gap-2 sm:gap-3">
               <Button
                 type="button"
@@ -792,7 +792,7 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
   // ── Review / Preview view ──────────────────────────────────────────
   return (
     <Modal open title={`Revisar: ${registro.ge_gestion_nombre ?? ''}`} onClose={onClose} size="full">
-      <div className="space-y-5 max-h-[80vh] overflow-y-auto pr-2">
+      <div className="space-y-5 max-md:max-h-none md:max-h-[88vh] overflow-y-auto pr-2">
         {error && (
           <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-3 py-2">{error}</div>
         )}
@@ -869,7 +869,7 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
               )}
             </div>
           ))}
-          <div className="flex flex-wrap gap-2 sm:gap-3 pt-2 pb-4 sticky bottom-0 bg-surface-base">
+          <div className="flex flex-wrap gap-2 pt-1 pb-2 sm:pt-2 sm:pb-3 sticky bottom-0 bg-surface-base">
             <Button type="button" variant="secondary" onClick={() => setView('edit')} disabled={saving}>
               Seguir Editando
             </Button>
