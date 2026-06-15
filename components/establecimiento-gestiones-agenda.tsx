@@ -242,7 +242,7 @@ const COL_MIN_WIDTHS: Record<string, number> = {
 const ROW_BG_COLORS: Record<EstadoGestion, string> = {
   Realizado: 'bg-green-200 hover:bg-green-300',
   Pendiente: 'bg-red-200 hover:bg-red-300',
-  Planificado: 'bg-white hover:bg-gray-50',
+  Planificado: 'bg-white hover:bg-gray-50 dark:bg-slate-900 dark:hover:bg-slate-800 dark:text-white',
 }
 
 const COL_VISIBLE_KEY = 'gestiones_col_visible'
@@ -2855,7 +2855,7 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
                         <div className="space-y-0.5">
                           {regs.map(r => {
                             const estado = calcularEstadoGestion(r.fecha_ejecutada ?? null, r.fecha_planificada)
-                            const dot = estado === 'Realizado' ? 'bg-green-500' : estado === 'Pendiente' ? 'bg-red-500' : 'bg-gray-300'
+                            const dot = estado === 'Realizado' ? 'bg-green-500' : estado === 'Pendiente' ? 'bg-red-500' : 'bg-gray-300 dark:bg-sky-400'
                             return (
                               <div
                                 key={r.id}
@@ -2884,7 +2884,7 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
   // ── Kanban view ──────────────────────────────────────────────────────────────
   function renderKanban() {
     const columns: { estado: EstadoGestion; label: string; header: string; card: string }[] = [
-      { estado: 'Planificado', label: 'Planificado', header: 'bg-sky-600', card: 'bg-sky-50 border-sky-100' },
+      { estado: 'Planificado', label: 'Planificado', header: 'bg-sky-600', card: 'bg-sky-50 border-sky-100 dark:bg-slate-900 dark:border-slate-700' },
       { estado: 'Pendiente', label: 'Pendiente', header: 'bg-red-500', card: 'bg-red-50 border-red-100' },
       { estado: 'Realizado', label: 'Realizado', header: 'bg-green-600', card: 'bg-green-50 border-green-100' },
     ]
@@ -2907,7 +2907,7 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
                   <div
                     key={r.id}
                     onClick={() => openRegistro(r)}
-                    className="bg-white rounded-lg border border-border-subtle p-2.5 cursor-pointer hover:border-sig-300 hover:shadow-sm transition-all"
+                    className="bg-white dark:bg-slate-800 rounded-lg border border-border-subtle p-2.5 cursor-pointer hover:border-sig-300 hover:shadow-sm transition-all"
                   >
                     <div className="flex items-center gap-1 mb-1">
                       <CategoriaIcon nombre={r.ge_categoria_nombre} size={12} />

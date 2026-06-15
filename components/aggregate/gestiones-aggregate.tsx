@@ -118,7 +118,7 @@ const COLS: ColDef[] = [
 const ROW_BG_COLORS: Record<EstadoGestion, string> = {
   Realizado: 'bg-green-200 hover:bg-green-300',
   Pendiente: 'bg-red-200 hover:bg-red-300',
-  Planificado: 'bg-white hover:bg-gray-50',
+  Planificado: 'bg-white hover:bg-gray-50 dark:bg-slate-900 dark:hover:bg-slate-800 dark:text-white',
 }
 
 const ESTADO_DOT: Record<EstadoGestion, string> = {
