@@ -20,17 +20,22 @@ function ProductoForm({
   marcas,
   unidades,
   onSuccess,
+  isStaffDeveloper,
 }: {
   categorias: CategoriaProducto[]
   marcas: Organizacion[]
   unidades: Unidad[]
   onSuccess: () => void
+  isStaffDeveloper: boolean
 }) {
   const [state, formAction, pending] = useActionState(
     createProducto,
     null as ActionResult<null> | null
   )
   const [fotoPreview, setFotoPreview] = useState<string | null>(null)
+  // Para staff developer: controla si el producto será genérico (base Sigmetría) o propio.
+  // Para consultoras normales esta variable no se usa — siempre propio.
+  const [esGenerico, setEsGenerico] = useState(false)
   const formRef = useRef<HTMLFormElement>(null)
   const fotoInputRef = useRef<HTMLInputElement>(null)
   const onSuccessRef = useRef(onSuccess)
@@ -57,6 +62,31 @@ function ProductoForm({
     <form ref={formRef} action={formAction} className="space-y-4">
       {state && !state.success && (
         <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3">{state.error}</div>
+      )}
+
+      {/* Toggle genérico/propio — solo visible para staff developer */}
+      {isStaffDeveloper && (
+        <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+          <div>
+            <p className="text-sm font-medium text-amber-900">Tipo de producto</p>
+            <p className="text-xs text-amber-700 mt-0.5">
+              {esGenerico
+                ? 'Genérico — visible para todas las consultoras (base Sigmetría)'
+                : 'Propio — visible solo para tu consultora'}
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={esGenerico}
+            onClick={() => setEsGenerico(v => !v)}
+            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 ${esGenerico ? 'bg-amber-500' : 'bg-gray-300'}`}
+          >
+            <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition-transform ${esGenerico ? 'translate-x-5' : 'translate-x-0'}`} />
+          </button>
+          {/* Campo oculto que transporta la decisión al server action */}
+          <input type="hidden" name="es_generico" value={esGenerico ? 'true' : 'false'} />
+        </div>
       )}
 
       <div>
@@ -166,9 +196,11 @@ export default function ProductosPage() {
   const [busqueda, setBusqueda] = useState<string>('')
   const [origen, setOrigen] = useState<OrigenFiltro>('todos')
   const [showModal, setShowModal] = useState(false)
-  // Los productos genéricos (consultora_id IS NULL) son base de Sigmetría:
-  // solo el staff los borra; el resto los ve como solo-lectura.
-  const isStaff = useEffectiveRoleContext()?.isSuperAdmin ?? false
+  const roleCtx = useEffectiveRoleContext()
+  // isSuperAdmin: puede borrar genéricos desde la lista (existía antes).
+  const isStaff = roleCtx?.isSuperAdmin ?? false
+  // isStaffDeveloper: puede crear productos GENÉRICOS (base Sigmetría). Matchea is_developer() en RLS.
+  const isStaffDeveloper = roleCtx?.systemRole === 'developer'
 
   function load() {
     const supabase = createClient()
@@ -328,6 +360,7 @@ export default function ProductosPage() {
           marcas={marcas}
           unidades={unidades}
           onSuccess={() => { setShowModal(false); load() }}
+          isStaffDeveloper={isStaffDeveloper}
         />
       </Modal>
     </div>
