@@ -116,8 +116,11 @@ export async function finalizarFormulario(
   }
 
   // Update registro_gestiones
+  // ejecutado_at = now(): hora de FINALIZACIÓN real (esto es finalizarFormulario,
+  // no un borrador). En guardarBorrador NO se setea (queda NULL).
   const updates: Record<string, unknown> = {
     fecha_ejecutada: fechaEjecutada,
+    ejecutado_at: new Date().toISOString(),
     notas,
     responsable_id: responsableId,
   }

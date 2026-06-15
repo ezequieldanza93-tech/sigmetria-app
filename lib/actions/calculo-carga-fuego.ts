@@ -175,7 +175,8 @@ export async function crearCalculoCargaFuego(
   const hoy = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
   let regUpdate = supabase
     .from('gestiones_registros')
-    .update({ fecha_ejecutada: hoy })
+    // ejecutado_at = now(): hora real de finalización del cálculo (queda Realizado).
+    .update({ fecha_ejecutada: hoy, ejecutado_at: new Date().toISOString() })
     .eq('id', registroId)
   if (rgFechaPlanificada) regUpdate = regUpdate.eq('fecha_planificada', rgFechaPlanificada)
   const { data: regRow, error: regErr } = await regUpdate.select('fecha_planificada').single()

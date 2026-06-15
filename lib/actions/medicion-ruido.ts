@@ -168,7 +168,8 @@ export async function crearMedicionRuido(
   const hoy = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
   let regUpdate = supabase
     .from('gestiones_registros')
-    .update({ fecha_ejecutada: hoy })
+    // ejecutado_at = now(): hora real de finalización de la medición (queda Realizado).
+    .update({ fecha_ejecutada: hoy, ejecutado_at: new Date().toISOString() })
     .eq('id', registroId)
   // rg_fecha_planificada completa la PK compuesta del registro particionado:
   // si la UI lo manda, acotamos el UPDATE a la fila exacta.

@@ -88,6 +88,8 @@ export async function crearReporteFotografico(
     gestion_establecimiento_id: geId,
     fecha_planificada: today,
     fecha_ejecutada: today,
+    // ejecutado_at = now(): hora real de la observación (esto crea y completa el registro).
+    ejecutado_at: new Date().toISOString(),
     evidencia_url: upload.path,
     notas: comentario,
   }).select('id').single()
@@ -236,6 +238,8 @@ export async function crearReporteFotograficoEjecucion(
     .from('gestiones_registros')
     .update({
       fecha_ejecutada: hoy,
+      // ejecutado_at = now(): hora real de finalización del reporte (queda Realizado).
+      ejecutado_at: new Date().toISOString(),
       evidencia_url: pdfPath,
       notas: comentario,
     })

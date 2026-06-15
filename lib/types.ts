@@ -1001,6 +1001,8 @@ export interface RegistroGestion {
   index: number | null
   fecha_planificada: string
   fecha_ejecutada: string | null
+  /** Timestamp (con hora) de la COMPLETACIÓN/FINALIZACIÓN real. NULL en borradores y no ejecutados. */
+  ejecutado_at: string | null
   fecha_vencimiento: string | null
   responsable_id: string | null
   aprobado_por_id: string | null

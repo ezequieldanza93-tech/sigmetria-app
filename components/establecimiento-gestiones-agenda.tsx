@@ -2505,6 +2505,9 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
     // (Pendiente → Planificado → Realizado) y, dentro de cada estado, por
     // fecha_planificada ASC (fechas más bajas arriba). Las realizadas desempatan
     // también por fecha_planificada ASC. Fechas comparadas como ISO (YYYY-MM-DD).
+    // 3er criterio: dentro de misma estado + misma fecha_planificada, por
+    // ejecutado_at ASC (lo que se ejecutó más temprano va arriba). Los que no
+    // tienen ejecutado_at (viejos / no ejecutados) caen al final de su grupo.
     if (!sortConfig.col) {
       const PRIORIDAD_ESTADO: Record<EstadoGestion, number> = {
         Pendiente: 0,
@@ -2516,7 +2519,15 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
         const eb = calcularEstadoGestion(b.fecha_ejecutada ?? null, b.fecha_planificada)
         const byEstado = PRIORIDAD_ESTADO[ea] - PRIORIDAD_ESTADO[eb]
         if (byEstado !== 0) return byEstado
-        return (a.fecha_planificada ?? '').localeCompare(b.fecha_planificada ?? '')
+        const byFecha = (a.fecha_planificada ?? '').localeCompare(b.fecha_planificada ?? '')
+        if (byFecha !== 0) return byFecha
+        // Desempate por hora de ejecución. Sin ejecutado_at → al final del grupo.
+        const ta = a.ejecutado_at
+        const tb = b.ejecutado_at
+        if (ta && tb) return ta.localeCompare(tb)
+        if (ta) return -1
+        if (tb) return 1
+        return 0
       })
     }
     // El usuario clickeó un header → respetamos ESE sort manual (override).
@@ -2912,7 +2923,7 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
                         <span className="text-[10px] text-text-tertiary truncate">{r.responsable_nombre}</span>
                       )}
                     </div>
-                    {r.fecha_ejecutada && r.fecha_ejecutada !== r.fecha_planificada && (
+                    {r.fecha_ejecutada && (
                       <div className="mt-1 text-[10px] text-green-600">
                         Ejec:{' '}
                         <span className="md:hidden">{`${r.fecha_ejecutada.slice(8, 10)}-${r.fecha_ejecutada.slice(5, 7)}`}</span>
