@@ -44,6 +44,20 @@ import {
 // bucket 'sap-autoproteccion'.
 // ════════════════════════════════════════════════════════════════════════
 
+// ── Opciones predefinidas para el medio de aviso de emergencia ───────────
+const OPCIONES_AVISO = [
+  'Sirena',
+  'Timbre / campana',
+  'Megafonía (altavoces)',
+  'Alarma sonora (central de detección)',
+  'Pulsador manual de alarma',
+  'Viva voz',
+  'Teléfono interno',
+  'Radio (handy)',
+  'Señal lumínica / visual',
+  'Otro',
+] as const
+
 // ── Props ────────────────────────────────────────────────────────────────
 interface PresentacionAutoproteccionEjecutorModalProps {
   establecimientoId: string
@@ -301,6 +315,10 @@ export function PresentacionAutoproteccionEjecutorModal({
   const [simulacros, setSimulacros] = useState<SimulacroRow[]>([])
   const [documentos, setDocumentos] = useState<DocumentoSap[]>([])
 
+  // ── UI local: selector de medio de aviso (no persiste en cab directamente) ──
+  // '' = sin selección, 'Otro' = texto libre en cab.aviso_descripcion
+  const [avisoSeleccion, setAvisoSeleccion] = useState<string>('')
+
   // ── Librería de peligros IPERC (para el selector del paso Riesgos) ───
   const { data: peligrosLib } = usePeligrosLibrary()
 
@@ -391,6 +409,20 @@ export function PresentacionAutoproteccionEjecutorModal({
       decl_viabilidad: flag('decl_viabilidad'),
       decl_comunicar_cambios: flag('decl_comunicar_cambios'),
     })
+
+    // Hidratar selector de medio de aviso: si el valor guardado coincide con una
+    // opción predefinida (y no es "Otro"), lo seleccionamos directamente.
+    // Si es texto libre (registros viejos) o algo que no está en la lista,
+    // seleccionamos "Otro" — el texto queda en cab.aviso_descripcion y se
+    // muestra en el input auxiliar.
+    const avisoGuardado = str('aviso_descripcion')
+    if (!avisoGuardado) {
+      setAvisoSeleccion('')
+    } else if ((OPCIONES_AVISO as readonly string[]).includes(avisoGuardado) && avisoGuardado !== 'Otro') {
+      setAvisoSeleccion(avisoGuardado)
+    } else {
+      setAvisoSeleccion('Otro')
+    }
 
     // Reconstruir el form de clasificación desde lo persistido.
     const usoId = p.uso_id as string | null | undefined
@@ -1380,8 +1412,36 @@ export function PresentacionAutoproteccionEjecutorModal({
             </Explica>
             <div>
               <label className={labelCls}>¿Cómo se da el aviso de emergencia?</label>
-              <textarea className={inputCls} rows={2} value={cab.aviso_descripcion} disabled={!canWrite}
-                onChange={e => setCabField('aviso_descripcion', e.target.value)} placeholder="Sirena, timbre, pulsador manual, megafonía…" />
+              <select
+                className={inputCls}
+                value={avisoSeleccion}
+                disabled={!canWrite}
+                onChange={e => {
+                  const val = e.target.value
+                  setAvisoSeleccion(val)
+                  if (val !== 'Otro') {
+                    setCabField('aviso_descripcion', val)
+                  } else {
+                    // Al elegir "Otro" limpiamos aviso_descripcion hasta que escriban
+                    setCabField('aviso_descripcion', '')
+                  }
+                }}
+              >
+                <option value="">— Seleccioná un medio —</option>
+                {OPCIONES_AVISO.map(op => (
+                  <option key={op} value={op}>{op}</option>
+                ))}
+              </select>
+              {avisoSeleccion === 'Otro' && (
+                <input
+                  type="text"
+                  className={`${inputCls} mt-2`}
+                  value={cab.aviso_descripcion}
+                  disabled={!canWrite}
+                  onChange={e => setCabField('aviso_descripcion', e.target.value)}
+                  placeholder="Describí el medio de aviso específico…"
+                />
+              )}
             </div>
             <CheckRow label="¿El aviso también puede darse a viva voz?" checked={cab.aviso_viva_voz} disabled={!canWrite}
               onChange={v => setCabField('aviso_viva_voz', v)} />
