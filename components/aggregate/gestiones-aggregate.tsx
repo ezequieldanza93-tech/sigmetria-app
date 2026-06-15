@@ -116,8 +116,8 @@ const COLS: ColDef[] = [
 
 // Mismo criterio que la tabla a nivel establecimiento: el estado pinta la fila.
 const ROW_BG_COLORS: Record<EstadoGestion, string> = {
-  Realizado: 'bg-green-200 hover:bg-green-300',
-  Pendiente: 'bg-red-200 hover:bg-red-300',
+  Realizado: 'bg-green-200 hover:bg-green-300 dark:bg-green-200 dark:hover:bg-green-300 dark:text-green-900',
+  Pendiente: 'bg-red-200 hover:bg-red-300 dark:bg-red-200 dark:hover:bg-red-300 dark:text-red-900',
   Planificado: 'bg-white hover:bg-gray-50 dark:bg-slate-900 dark:hover:bg-slate-800 dark:text-white',
 }
 

@@ -318,8 +318,8 @@ export function GestionesTab({ establecimientoId, canWrite }: GestionesTabProps)
   ]
 
   const estadoColors: Record<EstadoGestion, string> = {
-    Realizado: 'bg-success-bg text-success',
-    Pendiente: 'bg-danger-bg text-danger',
+    Realizado: 'bg-success-bg text-success dark:bg-green-50 dark:text-green-600',
+    Pendiente: 'bg-danger-bg text-danger dark:bg-red-100 dark:text-red-600',
     Planificado: 'bg-sky-100 text-sky-700 dark:bg-slate-700 dark:text-sky-300',
   }
 

@@ -240,8 +240,8 @@ const COL_MIN_WIDTHS: Record<string, number> = {
 }
 
 const ROW_BG_COLORS: Record<EstadoGestion, string> = {
-  Realizado: 'bg-green-200 hover:bg-green-300',
-  Pendiente: 'bg-red-200 hover:bg-red-300',
+  Realizado: 'bg-green-200 hover:bg-green-300 dark:bg-green-200 dark:hover:bg-green-300 dark:text-green-900',
+  Pendiente: 'bg-red-200 hover:bg-red-300 dark:bg-red-200 dark:hover:bg-red-300 dark:text-red-900',
   Planificado: 'bg-white hover:bg-gray-50 dark:bg-slate-900 dark:hover:bg-slate-800 dark:text-white',
 }
 
@@ -2889,8 +2889,8 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
   function renderKanban() {
     const columns: { estado: EstadoGestion; label: string; header: string; card: string }[] = [
       { estado: 'Planificado', label: 'Planificado', header: 'bg-sky-600', card: 'bg-sky-50 border-sky-100 dark:bg-slate-900 dark:border-slate-700' },
-      { estado: 'Pendiente', label: 'Pendiente', header: 'bg-red-500', card: 'bg-red-50 border-red-100' },
-      { estado: 'Realizado', label: 'Realizado', header: 'bg-green-600', card: 'bg-green-50 border-green-100' },
+      { estado: 'Pendiente', label: 'Pendiente', header: 'bg-red-500', card: 'bg-red-50 border-red-100 dark:bg-red-50 dark:border-red-100' },
+      { estado: 'Realizado', label: 'Realizado', header: 'bg-green-600', card: 'bg-green-50 border-green-100 dark:bg-green-50 dark:border-green-100' },
     ]
     return (
       <div className="grid grid-cols-3 gap-3 mb-8">
