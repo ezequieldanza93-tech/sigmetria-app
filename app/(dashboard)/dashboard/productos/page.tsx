@@ -6,6 +6,7 @@ import { Modal } from '@/components/ui/modal'
 import { createClient } from '@/lib/supabase/client'
 import { createProducto, deleteProducto } from '@/lib/actions/producto'
 import { useEffectiveRoleContext } from '@/lib/contexts/effective-role-context'
+import { OrigenFilter, pasaOrigen, OrigenBadge, type OrigenFiltro } from '@/components/ui/origen-filter'
 import type { Producto, CategoriaProducto, Organizacion, ActionResult, Unidad } from '@/lib/types'
 
 function ProductoForm({
@@ -82,6 +83,7 @@ export default function ProductosPage() {
   const [marcas, setMarcas] = useState<Organizacion[]>([])
   const [unidades, setUnidades] = useState<Unidad[]>([])
   const [activeCategoria, setActiveCategoria] = useState<string>('todos')
+  const [origen, setOrigen] = useState<OrigenFiltro>('todos')
   const [showModal, setShowModal] = useState(false)
   // Los productos genéricos (consultora_id IS NULL) son base de Sigmetría:
   // solo el staff los borra; el resto los ve como solo-lectura.
@@ -93,7 +95,7 @@ export default function ProductosPage() {
       .from('productos')
       .select('*, productos_categorias(nombre), organizaciones_externas(nombre), unidades(nombre, simbolo)')
       .eq('is_active', true)
-      .range(0, 99)
+      .range(0, 999)
       .order('nombre')
       .then(({ data }) => setProductos((data as unknown as Producto[]) ?? []))
   }
@@ -117,9 +119,10 @@ export default function ProductosPage() {
 
   const filtered = productos === null
     ? null
-    : activeCategoria === 'todos'
-      ? productos
-      : productos.filter(p => p.categoria_id === activeCategoria)
+    : productos.filter(p =>
+        (activeCategoria === 'todos' || p.categoria_id === activeCategoria) &&
+        pasaOrigen(p.consultora_id, origen)
+      )
 
   async function handleDelete(id: string) {
     if (!confirm('¿Eliminar este producto?')) return
@@ -159,6 +162,12 @@ export default function ProductosPage() {
         })}
       </div>
 
+      {/* Filtro por origen: base de Sigmetría vs agregados por la consultora */}
+      <div className="flex items-center gap-2 mb-5">
+        <span className="text-xs text-text-tertiary">Origen:</span>
+        <OrigenFilter value={origen} onChange={setOrigen} />
+      </div>
+
       {filtered === null ? (
         <div className="bg-surface-base rounded-xl border border-border-subtle p-8 text-center text-text-tertiary">Cargando…</div>
       ) : filtered.length === 0 ? (
@@ -181,16 +190,15 @@ export default function ProductosPage() {
               {filtered.map(p => (
                 <tr key={p.id} className="hover:bg-surface-base">
                   <td className="px-5 py-3.5 font-medium text-text-primary">
-                    <div className="flex items-center gap-2">
-                      {p.nombre}
-                      {p.consultora_id === null && (
-                        <span
-                          className="text-xs font-medium px-2 py-0.5 rounded-full bg-[var(--info-bg)] text-[var(--info)]"
-                          title="Provisto por Sigmetría — compartido con todas las consultoras"
-                        >
-                          Base
-                        </span>
+                    <div className="flex items-center gap-3">
+                      {p.foto_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={p.foto_url} alt="" className="w-10 h-10 rounded object-cover border border-border-subtle shrink-0" />
+                      ) : (
+                        <div className="w-10 h-10 rounded bg-surface-elevated border border-border-subtle shrink-0" />
                       )}
+                      <span>{p.nombre}</span>
+                      <OrigenBadge consultoraId={p.consultora_id} />
                     </div>
                   </td>
                   <td className="px-5 py-3.5">

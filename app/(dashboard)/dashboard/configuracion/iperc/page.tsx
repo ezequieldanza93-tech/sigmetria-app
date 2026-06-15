@@ -10,17 +10,12 @@ import { Badge } from '@/components/ui/badge'
 import { IPERC_FACTORES, IPERC_RIESGO_TIPOS } from '@/lib/constants'
 import { NIVEL_RIESGO_BADGE } from '@/lib/types'
 import { useEffectiveRoleContext } from '@/lib/contexts/effective-role-context'
+import { OrigenFilter, pasaOrigen, OrigenBadge, type OrigenFiltro } from '@/components/ui/origen-filter'
 
 // Un ítem es genérico (base de Sigmetría) cuando consultora_id IS NULL.
 // Los genéricos los administra solo el staff; el resto los ve como solo-lectura.
 function useIsStaff() {
   return useEffectiveRoleContext()?.isSuperAdmin ?? false
-}
-
-function BaseBadge() {
-  return (
-    <Badge variant="info" className="shrink-0">Base</Badge>
-  )
 }
 
 // Nota mostrada arriba de las escalas (genéricas únicas, solo lectura).
@@ -82,12 +77,17 @@ function PeligrosTab() {
   const createPeligro = useCreatePeligro()
   const deletePeligro = useDeletePeligro()
   const [modal, setModal] = useState(false)
+  const [origen, setOrigen] = useState<OrigenFiltro>('todos')
   const isStaff = useIsStaff()
+  const lista = (peligros ?? []).filter((p: any) => pasaOrigen(p.consultora_id, origen))
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
-        <p className="text-sm text-text-secondary">{peligros?.length ?? 0} peligros</p>
+      <div className="flex justify-between items-center mb-4 gap-3 flex-wrap">
+        <div className="flex items-center gap-3">
+          <OrigenFilter value={origen} onChange={setOrigen} />
+          <p className="text-sm text-text-secondary">{lista.length} peligros</p>
+        </div>
         <Button onClick={() => setModal(true)}>Nuevo Peligro</Button>
       </div>
       <Modal open={modal} onClose={() => setModal(false)} title="Nuevo Peligro">
@@ -108,12 +108,12 @@ function PeligrosTab() {
       </Modal>
       {isLoading ? <p>Cargando...</p> : (
         <div className="grid gap-2">
-          {(peligros ?? []).map((p: any) => (
+          {lista.map((p: any) => (
             <div key={p.id} className="flex items-center justify-between p-3 bg-surface-base border rounded-lg">
               <div>
                 <div className="flex items-center gap-2">
                   <p className="font-medium">{p.nombre}</p>
-                  {p.consultora_id === null && <BaseBadge />}
+                  <OrigenBadge consultoraId={p.consultora_id} />
                 </div>
                 <Badge>{p.factor}</Badge>
               </div>
@@ -133,7 +133,9 @@ function RiesgosTab() {
   const createRiesgo = useCreateRiesgoLib()
   const deleteRiesgo = useDeleteRiesgoLib()
   const [modal, setModal] = useState(false)
+  const [origen, setOrigen] = useState<OrigenFiltro>('todos')
   const isStaff = useIsStaff()
+  const lista = (riesgos ?? []).filter((r: any) => pasaOrigen(r.consultora_id, origen))
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -146,8 +148,11 @@ function RiesgosTab() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
-        <p className="text-sm text-text-secondary">{riesgos?.length ?? 0} riesgos</p>
+      <div className="flex justify-between items-center mb-4 gap-3 flex-wrap">
+        <div className="flex items-center gap-3">
+          <OrigenFilter value={origen} onChange={setOrigen} />
+          <p className="text-sm text-text-secondary">{lista.length} riesgos</p>
+        </div>
         <Button onClick={() => setModal(true)}>Nuevo Riesgo</Button>
       </div>
       <Modal open={modal} onClose={() => setModal(false)} title="Nuevo Riesgo">
@@ -162,12 +167,12 @@ function RiesgosTab() {
       </Modal>
       {isLoading ? <p>Cargando...</p> : (
         <div className="grid gap-2">
-          {(riesgos ?? []).map((r: any) => (
+          {lista.map((r: any) => (
             <div key={r.id} className="flex items-center justify-between p-3 bg-surface-base border rounded-lg">
               <div>
                 <div className="flex items-center gap-2">
                   <p className="font-medium">{r.nombre}</p>
-                  {r.consultora_id === null && <BaseBadge />}
+                  <OrigenBadge consultoraId={r.consultora_id} />
                 </div>
                 <Badge variant="info">{r.tipo}</Badge>
               </div>
@@ -188,7 +193,9 @@ function MedidasTab() {
   const deleteMedida = useDeleteMedidaControl()
   const [modal, setModal] = useState(false)
   const [texto, setTexto] = useState('')
+  const [origen, setOrigen] = useState<OrigenFiltro>('todos')
   const isStaff = useIsStaff()
+  const lista = (medidas ?? []).filter((m: any) => pasaOrigen(m.consultora_id, origen))
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -200,8 +207,11 @@ function MedidasTab() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
-        <p className="text-sm text-text-secondary">{medidas?.length ?? 0} medidas (más usadas)</p>
+      <div className="flex justify-between items-center mb-4 gap-3 flex-wrap">
+        <div className="flex items-center gap-3">
+          <OrigenFilter value={origen} onChange={setOrigen} />
+          <p className="text-sm text-text-secondary">{lista.length} medidas (más usadas)</p>
+        </div>
         <Button onClick={() => setModal(true)}>Nueva Medida</Button>
       </div>
       <Modal open={modal} onClose={() => setModal(false)} title="Nueva Medida de Control">
@@ -223,12 +233,12 @@ function MedidasTab() {
       </Modal>
       {isLoading ? <p>Cargando...</p> : (
         <div className="grid gap-2">
-          {(medidas ?? []).map((m: any) => (
+          {lista.map((m: any) => (
             <div key={m.id} className="flex items-center justify-between p-3 bg-surface-base border rounded-lg">
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <p className="font-medium">{m.texto}</p>
-                  {m.consultora_id === null && <BaseBadge />}
+                  <OrigenBadge consultoraId={m.consultora_id} />
                 </div>
                 <p className="text-xs text-text-tertiary">Usada {m.veces_usada} veces</p>
               </div>
