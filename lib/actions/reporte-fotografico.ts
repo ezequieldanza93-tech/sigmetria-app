@@ -94,45 +94,23 @@ export async function crearReporteFotografico(
 
   if (observacionesRaw) {
     try {
-      const observaciones: Array<{ descripcion: string; categoria_id: string; clasificacion_id: string; responsable_id: string; fecha_subsanacion: string; tiene_foto?: boolean }> = JSON.parse(observacionesRaw)
+      const observaciones: Array<{ descripcion: string; categoria_id: string; clasificacion_id: string; responsable_id: string; fecha_subsanacion: string }> = JSON.parse(observacionesRaw)
       const validas = observaciones.filter(o => o.descripcion?.trim() && o.categoria_id)
       if (validas.length > 0) {
-        // Subimos las fotos de cada observación server-side, igual que la foto
-        // principal: path prefijado por tenant para que la RLS de lectura
-        // matchee. Guardamos el PATH relativo (no la URL).
-        const rows = await Promise.all(validas.map(async (o, idx) => {
-          // Por defecto la obs hereda la foto PRINCIPAL editada del reporte
-          // (upload.path, la misma que va a evidencia_url) para que se vea en
-          // Seguimiento; si la obs trae su propia foto, esa pisa el default.
-          let foto_url: string | null = upload.path
-          if (o.tiene_foto) {
-            const obsFile = formData.get(`obs-foto-${idx}`) as File | null
-            if (obsFile && obsFile.size > 0) {
-              const obsExt = obsFile.name.split('.').pop() ?? 'png'
-              const obsPath = tenantStoragePath(consultoraId, 'observaciones-fotos', establecimientoId, `${Date.now()}-${idx}.${obsExt}`)
-              const { data: obsUp, error: obsUploadError } = await supabase.storage
-                .from('documentos')
-                .upload(obsPath, obsFile, { upsert: false })
-              if (obsUploadError) {
-                console.error('[reporteFotografico] Error al subir foto de observación:', obsUploadError.message)
-              } else if (obsUp) {
-                foto_url = obsUp.path
-              }
-            }
-          }
-          return {
-            registro_gestion_id: reg.id,
-            // rg_fecha_planificada completa la FK compuesta hacia el registro
-            // particionado (registro_gestion_id + rg_fecha_planificada) y es NOT NULL.
-            // Debe matchear el fecha_planificada con el que se insertó gestiones_registros.
-            rg_fecha_planificada: today,
-            descripcion: o.descripcion.trim(),
-            categoria_id: o.categoria_id,
-            clasificacion_id: o.clasificacion_id || null,
-            responsable_id: o.responsable_id || null,
-            fecha_planificada: o.fecha_subsanacion || today,
-            foto_url,
-          }
+        // Todas las observaciones heredan la foto principal del reporte (upload.path),
+        // que es la misma que va a evidencia_url, para que se vean en Seguimiento.
+        const rows = validas.map(o => ({
+          registro_gestion_id: reg.id,
+          // rg_fecha_planificada completa la FK compuesta hacia el registro
+          // particionado (registro_gestion_id + rg_fecha_planificada) y es NOT NULL.
+          // Debe matchear el fecha_planificada con el que se insertó gestiones_registros.
+          rg_fecha_planificada: today,
+          descripcion: o.descripcion.trim(),
+          categoria_id: o.categoria_id,
+          clasificacion_id: o.clasificacion_id || null,
+          responsable_id: o.responsable_id || null,
+          fecha_planificada: o.fecha_subsanacion || today,
+          foto_url: upload.path,
         }))
         const { error: obsError } = await supabase.from('gestiones_observaciones').insert(rows)
         if (obsError) {

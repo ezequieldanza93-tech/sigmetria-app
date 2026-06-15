@@ -29,9 +29,6 @@ interface ObsDraft {
   clasificacion_id: string
   responsable_id: string
   fecha_subsanacion: string
-  foto_preview: string | null
-  foto_blob: Blob | null
-  foto_editing: boolean
 }
 
 export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess }: ReporteFotograficoModalProps) {
@@ -107,9 +104,6 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
       clasificacion_id: '',
       responsable_id: '',
       fecha_subsanacion: '',
-      foto_preview: null,
-      foto_blob: null,
-      foto_editing: false,
     }])
   }
 
@@ -121,16 +115,7 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
       clasificacion_id: '',
       responsable_id: '',
       fecha_subsanacion: '',
-      foto_preview: null,
-      foto_blob: null,
-      foto_editing: false,
     }])
-  }
-
-  function updateObsFoto(key: number, preview: string | null, blob: Blob | null, editing?: boolean) {
-    setObservaciones(prev => prev.map(o =>
-      o.key === key ? { ...o, foto_preview: preview, foto_blob: blob, foto_editing: editing ?? o.foto_editing } : o
-    ))
   }
 
   function removeObs(key: number) {
@@ -185,26 +170,13 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
 
     const validObs = observaciones.filter(o => o.descripcion.trim())
     if (validObs.length > 0) {
-      // Las fotos de cada observación NO se suben en el cliente: el cliente no
-      // conoce el consultora_id (tenant). Mandamos el blob como File en el
-      // FormData (clave `obs-foto-{idx}`) y la server action las sube con
-      // tenantStoragePath, igual que la foto principal del reporte. El `idx` es
-      // la posición dentro de las observaciones válidas y la action lo usa para
-      // recuperar el File correspondiente.
-      const obsMeta = validObs.map((o, idx) => {
-        if (o.foto_blob) {
-          const file = new File([o.foto_blob], `obs-foto-${idx}.png`, { type: 'image/png' })
-          fd.set(`obs-foto-${idx}`, file)
-        }
-        return {
-          descripcion: o.descripcion,
-          categoria_id: o.categoria_id,
-          clasificacion_id: o.clasificacion_id,
-          responsable_id: o.responsable_id,
-          fecha_subsanacion: o.fecha_subsanacion,
-          tiene_foto: !!o.foto_blob,
-        }
-      })
+      const obsMeta = validObs.map(o => ({
+        descripcion: o.descripcion,
+        categoria_id: o.categoria_id,
+        clasificacion_id: o.clasificacion_id,
+        responsable_id: o.responsable_id,
+        fecha_subsanacion: o.fecha_subsanacion,
+      }))
       fd.set('observaciones', JSON.stringify(obsMeta))
     }
 
@@ -371,49 +343,6 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
                         className="w-full border border-border-default rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-sig-500"
                       />
                     </div>
-                  </div>
-
-                  {/* Foto de la observación */}
-                  <div className="pl-6">
-                    {!obs.foto_preview ? (
-                      <FotoInput
-                        size="sm"
-                        onChange={e => {
-                          const f = e.target.files?.[0]
-                          if (!f) return
-                          updateObsFoto(obs.key, URL.createObjectURL(f), f, false)
-                        }}
-                      />
-                    ) : (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-3">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={obs.foto_preview} alt="Foto observación" className="w-14 h-14 object-cover rounded-lg border border-border-subtle" />
-                          <div className="flex flex-col gap-1">
-                            <button
-                              type="button"
-                              onClick={() => setObservaciones(prev => prev.map(o => o.key === obs.key ? { ...o, foto_editing: !o.foto_editing } : o))}
-                              className="text-xs text-sig-600 hover:text-sig-700 font-medium"
-                            >
-                              {obs.foto_editing ? 'Cerrar editor' : 'Editar con herramientas'}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => updateObsFoto(obs.key, null, null, false)}
-                              className="text-xs text-red-400 hover:text-danger"
-                            >
-                              Eliminar foto
-                            </button>
-                          </div>
-                        </div>
-                        {obs.foto_editing && (
-                          <PhotoCanvasEditor
-                            imageUrl={obs.foto_preview}
-                            onImageChange={blob => setObservaciones(prev => prev.map(o => o.key === obs.key ? { ...o, foto_blob: blob } : o))}
-                          />
-                        )}
-                      </div>
-                    )}
                   </div>
                 </div>
               ))}
