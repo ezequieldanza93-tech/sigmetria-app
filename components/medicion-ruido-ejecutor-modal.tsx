@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useGeoCaptura } from '@/lib/hooks/use-geo-captura'
 import { descargarProtocoloPdf } from '@/lib/pdf/protocolo-pdf'
 import {
   crearMedicionRuido,
@@ -296,6 +297,7 @@ export function MedicionRuidoEjecutorModal({
   onSuccess,
 }: MedicionRuidoEjecutorModalProps) {
   const [step, setStep] = useState<WizardStep>('datos')
+  const { capturarUbicacion } = useGeoCaptura()
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [descargandoPdf, setDescargandoPdf] = useState(false)
@@ -623,6 +625,14 @@ export function MedicionRuidoEjecutorModal({
       fd.set('recomendaciones', recomendaciones)
       fd.set('observaciones', observacionesGenerales)
       if (planoFile) fd.set('plano', planoFile)
+
+      // Geo-sello: capturamos la ubicación del dispositivo justo antes de cerrar la
+      // gestión. NO bloquea: si falla, se envía igual con el geo_estado correspondiente.
+      const geo = await capturarUbicacion()
+      fd.set('geo_lat', geo.lat != null ? String(geo.lat) : '')
+      fd.set('geo_lng', geo.lng != null ? String(geo.lng) : '')
+      fd.set('geo_accuracy', geo.accuracy != null ? String(geo.accuracy) : '')
+      fd.set('geo_estado', geo.estado)
 
       // Puntos → contrato del server action. Cada punto lleva sus períodos
       // (método sonómetro) o su dosis_pct (método dosímetro).

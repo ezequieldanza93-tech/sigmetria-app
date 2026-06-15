@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useGeoCaptura } from '@/lib/hooks/use-geo-captura'
 import {
   crearMedicionCargaTermica,
   getInstrumentosCargaTermica,
@@ -361,6 +362,7 @@ export function MedicionCargaTermicaEjecutorModal({
   onSuccess,
 }: MedicionCargaTermicaEjecutorModalProps) {
   const [step, setStep] = useState<WizardStep>('datos')
+  const { capturarUbicacion } = useGeoCaptura()
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [descargandoPdf, setDescargandoPdf] = useState(false)
@@ -824,6 +826,14 @@ export function MedicionCargaTermicaEjecutorModal({
       fd.set('conclusiones_no_aclimatado', conclusionesNoAclimatado)
       fd.set('recomendaciones', recomendaciones)
       if (planoFile) fd.set('plano', planoFile)
+
+      // Geo-sello: capturamos la ubicación del dispositivo justo antes de cerrar la
+      // gestión. NO bloquea: si falla, se envía igual con el geo_estado correspondiente.
+      const geo = await capturarUbicacion()
+      fd.set('geo_lat', geo.lat != null ? String(geo.lat) : '')
+      fd.set('geo_lng', geo.lng != null ? String(geo.lng) : '')
+      fd.set('geo_accuracy', geo.accuracy != null ? String(geo.accuracy) : '')
+      fd.set('geo_estado', geo.estado)
 
       // Puestos → períodos → tareas con cálculos resueltos por período.
       const puestosPayload = puestos.map((p, pi) => ({

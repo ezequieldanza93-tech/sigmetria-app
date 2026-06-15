@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useGeoCaptura } from '@/lib/hooks/use-geo-captura'
 import { crearReporteFotograficoEjecucion } from '@/lib/actions/reporte-fotografico'
 import { PhotoCanvasEditor } from '@/components/photo-canvas-editor'
 import type { DrawObject } from '@/components/photo-canvas-editor'
@@ -84,6 +85,7 @@ export function ReporteFotograficoEjecutorModal({
   const [step, setStep] = useState<WizardStep>('upload')
   const [fotos, setFotos] = useState<FotoItem[]>([])
   const [fotoActiva, setFotoActiva] = useState(0)
+  const { capturarUbicacion } = useGeoCaptura()
 
   const [periodicidad, setPeriodicidad] = useState<Periodicidad>('mensual')
   const [periodoDesde, setPeriodoDesde] = useState('')
@@ -350,6 +352,15 @@ export function ReporteFotograficoEjecutorModal({
       fd.set('comentario', comentario)
       fd.set('pdf', pdfB64)
       fd.set('foto_count', String(fotos.length))
+
+      // Geo-sello: capturamos la ubicación del dispositivo justo antes de cerrar la
+      // gestión (camino de ejecución). NO bloquea: si falla, se envía igual con el
+      // geo_estado correspondiente.
+      const geo = await capturarUbicacion()
+      fd.set('geo_lat', geo.lat != null ? String(geo.lat) : '')
+      fd.set('geo_lng', geo.lng != null ? String(geo.lng) : '')
+      fd.set('geo_accuracy', geo.accuracy != null ? String(geo.accuracy) : '')
+      fd.set('geo_estado', geo.estado)
 
       const observaciones: Array<{
         foto_index: number

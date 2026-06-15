@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useGeoCaptura } from '@/lib/hooks/use-geo-captura'
 import type {
   FormularioSeccion, FormularioItem,
   AnswerValue, RespuestaDraft, RegistroGestion,
@@ -70,6 +71,7 @@ const ANSWER_SEL_COLORS: Record<AnswerValue, string> = {
 
 export function FormularioEjecucion({ registro, establecimientoId, onClose, onSuccess }: Props) {
   const supabase = createClient()
+  const { capturarUbicacion } = useGeoCaptura()
   const [secciones, setSecciones] = useState<FormularioSeccion[]>([])
   const [respuestas, setRespuestas] = useState<Map<string, RespuestaDraft>>(new Map())
   const [respuestaId, setRespuestaId] = useState<string | null>(null)
@@ -217,6 +219,14 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
       fd.set('notas', notas)
       fd.set('evidencia_pdf', pdfB64)
 
+      // Geo-sello: capturamos la ubicación del dispositivo justo antes de finalizar
+      // la gestión. NO bloquea: si falla, se envía igual con el geo_estado correspondiente.
+      const geo = await capturarUbicacion()
+      fd.set('geo_lat', geo.lat != null ? String(geo.lat) : '')
+      fd.set('geo_lng', geo.lng != null ? String(geo.lng) : '')
+      fd.set('geo_accuracy', geo.accuracy != null ? String(geo.accuracy) : '')
+      fd.set('geo_estado', geo.estado)
+
       if (fotoBlob) {
         fd.set('foto_evidencia', new File([fotoBlob], `foto-formulario-${Date.now()}.png`, { type: 'image/png' }))
       }
@@ -299,6 +309,14 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
       fd.set('fecha_ejecutada', fechaEjecutada)
       fd.set('responsable_id', responsableId)
       fd.set('notas', notas)
+
+      // Geo-sello: capturamos la ubicación del dispositivo al guardar el borrador.
+      // NO bloquea: si falla, se envía igual con el geo_estado correspondiente.
+      const geo = await capturarUbicacion()
+      fd.set('geo_lat', geo.lat != null ? String(geo.lat) : '')
+      fd.set('geo_lng', geo.lng != null ? String(geo.lng) : '')
+      fd.set('geo_accuracy', geo.accuracy != null ? String(geo.accuracy) : '')
+      fd.set('geo_estado', geo.estado)
 
       let i = 0
       for (const [itemId, r] of respuestas) {
