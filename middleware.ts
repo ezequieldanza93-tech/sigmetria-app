@@ -20,6 +20,12 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
+  // Rutas de desarrollo (/dev/*): accesibles sin auth, SOLO en desarrollo.
+  // En producción no aplica (NODE_ENV) y la página además se auto-bloquea.
+  if (process.env.NODE_ENV !== 'production' && pathname.startsWith('/dev/')) {
+    return NextResponse.next()
+  }
+
   // Webhooks de Mercado Pago son públicos (protegidos por HMAC)
   if (pathname === '/api/mercadopago/webhook') {
     return NextResponse.next()

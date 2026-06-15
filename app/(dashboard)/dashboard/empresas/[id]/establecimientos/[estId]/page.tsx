@@ -39,7 +39,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
     { data: empresa },
   ] = await Promise.all([
     getEffectiveRole(),
-    supabase.from('establecimientos').select('id, nombre, status, latitud, longitud, photo_site, plano_url, domicilio, codigo_postal, actividad_principal, cantidad_trabajadores, description, aplica_iso_45001, created_at, establecimientos_tipos!tipo_id(id, codigo, nombre), localidades!localidad_id(nombre, provincia)').eq('id', estId).single(),
+    supabase.from('establecimientos').select('id, nombre, status, latitud, longitud, photo_site, plano_url, domicilio, codigo_postal, actividad_principal, cantidad_trabajadores, cantidad_trabajadores_operativos, cantidad_trabajadores_administrativos, categoria_hys, description, aplica_iso_45001, created_at, establecimientos_tipos!tipo_id(id, codigo, nombre), localidades!localidad_id(nombre, provincia)').eq('id', estId).single(),
     supabase.from('empresas').select('id, razon_social').eq('id', empresaId).single(),
   ])
 

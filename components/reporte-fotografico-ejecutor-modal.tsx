@@ -15,6 +15,17 @@ import {
   Trash2, Download, Copy, Share2, CheckCircle, Loader2,
 } from 'lucide-react'
 import { PUNTOS_POR_NIVEL } from '@/lib/reportes/observaciones-campo-tipos'
+import { buildReportContext } from '@/lib/actions/report-context'
+import {
+  ReportDocument,
+  ReportPage,
+  PhotoBox,
+  ClosingSignature,
+  documentToDataUri,
+  FONT_WEIGHTS,
+  COLORS,
+} from '@/lib/pdf/report-kit'
+import { View, Text } from '@react-pdf/renderer'
 
 interface ReporteFotograficoEjecutorModalProps {
   registroId: string
@@ -302,6 +313,21 @@ export function ReporteFotograficoEjecutorModal({
     })
   }
 
+  /**
+   * Convierte un Blob a data URI base64 (image/png).
+   * react-pdf corre en el browser y necesita URLs CORS-accesibles.
+   * Los `blob:` Object URLs son locales y accesibles, pero para máxima
+   * compatibilidad (y para evitar edge-cases de GC entre ticks) usamos base64.
+   */
+  function blobToDataUri(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.onerror = () => reject(new Error('No se pudo convertir la imagen a base64'))
+      reader.readAsDataURL(blob)
+    })
+  }
+
   // ── Evaluar y guardar ─────────────────────────────────────────────
   async function handleGuardar() {
     setError(null)
@@ -315,29 +341,94 @@ export function ReporteFotograficoEjecutorModal({
 
     setSaving(true)
     try {
-      // 1. PDF del nodo de review (html2canvas + jsPDF, multipágina).
+      // 1. PDF con el report-kit (@react-pdf/renderer).
+      //    a) Obtenemos el ReportContext desde el servidor (logos, firma, etc.).
+      //    b) Convertimos cada foto a base64 data URI para que react-pdf pueda
+      //       accederla sin problemas de CORS (los blob: Object URLs son locales).
+      //    c) Construimos el documento y lo convertimos a data URI.
       let pdfB64 = ''
-      const node = reviewRef.current
-      if (node) {
-        const { default: html2canvas } = await import('html2canvas')
-        const { default: jsPDF } = await import('jspdf')
-        const canvas = await html2canvas(node, { scale: 2, useCORS: true, logging: false })
-        const imgData = canvas.toDataURL('image/jpeg', 0.95)
-        const pdf = new jsPDF('p', 'mm', 'a4')
-        const pdfW = pdf.internal.pageSize.getWidth()
-        const pageH = pdf.internal.pageSize.getHeight()
-        const pdfH = (canvas.height * pdfW) / canvas.width
-        let heightLeft = pdfH
-        let position = 0
-        pdf.addImage(imgData, 'JPEG', 0, position, pdfW, pdfH)
-        heightLeft -= pageH
-        while (heightLeft > 0) {
-          position = heightLeft - pdfH
-          pdf.addPage()
-          pdf.addImage(imgData, 'JPEG', 0, position, pdfW, pdfH)
-          heightLeft -= pageH
-        }
-        pdfB64 = pdf.output('datauristring')
+      const ctxResult = await buildReportContext({
+        establecimientoId,
+        titulo: gestionNombre,
+        // Periodicidad y período como subtítulo: sin norma legal específica.
+      })
+
+      // Preparamos las fotos como data URIs en paralelo.
+      const fotoDataUris = await Promise.all(
+        fotos.map(async (f) => {
+          const blob = f.editedBlob ?? (await fileToBlob(f.originalFile))
+          return blobToDataUri(blob)
+        })
+      )
+
+      // Construimos el documento react-pdf.
+      const ctx = ctxResult.success ? ctxResult.data : null
+
+      if (ctx) {
+        // Encabezado informativo del período (arriba del contenido, antes de las fotos).
+        const periodoInfo = [
+          periodicidad,
+          periodoDesde && `desde ${periodoDesde}`,
+          periodoHasta && `hasta ${periodoHasta}`,
+        ].filter(Boolean).join(' · ')
+
+        const doc = (
+          <ReportDocument title={gestionNombre} author={ctx.profesional.nombre}>
+            <ReportPage context={ctx}>
+              {/* Resumen del período */}
+              <View style={{ marginBottom: 8 }}>
+                {periodoInfo ? (
+                  <Text style={{ fontSize: 9, color: COLORS.gris }}>{periodoInfo}</Text>
+                ) : null}
+                {comentario ? (
+                  <Text style={{ fontSize: 10, color: COLORS.ink, marginTop: 4 }}>
+                    {comentario}
+                  </Text>
+                ) : null}
+                {totalObs > 0 && (
+                  <Text style={{ fontSize: 9, color: COLORS.ink, marginTop: 4 }}>
+                    {`${totalObs} ${totalObs === 1 ? 'observación' : 'observaciones'} · Índice de riesgo: ${puntajeObs} pts`}
+                  </Text>
+                )}
+              </View>
+
+              {/* Una sección por foto */}
+              {fotos.map((f, idx) => {
+                const obsValidas = f.observaciones.filter(o => o.descripcion.trim())
+                return (
+                  <View key={f.key} style={{ marginBottom: 16 }}>
+                    <Text style={{ fontSize: 11, fontWeight: FONT_WEIGHTS.bold, color: COLORS.ink, marginBottom: 6 }}>
+                      {`Foto ${idx + 1}`}
+                    </Text>
+                    <PhotoBox
+                      src={fotoDataUris[idx]}
+                      fit="cover"
+                      width="100%"
+                      height={200}
+                    />
+                    {obsValidas.length > 0 && (
+                      <View style={{ marginTop: 6 }}>
+                        {obsValidas.map((o, oi) => {
+                          const cat = categorias.find(c => c.id === o.categoria_id)
+                          return (
+                            <Text key={o.key} style={{ fontSize: 9, color: COLORS.ink, marginBottom: 3 }}>
+                              {`${oi + 1}. ${o.descripcion}${cat ? ` [${cat.nombre}]` : ''}`}
+                            </Text>
+                          )
+                        })}
+                      </View>
+                    )}
+                  </View>
+                )
+              })}
+
+              {/* Cierre formal con firma del profesional */}
+              <ClosingSignature profesional={ctx.profesional} />
+            </ReportPage>
+          </ReportDocument>
+        )
+
+        pdfB64 = await documentToDataUri(doc)
       }
 
       // 2. Armamos el FormData.
