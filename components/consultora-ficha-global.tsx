@@ -23,6 +23,7 @@ import {
   Shield,
   ClipboardList,
   ListChecks,
+  Package,
   GraduationCap,
   BookOpen,
   BarChart2,
@@ -148,6 +149,9 @@ export function ConsultoraFichaGlobal({ consultora, empresas, usuario, userRole,
         { href: '/dashboard/configuracion/vencimientos', icon: CalendarClock, label: 'Vencimientos' },
         { href: '/dashboard/configuracion/feedback', icon: MessageSquare, label: 'Feedback' },
         { href: '/dashboard/mapas', icon: Map, label: 'Mapa de Riesgos' },
+        ...(isSuperAdmin
+          ? [{ href: '/dashboard/admin/catalogo-proveedores', icon: Package, label: 'Catálogo Proveedores' }]
+          : []),
       ],
     },
   ]
