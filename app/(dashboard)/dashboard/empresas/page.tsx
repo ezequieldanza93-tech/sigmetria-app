@@ -6,7 +6,7 @@ import { SeguimientoAggregate } from '@/components/aggregate/seguimiento-aggrega
 import { AnalyticsDashboard } from '@/components/analytics/real/analytics-dashboard'
 import { getGestionesAggregate, getSeguimientoAggregate } from '@/lib/queries/aggregate'
 import { getEffectiveRole } from '@/lib/auth/effective-role'
-import { canWrite, ROLE_LABELS } from '@/lib/types'
+import { canWrite, canAuditarGeo, ROLE_LABELS } from '@/lib/types'
 import { ConsultoraFichaGlobal } from '@/components/consultora-ficha-global'
 import type { Consultora } from '@/lib/types'
 
@@ -116,7 +116,13 @@ export default async function EmpresasPage({ searchParams }: Props) {
       )}
 
       {section === 'gestiones' && (
-        <GestionesAggregate rows={gestionesRows} showEmpresaFilter showEstablecimientoFilter title="Gestiones (globales)" />
+        <GestionesAggregate
+          rows={gestionesRows}
+          showEmpresaFilter
+          showEstablecimientoFilter
+          title="Gestiones (globales)"
+          canAuditarGeo={canAuditarGeo(effective.effectiveUserRole, effective.effectiveSystemRole)}
+        />
       )}
 
       {section === 'seguimiento' && (

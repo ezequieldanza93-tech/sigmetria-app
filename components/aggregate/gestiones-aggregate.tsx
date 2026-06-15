@@ -2,10 +2,11 @@
 
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react'
 import Link from 'next/link'
-import { Play, Search, List, CalendarDays, Columns, ArrowUpDown, Layers, Plus, X, ChevronRight, ChevronDown } from 'lucide-react'
+import { Play, Search, List, CalendarDays, Columns, ArrowUpDown, Layers, Plus, X, ChevronRight, ChevronDown, MapPin, ExternalLink } from 'lucide-react'
 import { MultiSelectFilter } from '@/components/ui/multi-select-filter'
 import { calcularEstadoGestion } from '@/lib/types'
 import type { EstadoGestion, EstablecimientoStatus } from '@/lib/types'
+import { distanciaMetros, formatearDistancia } from '@/lib/geo/haversine'
 
 export interface GestionAggregateRow {
   registro_id: string
@@ -24,6 +25,19 @@ export interface GestionAggregateRow {
   empresa_is_active: boolean
   /** Estado del ESTABLECIMIENTO de esta fila (enum establishment_status). */
   establecimiento_status: EstablecimientoStatus
+  // ── Geo-sello (auditoría) — desde dónde se cargó la gestión ──
+  /** Latitud capturada en el dispositivo al ejecutar la gestión. */
+  geo_lat: number | null
+  /** Longitud capturada en el dispositivo al ejecutar la gestión. */
+  geo_lng: number | null
+  /** Precisión (metros) reportada por el GPS del dispositivo. */
+  geo_precision_m: number | null
+  /** Estado de la captura: 'capturada' | 'sin_permiso' | 'no_soportado' | 'error' | 'timeout'. */
+  geo_estado: string | null
+  /** Latitud del punto de referencia del ESTABLECIMIENTO. */
+  establecimiento_lat: number | null
+  /** Longitud del punto de referencia del ESTABLECIMIENTO. */
+  establecimiento_lng: number | null
 }
 
 // ─── Toggle de estado de ENTIDAD (empresa/establecimiento) ───────────────────
@@ -63,6 +77,11 @@ interface Props {
   showEstablecimientoFilter?: boolean
   /** Título del bloque. Si se omite, se usa "Gestiones {año}". */
   title?: string
+  /**
+   * ¿El usuario puede auditar el geo-sello? Solo los roles auditores ven la
+   * columna "Ubicación" (desde dónde se cargó cada gestión). Default: false.
+   */
+  canAuditarGeo?: boolean
 }
 
 const ESTADOS: EstadoGestion[] = ['Realizado', 'Pendiente', 'Planificado']
@@ -158,6 +177,7 @@ export function GestionesAggregate({
   showEmpresaFilter = false,
   showEstablecimientoFilter = true,
   title,
+  canAuditarGeo = false,
 }: Props) {
   // Filtros multi-select: null = "Todos" (sin filtrar). Un Set (aunque vacío)
   // significa "mostrar solo lo tildado" — consistente con MultiSelectFilter.
@@ -507,6 +527,7 @@ export function GestionesAggregate({
           sorted={sorted}
           grouped={grouped}
           showEmpresaFilter={showEmpresaFilter}
+          canAuditarGeo={canAuditarGeo}
           collapsedGroups={collapsedGroups}
           onToggleCollapse={toggleGroupCollapse}
         />
@@ -678,19 +699,76 @@ function GroupPanel({
   )
 }
 
+// ─── Badge de Ubicación (auditoría de geo-sello) ────────────────────────────
+// Visible SOLO para auditores. Muestra desde dónde se cargó la gestión:
+// distancia al establecimiento con semáforo, o el estado de la captura.
+const SEMAFORO_VERDE_M = 150
+const SEMAFORO_AMARILLO_M = 1000
+
+function mapsHref(lat: number, lng: number): string {
+  return `https://www.google.com/maps?q=${lat},${lng}`
+}
+
+function UbicacionBadge({ row }: { row: GestionAggregateRow }) {
+  // El establecimiento no tiene punto de referencia → no se puede medir distancia.
+  if (row.establecimiento_lat == null || row.establecimiento_lng == null) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 text-gray-500 border border-gray-200" title="El establecimiento no tiene cargado su punto de referencia.">
+        <MapPin size={11} /> Sin punto de referencia
+      </span>
+    )
+  }
+
+  // Captura no concretada (sin permiso / error / timeout / no soportado) → es un dato en sí.
+  if (row.geo_estado !== 'capturada' || row.geo_lat == null || row.geo_lng == null) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 text-gray-500 border border-gray-200" title={`Estado de captura: ${row.geo_estado ?? 'sin dato'}`}>
+        <MapPin size={11} /> Sin ubicación
+      </span>
+    )
+  }
+
+  // Captura válida + establecimiento con punto → distancia con semáforo.
+  const metros = distanciaMetros(row.geo_lat, row.geo_lng, row.establecimiento_lat, row.establecimiento_lng)
+  const cls =
+    metros <= SEMAFORO_VERDE_M
+      ? 'bg-green-100 text-green-800 border-green-300'
+      : metros <= SEMAFORO_AMARILLO_M
+        ? 'bg-amber-100 text-amber-800 border-amber-300'
+        : 'bg-red-100 text-red-800 border-red-300'
+
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border ${cls}`} title={`Cargada a ${formatearDistancia(metros)} del establecimiento`}>
+        <MapPin size={11} /> {formatearDistancia(metros)}
+      </span>
+      <a
+        href={mapsHref(row.geo_lat, row.geo_lng)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-0.5 text-[11px] text-brand-primary hover:underline"
+        title="Ver en Google Maps la ubicación del dispositivo al cargar"
+      >
+        <ExternalLink size={11} /> ver en mapa
+      </a>
+    </span>
+  )
+}
+
 // ─── Tabla ────────────────────────────────────────────────────────────────
 const TABLE_COL_COUNT_BASE = 7 // establecimiento, categoria, gestion, fechaP, fechaE, resp, acciones
 
 function TablaView({
-  sorted, grouped, showEmpresaFilter, collapsedGroups, onToggleCollapse,
+  sorted, grouped, showEmpresaFilter, canAuditarGeo, collapsedGroups, onToggleCollapse,
 }: {
   sorted: GestionAggregateRow[]
   grouped: GroupNode[] | null
   showEmpresaFilter: boolean
+  canAuditarGeo: boolean
   collapsedGroups: Set<string>
   onToggleCollapse: (path: string) => void
 }) {
-  const colCount = TABLE_COL_COUNT_BASE + (showEmpresaFilter ? 1 : 0)
+  const colCount = TABLE_COL_COUNT_BASE + (showEmpresaFilter ? 1 : 0) + (canAuditarGeo ? 1 : 0)
 
   function renderDataRows(rowsToRender: GestionAggregateRow[]) {
     return rowsToRender.map(r => {
@@ -704,6 +782,12 @@ function TablaView({
           <td className="px-3 py-2 text-text-tertiary text-xs">{fmt(r.fecha_planificada)}</td>
           <td className="px-3 py-2 text-text-tertiary text-xs">{fmt(r.fecha_ejecutada)}</td>
           <td className="px-3 py-2 text-text-tertiary text-xs">{r.responsable_nombre ?? '—'}</td>
+          {canAuditarGeo && (
+            <td className="px-3 py-2">
+              {/* La ubicación solo aplica a gestiones EJECUTADAS. */}
+              {estado === 'Realizado' ? <UbicacionBadge row={r} /> : <span className="text-text-tertiary text-xs">—</span>}
+            </td>
+          )}
           <td className="px-3 py-2">
             <Link href={agendaHref(r)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-surface-base border border-sig-500 text-sig-500 hover:bg-sig-500/10 transition-colors" title="Ir a la agenda del establecimiento para ejecutar esta gestión">
               <Play size={14} /> Ejecutar
@@ -756,6 +840,7 @@ function TablaView({
               <th className="px-3 py-2 text-left">Fecha Plan.</th>
               <th className="px-3 py-2 text-left">Fecha Ejec.</th>
               <th className="px-3 py-2 text-left">Responsable</th>
+              {canAuditarGeo && <th className="px-3 py-2 text-left">Ubicación</th>}
               <th className="px-3 py-2 text-left">Acciones</th>
             </tr>
           </thead>

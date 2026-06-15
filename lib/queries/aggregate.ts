@@ -28,6 +28,10 @@ export async function getGestionesAggregate(establecimientos: EstabContext[]): P
       fecha_planificada,
       fecha_ejecutada,
       fecha_vencimiento,
+      geo_lat,
+      geo_lng,
+      geo_precision_m,
+      geo_estado,
       responsable:personas_directorio!responsable_id(nombre, apellido),
       gestiones_establecimientos!inner(
         establecimiento_id,
@@ -37,6 +41,8 @@ export async function getGestionesAggregate(establecimientos: EstabContext[]): P
         ),
         establecimientos!inner(
           status,
+          latitud,
+          longitud,
           empresas!inner(is_active)
         )
       )
@@ -52,6 +58,10 @@ export async function getGestionesAggregate(establecimientos: EstabContext[]): P
     fecha_planificada: string
     fecha_ejecutada: string | null
     fecha_vencimiento: string | null
+    geo_lat: number | null
+    geo_lng: number | null
+    geo_precision_m: number | null
+    geo_estado: string | null
     responsable: { nombre: string; apellido: string } | null
     gestiones_establecimientos: {
       establecimiento_id: string
@@ -65,6 +75,8 @@ export async function getGestionesAggregate(establecimientos: EstabContext[]): P
       // Estado de la entidad cargado para el toggle de la vista (carry-state-in-rows).
       establecimientos: {
         status: EstablecimientoStatus | null
+        latitud: number | null
+        longitud: number | null
         empresas: { is_active: boolean | null } | null
       } | null
     }
@@ -89,6 +101,13 @@ export async function getGestionesAggregate(establecimientos: EstabContext[]): P
         : null,
       empresa_is_active: estado?.empresas?.is_active ?? true,
       establecimiento_status: estado?.status ?? FALLBACK_STATUS,
+      // Geo-sello: desde dónde se cargó la gestión + punto del establecimiento.
+      geo_lat: row.geo_lat,
+      geo_lng: row.geo_lng,
+      geo_precision_m: row.geo_precision_m,
+      geo_estado: row.geo_estado,
+      establecimiento_lat: estado?.latitud ?? null,
+      establecimiento_lng: estado?.longitud ?? null,
     }
   })
 }

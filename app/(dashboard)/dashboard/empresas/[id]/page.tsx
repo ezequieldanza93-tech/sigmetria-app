@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
-import { canWrite } from '@/lib/types'
+import { canWrite, canAuditarGeo } from '@/lib/types'
 import { getEffectiveRole } from '@/lib/auth/effective-role'
 import { formatCUIT } from '@/lib/utils'
 import { EmpresaDocumentosSection } from '@/components/empresa-documentos-section'
@@ -151,7 +151,13 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
         </div>
       )}
 
-      {section === 'gestiones' && <GestionesAggregate rows={gestionesRows} title={`Gestiones (${empresa.razon_social})`} />}
+      {section === 'gestiones' && (
+        <GestionesAggregate
+          rows={gestionesRows}
+          title={`Gestiones (${empresa.razon_social})`}
+          canAuditarGeo={canAuditarGeo(effective.effectiveUserRole, effective.effectiveSystemRole)}
+        />
+      )}
 
       {section === 'seguimiento' && <SeguimientoAggregate rows={seguimientoRows} empresaId={id} />}
 

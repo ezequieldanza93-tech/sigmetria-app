@@ -811,6 +811,18 @@ export function canViewReportes(role: UserRole | null, systemRole: SystemRole): 
   return role === 'full_access_main' || role === 'responsable_estandares'
 }
 
+// ── Auditoría de geo-sello ───────────────────────────────────────────────────
+// Solo los roles auditores ven DESDE DÓNDE se cargó cada gestión (distancia al
+// establecimiento + semáforo). El colaborador común NO ve este dato.
+export function canAuditarGeo(role: UserRole | null, systemRole: SystemRole): boolean {
+  if (systemRole === 'developer') return true
+  return (
+    role === 'full_access_main' ||
+    role === 'responsable_estandares' ||
+    role === 'auditor_externo'
+  )
+}
+
 // ── Usuarios viewer "sin cargo" ──────────────────────────────────────────────
 // Roles de solo-lectura (pueden ver y comentar, nunca escribir). NO consumen
 // seat del plan y los puede crear tanto el Admin como cualquier colaborador.
