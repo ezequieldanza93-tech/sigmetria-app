@@ -64,8 +64,9 @@ const PROTECCION_VALIDAS = ['DD', 'IA', 'Fus']
  *  - establecimiento_id           → tenant + RLS
  *  - gestion_establecimiento_id   → vínculo a la gestión del establecimiento (opcional)
  *  - instrumento_id?              → telurímetro usado (FK opcional)
- *  - certificado_id?              → certificado de calibración del instrumento (FK opcional)
- *  - firmante?                    → profesional firmante del protocolo (texto libre: nombre y matrícula)
+ *  - certificado_id?              → certificado de calibración VIGENTE del instrumento (FK opcional, traído automáticamente)
+ *  - firmante?                    → profesional firmante como texto (derivado de la persona; se conserva por compatibilidad)
+ *  - firmante_persona_id?         → profesional firmante elegido del directorio (FK personas_directorio, opcional)
  *  - metodologia                  → texto
  *  - fecha_medicion               → date (YYYY-MM-DD)
  *  - fecha_medicion_fin?          → date (YYYY-MM-DD)
@@ -90,6 +91,7 @@ export async function crearMedicionPat(
   const instrumentoId = (formData.get('instrumento_id') as string) || null
   const certificadoId = (formData.get('certificado_id') as string) || null
   const firmante = (formData.get('firmante') as string) || null
+  const firmantePersonaId = (formData.get('firmante_persona_id') as string) || null
   const metodologia = (formData.get('metodologia') as string) || null
   const fechaMedicion = (formData.get('fecha_medicion') as string) || null
   const fechaMedicionFin = (formData.get('fecha_medicion_fin') as string) || null
@@ -173,6 +175,7 @@ export async function crearMedicionPat(
       instrumento_id: instrumentoId,
       certificado_id: certificadoId,
       firmante,
+      firmante_persona_id: firmantePersonaId,
       metodologia,
       fecha_medicion: fechaMedicion,
       fecha_medicion_fin: fechaMedicionFin,

@@ -23,13 +23,18 @@ import {
   regimenFt,
 } from '@/lib/medicion-carga-termica/calculos'
 import { descargarProtocoloPdf } from '@/lib/pdf/protocolo-pdf'
+import { getCertificadoVigente } from '@/lib/actions/certificado'
+import { useSignedUrls } from '@/lib/storage/sign-client'
+import { pickClasificacionDefault } from '@/lib/medicion/clasificacion-default'
+import type { CertificadoCalibracion } from '@/lib/types'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
+import { PersonaRolSelector } from '@/components/persona-rol-selector'
 import {
   Building2, FileText, Plus, Trash2,
   ChevronLeft, ChevronRight, CheckCircle, XCircle, Loader2,
   Info, ArrowRight, Check, Sparkles, MapPin, Gauge, Camera,
-  Droplets, Wind, Sun, Download,
+  Droplets, Wind, Sun, Download, AlertTriangle, FileCheck,
 } from 'lucide-react'
 
 // ── Props ────────────────────────────────────────────────────────────
@@ -369,13 +374,16 @@ export function MedicionCargaTermicaEjecutorModal({
   const [varRopa, setVarRopa] = useState<VarRopaOption[]>([])
   const [tmActividades, setTmActividades] = useState<TmActividadOption[]>([])
   const [, setSectores] = useState<SectorConPuestos[]>([])
-  const [certificados, setCertificados] = useState<
-    Array<{ id: string; fecha_emision: string; fecha_vencimiento: string; activo: boolean }>
-  >([])
+
+  // Certificado de calibración VIGENTE del instrumento elegido (read-only, traído
+  // automáticamente con getCertificadoVigente). Ya no se sube uno por protocolo.
+  const [certificadoVigente, setCertificadoVigente] = useState<CertificadoCalibracion | null>(null)
+  const [buscandoCertificado, setBuscandoCertificado] = useState(false)
 
   // ── Hoja 1: datos ───────────────────────────────────────────────────
   const [instrumentoId, setInstrumentoId] = useState('')
-  const [certificadoId, setCertificadoId] = useState('')
+  // Firmante: persona del directorio. `firmante` (texto) se deriva del nombre.
+  const [firmantePersonaId, setFirmantePersonaId] = useState('')
   const [firmante, setFirmante] = useState('')
   const [fechaMedicion, setFechaMedicion] = useState(rgFechaPlanificada || '')
   const [fechaMedicionFin, setFechaMedicionFin] = useState('')
@@ -393,7 +401,6 @@ export function MedicionCargaTermicaEjecutorModal({
   const [representanteTrabajadores, setRepresentanteTrabajadores] = useState('')
   const [representanteEmpresa, setRepresentanteEmpresa] = useState('')
   const [observacionesGenerales, setObservacionesGenerales] = useState('')
-  const [certificadoFile, setCertificadoFile] = useState<File | null>(null)
   const [planoFile, setPlanoFile] = useState<File | null>(null)
 
   // ── Hoja 2: puestos → períodos → tareas ─────────────────────────────
@@ -409,6 +416,8 @@ export function MedicionCargaTermicaEjecutorModal({
   const [observacionesSeguimiento, setObservacionesSeguimiento] = useState<ObsDraft[]>([])
   const [categoriasObs, setCategoriasObs] = useState<CategoriaObs[]>([])
   const [clasificacionesObs, setClasificacionesObs] = useState<{ id: string; nombre: string }[]>([])
+  // Tipo de riesgo por defecto del protocolo (preselección de observaciones nuevas).
+  const [clasificacionDefaultId, setClasificacionDefaultId] = useState('')
   const [personasObs, setPersonasObs] = useState<{ id: string; nombre: string; apellido: string }[]>([])
 
   const inputCls = 'w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500'
@@ -466,7 +475,13 @@ export function MedicionCargaTermicaEjecutorModal({
       .select('id, nombre')
       .eq('is_active', true)
       .order('nombre')
-      .then(({ data }) => { if (activo) setClasificacionesObs((data ?? []) as { id: string; nombre: string }[]) })
+      .then(({ data }) => {
+        if (!activo) return
+        const rows = (data ?? []) as { id: string; nombre: string }[]
+        setClasificacionesObs(rows)
+        // Tipo de riesgo por defecto del protocolo de carga térmica (fallback Físico).
+        setClasificacionDefaultId(pickClasificacionDefault('carga_termica', rows))
+      })
     supabase
       .from('observaciones_categorias')
       .select('id, nombre, nivel, color')
@@ -477,23 +492,17 @@ export function MedicionCargaTermicaEjecutorModal({
     return () => { activo = false }
   }, [establecimientoId])
 
-  // Certificados de calibración del instrumento elegido.
+  // Certificado de calibración VIGENTE del instrumento elegido. Ya NO se sube uno
+  // por protocolo: se trae automáticamente el último certificado activo del
+  // instrumento (getCertificadoVigente) y se muestra read-only. Si no hay vigente,
+  // se avisa al usuario para que lo cargue en el instrumento.
   useEffect(() => {
-    if (!instrumentoId) { setCertificados([]); setCertificadoId(''); return }
+    if (!instrumentoId) { setCertificadoVigente(null); setBuscandoCertificado(false); return }
     let activo = true
-    const supabase = createClient()
-    supabase
-      .from('certificados_calibracion')
-      .select('id, fecha_emision, fecha_vencimiento, activo')
-      .eq('instrumento_id', instrumentoId)
-      .order('fecha_emision', { ascending: false })
-      .then(({ data }) => {
-        if (!activo) return
-        const rows = (data ?? []) as Array<{ id: string; fecha_emision: string; fecha_vencimiento: string; activo: boolean }>
-        setCertificados(rows)
-        const activoRow = rows.find(c => c.activo) ?? rows[0]
-        setCertificadoId(activoRow?.id ?? '')
-      })
+    setBuscandoCertificado(true)
+    getCertificadoVigente(instrumentoId)
+      .then(cert => { if (activo) setCertificadoVigente(cert) })
+      .finally(() => { if (activo) setBuscandoCertificado(false) })
     return () => { activo = false }
   }, [instrumentoId])
 
@@ -574,7 +583,8 @@ export function MedicionCargaTermicaEjecutorModal({
   // ── Mutadores de observaciones de seguimiento ───────────────────────
   function addObs() {
     setObservacionesSeguimiento(prev => [...prev, {
-      key: obsKeySeq++, descripcion: '', categoria_id: '', clasificacion_id: '',
+      // clasificacion_id: tipo de riesgo preseleccionado según el protocolo (default, editable).
+      key: obsKeySeq++, descripcion: '', categoria_id: '', clasificacion_id: clasificacionDefaultId,
       responsable_id: '', fecha_subsanacion: '', foto_preview: null, foto_file: null,
     }])
   }
@@ -603,7 +613,7 @@ export function MedicionCargaTermicaEjecutorModal({
     const algunPeriodoConTarea = puestos.some(p => p.periodos.some(per => per.tareas.some(t => num(t.tiempo_min) != null && num(t.tm_w) != null)))
     return [
       { id: 'instrumento', label: 'Elegí el monitor de estrés térmico', done: !!instrumentoId, section: 1 },
-      { id: 'firmante', label: 'Cargá el profesional firmante', done: !!firmante.trim(), section: 1 },
+      { id: 'firmante', label: 'Elegí el profesional firmante', done: !!firmantePersonaId, section: 1 },
       { id: 'fecha', label: 'Cargá la fecha de medición', done: !!fechaMedicion, section: 1 },
       { id: 'atm', label: 'Cargá las condiciones atmosféricas', done: !!fuenteDatosAtm.trim() || !!atmTempMax.trim(), section: 1 },
       { id: 'puesto', label: 'Identificá el trabajador / puesto', done: algunPuestoConTrabajador, section: 2 },
@@ -612,7 +622,7 @@ export function MedicionCargaTermicaEjecutorModal({
       { id: 'concl_acl', label: 'Conclusión (aclimatado)', done: !!conclusionesAclimatado.trim(), section: 3 },
       { id: 'recom', label: 'Redactá las recomendaciones', done: !!recomendaciones.trim(), section: 3 },
     ]
-  }, [instrumentoId, firmante, fechaMedicion, fuenteDatosAtm, atmTempMax, puestos, conclusionesAclimatado, conclusionesNoAclimatado, recomendaciones])
+  }, [instrumentoId, firmantePersonaId, fechaMedicion, fuenteDatosAtm, atmTempMax, puestos, conclusionesAclimatado, conclusionesNoAclimatado, recomendaciones])
 
   const doneCount = checks.filter(c => c.done).length
   const totalChecks = checks.length || 1
@@ -642,7 +652,7 @@ export function MedicionCargaTermicaEjecutorModal({
   // ponderar, tgbhEf, regimenFt) — no se reimplementa nada acá.
   const pdfData: ProtocoloCargaTermicaPdfData = useMemo(() => {
     const instr = instrumentos.find(i => i.id === instrumentoId)
-    const cert = certificados.find(c => c.id === certificadoId)
+    const cert = certificadoVigente
     const fmt = (n: number, d = 1) => n.toFixed(d)
 
     const puestosPdf: PdfPuesto[] = puestos.map(p => {
@@ -721,7 +731,7 @@ export function MedicionCargaTermicaEjecutorModal({
       recomendaciones: recomendaciones || null,
     }
   }, [
-    instrumentos, instrumentoId, certificados, certificadoId, puestos,
+    instrumentos, instrumentoId, certificadoVigente, puestos,
     tmActividades, varRopa, estCtx, fechaMedicion, fechaMedicionFin, horaInicio,
     horaFin, turnos, atmTempMax, atmTempMin, atmHumedad, atmPresion, atmViento,
     fuenteDatosAtm, condicionesPuesto, representanteTrabajadores,
@@ -752,7 +762,7 @@ export function MedicionCargaTermicaEjecutorModal({
     setError(null)
     if (step === 'datos') {
       if (!instrumentoId) { setError('Elegí el monitor de estrés térmico usado.'); return }
-      if (!firmante.trim()) { setError('Cargá el profesional firmante del protocolo.'); return }
+      if (!firmantePersonaId) { setError('Elegí el profesional firmante del protocolo.'); return }
       if (!fechaMedicion) { setError('Cargá la fecha de medición.'); return }
       setStep('puestos')
     } else if (step === 'puestos') {
@@ -791,7 +801,9 @@ export function MedicionCargaTermicaEjecutorModal({
       fd.set('establecimiento_id', establecimientoId)
       if (gestionEstablecimientoId) fd.set('gestion_establecimiento_id', gestionEstablecimientoId)
       if (instrumentoId) fd.set('instrumento_id', instrumentoId)
-      if (certificadoId) fd.set('certificado_id', certificadoId)
+      // Certificado: se persiste el certificado VIGENTE traído del instrumento (no se sube uno por protocolo).
+      if (certificadoVigente?.id) fd.set('certificado_id', certificadoVigente.id)
+      if (firmantePersonaId) fd.set('firmante_persona_id', firmantePersonaId)
       fd.set('firmante', firmante)
       fd.set('fecha_medicion', fechaMedicion)
       if (fechaMedicionFin) fd.set('fecha_medicion_fin', fechaMedicionFin)
@@ -811,7 +823,6 @@ export function MedicionCargaTermicaEjecutorModal({
       fd.set('conclusiones_aclimatado', conclusionesAclimatado)
       fd.set('conclusiones_no_aclimatado', conclusionesNoAclimatado)
       fd.set('recomendaciones', recomendaciones)
-      if (certificadoFile) fd.set('certificado', certificadoFile)
       if (planoFile) fd.set('plano', planoFile)
 
       // Puestos → períodos → tareas con cálculos resueltos por período.
@@ -889,6 +900,9 @@ export function MedicionCargaTermicaEjecutorModal({
 
   const stepIdx = STEP_ORDER.indexOf(step)
   const puesto = puestos[puestoActivo]
+
+  // Firma del certificado de calibración (bucket privado `certificados`) para el link "Ver".
+  const { getUrl: getCertUrl } = useSignedUrls('certificados', [certificadoVigente?.certificado_url])
 
   // ── Render: post-guardado ───────────────────────────────────────────
   if (step === 'listo') {
@@ -1031,18 +1045,25 @@ export function MedicionCargaTermicaEjecutorModal({
                 </div>
                 <div>
                   <label className={labelCls}>Certificado de calibración</label>
-                  <select className={inputCls} value={certificadoId} onChange={e => setCertificadoId(e.target.value)} disabled={!instrumentoId}>
-                    <option value="">{instrumentoId ? 'Sin certificado asociado' : 'Elegí un instrumento primero'}</option>
-                    {certificados.map(c => (
-                      <option key={c.id} value={c.id}>
-                        Emitido {c.fecha_emision} · vence {c.fecha_vencimiento}{c.activo ? ' (activo)' : ''}
-                      </option>
-                    ))}
-                  </select>
+                  <CertificadoVigenteCard
+                    instrumentoId={instrumentoId}
+                    cargando={buscandoCertificado}
+                    cert={certificadoVigente}
+                    certUrl={getCertUrl(certificadoVigente?.certificado_url)}
+                    instrumentoLabel="instrumento"
+                  />
                 </div>
                 <div className="sm:col-span-2">
-                  <label className={labelCls}>Profesional firmante (nombre y matrícula) <span className="text-danger">*</span></label>
-                  <input type="text" className={inputCls} value={firmante} onChange={e => setFirmante(e.target.value)} placeholder="Ing. Juan Pérez — Mat. 1234" />
+                  <label className={labelCls}>Profesional firmante <span className="text-danger">*</span></label>
+                  <PersonaRolSelector
+                    value={firmantePersonaId || null}
+                    onChange={p => {
+                      setFirmantePersonaId(p?.id ?? '')
+                      setFirmante(p ? `${p.apellido}, ${p.nombre}` : '')
+                    }}
+                    placeholder="Buscar persona del directorio…"
+                  />
+                  <p className="text-xs text-text-tertiary mt-1">Elegí la persona del directorio. Si no está, podés crearla desde el buscador.</p>
                 </div>
               </div>
             </section>
@@ -1158,10 +1179,6 @@ export function MedicionCargaTermicaEjecutorModal({
                 <FileText size={16} className="text-sig-500" /> Adjuntos
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className={labelCls}>Certificado de calibración (archivo)</label>
-                  <input type="file" className={inputCls} accept=".pdf,image/*" onChange={e => setCertificadoFile(e.target.files?.[0] ?? null)} />
-                </div>
                 <div>
                   <label className={labelCls}>Plano / croquis</label>
                   <input type="file" className={inputCls} accept=".pdf,image/*" onChange={e => setPlanoFile(e.target.files?.[0] ?? null)} />
@@ -1589,6 +1606,7 @@ export function MedicionCargaTermicaEjecutorModal({
                 <ReadOnly label="Establecimiento" value={estCtx?.nombre} />
                 <ReadOnly label="Instrumento" value={instrumentos.find(i => i.id === instrumentoId) ? `${[instrumentos.find(i => i.id === instrumentoId)?.marca, instrumentos.find(i => i.id === instrumentoId)?.modelo].filter(Boolean).join(' ')}` : null} />
                 <ReadOnly label="Profesional firmante" value={firmante} />
+                <ReadOnly label="Certificado de calibración" value={certificadoVigente ? `Vigente · emitido ${certificadoVigente.fecha_emision} · vence ${certificadoVigente.fecha_vencimiento}` : null} />
                 <ReadOnly label="Fecha de medición" value={fechaMedicion + (fechaMedicionFin ? ` → ${fechaMedicionFin}` : '')} />
                 <ReadOnly label="Horario" value={horaInicio && horaFin ? `${horaInicio} – ${horaFin}` : (horaInicio || horaFin || null)} />
                 <ReadOnly label="Turnos" value={turnos} />
@@ -1596,7 +1614,6 @@ export function MedicionCargaTermicaEjecutorModal({
                 <ReadOnly label="T° máx / mín" value={atmTempMax || atmTempMin ? `${atmTempMax || '—'} / ${atmTempMin || '—'} °C` : null} />
               </ReviewGrid>
               <div className="flex gap-3 mt-2 text-xs text-text-tertiary">
-                <span>{certificadoFile ? '✓ Certificado adjunto' : 'Sin certificado adjunto'}</span>
                 <span>{planoFile ? '✓ Plano adjunto' : 'Sin plano adjunto'}</span>
               </div>
             </ReviewSection>
@@ -1694,6 +1711,68 @@ function Metric({ label, value, highlight }: { label: string; value: string; hig
     <div className={`rounded-lg border px-3 py-2 ${highlight ? 'border-sig-400 bg-sig-50/40' : 'border-border-subtle bg-surface-elevated/60'}`}>
       <p className="text-xs text-text-tertiary">{label}</p>
       <p className={`font-semibold tabular-nums ${highlight ? 'text-sig-700' : 'text-text-primary'}`}>{value}</p>
+    </div>
+  )
+}
+
+/**
+ * Muestra el certificado de calibración VIGENTE del instrumento elegido (read-only).
+ * Lo trae automáticamente el modal con getCertificadoVigente: acá sólo se presenta.
+ * Estados: sin instrumento / cargando / vigente (con fechas + link) / sin certificado.
+ */
+function CertificadoVigenteCard({
+  instrumentoId,
+  cargando,
+  cert,
+  certUrl,
+  instrumentoLabel,
+}: {
+  instrumentoId: string
+  cargando: boolean
+  cert: CertificadoCalibracion | null
+  certUrl: string | null
+  instrumentoLabel: string
+}) {
+  if (!instrumentoId) {
+    return (
+      <div className="rounded-lg border border-border-default bg-surface-elevated/30 px-3 py-2 text-sm text-text-tertiary">
+        Elegí un {instrumentoLabel} primero
+      </div>
+    )
+  }
+  if (cargando) {
+    return (
+      <div className="rounded-lg border border-border-default bg-surface-elevated/30 px-3 py-2 text-sm text-text-tertiary flex items-center gap-2">
+        <Loader2 size={14} className="animate-spin" /> Buscando certificado vigente…
+      </div>
+    )
+  }
+  if (!cert) {
+    return (
+      <div className="rounded-lg border border-amber-300 bg-amber-50/60 px-3 py-2 text-sm text-amber-800 flex items-start gap-2">
+        <AlertTriangle size={15} className="shrink-0 mt-0.5" />
+        <span>Este instrumento no tiene certificado de calibración vigente — cargalo en el instrumento.</span>
+      </div>
+    )
+  }
+  return (
+    <div className="rounded-lg border border-success/40 bg-success-bg/40 px-3 py-2 text-sm">
+      <div className="flex items-center gap-2 text-success font-medium">
+        <FileCheck size={15} /> Certificado vigente
+      </div>
+      <p className="text-xs text-text-secondary mt-0.5 tabular-nums">
+        Emitido {cert.fecha_emision} · vence {cert.fecha_vencimiento}
+      </p>
+      {cert.certificado_url && certUrl && (
+        <a
+          href={certUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-sig-600 hover:text-sig-700 underline mt-0.5 inline-block"
+        >
+          Ver certificado
+        </a>
+      )}
     </div>
   )
 }

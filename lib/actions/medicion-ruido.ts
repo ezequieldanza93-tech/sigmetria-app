@@ -95,6 +95,7 @@ export async function crearMedicionRuido(
   const instrumentoId = (formData.get('instrumento_id') as string) || null
   const certificadoId = (formData.get('certificado_id') as string) || null
   const firmante = (formData.get('firmante') as string) || null
+  const firmantePersonaId = (formData.get('firmante_persona_id') as string) || null
   const fechaMedicion = (formData.get('fecha_medicion') as string) || null
   const fechaMedicionFin = (formData.get('fecha_medicion_fin') as string) || null
   const horaInicio = (formData.get('hora_inicio') as string) || null
@@ -186,6 +187,7 @@ export async function crearMedicionRuido(
       instrumento_id: instrumentoId,
       certificado_id: certificadoId,
       firmante,
+      firmante_persona_id: firmantePersonaId,
       fecha_medicion: fechaMedicion,
       fecha_medicion_fin: fechaMedicionFin,
       hora_inicio: horaInicio,

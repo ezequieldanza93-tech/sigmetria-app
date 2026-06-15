@@ -10,13 +10,19 @@ import {
   type InstrumentoTelurimetro,
   type SectorConPuestos,
 } from '@/lib/actions/medicion-pat'
+import { getCertificadoVigente } from '@/lib/actions/certificado'
+import { useSignedUrls } from '@/lib/storage/sign-client'
 import { raMaxTT, cumpleToma } from '@/lib/medicion-pat/calculos'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
+import { PersonaRolSelector } from '@/components/persona-rol-selector'
+import { pickClasificacionDefault } from '@/lib/medicion/clasificacion-default'
+import type { CertificadoCalibracion } from '@/lib/types'
 import {
   Zap, Building2, FileText, Plus, Trash2,
   ChevronLeft, ChevronRight, CheckCircle, XCircle, Loader2,
   Info, ArrowRight, Check, Sparkles, MapPin, Gauge, Camera, ShieldCheck, Download,
+  AlertTriangle, FileCheck,
 } from 'lucide-react'
 
 // ── Props ────────────────────────────────────────────────────────────
@@ -204,13 +210,17 @@ export function MedicionPatEjecutorModal({
   const [estCtx, setEstCtx] = useState<EstablecimientoCtx | null>(null)
   const [instrumentos, setInstrumentos] = useState<InstrumentoTelurimetro[]>([])
   const [sectores, setSectores] = useState<SectorConPuestos[]>([])
-  const [certificados, setCertificados] = useState<
-    Array<{ id: string; fecha_emision: string; fecha_vencimiento: string; activo: boolean }>
-  >([])
+
+  // Certificado de calibración VIGENTE del instrumento elegido (read-only, traído
+  // automáticamente con getCertificadoVigente). Ya no se sube uno por protocolo.
+  const [certificadoVigente, setCertificadoVigente] = useState<CertificadoCalibracion | null>(null)
+  const [buscandoCertificado, setBuscandoCertificado] = useState(false)
 
   // ── Hoja 1: datos ───────────────────────────────────────────────────
   const [instrumentoId, setInstrumentoId] = useState('')
-  const [certificadoId, setCertificadoId] = useState('')
+  // Firmante: persona del directorio. `firmante` (texto) se mantiene por compatibilidad
+  // con datos viejos y para el PDF / payload; se deriva del nombre de la persona elegida.
+  const [firmantePersonaId, setFirmantePersonaId] = useState('')
   const [firmante, setFirmante] = useState('')
   const [metodologia, setMetodologia] = useState('')
   const [fechaMedicion, setFechaMedicion] = useState(rgFechaPlanificada || '')
@@ -218,7 +228,6 @@ export function MedicionPatEjecutorModal({
   const [horaInicio, setHoraInicio] = useState('')
   const [horaFin, setHoraFin] = useState('')
   const [observacionesGenerales, setObservacionesGenerales] = useState('')
-  const [certificadoFile, setCertificadoFile] = useState<File | null>(null)
   const [planoFile, setPlanoFile] = useState<File | null>(null)
 
   // ── Hoja 2: tomas ───────────────────────────────────────────────────
@@ -229,6 +238,8 @@ export function MedicionPatEjecutorModal({
   const [observacionesSeguimiento, setObservacionesSeguimiento] = useState<ObsDraft[]>([])
   const [categoriasObs, setCategoriasObs] = useState<CategoriaObs[]>([])
   const [clasificacionesObs, setClasificacionesObs] = useState<{ id: string; nombre: string }[]>([])
+  // Tipo de riesgo por defecto del protocolo (preselección de observaciones nuevas).
+  const [clasificacionDefaultId, setClasificacionDefaultId] = useState('')
   const [personasObs, setPersonasObs] = useState<{ id: string; nombre: string; apellido: string }[]>([])
 
   // ── Hoja 4: análisis ────────────────────────────────────────────────
@@ -295,7 +306,13 @@ export function MedicionPatEjecutorModal({
       .select('id, nombre')
       .eq('is_active', true)
       .order('nombre')
-      .then(({ data }) => { if (activo) setClasificacionesObs((data ?? []) as { id: string; nombre: string }[]) })
+      .then(({ data }) => {
+        if (!activo) return
+        const rows = (data ?? []) as { id: string; nombre: string }[]
+        setClasificacionesObs(rows)
+        // Tipo de riesgo por defecto del protocolo PAT → Eléctrico (fallback Físico).
+        setClasificacionDefaultId(pickClasificacionDefault('pat', rows))
+      })
     supabase
       .from('observaciones_categorias')
       .select('id, nombre, nivel, color')
@@ -306,23 +323,17 @@ export function MedicionPatEjecutorModal({
     return () => { activo = false }
   }, [establecimientoId])
 
-  // Certificados de calibración del instrumento elegido (asociación instrumento → cert).
+  // Certificado de calibración VIGENTE del instrumento elegido. Ya NO se sube uno
+  // por protocolo: se trae automáticamente el último certificado activo del
+  // instrumento (getCertificadoVigente) y se muestra read-only. Si no hay vigente,
+  // se avisa al usuario para que lo cargue en el instrumento.
   useEffect(() => {
-    if (!instrumentoId) { setCertificados([]); setCertificadoId(''); return }
+    if (!instrumentoId) { setCertificadoVigente(null); setBuscandoCertificado(false); return }
     let activo = true
-    const supabase = createClient()
-    supabase
-      .from('certificados_calibracion')
-      .select('id, fecha_emision, fecha_vencimiento, activo')
-      .eq('instrumento_id', instrumentoId)
-      .order('fecha_emision', { ascending: false })
-      .then(({ data }) => {
-        if (!activo) return
-        const rows = (data ?? []) as Array<{ id: string; fecha_emision: string; fecha_vencimiento: string; activo: boolean }>
-        setCertificados(rows)
-        const activoRow = rows.find(c => c.activo) ?? rows[0]
-        setCertificadoId(activoRow?.id ?? '')
-      })
+    setBuscandoCertificado(true)
+    getCertificadoVigente(instrumentoId)
+      .then(cert => { if (activo) setCertificadoVigente(cert) })
+      .finally(() => { if (activo) setBuscandoCertificado(false) })
     return () => { activo = false }
   }, [instrumentoId])
 
@@ -354,7 +365,8 @@ export function MedicionPatEjecutorModal({
       key: obsKeySeq++,
       descripcion: '',
       categoria_id: '',
-      clasificacion_id: '',
+      // Tipo de riesgo preseleccionado según el protocolo (default, editable).
+      clasificacion_id: clasificacionDefaultId,
       responsable_id: '',
       fecha_subsanacion: '',
       foto_preview: null,
@@ -405,7 +417,7 @@ export function MedicionPatEjecutorModal({
     return [
       // Hoja 1
       { id: 'instrumento', label: 'Elegí el telurímetro usado', done: !!instrumentoId, section: 1 },
-      { id: 'profesional', label: 'Cargá el profesional firmante', done: !!firmante.trim(), section: 1 },
+      { id: 'profesional', label: 'Elegí el profesional firmante', done: !!firmantePersonaId, section: 1 },
       { id: 'fecha', label: 'Cargá la fecha de medición', done: !!fechaMedicion, section: 1 },
       // Hoja 2
       { id: 'sector', label: 'Asociá la toma a un sector', done: algunaTomaConSector, section: 2 },
@@ -416,7 +428,7 @@ export function MedicionPatEjecutorModal({
       { id: 'conclusiones', label: 'Redactá las conclusiones', done: !!conclusiones.trim(), section: 3 },
       { id: 'recomendaciones', label: 'Redactá las recomendaciones', done: !!recomendaciones.trim(), section: 3 },
     ]
-  }, [instrumentoId, firmante, fechaMedicion, tomas, conclusiones, recomendaciones])
+  }, [instrumentoId, firmantePersonaId, fechaMedicion, tomas, conclusiones, recomendaciones])
 
   const doneCount = checks.filter(c => c.done).length
   const totalChecks = checks.length || 1
@@ -429,7 +441,7 @@ export function MedicionPatEjecutorModal({
     setError(null)
     if (step === 'datos') {
       if (!instrumentoId) { setError('Elegí el telurímetro usado en la medición.'); return }
-      if (!firmante.trim()) { setError('Cargá el profesional firmante del protocolo.'); return }
+      if (!firmantePersonaId) { setError('Elegí el profesional firmante del protocolo.'); return }
       if (!fechaMedicion) { setError('Cargá la fecha de medición.'); return }
       setStep('tomas')
     } else if (step === 'tomas') {
@@ -470,7 +482,9 @@ export function MedicionPatEjecutorModal({
       fd.set('establecimiento_id', establecimientoId)
       if (gestionEstablecimientoId) fd.set('gestion_establecimiento_id', gestionEstablecimientoId)
       if (instrumentoId) fd.set('instrumento_id', instrumentoId)
-      if (certificadoId) fd.set('certificado_id', certificadoId)
+      // Certificado: se persiste el certificado VIGENTE traído del instrumento (no se sube uno por protocolo).
+      if (certificadoVigente?.id) fd.set('certificado_id', certificadoVigente.id)
+      if (firmantePersonaId) fd.set('firmante_persona_id', firmantePersonaId)
       fd.set('firmante', firmante)
       fd.set('metodologia', metodologia)
       fd.set('fecha_medicion', fechaMedicion)
@@ -480,7 +494,6 @@ export function MedicionPatEjecutorModal({
       fd.set('conclusiones', conclusiones)
       fd.set('recomendaciones', recomendaciones)
       fd.set('observaciones', observacionesGenerales)
-      if (certificadoFile) fd.set('certificado', certificadoFile)
       if (planoFile) fd.set('plano', planoFile)
 
       // Tomas → contrato del server action.
@@ -556,12 +569,15 @@ export function MedicionPatEjecutorModal({
   const cumpleActiva = toma ? cumpleDe(toma) : null
   const sectorActivo = toma ? sectores.find(s => s.id === toma.sector_id) : undefined
 
+  // Firma del certificado de calibración (bucket privado `certificados`) para el link "Ver".
+  const { getUrl: getCertUrl } = useSignedUrls('certificados', [certificadoVigente?.certificado_url])
+
   // ── Datos consolidados para el PDF oficial ─────────────────────────
   // Se arma una sola vez con los datos en memoria del wizard. Los valores de
   // cumplimiento salen de `cumpleDe` (que ya usa lib/medicion-pat/calculos).
   const pdfData: ProtocoloPdfData = useMemo(() => {
     const instr = instrumentos.find(i => i.id === instrumentoId)
-    const cert = certificados.find(c => c.id === certificadoId)
+    const cert = certificadoVigente
     const filasGrilla: PdfFilaGrilla[] = tomas.map((t, i) => {
       const sec = sectores.find(s => s.id === t.sector_id)
       return {
@@ -602,7 +618,7 @@ export function MedicionPatEjecutorModal({
       recomendaciones: recomendaciones || null,
     }
   }, [
-    instrumentos, instrumentoId, certificados, certificadoId, tomas, sectores,
+    instrumentos, instrumentoId, certificadoVigente, tomas, sectores,
     estCtx, metodologia, fechaMedicion, fechaMedicionFin, horaInicio, horaFin,
     observacionesGenerales, firmante, conclusiones, recomendaciones,
   ])
@@ -744,29 +760,27 @@ export function MedicionPatEjecutorModal({
                 </div>
                 <div>
                   <label className={labelCls}>Certificado de calibración</label>
-                  <select
-                    className={inputCls}
-                    value={certificadoId}
-                    onChange={e => setCertificadoId(e.target.value)}
-                    disabled={!instrumentoId}
-                  >
-                    <option value="">{instrumentoId ? 'Sin certificado asociado' : 'Elegí un telurímetro primero'}</option>
-                    {certificados.map(c => (
-                      <option key={c.id} value={c.id}>
-                        Emitido {c.fecha_emision} · vence {c.fecha_vencimiento}{c.activo ? ' (activo)' : ''}
-                      </option>
-                    ))}
-                  </select>
+                  <CertificadoVigenteCard
+                    instrumentoId={instrumentoId}
+                    cargando={buscandoCertificado}
+                    cert={certificadoVigente}
+                    certUrl={getCertUrl(certificadoVigente?.certificado_url)}
+                    instrumentoLabel="telurímetro"
+                  />
                 </div>
                 <div>
-                  <label className={labelCls}>Profesional firmante (nombre y matrícula) <span className="text-danger">*</span></label>
-                  <input
-                    type="text"
-                    className={inputCls}
-                    value={firmante}
-                    onChange={e => setFirmante(e.target.value)}
-                    placeholder="Ing. Juan Pérez — Mat. 1234"
+                  <label className={labelCls}>Profesional firmante <span className="text-danger">*</span></label>
+                  <PersonaRolSelector
+                    value={firmantePersonaId || null}
+                    onChange={p => {
+                      setFirmantePersonaId(p?.id ?? '')
+                      // `firmante` (texto) se deriva del nombre de la persona: alimenta el PDF
+                      // y conserva el contrato con datos viejos sin un campo extra de matrícula.
+                      setFirmante(p ? `${p.apellido}, ${p.nombre}` : '')
+                    }}
+                    placeholder="Buscar persona del directorio…"
                   />
+                  <p className="text-xs text-text-tertiary mt-1">Elegí la persona del directorio. Si no está, podés crearla desde el buscador.</p>
                 </div>
                 <div>
                   <label className={labelCls}>Metodología</label>
@@ -810,10 +824,6 @@ export function MedicionPatEjecutorModal({
                 <FileText size={16} className="text-sig-500" /> Adjuntos
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className={labelCls}>Certificado de calibración (archivo)</label>
-                  <input type="file" className={inputCls} accept=".pdf,image/*" onChange={e => setCertificadoFile(e.target.files?.[0] ?? null)} />
-                </div>
                 <div>
                   <label className={labelCls}>Plano / croquis de las tomas</label>
                   <input type="file" className={inputCls} accept=".pdf,image/*" onChange={e => setPlanoFile(e.target.files?.[0] ?? null)} />
@@ -1179,12 +1189,12 @@ export function MedicionPatEjecutorModal({
                 <ReadOnly label="Establecimiento" value={estCtx?.nombre} />
                 <ReadOnly label="Telurímetro" value={instrumentos.find(i => i.id === instrumentoId) ? `${[instrumentos.find(i => i.id === instrumentoId)?.marca, instrumentos.find(i => i.id === instrumentoId)?.modelo].filter(Boolean).join(' ')}` : null} />
                 <ReadOnly label="Profesional firmante" value={firmante} />
+                <ReadOnly label="Certificado de calibración" value={certificadoVigente ? `Vigente · emitido ${certificadoVigente.fecha_emision} · vence ${certificadoVigente.fecha_vencimiento}` : null} />
                 <ReadOnly label="Fecha de medición" value={fechaMedicion} />
                 <ReadOnly label="Horario" value={horaInicio && horaFin ? `${horaInicio} – ${horaFin}` : (horaInicio || horaFin || null)} />
                 <ReadOnly label="Metodología" value={metodologia} />
               </ReviewGrid>
               <div className="flex gap-3 mt-2 text-xs text-text-tertiary">
-                <span>{certificadoFile ? '✓ Certificado adjunto' : 'Sin certificado adjunto'}</span>
                 <span>{planoFile ? '✓ Plano adjunto' : 'Sin plano adjunto'}</span>
               </div>
             </ReviewSection>
@@ -1282,6 +1292,68 @@ function Metric({ label, value }: { label: string; value: string }) {
     <div className="rounded-lg border border-border-subtle bg-surface-elevated/60 px-3 py-2">
       <p className="text-xs text-text-tertiary">{label}</p>
       <p className="font-semibold text-text-primary tabular-nums">{value}</p>
+    </div>
+  )
+}
+
+/**
+ * Muestra el certificado de calibración VIGENTE del instrumento elegido (read-only).
+ * Lo trae automáticamente el modal con getCertificadoVigente: acá sólo se presenta.
+ * Estados: sin instrumento / cargando / vigente (con fechas + link) / sin certificado.
+ */
+function CertificadoVigenteCard({
+  instrumentoId,
+  cargando,
+  cert,
+  certUrl,
+  instrumentoLabel = 'instrumento',
+}: {
+  instrumentoId: string
+  cargando: boolean
+  cert: CertificadoCalibracion | null
+  certUrl: string | null
+  instrumentoLabel?: string
+}) {
+  if (!instrumentoId) {
+    return (
+      <div className="rounded-lg border border-border-default bg-surface-elevated/30 px-3 py-2 text-sm text-text-tertiary">
+        Elegí un {instrumentoLabel} primero
+      </div>
+    )
+  }
+  if (cargando) {
+    return (
+      <div className="rounded-lg border border-border-default bg-surface-elevated/30 px-3 py-2 text-sm text-text-tertiary flex items-center gap-2">
+        <Loader2 size={14} className="animate-spin" /> Buscando certificado vigente…
+      </div>
+    )
+  }
+  if (!cert) {
+    return (
+      <div className="rounded-lg border border-amber-300 bg-amber-50/60 px-3 py-2 text-sm text-amber-800 flex items-start gap-2">
+        <AlertTriangle size={15} className="shrink-0 mt-0.5" />
+        <span>Este instrumento no tiene certificado de calibración vigente — cargalo en el instrumento.</span>
+      </div>
+    )
+  }
+  return (
+    <div className="rounded-lg border border-success/40 bg-success-bg/40 px-3 py-2 text-sm">
+      <div className="flex items-center gap-2 text-success font-medium">
+        <FileCheck size={15} /> Certificado vigente
+      </div>
+      <p className="text-xs text-text-secondary mt-0.5 tabular-nums">
+        Emitido {cert.fecha_emision} · vence {cert.fecha_vencimiento}
+      </p>
+      {cert.certificado_url && certUrl && (
+        <a
+          href={certUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-sig-600 hover:text-sig-700 underline mt-0.5 inline-block"
+        >
+          Ver certificado
+        </a>
+      )}
     </div>
   )
 }
