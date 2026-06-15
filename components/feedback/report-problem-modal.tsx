@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { X, Loader2, ImagePlus, Send } from 'lucide-react'
+import { X, Loader2, ImagePlus, Send, Mic, MicOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from '@/lib/hooks/use-toast'
+import { useSpeechToText } from '@/lib/hooks/use-speech-to-text'
 import { enviarReporteProblema } from '@/lib/actions/reporte-problema'
 
 interface ReportProblemModalProps {
@@ -23,6 +24,21 @@ export function ReportProblemModal({ open, tipo, onClose }: ReportProblemModalPr
 
   const dialogRef = useRef<HTMLDialogElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Dictado por voz para la descripción (Web Speech API, on-device, es-AR).
+  // Cada fragmento final se agrega al final del texto existente — el usuario
+  // lo revisa y edita antes de enviar.
+  const {
+    isSupported: dictadoSoportado,
+    isListening: dictando,
+    error: errorDictado,
+    start: iniciarDictado,
+    stop: detenerDictado,
+  } = useSpeechToText({
+    onTranscript: (texto) => {
+      setDescripcion((prev) => (prev.trim() ? `${prev.trimEnd()} ${texto}` : texto))
+    },
+  })
 
   // Controlar showModal()/close() via prop `open`
   // Al ser showModal() este dialog se vuelve el modal activo del top layer,
@@ -155,12 +171,16 @@ export function ReportProblemModal({ open, tipo, onClose }: ReportProblemModalPr
   // Reset al cerrar
   useEffect(() => {
     if (!open) {
+      detenerDictado()
       setResumen('')
       setDescripcion('')
       setScreenshotDataUrl(null)
       setStatus('idle')
       setErrorMsg('')
     }
+    // detenerDictado es estable entre renders (proviene del hook); no lo incluimos
+    // como dependencia para no re-disparar el reset.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -279,19 +299,79 @@ export function ReportProblemModal({ open, tipo, onClose }: ReportProblemModalPr
 
         {/* Descripción */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-text-secondary" htmlFor="report-descripcion">
-            Descripción <span className="text-rose-500">*</span>
-          </label>
+          <div className="flex items-center justify-between gap-2">
+            <label className="text-sm font-medium text-text-secondary" htmlFor="report-descripcion">
+              Descripción <span className="text-rose-500">*</span>
+            </label>
+
+            {/* Botón de dictado por voz — solo si el navegador lo soporta */}
+            {dictadoSoportado && (
+              <button
+                type="button"
+                onClick={dictando ? detenerDictado : iniciarDictado}
+                disabled={estaEnviando || status === 'exito'}
+                className={cn(
+                  'flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-50',
+                  dictando
+                    ? 'bg-rose-600 text-white hover:bg-rose-700'
+                    : 'border border-border-subtle text-text-secondary hover:bg-surface-subtle hover:text-text-primary',
+                )}
+                title={dictando ? 'Detener dictado' : 'Dictar por voz (es-AR)'}
+                aria-pressed={dictando}
+              >
+                {dictando ? (
+                  <>
+                    <MicOff size={13} className="animate-pulse" />
+                    Grabando...
+                  </>
+                ) : (
+                  <>
+                    <Mic size={13} />
+                    Dictar
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+
           <textarea
             id="report-descripcion"
             value={descripcion}
             onChange={(e) => setDescripcion(e.target.value)}
-            placeholder="Describí lo que esperabas frente a lo que viste, dónde estabas, qué deberíamos cambiar..."
+            placeholder="Describí lo que esperabas frente a lo que viste, dónde estabas, qué deberíamos cambiar... O dictalo con el botón de voz."
             rows={6}
             required
             disabled={estaEnviando || status === 'exito'}
-            className="w-full rounded-lg border border-border-subtle bg-surface-subtle px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary/50 resize-y disabled:opacity-50"
+            className={cn(
+              'w-full rounded-lg border bg-surface-subtle px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary/50 resize-y disabled:opacity-50',
+              dictando ? 'border-rose-400 ring-1 ring-rose-300/60' : 'border-border-subtle',
+            )}
           />
+
+          {/* Indicador de grabando */}
+          {dictando && (
+            <p className="flex items-center gap-1.5 text-xs text-rose-500">
+              <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-rose-500" />
+              Escuchando... hablá y el texto se va agregando solo. Tocá &quot;Grabando...&quot; para detener.
+            </p>
+          )}
+
+          {/* Errores de dictado */}
+          {errorDictado === 'no-permiso' && (
+            <p className="text-xs text-rose-500">
+              No pudimos acceder al micrófono. Revisá los permisos del navegador y volvé a intentar.
+            </p>
+          )}
+          {errorDictado === 'sin-habla' && (
+            <p className="text-xs text-text-tertiary">
+              No detectamos tu voz. Probá hablar más cerca del micrófono.
+            </p>
+          )}
+          {errorDictado === 'generico' && (
+            <p className="text-xs text-rose-500">
+              Hubo un problema con el dictado. Podés escribir la descripción a mano.
+            </p>
+          )}
         </div>
 
         {/* Screenshot */}
