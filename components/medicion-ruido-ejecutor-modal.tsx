@@ -26,7 +26,7 @@ import type { CertificadoCalibracion } from '@/lib/types'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { FirmaCanvas } from '@/components/firmas/firma-canvas'
-import { PersonaRolSelector } from '@/components/persona-rol-selector'
+import { PersonaFirmanteSelector } from '@/components/persona-firmante-selector'
 import {
   Building2, FileText, Plus, Trash2,
   ChevronLeft, ChevronRight, CheckCircle, XCircle, Loader2,
@@ -976,16 +976,17 @@ export function MedicionRuidoEjecutorModal({
                 </div>
                 <div className="sm:col-span-2">
                   <label className={labelCls}>Profesional firmante <span className="text-danger">*</span></label>
-                  <PersonaRolSelector
+                  <PersonaFirmanteSelector
                     value={firmantePersonaId || null}
+                    establecimientoId={establecimientoId}
                     onChange={p => {
                       setFirmantePersonaId(p?.id ?? '')
                       setFirmante(p ? `${p.apellido}, ${p.nombre}` : '')
                       setFirmanteDni(p?.dni ?? '')
                     }}
-                    placeholder="Buscar persona del directorio…"
+                    placeholder="Buscar usuario ejecutor…"
                   />
-                  <p className="text-xs text-text-tertiary mt-1">Elegí la persona del directorio. Si no está, podés crearla desde el buscador.</p>
+                  <p className="text-xs text-text-tertiary mt-1">Por defecto firma el usuario logueado. Podés elegir otro usuario ejecutor de la consultora.</p>
                 </div>
               </div>
             </section>

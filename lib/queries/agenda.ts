@@ -166,6 +166,31 @@ export function useUsuariosEjecutores(establecimientoId: string | undefined) {
   })
 }
 
+/**
+ * Devuelve el persona_id del usuario logueado (profiles.persona_id), o null si
+ * el usuario no tiene una persona del directorio asociada. Se usa para preseleccionar
+ * al firmante por defecto en los formularios de ejecución.
+ */
+export function useMiPersona() {
+  return useQuery({
+    queryKey: ['mi-persona'],
+    queryFn: async () => {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return null
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('persona_id')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      return (profile?.persona_id as string | null) ?? null
+    },
+    staleTime: 1000 * 60 * 10,
+  })
+}
+
 export function useObservacionesClasificaciones() {
   return useQuery({
     queryKey: ['observaciones-clasificaciones'],
