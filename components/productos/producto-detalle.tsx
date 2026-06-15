@@ -7,6 +7,7 @@ import { Modal } from '@/components/ui/modal'
 import { createClient } from '@/lib/supabase/client'
 import { publicAssetUrl } from '@/lib/storage/asset-url'
 import { OrigenBadge } from '@/components/ui/origen-filter'
+import { ProductoCategoriasEditor } from '@/components/productos/producto-categorias-editor'
 import type { Producto, ProductoVariante, ProductoAsset } from '@/lib/types'
 
 /**
@@ -110,6 +111,9 @@ export function ProductoDetalle({
             {producto.marca?.nombre && <span>Marca: <span className="font-medium text-text-secondary">{producto.marca.nombre}</span></span>}
           </div>
         )}
+
+        {/* Clasificación: categorías del producto (multi-select editable). */}
+        <ProductoCategoriasEditor productoId={producto.id} />
 
         {/* Descripción — algunos imports traen tags HTML literales; los strippeamos a texto plano. */}
         {producto.descripcion && (
