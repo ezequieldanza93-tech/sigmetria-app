@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { consultoraIdFromEstablecimiento, tenantStoragePath } from '@/lib/storage/tenant-path'
+import { aplicarSelloGeo } from '@/lib/actions/geo-sello'
 import type { ActionResult } from '@/lib/types'
 
 /**
@@ -174,8 +175,12 @@ export async function crearMedicionIluminacion(
   // rg_fecha_planificada completa la PK compuesta del registro particionado:
   // si la UI lo manda, acotamos el UPDATE a la fila exacta.
   if (rgFechaPlanificada) regUpdate = regUpdate.eq('fecha_planificada', rgFechaPlanificada)
-  const { error: regErr } = await regUpdate
+  const { data: regRow, error: regErr } = await regUpdate.select('fecha_planificada').single()
   if (regErr) return { success: false, error: 'Error al actualizar el registro: ' + regErr.message }
+
+  // Geo-sello del lugar de ejecución. Usamos la fecha_planificada autoritativa del
+  // registro (clave de partición). NO-BLOQUEANTE.
+  await aplicarSelloGeo(supabase, registroId, regRow.fecha_planificada as string, formData)
 
   // ── 3. INSERT cabecera ──────────────────────────────────────────────
   const { data: cabecera, error: cabErr } = await supabase

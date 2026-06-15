@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { resolveAssetUrl } from '@/lib/storage/resolve-url'
 import { consultoraIdFromRegistroGestion, tenantStoragePath } from '@/lib/storage/tenant-path'
+import { aplicarSelloGeo } from '@/lib/actions/geo-sello'
 import type { ActionResult } from '@/lib/types'
 
 export async function finalizarFormulario(
@@ -126,12 +127,19 @@ export async function finalizarFormulario(
   if (evidenciaPath) updates.evidencia_url = evidenciaPath
   if (fotoEvidenciaPath) updates.foto_evidencia_url = fotoEvidenciaPath
 
-  const { error: regError } = await supabase
+  // Recuperamos fecha_planificada (clave de partición) en el mismo UPDATE para
+  // poder aplicar el geo-sello sin un round-trip extra.
+  const { data: regRow, error: regError } = await supabase
     .from('gestiones_registros')
     .update(updates)
     .eq('id', registroId)
+    .select('fecha_planificada')
+    .single()
 
   if (regError) return { success: false, error: 'Error al actualizar registro: ' + regError.message }
+
+  // Geo-sello del lugar de completación. NO-BLOQUEANTE (el helper traga sus errores).
+  await aplicarSelloGeo(supabase, registroId, regRow.fecha_planificada as string, formData)
 
   // Devolvemos la SIGNED URL (no el path) para la descarga inmediata en el cliente.
   return { success: true, data: { evidencia_url: evidenciaSignedUrl ?? '' } }

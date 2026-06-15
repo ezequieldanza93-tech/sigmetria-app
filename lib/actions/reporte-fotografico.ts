@@ -1,6 +1,7 @@
 'use server'
 import { createClient } from '@/lib/supabase/server'
 import { consultoraIdFromEstablecimiento, tenantStoragePath } from '@/lib/storage/tenant-path'
+import { aplicarSelloGeo } from '@/lib/actions/geo-sello'
 import type { ActionResult } from '@/lib/types'
 
 /** TTL de la signed URL del PDF que devolvemos para descarga/compartir: 1 hora. */
@@ -91,6 +92,10 @@ export async function crearReporteFotografico(
     notas: comentario,
   }).select('id').single()
   if (registroError) return { success: false, error: registroError.message }
+
+  // Geo-sello del lugar de la observación. fecha_planificada = today (la misma
+  // con la que se insertó el registro). NO-BLOQUEANTE.
+  await aplicarSelloGeo(supabase, reg.id as string, today, formData)
 
   if (observacionesRaw) {
     try {
@@ -227,7 +232,7 @@ export async function crearReporteFotograficoEjecucion(
   // Fecha de ejecución = HOY por componentes locales (sin timezone drift).
   const now = new Date()
   const hoy = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-  const { error: regErr } = await supabase
+  const { data: regRow, error: regErr } = await supabase
     .from('gestiones_registros')
     .update({
       fecha_ejecutada: hoy,
@@ -235,7 +240,13 @@ export async function crearReporteFotograficoEjecucion(
       notas: comentario,
     })
     .eq('id', registroId)
+    .select('fecha_planificada')
+    .single()
   if (regErr) return { success: false, error: 'Error al actualizar el registro: ' + regErr.message }
+
+  // Geo-sello del lugar de ejecución. Usamos la fecha_planificada autoritativa del
+  // registro (clave de partición). NO-BLOQUEANTE.
+  await aplicarSelloGeo(supabase, registroId, regRow.fecha_planificada as string, formData)
 
   // ── 4. INSERT cabecera del reporte ─────────────────────────────────
   const { data: reporte, error: repErr } = await supabase

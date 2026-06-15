@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { aplicarSelloGeo } from '@/lib/actions/geo-sello'
 import type { ActionResult } from '@/lib/types'
 
 export async function guardarBorrador(
@@ -61,7 +62,9 @@ export async function guardarBorrador(
 
   if (respUpdateError) return { success: false, error: 'Error al guardar borrador: ' + respUpdateError.message }
 
-  const { error: regError } = await supabase
+  // Recuperamos fecha_planificada (clave de partición) en el mismo UPDATE para
+  // poder aplicar el geo-sello sin un round-trip extra.
+  const { data: regRow, error: regError } = await supabase
     .from('gestiones_registros')
     .update({
       fecha_ejecutada: fechaEjecutada,
@@ -69,8 +72,14 @@ export async function guardarBorrador(
       responsable_id: responsableId,
     })
     .eq('id', registroId)
+    .select('fecha_planificada')
+    .single()
 
   if (regError) return { success: false, error: 'Error al actualizar registro: ' + regError.message }
+
+  // Geo-sello: aunque sea un borrador (no completa), sirve saber desde dónde se
+  // trabajó. NO-BLOQUEANTE (el helper traga sus errores).
+  await aplicarSelloGeo(supabase, registroId, regRow.fecha_planificada as string, formData)
 
   return { success: true, data: { evidencia_url: '' } }
 }
