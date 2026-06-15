@@ -107,11 +107,14 @@ export function ConsultoraShell({ children }: ConsultoraShellProps) {
     ...(showAuditoria
       ? ([{ id: 'auditoria', label: 'Auditoría', icon: ScrollText, href: '/dashboard/auditoria' }] as SectionItem[])
       : []),
-    // ── Marketing: al fondo del sidebar ──
-    // Contenido: full_access de cualquier consultora (multi-tenant).
-    // CRM + Comentarios: solo staff de Sigmetría (isCrmAdmin) → la moderación del
-    // blog de Sigmetría NO aparece para otras consultoras. Mismo gate que la página
-    // y la RLS, así sidebar y server quedan sincronizados.
+  ]
+
+  // ── Marketing: sección fija al pie del sidebar, sobre el botón contraer ──
+  // Contenido: full_access de cualquier consultora (multi-tenant).
+  // CRM + Comentarios: solo staff de Sigmetría (isCrmAdmin) → la moderación del
+  // blog de Sigmetría NO aparece para otras consultoras. Mismo gate que la página
+  // y la RLS, así sidebar y server quedan sincronizados.
+  const marketingItems: SectionItem[] = [
     ...(showContenido
       ? ([{ id: 'contenido', label: 'Contenido', icon: Megaphone, href: '/dashboard/contenido' }] as SectionItem[])
       : []),
@@ -124,7 +127,12 @@ export function ConsultoraShell({ children }: ConsultoraShellProps) {
   ]
 
   return (
-    <SectionsShell items={items} activeId={activeId} ariaLabel="Secciones de la consultora">
+    <SectionsShell
+      items={items}
+      marketingItems={marketingItems.length > 0 ? marketingItems : undefined}
+      activeId={activeId}
+      ariaLabel="Secciones de la consultora"
+    >
       {children}
     </SectionsShell>
   )

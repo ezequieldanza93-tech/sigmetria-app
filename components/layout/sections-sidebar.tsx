@@ -26,6 +26,7 @@ const MAX_WIDTH = 240
 
 interface Props {
   items: SectionItem[]
+  marketingItems?: SectionItem[]
   activeId: string | null
   expanded: boolean
   expandedWidth: number
@@ -37,6 +38,7 @@ interface Props {
 
 export function SectionsSidebar({
   items,
+  marketingItems,
   activeId,
   expanded,
   expandedWidth,
@@ -165,6 +167,57 @@ export function SectionsSidebar({
           )
         })}
       </nav>
+
+      {marketingItems && marketingItems.length > 0 && (
+        <div className="px-2 pb-1">
+          <div className="h-px bg-border-subtle mb-2" />
+          {expanded && (
+            <p className="px-2 pb-1 text-xs font-medium text-text-tertiary uppercase tracking-wide select-none">
+              Marketing
+            </p>
+          )}
+          <div className="flex flex-col gap-0.5">
+            {marketingItems.map(item => {
+              const { id, label, icon: Icon, href } = item
+              const isActive = activeId === id
+              const inner = (
+                <div
+                  className={cn(
+                    'relative flex items-center gap-2 rounded-lg px-2 py-2.5 transition-colors',
+                    isActive
+                      ? 'bg-brand-muted text-brand-primary'
+                      : 'text-text-tertiary hover:text-text-primary hover:bg-surface-elevated',
+                  )}
+                >
+                  {isActive && (
+                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-brand-primary rounded-r-full" />
+                  )}
+                  <span className="shrink-0">
+                    <Icon size={18} strokeWidth={1.75} />
+                  </span>
+                  {expanded && (
+                    <span className="text-sm whitespace-nowrap truncate flex-1">{label}</span>
+                  )}
+                </div>
+              )
+              return (
+                <div key={id} className="relative group/item">
+                  {href ? (
+                    <Link href={href}>{inner}</Link>
+                  ) : (
+                    <button type="button" className="w-full text-left">{inner}</button>
+                  )}
+                  {!expanded && (
+                    <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2 py-1 text-xs font-medium bg-surface-elevated border border-border-subtle rounded-lg text-text-primary shadow-md whitespace-nowrap opacity-0 group-hover/item:opacity-100 transition-opacity duration-150 z-50">
+                      {label}
+                    </span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="px-2 pb-4">
         <button

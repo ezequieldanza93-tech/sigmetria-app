@@ -10,12 +10,13 @@ const MAX_WIDTH = 240
 
 interface Props {
   items: SectionItem[]
+  marketingItems?: SectionItem[]
   activeId: string | null
   ariaLabel: string
   children: React.ReactNode
 }
 
-export function SectionsShell({ items, activeId, ariaLabel, children }: Props) {
+export function SectionsShell({ items, marketingItems, activeId, ariaLabel, children }: Props) {
   const [expanded, setExpanded] = useState(true)
   const [expandedWidth, setExpandedWidth] = useState(DEFAULT_WIDTH)
   const [isResizing, setIsResizing] = useState(false)
@@ -45,6 +46,7 @@ export function SectionsShell({ items, activeId, ariaLabel, children }: Props) {
     <>
       <SectionsSidebar
         items={items}
+        marketingItems={marketingItems}
         activeId={activeId}
         expanded={expanded}
         expandedWidth={expandedWidth}
