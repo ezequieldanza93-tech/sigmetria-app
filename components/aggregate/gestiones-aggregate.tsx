@@ -397,7 +397,7 @@ export function GestionesAggregate({
           <span className="text-xs text-gray-400 tabular-nums">{anio + 1}</span>
         </div>
 
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto mt-11 md:mt-0 flex items-center gap-2">
           <select
             value={entidadSel}
             onChange={e => setEntidadSel(e.target.value as EntidadEstado)}
