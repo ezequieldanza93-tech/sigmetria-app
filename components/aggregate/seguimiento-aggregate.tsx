@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import dynamic from 'next/dynamic'
 import { MultiSelectFilter } from '@/components/ui/multi-select-filter'
 import type { EstablecimientoStatus } from '@/lib/types'
@@ -76,11 +76,18 @@ function getEstado(row: SeguimientoAggregateRow): Estado {
   return plan < hoy ? 'Vencido' : 'Planificado'
 }
 
-function fmt(date: string | null | undefined): string {
+function fmt(date: string | null | undefined): ReactNode {
   if (!date) return '—'
   const d = new Date(date)
   if (Number.isNaN(d.getTime())) return '—'
-  return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' })
+  const dm = d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })
+  const dmy = d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' })
+  return (
+    <>
+      <span className="md:hidden">{dm}</span>
+      <span className="hidden md:inline">{dmy}</span>
+    </>
+  )
 }
 
 export function SeguimientoAggregate({

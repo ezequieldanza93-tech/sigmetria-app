@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { Play, Search, List, CalendarDays, Columns, ArrowUpDown, Layers, Plus, X, ChevronRight, ChevronDown } from 'lucide-react'
 import { MultiSelectFilter } from '@/components/ui/multi-select-filter'
@@ -115,11 +115,18 @@ function getEstado(row: GestionAggregateRow): EstadoGestion {
   return calcularEstadoGestion(row.fecha_ejecutada, row.fecha_planificada)
 }
 
-function fmt(date: string | null | undefined): string {
+function fmt(date: string | null | undefined): ReactNode {
   if (!date) return '—'
   const d = new Date(date)
   if (Number.isNaN(d.getTime())) return '—'
-  return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' })
+  const dm = d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })
+  const dmy = d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' })
+  return (
+    <>
+      <span className="md:hidden">{dm}</span>
+      <span className="hidden md:inline">{dmy}</span>
+    </>
+  )
 }
 
 function agendaHref(r: GestionAggregateRow): string {

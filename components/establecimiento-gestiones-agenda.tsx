@@ -2521,9 +2521,17 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
               </span>
             )}
           </td>
-          <td className="px-4 py-1.5 text-text-secondary tabular-nums text-xs">{r.fecha_planificada}</td>
+          <td className="px-4 py-1.5 text-text-secondary tabular-nums text-xs">
+            <span className="md:hidden">{r.fecha_planificada ? `${r.fecha_planificada.slice(8, 10)}-${r.fecha_planificada.slice(5, 7)}` : '—'}</span>
+            <span className="hidden md:inline">{r.fecha_planificada ?? '—'}</span>
+          </td>
           <td className={`${visibleCols.has('fecha_ejec') ? 'hidden md:table-cell' : 'hidden'} px-4 py-1.5 text-text-secondary tabular-nums text-xs`}>
-            {r.fecha_ejecutada ?? <span className="text-text-tertiary">—</span>}
+            {r.fecha_ejecutada
+              ? (<>
+                  <span className="md:hidden">{`${r.fecha_ejecutada.slice(8, 10)}-${r.fecha_ejecutada.slice(5, 7)}`}</span>
+                  <span className="hidden md:inline">{r.fecha_ejecutada}</span>
+                </>)
+              : <span className="text-text-tertiary">—</span>}
           </td>
           <td className={`${visibleCols.has('responsable') ? 'hidden md:table-cell' : 'hidden'} px-4 py-1.5 text-text-secondary text-xs`} style={{ maxWidth: colW('responsable'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {r.responsable_nombre ?? <span className="text-text-tertiary">—</span>}
@@ -2808,13 +2816,20 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
                     </div>
                     <p className="text-xs font-medium text-text-primary mb-1 line-clamp-2">{r.ge_gestion_nombre ?? '—'}</p>
                     <div className="flex items-center justify-between gap-1">
-                      <span className="text-[10px] text-text-tertiary tabular-nums shrink-0">{r.fecha_planificada}</span>
+                      <span className="text-[10px] text-text-tertiary tabular-nums shrink-0">
+                        <span className="md:hidden">{r.fecha_planificada ? `${r.fecha_planificada.slice(8, 10)}-${r.fecha_planificada.slice(5, 7)}` : '—'}</span>
+                        <span className="hidden md:inline">{r.fecha_planificada ?? '—'}</span>
+                      </span>
                       {r.responsable_nombre && (
                         <span className="text-[10px] text-text-tertiary truncate">{r.responsable_nombre}</span>
                       )}
                     </div>
                     {r.fecha_ejecutada && r.fecha_ejecutada !== r.fecha_planificada && (
-                      <div className="mt-1 text-[10px] text-green-600">Ejec: {r.fecha_ejecutada}</div>
+                      <div className="mt-1 text-[10px] text-green-600">
+                        Ejec:{' '}
+                        <span className="md:hidden">{`${r.fecha_ejecutada.slice(8, 10)}-${r.fecha_ejecutada.slice(5, 7)}`}</span>
+                        <span className="hidden md:inline">{r.fecha_ejecutada}</span>
+                      </div>
                     )}
                     {r.index != null && (
                       <div className="mt-0.5 text-[10px] text-text-tertiary">Índice: {r.index}</div>
