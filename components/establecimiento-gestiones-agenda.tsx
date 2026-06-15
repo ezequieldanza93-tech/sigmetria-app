@@ -951,6 +951,8 @@ function BibliotecaForm({
                 value={responsableId}
                 onChange={setResponsableId}
                 placeholder="Buscar responsable…"
+                soloEjecutores
+                establecimientoId={establecimientoId}
               />
             </div>
 
@@ -1197,6 +1199,8 @@ function NuevaGestionForm({
               value={responsableId}
               onChange={setResponsableId}
               placeholder="Buscar responsable…"
+              soloEjecutores
+              establecimientoId={establecimientoId}
             />
           </div>
 

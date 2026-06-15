@@ -253,20 +253,49 @@ export function GestionesTab({ establecimientoId, canWrite }: GestionesTabProps)
   useEffect(() => {
     async function init() {
       const supabase = createClient()
-      const [geResult, personasResult] = await Promise.all([
+      const [geResult, estabResult] = await Promise.all([
         supabase
           .from('gestiones_establecimientos')
           .select('id, gestion_id, gestiones(nombre, categoria_id, gestiones_categorias(nombre, gestiones_grupos(nombre)))')
           .eq('establecimiento_id', establecimientoId),
         supabase
-          .from('personas_directorio')
-          .select('id, nombre, apellido')
-          .range(0, 99)
-          .eq('is_active', true)
-          .order('apellido'),
+          .from('establecimientos')
+          .select('empresa_id, empresas!inner(consultora_id)')
+          .eq('id', establecimientoId)
+          .maybeSingle(),
       ])
       const geData = (geResult.data as unknown as GestionEstablecimiento[]) ?? []
-      setPersonas((personasResult.data ?? []) as { id: string; nombre: string; apellido: string }[])
+
+      // Cargar usuarios ejecutores de la consultora (para selectores de responsable)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const consultoraId = (estabResult.data as any)?.empresas?.consultora_id as string | undefined
+      if (consultoraId) {
+        const ROLES_EJECUTORES = ['colaborador', 'full_access_branch', 'full_access_main']
+        const { data: members } = await supabase
+          .from('consultoras_members')
+          .select('user_id')
+          .eq('consultora_id', consultoraId)
+          .eq('is_active', true)
+          .in('role', ROLES_EJECUTORES)
+        const userIds = (members ?? []).map((m: { user_id: string }) => m.user_id)
+        if (userIds.length > 0) {
+          const { data: profs } = await supabase
+            .from('profiles')
+            .select('persona_id')
+            .in('id', userIds)
+            .not('persona_id', 'is', null)
+          const personaIds = (profs ?? []).map((p: { persona_id: string }) => p.persona_id)
+          if (personaIds.length > 0) {
+            const { data: pd } = await supabase
+              .from('personas_directorio')
+              .select('id, nombre, apellido')
+              .in('id', personaIds)
+              .eq('is_active', true)
+              .order('apellido')
+            setPersonas((pd ?? []) as { id: string; nombre: string; apellido: string }[])
+          }
+        }
+      }
       setGestionesEstablecimiento(geData)
 
       const regData = await loadRegistros(geData.map(ge => ge.id))

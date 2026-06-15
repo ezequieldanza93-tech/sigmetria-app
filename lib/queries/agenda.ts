@@ -104,6 +104,68 @@ export function usePersonasEstablecimiento(establecimientoId: string | undefined
   })
 }
 
+/**
+ * Devuelve las personas del directorio que son usuarios ejecutores de la consultora
+ * del establecimiento dado (rol: colaborador | full_access_branch | full_access_main).
+ * Se usa exclusivamente en selectores de RESPONSABLE de gestión.
+ */
+export function useUsuariosEjecutores(establecimientoId: string | undefined) {
+  return useQuery({
+    queryKey: ['usuarios-ejecutores', establecimientoId],
+    queryFn: async () => {
+      if (!establecimientoId) return []
+      const supabase = createClient()
+
+      // 1. Obtener consultora_id del establecimiento
+      const { data: estab } = await supabase
+        .from('establecimientos')
+        .select('empresa_id, empresas!inner(consultora_id)')
+        .eq('id', establecimientoId)
+        .maybeSingle()
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const consultoraId = (estab as any)?.empresas?.consultora_id as string | undefined
+      if (!consultoraId) return []
+
+      // 2. Traer miembros activos con rol ejecutor
+      const ROLES_EJECUTORES = ['colaborador', 'full_access_branch', 'full_access_main']
+      const { data: members } = await supabase
+        .from('consultoras_members')
+        .select('user_id, role')
+        .eq('consultora_id', consultoraId)
+        .eq('is_active', true)
+        .in('role', ROLES_EJECUTORES)
+
+      if (!members || members.length === 0) return []
+
+      const userIds = members.map(m => m.user_id)
+
+      // 3. Buscar persona_id en profiles para esos users
+      const { data: profs } = await supabase
+        .from('profiles')
+        .select('id, persona_id')
+        .in('id', userIds)
+        .not('persona_id', 'is', null)
+
+      if (!profs || profs.length === 0) return []
+
+      const personaIds = profs.map(p => p.persona_id as string)
+
+      // 4. Traer los datos de personas_directorio
+      const { data: personas } = await supabase
+        .from('personas_directorio')
+        .select('id, nombre, apellido, dni')
+        .in('id', personaIds)
+        .eq('is_active', true)
+        .order('apellido')
+
+      return (personas ?? []) as { id: string; nombre: string; apellido: string; dni: string | null }[]
+    },
+    enabled: !!establecimientoId,
+    staleTime: 1000 * 60 * 5,
+  })
+}
+
 export function useObservacionesClasificaciones() {
   return useQuery({
     queryKey: ['observaciones-clasificaciones'],
