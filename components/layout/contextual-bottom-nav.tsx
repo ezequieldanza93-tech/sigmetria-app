@@ -15,6 +15,15 @@ import {
   Megaphone,
   Contact,
   MessageSquare,
+  Users,
+  Building2,
+  Library,
+  Shield,
+  AlertTriangle,
+  ScrollText,
+  GraduationCap,
+  BookOpen,
+  CheckCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useNavigationLevel } from '@/lib/hooks/use-navigation-level'
@@ -73,9 +82,11 @@ interface ContextualBottomNavProps {
   showContenido?: boolean
   /** Muestra los ítems "CRM" y "Comentarios" en el menú hamburguesa (gate isCrmAdmin). */
   showCrm?: boolean
+  /** Muestra "Administrar Cursos" y "Compliance" en el grupo Librerías (gate full_access + superAdmin). */
+  canManageCursos?: boolean
 }
 
-export function ContextualBottomNav({ showContenido = false, showCrm = false }: ContextualBottomNavProps) {
+export function ContextualBottomNav({ showContenido = false, showCrm = false, canManageCursos = false }: ContextualBottomNavProps) {
   const { level, empresaId, establecimientoId } = useNavigationLevel()
   const { emit } = useShortcuts()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -194,7 +205,8 @@ export function ContextualBottomNav({ showContenido = false, showCrm = false }: 
 
           {/* Menú desplegable hacia arriba desde la hamburguesa. */}
           {menuOpen && (
-            <div className="absolute bottom-full right-1 mb-2 w-52 overflow-hidden rounded-2xl border border-border-subtle bg-surface-base shadow-xl animate-in fade-in slide-in-from-bottom-2 duration-150">
+            <div className="absolute bottom-full right-1 mb-2 w-56 rounded-2xl border border-border-subtle bg-surface-base shadow-xl animate-in fade-in slide-in-from-bottom-2 duration-150 max-h-[70vh] overflow-y-auto">
+              {/* ── Ítems base + Marketing ── */}
               {[
                 ...MENU_ITEMS,
                 ...(showContenido
@@ -263,6 +275,62 @@ export function ContextualBottomNav({ showContenido = false, showCrm = false }: 
                   </button>
                 )
               })}
+
+              {/* ── Directorio ── */}
+              <div className="border-t border-border-subtle px-4 pt-2.5 pb-1">
+                <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-text-tertiary">
+                  <Users size={11} aria-hidden="true" />
+                  Directorio
+                </span>
+              </div>
+              {[
+                { id: 'dir-personas', label: 'Personas', icon: Users, href: '/dashboard/personas' },
+                { id: 'dir-organizaciones', label: 'Organizaciones externas', icon: Building2, href: '/dashboard/organizaciones-externas' },
+              ].map(({ id, label, icon: Icon, href }) => (
+                <Link
+                  key={id}
+                  href={href}
+                  onClick={() => setMenuOpen(false)}
+                  aria-label={label}
+                  className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-medium text-text-secondary hover:bg-brand-muted/30 hover:text-brand-primary active:bg-brand-muted/50 transition-colors border-t border-border-subtle/60"
+                >
+                  <Icon size={17} strokeWidth={1.75} className="shrink-0 text-text-tertiary" aria-hidden="true" />
+                  <span>{label}</span>
+                </Link>
+              ))}
+
+              {/* ── Librerías ── */}
+              <div className="border-t border-border-subtle px-4 pt-2.5 pb-1">
+                <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-text-tertiary">
+                  <Library size={11} aria-hidden="true" />
+                  Librerías
+                </span>
+              </div>
+              {[
+                { id: 'lib-productos', label: 'Elementos de Protección', icon: Shield, href: '/dashboard/productos' },
+                { id: 'lib-iperc', label: 'Librería IPERC', icon: AlertTriangle, href: '/dashboard/configuracion/iperc' },
+                { id: 'lib-gestiones', label: 'Librería de Gestiones', icon: ClipboardList, href: '/dashboard/libreria-gestiones' },
+                { id: 'lib-normativa', label: 'Normativa Legal', icon: ScrollText, href: '/dashboard/configuracion/normativa-legal' },
+                { id: 'lib-docs-catalogo', label: 'Catálogo Documentos', icon: FileText, href: '/dashboard/configuracion/documentos-catalogo' },
+                { id: 'lib-cursos', label: 'Mis Cursos', icon: GraduationCap, href: '/dashboard/cursos' },
+                ...(canManageCursos
+                  ? [
+                      { id: 'lib-cursos-admin', label: 'Administrar Cursos', icon: BookOpen, href: '/dashboard/cursos/admin' },
+                      { id: 'lib-compliance', label: 'Compliance', icon: CheckCircle, href: '/dashboard/cursos/compliance' },
+                    ]
+                  : []),
+              ].map(({ id, label, icon: Icon, href }) => (
+                <Link
+                  key={id}
+                  href={href}
+                  onClick={() => setMenuOpen(false)}
+                  aria-label={label}
+                  className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-medium text-text-secondary hover:bg-brand-muted/30 hover:text-brand-primary active:bg-brand-muted/50 transition-colors border-t border-border-subtle/60"
+                >
+                  <Icon size={17} strokeWidth={1.75} className="shrink-0 text-text-tertiary" aria-hidden="true" />
+                  <span>{label}</span>
+                </Link>
+              ))}
             </div>
           )}
         </div>

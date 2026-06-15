@@ -127,6 +127,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
       <ContextualBottomNav
             showContenido={canAccessContenido(effectiveUserRole, effectiveSystemRole)}
             showCrm={isCrmAdmin(email)}
+            canManageCursos={
+              isSuperAdmin ||
+              effectiveUserRole === 'full_access_main' ||
+              effectiveUserRole === 'full_access_branch'
+            }
           />
       <GestionLauncher />
       <ChatWidget />
