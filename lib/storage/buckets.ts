@@ -27,6 +27,7 @@ export type AssetBucket =
   | 'cursos-certificados'
   | 'contenido'
   | 'sap-autoproteccion'
+  | 'productos-epp'
 
 /**
  * Nombre de cualquier bucket REAL de la app (no solo los que se suben con
@@ -57,6 +58,8 @@ export const BUCKET_IS_PUBLIC: Record<StorageBucket, boolean> = {
   consultoras: true,
   avatars: true,
   'cursos-portadas': true,
+  // Fotos de catálogo de productos/EPP. Público: son imágenes de catálogo sin datos sensibles.
+  'productos-epp': true,
   // 🔴 PRIVADOS — datos sensibles, signed URLs.
   // documentos/establecimientos ya privatizados (migración 20260617000004): los
   // datos legacy fueron migrados a paths {consultora_id}/... y se sirven firmados.

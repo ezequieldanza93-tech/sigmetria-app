@@ -21,6 +21,7 @@ export type EntityType =
   | 'curso'
   | 'contenido'
   | 'sap'
+  | 'producto'
 
 interface BucketConfig {
   maxBytes: number
@@ -47,6 +48,8 @@ const BUCKETS: Record<AssetBucket, BucketConfig> = {
   'cursos-certificados':{ maxBytes: 5 * 1024 * 1024, mimes: ['application/pdf'],                                                                 public: false },
   contenido:            { maxBytes: 300 * 1024 * 1024, mimes: ['image/png','image/jpeg','image/webp','image/gif','video/mp4','video/quicktime','video/webm'], public: false },
   'sap-autoproteccion': { maxBytes: 50 * 1024 * 1024, mimes: ['application/pdf','image/png','image/jpeg','image/webp','image/heic','video/mp4','video/quicktime','video/webm','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'], public: false },
+  // Fotos de catálogo EPP/productos. Público, max 5 MB.
+  'productos-epp':      { maxBytes: 5  * 1024 * 1024, mimes: ['image/png','image/jpeg','image/webp','image/heic'], public: true  },
 }
 
 /**
