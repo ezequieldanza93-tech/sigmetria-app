@@ -22,7 +22,9 @@ import { toast } from '@/lib/hooks/use-toast'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Select } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
+import { usePeligrosLibrary } from '@/lib/queries/iperc'
 import {
   Building2, FileText, Plus, Trash2, ChevronLeft, ChevronRight, CheckCircle,
   Loader2, Info, ArrowRight, Check, Sparkles, AlertTriangle, Shield, ShieldCheck,
@@ -112,7 +114,7 @@ let rowSeq = 0
 const nextKey = () => rowSeq++
 
 interface ActividadRow { key: number; planta: string; actividad: string; superficie_m2: string }
-interface RiesgoRow { key: number; peligro: string; probabilidad: string; severidad: string; propagacion: string }
+interface RiesgoRow { key: number; peligro_id: string; peligro?: string; probabilidad: string; severidad: string; propagacion: string }
 interface MedioRow { tipo_id: string; posee: boolean; funciona: boolean; cantidad: string; observaciones: string }
 interface RolRow { key: number; rol_id: string; persona_nombre: string; persona_dni: string; es_suplente: boolean; piso_sector: string; capacitado: boolean }
 interface SimulacroRow { key: number; orden: number; fecha: string; hora: string; realizado: boolean; tipo: string; observaciones: string }
@@ -297,6 +299,9 @@ export function PresentacionAutoproteccionEjecutorModal({
   const [simulacros, setSimulacros] = useState<SimulacroRow[]>([])
   const [documentos, setDocumentos] = useState<DocumentoSap[]>([])
 
+  // ── Librería de peligros IPERC (para el selector del paso Riesgos) ───
+  const { data: peligrosLib } = usePeligrosLibrary()
+
   // ── Navegación de pasos ──────────────────────────────────────────────
   const [stepIdx, setStepIdx] = useState(0)
 
@@ -450,7 +455,8 @@ export function PresentacionAutoproteccionEjecutorModal({
     const rgs = (data.riesgos as Record<string, unknown>[] | undefined) ?? []
     setRiesgos(rgs.map(r => ({
       key: nextKey(),
-      peligro: String(r.peligro ?? ''),
+      peligro_id: r.peligro_id == null ? '' : String(r.peligro_id),
+      peligro: r.peligro == null ? undefined : String(r.peligro),
       probabilidad: r.probabilidad == null ? '' : String(r.probabilidad),
       severidad: r.severidad == null ? '' : String(r.severidad),
       propagacion: r.propagacion == null ? '' : String(r.propagacion),
@@ -677,8 +683,8 @@ export function PresentacionAutoproteccionEjecutorModal({
           break
         case 'riesgos':
           await guardarRiesgos(presentacionId, riesgos
-            .filter(r => r.peligro.trim())
-            .map(r => ({ peligro: r.peligro, probabilidad: r.probabilidad || undefined, severidad: r.severidad || undefined, propagacion: r.propagacion || undefined })))
+            .filter(r => r.peligro_id.trim())
+            .map(r => ({ peligro_id: r.peligro_id, probabilidad: r.probabilidad || undefined, severidad: r.severidad || undefined, propagacion: r.propagacion || undefined })))
           break
         case 'medios':
           await guardarMedios(presentacionId, medios
@@ -1269,7 +1275,7 @@ export function PresentacionAutoproteccionEjecutorModal({
               Listá los peligros que podrían generar una emergencia (incendio, fuga de gas, explosión,
               derrame, etc.). Para cada uno estimá qué tan probable es y qué tan grave sería.
             </Explica>
-            <RepetibleHeader titulo="Riesgos identificados" onAdd={() => setRiesgos(p => [...p, { key: nextKey(), peligro: '', probabilidad: '', severidad: '', propagacion: '' }])} canWrite={canWrite} />
+            <RepetibleHeader titulo="Riesgos identificados" onAdd={() => setRiesgos(p => [...p, { key: nextKey(), peligro_id: '', probabilidad: '', severidad: '', propagacion: '' }])} canWrite={canWrite} />
             {riesgos.length === 0 ? (
               <Vacio texto="Agregá al menos un riesgo. Ej: tablero eléctrico sobrecargado, almacenamiento de inflamables, etc." />
             ) : (
@@ -1278,9 +1284,15 @@ export function PresentacionAutoproteccionEjecutorModal({
                   <div key={r.key} className="rounded-lg border border-border-subtle p-3 space-y-2">
                     <div className="flex items-start gap-2">
                       <div className="flex-1">
-                        <label className={labelCls}>Peligro</label>
-                        <input className={inputCls} value={r.peligro} disabled={!canWrite}
-                          onChange={e => setRiesgos(p => p.map(x => x.key === r.key ? { ...x, peligro: e.target.value } : x))} placeholder="Ej: cortocircuito en tablero" />
+                        <Select
+                          label="Peligro"
+                          name={`peligro_id_${r.key}`}
+                          options={(peligrosLib ?? []).map((p) => ({ value: p.id, label: `${p.nombre} (${p.factor})` }))}
+                          placeholder="Seleccioná un peligro..."
+                          value={r.peligro_id}
+                          disabled={!canWrite}
+                          onChange={e => setRiesgos(p => p.map(x => x.key === r.key ? { ...x, peligro_id: e.target.value } : x))}
+                        />
                       </div>
                       {canWrite && <div className="pt-6"><BotonQuitar onClick={() => setRiesgos(p => p.filter(x => x.key !== r.key))} /></div>}
                     </div>

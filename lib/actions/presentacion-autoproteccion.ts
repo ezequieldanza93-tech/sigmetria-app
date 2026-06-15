@@ -304,13 +304,21 @@ export async function guardarActividades(presentacionId: string, items: Activida
   return { success: true, data: null }
 }
 
-interface RiesgoInput { peligro: string; probabilidad?: string; severidad?: string; propagacion?: string; orden?: number }
+interface RiesgoInput { peligro_id: string; peligro?: string; probabilidad?: string; severidad?: string; propagacion?: string; orden?: number }
 export async function guardarRiesgos(presentacionId: string, items: RiesgoInput[]): Promise<ActionResult<null>> {
   const { supabase } = await getUser()
   await supabase.from('sap_riesgos').delete().eq('presentacion_id', presentacionId)
   if (items.length) {
     const { error } = await supabase.from('sap_riesgos').insert(
-      items.map((it, i) => ({ presentacion_id: presentacionId, peligro: it.peligro, probabilidad: it.probabilidad ?? null, severidad: it.severidad ?? null, propagacion: it.propagacion ?? null, orden: it.orden ?? i })),
+      items.map((it, i) => ({
+        presentacion_id: presentacionId,
+        peligro_id: it.peligro_id,
+        peligro: it.peligro ?? null,
+        probabilidad: it.probabilidad ?? null,
+        severidad: it.severidad ?? null,
+        propagacion: it.propagacion ?? null,
+        orden: it.orden ?? i,
+      })),
     )
     if (error) return { success: false, error: error.message }
   }
