@@ -19,6 +19,7 @@ import {
   useSetAplicabilidadTiposEstablecimiento,
 } from '@/lib/queries/documentos-catalogo'
 import { SearchableSelect } from '@/components/ui/searchable-select'
+import { PROVINCIAS_AR } from '@/lib/constants'
 import type {
   DocumentoTipoConfig,
   TipoEstablecimientoItem,
@@ -67,6 +68,11 @@ const JURISDICCION_OPTIONS: { value: Jurisdiccion; label: string }[] = [
   { value: 'provincial', label: 'Provincial' },
   { value: 'municipal', label: 'Municipal' },
 ]
+
+const PROVINCIA_OPTIONS: { value: string; label: string }[] = PROVINCIAS_AR.map(p => ({
+  value: p,
+  label: p,
+}))
 
 const PERIODICIDAD_OPTIONS: { value: PeriodicidadDocumento; label: string }[] = [
   { value: 'mensual', label: 'Mensual' },
@@ -313,13 +319,14 @@ function EditPanel({ doc, tiposEstablecimiento, onClose }: EditPanelProps) {
               </label>
             </div>
             {mostrarProvincia && (
-              <input
-                type="text"
+              <SearchableSelect
                 value={jurisdiccionProvincia}
-                onChange={e => setJurisdiccionProvincia(e.target.value)}
-                placeholder="Provincia…"
+                onChange={setJurisdiccionProvincia}
+                options={PROVINCIA_OPTIONS}
+                placeholder="Seleccionar provincia…"
                 disabled={isPending}
-                className="px-3 py-2 text-sm border border-border-default rounded-lg bg-surface-base text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary disabled:opacity-40"
+                id={`provincia-${doc.id}`}
+                emptyText="Sin resultados."
               />
             )}
             {mostrarMunicipio && (
