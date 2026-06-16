@@ -480,3 +480,174 @@ export async function deleteNormativa(id: string): Promise<ActionResult<null>> {
   revalidatePath(REVALIDATE_PATH)
   return { success: true, data: null }
 }
+
+// ============================================================
+// REQUISITOS — MUTACIONES
+// La autorización se deriva de la norma padre:
+//   - Norma base (consultora_id NULL): exige puedeGestionarLibrerias
+//   - Norma propia: exige membresía activa en la consultora (full_access).
+// La RLS es el firewall definitivo; acá pre-validamos para devolver mensajes
+// claros sin esperar el error de Supabase.
+// ============================================================
+
+interface RequisitoInput {
+  articulo: string | null
+  descripcion_corta: string | null
+  descripcion_oficial: string | null
+  code: string | null
+  orden: number | null
+}
+
+function parseRequisitoForm(formData: FormData): { ok: true; value: RequisitoInput } | { ok: false; error: string } {
+  const articuloRaw = (formData.get('articulo') as string)?.trim()
+  const descripcionCortaRaw = (formData.get('descripcion_corta') as string)?.trim()
+  const descripcionOficialRaw = (formData.get('descripcion_oficial') as string)?.trim()
+  const codeRaw = (formData.get('code') as string)?.trim()
+  const ordenRaw = (formData.get('orden') as string)?.trim()
+
+  // Al menos uno de los campos descriptivos debe tener contenido.
+  if (!articuloRaw && !descripcionCortaRaw && !descripcionOficialRaw) {
+    return { ok: false, error: 'Completá al menos el artículo o una descripción' }
+  }
+
+  const orden = ordenRaw ? Number.parseInt(ordenRaw, 10) : null
+  if (ordenRaw && Number.isNaN(orden as number)) {
+    return { ok: false, error: 'El orden debe ser un número' }
+  }
+
+  return {
+    ok: true,
+    value: {
+      articulo: articuloRaw || null,
+      descripcion_corta: descripcionCortaRaw || null,
+      descripcion_oficial: descripcionOficialRaw || null,
+      code: codeRaw || null,
+      orden,
+    },
+  }
+}
+
+/**
+ * Resuelve la consultora_id de la norma padre de un requisito.
+ * Devuelve null si la norma es base (consultora_id NULL) o error si no existe.
+ */
+async function getConsultoraIdDeNorma(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  normaId: string,
+): Promise<ActionResult<string | null>> {
+  const { data: norma } = await supabase
+    .from('normativa_normas')
+    .select('consultora_id')
+    .eq('id', normaId)
+    .maybeSingle()
+
+  if (!norma) return { success: false, error: 'No se encontró la norma asociada al requisito' }
+  return { success: true, data: norma.consultora_id }
+}
+
+export async function createRequisito(
+  normaId: string,
+  formData: FormData,
+): Promise<ActionResult<NormativaRequisito>> {
+  const supabase = await createClient()
+
+  const parsed = parseRequisitoForm(formData)
+  if (!parsed.ok) return { success: false, error: parsed.error }
+
+  const normaRes = await getConsultoraIdDeNorma(supabase, normaId)
+  if (!normaRes.success) return normaRes
+
+  // Norma base: solo quien gestiona librerías.
+  if (normaRes.data === null) {
+    if (!(await puedeGestionarLibreriasServer())) {
+      return { success: false, error: 'Sin permiso para gestionar requisitos de la normativa base' }
+    }
+  } else {
+    // Norma propia: verificamos membresía activa (RLS confirma el scope de consultora).
+    const cId = await getConsultoraId()
+    if (!cId.success) return cId
+  }
+
+  const { data, error } = await supabase
+    .from('normativa_requisitos')
+    .insert({ ...parsed.value, norma_id: normaId })
+    .select('id, norma_id, articulo, descripcion_corta, descripcion_oficial, code, orden')
+    .single()
+
+  if (error) return { success: false, error: error.message }
+  revalidatePath(REVALIDATE_PATH)
+  return { success: true, data: data as NormativaRequisito }
+}
+
+export async function updateRequisito(
+  id: string,
+  formData: FormData,
+): Promise<ActionResult<NormativaRequisito>> {
+  const supabase = await createClient()
+
+  const parsed = parseRequisitoForm(formData)
+  if (!parsed.ok) return { success: false, error: parsed.error }
+
+  // Leemos la norma padre a través del requisito.
+  const { data: req } = await supabase
+    .from('normativa_requisitos')
+    .select('norma_id')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (!req) return { success: false, error: 'No se encontró el requisito o no es editable' }
+
+  const normaRes = await getConsultoraIdDeNorma(supabase, req.norma_id)
+  if (!normaRes.success) return normaRes
+
+  if (normaRes.data === null) {
+    if (!(await puedeGestionarLibreriasServer())) {
+      return { success: false, error: 'Sin permiso para gestionar requisitos de la normativa base' }
+    }
+  } else {
+    const cId = await getConsultoraId()
+    if (!cId.success) return cId
+  }
+
+  const { data, error } = await supabase
+    .from('normativa_requisitos')
+    .update(parsed.value)
+    .eq('id', id)
+    .select('id, norma_id, articulo, descripcion_corta, descripcion_oficial, code, orden')
+    .maybeSingle()
+
+  if (error) return { success: false, error: error.message }
+  if (!data) return { success: false, error: 'No se encontró el requisito o no es editable' }
+  revalidatePath(REVALIDATE_PATH)
+  return { success: true, data: data as NormativaRequisito }
+}
+
+export async function deleteRequisito(id: string): Promise<ActionResult<null>> {
+  const supabase = await createClient()
+
+  const { data: req } = await supabase
+    .from('normativa_requisitos')
+    .select('norma_id')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (!req) return { success: false, error: 'No se encontró el requisito o no es eliminable' }
+
+  const normaRes = await getConsultoraIdDeNorma(supabase, req.norma_id)
+  if (!normaRes.success) return normaRes
+
+  if (normaRes.data === null) {
+    if (!(await puedeGestionarLibreriasServer())) {
+      return { success: false, error: 'Sin permiso para gestionar requisitos de la normativa base' }
+    }
+  } else {
+    const cId = await getConsultoraId()
+    if (!cId.success) return cId
+  }
+
+  const { error } = await supabase.from('normativa_requisitos').delete().eq('id', id)
+
+  if (error) return { success: false, error: error.message }
+  revalidatePath(REVALIDATE_PATH)
+  return { success: true, data: null }
+}

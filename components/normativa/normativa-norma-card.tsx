@@ -146,7 +146,7 @@ export function NormativaNormaCard({ norma, esPropia, puedeGestionarBase = false
               <p className="text-sm text-text-secondary whitespace-pre-line">{norma.modificaciones}</p>
             </div>
           )}
-          <NormativaRequisitos normaId={norma.id} />
+          <NormativaRequisitos normaId={norma.id} puedeEditar={editable} />
         </div>
       )}
     </div>
