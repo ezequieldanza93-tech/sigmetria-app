@@ -2,6 +2,7 @@
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { parsePersonaVinculos, syncPersonaVinculos } from '@/lib/actions/persona-vinculos'
 import type { ActionResult } from '@/lib/types'
 
 const MAX_ARCHIVOS = 5
@@ -118,6 +119,9 @@ export async function createDenuncia(
       adjuntosUrls.map(url => ({ denuncia_id: denuncia.id, url }))
     )
   }
+
+  const involucrados = parsePersonaVinculos(formData, 'involucrados')
+  await syncPersonaVinculos(supabase, 'denuncias_involucrados', 'denuncia_id', denuncia.id, involucrados)
 
   revalidatePath(`/dashboard/empresas/[id]/establecimientos/${establecimientoId}`, 'page')
   return { success: true, data: null }

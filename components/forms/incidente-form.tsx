@@ -4,10 +4,13 @@ import { useActionState, useEffect, useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { createClient } from '@/lib/supabase/client'
 import { INCIDENTE_TIPO_OPTIONS } from '@/lib/constants'
 import { TIPO_PERSONA_INCIDENTE_LABELS } from '@/lib/constants'
-import type { ActionResult, DirectorioPersona } from '@/lib/types'
+import { PersonaSelectorConAlta } from '@/components/persona-selector-con-alta'
+import { PersonaMultiSelectConSueltos, type PersonaMultiSelectValue } from '@/components/persona-multiselect'
+import type { ActionResult } from '@/lib/types'
+
+const EMPTY_VINCULOS: PersonaMultiSelectValue = { personaIds: [], sueltos: [] }
 
 type Action = (
   prev: ActionResult<null> | null,
@@ -21,25 +24,13 @@ interface Props {
 }
 
 export function IncidenteForm({ action, onSuccess, establecimientoId }: Props) {
-  const [personas, setPersonas] = useState<DirectorioPersona[]>([])
+  const [personaId, setPersonaId] = useState<string | null>(null)
   const [tipoPersona, setTipoPersona] = useState<string>('trabajador_interno')
+  const [involucrados, setInvolucrados] = useState<PersonaMultiSelectValue>(EMPTY_VINCULOS)
+  const [testigos, setTestigos] = useState<PersonaMultiSelectValue>(EMPTY_VINCULOS)
   const [fechaBaja, setFechaBaja] = useState('')
   const [fechaAlta, setFechaAlta] = useState('')
   const [diasCalculados, setDiasCalculados] = useState<number | null>(null)
-
-  useEffect(() => {
-    const supabase = createClient()
-    supabase
-      .from('personas_establecimientos')
-      .select('personas_directorio(id, nombre, apellido, dni)')
-      .eq('establecimiento_id', establecimientoId)
-      .then(({ data }) => {
-        const list = ((data ?? []) as unknown as { personas_directorio: DirectorioPersona }[])
-          .map(r => r.personas_directorio)
-          .filter(Boolean)
-        setPersonas(list)
-      })
-  }, [establecimientoId])
 
   const calcularDias = useCallback(() => {
     if (fechaBaja && fechaAlta) {
@@ -55,7 +46,12 @@ export function IncidenteForm({ action, onSuccess, establecimientoId }: Props) {
   const [state, formAction, isPending] = useActionState(
     async (prev: ActionResult<null> | null, fd: FormData) => {
       const result = await action(prev, fd)
-      if (result.success) onSuccess()
+      if (result.success) {
+        setPersonaId(null)
+        setInvolucrados(EMPTY_VINCULOS)
+        setTestigos(EMPTY_VINCULOS)
+        onSuccess()
+      }
       return result
     },
     null
@@ -89,15 +85,15 @@ export function IncidenteForm({ action, onSuccess, establecimientoId }: Props) {
         </select>
       </div>
 
-      <div>
-        <label htmlFor="incidente-persona-id" className="text-xs text-text-secondary block mb-1">Persona afectada</label>
-        <select id="incidente-persona-id" name="persona_id" className="w-full border border-border-default rounded px-3 py-2 text-sm bg-surface-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]">
-          <option value="">Seleccioná…</option>
-          {personas.map(p => (
-            <option key={p.id} value={p.id}>{p.apellido}, {p.nombre} {p.dni ? `- DNI: ${p.dni}` : ''}</option>
-          ))}
-        </select>
-      </div>
+      <PersonaSelectorConAlta
+        label="Persona afectada"
+        name="persona_id"
+        value={personaId}
+        onChange={p => setPersonaId(p?.id ?? null)}
+        establecimientoId={establecimientoId}
+        esExterna={tipoPersona === 'trabajador_externo'}
+        placeholder="Seleccioná o creá la persona afectada…"
+      />
 
       <Input label="Fecha de ocurrencia *" name="fecha_ocurrencia" type="date" required
         defaultValue={new Date().toISOString().split('T')[0]} />
@@ -105,6 +101,29 @@ export function IncidenteForm({ action, onSuccess, establecimientoId }: Props) {
       <Input label="Hora de ocurrencia" name="hora_ocurrencia" type="time" />
 
       <Textarea label="Descripción" name="descripcion" placeholder="Breve descripción del incidente…" rows={3} />
+
+      <div className="border-t border-border-subtle pt-4 space-y-4">
+        <p className="text-sm font-medium text-text-secondary">Personas vinculadas</p>
+        <PersonaMultiSelectConSueltos
+          label="Involucrados"
+          value={involucrados}
+          onChange={setInvolucrados}
+          establecimientoId={establecimientoId}
+          placeholder="Agregar involucrados…"
+        />
+        <input type="hidden" name="involucrados_persona_ids" value={JSON.stringify(involucrados.personaIds)} />
+        <input type="hidden" name="involucrados_sueltos" value={JSON.stringify(involucrados.sueltos)} />
+
+        <PersonaMultiSelectConSueltos
+          label="Testigos"
+          value={testigos}
+          onChange={setTestigos}
+          establecimientoId={establecimientoId}
+          placeholder="Agregar testigos…"
+        />
+        <input type="hidden" name="testigos_persona_ids" value={JSON.stringify(testigos.personaIds)} />
+        <input type="hidden" name="testigos_sueltos" value={JSON.stringify(testigos.sueltos)} />
+      </div>
 
       <div className="border-t border-border-subtle pt-4">
         <p className="text-sm font-medium text-text-secondary mb-3">Datos médicos</p>

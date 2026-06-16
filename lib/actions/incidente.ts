@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { consultoraIdFromEstablecimiento, tenantStoragePath } from '@/lib/storage/tenant-path'
+import { parsePersonaVinculos, syncPersonaVinculos } from '@/lib/actions/persona-vinculos'
 import type { ActionResult, IncidenteEstado } from '@/lib/types'
 
 const MAX_ARCHIVOS = 5
@@ -125,11 +126,18 @@ export async function createIncidente(
     reportado_por: user.id,
   }
 
-  const { error } = await supabase
+  const { data: inserted, error } = await supabase
     .from('incidentes')
     .insert(insertData)
+    .select('id')
+    .single()
 
   if (error) return { success: false, error: error.message }
+
+  const involucrados = parsePersonaVinculos(formData, 'involucrados')
+  const testigos = parsePersonaVinculos(formData, 'testigos')
+  await syncPersonaVinculos(supabase, 'incidentes_involucrados', 'incidente_id', inserted.id, involucrados)
+  await syncPersonaVinculos(supabase, 'incidentes_testigos', 'incidente_id', inserted.id, testigos)
 
   revalidatePath(`/dashboard/empresas/${empresaId}/establecimientos/${establecimientoId}`)
   return { success: true, data: null }
@@ -207,6 +215,22 @@ export async function updateIncidente(
     .eq('id', incidenteId)
 
   if (error) return { success: false, error: error.message }
+
+  // Solo re-sincronizamos los vínculos si el form envió los campos del
+  // multi-select (presentes => fuente de verdad). Así una edición que no
+  // toque el bloque de personas no borra los vínculos existentes.
+  if (formData.has('involucrados_persona_ids') || formData.has('involucrados_sueltos')) {
+    await syncPersonaVinculos(
+      supabase, 'incidentes_involucrados', 'incidente_id', incidenteId,
+      parsePersonaVinculos(formData, 'involucrados'),
+    )
+  }
+  if (formData.has('testigos_persona_ids') || formData.has('testigos_sueltos')) {
+    await syncPersonaVinculos(
+      supabase, 'incidentes_testigos', 'incidente_id', incidenteId,
+      parsePersonaVinculos(formData, 'testigos'),
+    )
+  }
 
   revalidatePath(`/dashboard/empresas/${empresaId}/establecimientos/${establecimientoId}`)
   return { success: true, data: null }

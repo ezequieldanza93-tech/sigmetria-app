@@ -86,7 +86,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
         .order('nombre'),
       supabase
         .from('incidentes')
-        .select('*')
+        .select('*, incidentes_involucrados(id, persona_id, nombre_suelto, personas_directorio(nombre, apellido)), incidentes_testigos(id, persona_id, nombre_suelto, personas_directorio(nombre, apellido))')
         .eq('establecimiento_id', estId)
         .order('fecha_ocurrencia', { ascending: false }),
       supabase
@@ -109,7 +109,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
 
     const today = new Date().toISOString().split('T')[0]
     const [d1, d2, d3, d4] = await Promise.all([
-      supabase.from('denuncias').select('*, personas_directorio(nombre, apellido), denuncias_fotos(url)').eq('establecimiento_id', estId).order('fecha_denuncia', { ascending: false }),
+      supabase.from('denuncias').select('*, personas_directorio(nombre, apellido), denuncias_fotos(url), denuncias_involucrados(id, persona_id, nombre_suelto, personas_directorio(nombre, apellido))').eq('establecimiento_id', estId).order('fecha_denuncia', { ascending: false }),
       supabase.from('establecimientos_feedback_clientes').select('*, personas_directorio(nombre, apellido)').eq('establecimiento_id', estId).order('fecha', { ascending: false }),
       supabase.from('empresas_documentos').select('*, documentos_tipos(nombre, categoria_legajo, periodicidad)').eq('empresa_id', empresaId).order('created_at', { ascending: false }),
       supabase

@@ -9,7 +9,20 @@ import { IncidenteForm } from '@/components/forms/incidente-form'
 import { INCIDENTE_TIPO_LABELS, INCIDENTE_ESTADO_LABELS, TIPO_PERSONA_INCIDENTE_LABELS } from '@/lib/constants'
 import { INCIDENTE_ESTADO_COLORS } from '@/lib/types'
 import { createIncidente } from '@/lib/actions/incidente'
-import type { Incidente } from '@/lib/types'
+import type { Incidente, PersonaVinculo } from '@/lib/types'
+
+/** Nombres legibles de un set de vínculos N:M (directorio + sueltos). */
+function vinculosLabel(vinculos?: PersonaVinculo[]): string {
+  if (!vinculos || vinculos.length === 0) return ''
+  return vinculos
+    .map(v =>
+      v.personas_directorio
+        ? `${v.personas_directorio.apellido}, ${v.personas_directorio.nombre}`
+        : v.nombre_suelto ?? '',
+    )
+    .filter(Boolean)
+    .join(' · ')
+}
 
 interface IncidentesTabProps {
   incidentes: Incidente[]
@@ -49,6 +62,7 @@ export function IncidentesTab({ incidentes, establecimientoId, empresaId, canWri
                 <th className="px-5 py-3 text-text-secondary font-medium">Persona</th>
                 <th className="px-5 py-3 text-text-secondary font-medium">Fecha</th>
                 <th className="px-5 py-3 text-text-secondary font-medium">Estado</th>
+                <th className="px-5 py-3 text-text-secondary font-medium">Involucrados / Testigos</th>
                 <th className="px-5 py-3 text-text-secondary font-medium text-center">Días Perdidos</th>
                 <th className="px-5 py-3 text-text-secondary font-medium text-center">Calc.</th>
                 <th className="px-5 py-3 text-text-secondary font-medium">Deriv.</th>
@@ -71,6 +85,17 @@ export function IncidentesTab({ incidentes, establecimientoId, empresaId, canWri
                     <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${INCIDENTE_ESTADO_COLORS[s.estado]}`}>
                       {INCIDENTE_ESTADO_LABELS[s.estado]}
                     </span>
+                  </td>
+                  <td className="px-5 py-3.5 text-text-secondary text-xs">
+                    {vinculosLabel(s.incidentes_involucrados) ? (
+                      <div><span className="text-text-tertiary">Involucrados:</span> {vinculosLabel(s.incidentes_involucrados)}</div>
+                    ) : null}
+                    {vinculosLabel(s.incidentes_testigos) ? (
+                      <div><span className="text-text-tertiary">Testigos:</span> {vinculosLabel(s.incidentes_testigos)}</div>
+                    ) : null}
+                    {!vinculosLabel(s.incidentes_involucrados) && !vinculosLabel(s.incidentes_testigos) && (
+                      <span className="text-text-tertiary">—</span>
+                    )}
                   </td>
                   <td className="px-5 py-3.5 text-center tabular-nums">{s.dias_perdidos ?? '—'}</td>
                   <td className="px-5 py-3.5 text-center tabular-nums text-text-tertiary">

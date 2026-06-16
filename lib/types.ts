@@ -573,6 +573,19 @@ export interface Incidente {
   created_at: string
   updated_at: string
   persona?: DirectorioPersona
+  incidentes_involucrados?: PersonaVinculo[]
+  incidentes_testigos?: PersonaVinculo[]
+}
+
+/**
+ * Fila de una tabla N:M persona↔(incidente|denuncia). Exactamente uno de
+ * `persona_id` (FK al directorio) o `nombre_suelto` (tercero) viene seteado.
+ */
+export interface PersonaVinculo {
+  id: string
+  persona_id: string | null
+  nombre_suelto: string | null
+  personas_directorio?: { nombre: string; apellido: string } | null
 }
 
 export interface InspeccionObservacion {
@@ -1155,6 +1168,7 @@ export interface Denuncia {
   updated_at: string
   personas_directorio?: { nombre: string; apellido: string } | null
   denuncias_fotos?: { url: string }[]
+  denuncias_involucrados?: PersonaVinculo[]
 }
 
 /** @deprecated usar Denuncia */
