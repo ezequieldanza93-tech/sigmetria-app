@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { consultoraIdFromEstablecimiento, consultoraIdFromEmpresa, tenantStoragePath } from '@/lib/storage/tenant-path'
 import type { ActionResult } from '@/lib/types'
+import { calcularFechaVencimiento } from '@/lib/documentos/calcular-vencimiento'
 
 export async function createDocumento(
   empresaId: string,
@@ -44,11 +45,29 @@ export async function createDocumento(
     archivoPath = upload.path
   }
 
+  const fechaEmision = (formData.get('fecha_emision') as string) || null
+  const fechaVencimientoManual = (formData.get('fecha_vencimiento') as string) || null
+
+  // Auto-calcular fecha_vencimiento cuando el tipo es periódico y el usuario
+  // no ingresó una fecha de vencimiento manual.
+  let fechaVencimiento = fechaVencimientoManual
+  if (!fechaVencimiento && fechaEmision) {
+    const { data: tipoDoc } = await supabase
+      .from('documentos_tipos')
+      .select('vigencia_tipo, periodicidad')
+      .eq('id', tipo_id)
+      .single()
+    if (tipoDoc?.vigencia_tipo === 'periodica' && tipoDoc.periodicidad) {
+      fechaVencimiento = calcularFechaVencimiento(tipoDoc.periodicidad, fechaEmision)
+    }
+  }
+
   const commonFields = {
     // archivo_url almacena el PATH relativo del objeto (bucket `documentos`).
     tipo_id,
     archivo_url: archivoPath,
-    fecha_vencimiento: (formData.get('fecha_vencimiento') as string) || null,
+    fecha_emision: fechaEmision,
+    fecha_vencimiento: fechaVencimiento,
     subido_por: user.id,
   }
 

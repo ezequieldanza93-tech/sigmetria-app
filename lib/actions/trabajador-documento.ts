@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { uploadAsset } from '@/lib/storage/upload'
 import type { ActionResult } from '@/lib/types'
+import { calcularFechaVencimiento } from '@/lib/documentos/calcular-vencimiento'
 
 const MAX_ARCHIVOS = 5
 
@@ -19,8 +20,8 @@ export async function createTrabajadorDocumento(
   if (!user) return { success: false, error: 'No autenticado' }
 
   const tipoId = formData.get('tipo_id') as string
-  const fechaEmision = formData.get('fecha_emision') as string
-  const fechaVencimiento = formData.get('fecha_vencimiento') as string
+  const fechaEmision = (formData.get('fecha_emision') as string) || null
+  const fechaVencimientoManual = (formData.get('fecha_vencimiento') as string) || null
 
   if (!tipoId) return { success: false, error: 'Seleccioná un tipo de documento' }
 
@@ -72,14 +73,24 @@ export async function createTrabajadorDocumento(
     archivoUrls.push(upload.path)
   }
 
-  // Si es matrícula, también actualizar la tabla matriculas
+  // Leer el tipo de documento: necesitamos nombre (matrícula), vigencia_tipo y
+  // periodicidad (auto-cálculo de fecha_vencimiento para docs periódicos).
   const { data: tipoDoc } = await supabase
     .from('documentos_tipos')
-    .select('nombre')
+    .select('nombre, vigencia_tipo, periodicidad')
     .eq('id', tipoId)
     .single()
 
   const esMatricula = tipoDoc?.nombre?.toLowerCase().includes('matrícula')
+
+  // Auto-calcular fecha_vencimiento cuando el tipo es periódico y el usuario
+  // no ingresó una fecha manual.
+  let fechaVencimiento = fechaVencimientoManual
+  if (!fechaVencimiento && fechaEmision) {
+    if (tipoDoc?.vigencia_tipo === 'periodica' && tipoDoc.periodicidad) {
+      fechaVencimiento = calcularFechaVencimiento(tipoDoc.periodicidad, fechaEmision)
+    }
+  }
 
   const { error } = await supabase
     .from('personas_documentos')
@@ -88,8 +99,8 @@ export async function createTrabajadorDocumento(
       tipo_id: tipoId,
       archivo_url: archivoUrls[0] || null,
       archivo_urls: archivoUrls.length > 0 ? archivoUrls : null,
-      fecha_emision: fechaEmision || null,
-      fecha_vencimiento: fechaVencimiento || null,
+      fecha_emision: fechaEmision,
+      fecha_vencimiento: fechaVencimiento,
       subido_por: user.id,
     })
 

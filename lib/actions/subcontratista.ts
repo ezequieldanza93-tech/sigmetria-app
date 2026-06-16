@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import type { ActionResult } from '@/lib/types'
 import { uploadAsset } from '@/lib/storage/upload'
+import { calcularFechaVencimiento } from '@/lib/documentos/calcular-vencimiento'
 
 // ──────────────────────────────────────────────
 // Helpers
@@ -135,16 +136,17 @@ export async function createSubcontratistaDocumento(
   const file = formData.get('archivo') as File | null
   let archivoUrl: string | null = null
 
-  if (file && file.size > 0) {
-    // Get tipo name for kind
-    const { data: tipo } = await supabase
-      .from('documentos_tipos')
-      .select('nombre')
-      .eq('id', tipoId)
-      .single()
+  // Leer el tipo una sola vez: necesitamos nombre (kind del bucket),
+  // vigencia_tipo y periodicidad (auto-cálculo de vencimiento).
+  const { data: tipoDoc } = await supabase
+    .from('documentos_tipos')
+    .select('nombre, vigencia_tipo, periodicidad')
+    .eq('id', tipoId)
+    .single()
 
-    const kind = tipo?.nombre
-      ? tipo.nombre.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'documento'
+  if (file && file.size > 0) {
+    const kind = tipoDoc?.nombre
+      ? tipoDoc.nombre.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'documento'
       : 'documento'
 
     const result = await uploadAsset({
@@ -160,12 +162,24 @@ export async function createSubcontratistaDocumento(
     archivoUrl = result.path
   }
 
+  const fechaEmision = (formData.get('fecha_emision') as string) || null
+  const fechaVencimientoManual = (formData.get('fecha_vencimiento') as string) || null
+
+  // Auto-calcular fecha_vencimiento cuando el tipo es periódico y el usuario
+  // no ingresó una fecha manual.
+  let fechaVencimiento = fechaVencimientoManual
+  if (!fechaVencimiento && fechaEmision) {
+    if (tipoDoc?.vigencia_tipo === 'periodica' && tipoDoc.periodicidad) {
+      fechaVencimiento = calcularFechaVencimiento(tipoDoc.periodicidad, fechaEmision)
+    }
+  }
+
   const { error } = await supabase.from('subcontratistas_documentos').insert({
     subcontratista_id: subcontratistaId,
     tipo_id: tipoId,
     archivo_url: archivoUrl,
-    fecha_emision: (formData.get('fecha_emision') as string) || null,
-    fecha_vencimiento: (formData.get('fecha_vencimiento') as string) || null,
+    fecha_emision: fechaEmision,
+    fecha_vencimiento: fechaVencimiento,
     observaciones: (formData.get('observaciones') as string) || null,
     subido_por: user.id,
   })
