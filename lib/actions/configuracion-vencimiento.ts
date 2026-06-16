@@ -234,15 +234,16 @@ export async function refrescarNotificacionesCron(): Promise<ActionResult<{ proc
       }
     }
 
-    // 3. personas_documentos
+    // 3. personas_documentos — scoped a consultora via created_in_consultora_id
     const { data: perDocs } = await admin
       .from('personas_documentos')
       .select(`
         id, fecha_vencimiento,
         documentos_tipos!inner(nombre),
-        personas_directorio!inner(id, nombre, apellido)
+        personas_directorio!inner(id, nombre, apellido, created_in_consultora_id)
       `)
       .not('fecha_vencimiento', 'is', null)
+      .eq('personas_directorio.created_in_consultora_id', consultora.id)
 
     for (const d of (perDocs ?? []) as any[]) {
       if (findConfig('persona', d.documentos_tipos?.nombre)) {

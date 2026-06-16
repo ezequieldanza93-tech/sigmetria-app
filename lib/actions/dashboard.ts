@@ -63,11 +63,11 @@ export async function getDashboardKpis(widgetKeys: WidgetKey[]): Promise<ActionR
     return (data ?? []).map(e => e.id)
   }
 
-  const empresaIds = widgetKeys.some(k => ['establecimientos', 'trabajadores', 'incidentes_mes', 'incidentes_acumulados', 'inspecciones_pendientes', 'tasa_incidentalidad'].includes(k))
+  const empresaIds = widgetKeys.some(k => ['establecimientos', 'trabajadores', 'incidentes_mes', 'incidentes_acumulados', 'inspecciones_pendientes', 'tasa_incidentalidad', 'documentos_vencer_7d', 'documentos_vencer_15d', 'documentos_vencer_30d'].includes(k))
     ? await getEmpresaIds()
     : []
 
-  const establecimientoIds = widgetKeys.some(k => ['incidentes_mes', 'incidentes_acumulados', 'inspecciones_pendientes', 'tasa_incidentalidad'].includes(k))
+  const establecimientoIds = widgetKeys.some(k => ['incidentes_mes', 'incidentes_acumulados', 'inspecciones_pendientes', 'tasa_incidentalidad', 'documentos_vencer_7d', 'documentos_vencer_15d', 'documentos_vencer_30d'].includes(k))
     ? empresaIds.length > 0 ? await getEstablecimientoIds() : []
     : []
 
@@ -131,45 +131,68 @@ export async function getDashboardKpis(widgetKeys: WidgetKey[]): Promise<ActionR
     )
   }
 
+  // Helper: conteo de docs por ventana sumando las cuatro fuentes (scoped a consultora)
+  async function countDocsVencer(hasta: string): Promise<number> {
+    const [r1, r2, r3, r4] = await Promise.all([
+      // 1. empresas_documentos
+      empresaIds.length === 0
+        ? Promise.resolve(0)
+        : supabase.from('empresas_documentos').select('*', { count: 'exact', head: true })
+            .in('empresa_id', empresaIds)
+            .not('fecha_vencimiento', 'is', null)
+            .gte('fecha_vencimiento', today)
+            .lte('fecha_vencimiento', hasta)
+            .then(({ count }) => count ?? 0),
+
+      // 2. establecimientos_documentos
+      establecimientoIds.length === 0
+        ? Promise.resolve(0)
+        : supabase.from('establecimientos_documentos').select('*', { count: 'exact', head: true })
+            .in('establecimiento_id', establecimientoIds)
+            .not('fecha_vencimiento', 'is', null)
+            .gte('fecha_vencimiento', today)
+            .lte('fecha_vencimiento', hasta)
+            .then(({ count }) => count ?? 0),
+
+      // 3. personas_documentos — scoped via created_in_consultora_id
+      supabase.from('personas_documentos')
+        .select('id, personas_directorio!inner(created_in_consultora_id)', { count: 'exact', head: true })
+        .eq('personas_directorio.created_in_consultora_id', consultoraId)
+        .not('fecha_vencimiento', 'is', null)
+        .gte('fecha_vencimiento', today)
+        .lte('fecha_vencimiento', hasta)
+        .then(({ count }) => count ?? 0),
+
+      // 4. subcontratistas_documentos — scoped via subcontratistas → organizaciones_externas → empresas
+      empresaIds.length === 0
+        ? Promise.resolve(0)
+        : supabase.from('subcontratistas_documentos')
+            .select('id, subcontratistas!inner(organizaciones_externas!inner(empresa_id))', { count: 'exact', head: true })
+            .in('subcontratistas.organizaciones_externas.empresa_id', empresaIds)
+            .not('fecha_vencimiento', 'is', null)
+            .gte('fecha_vencimiento', today)
+            .lte('fecha_vencimiento', hasta)
+            .then(({ count }) => count ?? 0),
+    ])
+
+    return r1 + r2 + r3 + r4
+  }
+
   if (widgetKeys.includes('documentos_vencer_7d')) {
     promises.push(
-      (async () => {
-        if (empresaIds.length === 0) { result.documentos_vencer_7d = 0; return }
-        const { count } = await supabase.from('empresas_documentos').select('*', { count: 'exact', head: true })
-          .in('empresa_id', empresaIds)
-          .not('fecha_vencimiento', 'is', null)
-          .gte('fecha_vencimiento', today)
-          .lte('fecha_vencimiento', in7d)
-        result.documentos_vencer_7d = count ?? 0
-      })(),
+      (async () => { result.documentos_vencer_7d = await countDocsVencer(in7d) })(),
     )
   }
 
   if (widgetKeys.includes('documentos_vencer_15d')) {
     promises.push(
-      (async () => {
-        if (empresaIds.length === 0) { result.documentos_vencer_15d = 0; return }
-        const { count } = await supabase.from('empresas_documentos').select('*', { count: 'exact', head: true })
-          .in('empresa_id', empresaIds)
-          .not('fecha_vencimiento', 'is', null)
-          .gte('fecha_vencimiento', today)
-          .lte('fecha_vencimiento', in15d)
-        result.documentos_vencer_15d = count ?? 0
-      })(),
+      (async () => { result.documentos_vencer_15d = await countDocsVencer(in15d) })(),
     )
   }
 
   if (widgetKeys.includes('documentos_vencer_30d')) {
     promises.push(
-      (async () => {
-        if (empresaIds.length === 0) { result.documentos_vencer_30d = 0; return }
-        const { count } = await supabase.from('empresas_documentos').select('*', { count: 'exact', head: true })
-          .in('empresa_id', empresaIds)
-          .not('fecha_vencimiento', 'is', null)
-          .gte('fecha_vencimiento', today)
-          .lte('fecha_vencimiento', in30d)
-        result.documentos_vencer_30d = count ?? 0
-      })(),
+      (async () => { result.documentos_vencer_30d = await countDocsVencer(in30d) })(),
     )
   }
 
