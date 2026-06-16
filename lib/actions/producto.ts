@@ -164,11 +164,34 @@ export async function createProducto(
 export async function updateProductoFoto(
   productoId: string,
   fotoFile: File,
-  consultoraId: string,
 ): Promise<ActionResult<{ path: string }>> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
+
+  // Leemos el target para saber si es base o propio y autorizar correctamente.
+  const { data: target } = await supabase
+    .from('productos')
+    .select('consultora_id')
+    .eq('id', productoId)
+    .maybeSingle()
+
+  if (!target) return { success: false, error: 'No se encontró el producto' }
+
+  let consultoraId: string
+
+  if (target.consultora_id === null) {
+    // Producto base: solo quien puede gestionar librerías.
+    if (!(await puedeGestionarLibreriasServer())) {
+      return { success: false, error: 'Sin permiso para editar imágenes de productos de la librería base' }
+    }
+    consultoraId = GENERIC_STORAGE_PREFIX
+  } else {
+    // Producto propio: acotamos al scope de la consultora del usuario.
+    const cId = await getConsultoraId()
+    if (!cId.success) return cId
+    consultoraId = cId.data
+  }
 
   const uploadResult = await uploadAsset({
     bucket: 'productos-epp',
@@ -180,11 +203,19 @@ export async function updateProductoFoto(
   })
   if (!uploadResult.ok) return { success: false, error: uploadResult.error }
 
-  const { error } = await supabase
+  let query = supabase
     .from('productos')
     .update({ foto_url: uploadResult.path })
     .eq('id', productoId)
 
+  // Para productos propios, reforzamos el scope de consultora (la RLS también lo hace).
+  if (target.consultora_id !== null) {
+    const cId = await getConsultoraId()
+    if (!cId.success) return cId
+    query = query.eq('consultora_id', cId.data)
+  }
+
+  const { error } = await query
   if (error) return { success: false, error: error.message }
 
   revalidatePath('/dashboard/productos')

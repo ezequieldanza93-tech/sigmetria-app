@@ -9,7 +9,8 @@ import { FotoInput } from '@/components/ui/foto-input'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { MultiSelectFilter } from '@/components/ui/multi-select-filter'
 import { createClient } from '@/lib/supabase/client'
-import { createProducto, deleteProducto, updateProducto } from '@/lib/actions/producto'
+import { createProducto, deleteProducto, updateProducto, updateProductoFoto } from '@/lib/actions/producto'
+import { publicAssetUrl } from '@/lib/storage/asset-url'
 import { useEffectiveRoleContext } from '@/lib/contexts/effective-role-context'
 import { useCatalogoArbol } from '@/lib/queries/producto-catalogo'
 import { OrigenFilter, pasaOrigen, type OrigenFiltro } from '@/components/ui/origen-filter'
@@ -222,6 +223,8 @@ function ProductoEditForm({
   const [unidadId, setUnidadId] = useState(producto.unidad_id ?? '')
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [fotoFile, setFotoFile] = useState<File | null>(null)
+  const [fotoPreview, setFotoPreview] = useState<string | null>(null)
 
   function handleClase(v: string) {
     setClaseId(v)
@@ -233,19 +236,43 @@ function ProductoEditForm({
     setComponenteId('')
   }
 
+  function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setFotoFile(file)
+    setFotoPreview(URL.createObjectURL(file))
+  }
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setPending(true)
     setError(null)
+
     const fd = new FormData(e.currentTarget)
     const res = await updateProducto(producto.id, fd)
-    setPending(false)
-    if (res.success) {
-      onSuccess()
-    } else {
+    if (!res.success) {
+      setPending(false)
       setError(res.error)
+      return
     }
+
+    // Si hay foto nueva, subirla en un segundo paso.
+    if (fotoFile) {
+      const fotoRes = await updateProductoFoto(producto.id, fotoFile)
+      if (!fotoRes.success) {
+        setPending(false)
+        setError(`Los datos se guardaron, pero la foto falló: ${fotoRes.error}`)
+        return
+      }
+    }
+
+    setPending(false)
+    onSuccess()
   }
+
+  const fotoActual = producto.foto_url
+    ? publicAssetUrl('productos-epp', producto.foto_url)
+    : null
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -296,6 +323,29 @@ function ProductoEditForm({
       <div>
         <label className="text-sm font-medium text-text-secondary block mb-1">Descripción</label>
         <textarea name="descripcion" rows={2} defaultValue={producto.descripcion ?? ''} className="w-full border border-border-default rounded-lg px-3 py-2 text-sm resize-none" />
+      </div>
+
+      {/* Foto del producto — visible para todos los que pueden editar */}
+      <div>
+        <label className="text-sm font-medium text-text-secondary block mb-2">
+          Foto del producto
+        </label>
+        {/* Preview: nueva foto si la eligieron, o la existente como referencia */}
+        {(fotoPreview ?? fotoActual) && (
+          <div className="mb-2 w-24 h-24 rounded-lg overflow-hidden border border-border-subtle relative">
+            <Image
+              src={fotoPreview ?? fotoActual!}
+              alt="Foto del producto"
+              fill
+              sizes="96px"
+              className="object-cover"
+            />
+          </div>
+        )}
+        <FotoInput onChange={handleFotoChange} accept="image/*" size="sm" />
+        <p className="text-xs text-text-tertiary mt-1">
+          {fotoActual ? 'Elegí una imagen para reemplazar la existente.' : 'Máx. 5 MB — PNG, JPEG o WebP.'}
+        </p>
       </div>
 
       <div className="flex justify-end">
