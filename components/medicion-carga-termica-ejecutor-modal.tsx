@@ -31,6 +31,7 @@ import type { CertificadoCalibracion } from '@/lib/types'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { PersonaFirmanteSelector } from '@/components/persona-firmante-selector'
+import { PersonaSelectorConAlta } from '@/components/persona-selector-con-alta'
 import { FirmaCanvas } from '@/components/firmas/firma-canvas'
 import { firmarProtocolo } from '@/lib/actions/firmar-protocolo'
 import {
@@ -85,7 +86,10 @@ interface PeriodoState {
 interface PuestoState {
   key: number
   nombre_puesto: string
+  /** Snapshot de texto del trabajador medido (derivado de la persona elegida). */
   trabajador: string
+  /** FK al directorio: trabajador medido (persona del establecimiento). */
+  trabajador_persona_id: string
   ghe: boolean
   ambiente_homogeneo: boolean
   altura_medicion: string   // solo si NO homogéneo
@@ -189,6 +193,7 @@ function nuevoPuesto(): PuestoState {
     key: puestoKeySeq++,
     nombre_puesto: '',
     trabajador: '',
+    trabajador_persona_id: '',
     ghe: false,
     ambiente_homogeneo: true,
     altura_medicion: '',
@@ -410,8 +415,11 @@ export function MedicionCargaTermicaEjecutorModal({
   const [atmPresion, setAtmPresion] = useState('')
   const [atmViento, setAtmViento] = useState('')
   const [condicionesPuesto, setCondicionesPuesto] = useState('')
+  // Representantes (lado cliente): persona del directorio + snapshot de texto derivado.
   const [representanteTrabajadores, setRepresentanteTrabajadores] = useState('')
+  const [representanteTrabajadoresPersonaId, setRepresentanteTrabajadoresPersonaId] = useState('')
   const [representanteEmpresa, setRepresentanteEmpresa] = useState('')
+  const [representanteEmpresaPersonaId, setRepresentanteEmpresaPersonaId] = useState('')
   const [observacionesGenerales, setObservacionesGenerales] = useState('')
   const [planoFile, setPlanoFile] = useState<File | null>(null)
 
@@ -831,7 +839,9 @@ export function MedicionCargaTermicaEjecutorModal({
       fd.set('atm_viento', atmViento)
       fd.set('condiciones_puesto', condicionesPuesto)
       fd.set('representante_trabajadores', representanteTrabajadores)
+      if (representanteTrabajadoresPersonaId) fd.set('representante_trabajadores_persona_id', representanteTrabajadoresPersonaId)
       fd.set('representante_empresa', representanteEmpresa)
+      if (representanteEmpresaPersonaId) fd.set('representante_empresa_persona_id', representanteEmpresaPersonaId)
       fd.set('observaciones', observacionesGenerales)
       fd.set('conclusiones_aclimatado', conclusionesAclimatado)
       fd.set('conclusiones_no_aclimatado', conclusionesNoAclimatado)
@@ -853,6 +863,7 @@ export function MedicionCargaTermicaEjecutorModal({
         altura_medicion: p.ambiente_homogeneo ? null : num(p.altura_medicion),
         tipo_fuente: p.tipo_fuente || null,
         trabajador: p.trabajador || null,
+        trabajador_persona_id: p.trabajador_persona_id || null,
         ghe: p.ghe,
         aclimatado: p.aclimatado,
         conclusion: p.conclusion || null,
@@ -1207,14 +1218,26 @@ export function MedicionCargaTermicaEjecutorModal({
                 <textarea className={`${inputCls} resize-none`} rows={2} value={condicionesPuesto} onChange={e => setCondicionesPuesto(e.target.value)} placeholder="Ventilación, fuentes de calor, características del ambiente…" />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className={labelCls}>Representante de los trabajadores</label>
-                  <input type="text" className={inputCls} value={representanteTrabajadores} onChange={e => setRepresentanteTrabajadores(e.target.value)} />
-                </div>
-                <div>
-                  <label className={labelCls}>Representante de la empresa</label>
-                  <input type="text" className={inputCls} value={representanteEmpresa} onChange={e => setRepresentanteEmpresa(e.target.value)} />
-                </div>
+                <PersonaSelectorConAlta
+                  label="Representante de los trabajadores"
+                  value={representanteTrabajadoresPersonaId || null}
+                  establecimientoId={establecimientoId}
+                  placeholder="Seleccionar persona…"
+                  onChange={p => {
+                    setRepresentanteTrabajadoresPersonaId(p?.id ?? '')
+                    setRepresentanteTrabajadores(p ? `${p.apellido}, ${p.nombre}` : '')
+                  }}
+                />
+                <PersonaSelectorConAlta
+                  label="Representante de la empresa"
+                  value={representanteEmpresaPersonaId || null}
+                  establecimientoId={establecimientoId}
+                  placeholder="Seleccionar persona…"
+                  onChange={p => {
+                    setRepresentanteEmpresaPersonaId(p?.id ?? '')
+                    setRepresentanteEmpresa(p ? `${p.apellido}, ${p.nombre}` : '')
+                  }}
+                />
               </div>
             </section>
 
@@ -1278,10 +1301,17 @@ export function MedicionCargaTermicaEjecutorModal({
 
               {/* Identificación */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className={labelCls}>Trabajador / identificación</label>
-                  <input type="text" className={inputCls} value={puesto.trabajador} onChange={e => updatePuesto(puesto.key, { trabajador: e.target.value })} placeholder="Nombre o legajo del trabajador" />
-                </div>
+                <PersonaSelectorConAlta
+                  key={puesto.key}
+                  label="Trabajador / identificación"
+                  value={puesto.trabajador_persona_id || null}
+                  establecimientoId={establecimientoId}
+                  placeholder="Seleccionar trabajador…"
+                  onChange={p => updatePuesto(puesto.key, {
+                    trabajador_persona_id: p?.id ?? '',
+                    trabajador: p ? `${p.apellido}, ${p.nombre}` : '',
+                  })}
+                />
                 <div>
                   <label className={labelCls}>Puesto / sector</label>
                   <input type="text" className={inputCls} value={puesto.nombre_puesto} onChange={e => updatePuesto(puesto.key, { nombre_puesto: e.target.value })} placeholder="Ej: Horno - línea 2" />

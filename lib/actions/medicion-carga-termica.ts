@@ -56,6 +56,7 @@ interface PuestoInput {
   altura_medicion?: number | null
   tipo_fuente?: string | null
   trabajador?: string | null
+  trabajador_persona_id?: string | null
   ghe?: boolean | null
   aclimatado?: boolean | null
   conclusion?: string | null
@@ -117,7 +118,9 @@ export async function crearMedicionCargaTermica(
   const atmViento = (formData.get('atm_viento') as string) || null
   const condicionesPuesto = (formData.get('condiciones_puesto') as string) || null
   const representanteTrabajadores = (formData.get('representante_trabajadores') as string) || null
+  const representanteTrabajadoresPersonaId = (formData.get('representante_trabajadores_persona_id') as string) || null
   const representanteEmpresa = (formData.get('representante_empresa') as string) || null
+  const representanteEmpresaPersonaId = (formData.get('representante_empresa_persona_id') as string) || null
   const observaciones = (formData.get('observaciones') as string) || null
   const conclusionesAclimatado = (formData.get('conclusiones_aclimatado') as string) || null
   const conclusionesNoAclimatado = (formData.get('conclusiones_no_aclimatado') as string) || null
@@ -213,7 +216,9 @@ export async function crearMedicionCargaTermica(
       atm_viento: atmViento,
       condiciones_puesto: condicionesPuesto,
       representante_trabajadores: representanteTrabajadores,
+      representante_trabajadores_persona_id: representanteTrabajadoresPersonaId,
       representante_empresa: representanteEmpresa,
+      representante_empresa_persona_id: representanteEmpresaPersonaId,
       observaciones,
       conclusiones_aclimatado: conclusionesAclimatado,
       conclusiones_no_aclimatado: conclusionesNoAclimatado,
@@ -242,6 +247,7 @@ export async function crearMedicionCargaTermica(
         altura_medicion: pu.altura_medicion ?? null,
         tipo_fuente: pu.tipo_fuente ?? null,
         trabajador: pu.trabajador ?? null,
+        trabajador_persona_id: pu.trabajador_persona_id ?? null,
         ghe: pu.ghe ?? null,
         aclimatado: pu.aclimatado ?? null,
         conclusion: pu.conclusion ?? null,
