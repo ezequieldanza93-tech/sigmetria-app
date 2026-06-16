@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { getEffectiveRole } from '@/lib/auth/effective-role'
 import type { ActionResult } from '@/lib/types'
 
 // ============================================================
@@ -116,6 +117,16 @@ async function getConsultoraId(): Promise<ActionResult<string>> {
 
   if (!member) return { success: false, error: 'Sin membresía activa' }
   return { success: true, data: member.consultora_id }
+}
+
+/**
+ * ¿El usuario puede administrar las librerías base (filas consultora_id NULL)?
+ * Espeja la función SQL puede_gestionar_librerias() — la RLS es el firewall real;
+ * acá solo evitamos disparar mutaciones que la RLS rechazaría.
+ */
+async function puedeGestionarLibreriasServer(): Promise<boolean> {
+  const role = await getEffectiveRole()
+  return role?.puedeGestionarLibrerias ?? false
 }
 
 // ============================================================
@@ -310,8 +321,11 @@ export async function getRequisitosByNorma(
 }
 
 // ============================================================
-// MUTACIONES — SOLO para normativa propia de la consultora.
-// Las filas base (consultora_id NULL) son read-only (RLS exige is_developer()).
+// MUTACIONES
+// - Normativa propia de la consultora: full_access (RLS por membresía).
+// - Normativa base (consultora_id NULL): solo quien puede_gestionar_librerias()
+//   (admin.main / developer). La RLS es el firewall; acá ramificamos para no
+//   forzar el scope de consultora cuando la fila es base.
 // ============================================================
 
 interface NormativaInput {
@@ -364,15 +378,29 @@ function parseNormativaForm(formData: FormData): { ok: true; value: NormativaInp
 
 export async function createNormativa(formData: FormData): Promise<ActionResult<NormativaNorma>> {
   const supabase = await createClient()
-  const cId = await getConsultoraId()
-  if (!cId.success) return cId
 
   const parsed = parseNormativaForm(formData)
   if (!parsed.ok) return { success: false, error: parsed.error }
 
+  // `as_base` = crear una norma de la librería base (consultora_id NULL).
+  // Solo lo permite quien puede gestionar librerías; el resto crea normas propias.
+  const asBase = formData.get('as_base') === 'true'
+
+  let consultoraId: string | null
+  if (asBase) {
+    if (!(await puedeGestionarLibreriasServer())) {
+      return { success: false, error: 'Sin permiso para gestionar la normativa base' }
+    }
+    consultoraId = null
+  } else {
+    const cId = await getConsultoraId()
+    if (!cId.success) return cId
+    consultoraId = cId.data
+  }
+
   const { data, error } = await supabase
     .from('normativa_normas')
-    .insert({ ...parsed.value, consultora_id: cId.data })
+    .insert({ ...parsed.value, consultora_id: consultoraId })
     .select('id, consultora_id, categoria_id, tipo, numero, anio, titulo, nombre_completo, organismo, ambito, url_oficial, estado, modificaciones, descripcion, aplica_a_todos, airtable_id, orden')
     .single()
 
@@ -386,20 +414,36 @@ export async function updateNormativa(
   formData: FormData,
 ): Promise<ActionResult<NormativaNorma>> {
   const supabase = await createClient()
-  const cId = await getConsultoraId()
-  if (!cId.success) return cId
 
   const parsed = parseNormativaForm(formData)
   if (!parsed.ok) return { success: false, error: parsed.error }
 
-  // El filtro por consultora_id + RLS garantizan que no se toquen filas base.
-  const { data, error } = await supabase
+  // Averiguamos si la fila es base (consultora_id NULL) o propia.
+  const { data: target } = await supabase
     .from('normativa_normas')
-    .update(parsed.value)
+    .select('consultora_id')
     .eq('id', id)
-    .eq('consultora_id', cId.data)
+    .maybeSingle()
+
+  if (!target) return { success: false, error: 'No se encontró la normativa o no es editable' }
+
+  let query = supabase.from('normativa_normas').update(parsed.value).eq('id', id)
+
+  if (target.consultora_id === null) {
+    // Fila base: solo quien puede gestionar librerías. La RLS confirma el permiso.
+    if (!(await puedeGestionarLibreriasServer())) {
+      return { success: false, error: 'Sin permiso para gestionar la normativa base' }
+    }
+  } else {
+    // Fila propia: acotamos al scope de la consultora del usuario.
+    const cId = await getConsultoraId()
+    if (!cId.success) return cId
+    query = query.eq('consultora_id', cId.data)
+  }
+
+  const { data, error } = await query
     .select('id, consultora_id, categoria_id, tipo, numero, anio, titulo, nombre_completo, organismo, ambito, url_oficial, estado, modificaciones, descripcion, aplica_a_todos, airtable_id, orden')
-    .single()
+    .maybeSingle()
 
   if (error) return { success: false, error: error.message }
   if (!data) return { success: false, error: 'No se encontró la normativa o no es editable' }
@@ -409,14 +453,28 @@ export async function updateNormativa(
 
 export async function deleteNormativa(id: string): Promise<ActionResult<null>> {
   const supabase = await createClient()
-  const cId = await getConsultoraId()
-  if (!cId.success) return cId
 
-  const { error } = await supabase
+  const { data: target } = await supabase
     .from('normativa_normas')
-    .delete()
+    .select('consultora_id')
     .eq('id', id)
-    .eq('consultora_id', cId.data)
+    .maybeSingle()
+
+  if (!target) return { success: false, error: 'No se encontró la normativa o no es eliminable' }
+
+  let query = supabase.from('normativa_normas').delete().eq('id', id)
+
+  if (target.consultora_id === null) {
+    if (!(await puedeGestionarLibreriasServer())) {
+      return { success: false, error: 'Sin permiso para gestionar la normativa base' }
+    }
+  } else {
+    const cId = await getConsultoraId()
+    if (!cId.success) return cId
+    query = query.eq('consultora_id', cId.data)
+  }
+
+  const { error } = await query
 
   if (error) return { success: false, error: error.message }
   revalidatePath(REVALIDATE_PATH)

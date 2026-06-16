@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { getEffectiveRole } from '@/lib/auth/effective-role'
 import type { ActionResult, ProductoClase, ProductoComponente, CategoriaProducto } from '@/lib/types'
 
 const CATALOGO_PATH = '/dashboard/productos'
@@ -25,27 +26,25 @@ async function getConsultoraId(): Promise<ActionResult<string>> {
   return { success: true, data: member.consultora_id }
 }
 
-async function isDeveloper(): Promise<boolean> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return false
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('system_role')
-    .eq('id', user.id)
-    .maybeSingle()
-  return profile?.system_role === 'developer'
+/**
+ * ¿El usuario puede administrar las librerías base (filas consultora_id NULL)?
+ * Espeja la función SQL puede_gestionar_librerias() — la RLS es el firewall real;
+ * acá solo evitamos disparar mutaciones que la RLS rechazaría.
+ */
+async function puedeGestionarLibreriasServer(): Promise<boolean> {
+  const role = await getEffectiveRole()
+  return role?.puedeGestionarLibrerias ?? false
 }
 
 // Resuelve el consultora_id objetivo según el flag genérico.
-// - Genérico (consultora_id NULL): solo staff developer.
+// - Genérico (consultora_id NULL): solo quien puede gestionar librerías base.
 // - Propio: consultora_id del miembro activo.
 async function resolveOwnerConsultoraId(
   esGenerico: boolean
 ): Promise<ActionResult<string | null>> {
   if (esGenerico) {
-    if (!(await isDeveloper())) {
-      return { success: false, error: 'Solo el staff de Sigmetría puede editar el catálogo genérico' }
+    if (!(await puedeGestionarLibreriasServer())) {
+      return { success: false, error: 'Sin permiso para gestionar el catálogo de la librería base' }
     }
     return { success: true, data: null }
   }
@@ -56,7 +55,7 @@ async function resolveOwnerConsultoraId(
 
 // Filtro de pertenencia para update/delete: las propias se acotan por consultora_id;
 // las genéricas (NULL) no pueden filtrarse por igualdad → se filtra con IS NULL.
-// La RLS ya garantiza que solo developer toque las genéricas.
+// La RLS ya garantiza que solo quien puedeGestionarLibrerias toque las genéricas.
 
 // ============================================================
 // LECTURA — árbol híbrido clase → categoría → componente

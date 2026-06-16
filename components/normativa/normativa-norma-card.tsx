@@ -16,14 +16,19 @@ import { NormativaRequisitos } from './normativa-requisitos'
 
 interface Props {
   norma: NormativaNormaConConteo
-  /** true cuando la norma pertenece a la consultora (editable). */
+  /** true cuando la norma pertenece a la consultora (editable por full_access). */
   esPropia: boolean
+  /** true cuando el usuario puede gestionar la librería base (admin.main / developer). */
+  puedeGestionarBase?: boolean
   onEdit?: (norma: NormativaNormaConConteo) => void
   onDelete?: (norma: NormativaNormaConConteo) => void
 }
 
-export function NormativaNormaCard({ norma, esPropia, onEdit, onDelete }: Props) {
+export function NormativaNormaCard({ norma, esPropia, puedeGestionarBase = false, onEdit, onDelete }: Props) {
   const [open, setOpen] = useState(false)
+
+  // Es editable si es propia (full_access) o si es base y el usuario gestiona librerías.
+  const editable = esPropia || (!esPropia && puedeGestionarBase)
 
   const titulo = norma.nombre_completo?.trim() || norma.titulo
   const subtitulo = norma.nombre_completo && norma.nombre_completo.trim() !== norma.titulo
@@ -32,7 +37,7 @@ export function NormativaNormaCard({ norma, esPropia, onEdit, onDelete }: Props)
 
   return (
     <div className="bg-surface-base border border-border-subtle rounded-xl overflow-hidden transition-colors hover:border-border-default">
-      <div className="flex items-start gap-3 p-4">
+      <div className="flex items-start gap-2 p-3 sm:gap-3 sm:p-4">
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
@@ -95,34 +100,37 @@ export function NormativaNormaCard({ norma, esPropia, onEdit, onDelete }: Props)
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
           {norma.url_oficial && (
             <a
               href={norma.url_oficial}
               target="_blank"
               rel="noopener noreferrer"
               title="Ver texto oficial"
-              className="inline-flex items-center justify-center h-8 w-8 rounded-lg text-text-tertiary hover:text-brand-primary hover:bg-surface-elevated transition-colors"
+              aria-label="Ver texto oficial"
+              className="inline-flex items-center justify-center h-9 w-9 rounded-lg text-text-tertiary hover:text-brand-primary hover:bg-surface-elevated transition-colors"
             >
               <ExternalLink className="h-4 w-4" />
             </a>
           )}
-          {esPropia && onEdit && (
+          {editable && onEdit && (
             <button
               type="button"
               onClick={() => onEdit(norma)}
               title="Editar"
-              className="inline-flex items-center justify-center h-8 w-8 rounded-lg text-text-tertiary hover:text-text-primary hover:bg-surface-elevated transition-colors"
+              aria-label={`Editar ${titulo}`}
+              className="inline-flex items-center justify-center h-9 w-9 rounded-lg text-text-tertiary hover:text-text-primary hover:bg-surface-elevated transition-colors"
             >
               <Pencil className="h-4 w-4" />
             </button>
           )}
-          {esPropia && onDelete && (
+          {editable && onDelete && (
             <button
               type="button"
               onClick={() => onDelete(norma)}
               title="Eliminar"
-              className="inline-flex items-center justify-center h-8 w-8 rounded-lg text-text-tertiary hover:text-danger hover:bg-surface-elevated transition-colors"
+              aria-label={`Eliminar ${titulo}`}
+              className="inline-flex items-center justify-center h-9 w-9 rounded-lg text-text-tertiary hover:text-danger hover:bg-surface-elevated transition-colors"
             >
               <Trash2 className="h-4 w-4" />
             </button>
@@ -131,7 +139,7 @@ export function NormativaNormaCard({ norma, esPropia, onEdit, onDelete }: Props)
       </div>
 
       {open && (
-        <div className="border-t border-border-subtle bg-surface-sunken/40 px-4 py-4 pl-12">
+        <div className="border-t border-border-subtle bg-surface-sunken/40 px-3 py-4 sm:px-4 sm:pl-12">
           {norma.modificaciones && (
             <div className="mb-4 rounded-lg bg-[var(--warning-bg)] px-3 py-2">
               <p className="text-xs font-semibold text-[var(--warning)] mb-0.5">Modificaciones</p>

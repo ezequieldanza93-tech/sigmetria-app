@@ -21,11 +21,14 @@ export function ProductoDetalle({
   open,
   onClose,
   onEdit,
+  canEditBase = false,
 }: {
   producto: Producto | null
   open: boolean
   onClose: () => void
   onEdit?: (p: Producto) => void
+  /** Si true, permite editar también productos base (consultora_id NULL). Para quien gestiona librerías. */
+  canEditBase?: boolean
 }) {
   const [variantes, setVariantes] = useState<ProductoVariante[]>([])
   const [assets, setAssets] = useState<ProductoAsset[]>([])
@@ -63,8 +66,8 @@ export function ProductoDetalle({
   return (
     <Modal open={open} onClose={onClose} title={producto.nombre}>
       <div className="space-y-4">
-        {/* Botón editar — solo para productos propios de la consultora */}
-        {onEdit && producto.consultora_id !== null && (
+        {/* Botón editar — productos propios de la consultora, o base si gestiona librerías */}
+        {onEdit && (producto.consultora_id !== null || canEditBase) && (
           <div className="flex justify-end">
             <Button
               type="button"
@@ -129,8 +132,12 @@ export function ProductoDetalle({
           </div>
         )}
 
-        {/* Clasificación: categorías del producto (multi-select editable). */}
-        <ProductoCategoriasEditor productoId={producto.id} />
+        {/* Clasificación: categorías del producto. Editable solo si es propio
+            o si el usuario gestiona librerías (para los base); de lo contrario, solo lectura. */}
+        <ProductoCategoriasEditor
+          productoId={producto.id}
+          canEdit={producto.consultora_id !== null || canEditBase}
+        />
 
         {/* Descripción — algunos imports traen tags HTML literales; los strippeamos a texto plano. */}
         {producto.descripcion && (

@@ -143,7 +143,7 @@ function ProductoForm({
         esGenerico={esGenerico}
       />
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <SearchableSelect
           label="Marca"
           name="marca_id"
@@ -267,7 +267,7 @@ function ProductoEditForm({
         onComponenteChange={setComponenteId}
       />
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <SearchableSelect
           label="Marca"
           name="marca_id"
@@ -352,10 +352,14 @@ export default function ProductosPage() {
   const [editando, setEditando] = useState<Producto | null>(null)
   const [showModal, setShowModal] = useState(false)
   const roleCtx = useEffectiveRoleContext()
-  // isSuperAdmin: puede borrar genéricos desde la lista (existía antes).
-  const isStaff = roleCtx?.isSuperAdmin ?? false
-  // isStaffDeveloper: puede crear productos GENÉRICOS (base Sigmetría). Matchea is_developer() en RLS.
-  const isStaffDeveloper = roleCtx?.systemRole === 'developer'
+  // puedeGestionarLibrerias: super-admin O el flag acotado gestiona_librerias_base.
+  // Alineado con la función SQL puede_gestionar_librerias() = is_developer() OR flag.
+  const puedeGestionarLibrerias = roleCtx?.puedeGestionarLibrerias ?? false
+  // isStaff: puede borrar/editar ítems base (genéricos) desde la lista y el detalle.
+  const isStaff = (roleCtx?.isSuperAdmin ?? false) || puedeGestionarLibrerias
+  // isStaffDeveloper: puede crear productos/jerarquía GENÉRICOS (base Sigmetría).
+  // Matchea is_developer() en RLS, pero ahora también lo habilita el flag acotado.
+  const isStaffDeveloper = roleCtx?.systemRole === 'developer' || puedeGestionarLibrerias
 
   // Árbol del catálogo (clase → categoría → componente), híbrido base + propios.
   const arbolQuery = useCatalogoArbol()
@@ -508,10 +512,10 @@ export default function ProductosPage() {
   }
 
   return (
-    <div className="p-6 md:p-8 max-w-6xl mx-auto">
+    <div className="p-4 sm:p-6 md:p-8 max-w-6xl mx-auto">
       {/* Encabezado */}
-      <div className="flex items-center justify-between mb-6 gap-4">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-3 sm:gap-4">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold text-text-primary">Productos</h1>
           <p className="text-sm text-text-secondary mt-1">
             Catálogo de protecciones y equipamiento
@@ -524,7 +528,7 @@ export default function ProductosPage() {
             )}
           </p>
         </div>
-        <Button onClick={() => setShowModal(true)}>+ Nuevo Producto</Button>
+        <Button onClick={() => setShowModal(true)} className="w-full sm:w-auto shrink-0">+ Nuevo Producto</Button>
       </div>
 
       {/* ── Nivel 1: CLASE (tabs destacados, Equipamiento separado) ── */}
@@ -679,12 +683,14 @@ export default function ProductosPage() {
         />
       </Modal>
 
-      {/* Modal detalle: galería + variantes (talle/color) + fichas técnicas */}
+      {/* Modal detalle: galería + variantes (talle/color) + fichas técnicas.
+          canEditBase habilita editar productos base (consultora_id NULL) a quien gestiona librerías. */}
       <ProductoDetalle
         producto={detalle}
         open={detalle !== null}
         onClose={() => setDetalle(null)}
         onEdit={(p) => { setDetalle(null); setEditando(p) }}
+        canEditBase={puedeGestionarLibrerias}
       />
 
       {/* Modal edición */}

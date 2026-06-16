@@ -2,10 +2,17 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { getEffectiveRole } from '@/lib/auth/effective-role'
 import type { ActionResult } from '@/lib/types'
 
 // Clasificación N:N producto ↔ categoría (tabla producto_categoria_map).
-// La RLS de producto_categoria_map garantiza permisos (base → developer; propios → members).
+// La RLS de producto_categoria_map garantiza permisos; acá ramificamos para
+// no forzar filtros de consultora sobre filas base (consultora_id NULL).
+
+async function puedeGestionarLibreriasServer(): Promise<boolean> {
+  const role = await getEffectiveRole()
+  return role?.puedeGestionarLibrerias ?? false
+}
 
 /** IDs de categorías asignadas a un producto (multi). */
 export async function getProductoCategorias(
@@ -24,12 +31,31 @@ export async function getProductoCategorias(
  * Reemplaza el set de categorías de un producto (borra + inserta).
  * La primera del array queda como principal y se sincroniza productos.categoria_id
  * (compat con el card y el form). Set vacío deja al producto sin categoría.
+ *
+ * Para productos base (consultora_id NULL) se requiere puedeGestionarLibrerias.
+ * Para productos propios la RLS ya filtra por membresía de la consultora.
  */
 export async function setProductoCategorias(
   productoId: string,
   categoriaIds: string[],
 ): Promise<ActionResult<null>> {
   const supabase = await createClient()
+
+  // Leemos el target para saber si el producto es base o propio.
+  const { data: target } = await supabase
+    .from('productos')
+    .select('consultora_id')
+    .eq('id', productoId)
+    .maybeSingle()
+
+  if (!target) return { success: false, error: 'No se encontró el producto' }
+
+  if (target.consultora_id === null) {
+    // Producto base: exige capability de librería base.
+    if (!(await puedeGestionarLibreriasServer())) {
+      return { success: false, error: 'Sin permiso para editar categorías de productos de la librería base' }
+    }
+  }
 
   const { error: delErr } = await supabase
     .from('producto_categoria_map')

@@ -236,8 +236,8 @@ export function useDeleteRiesgoLib() {
 export function useCreateMedidaControl() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (texto: string) => {
-      const res = await createMedidaControl(texto)
+    mutationFn: async ({ texto, asBase }: { texto: string; asBase?: boolean }) => {
+      const res = await createMedidaControl(texto, asBase ?? false)
       if (!res.success) throw new Error(res.error)
       return res.data
     },

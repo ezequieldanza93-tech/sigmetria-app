@@ -18,6 +18,7 @@ import { LIMITE_GRUPOS, LIMITE_CATEGORIAS } from '@/lib/gestiones/limites'
 
 type Nivel = 'grupo' | 'categoria' | 'gestion'
 type Vista = 'arbol' | 'tablas'
+type Alcance = 'propia' | 'base'
 
 interface ModalEditar {
   nivel: 'grupo' | 'categoria'
@@ -25,6 +26,8 @@ interface ModalEditar {
   nombre: string
   grupoId: string
   descripcion: string
+  // alcance solo relevante al crear (id === '')
+  alcance: Alcance
 }
 
 interface ModalGestion {
@@ -34,6 +37,7 @@ interface ModalGestion {
   grupoId: string
   categoriaId: string
   descripcion: string
+  alcance: Alcance
   // sub-form inline
   inlineGrupoNombre: string
   inlineCatNombre: string
@@ -59,12 +63,40 @@ function LimiteTag({ actual, limite, label }: { actual: number; limite: number; 
   )
 }
 
+// ─── select de alcance (solo para base-librarians al crear) ───────────────────
+
+function AlcanceSelect({
+  value,
+  onChange,
+}: {
+  value: Alcance
+  onChange: (v: Alcance) => void
+}) {
+  return (
+    <div>
+      <label className="text-sm font-medium text-text-secondary block mb-1">Alcance</label>
+      <select
+        className={inputCls}
+        value={value}
+        onChange={e => onChange(e.target.value as Alcance)}
+      >
+        <option value="propia">De mi consultora</option>
+        <option value="base">Librería base Sigmetría</option>
+      </select>
+    </div>
+  )
+}
+
 // ─── página ───────────────────────────────────────────────────────────────────
 
 export default function LibreriaGestionesPage() {
   const { data, isLoading, refetch } = useLibreriaGestiones()
   const ctx = useEffectiveRoleContext()
-  const canEdit = ctx?.isSuperAdmin || ctx?.userRole === 'full_access_main' || ctx?.userRole === 'full_access_branch'
+  const puedeGestionarBase = ctx?.puedeGestionarLibrerias ?? false
+  const canEdit =
+    puedeGestionarBase ||
+    ctx?.userRole === 'full_access_main' ||
+    ctx?.userRole === 'full_access_branch'
 
   const [vista, setVista] = useState<Vista>('arbol')
   const [origen, setOrigen] = useState<OrigenFiltro>('todos')
@@ -103,10 +135,21 @@ export default function LibreriaGestionesPage() {
     setter(next)
   }
 
+  /**
+   * Un item de la librería es editable si:
+   * - es propio (consultora_id !== null) y el usuario tiene canEdit, O
+   * - es base (consultora_id === null) y el usuario puede gestionar librerías base.
+   */
+  function esEditable(consultoraId: string | null): boolean {
+    if (consultoraId !== null) return canEdit
+    return puedeGestionarBase
+  }
+
   function abrirNuevaGestion(categoriaId = '', grupoId = '') {
     setModalGestion({
       mode: 'crear',
       nombre: '', grupoId, categoriaId, descripcion: '',
+      alcance: 'propia',
       inlineGrupoNombre: '', inlineCatNombre: '', inlineCatDesc: '',
       inlineStep: 'none',
     })
@@ -121,6 +164,7 @@ export default function LibreriaGestionesPage() {
       grupoId: cat?.grupo_id ?? '',
       categoriaId: g.categoria_id,
       descripcion: g.descripcion ?? '',
+      alcance: 'propia', // no usado en editar
       inlineGrupoNombre: '', inlineCatNombre: '', inlineCatDesc: '',
       inlineStep: 'none',
     })
@@ -132,12 +176,25 @@ export default function LibreriaGestionesPage() {
   async function submitEditar() {
     if (!modalEditar) return
     setSavingEditar(true); setErrorEditar(null)
-    const res = modalEditar.nivel === 'grupo'
-      ? await updateGrupoGestion(modalEditar.id, modalEditar.nombre)
-      : await updateCategoriaGestion(modalEditar.id, modalEditar.nombre, modalEditar.grupoId, modalEditar.descripcion)
-    setSavingEditar(false)
-    if (!res.success) { setErrorEditar(res.error ?? 'Error'); return }
-    setModalEditar(null); refetch()
+
+    if (!modalEditar.id) {
+      // Crear
+      const asBase = puedeGestionarBase && modalEditar.alcance === 'base'
+      const res = modalEditar.nivel === 'grupo'
+        ? await createGrupoGestion(modalEditar.nombre, asBase)
+        : await createCategoriaGestion(modalEditar.nombre, modalEditar.grupoId, modalEditar.descripcion, asBase)
+      setSavingEditar(false)
+      if (!res.success) { setErrorEditar(res.error ?? 'Error'); return }
+      setModalEditar(null); refetch()
+    } else {
+      // Editar
+      const res = modalEditar.nivel === 'grupo'
+        ? await updateGrupoGestion(modalEditar.id, modalEditar.nombre)
+        : await updateCategoriaGestion(modalEditar.id, modalEditar.nombre, modalEditar.grupoId, modalEditar.descripcion)
+      setSavingEditar(false)
+      if (!res.success) { setErrorEditar(res.error ?? 'Error'); return }
+      setModalEditar(null); refetch()
+    }
   }
 
   // ─── submit modal gestión ───────────────────────────────────────────────────
@@ -145,8 +202,9 @@ export default function LibreriaGestionesPage() {
   async function submitGestion() {
     if (!modalGestion) return
     setSavingGestion(true); setErrorGestion(null)
+    const asBase = puedeGestionarBase && modalGestion.alcance === 'base'
     const res = modalGestion.mode === 'crear'
-      ? await createGestion(modalGestion.nombre, modalGestion.categoriaId, modalGestion.descripcion)
+      ? await createGestion(modalGestion.nombre, modalGestion.categoriaId, modalGestion.descripcion, asBase)
       : await updateGestion(modalGestion.id!, modalGestion.nombre, modalGestion.categoriaId, modalGestion.descripcion)
     setSavingGestion(false)
     if (!res.success) { setErrorGestion(res.error ?? 'Error'); return }
@@ -158,7 +216,9 @@ export default function LibreriaGestionesPage() {
   async function crearGrupoInline() {
     if (!modalGestion || !modalGestion.inlineGrupoNombre.trim()) return
     setSavingGestion(true); setErrorGestion(null)
-    const res = await createGrupoGestion(modalGestion.inlineGrupoNombre.trim())
+    // El grupo inline hereda el alcance del modal de gestión
+    const asBase = puedeGestionarBase && modalGestion.alcance === 'base'
+    const res = await createGrupoGestion(modalGestion.inlineGrupoNombre.trim(), asBase)
     setSavingGestion(false)
     if (!res.success) { setErrorGestion(res.error ?? 'Error'); return }
     await refetch()
@@ -174,10 +234,12 @@ export default function LibreriaGestionesPage() {
   async function crearCatInline() {
     if (!modalGestion || !modalGestion.inlineCatNombre.trim() || !modalGestion.grupoId) return
     setSavingGestion(true); setErrorGestion(null)
+    const asBase = puedeGestionarBase && modalGestion.alcance === 'base'
     const res = await createCategoriaGestion(
       modalGestion.inlineCatNombre.trim(),
       modalGestion.grupoId,
       modalGestion.inlineCatDesc.trim() || undefined,
+      asBase,
     )
     setSavingGestion(false)
     if (!res.success) { setErrorGestion(res.error ?? 'Error'); return }
@@ -190,12 +252,13 @@ export default function LibreriaGestionesPage() {
 
   // ─── eliminar ────────────────────────────────────────────────────────────────
 
-  async function eliminar(nivel: Nivel, id: string) {
+  async function eliminar(nivel: Nivel, id: string, esBase: boolean) {
+    const tipo = esBase ? 'base' : 'propio/a'
     const msg = nivel === 'grupo'
-      ? '¿Eliminar este grupo propio? Se borran también sus categorías y gestiones propias.'
+      ? `¿Eliminar este grupo ${tipo}? Se borran también sus categorías y gestiones ${tipo}s.`
       : nivel === 'categoria'
-        ? '¿Eliminar esta categoría propia? Se borran también sus gestiones propias.'
-        : '¿Eliminar esta gestión propia?'
+        ? `¿Eliminar esta categoría ${tipo}? Se borran también sus gestiones ${tipo}s.`
+        : `¿Eliminar esta gestión ${tipo}?`
     if (!confirm(msg)) return
     const res = nivel === 'grupo' ? await deleteGrupoGestion(id)
       : nivel === 'categoria' ? await deleteCategoriaGestion(id)
@@ -211,8 +274,16 @@ export default function LibreriaGestionesPage() {
     ? categorias.filter(c => c.grupo_id === modalGestion.grupoId)
     : []
 
+  // Al crear en modo base, el sub-form "nuevo grupo" no está limitado por gruposPropios
+  const puedeCrearGrupoInline = modalGestion
+    ? (modalGestion.alcance === 'base' && puedeGestionarBase) || gruposPropios < LIMITE_GRUPOS
+    : false
+  const puedeCrearCatInline = modalGestion
+    ? (modalGestion.alcance === 'base' && puedeGestionarBase) || catPropias < LIMITE_CATEGORIAS
+    : false
+
   return (
-    <div className="p-8 max-w-4xl mx-auto">
+    <div className="p-4 sm:p-8 max-w-4xl mx-auto">
       {/* ── Header ── */}
       <div className="flex items-start justify-between mb-2 gap-3 flex-wrap">
         <div>
@@ -273,26 +344,26 @@ export default function LibreriaGestionesPage() {
           {gruposVis.map(grupo => {
             const cats = catsVis.filter(c => c.grupo_id === grupo.id)
             const abierto = openGrupos.has(grupo.id)
-            const propioG = grupo.consultora_id !== null
+            const editableG = esEditable(grupo.consultora_id)
             return (
               <div key={grupo.id} className="border border-border-subtle rounded-lg bg-surface-base">
-                <div className="flex items-center gap-2 p-3">
-                  <button onClick={() => toggle(openGrupos, setOpenGrupos, grupo.id)} className="flex items-center gap-2 flex-1 text-left">
+                <div className="flex items-center gap-1 sm:gap-2 p-2.5 sm:p-3">
+                  <button onClick={() => toggle(openGrupos, setOpenGrupos, grupo.id)} className="flex items-center gap-2 flex-1 min-w-0 text-left">
                     {abierto ? <ChevronDown className="w-4 h-4 shrink-0" /> : <ChevronRight className="w-4 h-4 shrink-0" />}
-                    <span className="font-semibold">{grupo.nombre}</span>
+                    <span className="font-semibold truncate">{grupo.nombre}</span>
                     <OrigenBadge consultoraId={grupo.consultora_id} />
-                    <span className="text-xs text-text-tertiary">({cats.length})</span>
+                    <span className="text-xs text-text-tertiary shrink-0">({cats.length})</span>
                   </button>
-                  {canEdit && propioG && (
+                  {editableG && (
                     <>
                       <button
-                        onClick={() => setModalEditar({ nivel: 'grupo', id: grupo.id, nombre: grupo.nombre, grupoId: '', descripcion: '' })}
-                        className="text-text-tertiary hover:text-text-primary"
+                        onClick={() => setModalEditar({ nivel: 'grupo', id: grupo.id, nombre: grupo.nombre, grupoId: '', descripcion: '', alcance: 'propia' })}
+                        className="shrink-0 p-1.5 -m-0.5 rounded text-text-tertiary hover:text-text-primary"
                         title="Editar grupo"
                       >
                         <Pencil className="w-4 h-4" />
                       </button>
-                      <button onClick={() => eliminar('grupo', grupo.id)} className="text-red-400 hover:text-danger" title="Eliminar grupo">
+                      <button onClick={() => eliminar('grupo', grupo.id, grupo.consultora_id === null)} className="shrink-0 p-1.5 -m-0.5 rounded text-red-400 hover:text-danger" title="Eliminar grupo">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </>
@@ -300,7 +371,7 @@ export default function LibreriaGestionesPage() {
                 </div>
 
                 {abierto && (
-                  <div className="px-3 pb-3 pl-8 space-y-2">
+                  <div className="px-2.5 pb-3 pl-5 sm:px-3 sm:pl-8 space-y-2">
                     {canEdit && (
                       <Button variant="secondary" size="sm" onClick={() => abrirNuevaGestion('', grupo.id)}>
                         <Plus className="w-3.5 h-3.5 mr-1" /> Nueva gestión en este grupo
@@ -309,50 +380,50 @@ export default function LibreriaGestionesPage() {
                     {cats.map(cat => {
                       const gests = gestVis.filter(g => g.categoria_id === cat.id)
                       const abiertaC = openCats.has(cat.id)
-                      const propioC = cat.consultora_id !== null
+                      const editableC = esEditable(cat.consultora_id)
                       return (
                         <div key={cat.id} className="border border-border-subtle rounded-lg">
-                          <div className="flex items-center gap-2 p-2.5">
-                            <button onClick={() => toggle(openCats, setOpenCats, cat.id)} className="flex items-center gap-2 flex-1 text-left">
+                          <div className="flex items-center gap-1 sm:gap-2 p-2.5">
+                            <button onClick={() => toggle(openCats, setOpenCats, cat.id)} className="flex items-center gap-2 flex-1 min-w-0 text-left">
                               {abiertaC ? <ChevronDown className="w-4 h-4 shrink-0" /> : <ChevronRight className="w-4 h-4 shrink-0" />}
-                              <span className="font-medium text-sm">{cat.nombre}</span>
+                              <span className="font-medium text-sm truncate">{cat.nombre}</span>
                               <OrigenBadge consultoraId={cat.consultora_id} />
-                              <span className="text-xs text-text-tertiary">({gests.length})</span>
+                              <span className="text-xs text-text-tertiary shrink-0">({gests.length})</span>
                             </button>
-                            {canEdit && propioC && (
+                            {editableC && (
                               <>
                                 <button
-                                  onClick={() => setModalEditar({ nivel: 'categoria', id: cat.id, nombre: cat.nombre, grupoId: cat.grupo_id, descripcion: cat.descripcion ?? '' })}
-                                  className="text-text-tertiary hover:text-text-primary"
+                                  onClick={() => setModalEditar({ nivel: 'categoria', id: cat.id, nombre: cat.nombre, grupoId: cat.grupo_id, descripcion: cat.descripcion ?? '', alcance: 'propia' })}
+                                  className="shrink-0 p-1.5 -m-0.5 rounded text-text-tertiary hover:text-text-primary"
                                   title="Editar categoría"
                                 >
                                   <Pencil className="w-3.5 h-3.5" />
                                 </button>
-                                <button onClick={() => eliminar('categoria', cat.id)} className="text-red-400 hover:text-danger" title="Eliminar categoría">
+                                <button onClick={() => eliminar('categoria', cat.id, cat.consultora_id === null)} className="shrink-0 p-1.5 -m-0.5 rounded text-red-400 hover:text-danger" title="Eliminar categoría">
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
                               </>
                             )}
                           </div>
                           {abiertaC && (
-                            <div className="px-2.5 pb-2.5 pl-7 space-y-1">
+                            <div className="px-2 pb-2.5 pl-4 sm:px-2.5 sm:pl-7 space-y-1">
                               {canEdit && (
                                 <Button variant="secondary" size="sm" onClick={() => abrirNuevaGestion(cat.id, cat.grupo_id)}>
                                   <Plus className="w-3.5 h-3.5 mr-1" /> Nueva gestión
                                 </Button>
                               )}
                               {gests.map(g => {
-                                const propioGe = g.consultora_id !== null
+                                const editableGe = esEditable(g.consultora_id)
                                 return (
-                                  <div key={g.id} className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-surface-elevated">
-                                    <span className="flex-1 text-sm">{g.nombre}</span>
+                                  <div key={g.id} className="flex items-center gap-1 sm:gap-2 py-1.5 px-2 rounded hover:bg-surface-elevated">
+                                    <span className="flex-1 min-w-0 text-sm truncate">{g.nombre}</span>
                                     <OrigenBadge consultoraId={g.consultora_id} />
-                                    {canEdit && propioGe && (
+                                    {editableGe && (
                                       <>
-                                        <button onClick={() => abrirEditarGestion(g)} className="text-text-tertiary hover:text-text-primary" title="Editar gestión">
+                                        <button onClick={() => abrirEditarGestion(g)} className="shrink-0 p-1.5 -m-0.5 rounded text-text-tertiary hover:text-text-primary" title="Editar gestión">
                                           <Pencil className="w-3.5 h-3.5" />
                                         </button>
-                                        <button onClick={() => eliminar('gestion', g.id)} className="text-red-400 hover:text-danger" title="Eliminar gestión">
+                                        <button onClick={() => eliminar('gestion', g.id, g.consultora_id === null)} className="shrink-0 p-1.5 -m-0.5 rounded text-red-400 hover:text-danger" title="Eliminar gestión">
                                           <Trash2 className="w-3.5 h-3.5" />
                                         </button>
                                       </>
@@ -390,22 +461,22 @@ export default function LibreriaGestionesPage() {
                 <h2 className="font-semibold text-text-primary">Grupos</h2>
                 <LimiteTag actual={gruposPropios} limite={LIMITE_GRUPOS} label="propios" />
               </div>
-              {gruposPropios < LIMITE_GRUPOS && (
+              {(gruposPropios < LIMITE_GRUPOS || puedeGestionarBase) && (
                 <Button
                   variant="secondary"
                   size="sm"
-                  onClick={() => setModalEditar({ nivel: 'grupo', id: '', nombre: '', grupoId: '', descripcion: '' })}
+                  onClick={() => setModalEditar({ nivel: 'grupo', id: '', nombre: '', grupoId: '', descripcion: '', alcance: 'propia' })}
                 >
                   <Plus className="w-3.5 h-3.5 mr-1" /> Nuevo grupo
                 </Button>
               )}
-              {gruposPropios >= LIMITE_GRUPOS && (
+              {gruposPropios >= LIMITE_GRUPOS && !puedeGestionarBase && (
                 <span className="text-xs text-text-tertiary">Límite alcanzado</span>
               )}
             </div>
 
-            <div className="border border-border-subtle rounded-lg overflow-hidden">
-              <table className="w-full text-sm">
+            <div className="border border-border-subtle rounded-lg overflow-hidden overflow-x-auto">
+              <table className="w-full min-w-[34rem] text-sm">
                 <thead className="bg-surface-elevated text-text-secondary text-xs uppercase tracking-wide">
                   <tr>
                     <th className="px-4 py-2.5 text-left font-medium">Nombre</th>
@@ -420,23 +491,23 @@ export default function LibreriaGestionesPage() {
                   )}
                   {grupos.map(g => {
                     const nCats = categorias.filter(c => c.grupo_id === g.id).length
-                    const propio = g.consultora_id !== null
+                    const editable = esEditable(g.consultora_id)
                     return (
                       <tr key={g.id} className="hover:bg-surface-elevated/50 transition-colors">
                         <td className="px-4 py-3 font-medium text-text-primary">{g.nombre}</td>
                         <td className="px-4 py-3"><OrigenBadge consultoraId={g.consultora_id} /></td>
                         <td className="px-4 py-3 text-text-secondary">{nCats}</td>
                         <td className="px-4 py-3">
-                          {propio ? (
-                            <div className="flex items-center gap-2 justify-end">
+                          {editable ? (
+                            <div className="flex items-center gap-1 justify-end">
                               <button
-                                onClick={() => setModalEditar({ nivel: 'grupo', id: g.id, nombre: g.nombre, grupoId: '', descripcion: '' })}
-                                className="text-text-tertiary hover:text-text-primary"
+                                onClick={() => setModalEditar({ nivel: 'grupo', id: g.id, nombre: g.nombre, grupoId: '', descripcion: '', alcance: 'propia' })}
+                                className="p-1.5 rounded text-text-tertiary hover:text-text-primary"
                                 title="Editar"
                               >
                                 <Pencil className="w-3.5 h-3.5" />
                               </button>
-                              <button onClick={() => eliminar('grupo', g.id)} className="text-red-400 hover:text-danger" title="Eliminar">
+                              <button onClick={() => eliminar('grupo', g.id, g.consultora_id === null)} className="p-1.5 rounded text-red-400 hover:text-danger" title="Eliminar">
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
                             </div>
@@ -450,7 +521,7 @@ export default function LibreriaGestionesPage() {
                 </tbody>
               </table>
             </div>
-            {gruposPropios >= LIMITE_GRUPOS && (
+            {gruposPropios >= LIMITE_GRUPOS && !puedeGestionarBase && (
               <p className="text-xs text-text-tertiary mt-2">
                 Llegaste al máximo de {LIMITE_GRUPOS} grupos propios. Para agregar uno nuevo, eliminá un grupo propio existente.
               </p>
@@ -465,11 +536,11 @@ export default function LibreriaGestionesPage() {
                 <h2 className="font-semibold text-text-primary">Categorías</h2>
                 <LimiteTag actual={catPropias} limite={LIMITE_CATEGORIAS} label="propias" />
               </div>
-              {catPropias < LIMITE_CATEGORIAS ? (
+              {(catPropias < LIMITE_CATEGORIAS || puedeGestionarBase) ? (
                 <Button
                   variant="secondary"
                   size="sm"
-                  onClick={() => setModalEditar({ nivel: 'categoria', id: '', nombre: '', grupoId: grupos[0]?.id ?? '', descripcion: '' })}
+                  onClick={() => setModalEditar({ nivel: 'categoria', id: '', nombre: '', grupoId: grupos[0]?.id ?? '', descripcion: '', alcance: 'propia' })}
                 >
                   <Plus className="w-3.5 h-3.5 mr-1" /> Nueva categoría
                 </Button>
@@ -478,8 +549,8 @@ export default function LibreriaGestionesPage() {
               )}
             </div>
 
-            <div className="border border-border-subtle rounded-lg overflow-hidden">
-              <table className="w-full text-sm">
+            <div className="border border-border-subtle rounded-lg overflow-hidden overflow-x-auto">
+              <table className="w-full min-w-[34rem] text-sm">
                 <thead className="bg-surface-elevated text-text-secondary text-xs uppercase tracking-wide">
                   <tr>
                     <th className="px-4 py-2.5 text-left font-medium">Nombre</th>
@@ -494,23 +565,23 @@ export default function LibreriaGestionesPage() {
                   )}
                   {categorias.map(c => {
                     const grupoNombre = grupos.find(g => g.id === c.grupo_id)?.nombre ?? '—'
-                    const propio = c.consultora_id !== null
+                    const editable = esEditable(c.consultora_id)
                     return (
                       <tr key={c.id} className="hover:bg-surface-elevated/50 transition-colors">
                         <td className="px-4 py-3 font-medium text-text-primary">{c.nombre}</td>
                         <td className="px-4 py-3 text-text-secondary">{grupoNombre}</td>
                         <td className="px-4 py-3"><OrigenBadge consultoraId={c.consultora_id} /></td>
                         <td className="px-4 py-3">
-                          {propio ? (
-                            <div className="flex items-center gap-2 justify-end">
+                          {editable ? (
+                            <div className="flex items-center gap-1 justify-end">
                               <button
-                                onClick={() => setModalEditar({ nivel: 'categoria', id: c.id, nombre: c.nombre, grupoId: c.grupo_id, descripcion: c.descripcion ?? '' })}
-                                className="text-text-tertiary hover:text-text-primary"
+                                onClick={() => setModalEditar({ nivel: 'categoria', id: c.id, nombre: c.nombre, grupoId: c.grupo_id, descripcion: c.descripcion ?? '', alcance: 'propia' })}
+                                className="p-1.5 rounded text-text-tertiary hover:text-text-primary"
                                 title="Editar"
                               >
                                 <Pencil className="w-3.5 h-3.5" />
                               </button>
-                              <button onClick={() => eliminar('categoria', c.id)} className="text-red-400 hover:text-danger" title="Eliminar">
+                              <button onClick={() => eliminar('categoria', c.id, c.consultora_id === null)} className="p-1.5 rounded text-red-400 hover:text-danger" title="Eliminar">
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
                             </div>
@@ -524,7 +595,7 @@ export default function LibreriaGestionesPage() {
                 </tbody>
               </table>
             </div>
-            {catPropias >= LIMITE_CATEGORIAS && (
+            {catPropias >= LIMITE_CATEGORIAS && !puedeGestionarBase && (
               <p className="text-xs text-text-tertiary mt-2">
                 Llegaste al máximo de {LIMITE_CATEGORIAS} categorías propias. Para agregar una nueva, eliminá una propia existente.
               </p>
@@ -552,9 +623,23 @@ export default function LibreriaGestionesPage() {
               <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{errorEditar}</div>
             )}
 
+            {/* Select de alcance — solo al crear y solo para base-librarians */}
+            {!modalEditar.id && puedeGestionarBase && (
+              <AlcanceSelect
+                value={modalEditar.alcance}
+                onChange={v => setModalEditar({ ...modalEditar, alcance: v })}
+              />
+            )}
+
+            {/* Aviso modo editar: si la fila es base */}
+            {modalEditar.id && modalEditar.nivel === 'grupo' && !modalEditar.id && null}
+
             {modalEditar.nivel === 'grupo' && !modalEditar.id && (
               <p className="text-xs text-text-tertiary bg-surface-elevated rounded-lg p-3">
-                Un grupo debe ser un <strong>concepto genérico</strong> (como Auditorías, Formaciones, Reuniones). El máximo de {LIMITE_GRUPOS} grupos propios existe para conservar el orden y que los reportes sean comparables entre consultoras.
+                Un grupo debe ser un <strong>concepto genérico</strong> (como Auditorías, Formaciones, Reuniones).
+                {modalEditar.alcance === 'propia'
+                  ? ` El máximo de ${LIMITE_GRUPOS} grupos propios existe para conservar el orden y que los reportes sean comparables entre consultoras.`
+                  : ' Los grupos base están disponibles para todas las consultoras de la plataforma.'}
               </p>
             )}
 
@@ -600,20 +685,7 @@ export default function LibreriaGestionesPage() {
             <div className="flex gap-2 justify-end">
               <Button variant="secondary" onClick={() => { setModalEditar(null); setErrorEditar(null) }}>Cancelar</Button>
               <Button
-                onClick={async () => {
-                  if (!modalEditar.id) {
-                    // crear
-                    setSavingEditar(true); setErrorEditar(null)
-                    const res = modalEditar.nivel === 'grupo'
-                      ? await createGrupoGestion(modalEditar.nombre)
-                      : await createCategoriaGestion(modalEditar.nombre, modalEditar.grupoId, modalEditar.descripcion)
-                    setSavingEditar(false)
-                    if (!res.success) { setErrorEditar(res.error ?? 'Error'); return }
-                    setModalEditar(null); refetch()
-                  } else {
-                    await submitEditar()
-                  }
-                }}
+                onClick={submitEditar}
                 disabled={savingEditar}
               >
                 {savingEditar ? 'Guardando…' : 'Guardar'}
@@ -635,6 +707,14 @@ export default function LibreriaGestionesPage() {
           <div className="flex flex-col gap-5">
             {errorGestion && (
               <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{errorGestion}</div>
+            )}
+
+            {/* Select de alcance — solo al crear y solo para base-librarians */}
+            {modalGestion.mode === 'crear' && puedeGestionarBase && (
+              <AlcanceSelect
+                value={modalGestion.alcance}
+                onChange={v => setModalGestion({ ...modalGestion, alcance: v })}
+              />
             )}
 
             {/* ── Nombre gestión ── */}
@@ -665,8 +745,8 @@ export default function LibreriaGestionesPage() {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-sm font-medium text-text-secondary">Grupo *</label>
-                {/* Botón crear nuevo grupo — solo si no estamos en sub-form y hay lugar */}
-                {modalGestion.inlineStep !== 'nuevo-grupo' && gruposPropios < LIMITE_GRUPOS && (
+                {/* Botón crear nuevo grupo — solo si no estamos en sub-form y hay lugar (o es base-librarian en modo base) */}
+                {modalGestion.inlineStep !== 'nuevo-grupo' && puedeCrearGrupoInline && (
                   <button
                     type="button"
                     onClick={() => setModalGestion({ ...modalGestion, inlineStep: 'nuevo-grupo', inlineGrupoNombre: '' })}
@@ -675,7 +755,7 @@ export default function LibreriaGestionesPage() {
                     <Plus className="w-3 h-3" /> Crear nuevo
                   </button>
                 )}
-                {modalGestion.inlineStep !== 'nuevo-grupo' && gruposPropios >= LIMITE_GRUPOS && (
+                {modalGestion.inlineStep !== 'nuevo-grupo' && !puedeCrearGrupoInline && (
                   <span className="text-xs text-red-500">Límite de {LIMITE_GRUPOS} grupos propios alcanzado</span>
                 )}
               </div>
@@ -684,7 +764,9 @@ export default function LibreriaGestionesPage() {
               {modalGestion.inlineStep === 'nuevo-grupo' && (
                 <div className="bg-surface-elevated border border-border-subtle rounded-lg p-3 mb-2 flex flex-col gap-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Nuevo grupo</span>
+                    <span className="text-xs font-semibold text-text-secondary uppercase tracking-wide">
+                      Nuevo grupo{modalGestion.alcance === 'base' ? ' (base)' : ''}
+                    </span>
                     <button
                       type="button"
                       onClick={() => setModalGestion({ ...modalGestion, inlineStep: 'none', inlineGrupoNombre: '' })}
@@ -737,7 +819,7 @@ export default function LibreriaGestionesPage() {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="text-sm font-medium text-text-secondary">Categoría *</label>
-                  {modalGestion.inlineStep !== 'nueva-cat' && catPropias < LIMITE_CATEGORIAS && (
+                  {modalGestion.inlineStep !== 'nueva-cat' && puedeCrearCatInline && (
                     <button
                       type="button"
                       onClick={() => setModalGestion({ ...modalGestion, inlineStep: 'nueva-cat', inlineCatNombre: '', inlineCatDesc: '' })}
@@ -746,7 +828,7 @@ export default function LibreriaGestionesPage() {
                       <Plus className="w-3 h-3" /> Crear nueva
                     </button>
                   )}
-                  {modalGestion.inlineStep !== 'nueva-cat' && catPropias >= LIMITE_CATEGORIAS && (
+                  {modalGestion.inlineStep !== 'nueva-cat' && !puedeCrearCatInline && (
                     <span className="text-xs text-red-500">Límite de {LIMITE_CATEGORIAS} categorías propias alcanzado</span>
                   )}
                 </div>
@@ -756,7 +838,7 @@ export default function LibreriaGestionesPage() {
                   <div className="bg-surface-elevated border border-border-subtle rounded-lg p-3 mb-2 flex flex-col gap-2">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-semibold text-text-secondary uppercase tracking-wide">
-                        Nueva categoría en «{grupos.find(g => g.id === modalGestion.grupoId)?.nombre}»
+                        Nueva categoría{modalGestion.alcance === 'base' ? ' (base)' : ''} en «{grupos.find(g => g.id === modalGestion.grupoId)?.nombre}»
                       </span>
                       <button
                         type="button"
@@ -812,7 +894,7 @@ export default function LibreriaGestionesPage() {
                 {catsPorGrupo.length === 0 && (
                   <p className="text-xs text-text-tertiary mt-1">
                     No hay categorías en este grupo.
-                    {catPropias < LIMITE_CATEGORIAS ? ' Creá una nueva con el botón de arriba.' : ''}
+                    {puedeCrearCatInline ? ' Creá una nueva con el botón de arriba.' : ''}
                   </p>
                 )}
               </div>

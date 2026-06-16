@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { getEffectiveRole } from '@/lib/auth/effective-role'
 import type { ActionResult } from '@/lib/types'
 import { LIMITE_GRUPOS, LIMITE_CATEGORIAS } from '@/lib/gestiones/limites'
 
@@ -21,6 +22,16 @@ async function getConsultoraId(): Promise<ActionResult<string>> {
 
   if (!member) return { success: false, error: 'Sin membresía activa' }
   return { success: true, data: member.consultora_id }
+}
+
+/**
+ * ¿El usuario puede administrar las librerías base (filas consultora_id NULL)?
+ * Espeja la función SQL puede_gestionar_librerias() — la RLS es el firewall real;
+ * acá solo evitamos disparar mutaciones que la RLS rechazaría.
+ */
+async function puedeGestionarLibreriasServer(): Promise<boolean> {
+  const role = await getEffectiveRole()
+  return role?.puedeGestionarLibrerias ?? false
 }
 
 // ============================================================
@@ -50,19 +61,35 @@ export async function getLibreriaGestiones(): Promise<ActionResult<{
 }
 
 // ============================================================
-// GRUPOS (máx 4 propios — concepto genérico)
+// GRUPOS
+// - Propios (consultora_id = cId): full_access. Límite LIMITE_GRUPOS.
+// - Base (consultora_id NULL): solo puedeGestionarLibrerias. Sin límite de consultora.
+// Las filas BASE no cuentan contra el límite — el trigger SQL solo contabiliza
+// filas con consultora_id NOT NULL.
 // ============================================================
-export async function createGrupoGestion(nombre: string): Promise<ActionResult<any>> {
+export async function createGrupoGestion(
+  nombre: string,
+  asBase = false,
+): Promise<ActionResult<any>> {
   const supabase = await createClient()
-  const cId = await getConsultoraId()
-  if (!cId.success) return cId
-
   const n = nombre.trim()
   if (!n) return { success: false, error: 'El nombre es obligatorio' }
 
+  let consultoraId: string | null
+  if (asBase) {
+    if (!(await puedeGestionarLibreriasServer())) {
+      return { success: false, error: 'Sin permiso para gestionar la librería base' }
+    }
+    consultoraId = null
+  } else {
+    const cId = await getConsultoraId()
+    if (!cId.success) return cId
+    consultoraId = cId.data
+  }
+
   const { data, error } = await supabase
     .from('gestiones_grupos')
-    .insert({ nombre: n, consultora_id: cId.data })
+    .insert({ nombre: n, consultora_id: consultoraId })
     .select()
     .single()
 
@@ -79,38 +106,67 @@ export async function createGrupoGestion(nombre: string): Promise<ActionResult<a
 
 export async function updateGrupoGestion(id: string, nombre: string): Promise<ActionResult<any>> {
   const supabase = await createClient()
-  const cId = await getConsultoraId()
-  if (!cId.success) return cId
   const n = nombre.trim()
   if (!n) return { success: false, error: 'El nombre es obligatorio' }
 
-  // Solo propios (consultora_id del usuario). Los base (NULL) no se tocan acá.
-  const { data, error } = await supabase
+  // Leemos el consultora_id del target para decidir cómo scopear la query.
+  const { data: target } = await supabase
     .from('gestiones_grupos')
-    .update({ nombre: n })
+    .select('consultora_id')
     .eq('id', id)
-    .eq('consultora_id', cId.data)
-    .select()
-    .single()
+    .maybeSingle()
+
+  if (!target) return { success: false, error: 'No se encontró el grupo o no es editable' }
+
+  let query = supabase.from('gestiones_grupos').update({ nombre: n }).eq('id', id)
+
+  if (target.consultora_id === null) {
+    // Fila base: solo quien puede gestionar librerías. RLS confirma el permiso.
+    if (!(await puedeGestionarLibreriasServer())) {
+      return { success: false, error: 'Sin permiso para gestionar la librería base' }
+    }
+  } else {
+    // Fila propia: acotamos al scope de la consultora del usuario.
+    const cId = await getConsultoraId()
+    if (!cId.success) return cId
+    query = query.eq('consultora_id', cId.data)
+  }
+
+  const { data, error } = await query.select().maybeSingle()
 
   if (error) {
     if (error.code === '23505') return { success: false, error: 'Ya existe un grupo con ese nombre.' }
     return { success: false, error: error.message }
   }
+  if (!data) return { success: false, error: 'No se encontró el grupo o no es editable' }
   revalidatePath(LIB_PATH)
   return { success: true, data }
 }
 
 export async function deleteGrupoGestion(id: string): Promise<ActionResult<null>> {
   const supabase = await createClient()
-  const cId = await getConsultoraId()
-  if (!cId.success) return cId
 
-  const { error } = await supabase
+  const { data: target } = await supabase
     .from('gestiones_grupos')
-    .delete()
+    .select('consultora_id')
     .eq('id', id)
-    .eq('consultora_id', cId.data)
+    .maybeSingle()
+
+  if (!target) return { success: false, error: 'No se encontró el grupo o no es eliminable' }
+
+  let query = supabase.from('gestiones_grupos').delete().eq('id', id)
+
+  if (target.consultora_id === null) {
+    if (!(await puedeGestionarLibreriasServer())) {
+      return { success: false, error: 'Sin permiso para gestionar la librería base' }
+    }
+  } else {
+    const cId = await getConsultoraId()
+    if (!cId.success) return cId
+    query = query.eq('consultora_id', cId.data)
+  }
+
+  const { error } = await query
 
   if (error) return { success: false, error: error.message }
   revalidatePath(LIB_PATH)
@@ -118,23 +174,36 @@ export async function deleteGrupoGestion(id: string): Promise<ActionResult<null>
 }
 
 // ============================================================
-// CATEGORÍAS (máx 14 propias)
+// CATEGORÍAS
+// - Propias: full_access. Límite LIMITE_CATEGORIAS (solo cuenta consultora_id NOT NULL).
+// - Base: solo puedeGestionarLibrerias. Sin límite de consultora.
 // ============================================================
 export async function createCategoriaGestion(
   nombre: string,
   grupoId: string,
   descripcion?: string,
+  asBase = false,
 ): Promise<ActionResult<any>> {
   const supabase = await createClient()
-  const cId = await getConsultoraId()
-  if (!cId.success) return cId
   const n = nombre.trim()
   if (!n) return { success: false, error: 'El nombre es obligatorio' }
   if (!grupoId) return { success: false, error: 'Elegí un grupo' }
 
+  let consultoraId: string | null
+  if (asBase) {
+    if (!(await puedeGestionarLibreriasServer())) {
+      return { success: false, error: 'Sin permiso para gestionar la librería base' }
+    }
+    consultoraId = null
+  } else {
+    const cId = await getConsultoraId()
+    if (!cId.success) return cId
+    consultoraId = cId.data
+  }
+
   const { data, error } = await supabase
     .from('gestiones_categorias')
-    .insert({ nombre: n, grupo_id: grupoId, descripcion: descripcion?.trim() || null, consultora_id: cId.data })
+    .insert({ nombre: n, grupo_id: grupoId, descripcion: descripcion?.trim() || null, consultora_id: consultoraId })
     .select()
     .single()
 
@@ -156,37 +225,67 @@ export async function updateCategoriaGestion(
   descripcion?: string,
 ): Promise<ActionResult<any>> {
   const supabase = await createClient()
-  const cId = await getConsultoraId()
-  if (!cId.success) return cId
   const n = nombre.trim()
   if (!n) return { success: false, error: 'El nombre es obligatorio' }
 
-  const { data, error } = await supabase
+  const { data: target } = await supabase
+    .from('gestiones_categorias')
+    .select('consultora_id')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (!target) return { success: false, error: 'No se encontró la categoría o no es editable' }
+
+  let query = supabase
     .from('gestiones_categorias')
     .update({ nombre: n, grupo_id: grupoId, descripcion: descripcion?.trim() || null })
     .eq('id', id)
-    .eq('consultora_id', cId.data)
-    .select()
-    .single()
+
+  if (target.consultora_id === null) {
+    if (!(await puedeGestionarLibreriasServer())) {
+      return { success: false, error: 'Sin permiso para gestionar la librería base' }
+    }
+  } else {
+    const cId = await getConsultoraId()
+    if (!cId.success) return cId
+    query = query.eq('consultora_id', cId.data)
+  }
+
+  const { data, error } = await query.select().maybeSingle()
 
   if (error) {
     if (error.code === '23505') return { success: false, error: 'Ya existe una categoría con ese nombre.' }
     return { success: false, error: error.message }
   }
+  if (!data) return { success: false, error: 'No se encontró la categoría o no es editable' }
   revalidatePath(LIB_PATH)
   return { success: true, data }
 }
 
 export async function deleteCategoriaGestion(id: string): Promise<ActionResult<null>> {
   const supabase = await createClient()
-  const cId = await getConsultoraId()
-  if (!cId.success) return cId
 
-  const { error } = await supabase
+  const { data: target } = await supabase
     .from('gestiones_categorias')
-    .delete()
+    .select('consultora_id')
     .eq('id', id)
-    .eq('consultora_id', cId.data)
+    .maybeSingle()
+
+  if (!target) return { success: false, error: 'No se encontró la categoría o no es eliminable' }
+
+  let query = supabase.from('gestiones_categorias').delete().eq('id', id)
+
+  if (target.consultora_id === null) {
+    if (!(await puedeGestionarLibreriasServer())) {
+      return { success: false, error: 'Sin permiso para gestionar la librería base' }
+    }
+  } else {
+    const cId = await getConsultoraId()
+    if (!cId.success) return cId
+    query = query.eq('consultora_id', cId.data)
+  }
+
+  const { error } = await query
 
   if (error) return { success: false, error: error.message }
   revalidatePath(LIB_PATH)
@@ -195,22 +294,35 @@ export async function deleteCategoriaGestion(id: string): Promise<ActionResult<n
 
 // ============================================================
 // GESTIONES (sin límite)
+// - Propias: full_access.
+// - Base: solo puedeGestionarLibrerias.
 // ============================================================
 export async function createGestion(
   nombre: string,
   categoriaId: string,
   descripcion?: string,
+  asBase = false,
 ): Promise<ActionResult<any>> {
   const supabase = await createClient()
-  const cId = await getConsultoraId()
-  if (!cId.success) return cId
   const n = nombre.trim()
   if (!n) return { success: false, error: 'El nombre es obligatorio' }
   if (!categoriaId) return { success: false, error: 'Elegí una categoría' }
 
+  let consultoraId: string | null
+  if (asBase) {
+    if (!(await puedeGestionarLibreriasServer())) {
+      return { success: false, error: 'Sin permiso para gestionar la librería base' }
+    }
+    consultoraId = null
+  } else {
+    const cId = await getConsultoraId()
+    if (!cId.success) return cId
+    consultoraId = cId.data
+  }
+
   const { data, error } = await supabase
     .from('gestiones')
-    .insert({ nombre: n, categoria_id: categoriaId, descripcion: descripcion?.trim() || null, consultora_id: cId.data })
+    .insert({ nombre: n, categoria_id: categoriaId, descripcion: descripcion?.trim() || null, consultora_id: consultoraId })
     .select()
     .single()
 
@@ -229,37 +341,67 @@ export async function updateGestion(
   descripcion?: string,
 ): Promise<ActionResult<any>> {
   const supabase = await createClient()
-  const cId = await getConsultoraId()
-  if (!cId.success) return cId
   const n = nombre.trim()
   if (!n) return { success: false, error: 'El nombre es obligatorio' }
 
-  const { data, error } = await supabase
+  const { data: target } = await supabase
+    .from('gestiones')
+    .select('consultora_id')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (!target) return { success: false, error: 'No se encontró la gestión o no es editable' }
+
+  let query = supabase
     .from('gestiones')
     .update({ nombre: n, categoria_id: categoriaId, descripcion: descripcion?.trim() || null })
     .eq('id', id)
-    .eq('consultora_id', cId.data)
-    .select()
-    .single()
+
+  if (target.consultora_id === null) {
+    if (!(await puedeGestionarLibreriasServer())) {
+      return { success: false, error: 'Sin permiso para gestionar la librería base' }
+    }
+  } else {
+    const cId = await getConsultoraId()
+    if (!cId.success) return cId
+    query = query.eq('consultora_id', cId.data)
+  }
+
+  const { data, error } = await query.select().maybeSingle()
 
   if (error) {
     if (error.code === '23505') return { success: false, error: 'Ya existe una gestión con ese nombre.' }
     return { success: false, error: error.message }
   }
+  if (!data) return { success: false, error: 'No se encontró la gestión o no es editable' }
   revalidatePath(LIB_PATH)
   return { success: true, data }
 }
 
 export async function deleteGestion(id: string): Promise<ActionResult<null>> {
   const supabase = await createClient()
-  const cId = await getConsultoraId()
-  if (!cId.success) return cId
 
-  const { error } = await supabase
+  const { data: target } = await supabase
     .from('gestiones')
-    .delete()
+    .select('consultora_id')
     .eq('id', id)
-    .eq('consultora_id', cId.data)
+    .maybeSingle()
+
+  if (!target) return { success: false, error: 'No se encontró la gestión o no es eliminable' }
+
+  let query = supabase.from('gestiones').delete().eq('id', id)
+
+  if (target.consultora_id === null) {
+    if (!(await puedeGestionarLibreriasServer())) {
+      return { success: false, error: 'Sin permiso para gestionar la librería base' }
+    }
+  } else {
+    const cId = await getConsultoraId()
+    if (!cId.success) return cId
+    query = query.eq('consultora_id', cId.data)
+  }
+
+  const { error } = await query
 
   if (error) return { success: false, error: error.message }
   revalidatePath(LIB_PATH)

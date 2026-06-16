@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Modal } from '@/components/ui/modal'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
@@ -20,20 +20,38 @@ interface Props {
   onClose: () => void
   /** Norma a editar; null = crear nueva. */
   norma: NormativaNormaConConteo | null
-  /** Sólo categorías propias de la consultora (las base son read-only). */
+  /**
+   * Categorías ofrecidas. Para usuarios normales, solo propias; para quien
+   * gestiona la librería base, también las base.
+   */
   categorias: NormativaCategoriaConConteo[]
+  /** true cuando el usuario puede gestionar la librería base (admin.main / developer). */
+  puedeGestionarBase?: boolean
   onSaved: () => void
 }
 
-export function NormativaFormModal({ open, onClose, norma, categorias, onSaved }: Props) {
+export function NormativaFormModal({ open, onClose, norma, categorias, puedeGestionarBase = false, onSaved }: Props) {
   const { success, error } = useToast()
   const [saving, setSaving] = useState(false)
   const editando = Boolean(norma)
+  // Al crear, los que gestionan librerías eligen el alcance (base / propia).
+  // Al editar, el alcance lo determina la fila existente.
+  const esBaseExistente = editando && norma?.consultora_id === null
+  const [alcance, setAlcance] = useState<'propia' | 'base'>('propia')
+
+  // Al (re)abrir para crear, arrancamos siempre en "propia".
+  useEffect(() => {
+    if (open && !editando) setAlcance('propia')
+  }, [open, editando])
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setSaving(true)
     const formData = new FormData(e.currentTarget)
+    // Solo al crear: marcamos la norma como base si el usuario lo eligió.
+    if (!norma && puedeGestionarBase && alcance === 'base') {
+      formData.set('as_base', 'true')
+    }
     const res = norma
       ? await updateNormativa(norma.id, formData)
       : await createNormativa(formData)
@@ -56,6 +74,25 @@ export function NormativaFormModal({ open, onClose, norma, categorias, onSaved }
       size="full"
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        {/* Alcance — solo al crear y solo para quien gestiona la librería base. */}
+        {!editando && puedeGestionarBase && (
+          <Select
+            label="Alcance"
+            value={alcance}
+            onChange={(e) => setAlcance(e.target.value as 'propia' | 'base')}
+            options={[
+              { value: 'propia', label: 'De mi consultora' },
+              { value: 'base', label: 'Librería base (Sigmetría)' },
+            ]}
+          />
+        )}
+        {esBaseExistente && (
+          <p className="rounded-lg bg-surface-sunken px-3 py-2 text-xs text-text-secondary">
+            Estás editando una norma de la <span className="font-medium">librería base</span> de
+            Sigmetría. Los cambios aplican para todas las consultoras.
+          </p>
+        )}
+
         <Input
           name="titulo"
           label="Título"

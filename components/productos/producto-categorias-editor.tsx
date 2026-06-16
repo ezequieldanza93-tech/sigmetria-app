@@ -10,7 +10,14 @@ import { getProductoCategorias, setProductoCategorias } from '@/lib/actions/prod
  * Lee/escribe producto_categoria_map. Permite 1 o varias categorías por producto.
  * La RLS protege: base → solo staff developer; propios → members de la consultora.
  */
-export function ProductoCategoriasEditor({ productoId }: { productoId: string }) {
+export function ProductoCategoriasEditor({
+  productoId,
+  canEdit = true,
+}: {
+  productoId: string
+  /** Si false, se muestra solo lectura (sin "Editar"/"Guardar"). Default true. */
+  canEdit?: boolean
+}) {
   const { data: arbol } = useCatalogoArbol()
   const [sel, setSel] = useState<Set<string>>(new Set())
   const [inicial, setInicial] = useState<Set<string>>(new Set())
@@ -57,16 +64,18 @@ export function ProductoCategoriasEditor({ productoId }: { productoId: string })
 
   return (
     <div>
-      <div className="flex items-center gap-2 mb-1.5">
+      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
         <p className="text-xs font-medium text-text-secondary">Categorías ({sel.size})</p>
-        <MultiSelectFilter
-          label="Editar"
-          options={opciones}
-          selected={sel}
-          onChange={setSel}
-          emptyLabel="Sin categorías en el catálogo"
-        />
-        {dirty && (
+        {canEdit && (
+          <MultiSelectFilter
+            label="Editar"
+            options={opciones}
+            selected={sel}
+            onChange={setSel}
+            emptyLabel="Sin categorías en el catálogo"
+          />
+        )}
+        {canEdit && dirty && (
           <button
             type="button"
             onClick={guardar}
@@ -76,7 +85,7 @@ export function ProductoCategoriasEditor({ productoId }: { productoId: string })
             {saving ? 'Guardando…' : 'Guardar'}
           </button>
         )}
-        {saved && <span className="text-xs text-green-600">Guardado ✓</span>}
+        {canEdit && saved && <span className="text-xs text-green-600">Guardado ✓</span>}
       </div>
 
       {error && <p className="text-xs text-danger mb-1.5">{error}</p>}

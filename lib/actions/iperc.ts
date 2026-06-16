@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { getEffectiveRole } from '@/lib/auth/effective-role'
 import type { ActionResult } from '@/lib/types'
 
 // ---- Helpers ----
@@ -20,6 +21,16 @@ async function getConsultoraId(): Promise<ActionResult<string>> {
 
   if (!member) return { success: false, error: 'Sin membresía activa' }
   return { success: true, data: member.consultora_id }
+}
+
+/**
+ * ¿El usuario puede administrar las librerías base (filas consultora_id NULL)?
+ * Espeja la función SQL puede_gestionar_librerias() — la RLS es el firewall real;
+ * acá solo evitamos disparar mutaciones que la RLS rechazaría.
+ */
+async function puedeGestionarLibreriasServer(): Promise<boolean> {
+  const role = await getEffectiveRole()
+  return role?.puedeGestionarLibrerias ?? false
 }
 
 // ============================================================
@@ -45,16 +56,29 @@ export async function createPeligro(
   formData: FormData
 ): Promise<ActionResult<any>> {
   const supabase = await createClient()
-  const cId = await getConsultoraId()
-  if (!cId.success) return cId
 
   const nombre = (formData.get('nombre') as string)?.trim()
   const factor = formData.get('factor') as string
   if (!nombre || !factor) return { success: false, error: 'Nombre y factor requeridos' }
 
+  // as_base=true → crear fila base (consultora_id NULL); solo si tiene capability.
+  const asBase = formData.get('as_base') === 'true'
+  let consultoraId: string | null
+
+  if (asBase) {
+    if (!(await puedeGestionarLibreriasServer())) {
+      return { success: false, error: 'Sin permiso para gestionar la librería base' }
+    }
+    consultoraId = null
+  } else {
+    const cId = await getConsultoraId()
+    if (!cId.success) return cId
+    consultoraId = cId.data
+  }
+
   const { data, error } = await supabase
     .from('iperc_peligros_library')
-    .insert({ consultora_id: cId.data, nombre, factor })
+    .insert({ consultora_id: consultoraId, nombre, factor })
     .select()
     .single()
 
@@ -69,29 +93,67 @@ export async function updatePeligro(
   formData: FormData
 ): Promise<ActionResult<any>> {
   const supabase = await createClient()
-  const cId = await getConsultoraId()
-  if (!cId.success) return cId
 
   const nombre = (formData.get('nombre') as string)?.trim()
   const factor = formData.get('factor') as string
   if (!nombre || !factor) return { success: false, error: 'Nombre y factor requeridos' }
 
-  const { data, error } = await supabase
+  // Leemos el consultora_id del target para saber si es fila base o propia.
+  const { data: target } = await supabase
     .from('iperc_peligros_library')
-    .update({ nombre, factor })
+    .select('consultora_id')
     .eq('id', id)
-    .eq('consultora_id', cId.data)
-    .select()
-    .single()
+    .maybeSingle()
+
+  if (!target) return { success: false, error: 'No se encontró el peligro o no es editable' }
+
+  let query = supabase.from('iperc_peligros_library').update({ nombre, factor }).eq('id', id)
+
+  if (target.consultora_id === null) {
+    // Fila base: exigir capability; la RLS confirma el permiso.
+    if (!(await puedeGestionarLibreriasServer())) {
+      return { success: false, error: 'Sin permiso para gestionar la librería base' }
+    }
+    // No agregamos .eq('consultora_id', ...) — la fila base tiene NULL.
+  } else {
+    // Fila propia: acotar al scope de la consultora del usuario.
+    const cId = await getConsultoraId()
+    if (!cId.success) return cId
+    query = query.eq('consultora_id', cId.data)
+  }
+
+  const { data, error } = await query.select().maybeSingle()
 
   if (error) return { success: false, error: error.message }
+  if (!data) return { success: false, error: 'No se encontró el peligro o no es editable' }
   revalidatePath('/dashboard/configuracion/iperc')
   return { success: true, data }
 }
 
 export async function deletePeligro(id: string): Promise<ActionResult<null>> {
   const supabase = await createClient()
-  const { error } = await supabase.from('iperc_peligros_library').delete().eq('id', id)
+
+  const { data: target } = await supabase
+    .from('iperc_peligros_library')
+    .select('consultora_id')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (!target) return { success: false, error: 'No se encontró el peligro o no es eliminable' }
+
+  let query = supabase.from('iperc_peligros_library').delete().eq('id', id)
+
+  if (target.consultora_id === null) {
+    if (!(await puedeGestionarLibreriasServer())) {
+      return { success: false, error: 'Sin permiso para gestionar la librería base' }
+    }
+  } else {
+    const cId = await getConsultoraId()
+    if (!cId.success) return cId
+    query = query.eq('consultora_id', cId.data)
+  }
+
+  const { error } = await query
   if (error) return { success: false, error: error.message }
   revalidatePath('/dashboard/configuracion/iperc')
   return { success: true, data: null }
@@ -120,16 +182,29 @@ export async function createRiesgoLib(
   formData: FormData
 ): Promise<ActionResult<any>> {
   const supabase = await createClient()
-  const cId = await getConsultoraId()
-  if (!cId.success) return cId
 
   const nombre = (formData.get('nombre') as string)?.trim()
   const tipo = formData.get('tipo') as string
   if (!nombre || !tipo) return { success: false, error: 'Nombre y tipo requeridos' }
 
+  // as_base=true → crear fila base (consultora_id NULL); solo si tiene capability.
+  const asBase = formData.get('as_base') === 'true'
+  let consultoraId: string | null
+
+  if (asBase) {
+    if (!(await puedeGestionarLibreriasServer())) {
+      return { success: false, error: 'Sin permiso para gestionar la librería base' }
+    }
+    consultoraId = null
+  } else {
+    const cId = await getConsultoraId()
+    if (!cId.success) return cId
+    consultoraId = cId.data
+  }
+
   const { data, error } = await supabase
     .from('iperc_riesgos_library')
-    .insert({ consultora_id: cId.data, nombre, tipo })
+    .insert({ consultora_id: consultoraId, nombre, tipo })
     .select()
     .single()
 
@@ -144,29 +219,63 @@ export async function updateRiesgoLib(
   formData: FormData
 ): Promise<ActionResult<any>> {
   const supabase = await createClient()
-  const cId = await getConsultoraId()
-  if (!cId.success) return cId
 
   const nombre = (formData.get('nombre') as string)?.trim()
   const tipo = formData.get('tipo') as string
   if (!nombre || !tipo) return { success: false, error: 'Nombre y tipo requeridos' }
 
-  const { data, error } = await supabase
+  const { data: target } = await supabase
     .from('iperc_riesgos_library')
-    .update({ nombre, tipo })
+    .select('consultora_id')
     .eq('id', id)
-    .eq('consultora_id', cId.data)
-    .select()
-    .single()
+    .maybeSingle()
+
+  if (!target) return { success: false, error: 'No se encontró el riesgo o no es editable' }
+
+  let query = supabase.from('iperc_riesgos_library').update({ nombre, tipo }).eq('id', id)
+
+  if (target.consultora_id === null) {
+    if (!(await puedeGestionarLibreriasServer())) {
+      return { success: false, error: 'Sin permiso para gestionar la librería base' }
+    }
+  } else {
+    const cId = await getConsultoraId()
+    if (!cId.success) return cId
+    query = query.eq('consultora_id', cId.data)
+  }
+
+  const { data, error } = await query.select().maybeSingle()
 
   if (error) return { success: false, error: error.message }
+  if (!data) return { success: false, error: 'No se encontró el riesgo o no es editable' }
   revalidatePath('/dashboard/configuracion/iperc')
   return { success: true, data }
 }
 
 export async function deleteRiesgoLib(id: string): Promise<ActionResult<null>> {
   const supabase = await createClient()
-  const { error } = await supabase.from('iperc_riesgos_library').delete().eq('id', id)
+
+  const { data: target } = await supabase
+    .from('iperc_riesgos_library')
+    .select('consultora_id')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (!target) return { success: false, error: 'No se encontró el riesgo o no es eliminable' }
+
+  let query = supabase.from('iperc_riesgos_library').delete().eq('id', id)
+
+  if (target.consultora_id === null) {
+    if (!(await puedeGestionarLibreriasServer())) {
+      return { success: false, error: 'Sin permiso para gestionar la librería base' }
+    }
+  } else {
+    const cId = await getConsultoraId()
+    if (!cId.success) return cId
+    query = query.eq('consultora_id', cId.data)
+  }
+
+  const { error } = await query
   if (error) return { success: false, error: error.message }
   revalidatePath('/dashboard/configuracion/iperc')
   return { success: true, data: null }
@@ -216,19 +325,32 @@ export async function getMedidasControlTop(): Promise<ActionResult<any[]>> {
 }
 
 export async function createMedidaControl(
-  texto: string
+  texto: string,
+  asBase = false
 ): Promise<ActionResult<any>> {
   const supabase = await createClient()
-  const cId = await getConsultoraId()
-  if (!cId.success) return cId
 
   const trimmed = texto.trim()
   if (!trimmed) return { success: false, error: 'El texto es obligatorio' }
   if (trimmed.length > 150) return { success: false, error: 'Máximo 150 caracteres' }
 
+  // asBase=true → crear fila base (consultora_id NULL); solo si tiene capability.
+  let consultoraId: string | null
+
+  if (asBase) {
+    if (!(await puedeGestionarLibreriasServer())) {
+      return { success: false, error: 'Sin permiso para gestionar la librería base' }
+    }
+    consultoraId = null
+  } else {
+    const cId = await getConsultoraId()
+    if (!cId.success) return cId
+    consultoraId = cId.data
+  }
+
   const { data, error } = await supabase
     .from('medidas_control')
-    .insert({ consultora_id: cId.data, texto: trimmed })
+    .insert({ consultora_id: consultoraId, texto: trimmed })
     .select()
     .single()
 
@@ -244,7 +366,28 @@ export async function incrementMedidaUso(id: string): Promise<void> {
 
 export async function deleteMedidaControl(id: string): Promise<ActionResult<null>> {
   const supabase = await createClient()
-  const { error } = await supabase.from('medidas_control').delete().eq('id', id)
+
+  const { data: target } = await supabase
+    .from('medidas_control')
+    .select('consultora_id')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (!target) return { success: false, error: 'No se encontró la medida o no es eliminable' }
+
+  let query = supabase.from('medidas_control').delete().eq('id', id)
+
+  if (target.consultora_id === null) {
+    if (!(await puedeGestionarLibreriasServer())) {
+      return { success: false, error: 'Sin permiso para gestionar la librería base' }
+    }
+  } else {
+    const cId = await getConsultoraId()
+    if (!cId.success) return cId
+    query = query.eq('consultora_id', cId.data)
+  }
+
+  const { error } = await query
   if (error) return { success: false, error: error.message }
   revalidatePath('/dashboard/configuracion/iperc')
   return { success: true, data: null }

@@ -13,9 +13,11 @@ import { useEffectiveRoleContext } from '@/lib/contexts/effective-role-context'
 import { OrigenFilter, pasaOrigen, OrigenBadge, type OrigenFiltro } from '@/components/ui/origen-filter'
 
 // Un ítem es genérico (base de Sigmetría) cuando consultora_id IS NULL.
-// Los genéricos los administra solo el staff; el resto los ve como solo-lectura.
-function useIsStaff() {
-  return useEffectiveRoleContext()?.isSuperAdmin ?? false
+// Los genéricos los administra solo quien puede gestionar librerías base
+// (super-admin O el flag acotado gestiona_librerias_base); el resto los ve
+// como solo-lectura. Esto debe quedar alineado con la RLS / puede_gestionar_librerias().
+function usePuedeGestionar() {
+  return useEffectiveRoleContext()?.puedeGestionarLibrerias ?? false
 }
 
 // Nota mostrada arriba de las escalas (genéricas únicas, solo lectura).
@@ -42,8 +44,8 @@ export default function IpercConfigPage() {
   const [tab, setTab] = useState<Tab>('peligros')
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">Configuración IPERC</h1>
+    <div className="p-4 sm:p-6">
+      <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Configuración IPERC</h1>
       <div className="border-b border-border-subtle mb-6">
         <div className="flex gap-1 overflow-x-auto">
           {TABS.map(t => (
@@ -77,29 +79,59 @@ function PeligrosTab() {
   const createPeligro = useCreatePeligro()
   const deletePeligro = useDeletePeligro()
   const [modal, setModal] = useState(false)
+  const [asBase, setAsBase] = useState(false)
   const [origen, setOrigen] = useState<OrigenFiltro>('todos')
-  const isStaff = useIsStaff()
+  const puedeGestionar = usePuedeGestionar()
   const lista = (peligros ?? []).filter((p: any) => pasaOrigen(p.consultora_id, origen))
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4 gap-3 flex-wrap">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <OrigenFilter value={origen} onChange={setOrigen} />
           <p className="text-sm text-text-secondary">{lista.length} peligros</p>
         </div>
-        <Button onClick={() => setModal(true)}>Nuevo Peligro</Button>
+        {puedeGestionar && (
+          <Button className="w-full sm:w-auto" onClick={() => { setAsBase(false); setModal(true) }}>Nuevo Peligro</Button>
+        )}
       </div>
       <Modal open={modal} onClose={() => setModal(false)} title="Nuevo Peligro">
         <form onSubmit={async (e) => {
           e.preventDefault()
           const form = e.currentTarget
-          await createPeligro.mutateAsync(new FormData(form))
+          const fd = new FormData(form)
+          fd.set('as_base', asBase ? 'true' : 'false')
+          await createPeligro.mutateAsync(fd)
           form.reset()
           setModal(false)
         }} className="flex flex-col gap-4">
           <Input name="nombre" label="Nombre" required />
           <Select name="factor" label="Factor" required options={IPERC_FACTORES.map(f => ({ value: f, label: f }))} placeholder="Seleccionar factor" />
+          {puedeGestionar && (
+            <div className="flex flex-col gap-1">
+              <label className="text-sm font-medium text-text-primary">Alcance</label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input
+                    type="radio"
+                    name="alcance_peligro"
+                    checked={!asBase}
+                    onChange={() => setAsBase(false)}
+                  />
+                  De mi consultora
+                </label>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input
+                    type="radio"
+                    name="alcance_peligro"
+                    checked={asBase}
+                    onChange={() => setAsBase(true)}
+                  />
+                  Base Sigmetría
+                </label>
+              </div>
+            </div>
+          )}
           <div className="flex gap-2 justify-end">
             <Button type="button" variant="secondary" onClick={() => setModal(false)}>Cancelar</Button>
             <Button type="submit">Crear</Button>
@@ -109,16 +141,16 @@ function PeligrosTab() {
       {isLoading ? <p>Cargando...</p> : (
         <div className="grid gap-2">
           {lista.map((p: any) => (
-            <div key={p.id} className="flex items-center justify-between p-3 bg-surface-base border rounded-lg">
-              <div>
-                <div className="flex items-center gap-2">
-                  <p className="font-medium">{p.nombre}</p>
+            <div key={p.id} className="flex items-start justify-between gap-2 p-3 bg-surface-base border rounded-lg">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="font-medium break-words">{p.nombre}</p>
                   <OrigenBadge consultoraId={p.consultora_id} />
                 </div>
                 <Badge>{p.factor}</Badge>
               </div>
-              {(p.consultora_id !== null || isStaff) && (
-                <Button variant="ghost" size="sm" onClick={() => deletePeligro.mutate(p.id)}>Eliminar</Button>
+              {(p.consultora_id !== null || puedeGestionar) && (
+                <Button variant="ghost" size="sm" className="shrink-0" onClick={() => deletePeligro.mutate(p.id)}>Eliminar</Button>
               )}
             </div>
           ))}
@@ -133,14 +165,16 @@ function RiesgosTab() {
   const createRiesgo = useCreateRiesgoLib()
   const deleteRiesgo = useDeleteRiesgoLib()
   const [modal, setModal] = useState(false)
+  const [asBase, setAsBase] = useState(false)
   const [origen, setOrigen] = useState<OrigenFiltro>('todos')
-  const isStaff = useIsStaff()
+  const puedeGestionar = usePuedeGestionar()
   const lista = (riesgos ?? []).filter((r: any) => pasaOrigen(r.consultora_id, origen))
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const form = e.currentTarget
     const formData = new FormData(form)
+    formData.set('as_base', asBase ? 'true' : 'false')
     await createRiesgo.mutateAsync(formData)
     form.reset()
     setModal(false)
@@ -148,17 +182,44 @@ function RiesgosTab() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4 gap-3 flex-wrap">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <OrigenFilter value={origen} onChange={setOrigen} />
           <p className="text-sm text-text-secondary">{lista.length} riesgos</p>
         </div>
-        <Button onClick={() => setModal(true)}>Nuevo Riesgo</Button>
+        {puedeGestionar && (
+          <Button className="w-full sm:w-auto" onClick={() => { setAsBase(false); setModal(true) }}>Nuevo Riesgo</Button>
+        )}
       </div>
       <Modal open={modal} onClose={() => setModal(false)} title="Nuevo Riesgo">
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <Input name="nombre" label="Nombre" required />
           <Select name="tipo" label="Tipo" required options={IPERC_RIESGO_TIPOS.map(t => ({ value: t, label: t }))} placeholder="Seleccionar tipo" />
+          {puedeGestionar && (
+            <div className="flex flex-col gap-1">
+              <label className="text-sm font-medium text-text-primary">Alcance</label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input
+                    type="radio"
+                    name="alcance_riesgo"
+                    checked={!asBase}
+                    onChange={() => setAsBase(false)}
+                  />
+                  De mi consultora
+                </label>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input
+                    type="radio"
+                    name="alcance_riesgo"
+                    checked={asBase}
+                    onChange={() => setAsBase(true)}
+                  />
+                  Base Sigmetría
+                </label>
+              </div>
+            </div>
+          )}
           <div className="flex gap-2 justify-end">
             <Button type="button" variant="secondary" onClick={() => setModal(false)}>Cancelar</Button>
             <Button type="submit">Crear</Button>
@@ -168,16 +229,16 @@ function RiesgosTab() {
       {isLoading ? <p>Cargando...</p> : (
         <div className="grid gap-2">
           {lista.map((r: any) => (
-            <div key={r.id} className="flex items-center justify-between p-3 bg-surface-base border rounded-lg">
-              <div>
-                <div className="flex items-center gap-2">
-                  <p className="font-medium">{r.nombre}</p>
+            <div key={r.id} className="flex items-start justify-between gap-2 p-3 bg-surface-base border rounded-lg">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="font-medium break-words">{r.nombre}</p>
                   <OrigenBadge consultoraId={r.consultora_id} />
                 </div>
                 <Badge variant="info">{r.tipo}</Badge>
               </div>
-              {(r.consultora_id !== null || isStaff) && (
-                <Button variant="ghost" size="sm" onClick={() => deleteRiesgo.mutate(r.id)}>Eliminar</Button>
+              {(r.consultora_id !== null || puedeGestionar) && (
+                <Button variant="ghost" size="sm" className="shrink-0" onClick={() => deleteRiesgo.mutate(r.id)}>Eliminar</Button>
               )}
             </div>
           ))}
@@ -193,26 +254,30 @@ function MedidasTab() {
   const deleteMedida = useDeleteMedidaControl()
   const [modal, setModal] = useState(false)
   const [texto, setTexto] = useState('')
+  const [asBase, setAsBase] = useState(false)
   const [origen, setOrigen] = useState<OrigenFiltro>('todos')
-  const isStaff = useIsStaff()
+  const puedeGestionar = usePuedeGestionar()
   const lista = (medidas ?? []).filter((m: any) => pasaOrigen(m.consultora_id, origen))
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!texto.trim()) return
-    await createMedida.mutateAsync(texto)
+    await createMedida.mutateAsync({ texto, asBase })
     setTexto('')
+    setAsBase(false)
     setModal(false)
   }
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4 gap-3 flex-wrap">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <OrigenFilter value={origen} onChange={setOrigen} />
           <p className="text-sm text-text-secondary">{lista.length} medidas (más usadas)</p>
         </div>
-        <Button onClick={() => setModal(true)}>Nueva Medida</Button>
+        {puedeGestionar && (
+          <Button className="w-full sm:w-auto" onClick={() => { setAsBase(false); setModal(true) }}>Nueva Medida</Button>
+        )}
       </div>
       <Modal open={modal} onClose={() => setModal(false)} title="Nueva Medida de Control">
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -225,6 +290,31 @@ function MedidasTab() {
             onChange={e => setTexto(e.target.value)}
           />
           <p className="text-xs text-text-tertiary">{texto.length}/150</p>
+          {puedeGestionar && (
+            <div className="flex flex-col gap-1">
+              <label className="text-sm font-medium text-text-primary">Alcance</label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input
+                    type="radio"
+                    name="alcance_medida"
+                    checked={!asBase}
+                    onChange={() => setAsBase(false)}
+                  />
+                  De mi consultora
+                </label>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input
+                    type="radio"
+                    name="alcance_medida"
+                    checked={asBase}
+                    onChange={() => setAsBase(true)}
+                  />
+                  Base Sigmetría
+                </label>
+              </div>
+            </div>
+          )}
           <div className="flex gap-2 justify-end">
             <Button type="button" variant="secondary" onClick={() => setModal(false)}>Cancelar</Button>
             <Button type="submit">Crear</Button>
@@ -234,16 +324,16 @@ function MedidasTab() {
       {isLoading ? <p>Cargando...</p> : (
         <div className="grid gap-2">
           {lista.map((m: any) => (
-            <div key={m.id} className="flex items-center justify-between p-3 bg-surface-base border rounded-lg">
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <p className="font-medium">{m.texto}</p>
+            <div key={m.id} className="flex items-start justify-between gap-2 p-3 bg-surface-base border rounded-lg">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="font-medium break-words">{m.texto}</p>
                   <OrigenBadge consultoraId={m.consultora_id} />
                 </div>
                 <p className="text-xs text-text-tertiary">Usada {m.veces_usada} veces</p>
               </div>
-              {(m.consultora_id !== null || isStaff) && (
-                <Button variant="ghost" size="sm" onClick={() => deleteMedida.mutate(m.id)}>Eliminar</Button>
+              {(m.consultora_id !== null || puedeGestionar) && (
+                <Button variant="ghost" size="sm" className="shrink-0" onClick={() => deleteMedida.mutate(m.id)}>Eliminar</Button>
               )}
             </div>
           ))}
@@ -290,9 +380,9 @@ function ProbabilidadesTab() {
       <EscalaNota />
       <div className="grid gap-3">
         {(probabilidades ?? []).map((p: any) => (
-          <div key={p.id} className="flex items-center justify-between p-4 bg-surface-base border rounded-lg">
-            <span className="font-medium">{p.nivel}</span>
-            <Badge>Valor: {p.valor_numerico}</Badge>
+          <div key={p.id} className="flex items-center justify-between gap-2 p-4 bg-surface-base border rounded-lg">
+            <span className="font-medium break-words min-w-0">{p.nivel}</span>
+            <Badge className="shrink-0">Valor: {p.valor_numerico}</Badge>
           </div>
         ))}
       </div>

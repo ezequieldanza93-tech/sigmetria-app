@@ -11,6 +11,7 @@ import {
   Check,
   Building2,
   AlertTriangle,
+  Lock,
 } from 'lucide-react'
 import {
   useDocumentosTiposConfig,
@@ -19,6 +20,7 @@ import {
   useSetAplicabilidadTiposEstablecimiento,
 } from '@/lib/queries/documentos-catalogo'
 import { SearchableSelect } from '@/components/ui/searchable-select'
+import { useEffectiveRoleContext } from '@/lib/contexts/effective-role-context'
 import { PROVINCIAS_AR } from '@/lib/constants'
 import type {
   DocumentoTipoConfig,
@@ -145,10 +147,11 @@ function ToggleSwitch({
 interface EditPanelProps {
   doc: DocumentoTipoConfig
   tiposEstablecimiento: TipoEstablecimientoItem[]
+  canEdit: boolean
   onClose: () => void
 }
 
-function EditPanel({ doc, tiposEstablecimiento, onClose }: EditPanelProps) {
+function EditPanel({ doc, tiposEstablecimiento, canEdit, onClose }: EditPanelProps) {
   const updateMutation = useUpdateDocumentoTipoConfig()
   const setAplicabilidadMutation = useSetAplicabilidadTiposEstablecimiento()
   const [, startTransition] = useTransition()
@@ -168,6 +171,8 @@ function EditPanel({ doc, tiposEstablecimiento, onClose }: EditPanelProps) {
   const [error, setError] = useState<string | null>(null)
 
   const isPending = updateMutation.isPending || setAplicabilidadMutation.isPending
+  // En modo solo-lectura (sin capability) se deshabilitan todos los controles.
+  const controlsDisabled = isPending || !canEdit
 
   const nivelActual = nivel as NivelDocumento | null
   const mostrarAplicabilidad =
@@ -225,7 +230,7 @@ function EditPanel({ doc, tiposEstablecimiento, onClose }: EditPanelProps) {
   }
 
   return (
-    <div className="bg-surface-sunken border-t border-border-subtle px-6 py-5">
+    <div className="bg-surface-sunken border-t border-border-subtle px-4 py-4 sm:px-6 sm:py-5">
       <div className="max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5">
 
         {/* ── Nivel ── */}
@@ -236,7 +241,7 @@ function EditPanel({ doc, tiposEstablecimiento, onClose }: EditPanelProps) {
             onChange={v => setNivel(v as NivelDocumento | '')}
             options={NIVEL_OPTIONS}
             placeholder="Seleccionar nivel…"
-            disabled={isPending}
+            disabled={controlsDisabled}
             id={`nivel-${doc.id}`}
           />
         </div>
@@ -245,7 +250,7 @@ function EditPanel({ doc, tiposEstablecimiento, onClose }: EditPanelProps) {
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-medium text-text-secondary">Vigencia</label>
           <div className="flex flex-col gap-2">
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-x-3 gap-y-1.5">
               {VIGENCIA_OPTIONS.map(opt => (
                 <label key={opt.value} className="flex items-center gap-1.5 cursor-pointer select-none">
                   <input
@@ -254,7 +259,7 @@ function EditPanel({ doc, tiposEstablecimiento, onClose }: EditPanelProps) {
                     value={opt.value}
                     checked={vigenciaTipo === opt.value}
                     onChange={() => setVigenciaTipo(opt.value)}
-                    disabled={isPending}
+                    disabled={controlsDisabled}
                     className="accent-brand-primary"
                   />
                   <span className="text-sm text-text-primary">{opt.label}</span>
@@ -267,7 +272,7 @@ function EditPanel({ doc, tiposEstablecimiento, onClose }: EditPanelProps) {
                   value=""
                   checked={vigenciaTipo === ''}
                   onChange={() => setVigenciaTipo('')}
-                  disabled={isPending}
+                  disabled={controlsDisabled}
                   className="accent-brand-primary"
                 />
                 <span className="text-sm text-text-tertiary">Sin definir</span>
@@ -279,7 +284,7 @@ function EditPanel({ doc, tiposEstablecimiento, onClose }: EditPanelProps) {
                 onChange={v => setPeriodicidad(v as PeriodicidadDocumento | '')}
                 options={PERIODICIDAD_OPTIONS}
                 placeholder="Período de renovación…"
-                disabled={isPending}
+                disabled={controlsDisabled}
                 id={`periodicidad-${doc.id}`}
               />
             )}
@@ -290,7 +295,7 @@ function EditPanel({ doc, tiposEstablecimiento, onClose }: EditPanelProps) {
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-medium text-text-secondary">Jurisdicción</label>
           <div className="flex flex-col gap-2">
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-x-3 gap-y-1.5">
               {JURISDICCION_OPTIONS.map(opt => (
                 <label key={opt.value} className="flex items-center gap-1.5 cursor-pointer select-none">
                   <input
@@ -299,7 +304,7 @@ function EditPanel({ doc, tiposEstablecimiento, onClose }: EditPanelProps) {
                     value={opt.value}
                     checked={jurisdiccion === opt.value}
                     onChange={() => setJurisdiccion(opt.value)}
-                    disabled={isPending}
+                    disabled={controlsDisabled}
                     className="accent-brand-primary"
                   />
                   <span className="text-sm text-text-primary">{opt.label}</span>
@@ -312,7 +317,7 @@ function EditPanel({ doc, tiposEstablecimiento, onClose }: EditPanelProps) {
                   value=""
                   checked={jurisdiccion === ''}
                   onChange={() => setJurisdiccion('')}
-                  disabled={isPending}
+                  disabled={controlsDisabled}
                   className="accent-brand-primary"
                 />
                 <span className="text-sm text-text-tertiary">Sin definir</span>
@@ -324,7 +329,7 @@ function EditPanel({ doc, tiposEstablecimiento, onClose }: EditPanelProps) {
                 onChange={setJurisdiccionProvincia}
                 options={PROVINCIA_OPTIONS}
                 placeholder="Seleccionar provincia…"
-                disabled={isPending}
+                disabled={controlsDisabled}
                 id={`provincia-${doc.id}`}
                 emptyText="Sin resultados."
               />
@@ -335,7 +340,7 @@ function EditPanel({ doc, tiposEstablecimiento, onClose }: EditPanelProps) {
                 value={jurisdiccionMunicipio}
                 onChange={e => setJurisdiccionMunicipio(e.target.value)}
                 placeholder="Municipio…"
-                disabled={isPending}
+                disabled={controlsDisabled}
                 className="px-3 py-2 text-sm border border-border-default rounded-lg bg-surface-base text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary disabled:opacity-40"
               />
             )}
@@ -348,7 +353,7 @@ function EditPanel({ doc, tiposEstablecimiento, onClose }: EditPanelProps) {
           <ToggleSwitch
             checked={requiereAlerta}
             onChange={setRequiereAlerta}
-            loading={isPending}
+            loading={controlsDisabled}
             label="Generar alerta por defecto"
           />
           {requiereAlerta && (
@@ -359,7 +364,7 @@ function EditPanel({ doc, tiposEstablecimiento, onClose }: EditPanelProps) {
                 max={365}
                 value={diasAlerta}
                 onChange={e => setDiasAlerta(e.target.value)}
-                disabled={isPending}
+                disabled={controlsDisabled}
                 className="w-20 text-center text-sm border border-border-default rounded-lg px-2 py-1.5 bg-surface-base text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary disabled:opacity-40"
               />
               <span className="text-sm text-text-secondary">días de anticipación</span>
@@ -385,7 +390,7 @@ function EditPanel({ doc, tiposEstablecimiento, onClose }: EditPanelProps) {
                     key={t.id}
                     type="button"
                     onClick={() => toggleTipoEstablecimiento(t.id)}
-                    disabled={isPending}
+                    disabled={controlsDisabled}
                     className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
                       selected
                         ? 'bg-brand-primary text-white border-brand-primary'
@@ -409,33 +414,51 @@ function EditPanel({ doc, tiposEstablecimiento, onClose }: EditPanelProps) {
       </div>
 
       {/* ── Acciones ── */}
-      <div className="flex items-center gap-3 mt-5 pt-4 border-t border-border-subtle">
-        <button
-          type="button"
-          onClick={handleGuardar}
-          disabled={isPending}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-brand-primary text-white rounded-lg hover:bg-brand-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isPending ? (
-            <RefreshCw size={14} className="animate-spin" />
-          ) : saved ? (
-            <Check size={14} />
-          ) : null}
-          {saved ? 'Guardado' : 'Guardar cambios'}
-        </button>
-        <button
-          type="button"
-          onClick={onClose}
-          disabled={isPending}
-          className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary border border-border-default rounded-lg hover:border-border-strong transition-colors disabled:opacity-50"
-        >
-          Cerrar
-        </button>
-        {error && (
-          <div className="flex items-center gap-1.5 text-xs text-danger">
-            <AlertTriangle size={12} />
-            {error}
-          </div>
+      <div className="flex flex-wrap items-center gap-3 mt-5 pt-4 border-t border-border-subtle">
+        {canEdit ? (
+          <>
+            <button
+              type="button"
+              onClick={handleGuardar}
+              disabled={controlsDisabled}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-brand-primary text-white rounded-lg hover:bg-brand-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isPending ? (
+                <RefreshCw size={14} className="animate-spin" />
+              ) : saved ? (
+                <Check size={14} />
+              ) : null}
+              {saved ? 'Guardado' : 'Guardar cambios'}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={controlsDisabled}
+              className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary border border-border-default rounded-lg hover:border-border-strong transition-colors disabled:opacity-50"
+            >
+              Cerrar
+            </button>
+            {error && (
+              <div className="flex items-center gap-1.5 text-xs text-danger">
+                <AlertTriangle size={12} />
+                {error}
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            <div className="flex items-center gap-1.5 text-xs text-text-tertiary">
+              <Lock size={12} className="shrink-0" />
+              <span>Solo lectura — no tenés permisos para editar el catálogo base.</span>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary border border-border-default rounded-lg hover:border-border-strong transition-colors"
+            >
+              Cerrar
+            </button>
+          </>
         )}
       </div>
     </div>
@@ -447,11 +470,12 @@ function EditPanel({ doc, tiposEstablecimiento, onClose }: EditPanelProps) {
 interface DocRowProps {
   doc: DocumentoTipoConfig
   tiposEstablecimiento: TipoEstablecimientoItem[]
+  canEdit: boolean
   expanded: boolean
   onToggle: () => void
 }
 
-function DocRow({ doc, tiposEstablecimiento, expanded, onToggle }: DocRowProps) {
+function DocRow({ doc, tiposEstablecimiento, canEdit, expanded, onToggle }: DocRowProps) {
   return (
     <>
       <tr
@@ -525,6 +549,7 @@ function DocRow({ doc, tiposEstablecimiento, expanded, onToggle }: DocRowProps) 
             <EditPanel
               doc={doc}
               tiposEstablecimiento={tiposEstablecimiento}
+              canEdit={canEdit}
               onClose={onToggle}
             />
           </td>
@@ -539,6 +564,9 @@ function DocRow({ doc, tiposEstablecimiento, expanded, onToggle }: DocRowProps) 
 export default function DocumentosCatalogoPage() {
   const { data: tipos, isLoading, refetch } = useDocumentosTiposConfig()
   const { data: tiposEstablecimiento } = useTiposEstablecimiento()
+  const ctx = useEffectiveRoleContext()
+  // Capability acotada: cubre super-admin Y el flag gestiona_librerias_base.
+  const canEdit = ctx?.puedeGestionarLibrerias ?? false
   const [expanded, setExpanded] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [filtroNivel, setFiltroNivel] = useState<NivelDocumento | ''>('')
@@ -564,10 +592,10 @@ export default function DocumentosCatalogoPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
       {/* ── Header ── */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <FileText size={24} className="text-brand-primary" />
-          <div>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+        <div className="flex items-center gap-3 min-w-0">
+          <FileText size={24} className="text-brand-primary shrink-0" />
+          <div className="min-w-0">
             <h1 className="text-xl font-bold text-text-primary">Catálogo de Documentos</h1>
             <p className="text-sm text-text-tertiary">
               Configurá nivel, vigencia, jurisdicción y alertas por tipo de documento
@@ -576,7 +604,7 @@ export default function DocumentosCatalogoPage() {
         </div>
         <button
           onClick={() => refetch()}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-text-secondary hover:text-text-primary bg-surface-elevated rounded-lg transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-text-secondary hover:text-text-primary bg-surface-elevated rounded-lg transition-colors shrink-0 self-start sm:self-auto"
         >
           <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
           Recargar
@@ -587,8 +615,10 @@ export default function DocumentosCatalogoPage() {
       <div className="flex items-start gap-2 bg-brand-muted/50 border border-brand-muted rounded-lg px-4 py-3 mb-5 text-sm text-text-secondary">
         <Info size={16} className="shrink-0 mt-0.5 text-brand-primary" />
         <p>
-          Este catálogo es global — aplica a todas las consultoras. Solo staff y developers pueden
-          editar. Hacé clic en una fila para expandir sus opciones de configuración.
+          Este catálogo es global — aplica a todas las consultoras.{' '}
+          {canEdit
+            ? 'Hacé clic en una fila para expandir y editar sus opciones de configuración.'
+            : 'Solo quien gestiona las librerías base puede editar. Podés consultar la configuración haciendo clic en cada fila.'}
         </p>
       </div>
 
@@ -656,8 +686,8 @@ export default function DocumentosCatalogoPage() {
           No hay documentos que coincidan con los filtros.
         </div>
       ) : (
-        <div className="border border-border-subtle rounded-xl overflow-hidden">
-          <table className="w-full">
+        <div className="border border-border-subtle rounded-xl overflow-x-auto">
+          <table className="w-full min-w-[320px]">
             <thead>
               <tr className="bg-surface-sunken text-xs font-medium text-text-tertiary uppercase tracking-wider">
                 <th className="w-8 px-4 py-2.5" />
@@ -675,6 +705,7 @@ export default function DocumentosCatalogoPage() {
                   key={doc.id}
                   doc={doc}
                   tiposEstablecimiento={tiposEst}
+                  canEdit={canEdit}
                   expanded={expanded === doc.id}
                   onToggle={() => toggle(doc.id)}
                 />
