@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { FotoInput } from '@/components/ui/foto-input'
 import { SearchableSelect } from '@/components/ui/searchable-select'
+import { MultiSelectFilter } from '@/components/ui/multi-select-filter'
 import { createClient } from '@/lib/supabase/client'
 import { createProducto, deleteProducto, updateProducto } from '@/lib/actions/producto'
 import { useEffectiveRoleContext } from '@/lib/contexts/effective-role-context'
@@ -338,9 +339,10 @@ export default function ProductosPage() {
   const [productos, setProductos] = useState<Producto[] | null>(null)
   const [marcas, setMarcas] = useState<Organizacion[]>([])
   const [unidades, setUnidades] = useState<Unidad[]>([])
-  // Cascada de filtros tipo MercadoLibre: clase → categoría → componente.
+  // Cascada de filtros tipo MercadoLibre: clase → categoría (multi) → componente.
   const [activeClase, setActiveClase] = useState<string>('todos')
-  const [activeCategoria, setActiveCategoria] = useState<string>('todos')
+  // null = "Todos" (sin filtrar). Un Set con ids = filtrar solo esas categorías (OR).
+  const [categoriasSel, setCategoriasSel] = useState<Set<string> | null>(null)
   const [activeComponente, setActiveComponente] = useState<string>('todos')
   // Facetas secundarias (estilo ML, en panel lateral).
   const [activeMarcaProveedor, setActiveMarcaProveedor] = useState<string>('')
@@ -393,13 +395,26 @@ export default function ProductosPage() {
   const equipamientoClases = arbol.clases.filter(cl => cl.nombre.toLowerCase().startsWith('equip'))
   const proteccionClases = arbol.clases.filter(cl => !cl.nombre.toLowerCase().startsWith('equip'))
 
-  // Cascada de filtros: categorías de la clase activa; componentes de la categoría activa.
+  // Cascada de filtros: categorías de la clase activa; componentes cuando hay selección única.
   const categoriasVisibles = activeClase === 'todos'
     ? arbol.categorias
     : categoriasDeClase(arbol.categorias, activeClase)
-  const componentesVisibles = activeCategoria === 'todos'
-    ? []
-    : componentesDeCategoria(arbol.componentes, activeCategoria)
+
+  // Opciones para el MultiSelectFilter de categoría.
+  const categoriaOpciones = categoriasVisibles.map(c => ({ value: c.id, label: c.nombre }))
+
+  // "Todos" semántico: null (sin filtro) o Set vacío equivale a todo.
+  // El MultiSelectFilter trabaja con Set; null = arrancamos sin filtro activo.
+  // Cuando cambia la clase reseteamos a null. Para el componente UI usamos un Set "todos seleccionados".
+  const categoriaSelSet: Set<string> = categoriasSel ?? new Set(categoriaOpciones.map(o => o.value))
+
+  // Componentes: solo cuando hay exactamente una categoría seleccionada.
+  const categoriaUnica = categoriasSel !== null && categoriasSel.size === 1
+    ? Array.from(categoriasSel)[0]
+    : null
+  const componentesVisibles = categoriaUnica !== null
+    ? componentesDeCategoria(arbol.componentes, categoriaUnica)
+    : []
 
   // Set de categorías que pertenecen a la clase activa (para filtrar productos por clase).
   const categoriaIdsDeClase = new Set(categoriasVisibles.map(c => c.id))
@@ -407,12 +422,19 @@ export default function ProductosPage() {
   // Filtrado client-side (cientos de productos, perfecto para filtros sin round-trips).
   const termino = busqueda.trim().toLowerCase()
 
+  // Predicado de categoría: null = sin filtro activo (pasa todo); Set = OR entre seleccionadas.
+  function pasaCategoria(categoriaId: string | null): boolean {
+    if (categoriasSel === null) return true
+    if (categoriasSel.size === 0) return true
+    return categoriaId !== null && categoriasSel.has(categoriaId)
+  }
+
   // Productos que pasan todos los filtros EXCEPTO marca/proveedor (para derivar facetas disponibles).
   const filteredSinMarcaProv = productos === null
     ? null
     : productos.filter(p =>
         (activeClase === 'todos' || categoriaIdsDeClase.has(p.categoria_id)) &&
-        (activeCategoria === 'todos' || p.categoria_id === activeCategoria) &&
+        pasaCategoria(p.categoria_id) &&
         (activeComponente === 'todos' || p.componente_id === activeComponente) &&
         pasaOrigen(p.consultora_id, origen) &&
         (!termino || p.nombre.toLowerCase().includes(termino))
@@ -432,7 +454,7 @@ export default function ProductosPage() {
     ? null
     : productos.filter(p =>
         (activeClase === 'todos' || categoriaIdsDeClase.has(p.categoria_id)) &&
-        (activeCategoria === 'todos' || p.categoria_id === activeCategoria) &&
+        pasaCategoria(p.categoria_id) &&
         (activeComponente === 'todos' || p.componente_id === activeComponente) &&
         (!activeMarcaProveedor || p.marca_id === activeMarcaProveedor || p.proveedor_id === activeMarcaProveedor) &&
         pasaOrigen(p.consultora_id, origen) &&
@@ -445,15 +467,19 @@ export default function ProductosPage() {
     setProductos(prev => prev?.filter(p => p.id !== id) ?? null)
   }
 
-  // Cambiar de clase resetea categoría y componente (cascada).
+  // Cambiar de clase resetea categoría (multi) y componente (cascada).
   function selectClase(claseId: string) {
     setActiveClase(claseId)
-    setActiveCategoria('todos')
+    setCategoriasSel(null)
     setActiveComponente('todos')
     setActiveMarcaProveedor('')
   }
-  function selectCategoria(categoriaId: string) {
-    setActiveCategoria(categoriaId)
+
+  // Cuando cambia la selección de categorías desde el MultiSelectFilter.
+  function handleCategoriaChange(next: Set<string>) {
+    // Si están todas seleccionadas → nil (sin filtro activo). Si ninguna → nil también (sin filtro).
+    const todasSeleccionadas = next.size === categoriaOpciones.length && categoriaOpciones.length > 0
+    setCategoriasSel(todasSeleccionadas || next.size === 0 ? null : next)
     setActiveComponente('todos')
     setActiveMarcaProveedor('')
   }
@@ -528,26 +554,29 @@ export default function ProductosPage() {
         )}
       </div>
 
-      {/* ── Nivel 2: CATEGORÍA (filtrada por la clase elegida) ── */}
-      <div className="flex gap-1 mb-2 flex-wrap">
-        <button
-          onClick={() => selectCategoria('todos')}
-          className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${activeCategoria === 'todos' ? 'bg-gray-900 text-white border-gray-900' : 'border-border-default text-text-secondary hover:bg-surface-base'}`}
-        >
-          {activeClase === 'todos' ? 'Todas las categorías' : 'Todas'}
-        </button>
-        {categoriasVisibles.map(c => (
-          <button
-            key={c.id}
-            onClick={() => selectCategoria(c.id)}
-            className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${activeCategoria === c.id ? 'bg-sig-500 text-white border-sig-500' : 'border-border-default text-text-secondary hover:bg-surface-base'}`}
-          >
-            {c.nombre}
-          </button>
-        ))}
-      </div>
+      {/* ── Nivel 2: CATEGORÍA (multi-select desplegable, igual que filtros de gestiones) ── */}
+      {categoriaOpciones.length > 0 && (
+        <div className={`flex items-center gap-2 ${componentesVisibles.length > 0 ? 'mb-2' : 'mb-4'}`}>
+          <MultiSelectFilter
+            label="Categoría"
+            options={categoriaOpciones}
+            selected={categoriaSelSet}
+            onChange={handleCategoriaChange}
+            emptyLabel="Sin categorías"
+          />
+          {categoriasSel !== null && categoriasSel.size > 0 && (
+            <button
+              type="button"
+              onClick={() => { setCategoriasSel(null); setActiveComponente('todos') }}
+              className="text-xs text-text-tertiary hover:text-text-primary transition-colors underline"
+            >
+              Limpiar
+            </button>
+          )}
+        </div>
+      )}
 
-      {/* ── Nivel 3: COMPONENTE (solo si la categoría elegida tiene componentes) ── */}
+      {/* ── Nivel 3: COMPONENTE (solo si hay exactamente una categoría seleccionada y tiene componentes) ── */}
       {componentesVisibles.length > 0 && (
         <div className="flex gap-1 mb-4 flex-wrap pl-3 border-l-2 border-sig-200">
           <button
