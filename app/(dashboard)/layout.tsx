@@ -49,6 +49,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
     consultoraNombre,
     consultoraId: membershipConsultoraId,
     email,
+    gestionaLibreriasBase,
+    puedeGestionarLibrerias,
   } = effective
 
   const membership = membershipConsultoraId ? { consultora_id: membershipConsultoraId } : null
@@ -103,6 +105,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
         isSuperAdmin,
         canSwitchRole,
         email,
+        gestionaLibreriasBase,
+        puedeGestionarLibrerias,
       }}
     >
     <SidebarWrapper

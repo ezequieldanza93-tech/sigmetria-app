@@ -20,6 +20,8 @@ export interface EffectiveRole {
   effectiveUserRole: UserRole | null
   consultoraId: string | null
   consultoraNombre: string | null
+  gestionaLibreriasBase: boolean
+  puedeGestionarLibrerias: boolean
 }
 
 export async function getEffectiveRole(): Promise<EffectiveRole | null> {
@@ -28,7 +30,7 @@ export async function getEffectiveRole(): Promise<EffectiveRole | null> {
   if (!user) return null
 
   const [{ data: profile }, { data: membership }] = await Promise.all([
-    supabase.from('profiles').select('system_role, is_super_admin').eq('id', user.id).single(),
+    supabase.from('profiles').select('system_role, is_super_admin, gestiona_librerias_base').eq('id', user.id).single(),
     supabase
       .from('consultoras_members')
       .select('role, consultora_id, consultoras(nombre)')
@@ -38,6 +40,8 @@ export async function getEffectiveRole(): Promise<EffectiveRole | null> {
   ])
 
   const isSuperAdmin = profile?.is_super_admin === true
+  const gestionaLibreriasBase = profile?.gestiona_librerias_base === true
+  const puedeGestionarLibrerias = isSuperAdmin || gestionaLibreriasBase
   const realSystemRole = (profile?.system_role ?? 'user') as SystemRole
   const realUserRole = (membership?.role as UserRole | undefined) ?? null
   const email = user.email ?? ''
@@ -71,5 +75,7 @@ export async function getEffectiveRole(): Promise<EffectiveRole | null> {
     effectiveUserRole,
     consultoraId,
     consultoraNombre,
+    gestionaLibreriasBase,
+    puedeGestionarLibrerias,
   }
 }

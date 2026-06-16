@@ -11,6 +11,8 @@ export interface EffectiveRoleValue {
   isSuperAdmin: boolean
   canSwitchRole: boolean
   email: string
+  gestionaLibreriasBase: boolean
+  puedeGestionarLibrerias: boolean
 }
 
 const EffectiveRoleContext = createContext<EffectiveRoleValue | null>(null)
