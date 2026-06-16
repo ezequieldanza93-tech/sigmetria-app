@@ -5,6 +5,8 @@ import { QRCodeCanvas } from 'qrcode.react'
 import { createClient } from '@/lib/supabase/client'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
+import { PersonaSelectorConAlta } from '@/components/persona-selector-con-alta'
+import type { PersonaSeleccionada } from '@/components/persona-selector-con-alta'
 import { toast } from '@/lib/hooks/use-toast'
 import {
   crearSesionDesdeGestion,
@@ -54,8 +56,14 @@ const inputCls =
   'w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base text-text-primary focus:outline-none focus:ring-2 focus:ring-sig-500'
 
 // ─── Participante editable (en memoria, previo a confirmar) ──────────────────
+// `origen` distingue cómo se cargó el participante:
+//   - 'directorio': elegido del dropdown de personas del establecimiento (personaId fijo).
+//   - 'externo': se eligió/creó una persona EXTERNA del directorio vía PersonaSelectorConAlta.
+//     Decisión del fundador: el participante externo ya NO es texto libre; pasa a ser
+//     persona del directorio marcada como externa (personaId siempre presente al confirmar).
 interface ParticipanteDraft {
   key: string
+  origen: 'directorio' | 'externo'
   personaId: string | null
   nombre: string
   email: string
@@ -248,8 +256,12 @@ export function EjecutarCapacitacionModal({
 
   // Instructor + participantes: personas del directorio del establecimiento (con email + celular)
   const [directorio, setDirectorio] = useState<PersonaEstablecimiento[]>([])
-  const [instructorPersonaId, setInstructorPersonaId] = useState(instructorPersonaIdDefault ?? '')
-  const [instructorExterno, setInstructorExterno] = useState('')
+  // El instructor (interno o externo) es SIEMPRE una persona del directorio: se elige
+  // o se crea (marcada externa) vía PersonaSelectorConAlta. instructor_externo (text)
+  // queda como snapshot de datos viejos pero ya no se carga desde la UI.
+  const [instructorPersonaId, setInstructorPersonaId] = useState<string | null>(
+    instructorPersonaIdDefault ?? null,
+  )
 
   // Participantes (preseleccionados desde el establecimiento, editables)
   const [participantes, setParticipantes] = useState<ParticipanteDraft[]>([])
@@ -290,6 +302,7 @@ export function EjecutarCapacitacionModal({
         setParticipantes(
           ordenadas.map((p) => ({
             key: p.persona_id,
+            origen: 'directorio' as const,
             personaId: p.persona_id,
             nombre: nombreCompleto(p),
             email: p.email ?? '',
@@ -316,6 +329,7 @@ export function EjecutarCapacitacionModal({
       ...prev,
       {
         key: p.persona_id,
+        origen: 'directorio',
         personaId: p.persona_id,
         nombre: nombreCompleto(p),
         email: p.email ?? '',
@@ -324,10 +338,20 @@ export function EjecutarCapacitacionModal({
     ])
   }
 
+  // Externo: agrega una fila vacía cuyo nombre se resuelve eligiendo/creando una
+  // persona EXTERNA del directorio (no texto libre). El personaId se completa al
+  // seleccionar en el PersonaSelectorConAlta de esa fila.
   function agregarExterno() {
     setParticipantes((prev) => [
       ...prev,
-      { key: `ext-${crypto.randomUUID()}`, personaId: null, nombre: '', email: '', celular: '' },
+      {
+        key: `ext-${crypto.randomUUID()}`,
+        origen: 'externo',
+        personaId: null,
+        nombre: '',
+        email: '',
+        celular: '',
+      },
     ])
   }
 
@@ -335,8 +359,24 @@ export function EjecutarCapacitacionModal({
     setParticipantes((prev) => prev.filter((p) => p.key !== key))
   }
 
-  function actualizar(key: string, campo: 'nombre' | 'email' | 'celular', valor: string) {
+  function actualizar(key: string, campo: 'email' | 'celular', valor: string) {
     setParticipantes((prev) => prev.map((p) => (p.key === key ? { ...p, [campo]: valor } : p)))
+  }
+
+  // Resuelve la persona externa elegida/creada en la fila: fija personaId + nombre.
+  // Si se limpia la selección, vuelve a quedar sin persona (fila incompleta).
+  function seleccionarPersonaExterna(key: string, persona: PersonaSeleccionada | null) {
+    setParticipantes((prev) =>
+      prev.map((p) =>
+        p.key === key
+          ? {
+              ...p,
+              personaId: persona?.id ?? null,
+              nombre: persona ? `${persona.apellido}, ${persona.nombre}`.trim() : '',
+            }
+          : p,
+      ),
+    )
   }
 
   function handleConfirmar() {
@@ -345,9 +385,17 @@ export function EjecutarCapacitacionModal({
       setError('Seleccioná un curso.')
       return
     }
-    const validos = participantes.filter((p) => p.personaId || p.nombre.trim() || p.email.trim())
+    // Todo participante debe resolver a una persona del directorio: las filas del
+    // establecimiento ya traen personaId; las externas deben tener una persona
+    // (interna o externa) elegida/creada. Filas externas sin persona se descartan.
+    const validos = participantes.filter((p) => !!p.personaId)
     if (validos.length === 0) {
-      setError('Agregá al menos un participante.')
+      setError('Agregá al menos un participante (elegí o creá la persona).')
+      return
+    }
+    const externosSinPersona = participantes.some((p) => p.origen === 'externo' && !p.personaId)
+    if (externosSinPersona) {
+      setError('Hay participantes externos sin persona asignada: elegí o creá la persona, o quitá la fila.')
       return
     }
 
@@ -359,8 +407,7 @@ export function EjecutarCapacitacionModal({
         gestionEstablecimientoId,
         registroGestionId,
         rgFechaPlanificada,
-        instructorPersonaId: instructorPersonaId || undefined,
-        instructorExterno: instructorExterno.trim() || undefined,
+        instructorPersonaId: instructorPersonaId ?? undefined,
         fecha: fecha || undefined,
         titulo: titulo.trim() || undefined,
         modalidad,
@@ -487,36 +534,19 @@ export function EjecutarCapacitacionModal({
               </select>
             </div>
             <div>
-              <label className="text-sm font-medium text-text-secondary block mb-1">Instructor</label>
-              <select
+              {/* Instructor: persona del directorio del establecimiento. Si es externo,
+                  se da de alta inline marcado como externa (no texto libre). */}
+              <PersonaSelectorConAlta
+                label="Instructor"
                 value={instructorPersonaId}
-                onChange={(e) => setInstructorPersonaId(e.target.value)}
-                className={inputCls}
-              >
-                <option value="">— Sin asignar / externo —</option>
-                {directorio.map((p) => (
-                  <option key={p.persona_id} value={p.persona_id}>
-                    {p.apellido}, {p.nombre}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {!instructorPersonaId && (
-            <div>
-              <label className="text-sm font-medium text-text-secondary block mb-1">
-                Instructor externo
-              </label>
-              <input
-                type="text"
-                value={instructorExterno}
-                onChange={(e) => setInstructorExterno(e.target.value)}
-                placeholder="Nombre del instructor externo (opcional)"
-                className={inputCls}
+                onChange={(p) => setInstructorPersonaId(p?.id ?? null)}
+                establecimientoId={establecimientoId}
+                empresaId={empresaId}
+                esExterna
+                placeholder="Seleccionar o crear instructor…"
               />
             </div>
-          )}
+          </div>
 
           {/* Participantes */}
           <div className="border-t border-border-subtle pt-4">
@@ -570,16 +600,26 @@ export function EjecutarCapacitacionModal({
                     className="flex items-start gap-2 border border-border-subtle rounded-lg p-2 bg-gray-50/50"
                   >
                     <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                      <input
-                        type="text"
-                        value={p.nombre}
-                        onChange={(e) => actualizar(p.key, 'nombre', e.target.value)}
-                        readOnly={!!p.personaId}
-                        placeholder="Nombre"
-                        className={`border border-border-default rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-sig-500 ${
-                          p.personaId ? 'bg-surface-base text-text-secondary' : 'bg-white'
-                        }`}
-                      />
+                      {p.origen === 'externo' ? (
+                        // Participante externo: persona del directorio marcada como externa
+                        // (se elige o se crea inline). Ya no es texto libre.
+                        <PersonaSelectorConAlta
+                          value={p.personaId}
+                          onChange={(persona) => seleccionarPersonaExterna(p.key, persona)}
+                          establecimientoId={establecimientoId}
+                          empresaId={empresaId}
+                          esExterna
+                          placeholder="Elegir o crear externo…"
+                        />
+                      ) : (
+                        <input
+                          type="text"
+                          value={p.nombre}
+                          readOnly
+                          placeholder="Nombre"
+                          className="border border-border-default rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-sig-500 bg-surface-base text-text-secondary"
+                        />
+                      )}
                       <input
                         type="email"
                         value={p.email}
