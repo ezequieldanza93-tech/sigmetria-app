@@ -27,6 +27,8 @@ import { cn } from '@/lib/utils'
 import { usePeligrosLibrary } from '@/lib/queries/iperc'
 import { PersonaRolSelector } from '@/components/persona-rol-selector'
 import type { PersonaRolSelectorValue } from '@/components/persona-rol-selector'
+import { PersonaFirmanteSelector } from '@/components/persona-firmante-selector'
+import { PersonaSelectorConAlta } from '@/components/persona-selector-con-alta'
 import {
   Building2, FileText, Plus, Trash2, ChevronLeft, ChevronRight, CheckCircle,
   Loader2, Info, ArrowRight, Check, Sparkles, AlertTriangle, Shield, ShieldCheck,
@@ -138,6 +140,7 @@ interface SimulacroRow { key: number; orden: number; fecha: string; hora: string
 // ── Cabecera (campos snake_case del patch) ───────────────────────────────
 interface Cabecera {
   // DDJJ Grupo 1
+  g1_declarante_persona_id: string
   g1_declarante_nombre: string
   g1_declarante_dni_cuit: string
   g1_caracter: string
@@ -161,6 +164,7 @@ interface Cabecera {
   personas_movilidad_reducida: string
   telefono_emergencia: string
   qr_ifci: string
+  profesional_persona_id: string
   profesional_nombre: string
   profesional_titulo: string
   profesional_matricula: string
@@ -186,13 +190,14 @@ interface Cabecera {
 
 function cabeceraVacia(): Cabecera {
   return {
-    g1_declarante_nombre: '', g1_declarante_dni_cuit: '', g1_caracter: 'titular',
+    g1_declarante_persona_id: '', g1_declarante_nombre: '', g1_declarante_dni_cuit: '', g1_caracter: 'titular',
     g1_capacidad_m2_persona: '', g1_tiene_entrepiso: false, g1_entrepiso_superficie: '',
     g1_entrepiso_destino: '', g1_subsuelo_destino: '', g1_elementos_mitigacion: '',
     g1_personal_instruido: false, g1_responsabilidad_evacuacion: false,
     razon_social: '', cuit: '', nombre_comercial: '', habilitacion_tipo: '',
     habilitacion_detalle: '', dias_horarios: '', ocupacion_diurna: '', ocupacion_nocturna: '',
     personas_movilidad_reducida: '', telefono_emergencia: '', qr_ifci: '',
+    profesional_persona_id: '',
     profesional_nombre: '', profesional_titulo: '', profesional_matricula: '',
     profesional_email: '', profesional_telefono: '',
     aviso_descripcion: '', aviso_viva_voz: false, evacuacion_procedimiento: '',
@@ -368,6 +373,7 @@ export function PresentacionAutoproteccionEjecutorModal({
     const flag = (k: string): boolean => p[k] === true
 
     setCab({
+      g1_declarante_persona_id: str('g1_declarante_persona_id'),
       g1_declarante_nombre: str('g1_declarante_nombre'),
       g1_declarante_dni_cuit: str('g1_declarante_dni_cuit'),
       g1_caracter: str('g1_caracter') || 'titular',
@@ -390,6 +396,7 @@ export function PresentacionAutoproteccionEjecutorModal({
       personas_movilidad_reducida: str('personas_movilidad_reducida'),
       telefono_emergencia: str('telefono_emergencia'),
       qr_ifci: str('qr_ifci'),
+      profesional_persona_id: str('profesional_persona_id'),
       profesional_nombre: str('profesional_nombre'),
       profesional_titulo: str('profesional_titulo'),
       profesional_matricula: str('profesional_matricula'),
@@ -680,6 +687,7 @@ export function PresentacionAutoproteccionEjecutorModal({
       switch (currentStep) {
         case 'ddjj':
           Object.assign(patch, {
+            g1_declarante_persona_id: cab.g1_declarante_persona_id || null,
             g1_declarante_nombre: cab.g1_declarante_nombre,
             g1_declarante_dni_cuit: cab.g1_declarante_dni_cuit,
             g1_caracter: cab.g1_caracter,
@@ -706,6 +714,7 @@ export function PresentacionAutoproteccionEjecutorModal({
             personas_movilidad_reducida: numOpt(cab.personas_movilidad_reducida) ?? null,
             telefono_emergencia: cab.telefono_emergencia,
             qr_ifci: cab.qr_ifci,
+            profesional_persona_id: cab.profesional_persona_id || null,
             profesional_nombre: cab.profesional_nombre,
             profesional_titulo: cab.profesional_titulo,
             profesional_matricula: cab.profesional_matricula,
@@ -740,7 +749,7 @@ export function PresentacionAutoproteccionEjecutorModal({
           Object.assign(patch, { medidas_supletorias: cab.medidas_supletorias })
           await guardarRoles(presentacionId, roles
             .filter(r => r.rol_id && r.persona_id)
-            .map(r => ({ rol_id: r.rol_id, persona_id: r.persona_id, persona_nombre: r.persona_nombre || undefined, persona_dni: r.persona_dni || undefined, es_suplente: r.es_suplente, piso_sector: r.piso_sector || undefined, capacitado: r.capacitado })))
+            .map(r => ({ rol_id: r.rol_id, persona_id: r.persona_id, es_suplente: r.es_suplente, piso_sector: r.piso_sector || undefined, capacitado: r.capacitado })))
           break
         case 'g3':
           Object.assign(patch, {
@@ -854,7 +863,7 @@ export function PresentacionAutoproteccionEjecutorModal({
     if (esG1) {
       return [
         { id: 'clasif', label: 'Clasificación', done: true },
-        { id: 'declarante', label: 'Cargá los datos del declarante', done: !!cab.g1_declarante_nombre.trim() && !!cab.g1_declarante_dni_cuit.trim() },
+        { id: 'declarante', label: 'Elegí al declarante', done: !!cab.g1_declarante_persona_id },
         { id: 'mitigacion', label: 'Describí los elementos de mitigación', done: !!cab.g1_elementos_mitigacion.trim() },
         { id: 'ddjj_decl', label: 'Confirmá las declaraciones juradas', done: cab.g1_personal_instruido && cab.g1_responsabilidad_evacuacion },
         { id: 'ddjj_doc', label: 'Adjuntá la DDJJ firmada', done: docsDeTipo('DDJJ_G1').length > 0 },
@@ -863,7 +872,7 @@ export function PresentacionAutoproteccionEjecutorModal({
     const c = [
       { id: 'clasif', label: 'Clasificación', done: true },
       { id: 'datos', label: 'Datos del establecimiento y habilitación', done: !!cab.habilitacion_tipo },
-      { id: 'profesional', label: 'Profesional interviniente', done: !!cab.profesional_nombre.trim() && !!cab.profesional_matricula.trim() },
+      { id: 'profesional', label: 'Profesional interviniente', done: !!cab.profesional_persona_id && !!cab.profesional_matricula.trim() },
       { id: 'riesgos', label: 'Identificá al menos un riesgo', done: riesgos.some(r => r.peligro?.trim()) },
       { id: 'medios', label: 'Relevá los medios técnicos', done: medios.some(m => m.posee) },
       { id: 'evacuacion', label: 'Procedimiento de evacuación', done: !!cab.evacuacion_procedimiento.trim() },
@@ -1157,10 +1166,27 @@ export function PresentacionAutoproteccionEjecutorModal({
             </Explica>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Nombre del declarante" required value={cab.g1_declarante_nombre} disabled={!canWrite}
-                onChange={v => setCabField('g1_declarante_nombre', v)} placeholder="Nombre y apellido" />
-              <Field label="DNI / CUIT" required value={cab.g1_declarante_dni_cuit} disabled={!canWrite}
-                onChange={v => setCabField('g1_declarante_dni_cuit', v)} placeholder="Ej: 20-12345678-3" />
+              <div className="sm:col-span-2">
+                <PersonaSelectorConAlta
+                  label="Declarante"
+                  required
+                  value={cab.g1_declarante_persona_id || null}
+                  establecimientoId={establecimientoId}
+                  disabled={!canWrite}
+                  placeholder="Elegí o agregá al declarante…"
+                  onChange={p => {
+                    setCab(prev => ({
+                      ...prev,
+                      g1_declarante_persona_id: p?.id ?? '',
+                      // Snapshot de texto: alimenta el PDF / payload y conserva
+                      // el dato aunque luego se borre la persona del directorio.
+                      g1_declarante_nombre: p ? `${p.nombre} ${p.apellido}` : '',
+                      g1_declarante_dni_cuit: p?.dni ?? '',
+                    }))
+                  }}
+                />
+                <Ayuda>Es la persona del lado del cliente que firma la declaración jurada. Elegila del directorio del establecimiento o agregala si no está cargada.</Ayuda>
+              </div>
               <div>
                 <label className={labelCls}>Carácter en que declara</label>
                 <select className={inputCls} value={cab.g1_caracter} disabled={!canWrite}
@@ -1269,8 +1295,28 @@ export function PresentacionAutoproteccionEjecutorModal({
             {/* Profesional */}
             <section className="rounded-xl border border-border-subtle p-4 space-y-4">
               <h4 className="text-sm font-semibold text-text-primary flex items-center gap-2"><Users size={16} className="text-sig-500" /> Profesional interviniente</h4>
+              <div>
+                <label className={labelCls}>Profesional firmante</label>
+                <PersonaFirmanteSelector
+                  value={cab.profesional_persona_id || null}
+                  establecimientoId={establecimientoId}
+                  disabled={!canWrite}
+                  onChange={p => {
+                    setCab(prev => ({
+                      ...prev,
+                      profesional_persona_id: p?.id ?? '',
+                      // `profesional_nombre` (texto) se deriva del nombre de la persona:
+                      // alimenta el PDF / payload y conserva el dato aunque se borre
+                      // la persona del directorio. Título/matrícula/email/teléfono
+                      // se mantienen editables (no viven en personas_directorio).
+                      profesional_nombre: p ? `${p.apellido}, ${p.nombre}` : '',
+                    }))
+                  }}
+                  placeholder="Buscar usuario ejecutor…"
+                />
+                <Ayuda>Por defecto firma el usuario logueado. Podés elegir otro usuario ejecutor de la consultora. El título, matrícula y contacto se completan abajo.</Ayuda>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field label="Nombre" value={cab.profesional_nombre} disabled={!canWrite} onChange={v => setCabField('profesional_nombre', v)} />
                 <Field label="Título" value={cab.profesional_titulo} disabled={!canWrite} onChange={v => setCabField('profesional_titulo', v)} placeholder="Ing., Lic., etc." />
                 <Field label="Matrícula" value={cab.profesional_matricula} disabled={!canWrite} onChange={v => setCabField('profesional_matricula', v)} />
                 <Field label="Email" type="email" value={cab.profesional_email} disabled={!canWrite} onChange={v => setCabField('profesional_email', v)} />

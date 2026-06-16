@@ -256,6 +256,7 @@ async function replaceSustancias(presentacionId: string, sustanciaIds: string[])
 const CAMPOS_EDITABLES = new Set<string>([
   'paso_actual',
   // DDJJ Grupo 1
+  'g1_declarante_persona_id',
   'g1_declarante_nombre', 'g1_declarante_dni_cuit', 'g1_caracter', 'g1_capacidad_m2_persona',
   'g1_tiene_entrepiso', 'g1_entrepiso_superficie', 'g1_entrepiso_destino', 'g1_subsuelo_destino',
   'g1_elementos_mitigacion', 'g1_personal_instruido', 'g1_responsabilidad_evacuacion',
@@ -263,6 +264,7 @@ const CAMPOS_EDITABLES = new Set<string>([
   'razon_social', 'cuit', 'nombre_comercial', 'habilitacion_tipo', 'habilitacion_detalle',
   'dias_horarios', 'ocupacion_diurna', 'ocupacion_nocturna', 'personas_movilidad_reducida',
   'telefono_emergencia', 'qr_ifci',
+  'profesional_persona_id',
   'profesional_nombre', 'profesional_titulo', 'profesional_matricula', 'profesional_email', 'profesional_telefono',
   'aviso_descripcion', 'aviso_viva_voz', 'evacuacion_procedimiento', 'punto_reunion_descripcion',
   'puesta_a_resguardo', 'enclavamientos', 'medidas_supletorias',
@@ -338,13 +340,16 @@ export async function guardarMedios(presentacionId: string, items: MedioInput[])
   return { success: true, data: null }
 }
 
-interface RolInput { rol_id: string; persona_id: string; persona_nombre?: string; persona_dni?: string; es_suplente?: boolean; piso_sector?: string; capacitado?: boolean }
+// La brigada se referencia por persona_id (FK a personas_directorio). Sin
+// fallback de texto libre: persona_nombre / persona_dni quedan en la tabla solo
+// como snapshot de datos previos, no se cargan desde el form.
+interface RolInput { rol_id: string; persona_id: string; es_suplente?: boolean; piso_sector?: string; capacitado?: boolean }
 export async function guardarRoles(presentacionId: string, items: RolInput[]): Promise<ActionResult<null>> {
   const { supabase } = await getUser()
   await supabase.from('sap_roles').delete().eq('presentacion_id', presentacionId)
   if (items.length) {
     const { error } = await supabase.from('sap_roles').insert(
-      items.map((it) => ({ presentacion_id: presentacionId, rol_id: it.rol_id, persona_id: it.persona_id, persona_nombre: it.persona_nombre ?? null, persona_dni: it.persona_dni ?? null, es_suplente: it.es_suplente ?? false, piso_sector: it.piso_sector ?? null, capacitado: it.capacitado ?? false })),
+      items.map((it) => ({ presentacion_id: presentacionId, rol_id: it.rol_id, persona_id: it.persona_id, es_suplente: it.es_suplente ?? false, piso_sector: it.piso_sector ?? null, capacitado: it.capacitado ?? false })),
     )
     if (error) return { success: false, error: error.message }
   }
