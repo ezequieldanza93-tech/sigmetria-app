@@ -269,7 +269,7 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
                 )}
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {puedeEditar && (
                   <Link
                     href={`/dashboard/empresas/${id}/editar`}
