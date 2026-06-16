@@ -56,7 +56,8 @@ interface ObsSeguimientoInput {
  *  - rg_fecha_planificada         → compañera de la FK compuesta del registro particionado
  *  - establecimiento_id           → tenant + RLS
  *  - gestion_establecimiento_id?  → vínculo a la gestión del establecimiento (opcional)
- *  - firmante?                    → profesional firmante (texto libre: nombre y matrícula)
+ *  - firmante?                    → profesional firmante como texto (snapshot derivado de la persona; se conserva para el PDF y compatibilidad)
+ *  - firmante_persona_id?         → profesional firmante elegido del directorio (FK personas_directorio, opcional)
  *  - sector_incendio?             → texto
  *  - superficie_m2?               → numeric
  *  - ventilacion?                 → 'natural' | 'mecanica'
@@ -81,6 +82,7 @@ export async function crearCalculoCargaFuego(
   const establecimientoId = (formData.get('establecimiento_id') as string) || ''
   const gestionEstablecimientoId = (formData.get('gestion_establecimiento_id') as string) || null
   const firmante = (formData.get('firmante') as string) || null
+  const firmantePersonaId = (formData.get('firmante_persona_id') as string) || null
   const sectorIncendio = (formData.get('sector_incendio') as string) || null
   const superficieRaw = (formData.get('superficie_m2') as string) || null
   const ventilacionRaw = (formData.get('ventilacion') as string) || null
@@ -196,6 +198,7 @@ export async function crearCalculoCargaFuego(
       rg_fecha_planificada: rgFechaPlanificada,
       gestion_establecimiento_id: gestionEstablecimientoId,
       firmante,
+      firmante_persona_id: firmantePersonaId,
       sector_incendio: sectorIncendio,
       superficie_m2: superficieM2,
       ventilacion,

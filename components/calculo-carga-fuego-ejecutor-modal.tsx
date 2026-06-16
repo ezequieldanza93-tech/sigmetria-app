@@ -25,6 +25,7 @@ import { firmarProtocolo } from '@/lib/actions/firmar-protocolo'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { FirmaCanvas } from '@/components/firmas/firma-canvas'
+import { PersonaFirmanteSelector } from '@/components/persona-firmante-selector'
 import {
   Flame, Building2, Layers, FileText, Plus, Trash2,
   ChevronLeft, ChevronRight, CheckCircle, Loader2,
@@ -197,9 +198,13 @@ export function CalculoCargaFuegoEjecutorModal({
   const [lookups, setLookups] = useState<ResistenciaYExtintor | null>(null)
 
   // ── Hoja 1: datos ───────────────────────────────────────────────────
+  // Firmante: persona del directorio (elegida con PersonaFirmanteSelector).
+  // `firmante` (texto) se mantiene como snapshot para el PDF / payload; se deriva
+  // del nombre de la persona elegida y conserva el contrato con datos viejos.
+  const [firmantePersonaId, setFirmantePersonaId] = useState('')
   const [firmante, setFirmante] = useState('')
   // DNI del profesional firmante: lo necesita firmarProtocolo para vincular la
-  // firma a la persona del directorio. Opcional — sin DNI no se registra la firma.
+  // firma a la persona del directorio. Se deriva de la persona elegida.
   const [firmanteDni, setFirmanteDni] = useState('')
   // Firma dibujada a mano del profesional (dataURL PNG base64). null = sin firma.
   const [firmaSvg, setFirmaSvg] = useState<string | null>(null)
@@ -416,7 +421,7 @@ export function CalculoCargaFuegoEjecutorModal({
   const checks: Check[] = useMemo(() => {
     const algunMaterialConDatos = materiales.some(m => num(m.peso_kg) != null && num(m.coef_c) != null)
     return [
-      { id: 'firmante', label: 'Cargá el profesional firmante', done: !!firmante.trim() },
+      { id: 'firmante', label: 'Elegí el profesional firmante', done: !!firmantePersonaId },
       { id: 'sector', label: 'Indicá el sector de incendio', done: !!sectorIncendio.trim() },
       { id: 'superficie', label: 'Cargá la superficie del sector (m²)', done: superficieNum != null && superficieNum > 0 },
       { id: 'materiales', label: 'Cargá al menos un material con peso y coef. C', done: algunMaterialConDatos },
@@ -425,7 +430,7 @@ export function CalculoCargaFuegoEjecutorModal({
       { id: 'conclusiones', label: 'Redactá las conclusiones', done: !!conclusiones.trim() },
       { id: 'recomendaciones', label: 'Redactá las recomendaciones', done: !!recomendaciones.trim() },
     ]
-  }, [firmante, sectorIncendio, superficieNum, materiales, qf, totalEquiv, riesgo, conclusiones, recomendaciones])
+  }, [firmantePersonaId, sectorIncendio, superficieNum, materiales, qf, totalEquiv, riesgo, conclusiones, recomendaciones])
 
   const doneCount = checks.filter(c => c.done).length
   const totalChecks = checks.length || 1
@@ -437,7 +442,7 @@ export function CalculoCargaFuegoEjecutorModal({
   function goNext() {
     setError(null)
     if (step === 'datos') {
-      if (!firmante.trim()) { setError('Cargá el profesional firmante del cálculo.'); return }
+      if (!firmantePersonaId) { setError('Elegí el profesional firmante del cálculo.'); return }
       if (sectores.length === 0) { setError('Primero creá sectores en la ficha del establecimiento: el sector de incendio se elige de esa lista.'); return }
       if (!sectorIncendio.trim()) { setError('Elegí el sector de incendio analizado.'); return }
       if (!sectores.some(s => s.nombre === sectorIncendio)) { setError('El sector de incendio elegido no existe en el establecimiento. Elegí uno de la lista.'); return }
@@ -483,6 +488,7 @@ export function CalculoCargaFuegoEjecutorModal({
       fd.set('rg_fecha_planificada', rgFechaPlanificada)
       fd.set('establecimiento_id', establecimientoId)
       if (gestionEstablecimientoId) fd.set('gestion_establecimiento_id', gestionEstablecimientoId)
+      if (firmantePersonaId) fd.set('firmante_persona_id', firmantePersonaId)
       fd.set('firmante', firmante)
       fd.set('sector_incendio', sectorIncendio)
       if (superficieNum != null) fd.set('superficie_m2', String(superficieNum))
@@ -755,26 +761,22 @@ export function CalculoCargaFuegoEjecutorModal({
                 <Flame size={16} className="text-sig-500" /> Sector de incendio y responsable
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className={labelCls}>Profesional firmante (nombre y matrícula) <span className="text-danger">*</span></label>
-                  <input
-                    type="text"
-                    className={inputCls}
-                    value={firmante}
-                    onChange={e => setFirmante(e.target.value)}
-                    placeholder="Ing. Juan Pérez — Mat. 1234"
+                <div className="sm:col-span-2">
+                  <label className={labelCls}>Profesional firmante <span className="text-danger">*</span></label>
+                  <PersonaFirmanteSelector
+                    value={firmantePersonaId || null}
+                    establecimientoId={establecimientoId}
+                    onChange={p => {
+                      setFirmantePersonaId(p?.id ?? '')
+                      // `firmante` (texto) se deriva del nombre de la persona: alimenta el PDF
+                      // y conserva el contrato con datos viejos sin un campo extra de matrícula.
+                      setFirmante(p ? `${p.apellido}, ${p.nombre}` : '')
+                      // DNI para la firma a mano (firmarProtocolo). Puede ser null si la persona no lo tiene.
+                      setFirmanteDni(p?.dni ?? '')
+                    }}
+                    placeholder="Buscar usuario ejecutor…"
                   />
-                </div>
-                <div>
-                  <label className={labelCls}>DNI del firmante</label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    className={inputCls}
-                    value={firmanteDni}
-                    onChange={e => setFirmanteDni(e.target.value)}
-                    placeholder="Para registrar la firma a mano (opcional)"
-                  />
+                  <p className="text-xs text-text-tertiary mt-1">Por defecto firma el usuario logueado. Podés elegir otro usuario ejecutor de la consultora.</p>
                 </div>
                 <div>
                   <label className={labelCls}>Sector de incendio <span className="text-danger">*</span></label>
@@ -1286,7 +1288,7 @@ export function CalculoCargaFuegoEjecutorModal({
             <ReviewSection title="Firma del profesional">
               <p className="text-xs text-text-tertiary mb-2">
                 Dibujá tu firma. Quedará registrada en el cálculo y se incluirá en el PDF. Es opcional: si la dejás vacía, el cálculo se guarda igual.
-                {!firmanteDni.trim() && ' Para registrarla, cargá el DNI del firmante en la hoja Datos.'}
+                {!firmanteDni.trim() && ' Para registrarla, el profesional firmante elegido debe tener DNI cargado en el directorio.'}
               </p>
               <FirmaCanvas onDataChange={setFirmaSvg} />
             </ReviewSection>
