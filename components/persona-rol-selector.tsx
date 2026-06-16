@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useActionState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { createPersonaDirectorio } from '@/lib/actions/persona-directorio'
+import type { PersonaDirectorioCreada } from '@/lib/actions/persona-directorio'
 import type { ActionResult } from '@/lib/types'
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
@@ -210,7 +211,7 @@ interface CrearPersonaFormProps {
   onCancel: () => void
 }
 
-const INITIAL_STATE: ActionResult<{ id: string }> | null = null
+const INITIAL_STATE: ActionResult<PersonaDirectorioCreada> | null = null
 
 function CrearPersonaForm({ onSuccess, onCancel }: CrearPersonaFormProps) {
   const [state, action, pending] = useActionState(createPersonaDirectorio, INITIAL_STATE)

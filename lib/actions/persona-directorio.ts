@@ -11,12 +11,27 @@ const createPersonaDirectorioSchema = z.object({
   telefono: z.string().nullable().optional().transform(s => s?.trim() ?? null),
   email: z.string().nullable().optional().transform(s => s?.trim() ?? null),
   direccion: z.string().nullable().optional().transform(s => s?.trim() ?? null),
+  cargo: z.string().nullable().optional().transform(s => s?.trim() || null),
+  // checkbox/hidden: 'true'/'on'/'1' → externa; cualquier otra cosa → false.
+  es_externa: z
+    .string()
+    .nullable()
+    .optional()
+    .transform(s => s === 'true' || s === 'on' || s === '1'),
 })
 
+/** Persona recién creada en el directorio. Mismo contrato que emiten los selectores. */
+export interface PersonaDirectorioCreada {
+  id: string
+  nombre: string
+  apellido: string
+  dni: string | null
+}
+
 export async function createPersonaDirectorio(
-  _prev: ActionResult<{ id: string }> | null,
+  _prev: ActionResult<PersonaDirectorioCreada> | null,
   formData: FormData
-): Promise<ActionResult<{ id: string }>> {
+): Promise<ActionResult<PersonaDirectorioCreada>> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
@@ -25,7 +40,7 @@ export async function createPersonaDirectorio(
   if (!parsed.success) {
     return { success: false, error: formatZodErrors(parsed.error) }
   }
-  const { nombre, apellido, dni, telefono, email, direccion } = parsed.data
+  const { nombre, apellido, dni, telefono, email, direccion, cargo, es_externa } = parsed.data
 
   // Detectar duplicados
   if (dni) {
@@ -59,12 +74,14 @@ export async function createPersonaDirectorio(
       telefono,
       email,
       direccion,
+      cargo,
+      es_externa,
       is_active: true,
       created_in_consultora_id: membership?.consultora_id || null,
     })
-    .select('id')
+    .select('id, nombre, apellido, dni')
     .single()
 
   if (error) return { success: false, error: error.message }
-  return { success: true, data: { id: data.id } }
+  return { success: true, data: { id: data.id, nombre: data.nombre, apellido: data.apellido, dni: data.dni } }
 }
