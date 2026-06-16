@@ -110,6 +110,10 @@ const MedicionPatViewer = dynamic(
   () => import('@/components/medicion-pat-viewer').then(m => m.MedicionPatViewer),
   { ssr: false }
 )
+const MedicionCargaTermicaViewer = dynamic(
+  () => import('@/components/medicion-carga-termica-viewer').then(m => m.MedicionCargaTermicaViewer),
+  { ssr: false }
+)
 
 // Categoría de gestiones que habilita el flujo de capacitación (LMS / campus virtual).
 const CATEGORIA_CAPACITACIONES = 'Capacitaciones'
@@ -1699,11 +1703,11 @@ function AgendaActionsCell({
   // resto, el guard de abajo evita re-ejecutar y, si hay adjunto, ofrece "Ver".
   // Esto va ANTES de los bloques por evidencia para ganarles la prioridad.
   if (yaEjecutada && esProtocoloMedicion) {
-    if (r.ge_tipo_ejecucion === 'medicion_pat' && onViewReporte) {
+    if ((r.ge_tipo_ejecucion === 'medicion_pat' || r.ge_tipo_ejecucion === 'medicion_carga_termica') && onViewReporte) {
       return (
         <div className="flex items-center justify-center">
           <button
-            title="Ver el protocolo de puesta a tierra ejecutado"
+            title="Ver el protocolo ejecutado"
             onClick={onViewReporte}
             className={`${primaryBtn} ${primaryActive}`}
           >
@@ -2316,6 +2320,7 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
   const [executingCargaFuego, setExecutingCargaFuego] = useState<FullRegistro | null>(null)
   const [executingMedicionPat, setExecutingMedicionPat] = useState<FullRegistro | null>(null)
   const [viewingMedicionPat, setViewingMedicionPat] = useState<FullRegistro | null>(null)
+  const [viewingMedicionCargaTermica, setViewingMedicionCargaTermica] = useState<FullRegistro | null>(null)
   const [executingMedicionRuido, setExecutingMedicionRuido] = useState<FullRegistro | null>(null)
   const [executingMedicionIluminacion, setExecutingMedicionIluminacion] = useState<FullRegistro | null>(null)
   const [executingPresentacionAutoproteccion, setExecutingPresentacionAutoproteccion] = useState<FullRegistro | null>(null)
@@ -2652,7 +2657,9 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
               onViewReporte={
                 r.ge_tipo_ejecucion === 'medicion_pat'
                   ? () => setViewingMedicionPat(r)
-                  : undefined
+                  : r.ge_tipo_ejecucion === 'medicion_carga_termica'
+                    ? () => setViewingMedicionCargaTermica(r)
+                    : undefined
               }
               onLoadEvidence={() => setEditingRegistro(r)}
               onEjecutarCapacitacion={
@@ -3310,6 +3317,15 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
           rgFechaPlanificada={viewingMedicionPat.fecha_planificada}
           gestionNombre={viewingMedicionPat.ge_gestion_nombre}
           onClose={() => setViewingMedicionPat(null)}
+        />
+      )}
+
+      {viewingMedicionCargaTermica && (
+        <MedicionCargaTermicaViewer
+          registroId={viewingMedicionCargaTermica.id}
+          rgFechaPlanificada={viewingMedicionCargaTermica.fecha_planificada}
+          gestionNombre={viewingMedicionCargaTermica.ge_gestion_nombre}
+          onClose={() => setViewingMedicionCargaTermica(null)}
         />
       )}
 
