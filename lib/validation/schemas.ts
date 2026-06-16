@@ -110,57 +110,6 @@ export const feedbackCreateSchema = z.object({
   fecha: z.string().min(1),
 })
 
-export const incidenteTipo = z.enum([
-  'electrico', 'mecanico', 'estructural', 'quimico',
-  'ergonomico', 'ambiental', 'incendio', 'caida',
-  'herramienta', 'vehiculo', 'otro',
-])
-
-export const denunciaTipo = z.enum([
-  'laboral', 'acoso', 'condiciones_inseguras',
-  'incumplimiento_normativo', 'conducta', 'otro',
-])
-
-export const severidad = z.enum(['baja', 'media', 'alta', 'critica'])
-
-export const seguimientoEstado = z.enum([
-  'recibida', 'en_analisis', 'accion_planificada', 'implementada', 'cerrada',
-])
-
-export const incidenteCreateSchema = z.object({
-  empresa_id: z.string().min(1, { error: 'La empresa es obligatoria' }),
-  establecimiento_id: z.string().nullable().optional(),
-  titulo: z.string().min(1, { error: 'El título es obligatorio' }).max(300),
-  tipo_incidente: incidenteTipo,
-  severidad,
-  fecha_incidente: z.string().min(1, { error: 'La fecha es obligatoria' }),
-  hora_incidente: z.string().nullable().optional(),
-  lugar_especifico: z.string().nullable().optional(),
-  descripcion: z.string().min(1, { error: 'La descripción es obligatoria' }),
-  involucrados: z.string().nullable().optional(),
-  testigos: z.string().nullable().optional(),
-})
-
-export const denunciaCreateSchema = z.object({
-  empresa_id: z.string().min(1, { error: 'La empresa es obligatoria' }),
-  establecimiento_id: z.string().nullable().optional(),
-  titulo: z.string().min(1, { error: 'El título es obligatorio' }).max(300),
-  tipo_denuncia: denunciaTipo,
-  denunciante_tipo: z.enum(['interno', 'externo', 'anonimo']),
-  denunciante_nombre: z.string().nullable().optional(),
-  denunciante_dni: z.string().nullable().optional(),
-  denunciante_contacto: z.string().nullable().optional(),
-  fecha_denuncia: z.string().min(1, { error: 'La fecha es obligatoria' }),
-  descripcion: z.string().min(1, { error: 'La descripción es obligatoria' }),
-  involucrados: z.string().nullable().optional(),
-  confidencial: z.literal('true').optional(),
-})
-
-export const estadoUpdateSchema = z.object({
-  acciones_tomadas: z.string().nullable().optional(),
-  conclusion: z.string().nullable().optional(),
-})
-
 export const addEppSchema = z.object({
   puesto_id: z.string().min(1),
   epp_id: z.string().min(1),
