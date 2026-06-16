@@ -5,6 +5,7 @@ import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { FirmaCanvas } from '@/components/firmas/firma-canvas'
+import { PersonaSelectorConAlta, type PersonaSeleccionada } from '@/components/persona-selector-con-alta'
 import { useFirmarRegistroTrabajador } from '@/lib/queries/firmas'
 import { PenLine, Loader2 } from 'lucide-react'
 
@@ -14,6 +15,8 @@ interface FirmaTrabajadorModalProps {
   entidadTipo: 'gestion' | 'capacitacion' | 'permiso_trabajo' | 'entrega_epp'
   entidadId: string
   entidadNombre: string
+  /** Si se provee, el selector de trabajador se scopea a las personas de ese establecimiento. */
+  establecimientoId?: string
   onSuccess: () => void
 }
 
@@ -23,8 +26,10 @@ export function FirmaTrabajadorModal({
   entidadTipo,
   entidadId,
   entidadNombre,
+  establecimientoId,
   onSuccess,
 }: FirmaTrabajadorModalProps) {
+  const [personaId, setPersonaId] = useState<string | null>(null)
   const [nombre, setNombre] = useState('')
   const [dni, setDni] = useState('')
   const [rol, setRol] = useState('')
@@ -35,6 +40,15 @@ export function FirmaTrabajadorModal({
 
   const isValid = nombre.trim().length > 0 && dni.trim().length > 0 && firmaSvgData !== null
 
+  function handlePersonaChange(persona: PersonaSeleccionada | null) {
+    setPersonaId(persona?.id ?? null)
+    if (persona) {
+      // Autocompletar el snapshot desde el directorio. El operador puede editarlo igual.
+      setNombre(`${persona.nombre} ${persona.apellido}`.trim())
+      if (persona.dni) setDni(persona.dni)
+    }
+  }
+
   async function handleConfirmar() {
     if (!isValid) return
     setError(null)
@@ -42,6 +56,7 @@ export function FirmaTrabajadorModal({
       await firmarMutation.mutateAsync({
         entidad_tipo: entidadTipo,
         entidad_id: entidadId,
+        persona_id: personaId,
         nombre_completo: nombre.trim(),
         dni: dni.trim(),
         rol: rol.trim() || null,
@@ -67,6 +82,18 @@ export function FirmaTrabajadorModal({
         <div className="bg-surface-base rounded-lg px-3 py-2 text-sm text-text-secondary">
           {entidadNombre}
         </div>
+
+        <PersonaSelectorConAlta
+          value={personaId}
+          onChange={handlePersonaChange}
+          establecimientoId={establecimientoId}
+          label="Trabajador (directorio)"
+          placeholder="Buscar en el directorio o agregar nuevo…"
+        />
+        <p className="-mt-2 text-xs text-text-tertiary">
+          Elegí al trabajador del directorio para autocompletar nombre y DNI. El registro de firma
+          guarda igual estos datos como constancia.
+        </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <Input

@@ -7,6 +7,8 @@ import type { ActionResult, FirmaEntidadTipo } from '@/lib/types'
 const firmarTrabajadorSchema = z.object({
   entidad_tipo: z.enum(['gestion', 'capacitacion', 'permiso_trabajo', 'entrega_epp']),
   entidad_id: z.string().min(1),
+  /** FK al directorio cuando la persona ya existe. El snapshot de nombre/dni/rol se guarda igual. */
+  persona_id: z.string().uuid().nullable().optional(),
   nombre_completo: z.string().min(1, { error: 'Nombre requerido' }),
   dni: z.string().min(1, { error: 'DNI requerido' }),
   rol: z.string().nullable().optional(),
@@ -27,7 +29,7 @@ export async function firmarRegistroTrabajador(
     return { success: false, error: parsed.error.issues.map(i => i.message).join('; ') }
   }
 
-  const { entidad_tipo, entidad_id, nombre_completo, dni, rol, firma_svg_data } = parsed.data
+  const { entidad_tipo, entidad_id, persona_id, nombre_completo, dni, rol, firma_svg_data } = parsed.data
 
   // Determinar consultora según el tipo de entidad
   let consultoraId: string | null = null
@@ -50,16 +52,16 @@ export async function firmarRegistroTrabajador(
 
   if (!consultoraId) return { success: false, error: 'Entidad no encontrada' }
 
-  // Buscar o crear trabajador en personas_directorio
-  const { data: existingPersona } = await supabase
-    .from('personas_directorio')
-    .select('id')
-    .eq('dni', dni)
-    .maybeSingle()
-
-  let trabajadorId: string | null = null
-  if (existingPersona) {
-    trabajadorId = existingPersona.id
+  // Vincular al directorio: si el selector ya entregó la persona, usamos ese FK
+  // directamente; si no, caemos al lookup por DNI (compatibilidad con flujos viejos).
+  let trabajadorId: string | null = persona_id ?? null
+  if (!trabajadorId) {
+    const { data: existingPersona } = await supabase
+      .from('personas_directorio')
+      .select('id')
+      .eq('dni', dni)
+      .maybeSingle()
+    if (existingPersona) trabajadorId = existingPersona.id
   }
 
   const { data: firma, error: insertError } = await supabase
