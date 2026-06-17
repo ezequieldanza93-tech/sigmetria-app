@@ -353,6 +353,7 @@ export function ProtocoloErgonomiaEjecutorModal({
   const [capacitacion, setCapacitacion] = useState<boolean | null>(null)
   const [procEscrito, setProcEscrito] = useState<boolean | null>(null)
   const [ubicacionSintoma, setUbicacionSintoma] = useState('')
+  const [ubicacionSintomaOtro, setUbicacionSintomaOtro] = useState('')
   const [nombreTrabajadores, setNombreTrabajadores] = useState('')
   const [trabajadorPersonaId, setTrabajadorPersonaId] = useState<string | null>(null)
   const [manifestacionTemprana, setManifestacionTemprana] = useState<boolean | null>(null)
@@ -543,7 +544,7 @@ export function ProtocoloErgonomiaEjecutorModal({
       fd.set('n_trabajadores', nTrabajadores)
       if (capacitacion !== null) fd.set('capacitacion', String(capacitacion))
       if (procEscrito !== null) fd.set('procedimiento_escrito', String(procEscrito))
-      fd.set('ubicacion_sintoma', ubicacionSintoma)
+      fd.set('ubicacion_sintoma', ubicacionSintoma === 'Otro' ? ubicacionSintomaOtro : ubicacionSintoma)
       fd.set('nombre_trabajadores', nombreTrabajadores)
       if (trabajadorPersonaId) fd.set('trabajador_persona_id', trabajadorPersonaId)
       if (manifestacionTemprana !== null) fd.set('manifestacion_temprana', String(manifestacionTemprana))
@@ -746,11 +747,34 @@ export function ProtocoloErgonomiaEjecutorModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-medium text-text-secondary block mb-1">Ubicación del síntoma</label>
-              <input
+              <select
                 className="w-full rounded-lg border border-border-default px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-400"
-                value={ubicacionSintoma} onChange={e => setUbicacionSintoma(e.target.value)}
-                placeholder="Ej: Zona lumbar, hombro derecho"
-              />
+                value={ubicacionSintoma}
+                onChange={e => { setUbicacionSintoma(e.target.value); if (e.target.value !== 'Otro') setUbicacionSintomaOtro('') }}
+              >
+                <option value="">— Seleccionar región —</option>
+                <option value="Cuello">Cuello</option>
+                <option value="Hombros">Hombros</option>
+                <option value="Espalda alta (dorsal)">Espalda alta (dorsal)</option>
+                <option value="Espalda baja (lumbar)">Espalda baja (lumbar)</option>
+                <option value="Brazos">Brazos</option>
+                <option value="Codos">Codos</option>
+                <option value="Antebrazos">Antebrazos</option>
+                <option value="Muñecas / Manos">Muñecas / Manos</option>
+                <option value="Cadera / Muslos">Cadera / Muslos</option>
+                <option value="Rodillas">Rodillas</option>
+                <option value="Piernas">Piernas</option>
+                <option value="Tobillos / Pies">Tobillos / Pies</option>
+                <option value="Otro">Otro</option>
+              </select>
+              {ubicacionSintoma === 'Otro' && (
+                <input
+                  className="mt-1.5 w-full rounded-lg border border-border-default px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-400"
+                  value={ubicacionSintomaOtro}
+                  onChange={e => setUbicacionSintomaOtro(e.target.value)}
+                  placeholder="Describir ubicación del síntoma"
+                />
+              )}
             </div>
             <div>
               <label className="text-xs font-medium text-text-secondary block mb-1">Nombre del trabajador/es</label>
@@ -889,12 +913,18 @@ export function ProtocoloErgonomiaEjecutorModal({
                           </td>
                           <td key={`${f.key}-${t.numero}-te`} className="border border-border-default px-1 py-1">
                             {ft.presente && (
-                              <input
-                                className="w-full rounded border border-border-default px-1 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-sig-400"
-                                value={ft.tiempo_exposicion}
-                                onChange={e => setFactorField(f.key, t.numero as 1|2|3, 'tiempo_exposicion', e.target.value)}
-                                placeholder="Ej: 2 h/día"
-                              />
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="number"
+                                  min={0}
+                                  step={0.01}
+                                  className="w-14 rounded border border-border-default px-1 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-sig-400 text-right"
+                                  value={ft.tiempo_exposicion}
+                                  onChange={e => setFactorField(f.key, t.numero as 1|2|3, 'tiempo_exposicion', e.target.value)}
+                                  placeholder="0"
+                                />
+                                <span className="text-xs text-text-tertiary shrink-0">h/día</span>
+                              </div>
                             )}
                           </td>
                           <td key={`${f.key}-${t.numero}-nr`} className="border border-border-default px-1 py-1">
