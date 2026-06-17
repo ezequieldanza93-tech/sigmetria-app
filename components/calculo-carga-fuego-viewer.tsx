@@ -32,6 +32,20 @@ interface Material {
   orden?: number | null
 }
 
+interface SectorRow {
+  id?: string
+  nombre_sector?: string | null
+  superficie_m2?: number | null
+  ventilacion?: string | null
+  riesgo?: string | null
+  qf_kg_m2?: number | null
+  f_exigido?: string | null
+  potencial_extintor_a?: string | null
+  potencial_extintor_b?: string | null
+  orden?: number | null
+  calculo_carga_fuego_sector_materiales?: Material[] | null
+}
+
 interface CabeceraEmpresa {
   razon_social?: string | null
   cuit?: string | null
@@ -61,6 +75,7 @@ interface CalculoCargaFuegoRow {
   plano_url?: string | null
   establecimientos?: CabeceraEstablecimiento | CabeceraEstablecimiento[] | null
   calculo_carga_fuego_materiales?: Material[] | null
+  calculo_carga_fuego_sectores?: SectorRow[] | null
 }
 
 // PostgREST puede devolver el join embebido como objeto o como array de 1.
@@ -120,6 +135,10 @@ export function CalculoCargaFuegoViewer({
     .slice()
     .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))
 
+  const sectoresViewer = (data?.calculo_carga_fuego_sectores ?? [])
+    .slice()
+    .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))
+
   return (
     <Modal open title={gestionNombre || 'Cálculo de Carga de Fuego'} onClose={onClose} size="wide">
       {loading ? (
@@ -165,6 +184,61 @@ export function CalculoCargaFuegoViewer({
               <Field label="Riesgo" value={dash(data.riesgo)} />
             </dl>
           </section>
+
+          {/* Sectores de incendio (nuevo modelo multi-sector) */}
+          {sectoresViewer.length > 0 && sectoresViewer.map((sector, si) => {
+            const sectorMats = (sector.calculo_carga_fuego_sector_materiales ?? [])
+              .slice()
+              .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))
+            return (
+              <section key={sector.id ?? si} className="rounded-xl border border-border-subtle p-4">
+                <h3 className="flex items-center gap-2 text-sm font-semibold text-text-primary mb-3">
+                  <Flame size={16} className="text-sig-500" />
+                  Sector {si + 1}{sector.nombre_sector ? `: ${sector.nombre_sector}` : ''}
+                </h3>
+                <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm mb-4">
+                  <Field label="Superficie (m²)" value={sector.superficie_m2 != null ? String(sector.superficie_m2) : '—'} />
+                  <Field label="Ventilación" value={labelVentilacion(sector.ventilacion)} />
+                  <Field label="Riesgo" value={dash(sector.riesgo)} />
+                  <Field label="Carga de fuego (Qf kg/m²)" value={sector.qf_kg_m2 != null ? String(sector.qf_kg_m2) : '—'} />
+                  <Field label="Resistencia exigida (F)" value={dash(sector.f_exigido)} />
+                  <Field label="Extintor clase A" value={dash(sector.potencial_extintor_a)} />
+                  <Field label="Extintor clase B" value={dash(sector.potencial_extintor_b)} />
+                </dl>
+                {sectorMats.length > 0 && (
+                  <div className="overflow-x-auto">
+                    <p className="text-xs font-medium text-text-secondary mb-2">Materiales ({sectorMats.length})</p>
+                    <table className="w-full text-xs border-collapse">
+                      <thead>
+                        <tr className="text-left text-text-tertiary border-b border-border-subtle/60">
+                          <th className="px-1.5 py-1 font-medium">#</th>
+                          <th className="px-1.5 py-1 font-medium">Descripción</th>
+                          <th className="px-1.5 py-1 font-medium">Estado</th>
+                          <th className="px-1.5 py-1 font-medium text-right">Peso (kg)</th>
+                          <th className="px-1.5 py-1 font-medium text-right">PCI (kcal/kg)</th>
+                          <th className="px-1.5 py-1 font-medium text-right">Coef. C</th>
+                          <th className="px-1.5 py-1 font-medium text-right">Equiv. madera (kg)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sectorMats.map((m, mi) => (
+                          <tr key={m.id ?? mi} className="border-b border-border-subtle/40">
+                            <td className="px-1.5 py-1 text-text-primary">{mi + 1}</td>
+                            <td className="px-1.5 py-1 text-text-primary">{dash(m.descripcion)}</td>
+                            <td className="px-1.5 py-1 text-text-primary capitalize">{dash(m.estado)}</td>
+                            <td className="px-1.5 py-1 text-right text-text-primary">{dash(m.peso_kg)}</td>
+                            <td className="px-1.5 py-1 text-right text-text-primary">{dash(m.pci_kcal)}</td>
+                            <td className="px-1.5 py-1 text-right text-text-primary">{dash(m.coef_c)}</td>
+                            <td className="px-1.5 py-1 text-right text-text-primary">{dash(m.equiv_madera_kg)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
+            )
+          })}
 
           {/* Resultados del cálculo */}
           {(data.qf_kg_m2 != null || data.f_exigido || data.potencial_extintor_a || data.potencial_extintor_b) ? (

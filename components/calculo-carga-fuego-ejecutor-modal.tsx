@@ -27,7 +27,7 @@ import { Button } from '@/components/ui/button'
 import { FirmaCanvas } from '@/components/firmas/firma-canvas'
 import { PersonaFirmanteSelector } from '@/components/persona-firmante-selector'
 import {
-  Flame, Building2, Layers, FileText, Plus, Trash2,
+  Flame, Building2, Layers, FileText, Plus, Trash2, X,
   ChevronLeft, ChevronRight, CheckCircle, Loader2,
   Info, ArrowRight, Check, Sparkles, Camera, ShieldCheck, Gauge, Download,
 } from 'lucide-react'
@@ -157,6 +157,27 @@ function nuevoMaterial(): MaterialState {
   }
 }
 
+interface SectorWizardState {
+  key: number
+  sectorIncendio: string
+  superficie: string
+  ventilacion: Ventilacion
+  materiales: MaterialState[]
+  riesgo: Riesgo | ''
+}
+
+let sectorKeySeq = 0
+function nuevoSectorWizard(): SectorWizardState {
+  return {
+    key: sectorKeySeq++,
+    sectorIncendio: '',
+    superficie: '',
+    ventilacion: 'natural',
+    materiales: [nuevoMaterial()],
+    riesgo: '',
+  }
+}
+
 // Helpers de parseo numérico tolerante (campos de texto → number | null).
 function num(v: string): number | null {
   if (v.trim() === '') return null
@@ -208,18 +229,13 @@ export function CalculoCargaFuegoEjecutorModal({
   const [firmanteDni, setFirmanteDni] = useState('')
   // Firma dibujada a mano del profesional (dataURL PNG base64). null = sin firma.
   const [firmaSvg, setFirmaSvg] = useState<string | null>(null)
-  const [sectorIncendio, setSectorIncendio] = useState('')
-  const [superficie, setSuperficie] = useState('')
-  const [ventilacion, setVentilacion] = useState<Ventilacion>('natural')
   const [observacionesGenerales, setObservacionesGenerales] = useState('')
   const [certificadoFile, setCertificadoFile] = useState<File | null>(null)
   const [planoFile, setPlanoFile] = useState<File | null>(null)
 
-  // ── Hoja 2: materiales ──────────────────────────────────────────────
-  const [materiales, setMateriales] = useState<MaterialState[]>([nuevoMaterial()])
-
-  // ── Hoja 3: resultado ───────────────────────────────────────────────
-  const [riesgo, setRiesgo] = useState<Riesgo | ''>('')
+  // ── Multi-sector ────────────────────────────────────────────────────
+  const [sectoresWizard, setSectoresWizard] = useState<SectorWizardState[]>([nuevoSectorWizard()])
+  const [sectorActivoIdx, setSectorActivoIdx] = useState(0)
 
   // ── Hoja 5: conclusiones ────────────────────────────────────────────
   const [conclusiones, setConclusiones] = useState('')
@@ -298,9 +314,37 @@ export function CalculoCargaFuegoEjecutorModal({
     return () => { activo = false }
   }, [establecimientoId])
 
+  // ── Sector activo (derivado) ────────────────────────────────────────
+  const sectorActivo = sectoresWizard[sectorActivoIdx] ?? sectoresWizard[0]
+  const sectorIncendio = sectorActivo.sectorIncendio
+  const superficie = sectorActivo.superficie
+  const ventilacion = sectorActivo.ventilacion
+  const materiales = sectorActivo.materiales
+  const riesgo = sectorActivo.riesgo
+
+  function updateSectorActivo(patch: Partial<SectorWizardState>) {
+    setSectoresWizard(prev => prev.map((s, i) => i === sectorActivoIdx ? { ...s, ...patch } : s))
+  }
+
+  function agregarSector() {
+    const nuevo = nuevoSectorWizard()
+    setSectoresWizard(prev => [...prev, nuevo])
+    setSectorActivoIdx(prev => prev + 1 < sectoresWizard.length + 1 ? sectoresWizard.length : prev)
+  }
+
+  function removerSector(idx: number) {
+    if (sectoresWizard.length <= 1) return
+    setSectoresWizard(prev => prev.filter((_, i) => i !== idx))
+    setSectorActivoIdx(prev => {
+      if (idx < prev) return prev - 1
+      if (idx === prev) return Math.max(0, prev - 1)
+      return prev
+    })
+  }
+
   // ── Mutadores de materiales ─────────────────────────────────────────
   function updateMaterial(key: number, patch: Partial<MaterialState>) {
-    setMateriales(prev => prev.map(m => (m.key === key ? { ...m, ...patch } : m)))
+    updateSectorActivo({ materiales: materiales.map(m => (m.key === key ? { ...m, ...patch } : m)) })
   }
 
   // Al elegir un material del lookup: autocompleta descripción, PCI y coeficiente C.
@@ -330,14 +374,12 @@ export function CalculoCargaFuegoEjecutorModal({
   }
 
   function addMaterial() {
-    setMateriales(prev => [...prev, nuevoMaterial()])
+    updateSectorActivo({ materiales: [...materiales, nuevoMaterial()] })
   }
 
   function removeMaterial(key: number) {
-    setMateriales(prev => {
-      if (prev.length === 1) return prev // siempre queda al menos uno
-      return prev.filter(m => m.key !== key)
-    })
+    if (materiales.length === 1) return
+    updateSectorActivo({ materiales: materiales.filter(m => m.key !== key) })
   }
 
   // ── Mutadores de observaciones de seguimiento ───────────────────────
@@ -374,63 +416,55 @@ export function CalculoCargaFuegoEjecutorModal({
     }))
   }
 
-  // ── Resultados derivados (en vivo) ──────────────────────────────────
+  // ── Resultados derivados del sector activo (en vivo) ─────────────────
   const superficieNum = num(superficie)
 
-  const materialesCarga: MaterialCarga[] = useMemo(
-    () => materiales.map(m => ({ peso: num(m.peso_kg) ?? 0, c: num(m.coef_c) ?? 0 })),
-    [materiales]
-  )
+  const materialesCarga: MaterialCarga[] = materiales.map(m => ({ peso: num(m.peso_kg) ?? 0, c: num(m.coef_c) ?? 0 }))
 
-  const totalEquiv = useMemo(
-    () => materiales.reduce((acc, m) => acc + equivDe(m), 0),
-    [materiales]
-  )
+  const totalEquiv = materiales.reduce((acc, m) => acc + equivDe(m), 0)
 
   // Qf = Σ(peso·C) / S. Si no hay superficie válida, queda null (no se puede calcular).
-  const qf = useMemo(() => {
-    if (superficieNum == null || superficieNum <= 0) return null
-    return cargaFuego(materialesCarga, superficieNum)
-  }, [materialesCarga, superficieNum])
+  const qf = (superficieNum == null || superficieNum <= 0)
+    ? null
+    : cargaFuego(materialesCarga, superficieNum)
 
   const franja: FranjaQf | null = qf != null ? franjaQf(qf) : null
 
-  // Cruce de lookups: F exigido (resistencia) + potencial extintor A/B según
-  // ventilación + riesgo + franja. R6/R7 no figuran en los cuadros 2.2 (solo R1-R5):
-  // para esos riesgos no hay match y se muestra "—".
-  const fExigido = useMemo(() => {
-    if (!lookups || !riesgo || !franja) return null
-    const row = lookups.resistencia.find(r => r.ventilacion === ventilacion && r.riesgo === riesgo && r.franja === franja)
-    return row?.f_minutos ?? null
-  }, [lookups, ventilacion, riesgo, franja])
+  // Cruce de lookups: F exigido + potencial extintor A/B.
+  const fExigido = (!lookups || !riesgo || !franja)
+    ? null
+    : (lookups.resistencia.find(r => r.ventilacion === ventilacion && r.riesgo === riesgo && r.franja === franja)?.f_minutos ?? null)
 
-  const potencialA = useMemo(() => {
-    if (!lookups || !riesgo || !franja) return null
-    const row = lookups.extintor.find(r => r.clase === 'A' && r.riesgo === riesgo && r.franja === franja)
-    return row?.potencial ?? null
-  }, [lookups, riesgo, franja])
+  const potencialA = (!lookups || !riesgo || !franja)
+    ? null
+    : (lookups.extintor.find(r => r.clase === 'A' && r.riesgo === riesgo && r.franja === franja)?.potencial ?? null)
 
-  const potencialB = useMemo(() => {
-    if (!lookups || !riesgo || !franja) return null
-    const row = lookups.extintor.find(r => r.clase === 'B' && r.riesgo === riesgo && r.franja === franja)
-    return row?.potencial ?? null
-  }, [lookups, riesgo, franja])
+  const potencialB = (!lookups || !riesgo || !franja)
+    ? null
+    : (lookups.extintor.find(r => r.clase === 'B' && r.riesgo === riesgo && r.franja === franja)?.potencial ?? null)
 
   // ── Gamificación: checks por hoja ───────────────────────────────────
   interface Check { id: string; label: string; done: boolean }
-  const checks: Check[] = useMemo(() => {
-    const algunMaterialConDatos = materiales.some(m => num(m.peso_kg) != null && num(m.coef_c) != null)
-    return [
-      { id: 'firmante', label: 'Elegí el profesional firmante', done: !!firmantePersonaId },
-      { id: 'sector', label: 'Indicá el sector de incendio', done: !!sectorIncendio.trim() },
-      { id: 'superficie', label: 'Cargá la superficie del sector (m²)', done: superficieNum != null && superficieNum > 0 },
-      { id: 'materiales', label: 'Cargá al menos un material con peso y coef. C', done: algunMaterialConDatos },
-      { id: 'qf', label: 'Calculá la carga de fuego (Qf)', done: qf != null && totalEquiv > 0 },
-      { id: 'riesgo', label: 'Definí el nivel de riesgo (R1-R7)', done: !!riesgo },
-      { id: 'conclusiones', label: 'Redactá las conclusiones', done: !!conclusiones.trim() },
-      { id: 'recomendaciones', label: 'Redactá las recomendaciones', done: !!recomendaciones.trim() },
-    ]
-  }, [firmantePersonaId, sectorIncendio, superficieNum, materiales, qf, totalEquiv, riesgo, conclusiones, recomendaciones])
+  const primerSector = sectoresWizard[0]
+  const algunSectorConMateriales = sectoresWizard.some(s =>
+    s.materiales.some(m => num(m.peso_kg) != null && num(m.coef_c) != null)
+  )
+  const algunSectorConQf = sectoresWizard.some(s => {
+    const sfNum = num(s.superficie)
+    if (!sfNum || sfNum <= 0) return false
+    const mats: MaterialCarga[] = s.materiales.map(m => ({ peso: num(m.peso_kg) ?? 0, c: num(m.coef_c) ?? 0 }))
+    return cargaFuego(mats, sfNum) != null
+  })
+  const checks: Check[] = [
+    { id: 'firmante', label: 'Elegí el profesional firmante', done: !!firmantePersonaId },
+    { id: 'sector', label: 'Indicá el sector de incendio', done: !!primerSector?.sectorIncendio.trim() },
+    { id: 'superficie', label: 'Cargá la superficie del sector (m²)', done: num(primerSector?.superficie) != null && (num(primerSector?.superficie) ?? 0) > 0 },
+    { id: 'materiales', label: 'Cargá al menos un material con peso y coef. C', done: algunSectorConMateriales },
+    { id: 'qf', label: 'Calculá la carga de fuego (Qf)', done: algunSectorConQf },
+    { id: 'riesgo', label: 'Definí el nivel de riesgo (R1-R7)', done: sectoresWizard.some(s => !!s.riesgo) },
+    { id: 'conclusiones', label: 'Redactá las conclusiones', done: !!conclusiones.trim() },
+    { id: 'recomendaciones', label: 'Redactá las recomendaciones', done: !!recomendaciones.trim() },
+  ]
 
   const doneCount = checks.filter(c => c.done).length
   const totalChecks = checks.length || 1
@@ -444,16 +478,20 @@ export function CalculoCargaFuegoEjecutorModal({
     if (step === 'datos') {
       if (!firmantePersonaId) { setError('Elegí el profesional firmante del cálculo.'); return }
       if (sectores.length === 0) { setError('Primero creá sectores en la ficha del establecimiento: el sector de incendio se elige de esa lista.'); return }
-      if (!sectorIncendio.trim()) { setError('Elegí el sector de incendio analizado.'); return }
-      if (!sectores.some(s => s.nombre === sectorIncendio)) { setError('El sector de incendio elegido no existe en el establecimiento. Elegí uno de la lista.'); return }
-      if (superficieNum == null || superficieNum <= 0) { setError('Cargá la superficie del sector (m²).'); return }
+      // Validar todos los sectores wizard
+      for (let i = 0; i < sectoresWizard.length; i++) {
+        const s = sectoresWizard[i]
+        if (!s.sectorIncendio.trim()) { setSectorActivoIdx(i); setError(`El sector ${i + 1} no tiene sector de incendio seleccionado.`); return }
+        if (!sectores.some(x => x.nombre === s.sectorIncendio)) { setSectorActivoIdx(i); setError(`El sector "${s.sectorIncendio}" no existe en el establecimiento.`); return }
+        if (num(s.superficie) == null || (num(s.superficie) ?? 0) <= 0) { setSectorActivoIdx(i); setError(`El sector "${s.sectorIncendio}" necesita una superficie válida (m²).`); return }
+      }
       setStep('materiales')
     } else if (step === 'materiales') {
-      const algunoConDatos = materiales.some(m => num(m.peso_kg) != null && num(m.coef_c) != null)
-      if (!algunoConDatos) { setError('Cargá al menos un material con su peso y coeficiente C.'); return }
+      const algunoConDatos = sectoresWizard.some(s => s.materiales.some(m => num(m.peso_kg) != null && num(m.coef_c) != null))
+      if (!algunoConDatos) { setError('Cargá al menos un material con su peso y coeficiente C en algún sector.'); return }
       setStep('resultado')
     } else if (step === 'resultado') {
-      if (!riesgo) { setError('Definí el nivel de riesgo del sector (R1-R7).'); return }
+      if (!sectoresWizard.some(s => !!s.riesgo)) { setError('Definí el nivel de riesgo en al menos un sector (R1-R7).'); return }
       setStep('observaciones')
     } else if (step === 'observaciones') {
       const obsSinCat = observacionesSeguimiento.filter(o => o.descripcion.trim() && !o.categoria_id)
@@ -490,14 +528,6 @@ export function CalculoCargaFuegoEjecutorModal({
       if (gestionEstablecimientoId) fd.set('gestion_establecimiento_id', gestionEstablecimientoId)
       if (firmantePersonaId) fd.set('firmante_persona_id', firmantePersonaId)
       fd.set('firmante', firmante)
-      fd.set('sector_incendio', sectorIncendio)
-      if (superficieNum != null) fd.set('superficie_m2', String(superficieNum))
-      fd.set('ventilacion', ventilacion)
-      if (riesgo) fd.set('riesgo', riesgo)
-      if (qf != null) fd.set('qf_kg_m2', String(qf))
-      if (fExigido) fd.set('f_exigido', fExigido)
-      if (potencialA) fd.set('potencial_extintor_a', potencialA)
-      if (potencialB) fd.set('potencial_extintor_b', potencialB)
       fd.set('observaciones', observacionesGenerales)
       fd.set('conclusiones', conclusiones)
       fd.set('recomendaciones', recomendaciones)
@@ -512,19 +542,55 @@ export function CalculoCargaFuegoEjecutorModal({
       fd.set('geo_accuracy', geo.accuracy != null ? String(geo.accuracy) : '')
       fd.set('geo_estado', geo.estado)
 
-      // Materiales → contrato del server action. Solo los que tienen algún dato real.
-      const materialesPayload = materiales
-        .filter(m => m.descripcion.trim() || num(m.peso_kg) != null)
-        .map((m, idx) => ({
-          descripcion: m.descripcion.trim() || null,
-          estado: m.estado || null,
-          peso_kg: num(m.peso_kg),
-          pci_kcal: num(m.pci_kcal),
-          coef_c: num(m.coef_c),
-          equiv_madera_kg: equivDe(m),
-          orden: idx,
-        }))
-      fd.set('materiales', JSON.stringify(materialesPayload))
+      // Multi-sector: armar payload de sectores
+      const sectoresPayload = sectoresWizard.map((s, sIdx) => {
+        const sfNum = num(s.superficie) ?? 0
+        const mats: MaterialCarga[] = s.materiales.map(m => ({ peso: num(m.peso_kg) ?? 0, c: num(m.coef_c) ?? 0 }))
+        const sQf = sfNum > 0 ? cargaFuego(mats, sfNum) : null
+        const sFranja = sQf != null ? franjaQf(sQf) : null
+        const sVentilacion: Ventilacion = s.ventilacion
+        const sRiesgo = s.riesgo || null
+        const sFExigido = lookups && sRiesgo && sFranja
+          ? (lookups.resistencia.find(r => r.ventilacion === sVentilacion && r.riesgo === sRiesgo && r.franja === sFranja)?.f_minutos ?? null)
+          : null
+        const sPotA = lookups && sRiesgo && sFranja
+          ? (lookups.extintor.find(r => r.clase === 'A' && r.riesgo === sRiesgo && r.franja === sFranja)?.potencial ?? null)
+          : null
+        const sPotB = lookups && sRiesgo && sFranja
+          ? (lookups.extintor.find(r => r.clase === 'B' && r.riesgo === sRiesgo && r.franja === sFranja)?.potencial ?? null)
+          : null
+        return {
+          nombre_sector: s.sectorIncendio,
+          superficie_m2: sfNum > 0 ? sfNum : null,
+          ventilacion: sVentilacion,
+          riesgo: sRiesgo,
+          qf_kg_m2: sQf,
+          f_exigido: sFExigido,
+          potencial_extintor_a: sPotA,
+          potencial_extintor_b: sPotB,
+          orden: sIdx,
+          materiales: s.materiales
+            .filter(m => m.descripcion.trim() || num(m.peso_kg) != null)
+            .map((m, mIdx) => ({
+              descripcion: m.descripcion.trim() || null,
+              estado: m.estado || null,
+              peso_kg: num(m.peso_kg),
+              pci_kcal: num(m.pci_kcal),
+              coef_c: num(m.coef_c),
+              equiv_madera_kg: equivDe(m),
+              orden: mIdx,
+            })),
+        }
+      })
+      fd.set('sectores', JSON.stringify(sectoresPayload))
+      // Campos legacy de cabecera para compatibilidad con datos históricos
+      const primerSectorGuardar = sectoresWizard[0]
+      fd.set('sector_incendio', primerSectorGuardar?.sectorIncendio ?? '')
+      const sfPrimero = num(primerSectorGuardar?.superficie)
+      if (sfPrimero != null) fd.set('superficie_m2', String(sfPrimero))
+      fd.set('ventilacion', primerSectorGuardar?.ventilacion ?? 'natural')
+      if (primerSectorGuardar?.riesgo) fd.set('riesgo', primerSectorGuardar.riesgo)
+      // (qf_kg_m2, f_exigido, potenciales se incluyen en sectoresPayload por sector)
 
       // Observaciones de seguimiento → mismo contrato que iluminación / reporte
       // fotográfico: meta como JSON y fotos como `obs-foto-{idx}` File.
@@ -578,6 +644,7 @@ export function CalculoCargaFuegoEjecutorModal({
   }
 
   const stepIdx = STEP_ORDER.indexOf(step)
+  // Para el PDF (primer sector): mantiene compatibilidad
   const materialesValidos = materiales.filter(m => m.descripcion.trim() || num(m.peso_kg) != null)
 
   // ── Datos consolidados para el PDF oficial ─────────────────────────
@@ -653,8 +720,8 @@ export function CalculoCargaFuegoEjecutorModal({
             </div>
             <h3 className="font-semibold text-text-primary text-base">Cálculo registrado</h3>
             <p className="text-sm text-text-secondary mt-1">
-              {materialesValidos.length} {materialesValidos.length === 1 ? 'material' : 'materiales'}
-              {qf != null && <> · Qf {qf.toFixed(1)} kg/m² · franja {franja}</>}
+              {sectoresWizard.length} {sectoresWizard.length === 1 ? 'sector' : 'sectores'}
+              {sectoresWizard.length === 1 && qf != null && <> · Qf {qf.toFixed(1)} kg/m² · franja {franja}</>}
             </p>
           </div>
           {error && (
@@ -755,6 +822,39 @@ export function CalculoCargaFuegoEjecutorModal({
               )}
             </section>
 
+            {/* Tabs de sectores (multi-sector) */}
+            {sectoresWizard.length > 1 && (
+              <div className="flex gap-2 flex-wrap">
+                {sectoresWizard.map((s, i) => (
+                  <div key={s.key} className="relative inline-flex items-center">
+                    <button
+                      type="button"
+                      onClick={() => setSectorActivoIdx(i)}
+                      className={`px-3 py-1.5 text-sm rounded-lg border pr-7 ${i === sectorActivoIdx ? 'border-sig-500 bg-sig-50/40 font-medium text-text-primary' : 'border-border-default text-text-secondary hover:bg-surface-elevated'}`}
+                    >
+                      {s.sectorIncendio || `Sector ${i + 1}`}
+                    </button>
+                    {sectoresWizard.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={e => { e.stopPropagation(); removerSector(i) }}
+                        className="absolute right-1.5 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-danger"
+                      >
+                        <X size={12} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={agregarSector}
+                  className="px-3 py-1.5 text-xs rounded-lg border border-dashed border-sig-400 text-sig-600 hover:bg-sig-50/40"
+                >
+                  + Sector
+                </button>
+              </div>
+            )}
+
             {/* Datos del sector + responsable */}
             <section className="space-y-4">
               <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2">
@@ -784,7 +884,7 @@ export function CalculoCargaFuegoEjecutorModal({
                     <select
                       className={inputCls}
                       value={sectorIncendio}
-                      onChange={e => setSectorIncendio(e.target.value)}
+                      onChange={e => updateSectorActivo({ sectorIncendio: e.target.value })}
                     >
                       <option value="">Elegí un sector…</option>
                       {sectores.map(s => (
@@ -804,7 +904,7 @@ export function CalculoCargaFuegoEjecutorModal({
                     type="number"
                     className={inputCls}
                     value={superficie}
-                    onChange={e => setSuperficie(e.target.value)}
+                    onChange={e => updateSectorActivo({ superficie: e.target.value })}
                     placeholder="Ej: 200"
                   />
                 </div>
@@ -816,13 +916,24 @@ export function CalculoCargaFuegoEjecutorModal({
                         key={v}
                         className={`flex-1 flex items-center justify-center gap-2 text-sm rounded-lg border px-3 py-2 cursor-pointer ${ventilacion === v ? 'border-sig-500 bg-sig-50/40 text-text-primary' : 'border-border-default text-text-secondary'}`}
                       >
-                        <input type="radio" name="ventilacion" checked={ventilacion === v} onChange={() => setVentilacion(v)} />
+                        <input type="radio" name="ventilacion" checked={ventilacion === v} onChange={() => updateSectorActivo({ ventilacion: v })} />
                         {v === 'natural' ? 'Natural' : 'Mecánica'}
                       </label>
                     ))}
                   </div>
                 </div>
               </div>
+              {sectoresWizard.length === 1 && (
+                <div>
+                  <button
+                    type="button"
+                    onClick={agregarSector}
+                    className="inline-flex items-center gap-1.5 text-xs text-sig-600 hover:text-sig-700 border border-dashed border-sig-400 rounded-lg px-3 py-1.5"
+                  >
+                    <Plus size={13} /> Agregar otro sector
+                  </button>
+                </div>
+              )}
             </section>
 
             {/* Adjuntos + observaciones generales */}
@@ -851,9 +962,25 @@ export function CalculoCargaFuegoEjecutorModal({
         {/* ══ HOJA 2: MATERIALES ═════════════════════════════════════ */}
         {step === 'materiales' && (
           <div className="space-y-4">
+            {/* Tabs de sectores */}
+            {sectoresWizard.length > 1 && (
+              <div className="flex gap-2 flex-wrap">
+                {sectoresWizard.map((s, i) => (
+                  <button
+                    key={s.key}
+                    type="button"
+                    onClick={() => setSectorActivoIdx(i)}
+                    className={`px-3 py-1.5 text-sm rounded-lg border ${i === sectorActivoIdx ? 'border-sig-500 bg-sig-50/40 font-medium text-text-primary' : 'border-border-default text-text-secondary hover:bg-surface-elevated'}`}
+                  >
+                    {s.sectorIncendio || `Sector ${i + 1}`}
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="rounded-xl border border-border-subtle bg-surface-elevated/40 p-4">
               <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2">
                 <Layers size={16} className="text-sig-500" /> Inventario de materiales combustibles
+                {sectoresWizard.length > 1 && <span className="text-xs font-normal text-text-tertiary">— {sectorActivo.sectorIncendio || `Sector ${sectorActivoIdx + 1}`}</span>}
               </h3>
               <p className="text-xs text-text-tertiary mt-1">
                 Por cada material: peso y poder calorífico. El coeficiente C (= PCI / 4400) y el
@@ -962,9 +1089,25 @@ export function CalculoCargaFuegoEjecutorModal({
         {/* ══ HOJA 3: RESULTADO ══════════════════════════════════════ */}
         {step === 'resultado' && (
           <div className="space-y-5">
+            {/* Tabs de sectores */}
+            {sectoresWizard.length > 1 && (
+              <div className="flex gap-2 flex-wrap">
+                {sectoresWizard.map((s, i) => (
+                  <button
+                    key={s.key}
+                    type="button"
+                    onClick={() => setSectorActivoIdx(i)}
+                    className={`px-3 py-1.5 text-sm rounded-lg border ${i === sectorActivoIdx ? 'border-sig-500 bg-sig-50/40 font-medium text-text-primary' : 'border-border-default text-text-secondary hover:bg-surface-elevated'}`}
+                  >
+                    {s.sectorIncendio || `Sector ${i + 1}`}
+                  </button>
+                ))}
+              </div>
+            )}
             <section className="rounded-xl border border-border-subtle bg-surface-elevated/40 p-4">
               <h3 className="text-sm font-semibold text-text-primary mb-3 flex items-center gap-2">
                 <Gauge size={16} className="text-sig-500" /> Carga de fuego calculada
+                {sectoresWizard.length > 1 && <span className="text-xs font-normal text-text-tertiary">— {sectorActivo.sectorIncendio || `Sector ${sectorActivoIdx + 1}`}</span>}
               </h3>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
                 <Metric label="Total equiv. madera" value={`${totalEquiv.toFixed(1)} kg`} />
@@ -989,7 +1132,7 @@ export function CalculoCargaFuegoEjecutorModal({
                   <button
                     key={r}
                     type="button"
-                    onClick={() => setRiesgo(r)}
+                    onClick={() => updateSectorActivo({ riesgo: r })}
                     className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition-colors ${
                       riesgo === r ? 'border-sig-500 bg-sig-50/40 text-text-primary font-medium' : 'border-border-default text-text-secondary hover:bg-surface-elevated'
                     }`}
@@ -1212,14 +1355,11 @@ export function CalculoCargaFuegoEjecutorModal({
             <p className="text-sm text-text-secondary">Revisá el cálculo antes de guardarlo.</p>
 
             {/* Resumen datos */}
-            <ReviewSection title="Datos del sector">
+            <ReviewSection title="Datos generales">
               <ReviewGrid>
                 <ReadOnly label="Empresa" value={estCtx?.empresa_razon_social} />
                 <ReadOnly label="Establecimiento" value={estCtx?.nombre} />
                 <ReadOnly label="Profesional firmante" value={firmante} />
-                <ReadOnly label="Sector de incendio" value={sectorIncendio} />
-                <ReadOnly label="Superficie" value={superficieNum != null ? `${superficieNum} m²` : null} />
-                <ReadOnly label="Ventilación" value={ventilacion === 'natural' ? 'Natural' : 'Mecánica'} />
               </ReviewGrid>
               <div className="flex gap-3 mt-2 text-xs text-text-tertiary">
                 <span>{certificadoFile ? '✓ Memoria/certificado adjunto' : 'Sin memoria adjunta'}</span>
@@ -1227,34 +1367,51 @@ export function CalculoCargaFuegoEjecutorModal({
               </div>
             </ReviewSection>
 
-            {/* Resumen materiales */}
-            <ReviewSection title={`Materiales (${materialesValidos.length})`}>
-              <div className="space-y-2">
-                {materialesValidos.map((m, i) => {
-                  const equiv = equivDe(m)
-                  return (
-                    <div key={m.key} className="rounded-lg border border-border-subtle px-3 py-2 text-sm flex flex-wrap items-center gap-x-4 gap-y-1">
-                      <span className="font-medium text-text-primary">{i + 1}. {m.descripcion || 'Material'}</span>
-                      <span className="text-text-tertiary tabular-nums">{num(m.peso_kg) ?? 0} kg</span>
-                      <span className="text-text-tertiary tabular-nums">C {num(m.coef_c) ?? 0}</span>
-                      <span className="text-text-tertiary tabular-nums">equiv {equiv.toFixed(1)} kg</span>
+            {/* Resumen por sector */}
+            {sectoresWizard.map((s, sIdx) => {
+              const sfNum = num(s.superficie)
+              const sMatsCarga: MaterialCarga[] = s.materiales.map(m => ({ peso: num(m.peso_kg) ?? 0, c: num(m.coef_c) ?? 0 }))
+              const sQf = sfNum != null && sfNum > 0 ? cargaFuego(sMatsCarga, sfNum) : null
+              const sFranja = sQf != null ? franjaQf(sQf) : null
+              const sTotalEquiv = s.materiales.reduce((acc, m) => acc + equivDe(m), 0)
+              const sFExigido = lookups && s.riesgo && sFranja
+                ? (lookups.resistencia.find(r => r.ventilacion === s.ventilacion && r.riesgo === s.riesgo && r.franja === sFranja)?.f_minutos ?? null)
+                : null
+              const sPotA = lookups && s.riesgo && sFranja
+                ? (lookups.extintor.find(r => r.clase === 'A' && r.riesgo === s.riesgo && r.franja === sFranja)?.potencial ?? null)
+                : null
+              const sPotB = lookups && s.riesgo && sFranja
+                ? (lookups.extintor.find(r => r.clase === 'B' && r.riesgo === s.riesgo && r.franja === sFranja)?.potencial ?? null)
+                : null
+              const matsValidos = s.materiales.filter(m => m.descripcion.trim() || num(m.peso_kg) != null)
+              return (
+                <ReviewSection key={s.key} title={`Sector ${sIdx + 1}${s.sectorIncendio ? `: ${s.sectorIncendio}` : ''}`}>
+                  <ReviewGrid>
+                    <ReadOnly label="Sector de incendio" value={s.sectorIncendio} />
+                    <ReadOnly label="Superficie" value={sfNum != null ? `${sfNum} m²` : null} />
+                    <ReadOnly label="Ventilación" value={s.ventilacion === 'natural' ? 'Natural' : 'Mecánica'} />
+                    <ReadOnly label="Total equiv. madera" value={`${sTotalEquiv.toFixed(1)} kg`} />
+                    <ReadOnly label="Carga de fuego (Qf)" value={sQf != null ? `${sQf.toFixed(1)} kg/m²` : null} />
+                    <ReadOnly label="Franja" value={sFranja} />
+                    <ReadOnly label="Riesgo" value={s.riesgo || null} />
+                    <ReadOnly label="F exigido" value={sFExigido} />
+                    <ReadOnly label="Potencial extintor A / B" value={[sPotA, sPotB].filter(Boolean).join(' / ') || null} />
+                  </ReviewGrid>
+                  {matsValidos.length > 0 && (
+                    <div className="mt-2 space-y-1">
+                      {matsValidos.map((m, i) => (
+                        <div key={m.key} className="rounded-lg border border-border-subtle px-3 py-1.5 text-sm flex flex-wrap items-center gap-x-4 gap-y-0.5">
+                          <span className="font-medium text-text-primary">{i + 1}. {m.descripcion || 'Material'}</span>
+                          <span className="text-text-tertiary tabular-nums">{num(m.peso_kg) ?? 0} kg</span>
+                          <span className="text-text-tertiary tabular-nums">C {num(m.coef_c) ?? 0}</span>
+                          <span className="text-text-tertiary tabular-nums">equiv {equivDe(m).toFixed(1)} kg</span>
+                        </div>
+                      ))}
                     </div>
-                  )
-                })}
-              </div>
-            </ReviewSection>
-
-            {/* Resumen resultado */}
-            <ReviewSection title="Resultado">
-              <ReviewGrid>
-                <ReadOnly label="Total equiv. madera" value={`${totalEquiv.toFixed(1)} kg`} />
-                <ReadOnly label="Carga de fuego (Qf)" value={qf != null ? `${qf.toFixed(1)} kg/m²` : null} />
-                <ReadOnly label="Franja" value={franja} />
-                <ReadOnly label="Riesgo" value={riesgo || null} />
-                <ReadOnly label="F exigido" value={fExigido} />
-                <ReadOnly label="Potencial extintor A / B" value={[potencialA, potencialB].filter(Boolean).join(' / ') || null} />
-              </ReviewGrid>
-            </ReviewSection>
+                  )}
+                </ReviewSection>
+              )
+            })}
 
             {/* Resumen conclusiones */}
             <ReviewSection title="Conclusiones y recomendaciones">

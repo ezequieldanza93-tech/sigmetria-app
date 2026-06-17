@@ -36,6 +36,19 @@ interface MaterialInput {
   orden?: number | null
 }
 
+interface SectorInput {
+  nombre_sector: string
+  superficie_m2?: number | null
+  ventilacion?: string | null
+  riesgo?: string | null
+  qf_kg_m2?: number | null
+  f_exigido?: string | null
+  potencial_extintor_a?: string | null
+  potencial_extintor_b?: string | null
+  orden?: number
+  materiales: MaterialInput[]
+}
+
 // Observación de seguimiento (finding adicional al cálculo). Mismo contrato que
 // crearMedicionIluminacion: viene del FormData como JSON `observaciones_seguimiento`;
 // las fotos llegan como `obs-foto-{idx}` File.
@@ -97,6 +110,7 @@ export async function crearCalculoCargaFuego(
   const certificadoFile = formData.get('certificado') as File | null
   const planoFile = formData.get('plano') as File | null
   const materialesRaw = (formData.get('materiales') as string) || '[]'
+  const sectoresRaw = (formData.get('sectores') as string) || null
   const observacionesSeguimientoRaw = (formData.get('observaciones_seguimiento') as string) || null
 
   if (!registroId) return { success: false, error: 'Registro requerido' }
@@ -119,6 +133,16 @@ export async function crearCalculoCargaFuego(
     materiales = Array.isArray(parsed) ? parsed : []
   } catch {
     return { success: false, error: 'Los materiales tienen un formato inválido' }
+  }
+
+  let sectores: SectorInput[] = []
+  if (sectoresRaw) {
+    try {
+      const parsed = JSON.parse(sectoresRaw)
+      sectores = Array.isArray(parsed) ? parsed : []
+    } catch {
+      return { success: false, error: 'Los sectores tienen un formato inválido' }
+    }
   }
 
   // El path de un bucket PRIVADO debe empezar con el consultora_id para que la RLS
@@ -220,28 +244,81 @@ export async function crearCalculoCargaFuego(
 
   const calculoId = cabecera.id as string
 
-  // ── 4. INSERT materiales ────────────────────────────────────────────
-  // Si algo falla, rollback manual de la cabecera (ON DELETE CASCADE limpia materiales
+  // ── 4. INSERT materiales / sectores ────────────────────────────────
+  // Si algo falla, rollback manual de la cabecera (ON DELETE CASCADE limpia hijos
   // ya insertados) y devolvemos error en vez de tragarlo y reportar éxito.
-  const materialRows = materiales
-    .filter(m => (m.descripcion && m.descripcion.trim()) || m.peso_kg != null)
-    .map((m, i) => ({
-      calculo_id: calculoId,
-      descripcion: m.descripcion?.trim() || null,
-      estado: m.estado ?? null,
-      peso_kg: m.peso_kg ?? null,
-      pci_kcal: m.pci_kcal ?? null,
-      coef_c: m.coef_c ?? null,
-      equiv_madera_kg: m.equiv_madera_kg ?? null,
-      orden: m.orden ?? i,
-    }))
-  if (materialRows.length > 0) {
-    const { error: matErr } = await supabase
-      .from('calculo_carga_fuego_materiales')
-      .insert(materialRows)
-    if (matErr) {
-      await supabase.from('calculo_carga_fuego').delete().eq('id', calculoId)
-      return { success: false, error: 'Error al guardar los materiales: ' + matErr.message }
+  if (sectores.length > 0) {
+    // Flujo multi-sector: insertar en calculo_carga_fuego_sectores + sector_materiales
+    for (const sector of sectores) {
+      const sVentilacion = sector.ventilacion && ['natural', 'mecanica'].includes(sector.ventilacion)
+        ? sector.ventilacion : null
+      const sRiesgo = sector.riesgo && ['R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'R7'].includes(sector.riesgo)
+        ? sector.riesgo : null
+      const { data: sectorRow, error: sectorErr } = await supabase
+        .from('calculo_carga_fuego_sectores')
+        .insert({
+          calculo_id: calculoId,
+          nombre_sector: sector.nombre_sector,
+          superficie_m2: sector.superficie_m2 ?? null,
+          ventilacion: sVentilacion,
+          riesgo: sRiesgo,
+          qf_kg_m2: sector.qf_kg_m2 ?? null,
+          f_exigido: sector.f_exigido ?? null,
+          potencial_extintor_a: sector.potencial_extintor_a ?? null,
+          potencial_extintor_b: sector.potencial_extintor_b ?? null,
+          orden: sector.orden ?? 0,
+        })
+        .select('id')
+        .single()
+      if (sectorErr) {
+        await supabase.from('calculo_carga_fuego').delete().eq('id', calculoId)
+        return { success: false, error: 'Error al guardar el sector "' + sector.nombre_sector + '": ' + sectorErr.message }
+      }
+      const sectorId = sectorRow.id as string
+      const sMatRows = (sector.materiales ?? [])
+        .filter(m => (m.descripcion && m.descripcion.trim()) || m.peso_kg != null)
+        .map((m, i) => ({
+          sector_id: sectorId,
+          descripcion: m.descripcion?.trim() || null,
+          estado: m.estado ?? null,
+          peso_kg: m.peso_kg ?? null,
+          pci_kcal: m.pci_kcal ?? null,
+          coef_c: m.coef_c ?? null,
+          equiv_madera_kg: m.equiv_madera_kg ?? null,
+          orden: m.orden ?? i,
+        }))
+      if (sMatRows.length > 0) {
+        const { error: sMatErr } = await supabase
+          .from('calculo_carga_fuego_sector_materiales')
+          .insert(sMatRows)
+        if (sMatErr) {
+          await supabase.from('calculo_carga_fuego').delete().eq('id', calculoId)
+          return { success: false, error: 'Error al guardar los materiales del sector "' + sector.nombre_sector + '": ' + sMatErr.message }
+        }
+      }
+    }
+  } else {
+    // Flujo legacy: insertar en calculo_carga_fuego_materiales (comportamiento actual)
+    const materialRows = materiales
+      .filter(m => (m.descripcion && m.descripcion.trim()) || m.peso_kg != null)
+      .map((m, i) => ({
+        calculo_id: calculoId,
+        descripcion: m.descripcion?.trim() || null,
+        estado: m.estado ?? null,
+        peso_kg: m.peso_kg ?? null,
+        pci_kcal: m.pci_kcal ?? null,
+        coef_c: m.coef_c ?? null,
+        equiv_madera_kg: m.equiv_madera_kg ?? null,
+        orden: m.orden ?? i,
+      }))
+    if (materialRows.length > 0) {
+      const { error: matErr } = await supabase
+        .from('calculo_carga_fuego_materiales')
+        .insert(materialRows)
+      if (matErr) {
+        await supabase.from('calculo_carga_fuego').delete().eq('id', calculoId)
+        return { success: false, error: 'Error al guardar los materiales: ' + matErr.message }
+      }
     }
   }
 
@@ -325,6 +402,13 @@ export async function getCalculoCargaFuego(
       ),
       calculo_carga_fuego_materiales (
         id, descripcion, estado, peso_kg, pci_kcal, coef_c, equiv_madera_kg, orden
+      ),
+      calculo_carga_fuego_sectores (
+        id, nombre_sector, superficie_m2, ventilacion, riesgo, qf_kg_m2,
+        f_exigido, potencial_extintor_a, potencial_extintor_b, orden,
+        calculo_carga_fuego_sector_materiales (
+          id, descripcion, estado, peso_kg, pci_kcal, coef_c, equiv_madera_kg, orden
+        )
       )
     `)
     .eq('id', calculoId)
