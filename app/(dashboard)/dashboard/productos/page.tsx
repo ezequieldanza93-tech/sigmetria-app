@@ -425,7 +425,7 @@ export default function ProductosPage() {
       .from('productos')
       .select('*, productos_categorias(nombre), marca:organizaciones_externas!productos_marca_id_fkey(nombre), proveedor:organizaciones_externas!productos_proveedor_id_fkey(nombre), unidades(nombre, simbolo), producto_variantes(count)')
       .eq('is_active', true)
-      .range(0, 999)
+      .range(0, 9999)
       .order('nombre')
       .then(({ data }) => setProductos((data as unknown as Producto[]) ?? []))
   }

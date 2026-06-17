@@ -32,6 +32,8 @@ export function ProductoDetalle({
 }) {
   const [variantes, setVariantes] = useState<ProductoVariante[]>([])
   const [assets, setAssets] = useState<ProductoAsset[]>([])
+  const [normas, setNormas] = useState<{ numero: string; anio: number; titulo: string }[]>([])
+  const [gestiones, setGestiones] = useState<{ nombre: string }[]>([])
   const [loading, setLoading] = useState(false)
   const [fotoActiva, setFotoActiva] = useState(0)
 
@@ -43,9 +45,13 @@ export function ProductoDetalle({
     Promise.all([
       sb.from('producto_variantes').select('*').eq('producto_id', producto.id).eq('is_active', true).order('orden').order('talle'),
       sb.from('producto_assets').select('*').eq('producto_id', producto.id).order('tipo').order('orden'),
-    ]).then(([v, a]) => {
+      sb.from('producto_norma').select('normativa_normas(numero, anio, titulo)').eq('producto_id', producto.id),
+      sb.from('producto_gestion').select('gestiones(nombre)').eq('producto_id', producto.id),
+    ]).then(([v, a, n, g]) => {
       setVariantes((v.data as unknown as ProductoVariante[]) ?? [])
       setAssets((a.data as unknown as ProductoAsset[]) ?? [])
+      setNormas(((n.data as unknown as { normativa_normas: { numero: string; anio: number; titulo: string } | null }[]) ?? []).map(r => r.normativa_normas).filter((x): x is { numero: string; anio: number; titulo: string } => !!x))
+      setGestiones(((g.data as unknown as { gestiones: { nombre: string } | null }[]) ?? []).map(r => r.gestiones).filter((x): x is { nombre: string } => !!x))
       setLoading(false)
     })
   }, [open, producto])
@@ -168,6 +174,34 @@ export function ProductoDetalle({
               {colores.map(c => (
                 <span key={c} className="px-2.5 py-1 rounded-md border border-border-default text-sm text-text-primary bg-surface-base">
                   {c}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Normativa que aplica (equipos de medición) */}
+        {normas.length > 0 && (
+          <div>
+            <p className="text-xs font-medium text-text-secondary mb-1.5">Normativa que aplica</p>
+            <div className="flex gap-1.5 flex-wrap">
+              {normas.map((n, i) => (
+                <span key={i} title={n.titulo} className="px-2.5 py-1 rounded-md border border-blue-200 bg-blue-50 text-xs font-medium text-blue-700">
+                  Res {n.numero}/{n.anio}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Gestiones que usan el equipo */}
+        {gestiones.length > 0 && (
+          <div>
+            <p className="text-xs font-medium text-text-secondary mb-1.5">Gestiones relacionadas</p>
+            <div className="flex gap-1.5 flex-wrap">
+              {gestiones.map((g, i) => (
+                <span key={i} className="px-2.5 py-1 rounded-md border border-violet-200 bg-violet-50 text-xs font-medium text-violet-700">
+                  {g.nombre}
                 </span>
               ))}
             </div>
