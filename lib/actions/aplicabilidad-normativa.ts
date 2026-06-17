@@ -54,6 +54,8 @@ interface NormaRow {
   aplica_a_todos: boolean
   provincia_id: string | null
   requiere_habilitacion: boolean
+  requiere_pregunta: boolean
+  pregunta_id: string | null
   normativa_categorias: { nombre: string } | null
   normativa_normas_tipos_establecimiento: JoinTipo[] | null
 }
@@ -93,11 +95,21 @@ export async function getNormativasAplicables(establecimientoId: string): Promis
   const { data } = await supabase
     .from('normativa_normas')
     .select(
-      'id, tipo, numero, anio, titulo, nombre_completo, organismo, ambito, estado, descripcion, aplica_a_todos, provincia_id, requiere_habilitacion, normativa_categorias(nombre), normativa_normas_tipos_establecimiento(tipo_establecimiento_id, modo)'
+      'id, tipo, numero, anio, titulo, nombre_completo, organismo, ambito, estado, descripcion, aplica_a_todos, provincia_id, requiere_habilitacion, requiere_pregunta, pregunta_id, normativa_categorias(nombre), normativa_normas_tipos_establecimiento(tipo_establecimiento_id, modo)'
     )
     .order('orden', { ascending: true, nullsFirst: false })
 
   const normas = (data ?? []) as unknown as NormaRow[]
+
+  // Respuestas del alta (para el gating condicional de normas).
+  const { data: respData } = await supabase
+    .from('establecimientos_respuestas')
+    .select('pregunta_id, respuesta')
+    .eq('establecimiento_id', establecimientoId)
+  const respuestas = new Map<string, boolean>()
+  for (const r of (respData ?? []) as { pregunta_id: string; respuesta: boolean }[]) {
+    respuestas.set(r.pregunta_id, r.respuesta)
+  }
 
   return normas
     .filter((n) => {
@@ -106,7 +118,9 @@ export async function getNormativasAplicables(establecimientoId: string): Promis
       const excluido = joins.some((j) => j.modo === 'excluye' && j.tipo_establecimiento_id === dims.tipo_id)
       const aplicaJurisdiccion = !n.provincia_id || n.provincia_id === dims.provincia_id
       const aplicaHabilitacion = !n.requiere_habilitacion || dims.tiene_habilitacion
-      return incluido && !excluido && aplicaJurisdiccion && aplicaHabilitacion
+      // Gating condicional: si requiere pregunta, solo aplica con respuesta = SÍ.
+      const aplicaPregunta = !n.requiere_pregunta || !n.pregunta_id || respuestas.get(n.pregunta_id) === true
+      return incluido && !excluido && aplicaJurisdiccion && aplicaHabilitacion && aplicaPregunta
     })
     .map((n) => ({
       id: n.id,
