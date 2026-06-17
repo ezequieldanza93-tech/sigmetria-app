@@ -1049,10 +1049,20 @@ export type TipoEjecucion =
   | 'medicion_pat'
   | 'presentacion_autoproteccion'
 
+export interface GestionChecklistCategoria {
+  id: string
+  categoria_id: string
+  nombre: string
+  descripcion: string | null
+  consultora_id: string | null
+  created_at: string
+}
+
 export interface Gestion {
   id: string
   nombre: string
   categoria_id: string
+  checklist_categoria_id: string | null
   descripcion: string | null
   consultora_id: string | null
   created_at: string

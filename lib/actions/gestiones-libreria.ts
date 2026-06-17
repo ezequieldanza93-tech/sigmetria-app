@@ -41,23 +41,35 @@ export async function getLibreriaGestiones(): Promise<ActionResult<{
   grupos: any[]
   categorias: any[]
   gestiones: any[]
+  checklistCategorias: any[]
   consultoraId: string
 }>> {
   const supabase = await createClient()
   const cId = await getConsultoraId()
   if (!cId.success) return cId
 
-  const [g, c, ge] = await Promise.all([
+  const [g, c, ge, cc] = await Promise.all([
     supabase.from('gestiones_grupos').select('*').order('nombre'),
     supabase.from('gestiones_categorias').select('*').order('nombre'),
     supabase.from('gestiones').select('*').order('nombre'),
+    supabase.from('gestiones_checklist_categorias').select('*').order('nombre'),
   ])
 
   if (g.error) return { success: false, error: g.error.message }
   if (c.error) return { success: false, error: c.error.message }
   if (ge.error) return { success: false, error: ge.error.message }
+  if (cc.error) return { success: false, error: cc.error.message }
 
-  return { success: true, data: { grupos: g.data ?? [], categorias: c.data ?? [], gestiones: ge.data ?? [], consultoraId: cId.data } }
+  return {
+    success: true,
+    data: {
+      grupos: g.data ?? [],
+      categorias: c.data ?? [],
+      gestiones: ge.data ?? [],
+      checklistCategorias: cc.data ?? [],
+      consultoraId: cId.data,
+    },
+  }
 }
 
 // ============================================================
@@ -302,6 +314,7 @@ export async function createGestion(
   categoriaId: string,
   descripcion?: string,
   asBase = false,
+  checklistCategoriaId?: string | null,
 ): Promise<ActionResult<any>> {
   const supabase = await createClient()
   const n = nombre.trim()
@@ -322,7 +335,13 @@ export async function createGestion(
 
   const { data, error } = await supabase
     .from('gestiones')
-    .insert({ nombre: n, categoria_id: categoriaId, descripcion: descripcion?.trim() || null, consultora_id: consultoraId })
+    .insert({
+      nombre: n,
+      categoria_id: categoriaId,
+      descripcion: descripcion?.trim() || null,
+      consultora_id: consultoraId,
+      checklist_categoria_id: checklistCategoriaId ?? null,
+    })
     .select()
     .single()
 
@@ -339,6 +358,7 @@ export async function updateGestion(
   nombre: string,
   categoriaId: string,
   descripcion?: string,
+  checklistCategoriaId?: string | null,
 ): Promise<ActionResult<any>> {
   const supabase = await createClient()
   const n = nombre.trim()
@@ -354,7 +374,12 @@ export async function updateGestion(
 
   let query = supabase
     .from('gestiones')
-    .update({ nombre: n, categoria_id: categoriaId, descripcion: descripcion?.trim() || null })
+    .update({
+      nombre: n,
+      categoria_id: categoriaId,
+      descripcion: descripcion?.trim() || null,
+      checklist_categoria_id: checklistCategoriaId !== undefined ? checklistCategoriaId : undefined,
+    })
     .eq('id', id)
 
   if (target.consultora_id === null) {
@@ -390,6 +415,121 @@ export async function deleteGestion(id: string): Promise<ActionResult<null>> {
   if (!target) return { success: false, error: 'No se encontró la gestión o no es eliminable' }
 
   let query = supabase.from('gestiones').delete().eq('id', id)
+
+  if (target.consultora_id === null) {
+    if (!(await puedeGestionarLibreriasServer())) {
+      return { success: false, error: 'Sin permiso para gestionar la librería base' }
+    }
+  } else {
+    const cId = await getConsultoraId()
+    if (!cId.success) return cId
+    query = query.eq('consultora_id', cId.data)
+  }
+
+  const { error } = await query
+
+  if (error) return { success: false, error: error.message }
+  revalidatePath(LIB_PATH)
+  return { success: true, data: null }
+}
+
+// ============================================================
+// CATEGORÍAS CHECKLIST (4to nivel, solo bajo categorías con sub-niveles)
+// - Base (consultora_id NULL): solo puedeGestionarLibrerias.
+// - Propias: full_access.
+// ============================================================
+export async function createChecklistCategoria(
+  nombre: string,
+  categoriaId: string,
+  descripcion?: string,
+  asBase = false,
+): Promise<ActionResult<any>> {
+  const supabase = await createClient()
+  const n = nombre.trim()
+  if (!n) return { success: false, error: 'El nombre es obligatorio' }
+  if (!categoriaId) return { success: false, error: 'Elegí una categoría' }
+
+  let consultoraId: string | null
+  if (asBase) {
+    if (!(await puedeGestionarLibreriasServer())) {
+      return { success: false, error: 'Sin permiso para gestionar la librería base' }
+    }
+    consultoraId = null
+  } else {
+    const cId = await getConsultoraId()
+    if (!cId.success) return cId
+    consultoraId = cId.data
+  }
+
+  const { data, error } = await supabase
+    .from('gestiones_checklist_categorias')
+    .insert({ nombre: n, categoria_id: categoriaId, descripcion: descripcion?.trim() || null, consultora_id: consultoraId })
+    .select()
+    .single()
+
+  if (error) {
+    if (error.code === '23505') return { success: false, error: 'Ya existe una categoría checklist con ese nombre.' }
+    return { success: false, error: error.message }
+  }
+  revalidatePath(LIB_PATH)
+  return { success: true, data }
+}
+
+export async function updateChecklistCategoria(
+  id: string,
+  nombre: string,
+  descripcion?: string,
+): Promise<ActionResult<any>> {
+  const supabase = await createClient()
+  const n = nombre.trim()
+  if (!n) return { success: false, error: 'El nombre es obligatorio' }
+
+  const { data: target } = await supabase
+    .from('gestiones_checklist_categorias')
+    .select('consultora_id')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (!target) return { success: false, error: 'No se encontró la categoría checklist o no es editable' }
+
+  let query = supabase
+    .from('gestiones_checklist_categorias')
+    .update({ nombre: n, descripcion: descripcion?.trim() || null })
+    .eq('id', id)
+
+  if (target.consultora_id === null) {
+    if (!(await puedeGestionarLibreriasServer())) {
+      return { success: false, error: 'Sin permiso para gestionar la librería base' }
+    }
+  } else {
+    const cId = await getConsultoraId()
+    if (!cId.success) return cId
+    query = query.eq('consultora_id', cId.data)
+  }
+
+  const { data, error } = await query.select().maybeSingle()
+
+  if (error) {
+    if (error.code === '23505') return { success: false, error: 'Ya existe una categoría checklist con ese nombre.' }
+    return { success: false, error: error.message }
+  }
+  if (!data) return { success: false, error: 'No se encontró la categoría checklist o no es editable' }
+  revalidatePath(LIB_PATH)
+  return { success: true, data }
+}
+
+export async function deleteChecklistCategoria(id: string): Promise<ActionResult<null>> {
+  const supabase = await createClient()
+
+  const { data: target } = await supabase
+    .from('gestiones_checklist_categorias')
+    .select('consultora_id')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (!target) return { success: false, error: 'No se encontró la categoría checklist o no es eliminable' }
+
+  let query = supabase.from('gestiones_checklist_categorias').delete().eq('id', id)
 
   if (target.consultora_id === null) {
     if (!(await puedeGestionarLibreriasServer())) {

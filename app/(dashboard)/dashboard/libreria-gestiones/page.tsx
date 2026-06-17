@@ -11,12 +11,13 @@ import {
   createGrupoGestion, updateGrupoGestion, deleteGrupoGestion,
   createCategoriaGestion, updateCategoriaGestion, deleteCategoriaGestion,
   createGestion, updateGestion, deleteGestion,
+  createChecklistCategoria, updateChecklistCategoria, deleteChecklistCategoria,
 } from '@/lib/actions/gestiones-libreria'
 import { LIMITE_GRUPOS, LIMITE_CATEGORIAS } from '@/lib/gestiones/limites'
 
 // ─── tipos ────────────────────────────────────────────────────────────────────
 
-type Nivel = 'grupo' | 'categoria' | 'gestion'
+type Nivel = 'grupo' | 'categoria' | 'gestion' | 'checklist-cat'
 type Vista = 'arbol' | 'tablas'
 type Alcance = 'propia' | 'base'
 
@@ -30,12 +31,22 @@ interface ModalEditar {
   alcance: Alcance
 }
 
+// modal para crear / editar una categoría checklist (4to nivel)
+interface ModalChecklistCat {
+  id: string          // '' = crear
+  categoriaId: string // FK → gestiones_categorias
+  nombre: string
+  descripcion: string
+  alcance: Alcance
+}
+
 interface ModalGestion {
   mode: 'crear' | 'editar'
   id?: string
   nombre: string
   grupoId: string
   categoriaId: string
+  checklistCategoriaId: string  // '' = ninguna / sin sub-nivel
   descripcion: string
   alcance: Alcance
   // sub-form inline
@@ -113,9 +124,18 @@ export default function LibreriaGestionesPage() {
   const [savingGestion, setSavingGestion] = useState(false)
   const [errorGestion, setErrorGestion] = useState<string | null>(null)
 
+  // modal checklist categoría
+  const [modalChecklistCat, setModalChecklistCat] = useState<ModalChecklistCat | null>(null)
+  const [savingChecklistCat, setSavingChecklistCat] = useState(false)
+  const [errorChecklistCat, setErrorChecklistCat] = useState<string | null>(null)
+
+  // estado para sub-niveles abiertos (4to nivel)
+  const [openChecklistCats, setOpenChecklistCats] = useState<Set<string>>(new Set())
+
   const grupos = data?.grupos ?? []
   const categorias = data?.categorias ?? []
   const gestiones = data?.gestiones ?? []
+  const checklistCategorias = data?.checklistCategorias ?? []
 
   const gruposPropios = grupos.filter(g => g.consultora_id !== null).length
   const catPropias = categorias.filter(c => c.consultora_id !== null).length
@@ -145,10 +165,10 @@ export default function LibreriaGestionesPage() {
     return puedeGestionarBase
   }
 
-  function abrirNuevaGestion(categoriaId = '', grupoId = '') {
+  function abrirNuevaGestion(categoriaId = '', grupoId = '', checklistCategoriaId = '') {
     setModalGestion({
       mode: 'crear',
-      nombre: '', grupoId, categoriaId, descripcion: '',
+      nombre: '', grupoId, categoriaId, checklistCategoriaId, descripcion: '',
       alcance: 'propia',
       inlineGrupoNombre: '', inlineCatNombre: '', inlineCatDesc: '',
       inlineStep: 'none',
@@ -156,13 +176,14 @@ export default function LibreriaGestionesPage() {
     setErrorGestion(null)
   }
 
-  function abrirEditarGestion(g: { id: string; nombre: string; categoria_id: string; descripcion: string | null }) {
+  function abrirEditarGestion(g: { id: string; nombre: string; categoria_id: string; checklist_categoria_id: string | null; descripcion: string | null }) {
     const cat = categorias.find(c => c.id === g.categoria_id)
     setModalGestion({
       mode: 'editar', id: g.id,
       nombre: g.nombre,
       grupoId: cat?.grupo_id ?? '',
       categoriaId: g.categoria_id,
+      checklistCategoriaId: g.checklist_categoria_id ?? '',
       descripcion: g.descripcion ?? '',
       alcance: 'propia', // no usado en editar
       inlineGrupoNombre: '', inlineCatNombre: '', inlineCatDesc: '',
@@ -203,9 +224,10 @@ export default function LibreriaGestionesPage() {
     if (!modalGestion) return
     setSavingGestion(true); setErrorGestion(null)
     const asBase = puedeGestionarBase && modalGestion.alcance === 'base'
+    const ccId = modalGestion.checklistCategoriaId || null
     const res = modalGestion.mode === 'crear'
-      ? await createGestion(modalGestion.nombre, modalGestion.categoriaId, modalGestion.descripcion, asBase)
-      : await updateGestion(modalGestion.id!, modalGestion.nombre, modalGestion.categoriaId, modalGestion.descripcion)
+      ? await createGestion(modalGestion.nombre, modalGestion.categoriaId, modalGestion.descripcion, asBase, ccId)
+      : await updateGestion(modalGestion.id!, modalGestion.nombre, modalGestion.categoriaId, modalGestion.descripcion, ccId)
     setSavingGestion(false)
     if (!res.success) { setErrorGestion(res.error ?? 'Error'); return }
     setModalGestion(null); refetch()
@@ -250,6 +272,20 @@ export default function LibreriaGestionesPage() {
     )
   }
 
+  // ─── submit modal checklist-cat ─────────────────────────────────────────────
+
+  async function submitChecklistCat() {
+    if (!modalChecklistCat) return
+    setSavingChecklistCat(true); setErrorChecklistCat(null)
+    const asBase = puedeGestionarBase && modalChecklistCat.alcance === 'base'
+    const res = !modalChecklistCat.id
+      ? await createChecklistCategoria(modalChecklistCat.nombre, modalChecklistCat.categoriaId, modalChecklistCat.descripcion, asBase)
+      : await updateChecklistCategoria(modalChecklistCat.id, modalChecklistCat.nombre, modalChecklistCat.descripcion)
+    setSavingChecklistCat(false)
+    if (!res.success) { setErrorChecklistCat(res.error ?? 'Error'); return }
+    setModalChecklistCat(null); refetch()
+  }
+
   // ─── eliminar ────────────────────────────────────────────────────────────────
 
   async function eliminar(nivel: Nivel, id: string, esBase: boolean) {
@@ -258,11 +294,14 @@ export default function LibreriaGestionesPage() {
       ? `¿Eliminar este grupo ${tipo}? Se borran también sus categorías y gestiones ${tipo}s.`
       : nivel === 'categoria'
         ? `¿Eliminar esta categoría ${tipo}? Se borran también sus gestiones ${tipo}s.`
-        : `¿Eliminar esta gestión ${tipo}?`
+        : nivel === 'checklist-cat'
+          ? `¿Eliminar esta categoría checklist ${tipo}? Los checklists de esta sub-categoría quedarán sin sub-categoría asignada.`
+          : `¿Eliminar esta gestión ${tipo}?`
     if (!confirm(msg)) return
     const res = nivel === 'grupo' ? await deleteGrupoGestion(id)
       : nivel === 'categoria' ? await deleteCategoriaGestion(id)
-        : await deleteGestion(id)
+        : nivel === 'checklist-cat' ? await deleteChecklistCategoria(id)
+          : await deleteGestion(id)
     if (!res.success) { alert(res.error); return }
     refetch()
   }
@@ -273,6 +312,14 @@ export default function LibreriaGestionesPage() {
   const catsPorGrupo = modalGestion?.grupoId
     ? categorias.filter(c => c.grupo_id === modalGestion.grupoId)
     : []
+
+  // ─── checklist-categorías filtradas por categoría seleccionada (modal gestión) ─
+  const ccsPorCat = modalGestion?.categoriaId
+    ? checklistCategorias.filter(cc => cc.categoria_id === modalGestion.categoriaId)
+    : []
+
+  // ¿la categoría seleccionada en el modal tiene sub-niveles? (determina si mostrar el selector)
+  const catSeleccionadaTieneSubs = ccsPorCat.length > 0
 
   // Al crear en modo base, el sub-form "nuevo grupo" no está limitado por gruposPropios
   const puedeCrearGrupoInline = modalGestion
@@ -381,6 +428,9 @@ export default function LibreriaGestionesPage() {
                       const gests = gestVis.filter(g => g.categoria_id === cat.id)
                       const abiertaC = openCats.has(cat.id)
                       const editableC = esEditable(cat.consultora_id)
+                      // 4to nivel: sub-categorías checklist de esta categoría
+                      const ccsDeCat = checklistCategorias.filter(cc => cc.categoria_id === cat.id)
+                      const tieneSubs = ccsDeCat.length > 0
                       return (
                         <div key={cat.id} className="border border-border-subtle rounded-lg">
                           <div className="flex items-center gap-1 sm:gap-2 p-2.5">
@@ -408,11 +458,98 @@ export default function LibreriaGestionesPage() {
                           {abiertaC && (
                             <div className="px-2 pb-2.5 pl-4 sm:px-2.5 sm:pl-7 space-y-1">
                               {canEdit && (
-                                <Button variant="secondary" size="sm" onClick={() => abrirNuevaGestion(cat.id, cat.grupo_id)}>
-                                  <Plus className="w-3.5 h-3.5 mr-1" /> Nueva gestión
-                                </Button>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  {!tieneSubs && (
+                                    <Button variant="secondary" size="sm" onClick={() => abrirNuevaGestion(cat.id, cat.grupo_id)}>
+                                      <Plus className="w-3.5 h-3.5 mr-1" /> Nueva gestión
+                                    </Button>
+                                  )}
+                                  {/* Botón para crear sub-categoría checklist */}
+                                  {tieneSubs && (
+                                    <Button variant="secondary" size="sm" onClick={() => {
+                                      setModalChecklistCat({ id: '', categoriaId: cat.id, nombre: '', descripcion: '', alcance: 'propia' })
+                                      setErrorChecklistCat(null)
+                                    }}>
+                                      <Plus className="w-3.5 h-3.5 mr-1" /> Nueva sub-categoría
+                                    </Button>
+                                  )}
+                                </div>
                               )}
-                              {gests.map(g => {
+
+                              {/* ── 4to nivel: sub-categorías checklist ── */}
+                              {tieneSubs && ccsDeCat.map(cc => {
+                                const gestsDeCC = gestVis.filter(g => g.checklist_categoria_id === cc.id)
+                                const abiertaCC = openChecklistCats.has(cc.id)
+                                const editableCC = esEditable(cc.consultora_id)
+                                return (
+                                  <div key={cc.id} className="border border-border-subtle rounded-lg bg-surface-elevated/30">
+                                    <div className="flex items-center gap-1 sm:gap-2 p-2">
+                                      <button
+                                        onClick={() => toggle(openChecklistCats, setOpenChecklistCats, cc.id)}
+                                        className="flex items-center gap-2 flex-1 min-w-0 text-left"
+                                      >
+                                        {abiertaCC ? <ChevronDown className="w-3.5 h-3.5 shrink-0 text-text-tertiary" /> : <ChevronRight className="w-3.5 h-3.5 shrink-0 text-text-tertiary" />}
+                                        <span className="text-sm font-medium truncate text-text-secondary">{cc.nombre}</span>
+                                        <OrigenBadge consultoraId={cc.consultora_id} />
+                                        <span className="text-xs text-text-tertiary shrink-0">({gestsDeCC.length})</span>
+                                      </button>
+                                      {editableCC && (
+                                        <>
+                                          <button
+                                            onClick={() => {
+                                              setModalChecklistCat({ id: cc.id, categoriaId: cc.categoria_id, nombre: cc.nombre, descripcion: cc.descripcion ?? '', alcance: 'propia' })
+                                              setErrorChecklistCat(null)
+                                            }}
+                                            className="shrink-0 p-1.5 -m-0.5 rounded text-text-tertiary hover:text-text-primary"
+                                            title="Editar sub-categoría"
+                                          >
+                                            <Pencil className="w-3.5 h-3.5" />
+                                          </button>
+                                          <button
+                                            onClick={() => eliminar('checklist-cat', cc.id, cc.consultora_id === null)}
+                                            className="shrink-0 p-1.5 -m-0.5 rounded text-red-400 hover:text-danger"
+                                            title="Eliminar sub-categoría"
+                                          >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                          </button>
+                                        </>
+                                      )}
+                                    </div>
+                                    {abiertaCC && (
+                                      <div className="px-2 pb-2 pl-5 space-y-1">
+                                        {canEdit && (
+                                          <Button variant="secondary" size="sm" onClick={() => abrirNuevaGestion(cat.id, cat.grupo_id, cc.id)}>
+                                            <Plus className="w-3.5 h-3.5 mr-1" /> Nuevo checklist
+                                          </Button>
+                                        )}
+                                        {gestsDeCC.map(g => {
+                                          const editableGe = esEditable(g.consultora_id)
+                                          return (
+                                            <div key={g.id} className="flex items-center gap-1 sm:gap-2 py-1.5 px-2 rounded hover:bg-surface-elevated">
+                                              <span className="flex-1 min-w-0 text-sm truncate">{g.nombre}</span>
+                                              <OrigenBadge consultoraId={g.consultora_id} />
+                                              {editableGe && (
+                                                <>
+                                                  <button onClick={() => abrirEditarGestion(g)} className="shrink-0 p-1.5 -m-0.5 rounded text-text-tertiary hover:text-text-primary" title="Editar checklist">
+                                                    <Pencil className="w-3.5 h-3.5" />
+                                                  </button>
+                                                  <button onClick={() => eliminar('gestion', g.id, g.consultora_id === null)} className="shrink-0 p-1.5 -m-0.5 rounded text-red-400 hover:text-danger" title="Eliminar checklist">
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                  </button>
+                                                </>
+                                              )}
+                                            </div>
+                                          )
+                                        })}
+                                        {gestsDeCC.length === 0 && <p className="text-xs text-text-tertiary py-1">Sin checklists.</p>}
+                                      </div>
+                                    )}
+                                  </div>
+                                )
+                              })}
+
+                              {/* ── 3 niveles normales (sin sub-niveles) ── */}
+                              {!tieneSubs && gests.map(g => {
                                 const editableGe = esEditable(g.consultora_id)
                                 return (
                                   <div key={g.id} className="flex items-center gap-1 sm:gap-2 py-1.5 px-2 rounded hover:bg-surface-elevated">
@@ -431,7 +568,7 @@ export default function LibreriaGestionesPage() {
                                   </div>
                                 )
                               })}
-                              {gests.length === 0 && <p className="text-xs text-text-tertiary py-1">Sin gestiones.</p>}
+                              {!tieneSubs && gests.length === 0 && <p className="text-xs text-text-tertiary py-1">Sin gestiones.</p>}
                             </div>
                           )}
                         </div>
@@ -884,7 +1021,7 @@ export default function LibreriaGestionesPage() {
                 <select
                   className={inputCls}
                   value={modalGestion.categoriaId}
-                  onChange={e => setModalGestion({ ...modalGestion, categoriaId: e.target.value })}
+                  onChange={e => setModalGestion({ ...modalGestion, categoriaId: e.target.value, checklistCategoriaId: '' })}
                 >
                   <option value="">Seleccioná una categoría…</option>
                   {catsPorGrupo.map(c => (
@@ -900,6 +1037,23 @@ export default function LibreriaGestionesPage() {
               </div>
             )}
 
+            {/* ── Paso 3: Sub-categoría checklist (solo si la categoría tiene sub-niveles) ── */}
+            {modalGestion.categoriaId && catSeleccionadaTieneSubs && (
+              <div>
+                <label className="text-sm font-medium text-text-secondary block mb-1">Sub-categoría checklist *</label>
+                <select
+                  className={inputCls}
+                  value={modalGestion.checklistCategoriaId}
+                  onChange={e => setModalGestion({ ...modalGestion, checklistCategoriaId: e.target.value })}
+                >
+                  <option value="">Seleccioná una sub-categoría…</option>
+                  {ccsPorCat.map(cc => (
+                    <option key={cc.id} value={cc.id}>{cc.nombre}{cc.consultora_id === null ? ' (base)' : ''}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <div className="flex gap-2 justify-end pt-1 border-t border-border-subtle">
               <Button variant="secondary" onClick={() => { setModalGestion(null); setErrorGestion(null) }}>Cancelar</Button>
               <Button
@@ -909,10 +1063,68 @@ export default function LibreriaGestionesPage() {
                   !modalGestion.nombre.trim() ||
                   !modalGestion.grupoId ||
                   !modalGestion.categoriaId ||
+                  (catSeleccionadaTieneSubs && !modalGestion.checklistCategoriaId) ||
                   modalGestion.inlineStep !== 'none'
                 }
               >
                 {savingGestion ? 'Guardando…' : 'Guardar gestión'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {/* MODAL: nueva / editar categoría checklist (4to nivel)                */}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      <Modal
+        open={modalChecklistCat !== null}
+        onClose={() => { setModalChecklistCat(null); setErrorChecklistCat(null) }}
+        title={modalChecklistCat ? (!modalChecklistCat.id ? 'Nueva sub-categoría' : 'Editar sub-categoría') : ''}
+      >
+        {modalChecklistCat && (
+          <div className="flex flex-col gap-4">
+            {errorChecklistCat && (
+              <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{errorChecklistCat}</div>
+            )}
+
+            {/* Select de alcance — solo al crear y solo para base-librarians */}
+            {!modalChecklistCat.id && puedeGestionarBase && (
+              <AlcanceSelect
+                value={modalChecklistCat.alcance}
+                onChange={v => setModalChecklistCat({ ...modalChecklistCat, alcance: v })}
+              />
+            )}
+
+            <div>
+              <label className="text-sm font-medium text-text-secondary block mb-1">Nombre *</label>
+              <input
+                className={inputCls}
+                value={modalChecklistCat.nombre}
+                onChange={e => setModalChecklistCat({ ...modalChecklistCat, nombre: e.target.value })}
+                autoFocus
+                placeholder="ej. Trabajos en altura"
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-text-secondary block mb-1">Descripción</label>
+              <textarea
+                className={inputCls}
+                rows={2}
+                value={modalChecklistCat.descripcion}
+                onChange={e => setModalChecklistCat({ ...modalChecklistCat, descripcion: e.target.value })}
+                placeholder="Opcional…"
+              />
+            </div>
+
+            <div className="flex gap-2 justify-end">
+              <Button variant="secondary" onClick={() => { setModalChecklistCat(null); setErrorChecklistCat(null) }}>Cancelar</Button>
+              <Button
+                onClick={submitChecklistCat}
+                disabled={savingChecklistCat || !modalChecklistCat.nombre.trim()}
+              >
+                {savingChecklistCat ? 'Guardando…' : 'Guardar'}
               </Button>
             </div>
           </div>
