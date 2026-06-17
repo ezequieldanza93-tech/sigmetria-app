@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button'
 import { PersonaFirmanteSelector, type PersonaFirmanteValue } from '@/components/persona-firmante-selector'
 import { PersonaSelectorConAlta, type PersonaSeleccionada } from '@/components/persona-selector-con-alta'
 import { SectorPuestoSelectorConAlta } from '@/components/sector-puesto-selector-con-alta'
+import { CantidadTrabajadoresInput } from '@/components/cantidad-trabajadores-input'
 import {
   Activity, AlertCircle, AlertTriangle, ArrowRight, Building2, Calendar,
   Check, ChevronLeft, ChevronRight,
@@ -718,12 +719,12 @@ export function ProtocoloErgonomiaEjecutorModal({
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-text-secondary block mb-1">N° de trabajadores</label>
-              <input
-                type="number" min={1}
-                className="w-full rounded-lg border border-border-default px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-400"
-                value={nTrabajadores} onChange={e => setNTrabajadores(e.target.value)}
-                placeholder="Ej: 5"
+              <CantidadTrabajadoresInput
+                establecimientoId={establecimientoId}
+                puestoId={puestoId || undefined}
+                sectorId={sectorId || undefined}
+                value={nTrabajadores}
+                onChange={setNTrabajadores}
               />
             </div>
             <div>
