@@ -1048,6 +1048,7 @@ export type TipoEjecucion =
   | 'calculo_carga_fuego'
   | 'medicion_pat'
   | 'presentacion_autoproteccion'
+  | 'protocolo_ergonomia'
 
 export interface GestionChecklistCategoria {
   id: string
@@ -1956,4 +1957,163 @@ export interface DocumentoTipoConfig {
   dias_alerta: number
   // IDs de tipos de establecimiento a los que aplica (vacío = todos)
   tipos_establecimiento_ids: string[]
+}
+
+// ─────────────────────────────────────────────────────────────
+// PROTOCOLO DE ERGONOMÍA (Res. SRT 886/15 + Disp. SRT 1/2016)
+// ─────────────────────────────────────────────────────────────
+
+/** Factores de riesgo ergonómico identificados por la resolución. */
+export type FactorErgonomia = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I'
+
+/** Nivel de riesgo determinado por la evaluación inicial (Planilla 2). */
+export type NivelRiesgoErgonomia = 'tolerable' | 'no_tolerable' | 'requiere_evaluacion'
+
+/** Subtipo de vibraciones — solo aplica al factor G. */
+export type VibSubtipo = 'mano_brazo' | 'cuerpo_entero'
+
+/** Resultado de una pregunta individual de Paso 1 o Paso 2. */
+export interface RespuestaPaso {
+  n: number
+  respuesta: boolean
+}
+
+/** Medida específica (libre) de la Planilla 3. */
+export interface MedidaEspecifica {
+  descripcion: string
+  tipo: 'administrativa' | 'ingenieria'
+  fecha?: string | null
+  observaciones?: string | null
+}
+
+// ── Input para crear el protocolo (viene del FormData como JSON) ──
+
+export interface ErgonomiaFactorTareaInput {
+  factor: FactorErgonomia
+  tarea_numero: 1 | 2 | 3
+  presente: boolean
+  tiempo_exposicion?: string | null
+  nivel_riesgo?: NivelRiesgoErgonomia | null
+}
+
+export interface ErgonomiaEvaluacionFactorInput {
+  factor: FactorErgonomia
+  tarea_numero: 1 | 2 | 3
+  paso1_respuestas: RespuestaPaso[]
+  paso1_implica: boolean
+  paso2_respuestas: RespuestaPaso[]
+  nivel_resultante: NivelRiesgoErgonomia | null
+  observaciones?: string | null
+  vibracion_subtipo?: VibSubtipo | null
+}
+
+export interface ErgonomiaMedidasInput {
+  tarea_numero?: 1 | 2 | 3 | null
+  mg1_informado?: boolean | null
+  mg1_fecha?: string | null
+  mg1_observaciones?: string | null
+  mg2_capacitado_sintomas?: boolean | null
+  mg2_fecha?: string | null
+  mg2_observaciones?: string | null
+  mg3_capacitado_medidas?: boolean | null
+  mg3_fecha?: string | null
+  mg3_observaciones?: string | null
+  medidas_especificas: MedidaEspecifica[]
+  observaciones?: string | null
+}
+
+export interface ErgonomiaSeguimientoInput {
+  numero_mcp?: number | null
+  nombre_puesto?: string | null
+  fecha_evaluacion?: string | null
+  nivel_riesgo?: string | null
+  fecha_implementacion_admin?: string | null
+  fecha_implementacion_ingenieria?: string | null
+  fecha_cierre?: string | null
+  observaciones?: string | null
+  orden?: number | null
+}
+
+// ── Tipos para el viewer (lectura completa) ──
+
+export interface ErgonomiaEvaluacionDetalle {
+  id: string
+  consultora_id: string
+  establecimiento_id: string
+  registro_gestion_id: string
+  rg_fecha_planificada: string
+  area_sector: string | null
+  puesto_de_trabajo: string | null
+  n_trabajadores: number | null
+  capacitacion: boolean | null
+  procedimiento_escrito: boolean | null
+  ubicacion_sintoma: string | null
+  nombre_trabajadores: string | null
+  manifestacion_temprana: boolean | null
+  firmante: string | null
+  firmante_persona_id: string | null
+  observaciones: string | null
+  conclusiones: string | null
+  recomendaciones: string | null
+  estado: string
+  fecha_evaluacion: string | null
+  created_at: string
+  establecimientos?: {
+    id: string
+    nombre: string
+    domicilio?: string | null
+    empresas?: { id: string; razon_social: string; cuit?: string | null } | null
+  } | null
+  ergonomia_tareas?: Array<{
+    id: string
+    numero: number
+    descripcion: string | null
+    orden: number | null
+  }> | null
+  ergonomia_factores_tarea?: Array<{
+    id: string
+    factor: FactorErgonomia
+    tarea_numero: number
+    presente: boolean
+    tiempo_exposicion: string | null
+    nivel_riesgo: NivelRiesgoErgonomia | null
+  }> | null
+  ergonomia_evaluacion_factor?: Array<{
+    id: string
+    factor: FactorErgonomia
+    tarea_numero: number
+    paso1_respuestas: RespuestaPaso[]
+    paso1_implica: boolean | null
+    paso2_respuestas: RespuestaPaso[]
+    nivel_resultante: NivelRiesgoErgonomia | null
+    observaciones: string | null
+    vibracion_subtipo: VibSubtipo | null
+  }> | null
+  ergonomia_medidas?: Array<{
+    id: string
+    tarea_numero: number | null
+    mg1_informado: boolean | null
+    mg1_fecha: string | null
+    mg1_observaciones: string | null
+    mg2_capacitado_sintomas: boolean | null
+    mg2_fecha: string | null
+    mg2_observaciones: string | null
+    mg3_capacitado_medidas: boolean | null
+    mg3_fecha: string | null
+    mg3_observaciones: string | null
+    medidas_especificas: MedidaEspecifica[]
+    observaciones: string | null
+  }> | null
+  ergonomia_seguimiento?: Array<{
+    id: string
+    numero_mcp: number | null
+    nombre_puesto: string | null
+    fecha_evaluacion: string | null
+    nivel_riesgo: string | null
+    fecha_implementacion_admin: string | null
+    fecha_implementacion_ingenieria: string | null
+    fecha_cierre: string | null
+    observaciones: string | null
+    orden: number | null
+  }> | null
 }

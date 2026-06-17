@@ -19,6 +19,7 @@ import {
   ClipboardList, UserPlus, Dumbbell, Kanban, HelpCircle,
   Play, Upload, Download, BookMarked, Eye,
   ChevronUp, ChevronDown, Columns, CalendarDays, List, X, Thermometer, Flame, Zap, Volume2, Lightbulb,
+  Activity,
 } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { createPortal } from 'react-dom'
@@ -114,6 +115,14 @@ const MedicionCargaTermicaViewer = dynamic(
   () => import('@/components/medicion-carga-termica-viewer').then(m => m.MedicionCargaTermicaViewer),
   { ssr: false }
 )
+const ProtocoloErgonomiaEjecutorModal = dynamic(
+  () => import('@/components/protocolo-ergonomia-ejecutor-modal').then(m => m.ProtocoloErgonomiaEjecutorModal),
+  { ssr: false }
+)
+const ProtocoloErgonomiaViewer = dynamic(
+  () => import('@/components/protocolo-ergonomia-viewer').then(m => m.ProtocoloErgonomiaViewer),
+  { ssr: false }
+)
 
 // Categoría de gestiones que habilita el flujo de capacitación (LMS / campus virtual).
 const CATEGORIA_CAPACITACIONES = 'Capacitaciones'
@@ -128,6 +137,7 @@ const TIPOS_PROTOCOLO_MEDICION = new Set([
   'medicion_pat',
   'calculo_carga_fuego',
   'medicion_carga_termica',
+  'protocolo_ergonomia',
 ])
 
 const MONTHS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
@@ -1634,6 +1644,7 @@ function AgendaActionsCell({
   onExecuteMedicionRuido,
   onExecuteMedicionIluminacion,
   onExecutePresentacionAutoproteccion,
+  onExecuteErgonomia,
   onViewReporte,
   onLoadEvidence,
   onToggleLegajo,
@@ -1649,6 +1660,7 @@ function AgendaActionsCell({
   onExecuteMedicionRuido: () => void
   onExecuteMedicionIluminacion: () => void
   onExecutePresentacionAutoproteccion: () => void
+  onExecuteErgonomia: () => void
   /** Abre la vista read-only de un protocolo de medición ya ejecutado (hoy: PAT). */
   onViewReporte?: () => void
   onLoadEvidence: () => void
@@ -2193,6 +2205,60 @@ function AgendaActionsCell({
     )
   }
 
+  // Gestión tipo protocolo_ergonomia → wizard del Protocolo de Ergonomía (Res. SRT 886/15).
+  if (r.ge_tipo_ejecucion === 'protocolo_ergonomia') {
+    return (
+      <div ref={triggerRef} className="flex items-center justify-center relative">
+        <div className="inline-flex rounded-lg overflow-hidden shadow-sm">
+          <button
+            title="Ejecutar protocolo de ergonomía"
+            onClick={onExecuteErgonomia}
+            className={`${primaryBtn} ${primaryActive} rounded-r-none pr-2.5 border-r-0`}
+          >
+            <Activity size={14} />
+            <span className="hidden sm:inline">Ejecutar</span>
+          </button>
+          <button
+            title="Más opciones"
+            onClick={toggleMenu}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            className={`${primaryActive} px-2 min-h-[36px] rounded-l-none ${menuOpen ? 'bg-sig-500/10' : ''}`}
+          >
+            <ChevronDown size={14} className={`transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+
+        {menuOpen && menuPos && createPortal(
+          <div
+            ref={dropdownRef}
+            role="menu"
+            style={{ position: 'fixed', top: menuPos.top, left: menuPos.left, transform: 'translateX(-100%)', zIndex: 9999 }}
+            className="bg-surface-base border border-border-subtle rounded-xl shadow-xl overflow-hidden min-w-[200px]"
+          >
+            <button
+              role="menuitem"
+              onClick={() => { setMenuOpen(false); onExecuteErgonomia() }}
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-text-primary hover:bg-surface-sunken text-left"
+            >
+              <Activity size={14} className="text-sig-500" />
+              Ejecutar protocolo de ergonomía
+            </button>
+            <button
+              role="menuitem"
+              onClick={() => { setMenuOpen(false); onLoadEvidence() }}
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-text-primary hover:bg-surface-sunken text-left border-t border-border-subtle"
+            >
+              <Upload size={14} className="text-text-secondary" />
+              Cargar archivo manual
+            </button>
+          </div>,
+          document.body
+        )}
+      </div>
+    )
+  }
+
   // Con formulario → botón "Ejecutar ▾" con submenu
   if (r.ge_tiene_formulario) {
     return (
@@ -2328,6 +2394,8 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
   const [executingMedicionPat, setExecutingMedicionPat] = useState<FullRegistro | null>(null)
   const [viewingMedicionPat, setViewingMedicionPat] = useState<FullRegistro | null>(null)
   const [viewingMedicionCargaTermica, setViewingMedicionCargaTermica] = useState<FullRegistro | null>(null)
+  const [executingErgonomia, setExecutingErgonomia] = useState<FullRegistro | null>(null)
+  const [viewingErgonomia, setViewingErgonomia] = useState<FullRegistro | null>(null)
   const [executingMedicionRuido, setExecutingMedicionRuido] = useState<FullRegistro | null>(null)
   const [executingMedicionIluminacion, setExecutingMedicionIluminacion] = useState<FullRegistro | null>(null)
   const [executingPresentacionAutoproteccion, setExecutingPresentacionAutoproteccion] = useState<FullRegistro | null>(null)
@@ -2597,6 +2665,8 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
       setExecutingReporte(r)
     } else if (r.ge_tipo_ejecucion === 'medicion_carga_termica' && !yaEjecutada && canWrite) {
       setExecutingMedicionCargaTermica(r)
+    } else if (r.ge_tipo_ejecucion === 'protocolo_ergonomia' && !yaEjecutada && canWrite) {
+      setExecutingErgonomia(r)
     } else if (r.ge_tipo_ejecucion === 'calculo_carga_fuego' && !yaEjecutada && canWrite) {
       setExecutingCargaFuego(r)
     } else if (r.ge_tipo_ejecucion === 'medicion_pat' && !yaEjecutada && canWrite) {
@@ -2661,12 +2731,15 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
               onExecuteMedicionRuido={() => setExecutingMedicionRuido(r)}
               onExecuteMedicionIluminacion={() => setExecutingMedicionIluminacion(r)}
               onExecutePresentacionAutoproteccion={() => setExecutingPresentacionAutoproteccion(r)}
+              onExecuteErgonomia={() => setExecutingErgonomia(r)}
               onViewReporte={
                 r.ge_tipo_ejecucion === 'medicion_pat'
                   ? () => setViewingMedicionPat(r)
                   : r.ge_tipo_ejecucion === 'medicion_carga_termica'
                     ? () => setViewingMedicionCargaTermica(r)
-                    : undefined
+                    : r.ge_tipo_ejecucion === 'protocolo_ergonomia'
+                      ? () => setViewingErgonomia(r)
+                      : undefined
               }
               onLoadEvidence={() => setEditingRegistro(r)}
               onEjecutarCapacitacion={
@@ -3333,6 +3406,30 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
           rgFechaPlanificada={viewingMedicionCargaTermica.fecha_planificada}
           gestionNombre={viewingMedicionCargaTermica.ge_gestion_nombre}
           onClose={() => setViewingMedicionCargaTermica(null)}
+        />
+      )}
+
+      {viewingErgonomia && (
+        <ProtocoloErgonomiaViewer
+          registroId={viewingErgonomia.id}
+          rgFechaPlanificada={viewingErgonomia.fecha_planificada}
+          gestionNombre={viewingErgonomia.ge_gestion_nombre}
+          onClose={() => setViewingErgonomia(null)}
+        />
+      )}
+
+      {executingErgonomia && (
+        <ProtocoloErgonomiaEjecutorModal
+          establecimientoId={establecimientoId}
+          registroId={executingErgonomia.id}
+          rgFechaPlanificada={executingErgonomia.fecha_planificada}
+          gestionEstablecimientoId={executingErgonomia.ge_id ?? ''}
+          onClose={() => setExecutingErgonomia(null)}
+          onSuccess={() => {
+            setExecutingErgonomia(null)
+            queryClient.invalidateQueries({ queryKey: ['gestiones-establecimiento', establecimientoId, year] })
+            queryClient.invalidateQueries({ queryKey: ['registros-gestion'] })
+          }}
         />
       )}
 

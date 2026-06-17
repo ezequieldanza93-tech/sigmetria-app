@@ -8,6 +8,7 @@ declare module 'lucide-react' {
 
   export type Icon = FC<LucideProps>
   export type LucideIcon = Icon
+  export const Activity: Icon
   export const AlertCircle: Icon
   export const AlertTriangle: Icon
   export const ArrowLeft: Icon
@@ -151,6 +152,7 @@ declare module 'lucide-react' {
   export const Wifi: Icon
   export const WifiOff: Icon
   export const Wind: Icon
+  export const Wrench: Icon
   export const X: Icon
   export const XCircle: Icon
   export const Zap: Icon
