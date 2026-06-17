@@ -501,6 +501,7 @@ export function ActuarView({ establecimientoId, canWrite = true }: { establecimi
         onClose={() => setSelectedObs(null)}
         onSuccess={() => setRefreshKey(k => k + 1)}
         canWrite={canWrite}
+        establecimientoId={establecimientoId}
       />
     </div>
   )

@@ -6,20 +6,13 @@ import { createClient } from '@/lib/supabase/client'
 import { useSignedUrls } from '@/lib/storage/sign-client'
 import { cerrarObservacion, actualizarCategoriaObservacion } from '@/lib/actions/observacion-gestion'
 import { addObservacionComentario, addObservacionFoto, marcarObservacionVista } from '@/lib/actions/observacion-comentarios'
-import { createPersonaDirectorio } from '@/lib/actions/persona-directorio'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { FotoInput } from '@/components/ui/foto-input'
 import { AuditHistorialLink } from '@/components/auditoria/audit-historial-link'
+import { PersonaSelectorConAlta } from '@/components/persona-selector-con-alta'
 import { Send } from 'lucide-react'
 import type { ObservacionGestion, ObservacionComentario, ObservacionFotoCliente } from '@/lib/types'
-
-interface Persona {
-  id: string
-  nombre: string
-  apellido: string
-  dni: string | null
-}
 
 interface CategoriaObs {
   id: string
@@ -33,6 +26,8 @@ interface Props {
   onClose: () => void
   onSuccess: () => void
   canWrite?: boolean
+  /** Scope para PersonaSelectorConAlta: lista personas vinculadas a este establecimiento. */
+  establecimientoId?: string
 }
 
 function todayStr(): string {
@@ -48,28 +43,15 @@ function formatTime(ts: string) {
   return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }) + ' ' + time
 }
 
-export function CierreObservacionModal({ observacion, onClose, onSuccess, canWrite = true }: Props) {
+export function CierreObservacionModal({ observacion, onClose, onSuccess, canWrite = true, establecimientoId }: Props) {
   const [fechaCierre, setFechaCierre] = useState(todayStr())
-  const [responsableCierreId, setResponsableCierreId] = useState<string | ''>('')
-  const [responsableLabel, setResponsableLabel] = useState('')
+  const [responsableCierreId, setResponsableCierreId] = useState<string | null>(null)
   const [evidenciaFile, setEvidenciaFile] = useState<File | null>(null)
   const [evidenciaName, setEvidenciaName] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [confirmNoPhoto, setConfirmNoPhoto] = useState(false)
-
-  // Persona combobox
-  const [searchQuery, setSearchQuery] = useState('')
-  const [searchResults, setSearchResults] = useState<Persona[]>([])
-  const [searching, setSearching] = useState(false)
-  const [dropOpen, setDropOpen] = useState(false)
-  const [showNewPersona, setShowNewPersona] = useState(false)
-  const [newNombre, setNewNombre] = useState('')
-  const [newApellido, setNewApellido] = useState('')
-  const [newDni, setNewDni] = useState('')
-  const searchRef = useRef<HTMLDivElement>(null)
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   // Chat
   const [comentarios, setComentarios] = useState<ObservacionComentario[]>([])
@@ -127,19 +109,11 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
   useEffect(() => {
     if (observacion) {
       setFechaCierre(observacion.fecha_cierre ?? todayStr())
-      const defaultRespId = observacion.responsable_cierre_id ?? observacion.responsable_id ?? ''
-      setResponsableCierreId(defaultRespId)
-      setResponsableLabel(defaultRespId && observacion.personas_directorio
-        ? `${observacion.personas_directorio.apellido}, ${observacion.personas_directorio.nombre}`
-        : '')
+      setResponsableCierreId(observacion.responsable_cierre_id ?? observacion.responsable_id ?? null)
       setEvidenciaFile(null)
       setEvidenciaName(null)
       setError(null)
       setSuccess(false)
-      setSearchQuery('')
-      setDropOpen(false)
-      setShowNewPersona(false)
-      setSearchResults([])
       setNuevoComentario('')
       setInfoMsgId(null)
       setAuthorNames(new Map())
@@ -200,58 +174,6 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [comentarios])
 
-  // Close dropdown on outside click
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
-        setDropOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [])
-
-  function searchPersonas(q: string) {
-    setSearchQuery(q)
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-
-    if (!q.trim()) {
-      setSearchResults([])
-      setDropOpen(false)
-      return
-    }
-
-    debounceRef.current = setTimeout(async () => {
-      setSearching(true)
-      const supabase = createClient()
-      const pattern = `%${q.trim()}%`
-      const { data } = await supabase
-        .from('personas_directorio')
-        .select('id, nombre, apellido, dni')
-        .eq('is_active', true)
-        .or(`apellido.ilike.${pattern},nombre.ilike.${pattern},dni.ilike.${pattern}`)
-        .order('apellido')
-        .limit(20)
-
-      setSearchResults((data ?? []) as Persona[])
-      setSearching(false)
-      setDropOpen(true)
-    }, 300)
-  }
-
-  function selectPersona(p: Persona) {
-    setResponsableCierreId(p.id)
-    setResponsableLabel(`${p.apellido}, ${p.nombre}`)
-    setSearchQuery('')
-    setSearchResults([])
-    setDropOpen(false)
-  }
-
-  function clearResponsable() {
-    setResponsableCierreId('')
-    setResponsableLabel('')
-  }
-
   // El upload se hace SERVER-SIDE en cerrarObservacion (path tenant-prefijado).
   // Acá solo retenemos el File seleccionado hasta el submit.
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -277,28 +199,6 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
       setError(result.error ?? 'Error al guardar foto')
     }
     setUploadingFoto(false)
-  }
-
-  async function createPersona(e: React.FormEvent) {
-    e.preventDefault()
-    if (!newNombre.trim() || !newApellido.trim()) return
-
-    const fd = new FormData()
-    fd.set('nombre', newNombre.trim())
-    fd.set('apellido', newApellido.trim())
-    fd.set('dni', newDni.trim())
-
-    const result = await createPersonaDirectorio(null, fd)
-    if (result.success && result.data) {
-      setResponsableCierreId(result.data.id)
-      setResponsableLabel(`${newApellido.trim()}, ${newNombre.trim()}`)
-      setShowNewPersona(false)
-      setNewNombre('')
-      setNewApellido('')
-      setNewDni('')
-    } else if (!result.success) {
-      setError(result.error)
-    }
   }
 
   async function executeClose() {
@@ -656,117 +556,13 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
               />
             </div>
 
-            {/* Responsable de cierre — combobox con búsqueda */}
-            <div>
-              <label htmlFor="cierre-responsable-search" className="text-sm font-medium text-text-primary block mb-1">
-                Responsable de cierre
-              </label>
-
-              {responsableCierreId && !showNewPersona ? (
-                <div className="flex items-center gap-2">
-                  <span className="flex-1 text-sm text-text-primary bg-surface-sunken rounded-lg px-3 py-2 border border-border-subtle">
-                    {responsableLabel}
-                  </span>
-                  <button type="button" onClick={clearResponsable} className="text-xs text-text-tertiary hover:text-text-primary shrink-0">
-                    Cambiar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { clearResponsable(); setShowNewPersona(true) }}
-                    className="text-xs text-brand-primary hover:text-brand-primary/80 font-medium shrink-0"
-                  >
-                    + Nueva
-                  </button>
-                </div>
-              ) : showNewPersona ? (
-                <div className="space-y-2 bg-surface-sunken rounded-lg p-3 border border-border-subtle">
-                  <input
-                    value={newNombre}
-                    onChange={e => setNewNombre(e.target.value)}
-                    placeholder="Nombre *"
-                    className="w-full border border-border-default rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
-                  />
-                  <input
-                    value={newApellido}
-                    onChange={e => setNewApellido(e.target.value)}
-                    placeholder="Apellido *"
-                    className="w-full border border-border-default rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
-                  />
-                  <input
-                    value={newDni}
-                    onChange={e => setNewDni(e.target.value)}
-                    placeholder="DNI (opcional)"
-                    className="w-full border border-border-default rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
-                  />
-                  <div className="flex gap-2">
-                    <Button type="button" onClick={createPersona} className="text-xs">
-                      Crear persona
-                    </Button>
-                    <button
-                      type="button"
-                      onClick={() => { setShowNewPersona(false); if (responsableCierreId) setSearchQuery('') }}
-                      className="text-xs text-text-tertiary hover:text-text-primary"
-                    >
-                      Cancelar
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="relative" ref={searchRef}>
-                  <div className="flex gap-2">
-                    <input
-                      id="cierre-responsable-search"
-                      type="search"
-                      value={searchQuery}
-                      onChange={e => searchPersonas(e.target.value)}
-                      onFocus={() => { if (searchResults.length > 0) setDropOpen(true) }}
-                      placeholder="Buscá por apellido, nombre o DNI…"
-                      aria-label="Buscar responsable de cierre"
-                      aria-autocomplete="list"
-                      aria-expanded={dropOpen}
-                      className="flex-1 border border-border-default rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowNewPersona(true)}
-                      className="text-xs text-brand-primary hover:text-brand-primary/80 font-medium shrink-0"
-                    >
-                      + Nueva
-                    </button>
-                  </div>
-
-                  {searching && (
-                    <p className="text-xs text-text-tertiary mt-1">Buscando...</p>
-                  )}
-
-                  {dropOpen && searchResults.length === 0 && searchQuery.trim() && !searching && (
-                    <div className="absolute top-full mt-1 left-0 right-0 z-50 bg-surface-base border border-border-default rounded-xl shadow-xl overflow-hidden">
-                      <div className="px-3 py-3 text-xs text-text-tertiary text-center">
-                        Sin resultados.
-                      </div>
-                    </div>
-                  )}
-
-                  {dropOpen && searchResults.length > 0 && (
-                    <div className="absolute top-full mt-1 left-0 right-0 z-50 bg-surface-base border border-border-default rounded-xl shadow-xl overflow-hidden">
-                      {searchResults.map(p => (
-                        <button
-                          key={p.id}
-                          type="button"
-                          onClick={() => selectPersona(p)}
-                          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left text-text-primary hover:bg-surface-sunken transition-colors"
-                        >
-                          <span>{p.apellido}, {p.nombre}</span>
-                          {p.dni && (
-                            <span className="text-text-tertiary text-xs ml-auto">DNI: {p.dni}</span>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+            {/* Responsable de cierre */}
+            <PersonaSelectorConAlta
+              label="Responsable de cierre"
+              value={responsableCierreId}
+              onChange={p => setResponsableCierreId(p?.id ?? null)}
+              establecimientoId={establecimientoId}
+            />
 
             {/* Evidencia foto */}
             <div>
