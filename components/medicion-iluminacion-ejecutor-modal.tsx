@@ -1317,19 +1317,37 @@ export function MedicionIluminacionEjecutorModal({
                   <h4 className="text-sm font-semibold text-text-primary flex items-center gap-2">
                     <Grid3X3 size={15} className="text-sig-500" /> Grilla de mediciones (lux)
                   </h4>
-                  <div className="flex items-center gap-2 text-xs">
-                    <span className="text-text-secondary">Filas</span>
-                    <input type="number" min={1} max={20} className="w-16 border border-border-default rounded-lg px-2 py-1 text-sm" value={punto.filas} onChange={e => setGrid(punto.key, Number(e.target.value), punto.columnas)} />
-                    <span className="text-text-secondary">Columnas</span>
-                    <input type="number" min={1} max={20} className="w-16 border border-border-default rounded-lg px-2 py-1 text-sm" value={punto.columnas} onChange={e => setGrid(punto.key, punto.filas, Number(e.target.value))} />
+                  <div className="flex items-center gap-3 text-xs">
+                    <GridDimInput
+                      label="Filas"
+                      value={punto.filas}
+                      onChange={v => setGrid(punto.key, v, punto.columnas)}
+                    />
+                    <GridDimInput
+                      label="Columnas"
+                      value={punto.columnas}
+                      onChange={v => setGrid(punto.key, punto.filas, v)}
+                    />
                   </div>
                 </div>
 
-                {resumenActivo && resumenActivo.minPuntos > 0 && punto.filas * punto.columnas < resumenActivo.minPuntos && (
-                  <div className="text-xs text-amber-600 flex items-center gap-1.5">
-                    <Info size={13} /> La grilla tiene {punto.filas * punto.columnas} celdas, menos que el mínimo recomendado ({resumenActivo.minPuntos}).
-                  </div>
-                )}
+                {(() => {
+                  const producto = punto.filas * punto.columnas
+                  // Mínimo absoluto reglamentario: 9 campos a medir (filas × columnas ≥ 9).
+                  const minAbsoluto = 9
+                  // Mínimo derivado de las dimensiones del local (puede ser mayor a 9).
+                  const minLocal = resumenActivo?.minPuntos ?? 0
+                  const minEfectivo = Math.max(minAbsoluto, minLocal)
+                  if (producto >= minEfectivo) return null
+                  const textoMin = minLocal > minAbsoluto
+                    ? `mínimo reglamentario según dimensiones del local: ${minLocal}`
+                    : `mínimo reglamentario: 9 campos a medir (p. ej. 3×3, 1×9, 2×5)`
+                  return (
+                    <div className="text-xs text-amber-600 flex items-center gap-1.5">
+                      <Info size={13} /> La grilla tiene {producto} {producto === 1 ? 'celda' : 'celdas'} ({punto.filas}×{punto.columnas}), menos que el {textoMin}.
+                    </div>
+                  )
+                })()}
 
                 <div className="overflow-x-auto">
                   <table className="border-collapse">
@@ -1803,6 +1821,81 @@ function ReviewSection({ title, children }: { title: string; children: React.Rea
 
 function ReviewGrid({ children }: { children: React.ReactNode }) {
   return <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2 text-sm">{children}</div>
+}
+
+/**
+ * Stepper de dimensión de grilla (filas o columnas).
+ *
+ * BUG FIX UX [af6f2b34]: el input numérico nativo clampea mid-edit (al vaciar el
+ * campo, Number('') = 0 → setGrid clampea a 1 antes de que el usuario termine de
+ * tipear). Solución: estado `draft` (string) desacoplado del valor confirmado.
+ * - Mientras se edita, el draft puede estar vacío o incompleto sin clamp.
+ * - El clamp solo se aplica al confirmar: onBlur o Enter.
+ * - Los botones +/- son inmediatos y mantienen el draft sincronizado.
+ * - Cuando el padre cambia `value` desde afuera (ej: el otro stepper), el efecto
+ *   resincroniza el draft SOLO si no hay edición activa (draft = string del valor anterior).
+ */
+function GridDimInput({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
+  const [draft, setDraft] = useState<string>(String(value))
+
+  // Resincronizar draft cuando el padre cambia value desde afuera (p.ej. el stepper
+  // de la otra dimensión llama onChange → el padre actualiza ambos → este componente
+  // recibe un nuevo `value`). Solo pisamos si el usuario NO está editando, es decir,
+  // si el draft actual ya representaba el valor anterior (o está vacío).
+  useEffect(() => {
+    setDraft(String(value))
+  }, [value])
+
+  function commit(raw: string) {
+    const n = parseInt(raw, 10)
+    const clamped = Number.isFinite(n) && n > 0 ? Math.min(20, n) : value
+    setDraft(String(clamped))
+    if (clamped !== value) onChange(clamped)
+  }
+
+  function step(delta: number) {
+    const next = Math.max(1, Math.min(20, value + delta))
+    setDraft(String(next))
+    onChange(next)
+  }
+
+  return (
+    <div className="flex items-center gap-1">
+      <span className="text-text-secondary text-xs">{label}</span>
+      <button
+        type="button"
+        aria-label={`Reducir ${label.toLowerCase()}`}
+        onClick={() => step(-1)}
+        disabled={value <= 1}
+        className="w-6 h-6 flex items-center justify-center rounded border border-border-default text-text-secondary hover:bg-surface-elevated disabled:opacity-30 disabled:cursor-not-allowed"
+      >
+        <span className="text-base leading-none select-none">−</span>
+      </button>
+      <input
+        type="text"
+        inputMode="numeric"
+        pattern="[0-9]*"
+        aria-label={`${label} de la grilla`}
+        className="w-12 border border-border-default rounded-lg px-1.5 py-1 text-sm text-center tabular-nums focus:outline-none focus:ring-2 focus:ring-sig-500"
+        value={draft}
+        onChange={e => setDraft(e.target.value.replace(/[^0-9]/g, ''))}
+        onBlur={e => commit(e.target.value)}
+        onKeyDown={e => {
+          if (e.key === 'Enter') commit((e.target as HTMLInputElement).value)
+        }}
+        onFocus={e => e.target.select()}
+      />
+      <button
+        type="button"
+        aria-label={`Aumentar ${label.toLowerCase()}`}
+        onClick={() => step(1)}
+        disabled={value >= 20}
+        className="w-6 h-6 flex items-center justify-center rounded border border-border-default text-text-secondary hover:bg-surface-elevated disabled:opacity-30 disabled:cursor-not-allowed"
+      >
+        <span className="text-base leading-none select-none">+</span>
+      </button>
+    </div>
+  )
 }
 
 // ── Anillo de progreso (gamificación) ──────────────────────────────────
