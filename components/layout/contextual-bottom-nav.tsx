@@ -258,7 +258,7 @@ export function ContextualBottomNav({ canManageCursos = false }: ContextualBotto
               ))}
 
               {/* ── Ítems base (Ficha, Dashboard, SIGIA, Planificar) ── */}
-              {MENU_ITEMS.map(({ id, label, icon: Icon, action, section }, i) => {
+              {MENU_ITEMS.map(({ id, label, icon: Icon, action, section }) => {
                 const rowClasses = cn(
                   'flex w-full items-center gap-3 px-4 py-3 text-sm font-medium',
                   'text-text-secondary hover:bg-brand-muted/30 hover:text-brand-primary',
