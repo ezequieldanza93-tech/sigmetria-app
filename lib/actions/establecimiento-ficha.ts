@@ -222,7 +222,7 @@ export async function getLegajoEsperados(
   //    por categoria_legajo refleja el campo `nivel` (sincronizado por migración).
   const { data: catalogoRaw } = await supabase
     .from('documentos_tipos')
-    .select('id, nombre, categoria_legajo, periodicidad')
+    .select('id, nombre, categoria_legajo, periodicidad, requiere_pregunta, pregunta_id')
     .eq('is_active', true)
     .order('nombre')
 
@@ -244,12 +244,27 @@ export async function getLegajoEsperados(
     for (const c of (cvOff ?? []) as { nombre: string }[]) desactivados.add(c.nombre)
   }
 
+  // Respuestas del alta del establecimiento (gating de docs condicionales).
+  const { data: respData } = await supabase
+    .from('establecimientos_respuestas')
+    .select('pregunta_id, respuesta')
+    .eq('establecimiento_id', establecimientoId)
+  const respuestas = new Map<string, boolean>()
+  for (const r of (respData ?? []) as { pregunta_id: string; respuesta: boolean }[]) {
+    respuestas.set(r.pregunta_id, r.respuesta)
+  }
+
   const catalogoPorCat = new Map<CategoriaLegajo, TipoEsperado[]>()
   for (const t of (catalogoRaw ?? []) as {
     id: string; nombre: string; categoria_legajo: CategoriaLegajo | null; periodicidad: PeriodicidadDoc | null
+    requiere_pregunta?: boolean; pregunta_id?: string | null
   }[]) {
     if (!t.categoria_legajo) continue
     if (desactivados.has(t.nombre)) continue
+    // Gating condicional: si el doc requiere pregunta, solo entra cuando el
+    // establecimiento respondió SÍ a esa pregunta del alta. Sin pregunta vinculada
+    // o sin requerirla → aplica siempre.
+    if (t.requiere_pregunta && t.pregunta_id && respuestas.get(t.pregunta_id) !== true) continue
     const arr = catalogoPorCat.get(t.categoria_legajo) ?? []
     arr.push({ id: t.id, nombre: t.nombre, periodicidad: t.periodicidad })
     catalogoPorCat.set(t.categoria_legajo, arr)
