@@ -48,18 +48,28 @@ export async function getDocTiposAplicables(establecimientoId: string): Promise<
   const tipoId = establecimiento.tipo_id
   const aplicaIso = establecimiento.aplica_iso_45001
 
-  const { data: porTipo } = await supabase
-    .from('documentos_tipos_reglas')
-    .select('documento_tipo_id')
-    .eq('tipo_establecimiento_id', tipoId)
+  // Matriz NUEVA de aplicabilidad (documentos_tipos_tipos_establecimiento).
+  // Semántica curada en la pantalla del catálogo:
+  //   doc SIN filas  = aplica a TODOS los tipos de establecimiento.
+  //   doc CON filas  = aplica SOLO a los tipos listados.
+  const { data: matriz } = await supabase
+    .from('documentos_tipos_tipos_establecimiento')
+    .select('documento_tipo_id, tipo_establecimiento_id')
 
-  const idsPorTipo = new Set((porTipo ?? []).map(r => r.documento_tipo_id))
+  const restringidos = new Set<string>()       // docs con al menos una fila (= acotados)
+  const permitidosParaTipo = new Set<string>() // docs con fila para ESTE tipo
+  for (const r of (matriz ?? []) as { documento_tipo_id: string; tipo_establecimiento_id: string }[]) {
+    restringidos.add(r.documento_tipo_id)
+    if (r.tipo_establecimiento_id === tipoId) permitidosParaTipo.add(r.documento_tipo_id)
+  }
 
   const todos = todosResult.data
   if (!todos) return []
 
   return (todos as unknown as DocumentType[]).filter(dt =>
-    idsPorTipo.has(dt.id) || (aplicaIso && dt.aplica_por_iso)
+    !restringidos.has(dt.id)             // sin restricción → aplica a todos
+    || permitidosParaTipo.has(dt.id)     // acotado, pero incluye este tipo
+    || (aplicaIso && dt.aplica_por_iso)  // override por ISO 45001
   )
 }
 
@@ -75,22 +85,10 @@ export async function getDocTiposAplicables(establecimientoId: string): Promise<
  * Si la empresa no tiene `rubro_id`, devuelve [] (sin rubro no hay filtro
  * posible → el consumidor cae a la lista curada completa).
  */
-export async function getDocTiposAplicablesEmpresa(empresaId: string): Promise<string[]> {
-  const supabase = await createClient()
-
-  const { data: empresa } = await supabase
-    .from('empresas')
-    .select('rubro_id')
-    .eq('id', empresaId)
-    .single()
-
-  const rubroId = empresa?.rubro_id
-  if (!rubroId) return []
-
-  const { data: porRubro } = await supabase
-    .from('documentos_tipos_reglas')
-    .select('documento_tipo_id')
-    .eq('rubro_empresa_id', rubroId)
-
-  return Array.from(new Set((porRubro ?? []).map(r => r.documento_tipo_id as string)))
+export async function getDocTiposAplicablesEmpresa(_empresaId: string): Promise<string[]> {
+  // Modelo nuevo: el catálogo curado NO filtra los documentos de nivel empresa
+  // por rubro — todos los docs de empresa aplican a toda empresa. Devolver []
+  // hace que getLegajoEsperados use la lista curada completa (fallback) para las
+  // categorías empresa / empresa_por_establecimiento.
+  return []
 }

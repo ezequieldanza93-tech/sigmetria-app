@@ -168,7 +168,7 @@ type DocVigente = {
 
 type DocVigentePersona = DocVigente & {
   persona_id: string
-  personas_directorio: { nombre: string; apellido: string; legajo: string | null } | null
+  personas_directorio: { nombre: string; apellido: string; legajo: string | null; tipo_id: string | null } | null
 }
 
 const toVersion = (d: DocVigente): LegajoVersion => ({
@@ -201,10 +201,11 @@ function buildFilas(
  * Devuelve el checklist de documentos ESPERADOS del Legajo Técnico de un
  * establecimiento, con su último cargado y su historial.
  *
- * - Catálogo: documentos_tipos con is_active AND periodicidad IS NOT NULL,
- *   por categoria_legajo, filtrado por reglas de aplicabilidad
- *   (documentos_tipos_reglas) con FALLBACK a la lista curada completa cuando
- *   faltan datos maestros o el filtro deja la categoría vacía.
+ * - Catálogo: documentos_tipos con is_active (incluye unica_vez), agrupado por
+ *   categoria_legajo (que refleja `nivel`), filtrado por la matriz de
+ *   aplicabilidad NUEVA (documentos_tipos_tipos_establecimiento) y por el
+ *   overlay de la consultora (configuracion_vencimientos.activo). Las personas
+ *   se filtran además por su tipo (documentos_tipos_tipos_persona).
  * - Vigentes: instancias de empresas/establecimientos/personas_documentos con
  *   deleted_at IS NULL, ordenadas por created_at DESC. El "último" = la primera.
  * - Las 2 categorías de persona se agrupan por persona.
@@ -216,28 +217,64 @@ export async function getLegajoEsperados(
   const supabase = await createClient()
 
   // 1) Catálogo curado de esperados (las 5 categorías de documentos).
+  //    Fuente: documentos_tipos activos. Ya NO se exige periodicidad → entran
+  //    también los de "única vez" (Actas, Relevamientos, etc.). El agrupamiento
+  //    por categoria_legajo refleja el campo `nivel` (sincronizado por migración).
   const { data: catalogoRaw } = await supabase
     .from('documentos_tipos')
     .select('id, nombre, categoria_legajo, periodicidad')
     .eq('is_active', true)
-    .not('periodicidad', 'is', null)
     .order('nombre')
+
+  // Overlay por consultora: los documentos que la consultora DESACTIVÓ del
+  // seguimiento (configuracion_vencimientos.activo = false) se excluyen del
+  // legajo. Sin fila = se sigue (default). Se matchea por nombre.
+  const { data: empresaRow } = await supabase
+    .from('empresas')
+    .select('consultora_id')
+    .eq('id', empresaId)
+    .single()
+  const desactivados = new Set<string>()
+  if (empresaRow?.consultora_id) {
+    const { data: cvOff } = await supabase
+      .from('configuracion_vencimientos')
+      .select('nombre')
+      .eq('consultora_id', empresaRow.consultora_id)
+      .eq('activo', false)
+    for (const c of (cvOff ?? []) as { nombre: string }[]) desactivados.add(c.nombre)
+  }
 
   const catalogoPorCat = new Map<CategoriaLegajo, TipoEsperado[]>()
   for (const t of (catalogoRaw ?? []) as {
     id: string; nombre: string; categoria_legajo: CategoriaLegajo | null; periodicidad: PeriodicidadDoc | null
   }[]) {
     if (!t.categoria_legajo) continue
+    if (desactivados.has(t.nombre)) continue
     const arr = catalogoPorCat.get(t.categoria_legajo) ?? []
     arr.push({ id: t.id, nombre: t.nombre, periodicidad: t.periodicidad })
     catalogoPorCat.set(t.categoria_legajo, arr)
   }
   const cat = (c: CategoriaLegajo): TipoEsperado[] => catalogoPorCat.get(c) ?? []
 
-  // 1.b) Sets de tipos APLICABLES por reglas de aplicabilidad (dimensiones).
-  //  - establecimiento: getDocTiposAplicables (tipo_id + tipo_establecimiento_id)
-  //  - empresa / empresa_por_establecimiento: getDocTiposAplicablesEmpresa (rubro_id + rubro_empresa_id)
-  // Las categorías persona* NO tienen dimensión en las reglas → no se filtran.
+  // Mapeo tipo de persona → documentos (documentos_tipos_tipos_persona).
+  // Tabla vacía globalmente → no se filtra (todas las personas ven el catálogo
+  // persona completo). Con datos → cada persona ve solo los docs mapeados a SU
+  // tipo (sin filas para su tipo = ese tipo no requiere documentación).
+  const { data: mapPersonaRaw } = await supabase
+    .from('documentos_tipos_tipos_persona')
+    .select('documento_tipo_id, tipo_persona_id')
+  const mapPorTipoPersona = new Map<string, Set<string>>()
+  for (const r of (mapPersonaRaw ?? []) as { documento_tipo_id: string; tipo_persona_id: string }[]) {
+    const set = mapPorTipoPersona.get(r.tipo_persona_id) ?? new Set<string>()
+    set.add(r.documento_tipo_id)
+    mapPorTipoPersona.set(r.tipo_persona_id, set)
+  }
+  const mappingPersonaActivo = (mapPersonaRaw ?? []).length > 0
+
+  // 1.b) Sets de tipos APLICABLES por la matriz nueva de aplicabilidad.
+  //  - establecimiento: getDocTiposAplicables (matriz documento↔tipo de estab)
+  //  - empresa / empresa_por_establecimiento: sin filtro por rubro (todas) → [].
+  // Las categorías persona* se filtran por tipo de persona más abajo.
   const [aplicablesEstabList, aplicablesEmpresaIds] = await Promise.all([
     getDocTiposAplicables(establecimientoId),
     getDocTiposAplicablesEmpresa(empresaId),
@@ -258,17 +295,17 @@ export async function getLegajoEsperados(
   //    también su directorio para poder listar a TODAS (incluso sin docs → pendiente).
   const { data: peData } = await supabase
     .from('personas_establecimientos')
-    .select('persona_id, personas_directorio(nombre, apellido, legajo)')
+    .select('persona_id, personas_directorio(nombre, apellido, legajo, tipo_id)')
     .eq('establecimiento_id', establecimientoId)
   const personasEstab = (peData ?? []) as unknown as {
     persona_id: string
-    personas_directorio: { nombre: string; apellido: string; legajo: string | null } | null
+    personas_directorio: { nombre: string; apellido: string; legajo: string | null; tipo_id: string | null } | null
   }[]
   const personaIds = personasEstab.map(p => p.persona_id)
 
   // 3) Instancias vigentes (deleted_at IS NULL), ordenadas DESC por created_at.
   const docSelect = 'id, tipo_id, archivo_url, fecha_vencimiento, fecha_emision, created_at, documentos_tipos(nombre, categoria_legajo, periodicidad)'
-  const personaSelect = 'id, tipo_id, persona_id, archivo_url, fecha_vencimiento, fecha_emision, created_at, documentos_tipos(nombre, categoria_legajo, periodicidad), personas_directorio(nombre, apellido, legajo)'
+  const personaSelect = 'id, tipo_id, persona_id, archivo_url, fecha_vencimiento, fecha_emision, created_at, documentos_tipos(nombre, categoria_legajo, periodicidad), personas_directorio(nombre, apellido, legajo, tipo_id)'
 
   const [empRes, estRes, perRes] = await Promise.all([
     supabase
@@ -318,6 +355,7 @@ export async function getLegajoEsperados(
   const personaData = (perRes.data ?? []) as unknown as DocVigentePersona[]
   const porPersona = new Map<string, {
     persona: DocVigentePersona['personas_directorio']
+    persona_tipo_id: string | null
     persona_legajo: Map<string, DocVigente[]>
     persona_estab: Map<string, DocVigente[]>
   }>()
@@ -325,6 +363,7 @@ export async function getLegajoEsperados(
   for (const p of personasEstab) {
     porPersona.set(p.persona_id, {
       persona: p.personas_directorio,
+      persona_tipo_id: p.personas_directorio?.tipo_id ?? null,
       persona_legajo: new Map(),
       persona_estab: new Map(),
     })
@@ -334,7 +373,7 @@ export async function getLegajoEsperados(
     const catLegajo = (d as unknown as { documentos_tipos: { categoria_legajo?: CategoriaLegajo | null } | null }).documentos_tipos?.categoria_legajo
     let entry = porPersona.get(d.persona_id)
     if (!entry) {
-      entry = { persona: d.personas_directorio, persona_legajo: new Map(), persona_estab: new Map() }
+      entry = { persona: d.personas_directorio, persona_tipo_id: d.personas_directorio?.tipo_id ?? null, persona_legajo: new Map(), persona_estab: new Map() }
       porPersona.set(d.persona_id, entry)
     }
     const target = catLegajo === 'persona_por_establecimiento' ? entry.persona_estab : entry.persona_legajo
@@ -350,10 +389,18 @@ export async function getLegajoEsperados(
   ): LegajoEsperadoPersona[] => {
     const out: LegajoEsperadoPersona[] = []
     for (const [persona_id, entry] of porPersona) {
+      // Filtrar el catálogo persona por el TIPO de la persona (si hay mapeo).
+      let catalogoPersona = catalogo
+      if (mappingPersonaActivo) {
+        const permitidos = entry.persona_tipo_id
+          ? mapPorTipoPersona.get(entry.persona_tipo_id) ?? new Set<string>()
+          : new Set<string>()
+        catalogoPersona = catalogo.filter(t => permitidos.has(t.id))
+      }
       out.push({
         persona_id,
         persona: entry.persona,
-        filas: buildFilas(catalogo, pick(entry)),
+        filas: buildFilas(catalogoPersona, pick(entry)),
       })
     }
     // Orden estable por apellido/nombre.
