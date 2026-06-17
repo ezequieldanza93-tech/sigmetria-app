@@ -18,6 +18,8 @@ import {
   useTiposEstablecimiento,
   useUpdateDocumentoTipoConfig,
   useSetAplicabilidadTiposEstablecimiento,
+  usePreguntasRiesgo,
+  useNormas,
 } from '@/lib/queries/documentos-catalogo'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { useEffectiveRoleContext } from '@/lib/contexts/effective-role-context'
@@ -154,6 +156,8 @@ interface EditPanelProps {
 function EditPanel({ doc, tiposEstablecimiento, canEdit, onClose }: EditPanelProps) {
   const updateMutation = useUpdateDocumentoTipoConfig()
   const setAplicabilidadMutation = useSetAplicabilidadTiposEstablecimiento()
+  const { data: preguntas } = usePreguntasRiesgo()
+  const { data: normas } = useNormas()
   const [, startTransition] = useTransition()
 
   // Estado local para cada campo (refleja el doc del servidor hasta que el usuario edite)
@@ -165,6 +169,10 @@ function EditPanel({ doc, tiposEstablecimiento, canEdit, onClose }: EditPanelPro
   const [jurisdiccionMunicipio, setJurisdiccionMunicipio] = useState(doc.jurisdiccion_municipio ?? '')
   const [requiereAlerta, setRequiereAlerta] = useState(doc.requiere_alerta)
   const [diasAlerta, setDiasAlerta] = useState(String(doc.dias_alerta))
+  const [requierePregunta, setRequierePregunta] = useState(doc.requiere_pregunta)
+  const [preguntaId, setPreguntaId] = useState(doc.pregunta_id ?? '')
+  const [preguntaSugerida, setPreguntaSugerida] = useState(doc.pregunta_sugerida ?? '')
+  const [normaId, setNormaId] = useState(doc.norma_id ?? '')
   const [tiposSeleccionados, setTiposSeleccionados] = useState<string[]>(doc.tipos_establecimiento_ids)
 
   const [saved, setSaved] = useState(false)
@@ -200,6 +208,10 @@ function EditPanel({ doc, tiposEstablecimiento, canEdit, onClose }: EditPanelPro
       jurisdiccion_municipio: mostrarMunicipio ? jurisdiccionMunicipio || null : null,
       requiere_alerta: requiereAlerta,
       dias_alerta: Math.max(0, parseInt(diasAlerta, 10) || 0),
+      requiere_pregunta: requierePregunta,
+      pregunta_id: requierePregunta ? (preguntaId || null) : null,
+      pregunta_sugerida: requierePregunta ? (preguntaSugerida.trim() || null) : null,
+      norma_id: normaId || null,
     }
 
     startTransition(async () => {
@@ -372,6 +384,78 @@ function EditPanel({ doc, tiposEstablecimiento, canEdit, onClose }: EditPanelPro
           )}
         </div>
 
+        {/* ── Aplicación condicional + Norma ── */}
+        <div className="md:col-span-2 flex flex-col gap-3 border-t border-border-subtle pt-4">
+          <label className="text-sm font-medium text-text-secondary">Aplicación al legajo</label>
+          <div className="flex flex-wrap gap-x-3 gap-y-1.5">
+            <label className="flex items-center gap-1.5 cursor-pointer select-none">
+              <input
+                type="radio"
+                name={`modo-${doc.id}`}
+                checked={!requierePregunta}
+                onChange={() => setRequierePregunta(false)}
+                disabled={controlsDisabled}
+                className="accent-brand-primary"
+              />
+              <span className="text-sm text-text-primary">Aplica siempre</span>
+            </label>
+            <label className="flex items-center gap-1.5 cursor-pointer select-none">
+              <input
+                type="radio"
+                name={`modo-${doc.id}`}
+                checked={requierePregunta}
+                onChange={() => setRequierePregunta(true)}
+                disabled={controlsDisabled}
+                className="accent-brand-primary"
+              />
+              <span className="text-sm text-text-primary">Requiere pregunta</span>
+            </label>
+          </div>
+
+          {requierePregunta && (
+            <div className="flex flex-col gap-2">
+              <SearchableSelect
+                value={preguntaId}
+                onChange={v => {
+                  setPreguntaId(v)
+                  const p = (preguntas ?? []).find(x => x.id === v)
+                  if (p && !preguntaSugerida.trim()) setPreguntaSugerida(p.texto)
+                }}
+                options={(preguntas ?? []).map(p => ({ value: p.id, label: `${p.codigo} — ${p.texto}` }))}
+                placeholder="Pregunta del alta que la gatilla…"
+                disabled={controlsDisabled}
+                id={`pregunta-${doc.id}`}
+                emptyText="Sin resultados."
+              />
+              <input
+                type="text"
+                value={preguntaSugerida}
+                onChange={e => setPreguntaSugerida(e.target.value)}
+                placeholder="Pregunta sugerida (SÍ = aplica, NO = no aplica)…"
+                disabled={controlsDisabled}
+                className="px-3 py-2 text-sm border border-border-default rounded-lg bg-surface-base text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary disabled:opacity-40"
+              />
+              <p className="text-xs text-text-tertiary flex items-center gap-1">
+                <Info size={12} />
+                Si el establecimiento responde SÍ a esta pregunta, el documento aparece en su legajo.
+              </p>
+            </div>
+          )}
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-text-secondary">Norma que lo exige</label>
+            <SearchableSelect
+              value={normaId}
+              onChange={setNormaId}
+              options={[{ value: '', label: '— Ninguna —' }, ...(normas ?? []).map(n => ({ value: n.id, label: n.etiqueta }))]}
+              placeholder="Vincular a una norma…"
+              disabled={controlsDisabled}
+              id={`norma-${doc.id}`}
+              emptyText="Sin resultados."
+            />
+          </div>
+        </div>
+
         {/* ── Aplicabilidad por tipo de establecimiento ── */}
         {mostrarAplicabilidad && (
           <div className="md:col-span-2 flex flex-col gap-2">
@@ -497,6 +581,14 @@ function DocRow({ doc, tiposEstablecimiento, canEdit, expanded, onToggle }: DocR
           </span>
           {doc.descripcion && (
             <p className="text-xs text-text-tertiary mt-0.5 line-clamp-1">{doc.descripcion}</p>
+          )}
+          {doc.requiere_pregunta && (
+            <p
+              className="text-[11px] text-amber-700 mt-0.5 line-clamp-1"
+              title={doc.pregunta_sugerida ?? 'Requiere pregunta'}
+            >
+              ❓ {doc.pregunta_sugerida ?? 'Requiere pregunta'}
+            </p>
           )}
         </td>
         <td className="px-3 py-2.5 hidden md:table-cell">

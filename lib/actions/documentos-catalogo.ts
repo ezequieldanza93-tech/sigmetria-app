@@ -20,6 +20,8 @@ import type {
   VigenciaTipo,
   Jurisdiccion,
   PeriodicidadDocumento,
+  PreguntaRiesgoItem,
+  NormaItem,
 } from '@/lib/types'
 
 async function getUser() {
@@ -46,7 +48,8 @@ export async function getDocumentosTiposConfig(): Promise<ActionResult<Documento
       `id, nombre, descripcion, aplica_empresa, aplica_establecimiento, aplica_empleado,
        pais_id, categoria_legajo, periodicidad, is_active,
        nivel, vigencia_tipo, jurisdiccion, jurisdiccion_provincia, jurisdiccion_municipio,
-       requiere_alerta, dias_alerta`
+       requiere_alerta, dias_alerta,
+       requiere_pregunta, pregunta_sugerida, pregunta_id, norma_id`
     )
     .order('nombre', { ascending: true })
 
@@ -86,6 +89,10 @@ export async function getDocumentosTiposConfig(): Promise<ActionResult<Documento
       jurisdiccion_municipio: string | null
       requiere_alerta: boolean
       dias_alerta: number
+      requiere_pregunta: boolean
+      pregunta_sugerida: string | null
+      pregunta_id: string | null
+      norma_id: string | null
     }),
     tipos_establecimiento_ids: matrizIdx.get(t.id) ?? [],
   }))
@@ -106,6 +113,40 @@ export async function getTiposEstablecimiento(): Promise<ActionResult<TipoEstabl
   return { success: true, data: (data ?? []) as unknown as TipoEstablecimientoItem[] }
 }
 
+/** Preguntas de riesgo del alta (para vincular un documento condicional). */
+export async function getPreguntasRiesgo(): Promise<ActionResult<PreguntaRiesgoItem[]>> {
+  const { supabase } = await getUser()
+  const { data, error } = await supabase
+    .from('riesgos_preguntas')
+    .select('id, codigo, texto')
+    .eq('is_active', true)
+    .order('codigo', { ascending: true })
+  if (error) return { success: false, error: error.message }
+  return { success: true, data: (data ?? []) as unknown as PreguntaRiesgoItem[] }
+}
+
+/** Normas de la matriz legal (para el selector de FK del documento). */
+export async function getNormas(): Promise<ActionResult<NormaItem[]>> {
+  const { supabase } = await getUser()
+  const { data, error } = await supabase
+    .from('normativa_normas')
+    .select('id, tipo, numero, anio, titulo, estado')
+    .order('tipo', { ascending: true })
+    .order('numero', { ascending: true })
+  if (error) return { success: false, error: error.message }
+  const rows = (data ?? []) as unknown as {
+    id: string; tipo: string | null; numero: string | null; anio: number | null
+    titulo: string | null; estado: string | null
+  }[]
+  const items: NormaItem[] = rows.map(n => {
+    const ref = [n.tipo, [n.numero, n.anio].filter(Boolean).join('/')].filter(Boolean).join(' ')
+    const titulo = n.titulo ? ` — ${n.titulo}` : ''
+    const estado = n.estado && n.estado !== 'Vigente' ? ` (${n.estado})` : ''
+    return { id: n.id, etiqueta: `${ref}${titulo}${estado}`.trim() || 'Norma sin nombre' }
+  })
+  return { success: true, data: items }
+}
+
 // ─── Escritura ───────────────────────────────────────────────
 
 export interface UpdateDocumentoTipoConfigInput {
@@ -117,6 +158,10 @@ export interface UpdateDocumentoTipoConfigInput {
   requiere_alerta?: boolean
   dias_alerta?: number
   periodicidad?: PeriodicidadDocumento | null
+  requiere_pregunta?: boolean
+  pregunta_sugerida?: string | null
+  pregunta_id?: string | null
+  norma_id?: string | null
 }
 
 /**

@@ -1955,8 +1955,26 @@ export interface DocumentoTipoConfig {
   jurisdiccion_municipio: string | null
   requiere_alerta: boolean
   dias_alerta: number
+  // Legajo condicional — modo de aplicación + pregunta inducida + norma
+  requiere_pregunta: boolean
+  pregunta_sugerida: string | null
+  pregunta_id: string | null
+  norma_id: string | null
   // IDs de tipos de establecimiento a los que aplica (vacío = todos)
   tipos_establecimiento_ids: string[]
+}
+
+/** Opción de pregunta de riesgo (para el selector del catálogo). */
+export interface PreguntaRiesgoItem {
+  id: string
+  codigo: string
+  texto: string
+}
+
+/** Opción de norma (para el selector de FK del catálogo). */
+export interface NormaItem {
+  id: string
+  etiqueta: string
 }
 
 // ─────────────────────────────────────────────────────────────

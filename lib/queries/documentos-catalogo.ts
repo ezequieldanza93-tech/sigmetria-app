@@ -4,9 +4,11 @@ import {
   getTiposEstablecimiento,
   updateDocumentoTipoConfig,
   setAplicabilidadTiposEstablecimiento,
+  getPreguntasRiesgo,
+  getNormas,
   type UpdateDocumentoTipoConfigInput,
 } from '@/lib/actions/documentos-catalogo'
-import type { TipoEstablecimientoItem } from '@/lib/types'
+import type { TipoEstablecimientoItem, PreguntaRiesgoItem, NormaItem } from '@/lib/types'
 
 // ─── Queries ────────────────────────────────────────────────
 
@@ -31,6 +33,30 @@ export function useTiposEstablecimiento() {
       return result.data
     },
     staleTime: 1000 * 60 * 30, // catálogo muy estable
+  })
+}
+
+export function usePreguntasRiesgo() {
+  return useQuery<PreguntaRiesgoItem[]>({
+    queryKey: ['preguntas-riesgo'],
+    queryFn: async () => {
+      const result = await getPreguntasRiesgo()
+      if (!result.success) throw new Error(result.error)
+      return result.data
+    },
+    staleTime: 1000 * 60 * 30,
+  })
+}
+
+export function useNormas() {
+  return useQuery<NormaItem[]>({
+    queryKey: ['normas-catalogo'],
+    queryFn: async () => {
+      const result = await getNormas()
+      if (!result.success) throw new Error(result.error)
+      return result.data
+    },
+    staleTime: 1000 * 60 * 30,
   })
 }
 
