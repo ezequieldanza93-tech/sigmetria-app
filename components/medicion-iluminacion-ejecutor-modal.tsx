@@ -98,6 +98,14 @@ const STEP_LABELS: Record<WizardStep, string> = {
 // `turno` (text) es el string unido de las opciones elegidas, ej. "Mañana, Tarde".
 const TURNO_OPCIONES = ['Mañana', 'Tarde', 'Noche'] as const
 
+// Metodologías estándar de medición de iluminación (Res. SRT 84/2012, IRAM-AADL J 20-06).
+const METODOLOGIA_OPCIONES = [
+  'Cuadrícula / grilla (IRAM-AADL J 20-06)',
+  'Medición puntual por puesto de trabajo',
+  'Iluminancia media del local (método general)',
+  'Medición localizada en el plano de trabajo',
+] as const
+
 // Etiquetas legibles de los tipos (para el PDF; la UI usa los <option> directos).
 const TIPO_LABEL = {
   iluminacion: { natural: 'Natural', artificial: 'Artificial', mixta: 'Mixta', '': '—' } as Record<string, string>,
@@ -333,6 +341,9 @@ export function MedicionIluminacionEjecutorModal({
   // Firma dibujada a mano del profesional (dataURL PNG base64). null = sin firma.
   const [firmaSvg, setFirmaSvg] = useState<string | null>(null)
   const [metodologia, setMetodologia] = useState('')
+  // metodologiaSelector: opción elegida en el <select> (una de METODOLOGIA_OPCIONES o 'Otro').
+  // `metodologia` guarda el valor final (texto) que se envía al server action y al PDF.
+  const [metodologiaSelector, setMetodologiaSelector] = useState('')
   const [fechaMedicion, setFechaMedicion] = useState(rgFechaPlanificada || '')
   const [horaInicio, setHoraInicio] = useState('')
   const [horaFin, setHoraFin] = useState('')
@@ -1000,13 +1011,31 @@ export function MedicionIluminacionEjecutorModal({
                 </div>
                 <div>
                   <label className={labelCls}>Metodología</label>
-                  <input
-                    type="text"
+                  <select
                     className={inputCls}
-                    value={metodologia}
-                    onChange={e => setMetodologia(e.target.value)}
-                    placeholder="Ej: medición directa con luxómetro calibrado…"
-                  />
+                    value={metodologiaSelector}
+                    onChange={e => {
+                      const v = e.target.value
+                      setMetodologiaSelector(v)
+                      if (v === 'Otro' || v === '') setMetodologia('')
+                      else setMetodologia(v)
+                    }}
+                  >
+                    <option value="">Seleccionar metodología…</option>
+                    {METODOLOGIA_OPCIONES.map(o => (
+                      <option key={o} value={o}>{o}</option>
+                    ))}
+                    <option value="Otro">Otro (especificar)</option>
+                  </select>
+                  {metodologiaSelector === 'Otro' && (
+                    <input
+                      type="text"
+                      className={`${inputCls} mt-2`}
+                      value={metodologia}
+                      onChange={e => setMetodologia(e.target.value)}
+                      placeholder="Describí la metodología utilizada…"
+                    />
+                  )}
                 </div>
               </div>
             </section>
