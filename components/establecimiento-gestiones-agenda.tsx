@@ -1699,11 +1699,12 @@ function AgendaActionsCell({
   // Caso: protocolo de medición YA EJECUTADO → "Ver reporte" (read-only).
   // Estos protocolos guardan sus datos en sus propias tablas (medicion_*) y NO en
   // evidencia_url, así que NO deben caer en el flujo de "Cargar" ni volver a mostrar
-  // "Ejecutar". Hoy solo el PAT tiene viewer en pantalla (onViewReporte): para el
-  // resto, el guard de abajo evita re-ejecutar y, si hay adjunto, ofrece "Ver".
-  // Esto va ANTES de los bloques por evidencia para ganarles la prioridad.
+  // "Ejecutar". Tipos con viewer propio: medicion_pat y medicion_carga_termica.
+  // El resto (medicion_iluminacion, medicion_ruido, calculo_carga_fuego) aún no
+  // tienen viewer — si tienen adjunto manual, "Ver"; si no, badge "Realizado".
+  // Este bloque va ANTES de los bloques por evidencia para ganarles la prioridad.
   if (yaEjecutada && esProtocoloMedicion) {
-    if ((r.ge_tipo_ejecucion === 'medicion_pat' || r.ge_tipo_ejecucion === 'medicion_carga_termica') && onViewReporte) {
+    if (onViewReporte) {
       return (
         <div className="flex items-center justify-center">
           <button
@@ -1717,8 +1718,9 @@ function AgendaActionsCell({
         </div>
       )
     }
-    // Otros protocolos de medición ejecutados (aún sin viewer): si dejaron un
-    // adjunto manual, "Ver"; si no, un guion. NUNCA "Ejecutar" de nuevo.
+    // Protocolo ejecutado sin viewer disponible: si dejó un adjunto manual, "Ver";
+    // si no, badge "Realizado" para que el usuario sepa que el protocolo fue guardado.
+    // NUNCA volver a mostrar "Ejecutar" para un protocolo ya ejecutado.
     if (tieneEvidencia) {
       return (
         <div className="flex items-center justify-center">
@@ -1736,7 +1738,12 @@ function AgendaActionsCell({
         </div>
       )
     }
-    return <span className="text-xs text-text-tertiary">—</span>
+    return (
+      <span className="inline-flex items-center gap-1 text-xs font-medium text-success px-2 py-1 rounded-lg bg-green-50 border border-green-200">
+        <Eye size={12} />
+        Realizado
+      </span>
+    )
   }
 
   // Caso: Realizado (con evidencia)
