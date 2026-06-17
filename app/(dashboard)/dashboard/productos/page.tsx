@@ -33,6 +33,11 @@ function iconoClase(nombre: string) {
   return Layers
 }
 
+// Tamaño de página de la grilla. Render paginado client-side: el filtrado y la
+// agrupación siguen siendo client-side (rápidos en JS), pero solo pintamos una
+// página de tarjetas por vez para que el navegador no se trabe con miles de <Image>.
+const PAGE_SIZE = 48
+
 // ─── Formulario de creación ────────────────────────────────────────────────────
 
 function ProductoForm({
@@ -401,6 +406,7 @@ export default function ProductosPage() {
   const [detalle, setDetalle] = useState<Producto | null>(null)
   const [editando, setEditando] = useState<Producto | null>(null)
   const [showModal, setShowModal] = useState(false)
+  const [pagina, setPagina] = useState(1)
   const roleCtx = useEffectiveRoleContext()
   // puedeGestionarLibrerias: super-admin O el flag acotado gestiona_librerias_base.
   // Alineado con la función SQL puede_gestionar_librerias() = is_developer() OR flag.
@@ -444,6 +450,11 @@ export default function ProductosPage() {
       .eq('is_active', true).order('categoria').order('nombre')
       .then(({ data }) => setUnidades((data ?? []) as unknown as Unidad[]))
   }, [])
+
+  // Al cambiar cualquier filtro, volver a la página 1 (sino quedarías en una página vacía).
+  useEffect(() => {
+    setPagina(1)
+  }, [activeClase, categoriasSel, activeComponente, activeMarcaProveedor, origen, busqueda])
 
   // Clases para tabs: separamos Equipamiento (librería aparte) de las protecciones (EPP/EPC).
   const equipamientoClases = arbol.clases.filter(cl => cl.nombre.toLowerCase().startsWith('equip'))
@@ -545,6 +556,14 @@ export default function ProductosPage() {
   const totalCount = productos?.length ?? 0
   const filteredCount = filtered?.length ?? 0
   const agrupadosCount = agrupados?.length ?? 0
+
+  // Render paginado: solo pintamos la página actual de tarjetas. `paginaActual` se
+  // recorta a `totalPaginas` por si los filtros redujeron el total estando en una página alta.
+  const totalPaginas = Math.max(1, Math.ceil(agrupadosCount / PAGE_SIZE))
+  const paginaActual = Math.min(pagina, totalPaginas)
+  const agrupadosPagina = agrupados === null
+    ? null
+    : agrupados.slice((paginaActual - 1) * PAGE_SIZE, paginaActual * PAGE_SIZE)
 
   // Renderiza un tab de clase con su ícono.
   function ClaseTab({ clase }: { clase: ProductoClase }) {
@@ -706,7 +725,7 @@ export default function ProductosPage() {
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              {agrupados.map(({ representante, count }) => (
+              {(agrupadosPagina ?? []).map(({ representante, count }) => (
                 <ProductoCard
                   key={representante.id}
                   producto={representante}
@@ -717,6 +736,31 @@ export default function ProductosPage() {
                   // Nota: en grupos con duplicados, handleDelete borra solo el representante (limitación conocida del modo agrupación visual).
                 />
               ))}
+            </div>
+          )}
+
+          {/* Paginación de la grilla (render client-side por páginas) */}
+          {totalPaginas > 1 && (
+            <div className="flex items-center justify-center gap-3 mt-6">
+              <button
+                type="button"
+                disabled={paginaActual <= 1}
+                onClick={() => { setPagina(p => Math.max(1, p - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+                className="px-3 py-1.5 text-sm rounded-lg border border-border-default text-text-secondary hover:bg-surface-base disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                ← Anterior
+              </button>
+              <span className="text-sm text-text-secondary tabular-nums">
+                Página {paginaActual} de {totalPaginas}
+              </span>
+              <button
+                type="button"
+                disabled={paginaActual >= totalPaginas}
+                onClick={() => { setPagina(p => Math.min(totalPaginas, p + 1)); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+                className="px-3 py-1.5 text-sm rounded-lg border border-border-default text-text-secondary hover:bg-surface-base disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Siguiente →
+              </button>
             </div>
           )}
         </div>
