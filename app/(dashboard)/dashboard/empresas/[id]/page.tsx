@@ -136,7 +136,7 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
   return (
     <>
       {section === 'establecimientos' && (
-        <div className="p-6">
+        <div className="px-4 py-4 sm:p-6">
           <h1 className="text-xl font-bold text-text-primary mb-4">{empresa.razon_social}</h1>
           <EmpresaRightPanel
             empresaId={id}

@@ -70,9 +70,9 @@ export function EmpresaRightPanel({
     }`
 
   return (
-    <div className="flex-1 min-w-0 p-8">
-      {/* Tabs */}
-      <div className="flex items-center justify-between mb-6">
+    <div className="flex-1 min-w-0 px-4 py-6 sm:p-8">
+      {/* Tabs + acciones de cabecera */}
+      <div className="flex flex-col gap-3 mb-6 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex border-b border-border-subtle -mb-px">
           <button onClick={() => setActiveTab('establecimientos')} className={tabCls('establecimientos')}>
             Establecimientos
@@ -87,7 +87,7 @@ export function EmpresaRightPanel({
         </div>
 
         {activeTab === 'establecimientos' && (
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <AuditHistorialLink tabla="empresas" id={empresaId} />
             {puedeEditar && (
               <>
@@ -126,81 +126,148 @@ export function EmpresaRightPanel({
               )}
             </div>
           ) : (
-            <div className="bg-surface-base rounded-xl border border-border-subtle overflow-hidden">
-              <table className="w-full text-sm">
-                <thead className="border-b border-border-subtle bg-surface-base">
-                  <tr className="text-left">
-                    <th className="px-5 py-3.5 text-text-secondary font-medium">Nombre</th>
-                    <th className="px-5 py-3.5 text-text-secondary font-medium">Tipo</th>
-                    <th className="px-5 py-3.5 text-text-secondary font-medium hidden lg:table-cell">Ubicación</th>
-                    <th className="px-5 py-3.5 text-text-secondary font-medium text-center">Sectores</th>
-                    <th className="px-5 py-3.5 text-text-secondary font-medium text-center">
-                      <span title="Ingresado manualmente">Trab. (Manual)</span>
-                    </th>
-                    <th className="px-5 py-3.5 text-text-secondary font-medium text-center">
-                      <span title="Calculado desde sectores → puestos → personas activas">Trab. (Auto)</span>
-                    </th>
-                    {puedeEditar && <th className="px-5 py-3.5" />}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {establecimientos.map(est => {
-                    const sectores = est.establecimientos_sectores ?? []
-                    const sectoresCount = sectores.length
-                    const trabajadoresAuto = sectores.reduce((sum, s) => sum + (s.cantidad_trabajadores ?? 0), 0)
-                    return (
-                      <tr key={est.id} className="hover:bg-surface-base transition-colors">
-                        <td className="px-5 py-4 font-medium text-text-primary">
+            <>
+              {/* Mobile: tarjetas apiladas */}
+              <div className="sm:hidden space-y-3">
+                {establecimientos.map(est => {
+                  const sectores = est.establecimientos_sectores ?? []
+                  const sectoresCount = sectores.length
+                  const trabajadoresAuto = sectores.reduce((sum, s) => sum + (s.cantidad_trabajadores ?? 0), 0)
+                  return (
+                    <div key={est.id} className="bg-surface-base rounded-xl border border-border-subtle p-4 space-y-3">
+                      {/* Acciones arriba */}
+                      {puedeEditar && (
+                        <div className="flex items-center gap-2 justify-end">
+                          <Link
+                            href={`/dashboard/empresas/${empresaId}/establecimientos/${est.id}/editar`}
+                            className="text-xs text-text-tertiary hover:text-sig-500 font-medium transition-colors border border-border-default px-2.5 py-1 rounded-md"
+                          >
+                            Editar
+                          </Link>
                           <Link
                             href={`/dashboard/empresas/${empresaId}/establecimientos/${est.id}`}
-                            className="hover:text-sig-500 transition-colors"
+                            className="text-xs bg-sig-500 hover:bg-sig-700 text-white font-medium px-2.5 py-1 rounded-md transition-colors"
                           >
-                            {est.nombre}
+                            Ver
                           </Link>
-                        </td>
-                        <td className="px-5 py-4 text-text-secondary">
-                          {est.establecimientos_tipos?.nombre ?? '—'}
-                        </td>
-                        <td className="px-5 py-4 text-text-secondary hidden lg:table-cell">
-                          {(() => {
-                            const parts = [est.domicilio, est.localidades?.nombre, est.localidades?.provincia].filter(Boolean)
-                            if (!parts.length) return '—'
-                            const query = encodeURIComponent(parts.join(', '))
-                            return (
-                              <a
-                                href={`https://www.google.com/maps/search/?api=1&query=${query}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="hover:text-brand-primary hover:underline transition-colors"
-                              >
-                                {parts.join(', ')}
-                              </a>
-                            )
-                          })()}
-                        </td>
-                        <td className="px-5 py-4 text-text-secondary text-center">{sectoresCount}</td>
-                        <td className="px-5 py-4 text-text-tertiary text-center">
-                          {est.cantidad_trabajadores ?? <span className="text-text-tertiary">—</span>}
-                        </td>
-                        <td className="px-5 py-4 text-text-primary text-center font-medium">
-                          {trabajadoresAuto > 0 ? trabajadoresAuto : <span className="text-text-tertiary">0</span>}
-                        </td>
-                        {puedeEditar && (
-                          <td className="px-4 py-4 text-right">
+                        </div>
+                      )}
+                      {/* Nombre */}
+                      <div>
+                        <Link
+                          href={`/dashboard/empresas/${empresaId}/establecimientos/${est.id}`}
+                          className="font-medium text-text-primary hover:text-sig-500 transition-colors"
+                        >
+                          {est.nombre}
+                        </Link>
+                        {est.establecimientos_tipos?.nombre && (
+                          <p className="text-xs text-text-secondary mt-0.5">{est.establecimientos_tipos.nombre}</p>
+                        )}
+                      </div>
+                      {/* Ubicación */}
+                      {(() => {
+                        const parts = [est.domicilio, est.localidades?.nombre, est.localidades?.provincia].filter(Boolean)
+                        if (!parts.length) return null
+                        const query = encodeURIComponent(parts.join(', '))
+                        return (
+                          <a
+                            href={`https://www.google.com/maps/search/?api=1&query=${query}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-text-secondary hover:text-brand-primary hover:underline transition-colors block"
+                          >
+                            {parts.join(', ')}
+                          </a>
+                        )
+                      })()}
+                      {/* Métricas */}
+                      <div className="flex items-center gap-4 text-xs text-text-secondary">
+                        <span><span className="font-medium text-text-primary">{sectoresCount}</span> sectores</span>
+                        <span><span className="font-medium text-text-primary">{est.cantidad_trabajadores ?? '—'}</span> trab. manual</span>
+                        <span><span className="font-medium text-text-primary">{trabajadoresAuto > 0 ? trabajadoresAuto : 0}</span> trab. auto</span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Desktop: tabla */}
+              <div className="hidden sm:block bg-surface-base rounded-xl border border-border-subtle overflow-x-auto">
+                <table className="w-full text-sm min-w-[640px]">
+                  <thead className="border-b border-border-subtle bg-surface-base">
+                    <tr className="text-left">
+                      <th className="px-5 py-3.5 text-text-secondary font-medium">Nombre</th>
+                      <th className="px-5 py-3.5 text-text-secondary font-medium">Tipo</th>
+                      <th className="px-5 py-3.5 text-text-secondary font-medium hidden lg:table-cell">Ubicación</th>
+                      <th className="px-5 py-3.5 text-text-secondary font-medium text-center">Sectores</th>
+                      <th className="px-5 py-3.5 text-text-secondary font-medium text-center">
+                        <span title="Ingresado manualmente">Trab. (Manual)</span>
+                      </th>
+                      <th className="px-5 py-3.5 text-text-secondary font-medium text-center">
+                        <span title="Calculado desde sectores → puestos → personas activas">Trab. (Auto)</span>
+                      </th>
+                      {puedeEditar && <th className="px-5 py-3.5" />}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {establecimientos.map(est => {
+                      const sectores = est.establecimientos_sectores ?? []
+                      const sectoresCount = sectores.length
+                      const trabajadoresAuto = sectores.reduce((sum, s) => sum + (s.cantidad_trabajadores ?? 0), 0)
+                      return (
+                        <tr key={est.id} className="hover:bg-surface-base transition-colors">
+                          <td className="px-5 py-4 font-medium text-text-primary">
                             <Link
-                              href={`/dashboard/empresas/${empresaId}/establecimientos/${est.id}/editar`}
-                              className="text-xs text-text-tertiary hover:text-sig-500 font-medium transition-colors"
+                              href={`/dashboard/empresas/${empresaId}/establecimientos/${est.id}`}
+                              className="hover:text-sig-500 transition-colors"
                             >
-                              Editar
+                              {est.nombre}
                             </Link>
                           </td>
-                        )}
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
+                          <td className="px-5 py-4 text-text-secondary">
+                            {est.establecimientos_tipos?.nombre ?? '—'}
+                          </td>
+                          <td className="px-5 py-4 text-text-secondary hidden lg:table-cell">
+                            {(() => {
+                              const parts = [est.domicilio, est.localidades?.nombre, est.localidades?.provincia].filter(Boolean)
+                              if (!parts.length) return '—'
+                              const query = encodeURIComponent(parts.join(', '))
+                              return (
+                                <a
+                                  href={`https://www.google.com/maps/search/?api=1&query=${query}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="hover:text-brand-primary hover:underline transition-colors"
+                                >
+                                  {parts.join(', ')}
+                                </a>
+                              )
+                            })()}
+                          </td>
+                          <td className="px-5 py-4 text-text-secondary text-center">{sectoresCount}</td>
+                          <td className="px-5 py-4 text-text-tertiary text-center">
+                            {est.cantidad_trabajadores ?? <span className="text-text-tertiary">—</span>}
+                          </td>
+                          <td className="px-5 py-4 text-text-primary text-center font-medium">
+                            {trabajadoresAuto > 0 ? trabajadoresAuto : <span className="text-text-tertiary">0</span>}
+                          </td>
+                          {puedeEditar && (
+                            <td className="px-4 py-4 text-right">
+                              <Link
+                                href={`/dashboard/empresas/${empresaId}/establecimientos/${est.id}/editar`}
+                                className="text-xs text-text-tertiary hover:text-sig-500 font-medium transition-colors"
+                              >
+                                Editar
+                              </Link>
+                            </td>
+                          )}
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </>
       )}
