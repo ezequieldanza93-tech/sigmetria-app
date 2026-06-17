@@ -12,7 +12,7 @@ const cspDirectives = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline'",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://*.supabase.co https://*.tile.openstreetmap.org",
+  "img-src 'self' data: blob: https://*.supabase.co https://*.tile.openstreetmap.org https://multimedia.3m.com",
   "connect-src 'self' https://*.supabase.co https://nominatim.openstreetmap.org https://api.open-meteo.com",
   "font-src 'self'",
   "frame-src 'self' https://www.openstreetmap.org",
@@ -46,7 +46,12 @@ const nextConfig: NextConfig = {
     removeConsole: process.env.NODE_ENV === 'production' ? { exclude: ['error', 'warn'] } : false,
   },
   images: {
-    remotePatterns: [{ protocol: 'https', hostname: '*.supabase.co' }],
+    remotePatterns: [
+      { protocol: 'https', hostname: '*.supabase.co' },
+      // 3M rate-limita la descarga masiva de sus imágenes → se linkean directo
+      // desde su CDN (URLs estables) en vez de re-hospedarlas en Storage.
+      { protocol: 'https', hostname: 'multimedia.3m.com' },
+    ],
     formats: ['image/avif', 'image/webp'],
   },
   // Source maps de cliente: solo cuando se piden explícitamente para diagnóstico.
