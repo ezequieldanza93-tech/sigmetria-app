@@ -1,6 +1,7 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { formatDate } from '@/lib/utils'
 import { useSignedUrls } from '@/lib/storage/sign-client'
 import { Modal } from '@/components/ui/modal'
@@ -8,6 +9,7 @@ import { DocumentoForm } from '@/components/forms/documento-form'
 import { DocumentoHistorialModal } from '@/components/establecimiento/documento-historial-modal'
 import { createDocumento } from '@/lib/actions/documento'
 import { createTrabajadorDocumento } from '@/lib/actions/trabajador-documento'
+import { setDocumentoOverride, getDocumentoOverrides } from '@/lib/actions/establecimiento-ficha'
 import { CATEGORIAS_LEGAJO, periodicidadLabel } from '@/lib/legajo'
 import type {
   ActionResult,
@@ -90,6 +92,7 @@ function EsperadosTable({
   canWrite,
   onSubir,
   onHistorial,
+  onQuitar,
 }: {
   filas: LegajoEsperadoRow[]
   now: number | null
@@ -97,6 +100,7 @@ function EsperadosTable({
   canWrite: boolean
   onSubir: (fila: LegajoEsperadoRow) => void
   onHistorial: (fila: LegajoEsperadoRow) => void
+  onQuitar?: (fila: LegajoEsperadoRow) => void
 }) {
   if (filas.length === 0) {
     return <p className="text-xs text-text-tertiary px-4 py-3">Sin documentos esperados</p>
@@ -151,6 +155,16 @@ function EsperadosTable({
                       Subir
                     </button>
                   )}
+                  {canWrite && onQuitar && (
+                    <button
+                      type="button"
+                      onClick={() => onQuitar(f)}
+                      className="text-xs text-text-tertiary hover:text-danger hover:underline"
+                      title="Quitar este documento del legajo de este establecimiento"
+                    >
+                      Quitar
+                    </button>
+                  )}
                 </div>
               </td>
             </tr>
@@ -171,6 +185,26 @@ export function LegajoTab({
 }: LegajoTabProps) {
   const [now, setNow] = useState<number | null>(null)
   useEffect(() => { setNow(Date.now()) }, [])
+
+  // Override por establecimiento: documentos quitados a mano del legajo.
+  const router = useRouter()
+  const [overrides, setOverrides] = useState<{ documento_tipo_id: string; incluido: boolean; nombre: string }[]>([])
+  const reloadOverrides = useCallback(() => {
+    getDocumentoOverrides(establecimientoId).then(setOverrides).catch(() => {})
+  }, [establecimientoId])
+  useEffect(() => { reloadOverrides() }, [reloadOverrides])
+
+  const quitarDoc = async (fila: LegajoEsperadoRow) => {
+    await setDocumentoOverride(establecimientoId, fila.tipo_id, false)
+    reloadOverrides()
+    router.refresh()
+  }
+  const restaurarDoc = async (documentoTipoId: string) => {
+    await setDocumentoOverride(establecimientoId, documentoTipoId, null)
+    reloadOverrides()
+    router.refresh()
+  }
+  const quitados = overrides.filter(o => !o.incluido)
 
   // Modal de carga: tipo prefijado + acción según categoría/persona.
   const [subirState, setSubirState] = useState<{
@@ -280,6 +314,31 @@ export function LegajoTab({
 
   return (
     <div className="space-y-4">
+      {canWrite && quitados.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+          <p className="text-xs font-semibold text-amber-800 mb-1.5">
+            Documentos quitados de este legajo ({quitados.length})
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {quitados.map(o => (
+              <span
+                key={o.documento_tipo_id}
+                className="inline-flex items-center gap-1.5 text-xs bg-surface-base border border-amber-200 rounded-full pl-2.5 pr-1.5 py-0.5 text-text-secondary"
+              >
+                {o.nombre}
+                <button
+                  type="button"
+                  onClick={() => restaurarDoc(o.documento_tipo_id)}
+                  className="text-amber-700 hover:text-amber-900 font-medium"
+                  title="Restaurar este documento al legajo"
+                >
+                  Restaurar
+                </button>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
       {CATEGORIAS_LEGAJO.map(({ key, titulo }) => {
         // Sección desde Gestiones de Agenda (no sale de documentos_tipos).
         if (key === 'empresa_gestiones') {
@@ -346,6 +405,7 @@ export function LegajoTab({
                 canWrite={canWrite}
                 onSubir={fila => abrirSubirDoc(key as CategoriaDoc, fila)}
                 onHistorial={abrirHistorial}
+                onQuitar={quitarDoc}
               />
             )}
           </Seccion>

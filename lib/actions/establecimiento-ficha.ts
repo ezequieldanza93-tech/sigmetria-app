@@ -502,3 +502,23 @@ export async function setDocumentoOverride(
   if (error) return { success: false, error: error.message }
   return { success: true }
 }
+
+/** Overrides del legajo de un establecimiento (con el nombre del documento). */
+export async function getDocumentoOverrides(
+  establecimientoId: string,
+): Promise<{ documento_tipo_id: string; incluido: boolean; nombre: string }[]> {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('establecimiento_documentos_override')
+    .select('documento_tipo_id, incluido, documentos_tipos(nombre)')
+    .eq('establecimiento_id', establecimientoId)
+  return ((data ?? []) as unknown as {
+    documento_tipo_id: string
+    incluido: boolean
+    documentos_tipos: { nombre: string } | null
+  }[]).map(o => ({
+    documento_tipo_id: o.documento_tipo_id,
+    incluido: o.incluido,
+    nombre: o.documentos_tipos?.nombre ?? 'Documento',
+  }))
+}
