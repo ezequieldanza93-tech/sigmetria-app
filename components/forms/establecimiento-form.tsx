@@ -343,11 +343,35 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
     return stats
   }, [checks])
 
+  function handleKeyDown(e: React.KeyboardEvent<HTMLFormElement>) {
+    // Prevenir submit por Enter en cualquier input que no sea textarea.
+    // Las secciones ocultas (hidden) siguen en el DOM y sus inputs son parte del
+    // form, por lo que un Enter en ellos puede disparar el submit del form aunque
+    // el usuario esté viendo otra sección.
+    if (e.key === 'Enter') {
+      const target = e.target as HTMLElement
+      if (target.tagName !== 'TEXTAREA') {
+        e.preventDefault()
+      }
+    }
+  }
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    // Guarda definitiva: el form solo debe procesarse cuando el usuario está
+    // en la sección final y aprieta explícitamente el botón Crear/Guardar.
+    if (currentSection !== 3) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+  }
+
   return (
     <form
       ref={formRef}
       action={formAction}
       onBlur={() => setTick(t => t + 1)}
+      onKeyDown={handleKeyDown}
+      onSubmit={handleSubmit}
       className="space-y-4 max-md:space-y-6"
     >
       <EstablecimientoProgress checks={checks} />
