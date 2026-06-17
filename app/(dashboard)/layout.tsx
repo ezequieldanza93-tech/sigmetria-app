@@ -15,8 +15,6 @@ import { GeoConsentModal } from '@/components/legal/geo-consent-modal'
 import { PreviewProvider } from '@/lib/contexts/preview-context'
 import { EffectiveRoleProvider } from '@/lib/contexts/effective-role-context'
 import { getEffectiveRole } from '@/lib/auth/effective-role'
-import { isCrmAdmin } from '@/lib/auth/crm-access'
-import { canAccessContenido } from '@/lib/contenido/access'
 import 'leaflet/dist/leaflet.css'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -129,8 +127,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
       {trialEndsAt && <TrialCountdown endsAt={trialEndsAt} />}
       <DevicePreviewPanel>{children}</DevicePreviewPanel>
       <ContextualBottomNav
-            showContenido={canAccessContenido(effectiveUserRole, effectiveSystemRole)}
-            showCrm={isCrmAdmin(email)}
             canManageCursos={
               isSuperAdmin ||
               effectiveUserRole === 'full_access_main' ||

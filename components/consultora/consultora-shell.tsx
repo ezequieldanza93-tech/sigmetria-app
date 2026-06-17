@@ -1,26 +1,26 @@
 'use client'
 
-import { Building2, ClipboardList, BarChart3, BookOpen, Eye, Contact, ScrollText, MessageSquare, Megaphone, ArrowLeft, Users, Library } from 'lucide-react'
+import { Building2, ClipboardList, BarChart3, BookOpen, Eye, ScrollText, ArrowLeft, Users, Library } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { SectionsShell } from '@/components/layout/sections-shell'
 import type { SectionItem } from '@/components/layout/sections-sidebar'
 import { useEffectiveRoleContext } from '@/lib/contexts/effective-role-context'
-import { isCrmAdmin } from '@/lib/auth/crm-access'
-import { canAccessContenido } from '@/lib/contenido/access'
 import type { UserRole } from '@/lib/types'
 
 // Roles con acceso a la auditoría (espejo del gate de la página y la action).
 const AUDIT_ROLES: UserRole[] = ['full_access_main', 'full_access_branch', 'responsable_estandares', 'auditor_externo']
 
-// Rutas de las secciones Directorio y Librerías, ahora items del sidebar
-// (antes vivían en la ficha global). El highlight del sidebar las marca activas.
+// Rutas de las secciones Directorio y Librerías — prefix-match para el highlight.
+// El hub (/dashboard/directorio, /dashboard/librerias) también activa su ítem.
 const DIRECTORIO_PREFIXES = [
+  '/dashboard/directorio',
   '/dashboard/personas',
   '/dashboard/organizaciones-externas',
 ] as const
 
 const LIBRERIA_PREFIXES = [
+  '/dashboard/librerias',
   '/dashboard/productos',
   '/dashboard/configuracion/iperc',
   '/dashboard/libreria-gestiones',
@@ -96,34 +96,18 @@ export function ConsultoraShell({ children }: ConsultoraShellProps) {
     ? (raw as Section)
     : 'empresas'
 
-  const onComentarios = pathname?.startsWith('/dashboard/crm/comentarios') ?? false
-  const onCrm = !onComentarios && (pathname?.startsWith('/dashboard/crm') ?? false)
   const onAuditoria = pathname?.startsWith('/dashboard/auditoria') ?? false
-  const onContenido = pathname?.startsWith('/dashboard/contenido') ?? false
   const onDirectorio = pathname ? matchesPrefix(pathname, DIRECTORIO_PREFIXES) : false
   const onLibreria = pathname ? matchesPrefix(pathname, LIBRERIA_PREFIXES) : false
-  const activeId: string = onComentarios
-    ? 'comentarios'
-    : onCrm
-      ? 'crm'
-      : onContenido
-        ? 'contenido'
-        : onAuditoria
-          ? 'auditoria'
-          : onDirectorio
-            ? 'directorio'
-            : onLibreria
-              ? 'libreria'
-              : esFicha
-                ? 'ficha'
-                : sectionActive
-  const showCrm = isCrmAdmin(eff?.email)
-  // Mismo gate que la ficha: administrar cursos y compliance solo para full_access + superAdmin.
-  const canManageCursos =
-    eff?.isSuperAdmin === true ||
-    eff?.userRole === 'full_access_main' ||
-    eff?.userRole === 'full_access_branch'
-  const showContenido = canAccessContenido(eff?.userRole, eff?.systemRole)
+  const activeId: string = onAuditoria
+    ? 'auditoria'
+    : onDirectorio
+      ? 'directorio'
+      : onLibreria
+        ? 'libreria'
+        : esFicha
+          ? 'ficha'
+          : sectionActive
   const showAuditoria =
     eff?.isSuperAdmin === true ||
     eff?.systemRole === 'developer' ||
@@ -165,62 +149,25 @@ export function ConsultoraShell({ children }: ConsultoraShellProps) {
     ...(showAuditoria
       ? ([{ id: 'auditoria', label: 'Auditoría', icon: ScrollText, href: '/dashboard/auditoria' }] as SectionItem[])
       : []),
-    // ── Directorio y Librerías: secciones expandibles a nivel consultora ──
-    // Antes vivían en la ficha global; ahora son items del sidebar, arriba de
-    // Marketing. El highlight de la sección se calcula con onDirectorio/onLibreria.
+    // ── Directorio y Librerías: ítems que navegan al hub (pantalla de tarjetas) ──
+    // El highlight se calcula con onDirectorio/onLibreria (prefix-match).
     {
       id: 'directorio',
       label: 'Directorio',
       icon: Users,
-      defaultOpen: onDirectorio,
-      children: [
-        { id: 'dir-personas', label: 'Personas', href: '/dashboard/personas' },
-        { id: 'dir-organizaciones', label: 'Organizaciones externas', href: '/dashboard/organizaciones-externas' },
-      ],
+      href: '/dashboard/directorio',
     },
     {
       id: 'libreria',
       label: 'Librerías',
       icon: Library,
-      defaultOpen: onLibreria,
-      children: [
-        { id: 'lib-productos', label: 'Elementos de Protección', href: '/dashboard/productos' },
-        { id: 'lib-iperc', label: 'Librería IPERC', href: '/dashboard/configuracion/iperc' },
-        { id: 'lib-gestiones', label: 'Librería de Gestiones', href: '/dashboard/libreria-gestiones' },
-        { id: 'lib-normativa', label: 'Normativa Legal', href: '/dashboard/configuracion/normativa-legal' },
-        { id: 'lib-docs-catalogo', label: 'Catálogo Documentos', href: '/dashboard/configuracion/documentos-catalogo' },
-        { id: 'lib-cursos', label: 'Mis Cursos', href: '/dashboard/cursos' },
-        ...(canManageCursos
-          ? [
-              { id: 'lib-cursos-admin', label: 'Administrar Cursos', href: '/dashboard/cursos/admin' },
-              { id: 'lib-cursos-compliance', label: 'Compliance', href: '/dashboard/cursos/compliance' },
-            ]
-          : []),
-      ],
+      href: '/dashboard/librerias',
     },
-  ]
-
-  // ── Marketing: sección fija al pie del sidebar, sobre el botón contraer ──
-  // Contenido: full_access de cualquier consultora (multi-tenant).
-  // CRM + Comentarios: solo staff de Sigmetría (isCrmAdmin) → la moderación del
-  // blog de Sigmetría NO aparece para otras consultoras. Mismo gate que la página
-  // y la RLS, así sidebar y server quedan sincronizados.
-  const marketingItems: SectionItem[] = [
-    ...(showContenido
-      ? ([{ id: 'contenido', label: 'Contenido', icon: Megaphone, href: '/dashboard/contenido' }] as SectionItem[])
-      : []),
-    ...(showCrm
-      ? ([
-          { id: 'crm', label: 'CRM', icon: Contact, href: '/dashboard/crm' },
-          { id: 'comentarios', label: 'Comentarios', icon: MessageSquare, href: '/dashboard/crm/comentarios' },
-        ] as SectionItem[])
-      : []),
   ]
 
   return (
     <SectionsShell
       items={items}
-      marketingItems={marketingItems.length > 0 ? marketingItems : undefined}
       activeId={activeId}
       ariaLabel="Secciones de la consultora"
     >

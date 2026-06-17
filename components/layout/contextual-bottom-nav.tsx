@@ -12,9 +12,6 @@ import {
   Camera,
   Bot,
   Menu,
-  Megaphone,
-  Contact,
-  MessageSquare,
   Users,
   Building2,
   Library,
@@ -78,15 +75,11 @@ const MENU_ITEMS: MenuItem[] = [
 // ─── Componente ──────────────────────────────────────────────────────
 
 interface ContextualBottomNavProps {
-  /** Muestra el ítem "Contenido" en el menú hamburguesa (gate canAccessContenido). */
-  showContenido?: boolean
-  /** Muestra los ítems "CRM" y "Comentarios" en el menú hamburguesa (gate isCrmAdmin). */
-  showCrm?: boolean
   /** Muestra "Administrar Cursos" y "Compliance" en el grupo Librerías (gate full_access + superAdmin). */
   canManageCursos?: boolean
 }
 
-export function ContextualBottomNav({ showContenido = false, showCrm = false, canManageCursos = false }: ContextualBottomNavProps) {
+export function ContextualBottomNav({ canManageCursos = false }: ContextualBottomNavProps) {
   const { level, empresaId, establecimientoId } = useNavigationLevel()
   const { emit } = useShortcuts()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -206,84 +199,15 @@ export function ContextualBottomNav({ showContenido = false, showCrm = false, ca
           {/* Menú desplegable hacia arriba desde la hamburguesa. */}
           {menuOpen && (
             <div className="absolute bottom-full right-1 mb-2 w-56 rounded-2xl border border-border-subtle bg-surface-base shadow-xl animate-in fade-in slide-in-from-bottom-2 duration-150 max-h-[70vh] overflow-y-auto">
-              {/* ── Ítems base + Marketing ── */}
-              {[
-                ...MENU_ITEMS,
-                ...(showContenido
-                  ? [{ id: 'contenido', label: 'Contenido', icon: Megaphone, href: '/dashboard/contenido' } as MenuItem]
-                  : []),
-                ...(showCrm
-                  ? [
-                      { id: 'crm', label: 'CRM', icon: Contact, href: '/dashboard/crm' } as MenuItem,
-                      { id: 'comentarios', label: 'Comentarios', icon: MessageSquare, href: '/dashboard/crm/comentarios' } as MenuItem,
-                    ]
-                  : []),
-              ].map(({ id, label, icon: Icon, action, section, href }, i) => {
-                const rowClasses = cn(
-                  'flex w-full items-center gap-3 px-4 py-3 text-sm font-medium',
-                  'text-text-secondary hover:bg-brand-muted/30 hover:text-brand-primary',
-                  'active:bg-brand-muted/50 transition-colors',
-                  i > 0 && 'border-t border-border-subtle',
-                )
-                const iconEl = (
-                  <Icon size={18} strokeWidth={1.75} className="shrink-0 text-text-tertiary" aria-hidden="true" />
-                )
-
-                // Ítems con href absoluto (Marketing: Contenido, CRM, Comentarios).
-                if (href) {
-                  return (
-                    <Link
-                      key={id}
-                      href={href}
-                      onClick={() => setMenuOpen(false)}
-                      aria-label={label}
-                      className={rowClasses}
-                    >
-                      {iconEl}
-                      <span>{label}</span>
-                    </Link>
-                  )
-                }
-
-                // Ficha / Dashboard: navegan por Link relativo a sección.
-                if (section) {
-                  return (
-                    <Link
-                      key={id}
-                      href={sectionHref(section)}
-                      onClick={() => setMenuOpen(false)}
-                      aria-label={label}
-                      className={rowClasses}
-                    >
-                      {iconEl}
-                      <span>{label}</span>
-                    </Link>
-                  )
-                }
-
-                // SIGIA / Planificar: emiten acción por el bus de shortcuts.
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => handleAction(action!)}
-                    aria-label={label}
-                    className={rowClasses}
-                  >
-                    {iconEl}
-                    <span>{label}</span>
-                  </button>
-                )
-              })}
-
-              {/* ── Directorio ── */}
-              <div className="border-t border-border-subtle px-4 pt-2.5 pb-1">
+              {/* ── Directorio (arriba de todo) ── */}
+              <div className="px-4 pt-2.5 pb-1">
                 <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-text-tertiary">
                   <Users size={11} aria-hidden="true" />
                   Directorio
                 </span>
               </div>
               {[
+                { id: 'dir-hub', label: 'Directorio', icon: Users, href: '/dashboard/directorio' },
                 { id: 'dir-personas', label: 'Personas', icon: Users, href: '/dashboard/personas' },
                 { id: 'dir-organizaciones', label: 'Organizaciones externas', icon: Building2, href: '/dashboard/organizaciones-externas' },
               ].map(({ id, label, icon: Icon, href }) => (
@@ -307,6 +231,7 @@ export function ContextualBottomNav({ showContenido = false, showCrm = false, ca
                 </span>
               </div>
               {[
+                { id: 'lib-hub', label: 'Librerías', icon: Library, href: '/dashboard/librerias' },
                 { id: 'lib-productos', label: 'Elementos de Protección', icon: Shield, href: '/dashboard/productos' },
                 { id: 'lib-iperc', label: 'Librería IPERC', icon: AlertTriangle, href: '/dashboard/configuracion/iperc' },
                 { id: 'lib-gestiones', label: 'Librería de Gestiones', icon: ClipboardList, href: '/dashboard/libreria-gestiones' },
@@ -331,6 +256,46 @@ export function ContextualBottomNav({ showContenido = false, showCrm = false, ca
                   <span>{label}</span>
                 </Link>
               ))}
+
+              {/* ── Ítems base (Ficha, Dashboard, SIGIA, Planificar) ── */}
+              {MENU_ITEMS.map(({ id, label, icon: Icon, action, section }, i) => {
+                const rowClasses = cn(
+                  'flex w-full items-center gap-3 px-4 py-3 text-sm font-medium',
+                  'text-text-secondary hover:bg-brand-muted/30 hover:text-brand-primary',
+                  'active:bg-brand-muted/50 transition-colors border-t border-border-subtle',
+                )
+                const iconEl = (
+                  <Icon size={18} strokeWidth={1.75} className="shrink-0 text-text-tertiary" aria-hidden="true" />
+                )
+
+                if (section) {
+                  return (
+                    <Link
+                      key={id}
+                      href={sectionHref(section)}
+                      onClick={() => setMenuOpen(false)}
+                      aria-label={label}
+                      className={rowClasses}
+                    >
+                      {iconEl}
+                      <span>{label}</span>
+                    </Link>
+                  )
+                }
+
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => handleAction(action!)}
+                    aria-label={label}
+                    className={rowClasses}
+                  >
+                    {iconEl}
+                    <span>{label}</span>
+                  </button>
+                )
+              })}
             </div>
           )}
         </div>

@@ -8,6 +8,8 @@ import { getGestionesAggregate, getSeguimientoAggregate } from '@/lib/queries/ag
 import { getEffectiveRole } from '@/lib/auth/effective-role'
 import { canWrite, canAuditarGeo, ROLE_LABELS } from '@/lib/types'
 import { ConsultoraFichaGlobal } from '@/components/consultora-ficha-global'
+import { isCrmAdmin } from '@/lib/auth/crm-access'
+import { canAccessContenido } from '@/lib/contenido/access'
 import type { Consultora } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
@@ -112,6 +114,8 @@ export default async function EmpresasPage({ searchParams }: Props) {
           usuario={fichaUsuario}
           userRole={effective.effectiveUserRole}
           isSuperAdmin={effective.isSuperAdmin}
+          showContenido={canAccessContenido(effective.effectiveUserRole, effective.effectiveSystemRole)}
+          showCrm={isCrmAdmin(effective.email)}
         />
       )}
 

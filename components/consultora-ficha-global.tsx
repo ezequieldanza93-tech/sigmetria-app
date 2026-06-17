@@ -25,6 +25,8 @@ import {
   MessageSquare,
   Map,
   Pencil,
+  Megaphone,
+  Contact,
 } from 'lucide-react'
 import Image from 'next/image'
 import { publicAssetUrl } from '@/lib/storage/asset-url'
@@ -52,6 +54,10 @@ interface Props {
   usuario?: UsuarioInfo | null
   userRole?: UserRole | null
   isSuperAdmin?: boolean
+  /** Gate Contenido (canAccessContenido). */
+  showContenido?: boolean
+  /** Gate CRM + Comentarios (isCrmAdmin). */
+  showCrm?: boolean
 }
 
 interface NavItem {
@@ -91,10 +97,20 @@ function antiguedad(desde: string | null): string | null {
  * No embebe el contenido de las fichas: es un árbol liviano para navegar rápido
  * y abrir la ficha que corresponda a cada nivel.
  */
-export function ConsultoraFichaGlobal({ consultora, empresas, usuario, userRole, isSuperAdmin = false }: Props) {
+export function ConsultoraFichaGlobal({ consultora, empresas, usuario, userRole, isSuperAdmin = false, showContenido = false, showCrm = false }: Props) {
   const canEditConsultora = userRole === 'full_access_main' || isSuperAdmin
   const canVerReportes =
     userRole === 'full_access_main' || userRole === 'responsable_estandares' || isSuperAdmin
+
+  const marketingItems: NavItem[] = [
+    ...(showContenido ? [{ href: '/dashboard/contenido', icon: Megaphone, label: 'Contenido' }] : []),
+    ...(showCrm
+      ? [
+          { href: '/dashboard/crm', icon: Contact, label: 'CRM' },
+          { href: '/dashboard/crm/comentarios', icon: MessageSquare, label: 'Comentarios' },
+        ]
+      : []),
+  ]
 
   const navGroups: NavGroup[] = [
     {
@@ -122,6 +138,9 @@ export function ConsultoraFichaGlobal({ consultora, empresas, usuario, userRole,
           : []),
       ],
     },
+    ...(marketingItems.length > 0
+      ? [{ label: 'Marketing', items: marketingItems }]
+      : []),
   ]
 
   const tipoLabel = consultora.tipo ? (TIPO_LABEL[consultora.tipo] ?? consultora.tipo) : null
