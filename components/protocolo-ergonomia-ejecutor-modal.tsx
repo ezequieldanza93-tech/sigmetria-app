@@ -17,6 +17,7 @@ import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { PersonaFirmanteSelector, type PersonaFirmanteValue } from '@/components/persona-firmante-selector'
 import { PersonaSelectorConAlta, type PersonaSeleccionada } from '@/components/persona-selector-con-alta'
+import { SectorPuestoSelectorConAlta } from '@/components/sector-puesto-selector-con-alta'
 import {
   Activity, AlertCircle, AlertTriangle, ArrowRight, Building2, Calendar,
   Check, ChevronLeft, ChevronRight,
@@ -342,8 +343,11 @@ export function ProtocoloErgonomiaEjecutorModal({
   const [errorGlobal, setErrorGlobal] = useState<string | null>(null)
 
   // ── Planilla 1 – datos generales ──
+  // area_sector y puesto_de_trabajo son snapshot de texto derivado del selector.
   const [areaSector, setAreaSector] = useState('')
+  const [sectorId, setSectorId] = useState('')
   const [puesto, setPuesto] = useState('')
+  const [puestoId, setPuestoId] = useState('')
   const [nTrabajadores, setNTrabajadores] = useState('')
   const [capacitacion, setCapacitacion] = useState<boolean | null>(null)
   const [procEscrito, setProcEscrito] = useState<boolean | null>(null)
@@ -700,20 +704,17 @@ export function ProtocoloErgonomiaEjecutorModal({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-medium text-text-secondary block mb-1">Área y Sector</label>
-              <input
-                className="w-full rounded-lg border border-border-default px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-400"
-                value={areaSector} onChange={e => setAreaSector(e.target.value)}
-                placeholder="Ej: Producción / Armado"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-text-secondary block mb-1">Puesto de trabajo</label>
-              <input
-                className="w-full rounded-lg border border-border-default px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-400"
-                value={puesto} onChange={e => setPuesto(e.target.value)}
-                placeholder="Ej: Operador de línea"
+            <div className="sm:col-span-2">
+              <SectorPuestoSelectorConAlta
+                establecimientoId={establecimientoId}
+                sectorId={sectorId}
+                puestoId={puestoId}
+                onChange={sel => {
+                  setSectorId(sel.sectorId)
+                  setAreaSector(sel.sectorNombre)
+                  setPuestoId(sel.puestoId)
+                  setPuesto(sel.puestoNombre)
+                }}
               />
             </div>
             <div>

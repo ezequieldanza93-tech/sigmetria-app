@@ -8,11 +8,9 @@ import {
   getInstrumentosCargaTermica,
   getVarRopa,
   getTmActividad,
-  getSectoresYPuestos,
   type InstrumentoCargaTermica,
   type VarRopaOption,
   type TmActividadOption,
-  type SectorConPuestos,
 } from '@/lib/actions/medicion-carga-termica'
 import {
   tgbhInterior,
@@ -32,6 +30,7 @@ import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { PersonaFirmanteSelector } from '@/components/persona-firmante-selector'
 import { PersonaSelectorConAlta } from '@/components/persona-selector-con-alta'
+import { SectorPuestoSelectorConAlta } from '@/components/sector-puesto-selector-con-alta'
 import { FirmaCanvas } from '@/components/firmas/firma-canvas'
 import { firmarProtocolo } from '@/lib/actions/firmar-protocolo'
 import {
@@ -85,7 +84,12 @@ interface PeriodoState {
 
 interface PuestoState {
   key: number
+  /** Snapshot de texto derivado del sector y puesto elegidos (ej. "Producción / Operador de línea"). */
   nombre_puesto: string
+  /** FK al sector del establecimiento (solo estado UI, no se persiste en DB — snapshot en nombre_puesto). */
+  sector_id: string
+  /** FK al puesto de trabajo del establecimiento (solo estado UI, no se persiste en DB — snapshot en nombre_puesto). */
+  puesto_id: string
   /** Snapshot de texto del trabajador medido (derivado de la persona elegida). */
   trabajador: string
   /** FK al directorio: trabajador medido (persona del establecimiento). */
@@ -192,6 +196,8 @@ function nuevoPuesto(): PuestoState {
   return {
     key: puestoKeySeq++,
     nombre_puesto: '',
+    sector_id: '',
+    puesto_id: '',
     trabajador: '',
     trabajador_persona_id: '',
     ghe: false,
@@ -384,7 +390,6 @@ export function MedicionCargaTermicaEjecutorModal({
   const [instrumentos, setInstrumentos] = useState<InstrumentoCargaTermica[]>([])
   const [varRopa, setVarRopa] = useState<VarRopaOption[]>([])
   const [tmActividades, setTmActividades] = useState<TmActividadOption[]>([])
-  const [, setSectores] = useState<SectorConPuestos[]>([])
 
   // Certificado de calibración VIGENTE del instrumento elegido (read-only, traído
   // automáticamente con getCertificadoVigente). Ya no se sube uno por protocolo.
@@ -474,8 +479,6 @@ export function MedicionCargaTermicaEjecutorModal({
     getInstrumentosCargaTermica().then(r => { if (activo && r.success) setInstrumentos(r.data) })
     getVarRopa().then(r => { if (activo && r.success) setVarRopa(r.data) })
     getTmActividad().then(r => { if (activo && r.success) setTmActividades(r.data) })
-    getSectoresYPuestos(establecimientoId).then(r => { if (activo && r.success) setSectores(r.data) })
-
     supabase
       .from('personas_establecimientos')
       .select('personas_directorio!persona_id(id, nombre, apellido)')
@@ -1312,10 +1315,18 @@ export function MedicionCargaTermicaEjecutorModal({
                     trabajador: p ? `${p.apellido}, ${p.nombre}` : '',
                   })}
                 />
-                <div>
-                  <label className={labelCls}>Puesto / sector</label>
-                  <input type="text" className={inputCls} value={puesto.nombre_puesto} onChange={e => updatePuesto(puesto.key, { nombre_puesto: e.target.value })} placeholder="Ej: Horno - línea 2" />
-                </div>
+                <SectorPuestoSelectorConAlta
+                  establecimientoId={establecimientoId}
+                  sectorId={puesto.sector_id}
+                  puestoId={puesto.puesto_id}
+                  onChange={sel => updatePuesto(puesto.key, {
+                    sector_id: sel.sectorId,
+                    puesto_id: sel.puestoId,
+                    nombre_puesto: sel.sectorNombre && sel.puestoNombre
+                      ? `${sel.sectorNombre} / ${sel.puestoNombre}`
+                      : sel.sectorNombre || sel.puestoNombre,
+                  })}
+                />
               </div>
 
               {/* Flags */}
