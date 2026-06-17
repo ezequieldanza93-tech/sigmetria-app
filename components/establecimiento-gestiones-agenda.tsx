@@ -115,6 +115,18 @@ const MedicionCargaTermicaViewer = dynamic(
   () => import('@/components/medicion-carga-termica-viewer').then(m => m.MedicionCargaTermicaViewer),
   { ssr: false }
 )
+const MedicionIluminacionViewer = dynamic(
+  () => import('@/components/medicion-iluminacion-viewer').then(m => m.MedicionIluminacionViewer),
+  { ssr: false }
+)
+const MedicionRuidoViewer = dynamic(
+  () => import('@/components/medicion-ruido-viewer').then(m => m.MedicionRuidoViewer),
+  { ssr: false }
+)
+const CalculoCargaFuegoViewer = dynamic(
+  () => import('@/components/calculo-carga-fuego-viewer').then(m => m.CalculoCargaFuegoViewer),
+  { ssr: false }
+)
 const ProtocoloErgonomiaEjecutorModal = dynamic(
   () => import('@/components/protocolo-ergonomia-ejecutor-modal').then(m => m.ProtocoloErgonomiaEjecutorModal),
   { ssr: false }
@@ -1711,21 +1723,30 @@ function AgendaActionsCell({
   // Caso: protocolo de medición YA EJECUTADO → "Ver reporte" (read-only).
   // Estos protocolos guardan sus datos en sus propias tablas (medicion_*) y NO en
   // evidencia_url, así que NO deben caer en el flujo de "Cargar" ni volver a mostrar
-  // "Ejecutar". Tipos con viewer propio: medicion_pat y medicion_carga_termica.
-  // El resto (medicion_iluminacion, medicion_ruido, calculo_carga_fuego) aún no
-  // tienen viewer — si tienen adjunto manual, "Ver"; si no, badge "Realizado".
+  // "Ejecutar". Tipos con viewer propio: medicion_pat, medicion_carga_termica,
+  // protocolo_ergonomia, medicion_iluminacion, medicion_ruido, calculo_carga_fuego.
+  // Los tres últimos usan visor HTML interino (el botón dice "Ver (HTML)") mientras
+  // el agente de PDF los migra en paralelo.
   // Este bloque va ANTES de los bloques por evidencia para ganarles la prioridad.
+  // Tipos que tienen visor HTML interino (mientras se migra a PDF en paralelo).
+  const TIPOS_VISOR_HTML_INTERINO = new Set([
+    'medicion_iluminacion',
+    'medicion_ruido',
+    'calculo_carga_fuego',
+  ])
+  const esVisorHtmlInterino = TIPOS_VISOR_HTML_INTERINO.has(r.ge_tipo_ejecucion ?? '')
+
   if (yaEjecutada && esProtocoloMedicion) {
     if (onViewReporte) {
       return (
         <div className="flex items-center justify-center">
           <button
-            title="Ver el protocolo ejecutado"
+            title={esVisorHtmlInterino ? 'Ver el protocolo ejecutado (visor HTML)' : 'Ver el protocolo ejecutado'}
             onClick={onViewReporte}
             className={`${primaryBtn} ${primaryActive}`}
           >
             <Eye size={14} />
-            <span className="hidden sm:inline">Ver reporte</span>
+            <span className="hidden sm:inline">{esVisorHtmlInterino ? 'Ver (HTML)' : 'Ver reporte'}</span>
           </button>
         </div>
       )
@@ -2394,6 +2415,9 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
   const [executingMedicionPat, setExecutingMedicionPat] = useState<FullRegistro | null>(null)
   const [viewingMedicionPat, setViewingMedicionPat] = useState<FullRegistro | null>(null)
   const [viewingMedicionCargaTermica, setViewingMedicionCargaTermica] = useState<FullRegistro | null>(null)
+  const [viewingMedicionIluminacion, setViewingMedicionIluminacion] = useState<FullRegistro | null>(null)
+  const [viewingMedicionRuido, setViewingMedicionRuido] = useState<FullRegistro | null>(null)
+  const [viewingCalculoCargaFuego, setViewingCalculoCargaFuego] = useState<FullRegistro | null>(null)
   const [executingErgonomia, setExecutingErgonomia] = useState<FullRegistro | null>(null)
   const [viewingErgonomia, setViewingErgonomia] = useState<FullRegistro | null>(null)
   const [executingMedicionRuido, setExecutingMedicionRuido] = useState<FullRegistro | null>(null)
@@ -2739,7 +2763,13 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
                     ? () => setViewingMedicionCargaTermica(r)
                     : r.ge_tipo_ejecucion === 'protocolo_ergonomia'
                       ? () => setViewingErgonomia(r)
-                      : undefined
+                      : r.ge_tipo_ejecucion === 'medicion_iluminacion'
+                        ? () => setViewingMedicionIluminacion(r)
+                        : r.ge_tipo_ejecucion === 'medicion_ruido'
+                          ? () => setViewingMedicionRuido(r)
+                          : r.ge_tipo_ejecucion === 'calculo_carga_fuego'
+                            ? () => setViewingCalculoCargaFuego(r)
+                            : undefined
               }
               onLoadEvidence={() => setEditingRegistro(r)}
               onEjecutarCapacitacion={
@@ -3415,6 +3445,33 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
           rgFechaPlanificada={viewingErgonomia.fecha_planificada}
           gestionNombre={viewingErgonomia.ge_gestion_nombre}
           onClose={() => setViewingErgonomia(null)}
+        />
+      )}
+
+      {viewingMedicionIluminacion && (
+        <MedicionIluminacionViewer
+          registroId={viewingMedicionIluminacion.id}
+          rgFechaPlanificada={viewingMedicionIluminacion.fecha_planificada}
+          gestionNombre={viewingMedicionIluminacion.ge_gestion_nombre}
+          onClose={() => setViewingMedicionIluminacion(null)}
+        />
+      )}
+
+      {viewingMedicionRuido && (
+        <MedicionRuidoViewer
+          registroId={viewingMedicionRuido.id}
+          rgFechaPlanificada={viewingMedicionRuido.fecha_planificada}
+          gestionNombre={viewingMedicionRuido.ge_gestion_nombre}
+          onClose={() => setViewingMedicionRuido(null)}
+        />
+      )}
+
+      {viewingCalculoCargaFuego && (
+        <CalculoCargaFuegoViewer
+          registroId={viewingCalculoCargaFuego.id}
+          rgFechaPlanificada={viewingCalculoCargaFuego.fecha_planificada}
+          gestionNombre={viewingCalculoCargaFuego.ge_gestion_nombre}
+          onClose={() => setViewingCalculoCargaFuego(null)}
         />
       )}
 
