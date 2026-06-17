@@ -30,6 +30,38 @@ export async function createPuesto(
   return { success: true, data: null }
 }
 
+/**
+ * Crea un puesto en el sector y devuelve su ID para seleccionarlo al toque.
+ * Usado por el SectorPuestoSelectorConAlta para alta inline.
+ */
+export async function crearPuestoEstablecimiento(
+  establecimientoId: string,
+  sectorId: string,
+  nombre: string
+): Promise<ActionResult<{ id: string; nombre: string }>> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'No autenticado' }
+
+  const nombreTrim = nombre.trim()
+  if (!nombreTrim) return { success: false, error: 'El nombre del puesto es obligatorio' }
+  if (!sectorId) return { success: false, error: 'El sector es obligatorio para crear un puesto' }
+
+  const { data, error } = await supabase
+    .from('puestos_de_trabajo')
+    .insert({ sector_id: sectorId, nombre: nombreTrim })
+    .select('id, nombre')
+    .single()
+
+  if (error) return { success: false, error: error.message }
+
+  // Solo invalida la ruta del establecimiento para refrescar la vista si el
+  // llamador tiene contexto de empresaId; acá no lo tenemos, pero no es bloqueante.
+  void establecimientoId
+
+  return { success: true, data: { id: data.id as string, nombre: data.nombre as string } }
+}
+
 export async function deletePuesto(
   puestoId: string,
   establecimientoId: string,

@@ -53,6 +53,37 @@ export async function updateSectorTrabajadores(
   return { success: true, data: null }
 }
 
+/**
+ * Crea un sector en el establecimiento y devuelve su ID para seleccionarlo al toque.
+ * Usado por el SectorPuestoSelectorConAlta para alta inline.
+ */
+export async function crearSectorEstablecimiento(
+  establecimientoId: string,
+  nombre: string
+): Promise<ActionResult<{ id: string; nombre: string }>> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'No autenticado' }
+
+  const nombreTrim = nombre.trim()
+  if (!nombreTrim) return { success: false, error: 'El nombre del sector es obligatorio' }
+
+  const { data, error } = await supabase
+    .from('establecimientos_sectores')
+    .insert({
+      establecimiento_id: establecimientoId,
+      nombre: nombreTrim,
+      es_custom: true,
+      cantidad_trabajadores: 0,
+    })
+    .select('id, nombre')
+    .single()
+
+  if (error) return { success: false, error: error.message }
+
+  return { success: true, data: { id: data.id as string, nombre: data.nombre as string } }
+}
+
 export async function deleteSector(
   sectorId: string,
   establecimientoId: string,

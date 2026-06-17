@@ -14,6 +14,7 @@ import {
   type SectorConPuestos,
   type ValorRequeridoSugerido,
 } from '@/lib/actions/medicion-iluminacion'
+import { SectorPuestoSelectorConAlta } from '@/components/sector-puesto-selector-con-alta'
 import {
   indiceLocal,
   numeroMinimoPuntos,
@@ -791,7 +792,6 @@ export function MedicionIluminacionEjecutorModal({
   const stepIdx = STEP_ORDER.indexOf(step)
   const punto = puntos[puntoActivo]
   const resumenActivo = punto ? resumenPunto(punto) : null
-  const sectorActivo = punto ? sectores.find(s => s.id === punto.sector_id) : undefined
 
   // Firma del certificado de calibración (bucket privado `certificados`) para el link "Ver".
   const { getUrl: getCertUrl } = useSignedUrls('certificados', [certificadoVigente?.certificado_url])
@@ -1175,21 +1175,29 @@ export function MedicionIluminacionEjecutorModal({
               </div>
 
               {/* Ubicación */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div>
-                  <label className={labelCls}>Sector</label>
-                  <select className={inputCls} value={punto.sector_id} onChange={e => updatePunto(punto.key, { sector_id: e.target.value, puesto_id: '' })}>
-                    <option value="">Seleccionar sector…</option>
-                    {sectores.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className={labelCls}>Puesto / sección</label>
-                  <select className={inputCls} value={punto.puesto_id} onChange={e => updatePunto(punto.key, { puesto_id: e.target.value })} disabled={!sectorActivo}>
-                    <option value="">{sectorActivo ? 'Seleccionar puesto…' : 'Elegí un sector primero'}</option>
-                    {(sectorActivo?.puestos ?? []).map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-                  </select>
-                </div>
+              <div className="space-y-4">
+                <SectorPuestoSelectorConAlta
+                  establecimientoId={establecimientoId}
+                  sectorId={punto.sector_id}
+                  puestoId={punto.puesto_id}
+                  onChange={({ sectorId, sectorNombre, puestoId, puestoNombre }) => {
+                    updatePunto(punto.key, { sector_id: sectorId, puesto_id: puestoId })
+                    // Sincronizar el estado `sectores` del modal para que el PDF
+                    // encuentre los nombres al construir pdfData.
+                    setSectores(prev => {
+                      const yaExisteSector = prev.some(s => s.id === sectorId)
+                      let base = yaExisteSector ? prev : [...prev, { id: sectorId, nombre: sectorNombre, puestos: [] }]
+                      if (puestoId) {
+                        base = base.map(s => {
+                          if (s.id !== sectorId) return s
+                          const yaExistePuesto = s.puestos.some(p => p.id === puestoId)
+                          return yaExistePuesto ? s : { ...s, puestos: [...s.puestos, { id: puestoId, nombre: puestoNombre }] }
+                        })
+                      }
+                      return base
+                    })
+                  }}
+                />
                 <div>
                   <label className={labelCls}>Turno</label>
                   <div className="flex flex-wrap gap-2 pt-1">
