@@ -254,12 +254,26 @@ export async function getLegajoEsperados(
     respuestas.set(r.pregunta_id, r.respuesta)
   }
 
+  // Override por establecimiento (force-in / force-out de documentos puntuales).
+  const { data: ovData } = await supabase
+    .from('establecimiento_documentos_override')
+    .select('documento_tipo_id, incluido')
+    .eq('establecimiento_id', establecimientoId)
+  const overrideMap = new Map<string, boolean>()
+  for (const o of (ovData ?? []) as { documento_tipo_id: string; incluido: boolean }[]) {
+    overrideMap.set(o.documento_tipo_id, o.incluido)
+  }
+
   const catalogoPorCat = new Map<CategoriaLegajo, TipoEsperado[]>()
+  // Lookup de TODOS los docs activos (aunque queden gateados) — necesario para
+  // poder force-INCLUIR un doc que el motor no computó.
+  const catalogoRawById = new Map<string, { nombre: string; periodicidad: PeriodicidadDoc | null; categoria: CategoriaLegajo }>()
   for (const t of (catalogoRaw ?? []) as {
     id: string; nombre: string; categoria_legajo: CategoriaLegajo | null; periodicidad: PeriodicidadDoc | null
     requiere_pregunta?: boolean; pregunta_id?: string | null
   }[]) {
     if (!t.categoria_legajo) continue
+    catalogoRawById.set(t.id, { nombre: t.nombre, periodicidad: t.periodicidad, categoria: t.categoria_legajo })
     if (desactivados.has(t.nombre)) continue
     // Gating condicional: si el doc requiere pregunta, solo entra cuando el
     // establecimiento respondió SÍ a esa pregunta del alta. Sin pregunta vinculada
@@ -270,6 +284,21 @@ export async function getLegajoEsperados(
     catalogoPorCat.set(t.categoria_legajo, arr)
   }
   const cat = (c: CategoriaLegajo): TipoEsperado[] => catalogoPorCat.get(c) ?? []
+
+  // Aplica el override sobre una categoría ya computada: saca los force-out
+  // (incluido=false) y agrega los force-in (incluido=true) de esa categoría.
+  const withOverride = (categoria: CategoriaLegajo, lista: TipoEsperado[]): TipoEsperado[] => {
+    const out = lista.filter(t => overrideMap.get(t.id) !== false)
+    const present = new Set(out.map(t => t.id))
+    for (const [docId, incluido] of overrideMap) {
+      if (incluido !== true || present.has(docId)) continue
+      const meta = catalogoRawById.get(docId)
+      if (meta && meta.categoria === categoria) {
+        out.push({ id: docId, nombre: meta.nombre, periodicidad: meta.periodicidad })
+      }
+    }
+    return out
+  }
 
   // Mapeo tipo de persona → documentos (documentos_tipos_tipos_persona).
   // Tabla vacía globalmente → no se filtra (todas las personas ven el catálogo
@@ -428,10 +457,48 @@ export async function getLegajoEsperados(
   }
 
   return {
-    empresa: buildFilas(filtrarConFallback(cat('empresa'), setEmpresa), empresaPorTipo),
-    empresa_por_establecimiento: buildFilas(filtrarConFallback(cat('empresa_por_establecimiento'), setEmpresa), empresaEstabPorTipo),
-    establecimiento: buildFilas(filtrarConFallback(cat('establecimiento'), setEstab), estabPorTipo),
+    empresa: buildFilas(withOverride('empresa', filtrarConFallback(cat('empresa'), setEmpresa)), empresaPorTipo),
+    empresa_por_establecimiento: buildFilas(withOverride('empresa_por_establecimiento', filtrarConFallback(cat('empresa_por_establecimiento'), setEmpresa)), empresaEstabPorTipo),
+    establecimiento: buildFilas(withOverride('establecimiento', filtrarConFallback(cat('establecimiento'), setEstab)), estabPorTipo),
     persona: buildPersonas(cat('persona'), e => e.persona_legajo),
     persona_por_establecimiento: buildPersonas(cat('persona_por_establecimiento'), e => e.persona_estab),
   }
+}
+
+/**
+ * Override del legajo para un establecimiento puntual.
+ *   incluido = true  → forzar INCLUIR el documento aunque el motor no lo compute.
+ *   incluido = false → forzar EXCLUIR el documento aunque el motor lo compute.
+ *   incluido = null  → quitar el override (vuelve a lo que computa el motor).
+ */
+export async function setDocumentoOverride(
+  establecimientoId: string,
+  documentoTipoId: string,
+  incluido: boolean | null,
+): Promise<{ success: true } | { success: false; error: string }> {
+  const supabase = await createClient()
+
+  if (incluido === null) {
+    const { error } = await supabase
+      .from('establecimiento_documentos_override')
+      .delete()
+      .eq('establecimiento_id', establecimientoId)
+      .eq('documento_tipo_id', documentoTipoId)
+    if (error) return { success: false, error: error.message }
+    return { success: true }
+  }
+
+  const { error } = await supabase
+    .from('establecimiento_documentos_override')
+    .upsert(
+      {
+        establecimiento_id: establecimientoId,
+        documento_tipo_id: documentoTipoId,
+        incluido,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'establecimiento_id,documento_tipo_id' },
+    )
+  if (error) return { success: false, error: error.message }
+  return { success: true }
 }
