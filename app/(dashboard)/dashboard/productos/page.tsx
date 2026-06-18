@@ -38,6 +38,31 @@ function iconoClase(nombre: string) {
 // página de tarjetas por vez para que el navegador no se trabe con miles de <Image>.
 const PAGE_SIZE = 48
 
+// Controles de paginación de la grilla: Anterior / selector directo de página / Siguiente.
+// Se usa arriba y abajo de la grilla. El <select> permite saltar a cualquier página.
+function Paginador({ paginaActual, totalPaginas, onChange }: { paginaActual: number; totalPaginas: number; onChange: (n: number) => void }) {
+  if (totalPaginas <= 1) return null
+  const btn = 'px-3 py-1.5 text-sm rounded-lg border border-border-default text-text-secondary hover:bg-surface-base disabled:opacity-40 disabled:cursor-not-allowed transition-colors'
+  return (
+    <div className="flex items-center justify-center gap-3 flex-wrap">
+      <button type="button" disabled={paginaActual <= 1} onClick={() => onChange(paginaActual - 1)} className={btn}>← Anterior</button>
+      <div className="flex items-center gap-1.5 text-sm text-text-secondary">
+        <span>Página</span>
+        <select
+          value={paginaActual}
+          onChange={e => onChange(Number(e.target.value))}
+          aria-label="Ir a la página"
+          className="border border-border-default rounded-lg px-2 py-1 text-sm bg-surface-base focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
+        >
+          {Array.from({ length: totalPaginas }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1}</option>)}
+        </select>
+        <span>de {totalPaginas}</span>
+      </div>
+      <button type="button" disabled={paginaActual >= totalPaginas} onClick={() => onChange(paginaActual + 1)} className={btn}>Siguiente →</button>
+    </div>
+  )
+}
+
 // ─── Formulario de creación ────────────────────────────────────────────────────
 
 function ProductoForm({
@@ -578,6 +603,11 @@ export default function ProductosPage() {
     ? null
     : agrupados.slice((paginaActual - 1) * PAGE_SIZE, paginaActual * PAGE_SIZE)
 
+  function irPagina(n: number) {
+    setPagina(Math.min(Math.max(1, n), totalPaginas))
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   // Renderiza un tab de clase con su ícono.
   function ClaseTab({ clase }: { clase: ProductoClase }) {
     const Icon = iconoClase(clase.nombre)
@@ -728,6 +758,11 @@ export default function ProductosPage() {
 
         {/* ── Grilla de productos ── */}
         <div className="flex-1 min-w-0">
+          {totalPaginas > 1 && (
+            <div className="mb-4">
+              <Paginador paginaActual={paginaActual} totalPaginas={totalPaginas} onChange={irPagina} />
+            </div>
+          )}
           {agrupados === null ? (
             <div className="bg-surface-base rounded-xl border border-border-subtle p-8 text-center text-text-tertiary">
               Cargando…
@@ -752,28 +787,10 @@ export default function ProductosPage() {
             </div>
           )}
 
-          {/* Paginación de la grilla (render client-side por páginas) */}
+          {/* Paginación de la grilla (abajo) */}
           {totalPaginas > 1 && (
-            <div className="flex items-center justify-center gap-3 mt-6">
-              <button
-                type="button"
-                disabled={paginaActual <= 1}
-                onClick={() => { setPagina(p => Math.max(1, p - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
-                className="px-3 py-1.5 text-sm rounded-lg border border-border-default text-text-secondary hover:bg-surface-base disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                ← Anterior
-              </button>
-              <span className="text-sm text-text-secondary tabular-nums">
-                Página {paginaActual} de {totalPaginas}
-              </span>
-              <button
-                type="button"
-                disabled={paginaActual >= totalPaginas}
-                onClick={() => { setPagina(p => Math.min(totalPaginas, p + 1)); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
-                className="px-3 py-1.5 text-sm rounded-lg border border-border-default text-text-secondary hover:bg-surface-base disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                Siguiente →
-              </button>
+            <div className="mt-6">
+              <Paginador paginaActual={paginaActual} totalPaginas={totalPaginas} onChange={irPagina} />
             </div>
           )}
         </div>
