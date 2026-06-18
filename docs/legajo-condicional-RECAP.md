@@ -38,3 +38,16 @@ Resumen de lo que quedó **vivo en producción** y lo que **dejé flagged** para
 1. En un establecimiento de **Construcción**, respondé las preguntas del alta (demolición/excavación/altura/submuración).
 2. Andá al **Legajo Técnico**: deberían aparecer/desaparecer las Actas, Informes, etc. según las respuestas.
 3. Probá **Quitar** un documento y **Restaurar**lo desde el panel ámbar de arriba.
+4. Probá **+ Agregar documento al legajo** (crea un doc propio de la consultora).
+
+## Continuación — flagged ya RESUELTOS (en prod)
+
+- **Res SRT 503/2014 (excavación O demolición)** → resuelto con **N:N OR**: tabla `normativa_normas_preguntas`. La norma aplica con que CUALQUIERA de las dos preguntas sea SÍ, **sin duplicarse** en la matriz. (mig 27)
+- **Corte de Suministro (Gas/Eléctrico)** → nueva pregunta `Q_INTERF_SUMINISTRO` (¿los trabajos pueden interferir con líneas de suministro?). Aplica si SÍ. (mig 27)
+- **Documentos custom** → resuelto con `consultora_id` en `documentos_tipos` (patrón base/propio de productos/IPERC). La tabla separada NO servía: las tablas de subida tienen FK a `documentos_tipos`, así que un doc en otra tabla no se podía subir. Ahora el custom se sube/vence/override como cualquiera. Botón **+ Agregar documento** en el legajo. (mig 28). Caveat: el nombre del custom debe ser único (no repetir un global), por ahora.
+
+## Sigue FLAGGED (para cuando vuelvas)
+
+- **"Activar un doc del listado"** (force-in de un doc global que no se computó, desde la UI): el motor lo soporta (override incluido=true), falta el modal de selección.
+- **UI de edición** modo/pregunta en la librería de Normativa (el motor + N:N ya están; falta la pantalla).
+- **Relevamiento de Medianeras**: quedó "aplica siempre" — no me dijiste con qué pregunta va (¿submuración? ¿excavación?).
