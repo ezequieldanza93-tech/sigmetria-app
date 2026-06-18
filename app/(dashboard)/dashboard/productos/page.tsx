@@ -624,7 +624,7 @@ export default function ProductosPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 md:p-8 max-w-6xl mx-auto">
+    <div className="p-4 sm:p-6 md:p-8 max-w-[1700px] mx-auto">
       {/* Encabezado */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-3 sm:gap-4">
         <div className="min-w-0">
@@ -713,51 +713,38 @@ export default function ProductosPage() {
         </div>
       )}
 
-      <div className="flex flex-col lg:flex-row gap-6">
-        {/* ── Panel lateral de facetas secundarias (estilo ML) ── */}
-        <aside className="lg:w-56 shrink-0 space-y-4">
-          {/* Búsqueda */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" size={15} />
-            <input
-              type="search"
-              value={busqueda}
-              onChange={e => setBusqueda(e.target.value)}
-              placeholder="Buscar por nombre…"
-              className="w-full pl-9 pr-3 py-2 border border-border-default rounded-lg text-sm bg-surface-base focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
+      {/* ── Filtros secundarios: barra horizontal arriba para que la grilla use todo el ancho ── */}
+      <div className="flex flex-wrap items-center gap-3 mb-5">
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" size={15} />
+          <input
+            type="search"
+            value={busqueda}
+            onChange={e => setBusqueda(e.target.value)}
+            placeholder="Buscar por nombre…"
+            className="w-full pl-9 pr-3 py-2 border border-border-default rounded-lg text-sm bg-surface-base focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
+          />
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Filter size={13} className="text-text-tertiary" aria-hidden="true" />
+          <span className="text-xs text-text-tertiary">Origen</span>
+          <OrigenFilter value={origen} onChange={setOrigen} className="flex-wrap" />
+        </div>
+        {marcasProveedoresOpciones.length > 0 && (
+          <div className="min-w-[200px]">
+            <SearchableSelect
+              value={activeMarcaProveedor}
+              onChange={setActiveMarcaProveedor}
+              placeholder="Marca / Proveedor"
+              options={marcasProveedoresOpciones}
+              emptyText="Sin resultados."
             />
           </div>
+        )}
+      </div>
 
-          <div className="rounded-xl border border-border-subtle bg-surface-elevated p-4 space-y-4">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-text-secondary uppercase tracking-wide">
-              <Filter size={13} aria-hidden="true" />
-              Filtros
-            </div>
-
-            {/* Origen */}
-            <div>
-              <p className="text-xs text-text-tertiary mb-1.5">Origen</p>
-              <OrigenFilter value={origen} onChange={setOrigen} className="flex-wrap" />
-            </div>
-
-            {/* Marca / Proveedor (unificado, solo los presentes en el catálogo filtrado) */}
-            {marcasProveedoresOpciones.length > 0 && (
-              <div>
-                <p className="text-xs text-text-tertiary mb-1.5">Marca / Proveedor</p>
-                <SearchableSelect
-                  value={activeMarcaProveedor}
-                  onChange={setActiveMarcaProveedor}
-                  placeholder="Todos"
-                  options={marcasProveedoresOpciones}
-                  emptyText="Sin resultados."
-                />
-              </div>
-            )}
-          </div>
-        </aside>
-
-        {/* ── Grilla de productos ── */}
-        <div className="flex-1 min-w-0">
+      {/* ── Grilla de productos (full-width) ── */}
+      <div>
           {totalPaginas > 1 && (
             <div className="mb-4">
               <Paginador paginaActual={paginaActual} totalPaginas={totalPaginas} onChange={irPagina} />
@@ -772,7 +759,7 @@ export default function ProductosPage() {
               No hay productos que coincidan con los filtros.
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4">
               {(agrupadosPagina ?? []).map(({ representante, count }) => (
                 <ProductoCard
                   key={representante.id}
@@ -793,7 +780,6 @@ export default function ProductosPage() {
               <Paginador paginaActual={paginaActual} totalPaginas={totalPaginas} onChange={irPagina} />
             </div>
           )}
-        </div>
       </div>
 
       {/* Modal crear */}
