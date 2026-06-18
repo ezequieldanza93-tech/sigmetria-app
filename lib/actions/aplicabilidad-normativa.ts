@@ -111,6 +111,17 @@ export async function getNormativasAplicables(establecimientoId: string): Promis
     respuestas.set(r.pregunta_id, r.respuesta)
   }
 
+  // Preguntas asociadas por norma (N:N, semántica OR: con que UNA sea SÍ, aplica).
+  const { data: nnpData } = await supabase
+    .from('normativa_normas_preguntas')
+    .select('norma_id, pregunta_id')
+  const preguntasPorNorma = new Map<string, string[]>()
+  for (const r of (nnpData ?? []) as { norma_id: string; pregunta_id: string }[]) {
+    const arr = preguntasPorNorma.get(r.norma_id) ?? []
+    arr.push(r.pregunta_id)
+    preguntasPorNorma.set(r.norma_id, arr)
+  }
+
   return normas
     .filter((n) => {
       const joins = n.normativa_normas_tipos_establecimiento ?? []
@@ -118,8 +129,14 @@ export async function getNormativasAplicables(establecimientoId: string): Promis
       const excluido = joins.some((j) => j.modo === 'excluye' && j.tipo_establecimiento_id === dims.tipo_id)
       const aplicaJurisdiccion = !n.provincia_id || n.provincia_id === dims.provincia_id
       const aplicaHabilitacion = !n.requiere_habilitacion || dims.tiene_habilitacion
-      // Gating condicional: si requiere pregunta, solo aplica con respuesta = SÍ.
-      const aplicaPregunta = !n.requiere_pregunta || !n.pregunta_id || respuestas.get(n.pregunta_id) === true
+      // Gating condicional (OR): si requiere pregunta, aplica con que CUALQUIERA
+      // de sus preguntas vinculadas (pregunta_id + join N:N) sea SÍ. Sin preguntas
+      // vinculadas → aplica siempre (no se oculta por config incompleta).
+      const linked = [
+        ...(n.pregunta_id ? [n.pregunta_id] : []),
+        ...(preguntasPorNorma.get(n.id) ?? []),
+      ]
+      const aplicaPregunta = !n.requiere_pregunta || linked.length === 0 || linked.some((pid) => respuestas.get(pid) === true)
       return incluido && !excluido && aplicaJurisdiccion && aplicaHabilitacion && aplicaPregunta
     })
     .map((n) => ({
