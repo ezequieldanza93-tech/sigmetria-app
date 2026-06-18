@@ -271,6 +271,26 @@ export async function updateProducto(id: string, formData: FormData): Promise<Ac
   const { error } = await query
   if (error) return { success: false, error: error.message }
 
+  // Sincronizar el map N:N con la categoría principal. El editor de categorías usa
+  // producto_categoria_map; sin esto, clasificar desde "Editar" desincronizaba el map
+  // (el producto seguía contándose / mostrándose como "sin clasificar"). Idempotente.
+  const SIN_CLASIFICAR = '7d8550de-2bc2-42f9-9865-eb5f4144008f'
+  const { data: yaEnMap } = await supabase
+    .from('producto_categoria_map')
+    .select('producto_id')
+    .eq('producto_id', id)
+    .eq('categoria_id', categoriaId)
+    .maybeSingle()
+  if (!yaEnMap) {
+    await supabase.from('producto_categoria_map').insert({
+      producto_id: id, categoria_id: categoriaId, es_principal: true,
+    })
+  }
+  if (categoriaId !== SIN_CLASIFICAR) {
+    await supabase.from('producto_categoria_map')
+      .delete().eq('producto_id', id).eq('categoria_id', SIN_CLASIFICAR)
+  }
+
   revalidatePath('/dashboard/productos')
   return { success: true, data: null }
 }
