@@ -425,15 +425,25 @@ export default function ProductosPage() {
     componentes: arbolQuery.data?.componentes ?? [],
   }
 
-  function load() {
+  async function load() {
     const supabase = createClient()
-    supabase
-      .from('productos')
-      .select('*, productos_categorias(nombre), marca:organizaciones_externas!productos_marca_id_fkey(nombre), proveedor:organizaciones_externas!productos_proveedor_id_fkey(nombre), unidades(nombre, simbolo), producto_variantes(count)')
-      .eq('is_active', true)
-      .range(0, 9999)
-      .order('nombre')
-      .then(({ data }) => setProductos((data as unknown as Producto[]) ?? []))
+    const sel = '*, productos_categorias(nombre), marca:organizaciones_externas!productos_marca_id_fkey(nombre), proveedor:organizaciones_externas!productos_proveedor_id_fkey(nombre), unidades(nombre, simbolo), producto_variantes(count)'
+    // PostgREST corta en 1000 filas por request. Paginamos en lotes hasta traer TODO
+    // el catálogo; si no, solo se verían/clasificarían los primeros 1000 productos.
+    const LOTE = 1000
+    const todos: Producto[] = []
+    for (let desde = 0; ; desde += LOTE) {
+      const { data } = await supabase
+        .from('productos')
+        .select(sel)
+        .eq('is_active', true)
+        .order('nombre')
+        .range(desde, desde + LOTE - 1)
+      const lote = (data as unknown as Producto[]) ?? []
+      todos.push(...lote)
+      if (lote.length < LOTE) break
+    }
+    setProductos(todos)
   }
 
   useEffect(() => {
