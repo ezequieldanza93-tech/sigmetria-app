@@ -96,6 +96,7 @@ export function ProductoDetalle({
                 fill
                 sizes="500px"
                 className="object-contain"
+                unoptimized
               />
             </div>
             {fotoUrls.length > 1 && (
@@ -107,7 +108,7 @@ export function ProductoDetalle({
                     onClick={() => setFotoActiva(i)}
                     className={`relative h-14 w-14 shrink-0 rounded border-2 overflow-hidden transition-colors ${i === fotoActiva ? 'border-sig-500' : 'border-border-subtle hover:border-border-default'}`}
                   >
-                    <Image src={u} alt="" fill sizes="56px" className="object-cover" />
+                    <Image src={u} alt="" fill sizes="56px" className="object-cover" unoptimized />
                   </button>
                 ))}
               </div>

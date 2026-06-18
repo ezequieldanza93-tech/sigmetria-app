@@ -36,6 +36,9 @@ export function ProductoCard({ producto: p, onDelete, canDelete, onOpen, count }
             fill
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
             className="object-cover"
+            // Catálogo de 4800+ fotos únicas (ya en el CDN de Supabase): servimos
+            // directo, sin el optimizador de Vercel (se agota su cupo → 402 → roto).
+            unoptimized
           />
         ) : (
           <span className="text-5xl text-text-tertiary/20 font-bold uppercase select-none">
