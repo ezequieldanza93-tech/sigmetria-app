@@ -9,7 +9,8 @@ import { DocumentoForm } from '@/components/forms/documento-form'
 import { DocumentoHistorialModal } from '@/components/establecimiento/documento-historial-modal'
 import { createDocumento } from '@/lib/actions/documento'
 import { createTrabajadorDocumento } from '@/lib/actions/trabajador-documento'
-import { setDocumentoOverride, getDocumentoOverrides } from '@/lib/actions/establecimiento-ficha'
+import { setDocumentoOverride, getDocumentoOverrides, createDocumentoCustom } from '@/lib/actions/establecimiento-ficha'
+import type { PeriodicidadDoc } from '@/lib/types'
 import { CATEGORIAS_LEGAJO, periodicidadLabel } from '@/lib/legajo'
 import type {
   ActionResult,
@@ -175,6 +176,62 @@ function EsperadosTable({
   )
 }
 
+// Form para crear un documento PROPIO de la consultora (custom) desde el legajo.
+function AgregarDocForm({ empresaId, onDone }: { empresaId: string; onDone: () => void }) {
+  const [nombre, setNombre] = useState('')
+  const [nivel, setNivel] = useState<'empresa' | 'establecimiento' | 'persona'>('establecimiento')
+  const [periodicidad, setPeriodicidad] = useState<PeriodicidadDoc | ''>('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const submit = async () => {
+    setError(null)
+    if (!nombre.trim()) { setError('Poné un nombre'); return }
+    setSaving(true)
+    const res = await createDocumentoCustom(empresaId, { nombre, nivel, periodicidad: periodicidad || null })
+    setSaving(false)
+    if (!res.success) { setError(res.error); return }
+    onDone()
+  }
+
+  const inputCls = 'w-full px-3 py-2 text-sm border border-border-default rounded-lg bg-surface-base text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary'
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-1.5">
+        <label className="text-sm font-medium text-text-secondary">Nombre del documento</label>
+        <input className={inputCls} value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Ej: Certificado interno de capacitación" />
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <label className="text-sm font-medium text-text-secondary">Nivel</label>
+        <div className="flex flex-wrap gap-x-3 gap-y-1.5">
+          {([['empresa', 'Empresa'], ['establecimiento', 'Establecimiento'], ['persona', 'Persona']] as const).map(([v, l]) => (
+            <label key={v} className="flex items-center gap-1.5 cursor-pointer select-none">
+              <input type="radio" name="nivel-custom" checked={nivel === v} onChange={() => setNivel(v)} className="accent-brand-primary" />
+              <span className="text-sm text-text-primary">{l}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <label className="text-sm font-medium text-text-secondary">Renovación</label>
+        <select className={inputCls} value={periodicidad} onChange={e => setPeriodicidad(e.target.value as PeriodicidadDoc | '')}>
+          <option value="">Sin vencimiento</option>
+          <option value="mensual">Mensual</option>
+          <option value="semestral">Semestral</option>
+          <option value="anual">Anual</option>
+        </select>
+      </div>
+      {error && <p className="text-xs text-danger">{error}</p>}
+      <div className="flex justify-end gap-2 pt-1">
+        <button type="button" onClick={submit} disabled={saving}
+          className="px-4 py-2 text-sm font-medium bg-brand-primary text-white rounded-lg hover:bg-brand-primary/90 disabled:opacity-50">
+          {saving ? 'Agregando…' : 'Agregar al catálogo de la consultora'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export function LegajoTab({
   legajoEsperados,
   gestionesLegajo,
@@ -205,6 +262,7 @@ export function LegajoTab({
     router.refresh()
   }
   const quitados = overrides.filter(o => !o.incluido)
+  const [agregarOpen, setAgregarOpen] = useState(false)
 
   // Modal de carga: tipo prefijado + acción según categoría/persona.
   const [subirState, setSubirState] = useState<{
@@ -314,6 +372,17 @@ export function LegajoTab({
 
   return (
     <div className="space-y-4">
+      {canWrite && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => setAgregarOpen(true)}
+            className="text-xs font-medium text-sig-600 hover:text-sig-700 hover:underline"
+          >
+            + Agregar documento al legajo
+          </button>
+        </div>
+      )}
       {canWrite && quitados.length > 0 && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
           <p className="text-xs font-semibold text-amber-800 mb-1.5">
@@ -437,6 +506,18 @@ export function LegajoTab({
         tipoNombre={historialState?.tipoNombre ?? ''}
         versiones={historialState?.versiones ?? []}
       />
+
+      {/* Modal: agregar un documento PROPIO de la consultora al legajo. */}
+      <Modal
+        open={agregarOpen}
+        onClose={() => setAgregarOpen(false)}
+        title="Agregar documento al legajo"
+      >
+        <AgregarDocForm
+          empresaId={empresaId}
+          onDone={() => { setAgregarOpen(false); router.refresh() }}
+        />
+      </Modal>
     </div>
   )
 }

@@ -503,6 +503,48 @@ export async function setDocumentoOverride(
   return { success: true }
 }
 
+/**
+ * Crea un tipo de documento PROPIO de la consultora (custom, no global) y queda
+ * disponible en el legajo de sus establecimientos. consultora_id se toma de la
+ * empresa. nivel define la categoría del legajo y el aplica_* (exactamente uno).
+ */
+export async function createDocumentoCustom(
+  empresaId: string,
+  input: { nombre: string; nivel: 'empresa' | 'establecimiento' | 'persona'; periodicidad?: PeriodicidadDoc | null },
+): Promise<{ success: true } | { success: false; error: string }> {
+  const supabase = await createClient()
+
+  const nombre = input.nombre.trim()
+  if (!nombre) return { success: false, error: 'El nombre es obligatorio' }
+
+  const { data: emp } = await supabase.from('empresas').select('consultora_id').eq('id', empresaId).single()
+  const consultoraId = (emp as { consultora_id: string } | null)?.consultora_id
+  if (!consultoraId) return { success: false, error: 'No se pudo determinar la consultora' }
+
+  const map = {
+    empresa: { categoria_legajo: 'empresa', aplica_empresa: true, aplica_establecimiento: false, aplica_empleado: false },
+    establecimiento: { categoria_legajo: 'establecimiento', aplica_empresa: false, aplica_establecimiento: true, aplica_empleado: false },
+    persona: { categoria_legajo: 'persona', aplica_empresa: false, aplica_establecimiento: false, aplica_empleado: true },
+  }[input.nivel]
+
+  const { error } = await supabase.from('documentos_tipos').insert({
+    consultora_id: consultoraId,
+    nombre,
+    nivel: input.nivel,
+    categoria_legajo: map.categoria_legajo,
+    aplica_empresa: map.aplica_empresa,
+    aplica_establecimiento: map.aplica_establecimiento,
+    aplica_empleado: map.aplica_empleado,
+    periodicidad: input.periodicidad ?? null,
+    vigencia_tipo: input.periodicidad ? 'periodica' : 'unica_vez',
+    pais_id: 'AR',
+    is_active: true,
+    requiere_pregunta: false,
+  })
+  if (error) return { success: false, error: error.message }
+  return { success: true }
+}
+
 /** Overrides del legajo de un establecimiento (con el nombre del documento). */
 export async function getDocumentoOverrides(
   establecimientoId: string,

@@ -51,6 +51,7 @@ export async function getDocumentosTiposConfig(): Promise<ActionResult<Documento
        requiere_alerta, dias_alerta,
        requiere_pregunta, pregunta_sugerida, pregunta_id, norma_id`
     )
+    .is('consultora_id', null)
     .order('nombre', { ascending: true })
 
   if (error) return { success: false, error: error.message }
