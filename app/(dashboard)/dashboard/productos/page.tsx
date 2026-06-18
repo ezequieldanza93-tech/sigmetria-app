@@ -489,8 +489,9 @@ export default function ProductosPage() {
 
   // Predicado de categoría: null = sin filtro activo (pasa todo); Set = OR entre seleccionadas.
   function pasaCategoria(categoriaId: string | null): boolean {
+    // null = sin filtro (todas). Set vacío = "Ninguno" (no muestra nada hasta
+    // tildar una). Set con ids = solo esas categorías.
     if (categoriasSel === null) return true
-    if (categoriasSel.size === 0) return true
     return categoriaId !== null && categoriasSel.has(categoriaId)
   }
 
@@ -542,9 +543,11 @@ export default function ProductosPage() {
 
   // Cuando cambia la selección de categorías desde el MultiSelectFilter.
   function handleCategoriaChange(next: Set<string>) {
-    // Si están todas seleccionadas → nil (sin filtro activo). Si ninguna → nil también (sin filtro).
+    // Todas tildadas → null (sin filtro, ve todo). Ninguna o parcial → el Set tal cual.
+    // Set vacío = "Ninguno": no muestra nada hasta que tildes una (lo que pidió el usuario
+    // para no tener que destildar las demás de a una).
     const todasSeleccionadas = next.size === categoriaOpciones.length && categoriaOpciones.length > 0
-    setCategoriasSel(todasSeleccionadas || next.size === 0 ? null : next)
+    setCategoriasSel(todasSeleccionadas ? null : next)
     setActiveComponente('todos')
     setActiveMarcaProveedor('')
   }
