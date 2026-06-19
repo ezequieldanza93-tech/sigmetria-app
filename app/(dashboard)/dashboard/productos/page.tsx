@@ -22,7 +22,7 @@ import {
   componentesDeCategoria,
   type CatalogoArbol,
 } from '@/components/productos/catalogo-cascade'
-import type { Producto, Organizacion, ActionResult, Unidad, ProductoClase } from '@/lib/types'
+import type { Producto, Organizacion, ActionResult, Unidad } from '@/lib/types'
 
 // Ícono por clase (por nombre genérico). Fallback Package para clases propias.
 function iconoClase(nombre: string) {
@@ -610,71 +610,139 @@ export default function ProductosPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  // Renderiza un tab de clase con su ícono.
-  function ClaseTab({ clase }: { clase: ProductoClase }) {
-    const Icon = iconoClase(clase.nombre)
-    const active = activeClase === clase.id
-    return (
-      <button
-        onClick={() => selectClase(clase.id)}
-        className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors ${active ? 'bg-sig-500 text-white border-sig-500 shadow-sm' : 'border-border-default text-text-secondary hover:bg-surface-base'}`}
-      >
-        <Icon size={15} aria-hidden="true" />
-        {clase.nombre}
-      </button>
-    )
-  }
-
   return (
     <div className="p-4 sm:p-6 md:p-8 max-w-[1700px] mx-auto">
-      {/* Encabezado */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-3 sm:gap-4">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-bold text-text-primary">Productos</h1>
-          <p className="text-sm text-text-secondary mt-1">
-            Catálogo de protecciones y equipamiento
-            {productos !== null && (
-              <span className="ml-2 text-text-tertiary">
-                ({filteredCount < totalCount
-                  ? `${agrupadosCount} de ${totalCount}`
-                  : agrupadosCount})
-              </span>
-            )}
-          </p>
+      {/* ── Encabezado compacto: título + contador inline + botón a la derecha ── */}
+      <div className="flex items-center justify-between mb-3 gap-3 min-w-0">
+        <div className="flex items-baseline gap-2 min-w-0">
+          <h1 className="text-xl font-bold text-text-primary leading-none">Productos</h1>
+          {productos !== null && (
+            <span className="text-xs text-text-tertiary shrink-0">
+              {filteredCount < totalCount
+                ? `${agrupadosCount} de ${totalCount}`
+                : agrupadosCount}
+            </span>
+          )}
         </div>
-        <Button onClick={() => setShowModal(true)} className="w-full sm:w-auto shrink-0">+ Nuevo Producto</Button>
+        <Button onClick={() => setShowModal(true)} size="sm" className="shrink-0">+ Nuevo Producto</Button>
       </div>
 
-      {/* ── Nivel 1: CLASE (tabs destacados, Equipamiento separado) ── */}
-      <div className="flex items-center gap-2 mb-4 flex-wrap">
+      {/* ── Barra de filtros compacta: clase + buscador + origen + marca/proveedor + paginación ── */}
+      <div className="flex flex-wrap items-center gap-2 mb-2">
+        {/* Tabs de clase */}
         <button
           onClick={() => selectClase('todos')}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors ${activeClase === 'todos' ? 'bg-gray-900 text-white border-gray-900 shadow-sm' : 'border-border-default text-text-secondary hover:bg-surface-base'}`}
+          className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md border transition-colors ${activeClase === 'todos' ? 'bg-gray-900 text-white border-gray-900' : 'border-border-default text-text-secondary hover:bg-surface-base'}`}
         >
-          <Layers size={15} aria-hidden="true" />
-          Todo el catálogo
+          <Layers size={13} aria-hidden="true" />
+          Todo
         </button>
 
         {proteccionClases.length > 0 && (
           <>
-            <span className="text-text-tertiary/40 select-none px-1">|</span>
-            {proteccionClases.map(cl => <ClaseTab key={cl.id} clase={cl} />)}
+            <span className="text-text-tertiary/40 select-none">|</span>
+            {proteccionClases.map(cl => {
+              const Icon = iconoClase(cl.nombre)
+              const active = activeClase === cl.id
+              return (
+                <button
+                  key={cl.id}
+                  onClick={() => selectClase(cl.id)}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md border transition-colors ${active ? 'bg-sig-500 text-white border-sig-500' : 'border-border-default text-text-secondary hover:bg-surface-base'}`}
+                >
+                  <Icon size={13} aria-hidden="true" />
+                  {cl.nombre}
+                </button>
+              )
+            })}
           </>
         )}
 
-        {/* Equipamiento como librería aparte de las protecciones. */}
         {equipamientoClases.length > 0 && (
           <>
-            <span className="text-text-tertiary/40 select-none px-1">|</span>
-            <span className="text-xs text-text-tertiary uppercase tracking-wide self-center">Librería aparte:</span>
-            {equipamientoClases.map(cl => <ClaseTab key={cl.id} clase={cl} />)}
+            <span className="text-text-tertiary/40 select-none">|</span>
+            {equipamientoClases.map(cl => {
+              const Icon = iconoClase(cl.nombre)
+              const active = activeClase === cl.id
+              return (
+                <button
+                  key={cl.id}
+                  onClick={() => selectClase(cl.id)}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md border transition-colors ${active ? 'bg-sig-500 text-white border-sig-500' : 'border-border-default text-text-secondary hover:bg-surface-base'}`}
+                >
+                  <Icon size={13} aria-hidden="true" />
+                  {cl.nombre}
+                </button>
+              )
+            })}
           </>
+        )}
+
+        {/* Separador visual antes de filtros secundarios */}
+        <span className="text-text-tertiary/40 select-none hidden sm:inline">|</span>
+
+        {/* Buscador */}
+        <div className="relative min-w-[160px] max-w-[220px] flex-1">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary" size={13} />
+          <input
+            type="search"
+            value={busqueda}
+            onChange={e => setBusqueda(e.target.value)}
+            placeholder="Buscar…"
+            className="w-full pl-8 pr-2 py-1 border border-border-default rounded-md text-xs bg-surface-base focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
+          />
+        </div>
+
+        {/* Filtro Origen */}
+        <div className="flex items-center gap-1">
+          <Filter size={12} className="text-text-tertiary" aria-hidden="true" />
+          <OrigenFilter value={origen} onChange={setOrigen} className="flex-wrap" />
+        </div>
+
+        {/* Marca / Proveedor */}
+        {marcasProveedoresOpciones.length > 0 && (
+          <div className="min-w-[160px] max-w-[200px]">
+            <SearchableSelect
+              value={activeMarcaProveedor}
+              onChange={setActiveMarcaProveedor}
+              placeholder="Marca / Proveedor"
+              options={marcasProveedoresOpciones}
+              emptyText="Sin resultados."
+            />
+          </div>
+        )}
+
+        {/* Paginación compacta al final de la barra (solo si hay más de 1 página) */}
+        {totalPaginas > 1 && (
+          <div className="flex items-center gap-1.5 ml-auto shrink-0 text-xs text-text-secondary">
+            <button
+              type="button"
+              disabled={paginaActual <= 1}
+              onClick={() => irPagina(paginaActual - 1)}
+              className="px-2 py-0.5 rounded border border-border-default hover:bg-surface-base disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >←</button>
+            <select
+              value={paginaActual}
+              onChange={e => irPagina(Number(e.target.value))}
+              aria-label="Ir a la página"
+              className="border border-border-default rounded px-1.5 py-0.5 text-xs bg-surface-base focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
+            >
+              {Array.from({ length: totalPaginas }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1}</option>)}
+            </select>
+            <span className="text-text-tertiary">/ {totalPaginas}</span>
+            <button
+              type="button"
+              disabled={paginaActual >= totalPaginas}
+              onClick={() => irPagina(paginaActual + 1)}
+              className="px-2 py-0.5 rounded border border-border-default hover:bg-surface-base disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >→</button>
+          </div>
         )}
       </div>
 
-      {/* ── Nivel 2: CATEGORÍA (multi-select desplegable, igual que filtros de gestiones) ── */}
+      {/* ── Nivel 2: CATEGORÍA (multi-select, compacto, debajo si está activo) ── */}
       {categoriaOpciones.length > 0 && (
-        <div className={`flex items-center gap-2 ${componentesVisibles.length > 0 ? 'mb-2' : 'mb-4'}`}>
+        <div className={`flex items-center gap-2 ${componentesVisibles.length > 0 ? 'mb-1' : 'mb-2'}`}>
           <MultiSelectFilter
             label="Categoría"
             options={categoriaOpciones}
@@ -694,14 +762,14 @@ export default function ProductosPage() {
         </div>
       )}
 
-      {/* ── Nivel 3: COMPONENTE (solo si hay exactamente una categoría seleccionada y tiene componentes) ── */}
+      {/* ── Nivel 3: COMPONENTE (solo si hay exactamente una categoría seleccionada) ── */}
       {componentesVisibles.length > 0 && (
-        <div className="flex gap-1 mb-4 flex-wrap pl-3 border-l-2 border-sig-200">
+        <div className="flex gap-1 mb-2 flex-wrap pl-3 border-l-2 border-sig-200">
           <button
             onClick={() => setActiveComponente('todos')}
             className={`px-2.5 py-0.5 text-xs rounded-full border transition-colors ${activeComponente === 'todos' ? 'bg-sig-600 text-white border-sig-600' : 'border-border-subtle text-text-tertiary hover:bg-surface-base'}`}
           >
-            Todos los componentes
+            Todos
           </button>
           {componentesVisibles.map(co => (
             <button
@@ -715,43 +783,8 @@ export default function ProductosPage() {
         </div>
       )}
 
-      {/* ── Filtros secundarios: barra horizontal arriba para que la grilla use todo el ancho ── */}
-      <div className="flex flex-wrap items-center gap-3 mb-5">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" size={15} />
-          <input
-            type="search"
-            value={busqueda}
-            onChange={e => setBusqueda(e.target.value)}
-            placeholder="Buscar por nombre…"
-            className="w-full pl-9 pr-3 py-2 border border-border-default rounded-lg text-sm bg-surface-base focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
-          />
-        </div>
-        <div className="flex items-center gap-1.5">
-          <Filter size={13} className="text-text-tertiary" aria-hidden="true" />
-          <span className="text-xs text-text-tertiary">Origen</span>
-          <OrigenFilter value={origen} onChange={setOrigen} className="flex-wrap" />
-        </div>
-        {marcasProveedoresOpciones.length > 0 && (
-          <div className="min-w-[200px]">
-            <SearchableSelect
-              value={activeMarcaProveedor}
-              onChange={setActiveMarcaProveedor}
-              placeholder="Marca / Proveedor"
-              options={marcasProveedoresOpciones}
-              emptyText="Sin resultados."
-            />
-          </div>
-        )}
-      </div>
-
       {/* ── Grilla de productos (full-width) ── */}
       <div>
-          {totalPaginas > 1 && (
-            <div className="mb-4">
-              <Paginador paginaActual={paginaActual} totalPaginas={totalPaginas} onChange={irPagina} />
-            </div>
-          )}
           {agrupados === null ? (
             <div className="bg-surface-base rounded-xl border border-border-subtle p-8 text-center text-text-tertiary">
               Cargando…
