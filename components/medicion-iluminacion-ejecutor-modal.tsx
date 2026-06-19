@@ -3,7 +3,8 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useGeoCaptura } from '@/lib/hooks/use-geo-captura'
-import { descargarProtocoloPdf } from '@/lib/pdf/protocolo-pdf'
+import { generarProtocoloPdf } from '@/lib/pdf/protocolo-pdf'
+import { guardarEvidenciaProtocolo } from '@/lib/actions/protocolo-evidencia'
 import {
   crearMedicionIluminacion,
   sugerirValorRequerido,
@@ -320,6 +321,9 @@ export function MedicionIluminacionEjecutorModal({
   const hojaDatosRef = useRef<HTMLDivElement>(null)
   const hojaGrillaRef = useRef<HTMLDivElement>(null)
   const hojaAnalisisRef = useRef<HTMLDivElement>(null)
+  // PDF generado (se reusa para descargar) + estado del guardado como evidencia.
+  const pdfDocRef = useRef<Awaited<ReturnType<typeof generarProtocoloPdf>> | null>(null)
+  const [evidenciaStatus, setEvidenciaStatus] = useState<'idle' | 'guardando' | 'ok' | 'error'>('idle')
 
   // ── Catálogos ───────────────────────────────────────────────────────
   const [estCtx, setEstCtx] = useState<EstablecimientoCtx | null>(null)
@@ -774,20 +778,49 @@ export function MedicionIluminacionEjecutorModal({
   // Genera el protocolo client-side a partir de los datos en memoria, sin tocar
   // storage (v1): rasteriza las 3 hojas ocultas y arma un A4 multipágina.
   async function handleDescargarPdf() {
-    const hojas = [hojaDatosRef.current, hojaGrillaRef.current, hojaAnalisisRef.current]
-      .filter((h): h is HTMLDivElement => h != null)
-    if (hojas.length === 0) return
     setDescargandoPdf(true)
     setError(null)
     try {
       const nombre = `protocolo-iluminacion-${fechaMedicion || new Date().toISOString().slice(0, 10)}.pdf`
-      await descargarProtocoloPdf({ hojas }, nombre)
+      let pdf = pdfDocRef.current
+      if (!pdf) {
+        const hojas = [hojaDatosRef.current, hojaGrillaRef.current, hojaAnalisisRef.current]
+          .filter((h): h is HTMLDivElement => h != null)
+        if (hojas.length === 0) return
+        pdf = await generarProtocoloPdf({ hojas })
+        pdfDocRef.current = pdf
+      }
+      pdf.save(nombre)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo generar el PDF.')
     } finally {
       setDescargandoPdf(false)
     }
   }
+
+  // Al llegar al paso final, genera el PDF y lo guarda como EVIDENCIA ADJUNTA de
+  // la gestión (best-effort, no bloquea). Reusa el PDF para la descarga manual.
+  useEffect(() => {
+    if (step !== 'listo' || evidenciaStatus !== 'idle') return
+    let cancelled = false
+    ;(async () => {
+      await new Promise(res => setTimeout(res, 150)) // dejar montar las hojas ocultas
+      const hojas = [hojaDatosRef.current, hojaGrillaRef.current, hojaAnalisisRef.current]
+        .filter((h): h is HTMLDivElement => h != null)
+      if (cancelled || hojas.length === 0) return
+      setEvidenciaStatus('guardando')
+      try {
+        const pdf = await generarProtocoloPdf({ hojas })
+        if (cancelled) return
+        pdfDocRef.current = pdf
+        const res = await guardarEvidenciaProtocolo(registroId, pdf.output('datauristring'), 'mediciones-iluminacion')
+        if (!cancelled) setEvidenciaStatus(res.success ? 'ok' : 'error')
+      } catch {
+        if (!cancelled) setEvidenciaStatus('error')
+      }
+    })()
+    return () => { cancelled = true }
+  }, [step, evidenciaStatus, registroId])
 
   const stepIdx = STEP_ORDER.indexOf(step)
   const punto = puntos[puntoActivo]
@@ -869,6 +902,21 @@ export function MedicionIluminacionEjecutorModal({
           </div>
           {error && (
             <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-3 py-2">{error}</div>
+          )}
+          {evidenciaStatus === 'guardando' && (
+            <p className="text-xs text-text-tertiary flex items-center justify-center gap-1.5">
+              <Loader2 size={12} className="animate-spin" /> Guardando PDF en la evidencia de la gestión…
+            </p>
+          )}
+          {evidenciaStatus === 'ok' && (
+            <p className="text-xs text-success flex items-center justify-center gap-1.5">
+              <FileCheck size={12} /> PDF guardado como evidencia de la gestión
+            </p>
+          )}
+          {evidenciaStatus === 'error' && (
+            <p className="text-xs text-warning flex items-center justify-center gap-1.5">
+              <AlertTriangle size={12} /> No se pudo guardar la evidencia automáticamente — descargá el PDF con el botón.
+            </p>
           )}
           <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3 justify-center pt-2">
             <Button type="button" onClick={handleDescargarPdf} disabled={descargandoPdf}>
