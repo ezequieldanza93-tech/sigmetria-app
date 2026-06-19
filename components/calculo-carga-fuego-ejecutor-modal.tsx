@@ -509,8 +509,23 @@ export function CalculoCargaFuegoEjecutorModal({
       }
       setStep('materiales')
     } else if (step === 'materiales') {
-      const algunoConDatos = sectoresWizard.some(s => s.materiales.some(m => num(m.peso_kg) != null && num(m.coef_c) != null))
-      if (!algunoConDatos) { setError('Cargá al menos un material con su peso y coeficiente C en algún sector.'); return }
+      // Sectores sin ningún material con peso + coef. C cargado.
+      const sinMateriales = sectoresWizard
+        .map((s, i) => ({ s, i }))
+        .filter(({ s }) => !s.materiales.some(m => num(m.peso_kg) != null && num(m.coef_c) != null))
+      // Si NINGÚN sector tiene materiales no hay nada para calcular: bloqueo duro.
+      if (sinMateriales.length === sectoresWizard.length) {
+        setError('Cargá al menos un material con su peso y coeficiente C en algún sector.')
+        return
+      }
+      // Si solo ALGUNOS quedaron sin materiales, avisamos y dejamos decidir.
+      if (sinMateriales.length > 0) {
+        const nombres = sinMateriales.map(({ s, i }) => s.sectorIncendio.trim() || `Sector ${i + 1}`).join(', ')
+        const seguir = confirm(
+          `Estos sectores no tienen materiales cargados: ${nombres}.\n\nNo se les va a calcular la carga de fuego. ¿Seguir igual? (Cancelá para completarlos antes de avanzar)`
+        )
+        if (!seguir) { setSectorActivoIdx(sinMateriales[0].i); return }
+      }
       setStep('resultado')
     } else if (step === 'resultado') {
       if (!sectoresWizard.some(s => !!s.riesgo)) { setError('Definí el nivel de riesgo en al menos un sector (R1-R7).'); return }
