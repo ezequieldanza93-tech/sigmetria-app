@@ -36,7 +36,9 @@ function iconoClase(nombre: string) {
 // Tamaño de página de la grilla. Render paginado client-side: el filtrado y la
 // agrupación siguen siendo client-side (rápidos en JS), pero solo pintamos una
 // página de tarjetas por vez para que el navegador no se trabe con miles de <Image>.
-const PAGE_SIZE = 48
+// 50 = múltiplo de 5 (la grilla usa 5 columnas en desktop), así la última fila
+// de cada página queda completa con 5 tarjetas igual que el resto.
+const PAGE_SIZE = 50
 
 // Controles de paginación de la grilla: Anterior / selector directo de página / Siguiente.
 // Se usa arriba y abajo de la grilla. El <select> permite saltar a cualquier página.
