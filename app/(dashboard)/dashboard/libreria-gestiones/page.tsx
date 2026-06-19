@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronDown, ChevronRight, Plus, Pencil, Trash2, FolderOpen, Layers, X } from 'lucide-react'
+import { ChevronDown, ChevronRight, Plus, Pencil, Trash2, FolderOpen, Layers, X, ListChecks } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { useEffectiveRoleContext } from '@/lib/contexts/effective-role-context'
@@ -14,6 +14,7 @@ import {
   createChecklistCategoria, updateChecklistCategoria, deleteChecklistCategoria,
 } from '@/lib/actions/gestiones-libreria'
 import { LIMITE_GRUPOS, LIMITE_CATEGORIAS } from '@/lib/gestiones/limites'
+import { ChecklistContenidoEditor } from '@/components/checklist-contenido-editor'
 
 // ─── tipos ────────────────────────────────────────────────────────────────────
 
@@ -131,6 +132,9 @@ export default function LibreriaGestionesPage() {
 
   // estado para sub-niveles abiertos (4to nivel)
   const [openChecklistCats, setOpenChecklistCats] = useState<Set<string>>(new Set())
+
+  // modal editor de contenido (secciones e ítems) de un checklist
+  const [editorContenido, setEditorContenido] = useState<{ gestionId: string; nombre: string } | null>(null)
 
   const grupos = data?.grupos ?? []
   const categorias = data?.categorias ?? []
@@ -528,6 +532,13 @@ export default function LibreriaGestionesPage() {
                                             <div key={g.id} className="flex items-center gap-1 sm:gap-2 py-1.5 px-2 rounded hover:bg-surface-elevated">
                                               <span className="flex-1 min-w-0 text-sm truncate">{g.nombre}</span>
                                               <OrigenBadge consultoraId={g.consultora_id} />
+                                              <button
+                                                onClick={() => setEditorContenido({ gestionId: g.id, nombre: g.nombre })}
+                                                className="shrink-0 p-1.5 -m-0.5 rounded text-text-tertiary hover:text-brand-primary"
+                                                title="Ver / editar ítems del checklist"
+                                              >
+                                                <ListChecks className="w-3.5 h-3.5" />
+                                              </button>
                                               {editableGe && (
                                                 <>
                                                   <button onClick={() => abrirEditarGestion(g)} className="shrink-0 p-1.5 -m-0.5 rounded text-text-tertiary hover:text-text-primary" title="Editar checklist">
@@ -1073,6 +1084,16 @@ export default function LibreriaGestionesPage() {
           </div>
         )}
       </Modal>
+
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {/* EDITOR: secciones e ítems de un checklist                            */}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      <ChecklistContenidoEditor
+        open={editorContenido !== null}
+        onClose={() => setEditorContenido(null)}
+        gestionId={editorContenido?.gestionId ?? ''}
+        gestionNombre={editorContenido?.nombre ?? ''}
+      />
 
       {/* ══════════════════════════════════════════════════════════════════════ */}
       {/* MODAL: nueva / editar categoría checklist (4to nivel)                */}
