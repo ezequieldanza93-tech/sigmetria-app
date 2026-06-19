@@ -22,6 +22,7 @@ import {
   type MaterialCarga,
 } from '@/lib/calculo-carga-fuego/calculos'
 import { firmarProtocolo } from '@/lib/actions/firmar-protocolo'
+import { pickClasificacionDefault } from '@/lib/medicion/clasificacion-default'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { FirmaCanvas } from '@/components/firmas/firma-canvas'
@@ -245,6 +246,8 @@ export function CalculoCargaFuegoEjecutorModal({
   const [observacionesSeguimiento, setObservacionesSeguimiento] = useState<ObsDraft[]>([])
   const [categoriasObs, setCategoriasObs] = useState<CategoriaObs[]>([])
   const [clasificacionesObs, setClasificacionesObs] = useState<{ id: string; nombre: string }[]>([])
+  // Tipo de riesgo por defecto del protocolo (preselección de observaciones nuevas).
+  const [clasificacionDefaultId, setClasificacionDefaultId] = useState('')
   const [personasObs, setPersonasObs] = useState<{ id: string; nombre: string; apellido: string }[]>([])
 
   const inputCls = 'w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500'
@@ -303,7 +306,13 @@ export function CalculoCargaFuegoEjecutorModal({
       .select('id, nombre')
       .eq('is_active', true)
       .order('nombre')
-      .then(({ data }) => { if (activo) setClasificacionesObs((data ?? []) as { id: string; nombre: string }[]) })
+      .then(({ data }) => {
+        if (!activo) return
+        const rows = (data ?? []) as { id: string; nombre: string }[]
+        setClasificacionesObs(rows)
+        // Tipo de riesgo por defecto del protocolo Carga de Fuego → Incendio.
+        setClasificacionDefaultId(pickClasificacionDefault('carga_fuego', rows))
+      })
     supabase
       .from('observaciones_categorias')
       .select('id, nombre, nivel, color')
@@ -388,7 +397,8 @@ export function CalculoCargaFuegoEjecutorModal({
       key: obsKeySeq++,
       descripcion: '',
       categoria_id: '',
-      clasificacion_id: '',
+      // Tipo de riesgo preseleccionado según el protocolo (default, editable).
+      clasificacion_id: clasificacionDefaultId,
       responsable_id: '',
       fecha_subsanacion: '',
       foto_preview: null,
