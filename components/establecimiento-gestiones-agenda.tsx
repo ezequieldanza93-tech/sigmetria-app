@@ -1737,6 +1737,34 @@ function AgendaActionsCell({
   const esVisorHtmlInterino = TIPOS_VISOR_HTML_INTERINO.has(r.ge_tipo_ejecucion ?? '')
 
   if (yaEjecutada && esProtocoloMedicion) {
+    // Prioridad: si el protocolo ya guardó su PDF como evidencia adjunta →
+    // "Descargar PDF" (le gana al visor HTML interino). + toggle de legajo.
+    if (tieneEvidencia) {
+      return (
+        <div className="flex items-center gap-1.5 justify-center">
+          <a
+            href={getUrl(r.evidencia_url) ?? '#'}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Descargar el PDF del protocolo"
+            className={`${primaryBtn} ${primaryActive}`}
+            aria-disabled={!getUrl(r.evidencia_url)}
+          >
+            <Download size={14} />
+            <span className="hidden sm:inline">Descargar PDF</span>
+          </a>
+          <button
+            title={r.mostrar_lt ? 'En Legajo Técnico (click para quitar)' : 'Fuera del Legajo Técnico (click para agregar)'}
+            onClick={onToggleLegajo}
+            aria-pressed={!!r.mostrar_lt}
+            className={`${toggleBtn} ${r.mostrar_lt ? toggleOn : toggleOff}`}
+          >
+            <BookMarked size={14} fill={r.mostrar_lt ? 'currentColor' : 'none'} />
+          </button>
+        </div>
+      )
+    }
+    // Sin PDF guardado todavía → visor HTML interino / ver reporte.
     if (onViewReporte) {
       return (
         <div className="flex items-center justify-center">
@@ -1748,26 +1776,6 @@ function AgendaActionsCell({
             <Eye size={14} />
             <span className="hidden sm:inline">{esVisorHtmlInterino ? 'Ver (HTML)' : 'Ver reporte'}</span>
           </button>
-        </div>
-      )
-    }
-    // Protocolo ejecutado sin viewer disponible: si dejó un adjunto manual, "Ver";
-    // si no, badge "Realizado" para que el usuario sepa que el protocolo fue guardado.
-    // NUNCA volver a mostrar "Ejecutar" para un protocolo ya ejecutado.
-    if (tieneEvidencia) {
-      return (
-        <div className="flex items-center justify-center">
-          <a
-            href={getUrl(r.evidencia_url) ?? '#'}
-            target="_blank"
-            rel="noopener noreferrer"
-            title="Ver/descargar adjunto"
-            className={`${primaryBtn} ${primaryActive}`}
-            aria-disabled={!getUrl(r.evidencia_url)}
-          >
-            <Download size={14} />
-            <span className="hidden sm:inline">Ver</span>
-          </a>
         </div>
       )
     }
