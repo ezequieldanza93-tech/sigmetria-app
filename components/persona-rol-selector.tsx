@@ -222,8 +222,15 @@ function CrearPersonaForm({ onSuccess, onCancel }: CrearPersonaFormProps) {
     }
   }, [state, onSuccess])
 
+  // El form se monta al abrir "Crear nueva persona": lo traemos a la vista para que
+  // el botón "Crear y seleccionar" no quede tapado por el footer sticky del modal.
+  const formRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [])
+
   return (
-    <div className="mt-2 rounded-lg border border-sig-200 bg-sig-50/50 p-3 space-y-2">
+    <div ref={formRef} className="mt-2 rounded-lg border border-sig-200 bg-sig-50/50 p-3 space-y-2">
       <p className="text-xs font-semibold text-sig-700 uppercase tracking-wide">Nueva persona en el directorio</p>
       <form action={action} className="space-y-2">
         <div className="grid grid-cols-2 gap-2">

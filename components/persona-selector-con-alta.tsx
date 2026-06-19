@@ -351,8 +351,16 @@ function CrearPersonaInline({ esExterna, onSuccess, onCancel }: CrearPersonaInli
     if (state?.success && state.data) onSuccessRef.current(state.data)
   }, [state])
 
+  // El form se monta al abrir "Agregar nueva persona": lo traemos a la vista para
+  // que el botón "Crear y seleccionar" no quede tapado por el footer sticky del
+  // modal ni debajo del fold.
+  const formRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [])
+
   return (
-    <div className="mt-2 rounded-lg border border-sig-200 bg-sig-50/50 p-3 space-y-2">
+    <div ref={formRef} className="mt-2 rounded-lg border border-sig-200 bg-sig-50/50 p-3 space-y-2">
       <p className="text-xs font-semibold text-sig-700 uppercase tracking-wide">
         {esExterna ? 'Nueva persona externa' : 'Nueva persona en el directorio'}
       </p>

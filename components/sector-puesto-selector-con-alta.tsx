@@ -107,6 +107,12 @@ export function SectorPuestoSelectorConAlta({
   const [puestoError, setPuestoError] = useState<string | null>(null)
   const [puestoPending, startPuestoTransition] = useTransition()
 
+  // Refs a los mini-forms de alta para traerlos a la vista al abrirlos: si el
+  // selector está al fondo de un modal con scroll + footer sticky, el botón
+  // "Crear y seleccionar" queda tapado o debajo del fold si no scrolleamos.
+  const crearSectorFormRef = useRef<HTMLDivElement>(null)
+  const crearPuestoFormRef = useRef<HTMLDivElement>(null)
+
   const sectorSeleccionado = sectores.find(s => s.id === sectorId) ?? null
   const puestoSeleccionado = sectorSeleccionado?.puestos.find(p => p.id === puestoId) ?? null
 
@@ -149,6 +155,15 @@ export function SectorPuestoSelectorConAlta({
   // Foco al input de búsqueda al abrir.
   useEffect(() => { if (sectorOpen) sectorInputRef.current?.focus() }, [sectorOpen])
   useEffect(() => { if (puestoOpen) puestoInputRef.current?.focus() }, [puestoOpen])
+
+  // Al abrir un mini-form de alta, lo centramos en el scroll container para que
+  // el botón "Crear y seleccionar" no quede tapado por el footer sticky del modal.
+  useEffect(() => {
+    if (showCrearSector) crearSectorFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [showCrearSector])
+  useEffect(() => {
+    if (showCrearPuesto) crearPuestoFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [showCrearPuesto])
 
   // Opciones filtradas.
   const sectorNormalized = sectorQuery.trim().toLowerCase()
@@ -350,7 +365,7 @@ export function SectorPuestoSelectorConAlta({
 
           {/* Mini-form alta de sector */}
           {showCrearSector && (
-            <div className="mt-2 rounded-lg border border-sig-200 bg-sig-50/50 p-3 space-y-2">
+            <div ref={crearSectorFormRef} className="mt-2 rounded-lg border border-sig-200 bg-sig-50/50 p-3 space-y-2">
               <p className="text-xs font-semibold text-sig-700 uppercase tracking-wide">Nuevo sector</p>
               <form onSubmit={handleCrearSectorSubmit} className="space-y-2">
                 <div>
@@ -476,7 +491,7 @@ export function SectorPuestoSelectorConAlta({
 
           {/* Mini-form alta de puesto */}
           {showCrearPuesto && (
-            <div className="mt-2 rounded-lg border border-sig-200 bg-sig-50/50 p-3 space-y-2">
+            <div ref={crearPuestoFormRef} className="mt-2 rounded-lg border border-sig-200 bg-sig-50/50 p-3 space-y-2">
               <p className="text-xs font-semibold text-sig-700 uppercase tracking-wide">
                 Nuevo puesto en <span className="text-sig-600">{sectorSeleccionado?.nombre}</span>
               </p>
