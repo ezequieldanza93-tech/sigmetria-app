@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Plan de Autoprotección — Ley 5920/2017 (MODELO)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    /* Paleta Sigmetría */
+    --tinta: #333333;
+    --gris: #6B6B6B;
+    --gris-suave: #888888;
+    --linea: #E4E4E7;
+    --linea-fuerte: #D4D4D8;
+    --campo-bg: #FEF3C7;
+    --campo-borde: #F59E0B;
+    --campo-texto: #92600A;
+    --acento: #2E7D32;       /* verde oscuro */
+    --acento-claro: #4CAF50; /* verde marca */
+    --brand-muted: #E8F5E9;
+    --superficie-elev: #FAFAFA;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { font-family: "Poppins", "Segoe UI", system-ui, sans-serif; color: var(--tinta); font-size: 12pt; line-height: 1.6; font-weight: 400; }
+
+  body { margin: 0; background: #e8e8e8; }
+
+  /* ---------- Leyenda de uso (NO se imprime) ---------- */
+  .leyenda {
+    position: sticky; top: 0; z-index: 50;
+    background: linear-gradient(90deg, #2E7D32, #4CAF50); color: #fff;
+    padding: 12px 24px; font-size: 10.5pt; line-height: 1.4;
+    font-family: "Poppins", sans-serif; font-weight: 300;
+  }
+  .leyenda strong { color: #FEF3C7; font-weight: 600; }
+  .leyenda code {
+    background: rgba(255,255,255,.18); padding: 1px 6px; border-radius: 4px;
+    font-family: Consolas, monospace;
+  }
+
+  /* ---------- Hoja A4 ---------- */
+  .hoja {
+    width: 210mm; min-height: 297mm;
+    margin: 18px auto; padding: 22mm 20mm 24mm;
+    background: #fff; box-shadow: 0 2px 14px rgba(0,0,0,.18);
+    position: relative;
+  }
+
+  /* Encabezado de cada hoja: marca Sigmetría (izq) + profesional (der) */
+  .encabezado {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    border-bottom: 2px solid var(--acento-claro);
+    padding-bottom: 6px; margin-bottom: 18px;
+    font-size: 8.5pt; color: var(--gris); text-align: right; line-height: 1.35;
+  }
+  .encabezado::before {
+    content: "SIGMETRÍA";
+    align-self: center;
+    font-family: "Montserrat", sans-serif; font-weight: 700; font-size: 11pt;
+    color: var(--acento); letter-spacing: .5px; padding-left: 26px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232E7D32'/%3E%3Cpolygon points='16,6 28,26 4,26' fill='white'/%3E%3C/svg%3E") left center / 20px 20px no-repeat;
+  }
+  .encabezado .prof { font-family: "Montserrat", sans-serif; font-weight: 600; color: var(--tinta); font-size: 9.5pt; }
+
+  .pie {
+    position: absolute; bottom: 12mm; left: 20mm; right: 20mm;
+    border-top: 1px solid var(--linea); padding-top: 5px;
+    font-size: 8pt; color: var(--gris);
+    display: flex; justify-content: space-between;
+  }
+
+  /* ---------- Isotipo de marca ---------- */
+  .isotipo {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-family: "Montserrat", sans-serif; font-weight: 700;
+    color: var(--acento); letter-spacing: .5px;
+  }
+  .isotipo svg { display: block; }
+  .marca-portada { margin-bottom: 48px; }
+  .marca-portada .isotipo { font-size: 20pt; }
+  .marca-portada .tagline { font-family: "Poppins", sans-serif; font-weight: 300; font-size: 10pt; color: var(--gris); letter-spacing: 2px; text-transform: uppercase; margin-top: 6px; }
+
+  /* ---------- Portada ---------- */
+  .portada { text-align: center; padding-top: 24mm; }
+  .portada h1 { font-family: "Montserrat", sans-serif; font-weight: 700; font-size: 30pt; letter-spacing: 1px; color: var(--acento); margin: 0 0 4px; }
+  .portada .ley { font-family: "Montserrat", sans-serif; font-weight: 500; font-size: 16pt; color: var(--acento-claro); margin: 0 0 50px; }
+  .portada .bloque { font-size: 13pt; line-height: 2; margin-bottom: 40px; }
+
+  /* ---------- Tipografía de secciones ---------- */
+  h2.seccion {
+    background: linear-gradient(90deg, var(--acento), var(--acento-claro)); color: #fff;
+    font-family: "Montserrat", sans-serif; font-weight: 600;
+    font-size: 13pt; padding: 9px 14px; margin: 28px 0 14px;
+    border-radius: 4px; letter-spacing: .3px;
+  }
+  h3 { font-family: "Montserrat", sans-serif; font-weight: 600; color: var(--acento); font-size: 12pt; margin: 18px 0 6px; }
+  p { margin: 0 0 10px; text-align: justify; }
+  ul, ol { margin: 0 0 10px; padding-left: 22px; }
+  li { margin-bottom: 4px; text-align: justify; }
+
+  .dato { margin: 0 0 8px; }
+  .dato .label { font-weight: 600; }
+
+  /* ---------- Campo a completar ---------- */
+  .campo {
+    background: var(--campo-bg);
+    border-bottom: 1.5px solid var(--campo-borde);
+    padding: 0 5px; border-radius: 3px;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: .9em; color: var(--campo-texto); white-space: nowrap;
+  }
+  .campo.block {
+    display: block; white-space: normal; min-height: 2.4em;
+    padding: 8px 10px; margin: 6px 0; line-height: 1.5;
+    border: 1.5px dashed var(--campo-borde); border-bottom-width: 1.5px;
+  }
+
+  /* Recuadro para foto / plano */
+  .imagen {
+    border: 2px dashed var(--campo-borde); background: #fffceb;
+    color: #8a6d00; text-align: center; padding: 40px 20px; margin: 10px 0;
+    border-radius: 4px; font-family: Consolas, monospace; font-size: 10pt;
+  }
+  .galeria { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  /* ---------- Tablas ---------- */
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 10.5pt; }
+  th, td { border: 1px solid var(--linea); padding: 6px 9px; text-align: left; vertical-align: top; }
+  th { background: var(--brand-muted); color: var(--acento); font-family: "Montserrat", sans-serif; font-weight: 600; }
+  .tel-emergencia td { text-align: center; font-weight: 600; }
+
+  .nota { font-size: 9.5pt; color: var(--gris); font-style: italic; border-left: 3px solid var(--linea); padding-left: 10px; }
+
+  /* ---------- Impresión ---------- */
+  @page { size: A4; margin: 0; }
+  @media print {
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body { background: #fff; }
+    .leyenda { display: none; }
+    .hoja { box-shadow: none; margin: 0; page-break-after: always; }
+  }
+</style>
+</head>
+<body>
+
+<div class="leyenda">
+  <strong>PLANTILLA — Plan de Autoprotección Ley 5920/2017.</strong>
+  Todo lo resaltado en amarillo (<code>{{ campo }}</code>) es un dato específico del edificio a completar.
+  El texto en negro es fijo (definiciones, procedimientos y pautas legales) y normalmente no se modifica.
+  Para generar el documento de un edificio nuevo, reemplazá cada <code>{{ campo }}</code> por su valor real.
+</div>
+
+<!-- ============================================================= -->
+<!-- PORTADA                                                        -->
+<!-- ============================================================= -->
+<section class="hoja">
+  <div class="portada">
+    <div class="marca-portada">
+      <span class="isotipo">
+        <svg width="40" height="40" viewBox="0 0 32 32" aria-hidden="true">
+          <rect width="32" height="32" rx="7" fill="#2E7D32"/>
+          <polygon points="16,6 28,26 4,26" fill="#fff" opacity="0.95"/>
+        </svg>
+        SIGMETRÍA
+      </span>
+      <div class="tagline">Higiene y Seguridad</div>
+    </div>
+
+    <h1>PLAN DE AUTOPROTECCIÓN</h1>
+    <p class="ley">Ley 5920 / 2017</p>
+
+    <div class="bloque">
+      <div><strong>Establecimiento:</strong> <span class="campo">{{ nombre_establecimiento }}</span></div>
+      <div><span class="campo">{{ direccion_completa }}</span>, CP <span class="campo">{{ codigo_postal }}</span>, CABA</div>
+      <br />
+      <div><strong>CUIT:</strong> <span class="campo">{{ cuit_empresa }}</span></div>
+      <div><strong>EXPTE:</strong> <span class="campo">{{ numero_expediente }}</span></div>
+    </div>
+
+    <div style="margin-top:60px; color:var(--gris);">
+      <span class="campo">{{ profesional_nombre }}</span> &nbsp;·&nbsp;
+      <span class="campo">{{ numero_if }}</span>
+    </div>
+  </div>
+  <div class="pie">
+    <span><span class="campo">{{ profesional_nombre }}</span></span>
+    <span><span class="campo">{{ numero_if }}</span></span>
+  </div>
+</section>
+
+<!-- ============================================================= -->
+<!-- 1. SISTEMA INTEGRAL DE AUTOPROTECCIÓN                          -->
+<!-- ============================================================= -->
+<section class="hoja">
+  <div class="encabezado">
+    <div>
+      <div class="prof"><span class="campo">{{ profesional_nombre }}</span></div>
+      <div>Cel: <span class="campo">{{ profesional_celular }}</span></div>
+      <div><span class="campo">{{ profesional_email }}</span></div>
+      <div><span class="campo">{{ profesional_domicilio }}</span></div>
+    </div>
+  </div>
+
+  <h2 class="seccion">1 · Sistema Integral de Autoprotección</h2>
+  <h3>Datos de la Empresa</h3>
+
+  <div class="dato"><span class="label">1. Detalle explicativo del uso:</span>
+    <span class="campo">{{ detalle_uso }}</span>. CIIU: <span class="campo">{{ ciiu }}</span></div>
+
+  <div class="dato"><span class="label">2 y 3. Habilitación:</span>
+    <span class="campo">{{ habilitacion_detalle }}</span></div>
+
+  <div class="dato"><span class="label">4. Tipo de sistema de Autoprotección:</span>
+    <span class="campo block">{{ tipo_sistema_descripcion — ej: edificio de oficinas con superficie cubierta total de X m2, en N plantas; se clasifica en GRUPO N }}</span></div>
+
+  <div class="dato"><span class="label">5. Dirección:</span>
+    <span class="campo">{{ direccion_completa }}</span> (CP <span class="campo">{{ codigo_postal }}</span>)</div>
+
+  <div class="dato"><span class="label">6. CUIT de la Empresa:</span>
+    <span class="campo">{{ cuit_empresa }}</span></div>
+
+  <div class="dato"><span class="label">7. Nombre y datos del Profesional:</span>
+    <span class="campo block">{{ profesional_datos_completos — nombre, matrícula, CUIT, celular, mail, domicilio }}</span></div>
+
+  <div class="dato"><span class="label">8. Nombre de la Empresa:</span>
+    <span class="campo">{{ nombre_empresa }}</span></div>
+
+  <div class="dato"><span class="label">9. Cantidad de pisos y superficie total:</span>
+    <span class="campo">{{ cantidad_pisos }}</span> plantas — Superficie total <span class="campo">{{ superficie_total }}</span> m²</div>
+
+  <div class="dato"><span class="label">11. Horario de funcionamiento:</span>
+    <span class="campo">{{ horario_funcionamiento }}</span></div>
+
+  <div class="dato"><span class="label">12. Cantidad de personas (horario de trabajo):</span>
+    <span class="campo">{{ personas_horario_trabajo }}</span></div>
+
+  <div class="dato"><span class="label">13. Cantidad de personas (horario nocturno):</span>
+    <span class="campo">{{ personas_horario_nocturno }}</span></div>
+
+  <div class="dato"><span class="label">14. Personas con capacidades diferentes:</span>
+    <span class="campo">{{ personas_capacidades_diferentes }}</span></div>
+
+  <div class="dato"><span class="label">15. Teléfono de contacto:</span>
+    <span class="campo">{{ telefono_contacto }}</span></div>
+
+  <div class="pie">
+    <span><span class="campo">{{ profesional_nombre }}</span></span>
+    <span><span class="campo">{{ numero_if }}</span></span>
+  </div>
+</section>
+
+<!-- ============================================================= -->
+<!-- 2. DESCRIPCIÓN DEL ESTABLECIMIENTO                             -->
+<!-- ============================================================= -->
+<section class="hoja">
+  <div class="encabezado">
+    <div>
+      <div class="prof"><span class="campo">{{ profesional_nombre }}</span></div>
+      <div>Cel: <span class="campo">{{ profesional_celular }}</span></div>
+      <div><span class="campo">{{ profesional_email }}</span></div>
+    </div>
+  </div>
+
+  <h2 class="seccion">2 · Descripción del Establecimiento</h2>
+
+  <h3>Memoria Descriptiva</h3>
+  <span class="campo block">{{ memoria_descriptiva — descripción constructiva del edificio: subsuelos, pisos en altura, sala de máquinas, materiales (hormigón / mampostería / losa), escaleras y ascensores, sistema de hidrantes, tanque de reserva (litros y ubicación), rociadores, detectores de humo, sirena de alarma, tableros eléctricos }}</span>
+
+  <h3>Reconocimiento de los sectores</h3>
+  <span class="campo block">{{ reconocimiento_sectores — sectores comunes (planta baja, halls de cada piso, escaleras, cocheras), locales comerciales independientes, etc. }}</span>
+
+  <h3>Rutas de salida</h3>
+  <span class="campo block">{{ rutas_salida — cantidad y tipo de salidas peatonal/vehicular, ancho de puertas, características de las escaleras de evacuación (ancho, baranda, caja de escalera, doble puerta) }}</span>
+
+  <p class="nota">A fin de calcular los medios de escape, según el Decreto 351/79 (Anexo VII, Cap. 18, Punto 3 "Medios de escape") y el Código de Edificación de CABA, para edificios de oficinas se divide la superficie libre por 8: <strong>N = superficie libre / 8</strong>.</p>
+
+  <h3>Cálculo del factor de ocupación</h3>
+  <span class="campo block">{{ calculo_factor_ocupacion — superficies descontadas por sector común, personas por piso y total. Ej: 1er piso 200 m² / 8 = 25 pers; pisos 2 a 12: 300 m² / 8 = 37,5 × 11 = 412,5 pers }}</span>
+
+  <div class="dato"><span class="label">Total de personas por cálculo (N):</span>
+    <span class="campo">{{ total_personas_N }}</span></div>
+  <div class="dato"><span class="label">Unidades de salida (n = N / 100):</span>
+    <span class="campo">{{ unidades_salida_n }}</span></div>
+  <div class="dato"><span class="label">Ancho mínimo de salida exigido:</span>
+    <span class="campo">{{ ancho_minimo_exigido }}</span> · Ancho real de la puerta de salida:
+    <span class="campo">{{ ancho_real_puerta }}</span></div>
+
+  <div class="pie">
+    <span><span class="campo">{{ profesional_nombre }}</span></span>
+    <span><span class="campo">{{ numero_if }}</span></span>
+  </div>
+</section>
+
+<!-- ============================================================= -->
+<!-- 3. MEDIOS TÉCNICOS DISPONIBLES                                 -->
+<!-- ============================================================= -->
+<section class="hoja">
+  <div class="encabezado">
+    <div>
+      <div class="prof"><span class="campo">{{ profesional_nombre }}</span></div>
+      <div>Cel: <span class="campo">{{ profesional_celular }}</span></div>
+      <div><span class="campo">{{ profesional_email }}</span></div>
+    </div>
+  </div>
+
+  <h2 class="seccion">3 · Medios Técnicos Disponibles</h2>
+
+  <div class="dato"><span class="label">Extintores:</span>
+    <span class="campo">{{ extintores_detalle — cantidad, tipo (PQS ABC / BC) y ubicación }}</span></div>
+  <div class="dato"><span class="label">Iluminación de emergencia:</span>
+    <span class="campo">{{ iluminacion_emergencia }}</span></div>
+  <div class="dato"><span class="label">Sistema de hidrantes:</span>
+    <span class="campo">{{ hidrantes_detalle }}</span></div>
+  <div class="dato"><span class="label">Rociadores y tanque de reserva:</span>
+    <span class="campo">{{ rociadores_tanque — litros, ubicación, sala de bombas }}</span></div>
+  <div class="dato"><span class="label">Grupo electrógeno / generador:</span>
+    <span class="campo">{{ generador_detalle — qué cubre: iluminación, bombas, ascensores }}</span></div>
+
+  <h2 class="seccion">4 · Caracterización de los Riesgos</h2>
+
+  <div class="dato"><span class="label">Clasificación del riesgo de incendio:</span>
+    <span class="campo">{{ clasificacion_riesgo — ej: RIESGO R3 - Muy Combustible }}</span></div>
+
+  <h3>Hipótesis de siniestros</h3>
+  <span class="campo block">{{ hipotesis_siniestros — principales siniestros previsibles (ej: incendio por instalaciones eléctricas) y observaciones de mantenimiento }}</span>
+
+  <div class="pie">
+    <span><span class="campo">{{ profesional_nombre }}</span></span>
+    <span><span class="campo">{{ numero_if }}</span></span>
+  </div>
+</section>
+
+<!-- ============================================================= -->
+<!-- 5. ORGANIZACIÓN DEL SISTEMA (texto fijo + fechas)              -->
+<!-- ============================================================= -->
+<section class="hoja">
+  <div class="encabezado">
+    <div>
+      <div class="prof"><span class="campo">{{ profesional_nombre }}</span></div>
+      <div>Cel: <span class="campo">{{ profesional_celular }}</span></div>
+      <div><span class="campo">{{ profesional_email }}</span></div>
+    </div>
+  </div>
+
+  <h2 class="seccion">5 · Organización del Sistema de Autoprotección</h2>
+
+  <p>La posibilidad de ocurrencia de una emergencia inesperada es previsible por la categoría del riesgo presente.</p>
+
+  <h3>Planificación — Definiciones</h3>
+  <ul>
+    <li><strong>Emergencia:</strong> hecho o situación no prevista que puede afectar al personal o a algún sector, y que puede paralizar el normal desarrollo de la actividad, requiriendo acciones especiales para restablecer el control y la normalidad o comenzar la evacuación del lugar.</li>
+    <li><strong>Plan de acción:</strong> secuencia de acciones que deben ponerse en práctica cuando se produce una emergencia, ejecutadas en forma conjunta por todo el personal.</li>
+    <li><strong>Evacuación:</strong> acción que realiza el personal para salir del establecimiento en forma rápida y segura, dirigiéndose hacia el punto de reunión.</li>
+    <li><strong>Roles en la emergencia:</strong> roles que deben desempeñar las personas durante una emergencia.</li>
+    <li><strong>Alarma:</strong> señal sonora que indica inequívocamente que se ha declarado una emergencia, debiéndose ejecutar el procedimiento descripto.</li>
+    <li><strong>Punto de reunión:</strong> lugar preestablecido fuera del establecimiento donde se reúnen todas las personas evacuadas para el recuento e identificación y para establecer ausencias y/o probables heridos.</li>
+    <li><strong>Vías de evacuación:</strong> rutas de escape de los distintos sectores hacia las salidas normales o de emergencia, permanentemente libres de obstáculos y debidamente señalizadas.</li>
+    <li><strong>Salidas de emergencia:</strong> puertas que deben estar permanentemente disponibles, sin traba de cierre y libres de obstáculos, para dar paso a las personas en evacuación.</li>
+    <li><strong>Principio de incendio:</strong> fuego pequeño a mediano que puede ser controlado con los extintores manuales disponibles.</li>
+    <li><strong>Incendio declarado:</strong> fuego fuera de control que, por sus dimensiones, requiere la evacuación inmediata de todo el personal.</li>
+  </ul>
+
+  <h3>Fuerzas que intervienen durante la emergencia</h3>
+  <p><strong>a. Internas</strong></p>
+  <ul>
+    <li><strong>Líderes de evacuación:</strong> personas que, con preparación específica, guían a las personas hasta la salida y el punto de encuentro.</li>
+    <li><strong>EPI (Equipos de Primera Intervención):</strong> personas que actúan en la extinción del fuego; los capacita y define cada empresa en particular.</li>
+    <li><strong>Encargado de comunicaciones:</strong> realiza los llamados a los organismos públicos para dar respuesta a la emergencia.</li>
+    <li><strong>Coordinador de la emergencia:</strong> persona a la que se delega definir la emergencia y las acciones a llevar a cabo según su gravedad; es la de más alto mando mientras dure la misma.</li>
+    <li><strong>Suplente del coordinador:</strong> realiza las tareas del coordinador en su ausencia.</li>
+  </ul>
+  <p><strong>b. Externas</strong></p>
+  <table class="tel-emergencia">
+    <tr><th>Bomberos</th><th>Policía</th><th>Defensa Civil</th><th>SAME</th></tr>
+    <tr><td>100</td><td>911</td><td>103</td><td>107</td></tr>
+  </table>
+
+  <h3>Capacitación y entrenamiento</h3>
+  <p>La capacitación se actualizará todos los años y cada vez que cambie el personal que trabaja en el edificio. Anualmente se realizará una capacitación sobre prevención y extinción de incendios y sobre la forma adecuada de evacuar. Temario mínimo:</p>
+  <ul>
+    <li>Qué es un incendio. Cómo se produce el fuego — triángulo del fuego.</li>
+    <li>Tipos de fuego. Medidas de prevención de incendios.</li>
+    <li>Métodos y sistemas de extinción existentes (extintores portátiles).</li>
+    <li>Cómo y cuándo se declara una emergencia.</li>
+    <li>Cómo efectuar la evacuación del edificio. Teléfonos de emergencia.</li>
+  </ul>
+
+  <h3>Prácticas de evacuación</h3>
+  <p>Se realizarán anualmente 2 prácticas de evacuación con el personal, verificando los pasos seguidos, el tiempo de evacuación y las conclusiones del simulacro. Fechas previstas:</p>
+  <ul>
+    <li>1.er simulacro: <span class="campo">{{ fecha_simulacro_1 }}</span></li>
+    <li>2.º simulacro: <span class="campo">{{ fecha_simulacro_2 }}</span></li>
+  </ul>
+
+  <div class="pie">
+    <span><span class="campo">{{ profesional_nombre }}</span></span>
+    <span><span class="campo">{{ numero_if }}</span></span>
+  </div>
+</section>
+
+<!-- ============================================================= -->
+<!-- 6. ASIGNACIÓN DE ROLES                                         -->
+<!-- ============================================================= -->
+<section class="hoja">
+  <div class="encabezado">
+    <div>
+      <div class="prof"><span class="campo">{{ profesional_nombre }}</span></div>
+      <div>Cel: <span class="campo">{{ profesional_celular }}</span></div>
+      <div><span class="campo">{{ profesional_email }}</span></div>
+    </div>
+  </div>
+
+  <h2 class="seccion">6 · Asignación de Roles del Sistema de Autoprotección</h2>
+
+  <p class="nota">Completar según el personal real del edificio. Agregar o quitar filas según corresponda.</p>
+
+  <h3>Coordinación de la emergencia</h3>
+  <table>
+    <tr><th>Rol / Turno</th><th>Nombre</th><th>DNI</th></tr>
+    <tr><td><span class="campo">{{ rol_turno }}</span></td><td><span class="campo">{{ coordinador_nombre }}</span></td><td><span class="campo">{{ coordinador_dni }}</span></td></tr>
+    <tr><td><span class="campo">{{ rol_turno }}</span></td><td><span class="campo">{{ coordinador_nombre }}</span></td><td><span class="campo">{{ coordinador_dni }}</span></td></tr>
+    <tr><td><span class="campo">{{ rol_turno }}</span></td><td><span class="campo">{{ coordinador_nombre }}</span></td><td><span class="campo">{{ coordinador_dni }}</span></td></tr>
+    <tr><td><span class="campo">{{ rol_turno }}</span></td><td><span class="campo">{{ coordinador_nombre }}</span></td><td><span class="campo">{{ coordinador_dni }}</span></td></tr>
+    <tr><td><span class="campo">{{ rol_turno }}</span></td><td><span class="campo">{{ coordinador_nombre }}</span></td><td><span class="campo">{{ coordinador_dni }}</span></td></tr>
+  </table>
+
+  <h3>Líderes de evacuación</h3>
+  <table>
+    <tr><th>Sector / Piso</th><th>Nombre</th><th>DNI</th></tr>
+    <tr><td><span class="campo">{{ piso_sector }}</span></td><td><span class="campo">{{ lider_nombre }}</span></td><td><span class="campo">{{ lider_dni }}</span></td></tr>
+    <tr><td><span class="campo">{{ piso_sector }}</span></td><td><span class="campo">{{ lider_nombre }}</span></td><td><span class="campo">{{ lider_dni }}</span></td></tr>
+    <tr><td><span class="campo">{{ piso_sector }}</span></td><td><span class="campo">{{ lider_nombre }}</span></td><td><span class="campo">{{ lider_dni }}</span></td></tr>
+    <tr><td><span class="campo">{{ piso_sector }}</span></td><td><span class="campo">{{ lider_nombre }}</span></td><td><span class="campo">{{ lider_dni }}</span></td></tr>
+    <tr><td><span class="campo">{{ piso_sector }}</span></td><td><span class="campo">{{ lider_nombre }}</span></td><td><span class="campo">{{ lider_dni }}</span></td></tr>
+    <tr><td><span class="campo">{{ piso_sector }}</span></td><td><span class="campo">{{ lider_nombre }}</span></td><td><span class="campo">{{ lider_dni }}</span></td></tr>
+    <tr><td><span class="campo">{{ piso_sector }}</span></td><td><span class="campo">{{ lider_nombre }}</span></td><td><span class="campo">{{ lider_dni }}</span></td></tr>
+    <tr><td><span class="campo">{{ piso_sector }}</span></td><td><span class="campo">{{ lider_nombre }}</span></td><td><span class="campo">{{ lider_dni }}</span></td></tr>
+  </table>
+
+  <p class="nota">Observación EPI (completar si corresponde): <span class="campo">{{ observacion_epi — ej: no se informan EPI por no haber personal suficiente }}</span></p>
+
+  <div class="pie">
+    <span><span class="campo">{{ profesional_nombre }}</span></span>
+    <span><span class="campo">{{ numero_if }}</span></span>
+  </div>
+</section>
+
+<!-- ============================================================= -->
+<!-- 7. PROCEDIMIENTO DE EVACUACIÓN (texto fijo + punto de reunión) -->
+<!-- ============================================================= -->
+<section class="hoja">
+  <div class="encabezado">
+    <div>
+      <div class="prof"><span class="campo">{{ profesional_nombre }}</span></div>
+      <div>Cel: <span class="campo">{{ profesional_celular }}</span></div>
+      <div><span class="campo">{{ profesional_email }}</span></div>
+    </div>
+  </div>
+
+  <h2 class="seccion">7 · Procedimiento de Evacuación o Puesta en Resguardo</h2>
+
+  <p>El procedimiento de emergencias y evacuación transmite la forma de reacción ante una emergencia y, dado el caso, cómo realizar la evacuación del edificio de manera ordenada y segura.</p>
+
+  <h3>A. Declaración de la emergencia</h3>
+  <p>La emergencia será declarada cuando:</p>
+  <ul>
+    <li>Comience un incendio dentro del establecimiento.</li>
+    <li>Exista una amenaza de bomba en el edificio o edificios cercanos.</li>
+    <li>Se produzca alguna situación que, por su peligrosidad y/o riesgo, determine la declaración de la emergencia.</li>
+  </ul>
+
+  <h3>B. Actuación según el tipo de emergencia</h3>
+  <ul>
+    <li>Emergencia con afección a la salud de las personas → llamar de inmediato a emergencias médicas: <strong>107 (SAME)</strong>.</li>
+    <li>Explosión o amenaza de bomba → llamar prontamente a la <strong>policía: 911</strong>, que indicará los pasos a seguir.</li>
+    <li>Principio de incendio → actuar según el punto C.</li>
+  </ul>
+
+  <h3>C. Emergencia de incendio</h3>
+  <p>Si fuera un principio de incendio, se verificarán las características y se pondrá en conocimiento al Coordinador de la Evacuación. Si puede controlarse con extintores, se tratará de extinguir. Si el incendio no puede extinguirse, se llamará a <strong>Bomberos (100)</strong> y se evacuará el edificio.</p>
+  <p><strong>Sirena de evacuación:</strong> el aviso se realizará mediante la sirena instalada en el edificio, con doble alimentación (220 V y batería). En cada piso hay un pulsador de alarma.</p>
+
+  <h3>D. Punto de reunión externo</h3>
+  <p>Es el lugar externo al edificio donde se reúne el personal para verificar la presencia de todos; suficientemente alejado para no sufrir inconvenientes físicos, pero cercano como para alertar a los bomberos.</p>
+  <p><strong>Ubicación del punto de reunión:</strong> <span class="campo block">{{ punto_reunion — ubicación concreta, ej: esquina de Av. del Libertador y calle Blanco Encalada }}</span></p>
+
+  <h3>E. Pautas generales de evacuación</h3>
+  <ul>
+    <li>Despejar los pasillos, caminar rápidamente pero sin correr, y desconectar la corriente eléctrica desde los tableros seccionales.</li>
+    <li>Al escuchar la alarma, dejar las ocupaciones y dirigirse por la escalera de evacuación hacia la planta baja.</li>
+    <li>No formar aglomeraciones, no empujar.</li>
+    <li>Evacuar rápidamente sin cargarse con objetos que entorpezcan el movimiento.</li>
+    <li>Permanecer tranquilo y seguir las instrucciones de los líderes de evacuación.</li>
+    <li>Ante la presencia de clientes/visitas, los líderes deberán tranquilizarlos y asistirlos para que también evacuen.</li>
+    <li>Si se percibe ingreso de humo por una puerta, nunca abrirla sin tocarla antes y verificar la temperatura de su superficie.</li>
+    <li>Bajo ningún concepto se regresará al edificio hasta que el siniestro esté totalmente controlado, los bomberos permitan el reingreso y las autoridades lo autoricen.</li>
+  </ul>
+
+  <h3>F. Fin de la emergencia</h3>
+  <p>Será indicada por el Coordinador de la Emergencia en consonancia con los bomberos, quienes darán las directivas del caso (continuación o suspensión de la actividad laboral).</p>
+
+  <h3>G. Definición de roles</h3>
+  <ul>
+    <li><strong>Coordinador de la emergencia:</strong> ordena el desalojo del establecimiento y conduce a los grupos de evacuación.</li>
+    <li><strong>Suplente del coordinador:</strong> realiza las acciones del coordinador en su ausencia y los llamados de emergencia.</li>
+    <li><strong>Líder de evacuación:</strong> guía al personal y a las visitas para una evacuación ordenada y segura; revisa lugares donde pudiera haber quedado alguna persona sin aviso.</li>
+  </ul>
+
+  <div class="pie">
+    <span><span class="campo">{{ profesional_nombre }}</span></span>
+    <span><span class="campo">{{ numero_if }}</span></span>
+  </div>
+</section>
+
+<!-- ============================================================= -->
+<!-- 8 y 9. UBICACIÓN + RELEVAMIENTO FOTOGRÁFICO                    -->
+<!-- ============================================================= -->
+<section class="hoja">
+  <div class="encabezado">
+    <div>
+      <div class="prof"><span class="campo">{{ profesional_nombre }}</span></div>
+      <div>Cel: <span class="campo">{{ profesional_celular }}</span></div>
+      <div><span class="campo">{{ profesional_email }}</span></div>
+    </div>
+  </div>
+
+  <h2 class="seccion">8 · Ubicación del Edificio</h2>
+  <div class="imagen">{{ imagen_ubicacion — plano de ubicación / captura de mapa del edificio }}</div>
+
+  <h2 class="seccion">9 · Relevamiento Fotográfico</h2>
+  <div class="galeria">
+    <div class="imagen">{{ foto_entrada }}</div>
+    <div class="imagen">{{ foto_salida }}</div>
+    <div class="imagen">{{ foto_equipo_generador }}</div>
+    <div class="imagen">{{ foto_entrada_vehiculos }}</div>
+    <div class="imagen">{{ foto_tablero_general }}</div>
+    <div class="imagen">{{ foto_otra }}</div>
+  </div>
+
+  <div class="pie">
+    <span><span class="campo">{{ profesional_nombre }}</span></span>
+    <span><span class="campo">{{ numero_if }}</span></span>
+  </div>
+</section>
+
+<!-- ============================================================= -->
+<!-- 10. ADJUNTOS                                                   -->
+<!-- ============================================================= -->
+<section class="hoja">
+  <div class="encabezado">
+    <div>
+      <div class="prof"><span class="campo">{{ profesional_nombre }}</span></div>
+      <div>Cel: <span class="campo">{{ profesional_celular }}</span></div>
+      <div><span class="campo">{{ profesional_email }}</span></div>
+    </div>
+  </div>
+
+  <h2 class="seccion">10 · Adjuntos</h2>
+  <p>Se adjuntan los siguientes documentos:</p>
+  <ul>
+    <li>Capacitación.</li>
+    <li>Encomienda profesional.</li>
+    <li>Reglamento de copropiedad / habilitación.</li>
+    <li>Link del video: <span class="campo">{{ link_video }}</span></li>
+    <li>FDS: <span class="campo">{{ link_fds_1 }}</span></li>
+    <li>FDS: <span class="campo">{{ link_fds_2 }}</span></li>
+  </ul>
+
+  <div class="pie">
+    <span><span class="campo">{{ profesional_nombre }}</span></span>
+    <span><span class="campo">{{ numero_if }}</span></span>
+  </div>
+</section>
+
+<!-- ============================================================= -->
+<!-- ESTUDIO DE DINÁMICA DE HUMOS Y EVACUACIÓN (FDS)               -->
+<!-- ============================================================= -->
+<section class="hoja">
+  <div class="encabezado">
+    <div>
+      <div class="prof"><span class="campo">{{ profesional_nombre }}</span></div>
+      <div>Mat.: <span class="campo">{{ profesional_matricula }}</span></div>
+    </div>
+  </div>
+
+  <p style="text-align:right; color:var(--gris);">Buenos Aires, <span class="campo">{{ fecha_estudio_fds }}</span></p>
+
+  <h2 class="seccion">Estudio de Dinámica de Humos y Evacuación de Personas</h2>
+
+  <h3>Objetivo</h3>
+  <p>Estudiar mediante simulación computarizada la evolución del fuego y el humo en el establecimiento ubicado en <span class="campo">{{ direccion_completa }}</span>, conforme a los planos recibidos del comitente.</p>
+
+  <p><strong>Estudio de FDS:</strong></p>
+  <ol>
+    <li>Evolución del humo en distintos sectores, según las hipótesis definidas y en función de las cargas de fuego consideradas.</li>
+    <li>Determinación de las temperaturas mínimas y máximas del humo en las vías de escape de los sectores definidos.</li>
+    <li>Verificación del HRR (Heat Release Rate) de cada sector y la altura de la capa de humo generada.</li>
+    <li>Temperaturas de los ambientes en distintos niveles, tomadas a la altura media de evacuación.</li>
+  </ol>
+
+  <p><strong>Estudio de evacuación de personas:</strong></p>
+  <ol>
+    <li>Caracterización de cada piso con la ocupación real, según la cantidad de personas declaradas por el comitente.</li>
+    <li>Verificación de cuellos de botella generados durante la evacuación.</li>
+    <li>Verificación de los medios de salida, según las dimensiones declaradas en los planos.</li>
+    <li>Determinación de los tiempos de evacuación hasta un lugar seguro a nivel de vereda.</li>
+    <li>Flujo de personas que pasan por cada salida de emergencia.</li>
+  </ol>
+
+  <h3>Resumen ejecutivo</h3>
+  <span class="campo block">{{ fds_resumen_ejecutivo — resultados del simulador: cantidad de evacuados, tiempo de evacuación (seg), altura de la capa de humos, temperatura de los humos vs. límite recomendado }}</span>
+
+  <h3>Hipótesis evaluadas</h3>
+  <div class="dato"><span class="label">Hipótesis 1:</span> <span class="campo">{{ fds_hipotesis_1 — ej: fuego en sector estacionamiento, 2.º subsuelo }}</span></div>
+  <div class="dato"><span class="label">Hipótesis 2:</span> <span class="campo">{{ fds_hipotesis_2 — ej: fuego en sector oficina, 6.º piso }}</span></div>
+
+  <div class="imagen">{{ fds_graficos — capturas de simulación: tamaño de fuego, temperatura de capa de humos y visibilidad en distintos tiempos, por hipótesis }}</div>
+
+  <h3>Conclusiones</h3>
+  <span class="campo block">{{ fds_conclusiones — conclusión general del estudio respecto de las condiciones de riesgo para la evacuación }}</span>
+
+  <p class="nota">La responsabilidad del profesional firmante solo se aplica al presente estudio y para las condiciones indicadas. Toda modificación de las características constructivas del edificio, su uso o la distribución de los espacios, que pudiera cambiar las condiciones del presente estudio, deja sin efecto el mismo.</p>
+
+  <div style="margin-top:30px;">
+    <div><span class="campo">{{ profesional_nombre }}</span></div>
+    <div>Higiene &amp; Seguridad</div>
+    <div>Mat.: <span class="campo">{{ profesional_matricula }}</span></div>
+  </div>
+
+  <div class="pie">
+    <span><span class="campo">{{ profesional_nombre }}</span></span>
+    <span><span class="campo">{{ numero_if }}</span></span>
+  </div>
+</section>
+
+</body>
+</html>

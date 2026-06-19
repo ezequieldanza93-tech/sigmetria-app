@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useGeoCaptura } from '@/lib/hooks/use-geo-captura'
 import { generarProtocoloPdf } from '@/lib/pdf/protocolo-pdf'
 import { guardarEvidenciaProtocolo } from '@/lib/actions/protocolo-evidencia'
+import { emitirEvidenciaIluminacion } from '@/lib/actions/emitir-evidencia-iluminacion'
 import {
   crearMedicionIluminacion,
   sugerirValorRequerido,
@@ -324,6 +325,7 @@ export function MedicionIluminacionEjecutorModal({
   // PDF generado (se reusa para descargar) + estado del guardado como evidencia.
   const pdfDocRef = useRef<Awaited<ReturnType<typeof generarProtocoloPdf>> | null>(null)
   const [evidenciaStatus, setEvidenciaStatus] = useState<'idle' | 'guardando' | 'ok' | 'error'>('idle')
+  const [evidenciaPdfUrl, setEvidenciaPdfUrl] = useState<string | null>(null)
 
   // ── Catálogos ───────────────────────────────────────────────────────
   const [estCtx, setEstCtx] = useState<EstablecimientoCtx | null>(null)
@@ -775,22 +777,22 @@ export function MedicionIluminacionEjecutorModal({
   }
 
   // ── Descargar PDF oficial (3 hojas SRT 84/2012) ────────────────────
-  // Genera el protocolo client-side a partir de los datos en memoria, sin tocar
-  // storage (v1): rasteriza las 3 hojas ocultas y arma un A4 multipágina.
+  // Descarga el PDF de evidencia generado por el motor Chromium (vectorial, con
+  // carátula/logos/watermark). El PDF ya se generó al llegar al paso 'listo'
+  // (useEffect de evidencia); acá abrimos su signed URL. Si todavía no está, lo
+  // generamos on-demand.
   async function handleDescargarPdf() {
     setDescargandoPdf(true)
     setError(null)
     try {
-      const nombre = `protocolo-iluminacion-${fechaMedicion || new Date().toISOString().slice(0, 10)}.pdf`
-      let pdf = pdfDocRef.current
-      if (!pdf) {
-        const hojas = [hojaDatosRef.current, hojaGrillaRef.current, hojaAnalisisRef.current]
-          .filter((h): h is HTMLDivElement => h != null)
-        if (hojas.length === 0) return
-        pdf = await generarProtocoloPdf({ hojas })
-        pdfDocRef.current = pdf
+      let url = evidenciaPdfUrl
+      if (!url) {
+        const res = await emitirEvidenciaIluminacion(registroId, rgFechaPlanificada)
+        if (!res.success) { setError(res.error ?? 'No se pudo generar el PDF.'); return }
+        url = res.data.pdfUrl
+        setEvidenciaPdfUrl(url)
       }
-      pdf.save(nombre)
+      if (url) window.open(url, '_blank', 'noopener,noreferrer')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo generar el PDF.')
     } finally {
@@ -798,29 +800,29 @@ export function MedicionIluminacionEjecutorModal({
     }
   }
 
-  // Al llegar al paso final, genera el PDF y lo guarda como EVIDENCIA ADJUNTA de
-  // la gestión (best-effort, no bloquea). Reusa el PDF para la descarga manual.
+  // Al llegar al paso final, genera el PDF con el motor Chromium (vectorial) y lo
+  // guarda como EVIDENCIA ADJUNTA de la gestión (best-effort, no bloquea). El signed
+  // URL queda cacheado para la descarga manual.
   useEffect(() => {
     if (step !== 'listo' || evidenciaStatus !== 'idle') return
     let cancelled = false
     ;(async () => {
-      await new Promise(res => setTimeout(res, 150)) // dejar montar las hojas ocultas
-      const hojas = [hojaDatosRef.current, hojaGrillaRef.current, hojaAnalisisRef.current]
-        .filter((h): h is HTMLDivElement => h != null)
-      if (cancelled || hojas.length === 0) return
       setEvidenciaStatus('guardando')
       try {
-        const pdf = await generarProtocoloPdf({ hojas })
+        const res = await emitirEvidenciaIluminacion(registroId, rgFechaPlanificada)
         if (cancelled) return
-        pdfDocRef.current = pdf
-        const res = await guardarEvidenciaProtocolo(registroId, pdf.output('datauristring'), 'mediciones-iluminacion')
-        if (!cancelled) setEvidenciaStatus(res.success ? 'ok' : 'error')
+        if (res.success) {
+          setEvidenciaPdfUrl(res.data.pdfUrl)
+          setEvidenciaStatus('ok')
+        } else {
+          setEvidenciaStatus('error')
+        }
       } catch {
         if (!cancelled) setEvidenciaStatus('error')
       }
     })()
     return () => { cancelled = true }
-  }, [step, evidenciaStatus, registroId])
+  }, [step, evidenciaStatus, registroId, rgFechaPlanificada])
 
   const stepIdx = STEP_ORDER.indexOf(step)
   const punto = puntos[puntoActivo]

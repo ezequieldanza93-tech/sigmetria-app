@@ -1,0 +1,638 @@
+ANEXO I - Planilla 1: IDENTIFICACIÓN DE FACTORES DE RIESGOS
+
+   Razón Social:                                                  C.U.I.T.:                CIIU:
+   Dirección del establecimiento:                                Provincia:
+   Área y Sector en estudio:                      N° de trabajadores:
+   Puesto de trabajo:                            Capacitación: SI / NO
+   Procedimiento de trabajo escrito: SI / NO
+                                                 Ubicación del síntoma:
+   Nombre del trabajador/es:
+
+   Manifestación temprana: SI / NO
+
+PASO 1: Identificar para el puesto de trabajo, las tareas y los factores de riesgo que se presentan de forma habitual en cada
+una de ellas.
+
+                       Tareas habituales del Puesto de Trabajo               Tiempo        Nivel de Riesgo
+
+   Factor de riesgo 1                         2                      3       total de tarea tarea tarea
+     de la jornada
+      habitual de                                                            exposición 1         2               3
+         trabajo
+                                                                             al Factor de
+
+                                                                             Riesgo
+
+A  Levantamiento y
+   descenso
+
+B  Empuje /
+   arrastre
+
+C Transporte
+
+D Bipedestación
+
+E  Movimientos
+   repetitivos
+
+F Postura forzada
+
+G Vibraciones
+
+H Confort térmico
+
+I  Estrés de
+   contacto
+
+Si alguno de los factores de riesgo se encuentra presente, continuar con la Evaluación Inicial de Factores de Riesgo que se
+identificaron, completando la Planilla 2.
+
+                    Firma del Empleador              Firma del          Firma del Responsable
+                                                Responsable del              del Servicio de
+                                              Servicio de Higiene y
+                                                                         Medicina del Trabajo
+                                                     Seguridad
+                                                                                                        Fecha:
+                                                                                                        Hoja N°:
+ANEXO I - Planilla 2: EVALUACIÓN INICIAL DE FACTORES DE RIESGOS
+
+Área y Sector en estudio:
+
+Puesto de trabajo:                                                       Tarea N°:
+
+    2.A: LEVANTAMIENTO Y/O DESCENSO MANUAL DE CARGA SIN TRANSPORTE
+
+PASO1: Identificar si la tarea del puesto de trabajo implica:
+
+Nº                         DESCRIPCIÓN                                                          SI        NO
+
+1 Levantar y/o bajar manualmente cargas de peso superior a 2 Kg. y hasta 25 Kg.
+
+       Realizar diariamente y en forma cíclica operaciones de levantamiento / descenso
+2 con una frecuencia  1 por hora o  360 por hora (si se realiza de forma esporádica,
+
+       consignar NO)
+
+3 Levantar y/o bajar manualmente cargas de peso superior a 25 Kg
+
+Si todas las respuestas son NO, se considera que el riesgo es tolerable.
+Si alguna de las respuestas 1 a 3 es SI, continuar con el paso 2.
+
+Si la respuesta 3 es SI se considera que el riesgo de la tarea es No tolerable, debiendo solicitarse mejoras en tiempo
+prudencial.
+
+PASO 2: Determinación del Nivel de Riesgo
+
+Nº                         DESCRIPCIÓN                                                          SI        N0
+
+1   El trabajador levanta, sostiene y deposita la carga sobrepasando con sus manos 30
+    cm. sobre la altura del hombro
+
+2   El trabajador levanta, sostiene y deposita la carga sobrepasando con sus manos una
+    distancia horizontal mayor de 80 cm. desde el punto medio entre los tobillos.
+
+       Entre la toma y el depósito de la carga, el trabajador gira o inclina la cintura más de
+3 30º a uno u otro lado (o a ambos) considerados desde el plano sagital.
+
+4   Las cargas poseen formas irregulares, son difíciles de asir, se deforman o hay
+    movimiento en su interior .
+
+5 El trabajador levanta, sostiene y deposita la carga con un solo brazo
+
+6   El trabajador presenta alguna manifestación temprana de las enfermedades
+    mencionadas en el Artículo 1° de la presente Resolución.
+
+Si todas las respuestas son NO se presume que el riesgo es tolerable .
+Si alguna respuesta es SI, el empleador no puede presumir que el riesgo sea tolerable. Por lo tanto, se debe realizar
+con una Evaluación de Riesgos.
+
+    Firma del Empleador    Firma del Responsable del           Firma del Responsable del
+                              Servicio de Higiene y             Servicio de Medicina del
+                                      Seguridad                            Trabajo
+
+                                                                                                Fecha:
+                                                                                                Hoja N°:
+ANEXO I - Planilla 2: EVALUACIÓN INICIAL DE FACTORES DE RIESGOS
+
+Área y Sector en estudio:
+
+Puesto de trabajo:                                       Tarea N°:
+
+                                            2.B: EMPUJE Y ARRASTRE MANUAL DE CARGA
+PASO 1: Identificar si en puesto de trabajo:
+
+Nº                                          DESCRIPCIÓN                                      SI        NO
+
+1   Se realizan diariamente tareas cíclicas, con una frecuencia  1 movimiento por jornada
+    (si son esporádicas, consignar NO).
+
+2   El trabajador se desplaza empujando y/o arrastrando manualmente un objeto
+    recorriendo una distancia mayor a los 60 metros
+
+3   En el puesto de trabajo se empujan o arrastran cíclicamente objetos (bolsones, cajas,
+    muebles, máquinas, etc.) cuyo esfuerzo medido con dinamómetro supera los 34 kgf.
+
+Si todas las respuestas son NO, se considera que el riesgo es tolerable.
+Si alguna de las respuestas 1 a 3 es SI, continuar con el paso 2.
+
+Si la respuesta 3 es SI debe considerarse que el riesgo de la tarea es No tolerable, debiendo solicitarse mejoras en
+tiempo prudencial.
+
+PASO 2: Determinación del Nivel de Riesgo.
+
+Nº                                          DESCRIPCIÓN                                      SI        N0
+
+       Para empujar el objeto rodante se requiere un esfuerzo inicial medido con
+1 dinamómetro  12 Kgf para hombres o 10 Kgf para mujeres.
+
+       Para arrastrar el objeto rodante se requiere un esfuerzo inicial medido con
+2 dinamómetro  10 Kgf para hombres o mujeres
+
+       El objeto rodante es empujado y/o arrastrado con dificultad (la superficie de
+3 deslizamiento es despareja, hay rampas que subir o bajar, hay roturas u obstáculos en
+
+       el recorrido, ruedas en mal estado, mal diseño del asa, etc.)
+
+       El objeto rodante no puede ser empujado y/o arrastrado con ambas manos, y en caso
+4 que lo permita, el apoyo de las manos se encuentra a una altura incómoda (por encima
+
+       del pecho o por debajo de la cintura)
+
+       En el movimiento de empujar y/o arrastrar, el esfuerzo inicial requerido se mantiene
+5 significativamente una vez puesto en movimiento el objeto (se produce atascamiento
+
+       de las ruedas, tirones o falta de deslizamiento uniforme)
+
+6 El trabajador empuja o arrastra el objeto rodante asiéndolo con una sola mano.
+
+7   El trabajador presenta alguna manifestación temprana de las enfermedades
+    mencionadas en el Artículo 1° de la presente Resolución.
+
+Si todas las respuestas son NO se presume que el risego es tolerable .
+Si alguna respuesta es SI, el empleador no puede presumir que el riesgo sea tolerable. Por lo tanto, se debe realizar
+una Evaluación de Riesgos.
+
+    Firma del Empleador    Firma del Responsable del     Firma del Responsable del
+                              Servicio de Higiene y       Servicio de Medicina del
+                                      Seguridad                      Trabajo
+
+                                                                                             Fecha:
+                                                                                             Hoja N°:
+ANEXO I - Planilla 2: EVALUACIÓN INICIAL DE FACTORES DE RIESGOS
+
+Área y Sector en estudio:
+
+Puesto de trabajo:                                              Tarea N°:
+
+                           2.C: TRANSPORTE MANUAL DE CARGAS
+
+PASO 1: Identificar si la tarea del puesto de trabajo implica:
+
+Nº                                         DESCRIPCIÓN                                                 SI        NO
+
+1 Transportar manualmente cargas de peso superior a 2 Kg y hasta 25 Kg
+
+2   El trabajador se desplaza sosteniendo manualmente la carga recorriendo una distancia mayor a
+    1 metro
+
+3 Realizarla diariamente en forma cíclica (si es esporádica, consignar NO)
+
+4 Se transporta manualmente cargas a una distancia superior a 20 metros
+
+5 Se transporta manualmente cargas de peso superior a 25 Kg
+
+Si todas las respuestas son NO, se considera que el riesgo es tolerable.
+Si alguna de las respuestas 1 a 5 es SI, continuar con el paso 2.
+
+Si la respuesta 5 es SI debe considerarse que el riesgo de la tarea es No tolerable, debiendo solicitarse mejoras en tiempo
+prudencial.
+
+PASO 2: Determinación del Nivel de Riesgo  DESCRIPCIÓN                                                 SI        N0
+   Nº
+
+       En condiciones habituales de levantamiento el trabajador transporta la carga entre 1 y 10
+1 metros con una masa acumulada (el producto de la masa por la frecuencia) mayor que 10.000
+
+       Kg durante la jornada habitual
+
+       En condiciones habituales de levantamiento el trabajador transporta la carga entre 10 y 20
+2 metros con una masa acumulada (el producto de la masa por la frecuencia) mayor que 6.000
+
+       Kg durante la jornada habitual
+
+       Las cargas poseen formas irregulares, son difíciles de asir, se deforman o hay movimiento en
+3 su interior.
+
+       El trabajador presenta alguna manifestación temprana de las enfermedades mencionadas en el
+4 Artículo 1° de la presente Resolución.
+
+Si todas las respuestas son NO se presume que el riesgo es tolerable .
+Si alguna respuesta es SI, el empleador no puede presumir que el riesgo sea tolerable. Por lo tanto, se debe realizar una
+Evaluación de Riesgos.
+
+    Firma del Empleador    Firma del Responsable del            Firma del Responsable del Servicio de
+                              Servicio de Higiene y                        Medicina del Trabajo
+                                      Seguridad
+
+                                                                                                       Fecha:
+
+                                                                                                       Hoja N°:
+ANEXO I - Planilla 2: EVALUACIÓN INICIAL DE FACTORES DE RIESGOS
+
+Área y Sector en estudio:
+
+Puesto de trabajo:                                               Tarea N°:
+
+                           2.D: BIPEDESTACIÓN
+
+PASO 1: Identificar si la tarea del puesto de trabajo implica:
+
+Nº                         DESCRIPCIÓN                                                       SI        N0
+
+1   El puesto de trabajo se desarrolla en posición de pie, sin posibilidad de sentarse,
+    durante 2 horas seguidas o más.
+
+Si la respuesta es NO, se considera que el riesgo es tolerable.
+Si la respuesta en sí continuar con paso 2
+
+PASO 2: Determinación del Nivel de Riesgo
+
+Nº                         DESCRIPCIÓN                                                       SI        N0
+
+       En el puesto se realizan tareas donde se permanece de pie durante 3 horas seguidas o
+1 más, sin posibilidades de sentarse con escasa deambulación (caminando no más de
+
+       100 metros/hora).
+
+       En el puesto se realizan tareas donde se permanece de pie durante 2 horas seguidas o
+2 más, sin posibilidades de sentarse ni desplazarse o con escasa deambulación,
+
+       levantando y/o transportando cargas > 2 Kg.
+
+       Trabajos efectuados con bipedestación prolongada en ambientes donde la temperatura
+3 y la humedad del aire sobrepasan los límites legalmente admisibles y que demandan
+
+       actividad física.
+
+4   El trabajador presenta alguna manifestación temprana de las enfermedades
+    mencionadas en el Artículo 1° de la presente Resolución.
+
+Si todas las respuestas son NO se presume que el riesgo es tolerable .
+Si alguna respuesta es SI, el empleador no puede presumir que el riesgo sea tolerable. Por lo tanto, se debe realizar
+una Evaluación de Riesgos.
+
+    Firma del Empleador    Firma del Responsable del             Firma del Responsable del
+                              Servicio de Higiene y               Servicio de Medicina del
+                                      Seguridad                              Trabajo
+
+                                                                                             Fecha:
+                                                                                             Hoja N°:
+ANEXO I - Planilla 2: EVALUACIÓN INICIAL DE FACTORES DE RIESGOS
+
+Área y Sector en estudio:
+
+Puesto de trabajo:                                                      Tarea N°:
+
+                    2.E: MOVIMIENTOS REPETITIVOS DE MIEMBROS SUPERIORES
+
+PASO 1: Identificar si el puesto de trabajo implica:
+
+Nº                                          DESCRIPCIÓN                                       SI        NO
+
+       Realizar diariamente, una o más tareas donde se utilizan las extremedidas superiores,
+1 durante 4 o más horas en la jornada habitual de trabajo en forma cíclica (en forma
+
+       continuada o alternada).
+
+Si la respuesta es NO, se considera que el riesgo es tolerable.
+Si la respuesta es SI, continuar con el paso 2.
+
+PASO 2: Determinación del Nivel de Riesgo.
+
+Nº                                          DESCRIPCIÓN                                       SI        N0
+
+       Las extremidades superiores están activas por más del 40% del tiempo total del ciclo
+1 de trabajo.
+
+2   En el ciclo de trabajo se realiza un esfuerzo superior a moderado a 3 según la Escala
+    de Borg, durante más de 6 segundos y más de una vez por minuto.
+
+3 Se realiza un esfuerzo superior a 7 según la escala de Borg.
+       El trabajador presenta alguna manifestación temprana de las enfermedades
+
+4 mencionadas en el Artículo 1° de la presente Resolución.
+
+Si todas las respuestas son NO se presume que el riesgo es tolerable .
+Si alguna respuesta es SI, el empleador no puede presumir que el riesgo sea tolerable. Por lo tanto, se debe realizar
+una Evaluación de Riesgos.
+Si la respuesta 3 es SI, se deben implementar mejoras en forma prudencial.
+
+                           · Ausencia de esfuerzo                   0
+
+    Escala de Borg         · Esfuerzo muy bajo, apenas perceptible 0,5
+
+                           · Esfuerzo muy débil                     1
+
+                           · Esfuerzo débil,/ ligero                2
+
+                           · Esfuerzo moderado / regular            3
+
+                           · Esfuerzo algo fuerte                   4
+
+                           · Esfuerzo fuerte                        5y6
+
+                           · Esfuerzo muy fuerte                    7, 8 y 9
+
+                           · Esfuerzo extremadamente fuerte         10
+
+                           (máximo que una persona puede aguantar)
+
+    Firma del Empleador    Firma del Responsable del             Firma del Responsable del
+                              Servicio de Higiene y               Servicio de Medicina del
+                                      Seguridad                              Trabajo
+
+                                                                                              Fecha:
+                                                                                              Hoja N°:
+ANEXO I - Planilla 2: EVALUACIÓN INICIAL DE FACTORES DE RIESGOS
+
+Área y Sector en estudio:
+
+Puesto de trabajo:                                                        Tarea N°:
+
+                           2.F: POSTURAS FORZADAS
+
+PASO 1: Identificar si la tarea del puesto de trabajo implica:
+
+Nº                         DESCRIPCIÓN                                                    SI                  NO
+
+       Adopatar posturas forzadas en forma habitual durante la jornada de trabajo, con o
+1 sin aplicación de fuerza. (No se deben considerar si las posturas son ocasionales)
+
+Si todas las respuestas son NO, se considera que el riesgo es tolerable.
+Si la respuesta es SI, continuar con el paso 2.
+
+PASO 2: Determinación del Nivel de Riesgo
+
+Nº                         DESCRIPCIÓN                                                    SI                  N0
+
+1 Cuello en extensión, flexión, lateralización y/o rotación
+
+       Brazos por encima de los hombros o con movimientos de supinación, pronación o
+2 rotación.
+
+3 Muñecas y manos en flexión, extensión, desviación cubital o radial.
+
+4 Cintura en flexión, extensión, lateralización y/o rotación.
+
+5 Miembros inferiores: trabajo en posición de rodillas o en cuclillas.
+
+       El trabajador presenta alguna manifestación temprana de las enfermedades
+6 mencionadas en el Artículo 1° de la presente Resolución.
+
+Si todas las respuestas son NO se presume que el riesgo es tolerable .
+Si alguna respuesta es SI, el empleador no puede presumir que el riesgo sea tolerable. Por lo tanto, se debe
+realizar una Evaluación de Riesgos.
+
+    Firma del Empleador    Firma del Responsable del Firma del Responsable del
+
+                           Servicio de Higiene y Servicio de Medicina del
+
+                                           Seguridad                      Trabajo
+
+                                                                                          Fecha:
+
+                                                                                          Hoja N°:
+ANEXO I: Planilla 2: EVALUACIÓN INICIAL DE FACTORES DE RIESGOS
+
+Área y Sector en estudio:
+
+Puesto de trabajo:                                                                Tarea N°:
+
+                           2.-G VIBRACIONES MANO - BRAZO (entre 5 y 1500Hz)
+
+PASO 1: Identificar si la tarea del puesto de trabajo implica de forma habitual:
+
+Nº                                         DESCRIPCIÓN                                         SI        NO
+
+           Trabajar con herramientas que producen vibraciones (martillo neumático,
+    1 perforadora, destornilladores, pulidoras, esmeriladoras, otros)
+    2 Sujetar piezas con las manos mientras estas son mecanizadas
+    3 Sujetar palancas, volantes, etc. que transmiten vibraciones
+Si todas las respuestas son NO, se considera que el riesgo es tolerable.
+Si alguna de las respuestas es SI, continuar con el paso 2.
+
+Paso 2: Determinación del Nivel de Riesgo
+
+Nº                                         DESCRIPCIÓN                                         SI        N0
+
+       El valor de las vibraciones supera los límites establecidos en la Tabla I, de la parte
+1 correspondiente a Vibración (segmental) mano-brazo, del Anexo V, Resolución
+
+       MTEySS N° 295/03.
+
+2   El trabajador presenta alguna manifestación temprana de las enfermedades
+    mencionadas en el Artículo 1° de la presente Resolución.
+
+Si todas las respuestas son NO se presume que el riesgo es tolerable .
+Si alguna de las respuestas es SI, el empleador no puede presumir que el riesgo sea tolerable. Por lo tanto, se
+debe realizar uan evaluacón de riesgos.
+
+                           2.-G VIBRACIONES CUERPO ENTERO (Entre 1 y 80 Hz)
+
+PASO 1: Identificar si la tarea del puesto de trabajo implica de forma habitual:
+
+Nº                                         DESCRIPCIÓN                                         SI        NO
+
+1   Conducir vehículos industriales, camiones, máquinas agrícolas, transporte público y
+    otros.
+
+2 Trabajar próximo a maquinarias generadoras de impacto.
+
+Si todas las respuestas son NO, se considera que el riesgo es tolerable.
+Si alguna de las respuestas es SI, continuar con el paso 2.
+
+Paso 2: Determinación del Nivel de Riesgo
+
+Nº                                         DESCRIPCIÓN                                         SI        N0
+
+       El valor de las vibraciones supera los límites establecidos en la parte
+1 correspondiente a Vibración Cuerpo Entero, del Anexo V, Resolución MTEySS N°
+
+       295/03.
+
+       El trabajador presenta alguna manifestación temprana de las enfermedades
+2 mencionadas en el Artículo 1° de la presente Resolución.
+
+Si todas las respuestas son NO se presume que el riesgo es tolerable .
+Si alguna de las respuestas es SI, el empleador no puede presumir que el riesgo sea tolerable. Por lo tanto, se
+debe realizar uan evaluacón de riesgos.
+
+    Firma del Empleador    Firma del Responsable del Firma del Responsable del
+
+                           Servicio de Higiene y Servicio de Medicina del
+
+                                           Seguridad                      Trabajo
+
+                                                                                               Fecha:
+
+                                                                                               Hoja N°:
+ANEXO I - Planilla 2: EVALUACIÓN INICIAL DE FACTORES DE RIESGOS
+
+Área y Sector en estudio:
+
+Puesto de trabajo:                                               Tarea N°:
+
+                           2.-H CONFORT TÉRMICO
+
+PASO 1: Identificar si la tarea del puesto de trabajo implica:
+
+Nº                         DESCRIPCIÓN                                                       SI        NO
+
+       En el puesto de trabajo se perciben temperaturas no confortables para la realización
+1 de las tareas
+
+Si la respuesta es NO, se considera que el riesgo es tolerable.
+Si la respuestas es SI, continuar con el paso 2.
+
+PASO 2: Determinación del Nivel de Riesgo.
+
+Nº                         DESCRIPCIÓN                                                       SI        N0
+
+1   EL resultado del uso de la Curva de Confort de Fanger, se encuentra por fuera de la
+    zona de confort.
+
+Si la respuesta es NO se presume que el riesgo es tolerable .
+
+  Fuente: Fanger, P.O.
+     Thermal confort.
+
+Mc.Graw Hill. New York.
+            1972.
+
+    Firma del Empleador    Firma del Responsable del Firma del Responsable del
+
+                           Servicio de Higiene y Servicio de Medicina del
+
+                                            Seguridad            Trabajo
+
+                                                                                             Fecha:
+                                                                                             Hoja N°:
+ANEXO I: Planilla 2: EVALUACIÓN INICIAL DE FACTORES DE RIESGOS
+
+Área y Sector en estudio:
+
+Puesto de trabajo:                                                                Tarea N°:
+
+                           2.-I ESTRÉS DE CONTACTO
+
+PASO 1: Identificar si la tarea del puesto de trabajo implica de forma habitual:
+
+Nº                                          DESCRIPCIÓN                           SI         NO
+
+    Mantener apoyada alguna parte del cuerpo ejerciendo una presión, contra
+
+1   una herramienta, plano de trabajo, máquina herramienta o partes y
+
+    materiales.
+
+Si la respuesta es NO, se considera que el riesgo es tolerable.
+
+Si la respuestas es SI, continuar con el paso 2.
+
+PASO 2: Determinación del Nivel de Riesgo.
+
+Nº                                          DESCRIPCIÓN                           SI         N0
+
+1   El trabajador mantiene apoyada la muñeca, antebrazo, axila o muslo u otro
+    segmento corporal sobre una superficie aguda o con canto.
+
+2   El trabajador utiliza herramientas de mano o manipula piezas que presionan
+    sobre sus dedos y/o palma de la mano hábil.
+
+3   El trabajador realiza movimientos de percusión sobre partes o herramientas
+
+4   El trabajador presenta alguna manifestación temprana de las enfermedades
+
+    mencionadas en el Artículo 1° de la presente Resolución.
+
+Si todas las respuestas son NO se presume que el riesgo es tolerable .
+Si alguna respuesta es SI, el empleador no puede presumir que el riesgo sea tolerable. Por lo tanto, se debe
+realizar una Evaluación de Riesgos.
+
+    Firma del Empleador    Firma del Responsable del                 Firma del
+                              Servicio de Higiene y              Responsable del
+                                      Seguridad
+                                                                    Servicio de
+
+                                                                                  Fecha:
+                                                                                  Hoja N°:
+ANEXO I - Planilla 3: IDENTIFICACIÓN DE MEDIDAS CORRECTIVAS Y PREVENTIVAS
+
+Razón Social:                                                                           Nombre del trabajador/es:
+Dirección del establecimiento:
+Área y Sector en estudio:
+Puesto de Trabajo:
+Tarea analizada:
+
+                                Medidas Correctivas y Preventivas (M.C.P.)
+
+N° Medidas Preventivas Generales (                Fecha:                        SI  NO            Observaciones
+                                                                                                  Observaciones
+    Se ha informado al trabajador/es, supervisor/es, ingeniero/s y directivo/s
+1 relacionados con el puesto de trabajo, sobre el riesgo que tiene la tarea de
+
+    desarrollar TME.
+
+    Se ha capacitado al trabajador/es y supervisore/es relacionados con el
+2 puesto de trabajo, sobre la identificación de síntomas relacionados con el
+
+    desarrollo de TME
+
+    Se ha capacitado al trabajador/es y supervisore/es relacionados con el
+3 puesto de trabajo, sobre las medidas y/o procedimientos para prevenir el
+
+    desarrollo de TME.
+
+N° Medidas Correctivas y Preventivas Específicas (Administrativas y de Ingeniería)
+
+(35)
+
+Observaciones:
+
+      Firma del Empleador       Firma del                Firma del
+                                                    Responsable del
+                                Responsable del   Servicio de Medicina
+
+                           Servicio de Higiene y        del Trabajo
+
+                                Seguridad
+
+                                                                                        Hoja N°:
+Anexo I - Planilla 4: MATRIZ DE SEGUIMIENTO DE MEDIDAS PREVENTIVAS
+
+Razón Social:                                                          C.U.I.T.:
+
+Dirección del establecimiento:
+
+Área y Sector en estudio:
+
+  N°   Nombre del Puesto         Fecha de   Nivel de      Fecha de         Fecha de           Fecha de
+M.C.P                           Evaluación   riesgo   implementación   implementación           Cierre
+                                                                       de la Medida de
+   1                                                    de la Medida
+   2                                                   Administrativa      Ingeniería
+   3
+   4
+   5
+   6
+  ...
+
+Firma del Empleador             Firma del Responsable Firma del Responsable
+
+                                del Servicio de Higiene y del Servicio de Medicina
+
+                                Seguridad             del Trabajo
+
+                                                                                    Hoja N°:
+
