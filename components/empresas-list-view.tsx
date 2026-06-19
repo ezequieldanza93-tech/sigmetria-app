@@ -223,15 +223,26 @@ export function EmpresasListView({
                           >
                             {e.razon_social}
                           </Link>
-                          {count > 0 && (
-                            <button
-                              type="button"
-                              onClick={() => toggleExpand(e.id)}
-                              className="text-xs text-text-tertiary hover:text-sig-500 transition-colors mt-0.5 text-left"
-                            >
-                              Ver {count} {count === 1 ? 'establecimiento' : 'establecimientos'}
-                            </button>
-                          )}
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5">
+                            {count > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => toggleExpand(e.id)}
+                                className="text-xs text-text-tertiary hover:text-sig-500 transition-colors text-left"
+                              >
+                                Ver {count} {count === 1 ? 'establecimiento' : 'establecimientos'}
+                              </button>
+                            )}
+                            {puedeCrear && (
+                              <Link
+                                href={`/dashboard/empresas/${e.id}/establecimientos/nuevo`}
+                                className="inline-flex items-center gap-1 text-xs text-sig-500 hover:text-sig-700 font-medium transition-colors"
+                              >
+                                <Plus size={12} strokeWidth={2.5} aria-hidden="true" />
+                                Agregar establecimiento
+                              </Link>
+                            )}
+                          </div>
                         </td>
                         <td className="px-5 py-2.5 text-text-secondary font-mono text-xs align-top">
                           {formatCUIT(e.cuit)}
@@ -333,17 +344,29 @@ export function EmpresasListView({
                       )}
                     </div>
 
-                    {count > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => toggleExpand(e.id)}
-                        className="mt-3 flex items-center gap-2 text-sm text-sig-500 font-medium"
-                        aria-expanded={isExpanded}
-                      >
-                        {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                        {count} {count === 1 ? 'establecimiento' : 'establecimientos'}
-                      </button>
-                    )}
+                    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+                      {count > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => toggleExpand(e.id)}
+                          className="flex items-center gap-2 text-sm text-sig-500 font-medium"
+                          aria-expanded={isExpanded}
+                        >
+                          {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                          {count} {count === 1 ? 'establecimiento' : 'establecimientos'}
+                        </button>
+                      )}
+                      {puedeCrear && (
+                        <Link
+                          href={`/dashboard/empresas/${e.id}/establecimientos/nuevo`}
+                          className="inline-flex items-center gap-1.5 text-sm text-sig-500 font-medium"
+                        >
+                          <Plus size={16} strokeWidth={2.5} aria-hidden="true" />
+                          Agregar establecimiento
+                        </Link>
+                      )}
+                    </div>
+
                   </div>
 
                   {isExpanded && count > 0 && (
