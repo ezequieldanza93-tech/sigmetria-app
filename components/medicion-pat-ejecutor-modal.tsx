@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { useGeoCaptura } from '@/lib/hooks/use-geo-captura'
 import { descargarProtocoloPdf } from '@/lib/pdf/protocolo-pdf'
 import {
@@ -1025,9 +1026,7 @@ export function MedicionPatEjecutorModal({
                   <div>
                     <label className={labelCls}>
                       Valor exigido (Ω)
-                      <span className="ml-1 inline-flex items-center text-text-tertiary cursor-help align-middle" title="Por defecto 40 Ω (esquema TT con diferencial general IΔn ≤ 300 mA). Editable según el dispositivo de protección.">
-                        <Info size={13} />
-                      </span>
+                      <InfoTooltip className="ml-1 align-middle" text="Por defecto 40 Ω (esquema TT con diferencial general IΔn ≤ 300 mA). Editable según el dispositivo de protección." />
                     </label>
                     <input type="number" step="any" className={inputCls} value={toma.valor_exigido_ohm} onChange={e => updateToma(toma.key, { valor_exigido_ohm: e.target.value })} placeholder="40" />
                   </div>

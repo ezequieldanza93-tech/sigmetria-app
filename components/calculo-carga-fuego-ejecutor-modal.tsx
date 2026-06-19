@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { useGeoCaptura } from '@/lib/hooks/use-geo-captura'
 import { descargarProtocoloPdf } from '@/lib/pdf/protocolo-pdf'
 import {
@@ -1158,12 +1159,7 @@ export function CalculoCargaFuegoEjecutorModal({
             <section className="space-y-2">
               <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2">
                 Nivel de riesgo del sector <span className="text-danger">*</span>
-                <span
-                  className="inline-flex items-center text-text-tertiary cursor-help"
-                  title="Riesgo del sector según el material/actividad (Dec 351/79): R1 explosivos, R2 inflamables, R3 muy combustibles, R4 combustibles, R5 poco combustibles, R6 incombustibles, R7 refractarios."
-                >
-                  <Info size={14} />
-                </span>
+                <InfoTooltip text="Riesgo del sector según el material/actividad (Dec 351/79): R1 explosivos, R2 inflamables, R3 muy combustibles, R4 combustibles, R5 poco combustibles, R6 incombustibles, R7 refractarios." />
               </h3>
               <div className="flex flex-wrap gap-2">
                 {RIESGOS.map(r => (

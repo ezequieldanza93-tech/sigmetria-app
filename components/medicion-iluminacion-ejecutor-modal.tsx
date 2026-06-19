@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { useGeoCaptura } from '@/lib/hooks/use-geo-captura'
 import { emitirEvidenciaIluminacion } from '@/lib/actions/emitir-evidencia-iluminacion'
 import {
@@ -1111,12 +1112,7 @@ export function MedicionIluminacionEjecutorModal({
             <section className="space-y-2">
               <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2">
                 Criterio de altura de medición
-                <span
-                  className="inline-flex items-center text-text-tertiary cursor-help"
-                  title="El instructivo aclara: la medición se toma a la altura del plano de trabajo cuando la tarea visual se realiza sobre una superficie definida (escritorio, banco, máquina). Si no hay plano de trabajo definido, se mide desde el piso."
-                >
-                  <Info size={14} />
-                </span>
+                <InfoTooltip text="El instructivo aclara: la medición se toma a la altura del plano de trabajo cuando la tarea visual se realiza sobre una superficie definida (escritorio, banco, máquina). Si no hay plano de trabajo definido, se mide desde el piso." />
               </h3>
               <div className="flex flex-col sm:flex-row gap-3">
                 <label className={`flex items-center gap-2 text-sm rounded-lg border px-3 py-2 cursor-pointer ${alturaCriterio === 'piso' ? 'border-sig-500 bg-sig-50/40 text-text-primary' : 'border-border-default text-text-secondary'}`}>
