@@ -27,6 +27,7 @@ import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { FirmaCanvas } from '@/components/firmas/firma-canvas'
 import { PersonaFirmanteSelector } from '@/components/persona-firmante-selector'
+import { PersonaSelectorConAlta } from '@/components/persona-selector-con-alta'
 import {
   Flame, Building2, Layers, FileText, Plus, Trash2, X,
   ChevronLeft, ChevronRight, CheckCircle, Loader2,
@@ -1302,16 +1303,17 @@ export function CalculoCargaFuegoEjecutorModal({
                       </div>
                       <div>
                         <label className="text-xs text-text-secondary block mb-0.5">Responsable</label>
-                        <select
-                          value={obs.responsable_id}
-                          onChange={e => updateObs(obs.key, 'responsable_id', e.target.value)}
-                          className="w-full border border-border-default rounded-lg px-2 py-1.5 text-xs bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500"
-                        >
-                          <option value="">Sin asignar</option>
-                          {personasObs.map(p => (
-                            <option key={p.id} value={p.id}>{p.apellido}, {p.nombre}</option>
-                          ))}
-                        </select>
+                        <PersonaSelectorConAlta
+                          establecimientoId={establecimientoId}
+                          value={obs.responsable_id || null}
+                          onChange={(p) => {
+                            updateObs(obs.key, 'responsable_id', p?.id ?? '')
+                            if (p && !personasObs.some(x => x.id === p.id)) {
+                              setPersonasObs(prev => [...prev, { id: p.id, nombre: p.nombre, apellido: p.apellido }].sort((a, b) => a.apellido.localeCompare(b.apellido)))
+                            }
+                          }}
+                          placeholder="Sin asignar"
+                        />
                       </div>
                       <div>
                         <label className="text-xs text-text-secondary block mb-0.5">Fecha subsanación</label>
