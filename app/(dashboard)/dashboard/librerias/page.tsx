@@ -102,12 +102,12 @@ export default async function LibreriasHubPage() {
             <Link
               key={card.href}
               href={card.href}
-              className="group flex flex-col gap-3 bg-surface-base border border-border-subtle rounded-xl p-5 hover:border-sig-400 hover:shadow-sm transition-all duration-150 active:scale-[0.98]"
+              className="group flex flex-row items-center gap-4 bg-surface-base border border-border-subtle rounded-xl p-5 hover:border-sig-400 hover:shadow-sm transition-all duration-150 active:scale-[0.98]"
             >
-              <div className="h-10 w-10 rounded-lg bg-sig-500/10 flex items-center justify-center shrink-0 group-hover:bg-sig-500/15 transition-colors">
-                <Icon size={20} strokeWidth={1.75} className="text-sig-500" aria-hidden />
+              <div className="h-14 w-14 rounded-xl bg-sig-500/10 flex items-center justify-center shrink-0 group-hover:bg-sig-500/15 transition-colors">
+                <Icon size={28} strokeWidth={1.6} className="text-sig-500" aria-hidden />
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="font-medium text-text-primary text-sm leading-snug">
                   {card.title}
                 </p>
