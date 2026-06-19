@@ -207,6 +207,7 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
   const [selectedActividadId, setSelectedActividadId] = useState(establecimiento?.actividad_id ?? '')
   const [semana, setSemana] = useState<Record<number, DiaConfig>>(HORARIO_DEFAULT)
   const formRef = useRef<HTMLFormElement>(null)
+  const submitIntentRef = useRef(false)
   const [tick, setTick] = useState(0)
   const [currentSection, setCurrentSection] = useState<SectionId>(1)
 
@@ -358,11 +359,19 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     // Guarda definitiva: el form solo debe procesarse cuando el usuario está
-    // en la sección final y aprieta explícitamente el botón Crear/Guardar.
-    if (currentSection !== 3) {
+    // en la sección final Y apretó DELIBERADAMENTE el botón Crear/Guardar.
+    //
+    // El flag distingue el submit real de uno accidental: al pasar de la
+    // sección 2 a la 3, el botón "Siguiente" se reemplaza EN EL MISMO NODO del
+    // DOM por el botón submit. React (evento discreto) re-renderiza sincrónico
+    // dentro del mismo click, así que el navegador termina disparando el submit
+    // con el botón ya convertido en submit. En ese flujo el onClick que corrió
+    // fue el de "Siguiente" (no el del submit), por lo que el flag queda false.
+    if (currentSection !== 3 || !submitIntentRef.current) {
       e.preventDefault()
       e.stopPropagation()
     }
+    submitIntentRef.current = false
   }
 
   return (
@@ -732,7 +741,11 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
               Siguiente →
             </Button>
           ) : (
-            <Button type="submit" disabled={isPending}>
+            <Button
+              type="submit"
+              disabled={isPending}
+              onClick={() => { submitIntentRef.current = true }}
+            >
               {isPending ? 'Guardando...' : submitLabel}
             </Button>
           )}
