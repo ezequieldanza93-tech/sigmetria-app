@@ -49,6 +49,18 @@ type Ventilacion = 'natural' | 'mecanica'
 type Riesgo = 'R1' | 'R2' | 'R3' | 'R4' | 'R5' | 'R6' | 'R7'
 const RIESGOS: Riesgo[] = ['R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'R7']
 
+// Significado breve de cada nivel de riesgo (Dec 351/79). Se muestra dentro del
+// botón para que alguien sin experiencia pueda elegir sin consultar la norma.
+const RIESGO_LABELS: Record<Riesgo, string> = {
+  R1: 'Explosivos',
+  R2: 'Inflamables',
+  R3: 'Muy combustibles',
+  R4: 'Combustibles',
+  R5: 'Poco combustibles',
+  R6: 'Incombustibles',
+  R7: 'Refractarios',
+}
+
 interface MaterialState {
   key: number
   descripcion: string
@@ -1148,7 +1160,8 @@ export function CalculoCargaFuegoEjecutorModal({
                     }`}
                   >
                     {riesgo === r && <Check size={13} className="text-sig-600" />}
-                    {r}
+                    <span className="font-semibold">{r}</span>
+                    <span className="text-xs text-text-tertiary font-normal">{RIESGO_LABELS[r]}</span>
                   </button>
                 ))}
               </div>
