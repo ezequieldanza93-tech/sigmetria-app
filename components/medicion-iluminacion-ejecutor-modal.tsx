@@ -3,8 +3,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useGeoCaptura } from '@/lib/hooks/use-geo-captura'
-import { generarProtocoloPdf } from '@/lib/pdf/protocolo-pdf'
-import { guardarEvidenciaProtocolo } from '@/lib/actions/protocolo-evidencia'
 import { emitirEvidenciaIluminacion } from '@/lib/actions/emitir-evidencia-iluminacion'
 import {
   crearMedicionIluminacion,
@@ -323,8 +321,7 @@ export function MedicionIluminacionEjecutorModal({
   const hojaDatosRef = useRef<HTMLDivElement>(null)
   const hojaGrillaRef = useRef<HTMLDivElement>(null)
   const hojaAnalisisRef = useRef<HTMLDivElement>(null)
-  // PDF generado (se reusa para descargar) + estado del guardado como evidencia.
-  const pdfDocRef = useRef<Awaited<ReturnType<typeof generarProtocoloPdf>> | null>(null)
+  // Estado del guardado como evidencia (el PDF se genera server-side via Chromium).
   const [evidenciaStatus, setEvidenciaStatus] = useState<'idle' | 'guardando' | 'ok' | 'error'>('idle')
   const [evidenciaPdfUrl, setEvidenciaPdfUrl] = useState<string | null>(null)
 
