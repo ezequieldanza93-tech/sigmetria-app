@@ -357,7 +357,7 @@ export function ProtocoloErgonomiaEjecutorModal({
   const [nombreTrabajadores, setNombreTrabajadores] = useState('')
   const [trabajadorPersonaId, setTrabajadorPersonaId] = useState<string | null>(null)
   const [manifestacionTemprana, setManifestacionTemprana] = useState<boolean | null>(null)
-  const [fechaEvaluacion, setFechaEvaluacion] = useState('')
+  const [fechaEvaluacion, setFechaEvaluacion] = useState(new Date().toISOString().slice(0, 10))
   const [firmante, setFirmante] = useState('')
   const [firmantePersonaId, setFirmantePersonaId] = useState<string | null>(null)
   const [observacionesGlobales, setObservacionesGlobales] = useState('')

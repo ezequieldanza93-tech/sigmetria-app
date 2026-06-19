@@ -350,7 +350,7 @@ export function MedicionIluminacionEjecutorModal({
   // metodologiaSelector: opción elegida en el <select> (una de METODOLOGIA_OPCIONES o 'Otro').
   // `metodologia` guarda el valor final (texto) que se envía al server action y al PDF.
   const [metodologiaSelector, setMetodologiaSelector] = useState('')
-  const [fechaMedicion, setFechaMedicion] = useState(rgFechaPlanificada || '')
+  const [fechaMedicion, setFechaMedicion] = useState(rgFechaPlanificada || new Date().toISOString().slice(0, 10))
   const [horaInicio, setHoraInicio] = useState('')
   const [horaFin, setHoraFin] = useState('')
   const [alturaCriterio, setAlturaCriterio] = useState<AlturaCriterio>('piso')

@@ -252,7 +252,7 @@ export function MedicionPatEjecutorModal({
   // un PAT viejo trae un valor que no está en la lista → se marca 'Otro'.
   const [metodologia, setMetodologia] = useState('')
   const [metodologiaSelector, setMetodologiaSelector] = useState('')
-  const [fechaMedicion, setFechaMedicion] = useState(rgFechaPlanificada || '')
+  const [fechaMedicion, setFechaMedicion] = useState(rgFechaPlanificada || new Date().toISOString().slice(0, 10))
   const [fechaMedicionFin, setFechaMedicionFin] = useState('')
   const [horaInicio, setHoraInicio] = useState('')
   const [horaFin, setHoraFin] = useState('')

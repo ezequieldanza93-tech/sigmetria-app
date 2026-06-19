@@ -334,7 +334,7 @@ export function MedicionRuidoEjecutorModal({
   // Firma dibujada a mano del profesional en el paso de revisión (dataURL PNG | null).
   // Es deseable, no obligatoria: no bloquea el cierre del protocolo.
   const [firmaSvg, setFirmaSvg] = useState<string | null>(null)
-  const [fechaMedicion, setFechaMedicion] = useState(rgFechaPlanificada || '')
+  const [fechaMedicion, setFechaMedicion] = useState(rgFechaPlanificada || new Date().toISOString().slice(0, 10))
   const [fechaMedicionFin, setFechaMedicionFin] = useState('')
   const [horaInicio, setHoraInicio] = useState('')
   const [horaFin, setHoraFin] = useState('')

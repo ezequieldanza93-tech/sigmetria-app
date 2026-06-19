@@ -407,7 +407,7 @@ export function MedicionCargaTermicaEjecutorModal({
   // Firma a mano del profesional (dataURL PNG) capturada en el paso de revisión.
   // Es deseable, no obligatoria: NO bloquea el cierre del protocolo.
   const [firmaSvg, setFirmaSvg] = useState<string | null>(null)
-  const [fechaMedicion, setFechaMedicion] = useState(rgFechaPlanificada || '')
+  const [fechaMedicion, setFechaMedicion] = useState(rgFechaPlanificada || new Date().toISOString().slice(0, 10))
   const [fechaMedicionFin, setFechaMedicionFin] = useState('')
   const [horaInicio, setHoraInicio] = useState('')
   const [horaFin, setHoraFin] = useState('')
