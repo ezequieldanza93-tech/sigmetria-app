@@ -254,6 +254,17 @@ export async function getLegajoEsperados(
     respuestas.set(r.pregunta_id, r.respuesta)
   }
 
+  // Preguntas extra por documento (N:N, OR con documentos_tipos.pregunta_id).
+  const { data: dtpData } = await supabase
+    .from('documentos_tipos_preguntas')
+    .select('documento_tipo_id, pregunta_id')
+  const preguntasPorDoc = new Map<string, string[]>()
+  for (const r of (dtpData ?? []) as { documento_tipo_id: string; pregunta_id: string }[]) {
+    const arr = preguntasPorDoc.get(r.documento_tipo_id) ?? []
+    arr.push(r.pregunta_id)
+    preguntasPorDoc.set(r.documento_tipo_id, arr)
+  }
+
   // Override por establecimiento (force-in / force-out de documentos puntuales).
   const { data: ovData } = await supabase
     .from('establecimiento_documentos_override')
@@ -275,10 +286,13 @@ export async function getLegajoEsperados(
     if (!t.categoria_legajo) continue
     catalogoRawById.set(t.id, { nombre: t.nombre, periodicidad: t.periodicidad, categoria: t.categoria_legajo })
     if (desactivados.has(t.nombre)) continue
-    // Gating condicional: si el doc requiere pregunta, solo entra cuando el
-    // establecimiento respondió SÍ a esa pregunta del alta. Sin pregunta vinculada
-    // o sin requerirla → aplica siempre.
-    if (t.requiere_pregunta && t.pregunta_id && respuestas.get(t.pregunta_id) !== true) continue
+    // Gating condicional (OR): si el doc requiere pregunta, entra cuando el
+    // establecimiento respondió SÍ a CUALQUIERA de sus preguntas vinculadas
+    // (pregunta_id simple + join N:N). Sin preguntas vinculadas → aplica siempre.
+    if (t.requiere_pregunta) {
+      const linked = [...(t.pregunta_id ? [t.pregunta_id] : []), ...(preguntasPorDoc.get(t.id) ?? [])]
+      if (linked.length > 0 && !linked.some((pid) => respuestas.get(pid) === true)) continue
+    }
     const arr = catalogoPorCat.get(t.categoria_legajo) ?? []
     arr.push({ id: t.id, nombre: t.nombre, periodicidad: t.periodicidad })
     catalogoPorCat.set(t.categoria_legajo, arr)
