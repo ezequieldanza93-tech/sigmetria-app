@@ -11,14 +11,23 @@ import {
   BookOpen,
   CheckCircle,
   Library,
+  Scale,
 } from 'lucide-react'
 import { getEffectiveRole } from '@/lib/auth/effective-role'
 
+type LucideIconType = React.ComponentType<{ size?: number; strokeWidth?: number; className?: string; 'aria-hidden'?: boolean | 'true' | 'false' }>
+
 interface HubCard {
   href: string
-  icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string; 'aria-hidden'?: boolean | 'true' | 'false' }>
+  icon: LucideIconType
   title: string
   description: string
+}
+
+interface HubSection {
+  title: string
+  icon: LucideIconType
+  cards: HubCard[]
 }
 
 export default async function LibreriasHubPage() {
@@ -28,71 +37,95 @@ export default async function LibreriasHubPage() {
     eff?.effectiveUserRole === 'full_access_main' ||
     eff?.effectiveUserRole === 'full_access_branch'
 
-  const cards: HubCard[] = [
+  const sections: HubSection[] = [
     {
-      href: '/dashboard/productos?clase=epp',
-      icon: Shield,
-      title: 'Elementos de Protección (EPP)',
-      description: 'Catálogo de protección personal: cabeza, ocular, manos, cuerpo, altura.',
-    },
-    {
-      href: '/dashboard/productos?clase=epc',
-      icon: ShieldCheck,
-      title: 'Protección Colectiva (EPC)',
-      description: 'Catálogo de protección colectiva y señalización.',
-    },
-    {
-      href: '/dashboard/productos?clase=equipamiento',
+      title: 'Catálogos de productos',
       icon: Package,
-      title: 'Equipamiento',
-      description: 'Herramientas, maquinaria, andamios y consumibles.',
+      cards: [
+        {
+          href: '/dashboard/productos?clase=epp',
+          icon: Shield,
+          title: 'Elementos de Protección (EPP)',
+          description: 'Catálogo de protección personal: cabeza, ocular, manos, cuerpo, altura.',
+        },
+        {
+          href: '/dashboard/productos?clase=epc',
+          icon: ShieldCheck,
+          title: 'Protección Colectiva (EPC)',
+          description: 'Catálogo de protección colectiva y señalización.',
+        },
+        {
+          href: '/dashboard/productos?clase=equipamiento',
+          icon: Package,
+          title: 'Equipamiento',
+          description: 'Herramientas, maquinaria, andamios y consumibles.',
+        },
+      ],
     },
     {
-      href: '/dashboard/configuracion/iperc',
-      icon: AlertTriangle,
-      title: 'Librería IPERC',
-      description: 'Identificación de peligros y evaluación de riesgos.',
+      title: 'Requisitos legales',
+      icon: Scale,
+      cards: [
+        {
+          href: '/dashboard/configuracion/normativa-legal',
+          icon: ScrollText,
+          title: 'Normativa Legal',
+          description: 'Registro de normas, leyes y resoluciones vigentes.',
+        },
+        {
+          href: '/dashboard/configuracion/documentos-catalogo',
+          icon: FileText,
+          title: 'Catálogo de Documentos',
+          description: 'Tipos de documentos y requisitos documentales.',
+        },
+      ],
     },
     {
-      href: '/dashboard/libreria-gestiones',
+      title: 'Gestiones',
       icon: ClipboardList,
-      title: 'Librería de Gestiones',
-      description: 'Plantillas y modelos de gestiones reutilizables.',
+      cards: [
+        {
+          href: '/dashboard/configuracion/iperc',
+          icon: AlertTriangle,
+          title: 'Librería IPERC',
+          description: 'Identificación de peligros y evaluación de riesgos.',
+        },
+        {
+          href: '/dashboard/libreria-gestiones',
+          icon: ClipboardList,
+          title: 'Librería de Gestiones',
+          description: 'Plantillas y modelos de gestiones reutilizables.',
+        },
+      ],
     },
     {
-      href: '/dashboard/configuracion/normativa-legal',
-      icon: ScrollText,
-      title: 'Normativa Legal',
-      description: 'Registro de normas, leyes y resoluciones vigentes.',
-    },
-    {
-      href: '/dashboard/configuracion/documentos-catalogo',
-      icon: FileText,
-      title: 'Catálogo de Documentos',
-      description: 'Tipos de documentos y requisitos documentales.',
-    },
-    {
-      href: '/dashboard/cursos',
+      title: 'Formaciones',
       icon: GraduationCap,
-      title: 'Mis Cursos',
-      description: 'Formaciones asignadas y estado de completitud.',
+      cards: [
+        {
+          href: '/dashboard/cursos',
+          icon: GraduationCap,
+          title: 'Mis Cursos',
+          description: 'Formaciones asignadas y estado de completitud.',
+        },
+        ...(canManageCursos
+          ? [
+              {
+                href: '/dashboard/cursos/admin',
+                icon: BookOpen,
+                title: 'Administrar Cursos',
+                description: 'Crear y gestionar cursos de la consultora.',
+              } as HubCard,
+              {
+                href: '/dashboard/cursos/compliance',
+                icon: CheckCircle,
+                title: 'Compliance',
+                description: 'Control de cumplimiento de formaciones.',
+              } as HubCard,
+            ]
+          : []),
+      ],
     },
-    ...(canManageCursos
-      ? [
-          {
-            href: '/dashboard/cursos/admin',
-            icon: BookOpen,
-            title: 'Administrar Cursos',
-            description: 'Crear y gestionar cursos de la consultora.',
-          } as HubCard,
-          {
-            href: '/dashboard/cursos/compliance',
-            icon: CheckCircle,
-            title: 'Compliance',
-            description: 'Control de cumplimiento de formaciones.',
-          } as HubCard,
-        ]
-      : []),
   ]
 
   return (
@@ -109,27 +142,45 @@ export default async function LibreriasHubPage() {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {cards.map((card) => {
-          const Icon = card.icon
+      <div className="space-y-5">
+        {sections.map((section) => {
+          const SectionIcon = section.icon
           return (
-            <Link
-              key={card.href}
-              href={card.href}
-              className="group flex flex-row items-center gap-4 bg-surface-base border border-border-subtle rounded-xl p-5 hover:border-sig-400 hover:shadow-sm transition-all duration-150 active:scale-[0.98]"
+            <section
+              key={section.title}
+              className="bg-surface-base border border-border-subtle rounded-2xl p-5"
             >
-              <div className="h-14 w-14 rounded-xl bg-sig-500/10 flex items-center justify-center shrink-0 group-hover:bg-sig-500/15 transition-colors">
-                <Icon size={28} strokeWidth={1.6} className="text-sig-500" aria-hidden />
+              <div className="flex items-center gap-2 mb-4">
+                <SectionIcon size={18} strokeWidth={1.8} className="text-sig-500" aria-hidden />
+                <h2 className="text-base font-semibold text-text-primary">{section.title}</h2>
+                <span className="text-xs text-text-tertiary">({section.cards.length})</span>
               </div>
-              <div className="min-w-0">
-                <p className="font-medium text-text-primary text-sm leading-snug">
-                  {card.title}
-                </p>
-                <p className="text-xs text-text-tertiary mt-1 leading-relaxed">
-                  {card.description}
-                </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {section.cards.map((card) => {
+                  const Icon = card.icon
+                  return (
+                    <Link
+                      key={card.href}
+                      href={card.href}
+                      className="group flex flex-row items-center gap-3 bg-surface-base border border-border-subtle rounded-xl p-4 hover:border-sig-400 hover:shadow-sm transition-all duration-150 active:scale-[0.98]"
+                    >
+                      <div className="h-12 w-12 rounded-xl bg-sig-500/10 flex items-center justify-center shrink-0 group-hover:bg-sig-500/15 transition-colors">
+                        <Icon size={24} strokeWidth={1.6} className="text-sig-500" aria-hidden />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-medium text-text-primary text-sm leading-snug">
+                          {card.title}
+                        </p>
+                        <p className="text-xs text-text-tertiary mt-1 leading-relaxed">
+                          {card.description}
+                        </p>
+                      </div>
+                    </Link>
+                  )
+                })}
               </div>
-            </Link>
+            </section>
           )
         })}
       </div>
