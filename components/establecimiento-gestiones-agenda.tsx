@@ -30,6 +30,7 @@ import {
   createCategoriaGestion,
 } from '@/lib/actions/gestion-establecimiento'
 import { ejecutarGestion, crearObservaciones } from '@/lib/actions/registro-gestion'
+import { emitirEvidenciaIluminacion } from '@/lib/actions/emitir-evidencia-iluminacion'
 import { PersonaSelector } from '@/components/persona-selector'
 import { AuditHistorialLink } from '@/components/auditoria/audit-historial-link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
@@ -1686,6 +1687,41 @@ function AgendaActionsCell({
   const dropdownRef = useRef<HTMLDivElement>(null)
   // Bucket privado `documentos`: firmamos la evidencia para el link "Ver".
   const { getUrl } = useSignedUrls('documentos', [r.evidencia_url])
+  const queryClient = useQueryClient()
+  // Generación on-demand del PDF de iluminación desde los datos YA cargados (sin
+  // reabrir el formulario). Al terminar, queda como evidencia y el row pasa a "Descargar PDF".
+  const [generandoPdf, setGenerandoPdf] = useState(false)
+  const [pdfError, setPdfError] = useState<string | null>(null)
+
+  async function handleGenerarPdfIluminacion() {
+    setGenerandoPdf(true)
+    setPdfError(null)
+    try {
+      const res = await emitirEvidenciaIluminacion(r.id, r.fecha_planificada)
+      if (!res.success) { setPdfError(res.error ?? 'No se pudo generar el PDF.'); return }
+      // Descarga inmediata, popup-safe (fetch → blob → <a download>).
+      try {
+        const resp = await fetch(res.data.pdfUrl)
+        const blob = await resp.blob()
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `${r.ge_gestion_nombre ?? 'protocolo-iluminacion'}.pdf`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+      } catch {
+        /* si la descarga directa falla, la evidencia igual quedó guardada y el row mostrará "Descargar PDF" */
+      }
+      // El registro ahora tiene evidencia_url → refrescamos para que el row pase a "Descargar PDF".
+      queryClient.invalidateQueries({ queryKey: ['registros-gestion'] })
+    } catch (err) {
+      setPdfError(err instanceof Error ? err.message : 'No se pudo generar el PDF.')
+    } finally {
+      setGenerandoPdf(false)
+    }
+  }
 
   useEffect(() => {
     function handleOutside(e: MouseEvent) {
@@ -1765,17 +1801,35 @@ function AgendaActionsCell({
       )
     }
     // Sin PDF guardado todavía → visor HTML interino / ver reporte.
+    // Para ILUMINACIÓN, además, botón para GENERAR el PDF desde los datos ya
+    // cargados (sin reabrir el formulario) y descargarlo. Al terminar queda como
+    // evidencia y el row pasa a "Descargar PDF".
     if (onViewReporte) {
+      const esIluminacion = r.ge_tipo_ejecucion === 'medicion_iluminacion'
       return (
-        <div className="flex items-center justify-center">
-          <button
-            title={esVisorHtmlInterino ? 'Ver el protocolo ejecutado (visor HTML)' : 'Ver el protocolo ejecutado'}
-            onClick={onViewReporte}
-            className={`${primaryBtn} ${primaryActive}`}
-          >
-            <Eye size={14} />
-            <span className="hidden sm:inline">{esVisorHtmlInterino ? 'Ver (HTML)' : 'Ver reporte'}</span>
-          </button>
+        <div className="flex flex-col items-center gap-1">
+          <div className="flex items-center gap-1.5 justify-center">
+            {esIluminacion && (
+              <button
+                title="Generar y descargar el PDF del protocolo desde los datos ya cargados"
+                onClick={handleGenerarPdfIluminacion}
+                disabled={generandoPdf}
+                className={`${primaryBtn} ${primaryActive} disabled:opacity-60`}
+              >
+                <Download size={14} className={generandoPdf ? 'animate-pulse' : ''} />
+                <span className="hidden sm:inline">{generandoPdf ? 'Generando…' : 'Descargar PDF'}</span>
+              </button>
+            )}
+            <button
+              title={esVisorHtmlInterino ? 'Ver el protocolo ejecutado (visor HTML)' : 'Ver el protocolo ejecutado'}
+              onClick={onViewReporte}
+              className={`${primaryBtn} ${primaryActive}`}
+            >
+              <Eye size={14} />
+              <span className="hidden sm:inline">{esVisorHtmlInterino ? 'Ver (HTML)' : 'Ver reporte'}</span>
+            </button>
+          </div>
+          {pdfError && <span className="text-[10px] text-red-600 max-w-[200px] text-center leading-tight">{pdfError}</span>}
         </div>
       )
     }
