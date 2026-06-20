@@ -670,7 +670,8 @@ export async function removeRiesgoDePeligro(id: string): Promise<ActionResult<nu
 export async function calcularNivelRiesgoAction(
   riesgoMatrizId: string,
   probabilidadId: string,
-  consecuenciaId: string
+  consecuenciaId: string,
+  consecuenciaItemId?: string | null
 ): Promise<ActionResult<any>> {
   const supabase = await createClient()
 
@@ -696,6 +697,9 @@ export async function calcularNivelRiesgoAction(
     valor_calculado: valorCalculado,
     nivel_riesgo_id: nivel?.id ?? null,
   }
+  // La consecuencia concreta (ítem) que el usuario eligió; la gravedad (consecuencia_id)
+  // se deriva de su nivel. Solo se actualiza si vino en la llamada.
+  if (consecuenciaItemId !== undefined) updateData.consecuencia_item_id = consecuenciaItemId
 
   const { data, error } = await supabase
     .from('iperc_matriz_riesgos')
@@ -763,6 +767,7 @@ export async function getIpercCompleto(establecimientoId: string): Promise<Actio
               riesgo:iperc_riesgos_library(*),
               probabilidad:iperc_probabilidades(*),
               consecuencia:iperc_consecuencias(*),
+              consecuencia_item:iperc_consecuencia_items(*),
               nivel_riesgo:iperc_niveles_riesgo(*),
               iperc_riesgos_medidas(
                 *,

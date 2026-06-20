@@ -267,6 +267,7 @@ export function IpercMatrizWizard({ establecimientoId, canWrite }: Props) {
                                                       riesgoMatrizId: mr.id,
                                                       probabilidadId: e.target.value,
                                                       consecuenciaId: mr.consecuencia_id,
+                                                      consecuenciaItemId: mr.consecuencia_item_id,
                                                     })
                                                   }
                                                 }}
@@ -279,22 +280,39 @@ export function IpercMatrizWizard({ establecimientoId, canWrite }: Props) {
                                               <span className="text-text-tertiary">×</span>
                                               <select
                                                 className="text-xs border rounded px-2 py-1"
-                                                value={mr.consecuencia_id || ''}
+                                                value={mr.consecuencia_item_id || ''}
                                                 onChange={async (e) => {
-                                                  if (e.target.value && mr.probabilidad_id) {
+                                                  const itemId = e.target.value
+                                                  if (!itemId) return
+                                                  // La gravedad se deriva del nivel al que pertenece el ítem elegido.
+                                                  const nivelCons = (consecuencias ?? []).find((c: any) =>
+                                                    (c.iperc_consecuencia_items ?? []).some((it: any) => it.id === itemId)
+                                                  )
+                                                  if (nivelCons && mr.probabilidad_id) {
                                                     await calcularNivel.mutateAsync({
                                                       riesgoMatrizId: mr.id,
                                                       probabilidadId: mr.probabilidad_id,
-                                                      consecuenciaId: e.target.value,
+                                                      consecuenciaId: nivelCons.id,
+                                                      consecuenciaItemId: itemId,
                                                     })
                                                   }
                                                 }}
                                               >
                                                 <option value="">Consecuencia</option>
                                                 {(consecuencias ?? []).map((c: any) => (
-                                                  <option key={c.id} value={c.id}>{c.nivel} ({c.valor_numerico})</option>
+                                                  <optgroup key={c.id} label={`${c.nivel} (${c.valor_numerico})`}>
+                                                    {(c.iperc_consecuencia_items ?? []).map((it: any) => (
+                                                      <option key={it.id} value={it.id}>{it.nombre}</option>
+                                                    ))}
+                                                  </optgroup>
                                                 ))}
                                               </select>
+
+                                              {mr.consecuencia && (
+                                                <span className="text-xs text-text-tertiary whitespace-nowrap">
+                                                  Gravedad: {mr.consecuencia.nivel} ({mr.consecuencia.valor_numerico})
+                                                </span>
+                                              )}
 
                                               {mr.nivel_riesgo && (
                                                 <span

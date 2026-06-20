@@ -394,13 +394,14 @@ export function useCalcularNivelRiesgo(establecimientoId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({
-      riesgoMatrizId, probabilidadId, consecuenciaId
+      riesgoMatrizId, probabilidadId, consecuenciaId, consecuenciaItemId
     }: {
       riesgoMatrizId: string
       probabilidadId: string
       consecuenciaId: string
+      consecuenciaItemId?: string | null
     }) => {
-      const res = await calcularNivelRiesgoAction(riesgoMatrizId, probabilidadId, consecuenciaId)
+      const res = await calcularNivelRiesgoAction(riesgoMatrizId, probabilidadId, consecuenciaId, consecuenciaItemId)
       if (!res.success) throw new Error(res.error)
       return res.data
     },
