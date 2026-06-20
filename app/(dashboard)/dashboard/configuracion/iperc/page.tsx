@@ -11,6 +11,7 @@ import { IPERC_FACTORES, IPERC_RIESGO_TIPOS } from '@/lib/constants'
 import { NIVEL_RIESGO_BADGE } from '@/lib/types'
 import { useEffectiveRoleContext } from '@/lib/contexts/effective-role-context'
 import { OrigenFilter, pasaOrigen, OrigenBadge, type OrigenFiltro } from '@/components/ui/origen-filter'
+import { MultiSelectFilter, type MultiSelectOption } from '@/components/ui/multi-select-filter'
 
 // Un ítem es genérico (base de Sigmetría) cuando consultora_id IS NULL.
 // Los genéricos los administra solo quien puede gestionar librerías base
@@ -39,6 +40,38 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'probabilidades', label: 'Probabilidades' },
   { id: 'niveles', label: 'Niveles de Riesgo' },
 ]
+
+// Opciones de los filtros por categoría (value === label en enums de texto).
+const FACTOR_OPTIONS: MultiSelectOption[] = IPERC_FACTORES.map(f => ({ value: f, label: f }))
+const RIESGO_TIPO_OPTIONS: MultiSelectOption[] = IPERC_RIESGO_TIPOS.map(t => ({ value: t, label: t }))
+
+// Agrupa una lista por categoría (string), respetando el orden canónico dado y
+// dejando al final cualquier categoría no contemplada (legacy), en orden alfabético.
+function agruparPorCategoria<T>(
+  items: T[],
+  getCat: (x: T) => string,
+  orden: readonly string[],
+): { categoria: string; items: T[] }[] {
+  const mapa = new Map<string, T[]>()
+  for (const it of items) {
+    const c = getCat(it) || 'Sin categoría'
+    const arr = mapa.get(c)
+    if (arr) arr.push(it)
+    else mapa.set(c, [it])
+  }
+  const grupos: { categoria: string; items: T[] }[] = []
+  for (const c of orden) {
+    const arr = mapa.get(c)
+    if (arr) {
+      grupos.push({ categoria: c, items: arr })
+      mapa.delete(c)
+    }
+  }
+  for (const c of [...mapa.keys()].sort((a, b) => a.localeCompare(b))) {
+    grupos.push({ categoria: c, items: mapa.get(c)! })
+  }
+  return grupos
+}
 
 export default function IpercConfigPage() {
   const [tab, setTab] = useState<Tab>('peligros')
@@ -81,14 +114,25 @@ function PeligrosTab() {
   const [modal, setModal] = useState(false)
   const [asBase, setAsBase] = useState(false)
   const [origen, setOrigen] = useState<OrigenFiltro>('todos')
+  // Por defecto: todos los factores tildados (= sin filtrar por categoría).
+  const [factorSel, setFactorSel] = useState<Set<string>>(() => new Set(IPERC_FACTORES))
   const puedeGestionar = usePuedeGestionar()
-  const lista = (peligros ?? []).filter((p: any) => pasaOrigen(p.consultora_id, origen))
+  const lista = (peligros ?? []).filter(
+    (p: any) => pasaOrigen(p.consultora_id, origen) && factorSel.has(p.factor),
+  )
+  const grupos = agruparPorCategoria(lista, (p: any) => p.factor, IPERC_FACTORES)
 
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-3">
         <div className="flex items-center gap-3 flex-wrap">
           <OrigenFilter value={origen} onChange={setOrigen} />
+          <MultiSelectFilter
+            label="Factor"
+            options={FACTOR_OPTIONS}
+            selected={factorSel}
+            onChange={setFactorSel}
+          />
           <p className="text-sm text-text-secondary">{lista.length} peligros</p>
         </div>
         {puedeGestionar && (
@@ -138,20 +182,33 @@ function PeligrosTab() {
           </div>
         </form>
       </Modal>
-      {isLoading ? <p>Cargando...</p> : (
-        <div className="grid gap-2">
-          {lista.map((p: any) => (
-            <div key={p.id} className="flex items-start justify-between gap-2 p-3 bg-surface-base border rounded-lg">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="font-medium break-words">{p.nombre}</p>
-                  <OrigenBadge consultoraId={p.consultora_id} />
-                </div>
-                <Badge>{p.factor}</Badge>
+      {isLoading ? (
+        <p>Cargando...</p>
+      ) : grupos.length === 0 ? (
+        <p className="text-sm text-text-tertiary py-8 text-center">No hay peligros que coincidan con los filtros.</p>
+      ) : (
+        <div className="flex flex-col gap-5">
+          {grupos.map(g => (
+            <div key={g.categoria}>
+              <div className="flex items-center gap-2 mb-2">
+                <h3 className="text-sm font-semibold text-text-primary">{g.categoria}</h3>
+                <span className="rounded-full bg-surface-elevated px-2 py-0.5 text-[10px] font-semibold text-text-tertiary">{g.items.length}</span>
               </div>
-              {(p.consultora_id !== null || puedeGestionar) && (
-                <Button variant="ghost" size="sm" className="shrink-0" onClick={() => deletePeligro.mutate(p.id)}>Eliminar</Button>
-              )}
+              <div className="grid gap-2">
+                {g.items.map((p: any) => (
+                  <div key={p.id} className="flex items-start justify-between gap-2 p-3 bg-surface-base border rounded-lg">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-medium break-words">{p.nombre}</p>
+                        <OrigenBadge consultoraId={p.consultora_id} />
+                      </div>
+                    </div>
+                    {(p.consultora_id !== null || puedeGestionar) && (
+                      <Button variant="ghost" size="sm" className="shrink-0" onClick={() => deletePeligro.mutate(p.id)}>Eliminar</Button>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
         </div>
@@ -167,8 +224,13 @@ function RiesgosTab() {
   const [modal, setModal] = useState(false)
   const [asBase, setAsBase] = useState(false)
   const [origen, setOrigen] = useState<OrigenFiltro>('todos')
+  // Por defecto: todos los tipos tildados (= sin filtrar por categoría).
+  const [tipoSel, setTipoSel] = useState<Set<string>>(() => new Set(IPERC_RIESGO_TIPOS))
   const puedeGestionar = usePuedeGestionar()
-  const lista = (riesgos ?? []).filter((r: any) => pasaOrigen(r.consultora_id, origen))
+  const lista = (riesgos ?? []).filter(
+    (r: any) => pasaOrigen(r.consultora_id, origen) && tipoSel.has(r.tipo),
+  )
+  const grupos = agruparPorCategoria(lista, (r: any) => r.tipo, IPERC_RIESGO_TIPOS)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -185,6 +247,12 @@ function RiesgosTab() {
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-3">
         <div className="flex items-center gap-3 flex-wrap">
           <OrigenFilter value={origen} onChange={setOrigen} />
+          <MultiSelectFilter
+            label="Tipo"
+            options={RIESGO_TIPO_OPTIONS}
+            selected={tipoSel}
+            onChange={setTipoSel}
+          />
           <p className="text-sm text-text-secondary">{lista.length} riesgos</p>
         </div>
         {puedeGestionar && (
@@ -226,20 +294,33 @@ function RiesgosTab() {
           </div>
         </form>
       </Modal>
-      {isLoading ? <p>Cargando...</p> : (
-        <div className="grid gap-2">
-          {lista.map((r: any) => (
-            <div key={r.id} className="flex items-start justify-between gap-2 p-3 bg-surface-base border rounded-lg">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="font-medium break-words">{r.nombre}</p>
-                  <OrigenBadge consultoraId={r.consultora_id} />
-                </div>
-                <Badge variant="info">{r.tipo}</Badge>
+      {isLoading ? (
+        <p>Cargando...</p>
+      ) : grupos.length === 0 ? (
+        <p className="text-sm text-text-tertiary py-8 text-center">No hay riesgos que coincidan con los filtros.</p>
+      ) : (
+        <div className="flex flex-col gap-5">
+          {grupos.map(g => (
+            <div key={g.categoria}>
+              <div className="flex items-center gap-2 mb-2">
+                <h3 className="text-sm font-semibold text-text-primary">{g.categoria}</h3>
+                <span className="rounded-full bg-surface-elevated px-2 py-0.5 text-[10px] font-semibold text-text-tertiary">{g.items.length}</span>
               </div>
-              {(r.consultora_id !== null || puedeGestionar) && (
-                <Button variant="ghost" size="sm" className="shrink-0" onClick={() => deleteRiesgo.mutate(r.id)}>Eliminar</Button>
-              )}
+              <div className="grid gap-2">
+                {g.items.map((r: any) => (
+                  <div key={r.id} className="flex items-start justify-between gap-2 p-3 bg-surface-base border rounded-lg">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-medium break-words">{r.nombre}</p>
+                        <OrigenBadge consultoraId={r.consultora_id} />
+                      </div>
+                    </div>
+                    {(r.consultora_id !== null || puedeGestionar) && (
+                      <Button variant="ghost" size="sm" className="shrink-0" onClick={() => deleteRiesgo.mutate(r.id)}>Eliminar</Button>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
         </div>
