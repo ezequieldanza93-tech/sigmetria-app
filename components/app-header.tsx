@@ -30,6 +30,7 @@ interface AppHeaderProps {
 interface Crumb {
   label: string
   href?: string
+  isHome?: boolean
 }
 
 const ROUTE_PATTERN = /\/dashboard\/empresas(?:\/([^/]+)(?:\/establecimientos(?:\/([^/]+))?)?)?/
@@ -91,7 +92,8 @@ export function AppHeader({
     const estId = match[2]
 
     async function buildCrumbs() {
-      const items: Crumb[] = [{ label: 'Empresas', href: '/dashboard/empresas' }]
+      // La "casita" (Inicio) reemplaza el viejo crumb de texto "Empresas".
+      const items: Crumb[] = [{ label: 'Inicio', href: '/dashboard/empresas', isHome: true }]
 
       if (!empresaId || empresaId === 'nueva') {
         setCrumbs(items)
@@ -101,50 +103,47 @@ export function AppHeader({
       }
 
       const supabase = createClient()
+
+      // Dentro de un establecimiento: casita › nombre del establecimiento
+      // (sin pasar por el nombre de la empresa).
+      if (estId && estId !== 'nuevo') {
+        const { data: est } = await supabase
+          .from('establecimientos')
+          .select('nombre, domicilio, codigo_postal, localidades!localidad_id(nombre, provincia), establecimientos_tipos(id, codigo, nombre)')
+          .eq('id', estId)
+          .single()
+
+        if (est) {
+          items.push({ label: est.nombre })
+          const parts: string[] = []
+          if (est.domicilio) parts.push(est.domicilio)
+          const locs = est.localidades as { nombre: string; provincia: string }[] | null
+          const loc = locs?.[0]
+          if (loc) parts.push(`${loc.nombre}, ${loc.provincia}`)
+          setContextAddress(parts.length ? parts.join(' · ') : null)
+          setTipoLabel(
+            (est.establecimientos_tipos as { nombre: string }[] | null)?.[0]?.nombre ?? null
+          )
+        } else {
+          setContextAddress(null)
+          setTipoLabel(null)
+        }
+
+        setCrumbs(items)
+        return
+      }
+
+      // Nivel empresa: casita › razón social.
       const { data: empresa } = await supabase
         .from('empresas')
         .select('razon_social')
         .eq('id', empresaId)
         .single()
 
-      if (empresa) {
-        items.push({
-          label: empresa.razon_social,
-          href: estId ? `/dashboard/empresas/${empresaId}` : undefined,
-        })
-      }
-
-      if (!estId || estId === 'nuevo') {
-        setCrumbs(items)
-        setContextAddress(null)
-        setTipoLabel(null)
-        return
-      }
-
-      const { data: est } = await supabase
-        .from('establecimientos')
-        .select('nombre, domicilio, codigo_postal, localidades!localidad_id(nombre, provincia), establecimientos_tipos(id, codigo, nombre)')
-        .eq('id', estId)
-        .single()
-
-      if (est) {
-        items.push({ label: est.nombre })
-        const parts: string[] = []
-        if (est.domicilio) parts.push(est.domicilio)
-        const locs = est.localidades as { nombre: string; provincia: string }[] | null
-        const loc = locs?.[0]
-        if (loc) parts.push(`${loc.nombre}, ${loc.provincia}`)
-        setContextAddress(parts.length ? parts.join(' · ') : null)
-
-        setTipoLabel(
-          (est.establecimientos_tipos as { nombre: string }[] | null)?.[0]?.nombre ?? null
-        )
-      } else {
-        setContextAddress(null)
-        setTipoLabel(null)
-      }
-
+      if (empresa) items.push({ label: empresa.razon_social })
       setCrumbs(items)
+      setContextAddress(null)
+      setTipoLabel(null)
     }
 
     buildCrumbs()
@@ -211,7 +210,16 @@ export function AppHeader({
                   {i > 0 && (
                     <span className="text-text-tertiary select-none">›</span>
                   )}
-                  {crumb.href ? (
+                  {crumb.isHome ? (
+                    <Link
+                      href={crumb.href ?? '/dashboard/empresas'}
+                      aria-label="Inicio"
+                      title="Inicio"
+                      className="inline-flex items-center text-text-tertiary hover:text-text-secondary transition-colors"
+                    >
+                      <Home size={16} strokeWidth={1.75} aria-hidden="true" />
+                    </Link>
+                  ) : crumb.href ? (
                     <Link
                       href={crumb.href}
                       className="text-text-tertiary hover:text-text-secondary transition-colors"
