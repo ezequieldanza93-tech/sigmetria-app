@@ -57,6 +57,9 @@ export interface DatosProtocoloIluminacion {
   // Logos
   logoEmpresa?: string // data URL
   logoConsultora?: string // data URL
+  // Carátula visual
+  fotoEstablecimiento?: string // data URL de la foto del sitio
+  mapaEstablecimiento?: string // data URL del mapa estático (OSM)
   // Filas de medición (tabla hoja 2)
   mediciones?: MedicionRow[]
 }
@@ -102,6 +105,8 @@ const MOCK_DATOS: Required<DatosProtocoloIluminacion> = {
     "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 80'><ellipse cx='100' cy='40' rx='96' ry='33' fill='%23003478'/><text x='100' y='54' font-family='Georgia,serif' font-style='italic' font-weight='bold' font-size='38' fill='white' text-anchor='middle'>Ford</text></svg>",
   logoConsultora:
     "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 250 70'><g fill='none' stroke='%23888' stroke-width='7'><circle cx='40' cy='35' r='28'/><circle cx='92' cy='35' r='28'/><circle cx='144' cy='35' r='28'/><circle cx='196' cy='35' r='28'/></g></svg>",
+  fotoEstablecimiento: '',
+  mapaEstablecimiento: '',
   mediciones: [
     { n: 1, hora: '09:05', sector: 'Depósito', seccionPuesto: 'Pasillo A', tipoIluminacion: 'Mixta', tipofuente: 'Descarga', iluminacion: 'General', uniformidad: 'Cumple', valorMedido: '210', valorLegal: '200' },
     { n: 2, hora: '09:20', sector: 'Depósito', seccionPuesto: 'Estiba 1', tipoIluminacion: 'Artificial', tipofuente: 'Descarga', iluminacion: 'General', uniformidad: 'Cumple', valorMedido: '185', valorLegal: '200' },
@@ -181,32 +186,30 @@ function ensamblarHtml(datos: Required<DatosProtocoloIluminacion>): string {
   <div class="cv-head"><div class="lg emp"><img src="${datos.logoEmpresa}"></div><div class="lg cons"><img src="${datos.logoConsultora}"></div></div>
   <div class="cv-folio">PROTOCOLO N° <b>${datos.numeroProtocolo}</b> &nbsp;·&nbsp; Emitido ${datos.fechaEmision}</div>
   <div class="cv-title"><div class="kick">Protocolo / Informe Técnico</div><h1>Medición de Iluminación<br>en el Ambiente Laboral</h1><span class="norma">Res. SRT 84/2012</span></div>
+  ${(datos.fotoEstablecimiento || datos.mapaEstablecimiento) ? `<div class="cv-media">
+    ${datos.fotoEstablecimiento ? `<div class="cv-media-box"><img src="${datos.fotoEstablecimiento}"><span>Establecimiento</span></div>` : ''}
+    ${datos.mapaEstablecimiento ? `<div class="cv-media-box"><img src="${datos.mapaEstablecimiento}"><span>Ubicación</span></div>` : ''}
+  </div>` : ''}
   <div class="card">
     <div class="c"><div class="k">Empresa</div><div class="v">${datos.razonSocial}</div></div>
     <div class="c"><div class="k">Establecimiento</div><div class="v">${datos.establecimiento}</div></div>
     <div class="c"><div class="k">Fecha de ejecución</div><div class="v">${datos.fechaMedicion}</div></div>
     <div class="c"><div class="k">Fecha de emisión</div><div class="v">${datos.fechaEmision}</div></div>
-    <div class="c"><div class="k">Profesional ejecutor</div><div class="v">${datos.profesional} · Mat. ${datos.matricula}</div></div>
+    <div class="c"><div class="k">Profesional ejecutor</div><div class="v">${datos.profesional}${datos.matricula ? ` · Mat. ${datos.matricula}` : ''}</div></div>
     <div class="c venc"><div class="k">Vence (vigencia anual)</div><div class="v">${datos.fechaVencimiento}</div></div>
   </div>
   <h2 class="cv-sec">Descripción</h2>
   <p class="cv-p">Medición de niveles de iluminación en los puestos de trabajo del establecimiento, conforme a la Res. SRT 84/2012, para verificar el cumplimiento de los valores legales del Dec. 351/79 (Anexo IV).</p>
   <h2 class="cv-sec">Equipo utilizado</h2>
   <p class="cv-p">${datos.instrumento} · Clase B. <b>Último certificado de calibración:</b> ${datos.calibracion} (vigente, se adjunta como anexo).</p>
-  <div class="cv-foot"><div class="emisor"><b>Emitido por: Consultora / Profesional</b>Encomienda Colegio Profesional N° ${datos.encomienda}</div><div class="qr"><div class="qrc"></div><div>Verificá la autenticidad</div></div></div>
+  <div class="cv-foot"><div class="emisor"><b>Emitido por: Consultora / Profesional</b>${datos.encomienda ? `Encomienda Colegio Profesional N° ${datos.encomienda}` : ''}</div><div class="qr"><div class="qrc"></div><div>Verificá la autenticidad</div></div></div>
   <div class="hoja-num">Carátula</div>
 </section>`
 
-  // ── Función auxiliar para anexos ──
-  function anexo(titulo: string, subtitulo: string): string {
-    return `<section class="hoja vert anx">${WM}<div class="cv-head"><div class="lg emp"><img src="${datos.logoEmpresa}"></div><div class="lg cons"><img src="${datos.logoConsultora}"></div></div><h2 class="anx-t">${titulo}</h2><p class="cv-p">${subtitulo}</p><div class="anx-box">DOCUMENTO ADJUNTO (PDF)</div></section>`
-  }
-
-  // ── Anexos (orden: matrícula → encomienda → calibración) ──
-  const anexos =
-    anexo('Anexo I — Matrícula del Profesional', 'Credencial / matrícula vigente del profesional que ejecutó la medición (usuario que cargó los datos).') +
-    anexo('Anexo II — Encomienda del Colegio Profesional', 'Encomienda profesional emitida por el colegio correspondiente.') +
-    anexo('Anexo III — Certificado de Calibración del Equipo', 'Último certificado de calibración del instrumento utilizado en la medición.')
+  // Los anexos REALES (certificado de calibración, etc.) se fusionan al final del PDF
+  // con pdf-lib (mergePdfConAnexos en la acción). Ya NO se muestran cajas placeholder
+  // vacías: si falta un documento, se avisa al ejecutar el protocolo (no se ensucia el PDF).
+  const anexos = ''
 
   // ── Estilos extra (carátula + anexos + datos + watermark + ajustes de presentación) ──
   const extra = `
@@ -228,11 +231,15 @@ function ensamblarHtml(datos: Required<DatosProtocoloIluminacion>): string {
   .lg img { max-width:100%; max-height:100%; object-fit:contain; }
   .cv-folio { position:relative; z-index:1; font-size:8pt; color:#888; margin-top:4px; }
   .cv-folio b { color:#2E7D33; }
-  .cv-title { position:relative; z-index:1; text-align:center; margin-top:24mm; }
+  .cv-title { position:relative; z-index:1; text-align:center; margin-top:14mm; }
+  .cv-media { display:flex; gap:4mm; margin-top:10mm; }
+  .cv-media-box { flex:1; height:46mm; border:1px solid #E4E8E4; border-radius:10px; overflow:hidden; position:relative; }
+  .cv-media-box img { width:100%; height:100%; object-fit:cover; display:block; }
+  .cv-media-box span { position:absolute; left:0; bottom:0; background:rgba(0,0,0,.55); color:#fff; font-size:7pt; font-family:'Poppins',sans-serif; padding:2px 8px; border-top-right-radius:6px; }
   .cv-title .kick { font-size:10pt; letter-spacing:3px; color:#888; text-transform:uppercase; }
   .cv-title h1 { font-size:28pt; font-weight:800; margin:8px 0 6px; line-height:1.12; }
   .cv-title .norma { display:inline-block; background:#2E7D33; color:#fff; font-size:9pt; font-weight:700; padding:3px 14px; border-radius:100px; }
-  .card { position:relative; z-index:1; margin-top:18mm; border:1px solid #E4E8E4; border-radius:10px; overflow:hidden; display:grid; grid-template-columns:1fr 1fr; }
+  .card { position:relative; z-index:1; margin-top:6mm; border:1px solid #E4E8E4; border-radius:10px; overflow:hidden; display:grid; grid-template-columns:1fr 1fr; }
   .card .c { padding:9px 14px; border-bottom:1px solid #E4E8E4; } .card .c:nth-child(odd){ border-right:1px solid #E4E8E4; }
   .card .k { font-size:7.5pt; letter-spacing:.5px; text-transform:uppercase; color:#888; font-family:'Poppins',sans-serif; }
   .card .v { font-size:11pt; font-weight:600; margin-top:1px; font-family:'Poppins',sans-serif; }

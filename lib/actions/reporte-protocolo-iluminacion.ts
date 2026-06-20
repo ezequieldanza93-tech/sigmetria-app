@@ -371,6 +371,34 @@ export async function generarReporteProtocoloIluminacion(
     mediciones: mediciones.length > 0 ? mediciones : undefined,
   }
 
+  // ── 9b. Foto + mapa del establecimiento para la carátula (best-effort) ──────
+  try {
+    if (establecimientoId) {
+      const { createClient } = await import('@/lib/supabase/server')
+      const supabase = await createClient()
+      const { data: estMedia } = await supabase
+        .from('establecimientos')
+        .select('photo_site, latitud, longitud')
+        .eq('id', establecimientoId)
+        .maybeSingle()
+      const photoPath = (estMedia?.photo_site as string | null) ?? null
+      if (photoPath) {
+        const { data: signed } = await supabase.storage.from('establecimientos').createSignedUrl(photoPath, 600)
+        if (signed?.signedUrl) datos.fotoEstablecimiento = await urlToDataUrl(signed.signedUrl)
+      }
+      const lat = estMedia?.latitud as number | null
+      const lon = estMedia?.longitud as number | null
+      if (lat != null && lon != null) {
+        // Mapa estático de OpenStreetMap (sin API key). Fetch server-side → data URL.
+        datos.mapaEstablecimiento = await urlToDataUrl(
+          `https://staticmap.openstreetmap.de/staticmap.php?center=${lat},${lon}&zoom=16&size=520x300&markers=${lat},${lon},red-pushpin`
+        )
+      }
+    }
+  } catch (err) {
+    console.error('[PDF-REPORTE] no se pudo resolver foto/mapa del establecimiento:', err instanceof Error ? err.message : String(err))
+  }
+
   // ── 10. Generar PDF ───────────────────────────────────────────────────────
   console.warn('[PDF-REPORTE] datos mapeados, llamando renderProtocoloPdf', { folio, establecimiento: datos.establecimiento, filas: mediciones.length })
   let pdfBuffer: Buffer
