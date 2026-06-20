@@ -9,7 +9,9 @@ import { FileUploadInput } from '@/components/ui/file-upload-input'
 import { createClient } from '@/lib/supabase/client'
 import { createPrivateArt } from '@/lib/actions/empresa'
 import { publicAssetUrl } from '@/lib/storage/asset-url'
-import type { Empresa, Localidad, Rubro } from '@/lib/types'
+import type { Empresa, Localidad } from '@/lib/types'
+
+interface ActividadCiiu { id: string; codigo: string; nombre: string }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type EmpresaFormAction = (prevState: any, formData: FormData) => Promise<any>
@@ -31,7 +33,7 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
   const [state, formAction, isPending] = useActionState(action, null)
   const [artOrgs, setArtOrgs] = useState<{ id: string; nombre: string }[]>([])
   const [localidades, setLocalidades] = useState<Localidad[]>([])
-  const [rubros, setRubros] = useState<Rubro[]>([])
+  const [actividades, setActividades] = useState<ActividadCiiu[]>([])
   const [selectedProvincia, setSelectedProvincia] = useState(empresa?.localidades?.provincia ?? '')
   const [showAddArt, setShowAddArt] = useState(false)
   const [newArtName, setNewArtName] = useState('')
@@ -48,7 +50,7 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
     razon_social: empresa?.razon_social ?? '',
     tipo_identidad_impositiva: (empresa?.tipo_identidad_impositiva as string | undefined) ?? '',
     cuit: empresa?.cuit ?? '',
-    rubro_id: (empresa?.rubro_id as string | undefined) ?? '',
+    actividad_id: (empresa?.actividad_id as string | undefined) ?? '',
     domicilio: empresa?.domicilio ?? '',
     localidad_id: (empresa?.localidad_id as string | undefined) ?? '',
     codigo_postal: empresa?.codigo_postal ?? '',
@@ -99,14 +101,14 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
         .eq('is_active', true)
         .order('nombre'),
       supabase
-        .from('empresas_rubros')
-        .select('*')
+        .from('actividades_economicas')
+        .select('id, codigo, nombre')
         .eq('is_active', true)
-        .order('nombre'),
-    ]).then(([{ data: arts }, { data: locs }, { data: rubrosData }]) => {
+        .order('codigo'),
+    ]).then(([{ data: arts }, { data: locs }, { data: actividadesData }]) => {
       if (arts) setArtOrgs(arts as { id: string; nombre: string }[])
       if (locs) setLocalidades(locs as Localidad[])
-      if (rubrosData) setRubros(rubrosData as Rubro[])
+      if (actividadesData) setActividades(actividadesData as ActividadCiiu[])
     })
   }, [empresa?.id])
 
@@ -174,13 +176,13 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
           {...fb('cuit')}
         />
         <SearchableSelect
-          label="Rubro"
-          name="rubro_id"
-          value={form.rubro_id}
-          onChange={v => setForm(f => ({ ...f, rubro_id: v }))}
-          options={rubros.map(r => ({ value: r.id, label: r.nombre }))}
-          placeholder="Seleccionar rubro..."
-          {...fb('rubro_id')}
+          label="Rubro (CIIU)"
+          name="actividad_id"
+          value={form.actividad_id}
+          onChange={v => setForm(f => ({ ...f, actividad_id: v }))}
+          options={actividades.map(a => ({ value: a.id, label: `${a.codigo} — ${a.nombre}` }))}
+          placeholder="Seleccionar actividad económica..."
+          {...fb('actividad_id')}
         />
       </div>
 

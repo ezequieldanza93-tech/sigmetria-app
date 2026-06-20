@@ -203,6 +203,8 @@ export interface Empresa {
   cuit: string | null
   rubro_id: string | null
   empresas_rubros?: { nombre: string } | null
+  actividad_id: string | null
+  actividades_economicas?: { codigo: string; nombre: string } | null
   domicilio: string | null
   codigo_postal: string | null
   localidad_id: string | null
