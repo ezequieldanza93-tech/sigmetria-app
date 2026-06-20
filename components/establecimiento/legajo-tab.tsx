@@ -7,6 +7,7 @@ import { useSignedUrls } from '@/lib/storage/sign-client'
 import { Modal } from '@/components/ui/modal'
 import { DocumentoForm } from '@/components/forms/documento-form'
 import { DocumentoHistorialModal } from '@/components/establecimiento/documento-historial-modal'
+import { ProtocolosVencimientos } from '@/components/establecimiento/protocolos-vencimientos'
 import { createDocumento } from '@/lib/actions/documento'
 import { createTrabajadorDocumento } from '@/lib/actions/trabajador-documento'
 import { setDocumentoOverride, getDocumentoOverrides, createDocumentoCustom } from '@/lib/actions/establecimiento-ficha'
@@ -480,6 +481,9 @@ export function LegajoTab({
           </Seccion>
         )
       })}
+
+      {/* Protocolos de medición (ruido, iluminación, etc.) con su vencimiento anual. */}
+      <ProtocolosVencimientos establecimientoId={establecimientoId} />
 
       {/* Modal: cargar una versión nueva del documento esperado (tipo prefijado). */}
       <Modal

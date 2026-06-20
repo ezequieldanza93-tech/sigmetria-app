@@ -209,12 +209,13 @@ export async function createAuditoria(
 
 export async function updateAuditoriaItem(
   itemId: string,
-  patch: { estado?: AuditoriaItemEstado; observacion?: string | null },
+  patch: { estado?: AuditoriaItemEstado; observacion?: string | null; evidencia_url?: string | null },
 ): Promise<ActionResult<null>> {
   const supabase = await createClient()
   const update: Record<string, unknown> = {}
   if (patch.estado !== undefined) update.estado = patch.estado
   if (patch.observacion !== undefined) update.observacion = patch.observacion
+  if (patch.evidencia_url !== undefined) update.evidencia_url = patch.evidencia_url
   if (Object.keys(update).length === 0) return { success: true, data: null }
 
   const { error } = await supabase.from('normativa_auditoria_items').update(update).eq('id', itemId)

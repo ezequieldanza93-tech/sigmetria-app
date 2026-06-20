@@ -256,11 +256,13 @@ function ItemRow({
   editable,
   onEstado,
   onObservacion,
+  onEvidencia,
 }: {
   item: AuditoriaItem
   editable: boolean
   onEstado: (itemId: string, estado: AuditoriaItemEstado) => void
   onObservacion: (itemId: string, observacion: string | null) => void
+  onEvidencia: (itemId: string, evidenciaUrl: string | null) => void
 }) {
   return (
     <div className="border-t border-border-subtle/60 py-3 first:border-t-0">
@@ -310,6 +312,30 @@ function ItemRow({
         }}
         className="mt-2 w-full resize-y rounded-lg border border-border-default bg-surface-base px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-tertiary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30 disabled:opacity-60"
       />
+      <div className="mt-2 flex items-center gap-2">
+        <input
+          type="url"
+          key={`ev:${item.id}:${item.evidencia_url ?? ''}`}
+          defaultValue={item.evidencia_url ?? ''}
+          disabled={!editable}
+          placeholder="Link a la evidencia (opcional)…"
+          onBlur={(e) => {
+            const v = e.target.value.trim()
+            if (v !== (item.evidencia_url ?? '')) onEvidencia(item.id, v || null)
+          }}
+          className="min-w-0 flex-1 rounded-lg border border-border-default bg-surface-base px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-tertiary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30 disabled:opacity-60"
+        />
+        {item.evidencia_url && (
+          <a
+            href={item.evidencia_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="shrink-0 text-xs font-medium text-sig-600 hover:underline"
+          >
+            Ver ↗
+          </a>
+        )}
+      </div>
     </div>
   )
 }
@@ -321,6 +347,7 @@ function NormaGrupo({
   onToggle,
   onEstado,
   onObservacion,
+  onEvidencia,
 }: {
   grupo: GrupoNorma
   editable: boolean
@@ -328,6 +355,7 @@ function NormaGrupo({
   onToggle: () => void
   onEstado: (itemId: string, estado: AuditoriaItemEstado) => void
   onObservacion: (itemId: string, observacion: string | null) => void
+  onEvidencia: (itemId: string, evidenciaUrl: string | null) => void
 }) {
   const evaluados = grupo.items.filter((i) => i.estado !== 'pendiente').length
   return (
@@ -355,7 +383,14 @@ function NormaGrupo({
       {open && (
         <div className="px-4 pb-2">
           {grupo.items.map((item) => (
-            <ItemRow key={item.id} item={item} editable={editable} onEstado={onEstado} onObservacion={onObservacion} />
+            <ItemRow
+              key={item.id}
+              item={item}
+              editable={editable}
+              onEstado={onEstado}
+              onObservacion={onObservacion}
+              onEvidencia={onEvidencia}
+            />
           ))}
         </div>
       )}
@@ -394,6 +429,14 @@ function AuditoriaDetalle({
       await updateItem.mutateAsync({ itemId, observacion })
     } catch (e) {
       error(e instanceof Error ? e.message : 'No se pudo guardar la observación')
+    }
+  }
+
+  async function setEvidenciaItem(itemId: string, evidencia_url: string | null) {
+    try {
+      await updateItem.mutateAsync({ itemId, evidencia_url })
+    } catch (e) {
+      error(e instanceof Error ? e.message : 'No se pudo guardar la evidencia')
     }
   }
 
@@ -508,6 +551,7 @@ function AuditoriaDetalle({
                     }
                     onEstado={setEstadoItem}
                     onObservacion={setObsItem}
+                    onEvidencia={setEvidenciaItem}
                   />
                 ))}
               </div>

@@ -69,8 +69,8 @@ export function useCreateAuditoria(establecimientoId: string) {
 export function useUpdateAuditoriaItem(establecimientoId: string, auditoriaId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (vars: { itemId: string; estado?: AuditoriaItemEstado; observacion?: string | null }) => {
-      const res = await updateAuditoriaItem(vars.itemId, { estado: vars.estado, observacion: vars.observacion })
+    mutationFn: async (vars: { itemId: string; estado?: AuditoriaItemEstado; observacion?: string | null; evidencia_url?: string | null }) => {
+      const res = await updateAuditoriaItem(vars.itemId, { estado: vars.estado, observacion: vars.observacion, evidencia_url: vars.evidencia_url })
       if (!res.success) throw new Error(res.error)
     },
     onSuccess: () => {
