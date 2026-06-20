@@ -8,7 +8,7 @@ import { useSignedUrls, signBucketPaths } from '@/lib/storage/sign-client'
 import { useCanWrite, useGestionesEstablecimiento, useRegistrosGestion, useCatalogo } from '@/lib/queries/agenda'
 import { esSapAplicable } from '@/lib/actions/aplicabilidad-normativa'
 import { calcularEstadoGestion } from '@/lib/types'
-import type { EstadoGestion, Gestion, CategoriaGestion, GrupoGestion, RegistroGestion, Riesgo } from '@/lib/types'
+import type { EstadoGestion, Gestion, CategoriaGestion, GrupoGestion, RegistroGestion, Riesgo, ActionResult } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { MultiSelectFilter } from '@/components/ui/multi-select-filter'
@@ -31,10 +31,28 @@ import {
 } from '@/lib/actions/gestion-establecimiento'
 import { ejecutarGestion, crearObservaciones } from '@/lib/actions/registro-gestion'
 import { emitirEvidenciaIluminacion } from '@/lib/actions/emitir-evidencia-iluminacion'
+import { emitirEvidenciaRuido } from '@/lib/actions/emitir-evidencia-ruido'
+import { emitirEvidenciaPat } from '@/lib/actions/emitir-evidencia-pat'
+import { emitirEvidenciaCargaTermica } from '@/lib/actions/emitir-evidencia-carga-termica'
+import { emitirEvidenciaErgonomia } from '@/lib/actions/emitir-evidencia-ergonomia'
 import { PersonaSelector } from '@/components/persona-selector'
 import { AuditHistorialLink } from '@/components/auditoria/audit-historial-link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 
+
+/**
+ * Protocolos que pueden GENERAR su PDF on-demand desde los datos ya cargados.
+ * tipo de ejecución → server action que genera + guarda la evidencia y devuelve el signed URL.
+ * (Mismo contrato para todos: (registroId, rgFechaPlanificada) → { pdfUrl }.)
+ */
+type EmitirPdfFn = (registroId: string, rgFechaPlanificada: string) => Promise<ActionResult<{ pdfUrl: string }>>
+const EMITIR_PDF_PROTOCOLO = new Map<string, EmitirPdfFn>([
+  ['medicion_iluminacion', emitirEvidenciaIluminacion],
+  ['medicion_ruido', emitirEvidenciaRuido],
+  ['medicion_pat', emitirEvidenciaPat],
+  ['medicion_carga_termica', emitirEvidenciaCargaTermica],
+  ['protocolo_ergonomia', emitirEvidenciaErgonomia],
+])
 
 const CATEGORIA_META: Record<string, { icon: React.ComponentType<{ size?: number; className?: string }>; abbr: string }> = {
   Checklists: { icon: ClipboardCheck, abbr: 'CHK' },
@@ -1688,16 +1706,19 @@ function AgendaActionsCell({
   // Bucket privado `documentos`: firmamos la evidencia para el link "Ver".
   const { getUrl } = useSignedUrls('documentos', [r.evidencia_url])
   const queryClient = useQueryClient()
-  // Generación on-demand del PDF de iluminación desde los datos YA cargados (sin
-  // reabrir el formulario). Al terminar, queda como evidencia y el row pasa a "Descargar PDF".
+  // Generación on-demand del PDF del protocolo desde los datos YA cargados (sin reabrir
+  // el formulario). Al terminar, queda como evidencia y el row pasa a "Descargar PDF".
+  // Resuelve la acción emitir según el tipo de protocolo (iluminación/ruido/PAT/carga térmica/ergonomía).
   const [generandoPdf, setGenerandoPdf] = useState(false)
   const [pdfError, setPdfError] = useState<string | null>(null)
+  const emitirPdfProtocolo = EMITIR_PDF_PROTOCOLO.get(r.ge_tipo_ejecucion ?? '')
 
-  async function handleGenerarPdfIluminacion() {
+  async function handleGenerarPdf() {
+    if (!emitirPdfProtocolo) return
     setGenerandoPdf(true)
     setPdfError(null)
     try {
-      const res = await emitirEvidenciaIluminacion(r.id, r.fecha_planificada)
+      const res = await emitirPdfProtocolo(r.id, r.fecha_planificada)
       if (!res.success) { setPdfError(res.error ?? 'No se pudo generar el PDF.'); return }
       // Descarga inmediata, popup-safe (fetch → blob → <a download>).
       try {
@@ -1706,7 +1727,7 @@ function AgendaActionsCell({
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
-        a.download = `${r.ge_gestion_nombre ?? 'protocolo-iluminacion'}.pdf`
+        a.download = `${r.ge_gestion_nombre ?? 'protocolo'}.pdf`
         document.body.appendChild(a)
         a.click()
         document.body.removeChild(a)
@@ -1805,14 +1826,13 @@ function AgendaActionsCell({
     // cargados (sin reabrir el formulario) y descargarlo. Al terminar queda como
     // evidencia y el row pasa a "Descargar PDF".
     if (onViewReporte) {
-      const esIluminacion = r.ge_tipo_ejecucion === 'medicion_iluminacion'
       return (
         <div className="flex flex-col items-center gap-1">
           <div className="flex items-center gap-1.5 justify-center">
-            {esIluminacion && (
+            {emitirPdfProtocolo && (
               <button
                 title="Generar y descargar el PDF del protocolo desde los datos ya cargados"
-                onClick={handleGenerarPdfIluminacion}
+                onClick={handleGenerarPdf}
                 disabled={generandoPdf}
                 className={`${primaryBtn} ${primaryActive} disabled:opacity-60`}
               >
