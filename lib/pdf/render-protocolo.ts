@@ -210,6 +210,11 @@ function ensamblarHtml(datos: Required<DatosProtocoloIluminacion>): string {
 
   // ── Estilos extra (carátula + anexos + datos + watermark + ajustes de presentación) ──
   const extra = `
+  /* Margen SUPERIOR de la hoja al ~20% del original: sube el logo casi al borde y
+     arrastra la tabla hacia arriba, dejando lugar para la firma debajo de la tabla
+     en la MISMA hoja. (Se incluye size para no perder portrait/landscape.) */
+  @page p-vert { size: A4 portrait; margin: 3mm 12mm 8mm; }
+  @page p-horiz { size: A4 landscape; margin: 2mm 9mm 7mm; }
   .dato { font-family: 'Poppins','Segoe UI',sans-serif; color:#1f2d1f; font-weight:600; }
   .cover, .anx { font-family: 'Montserrat','Poppins',sans-serif; color:#333; position:relative; }
   .hoja { position:relative; }
@@ -219,7 +224,7 @@ function ensamblarHtml(datos: Required<DatosProtocoloIluminacion>): string {
   .cv-head, .anx .cv-head { display:flex; justify-content:space-between; align-items:center; position:relative; z-index:1; }
   .lg { display:flex; align-items:center; justify-content:center; width:31mm; height:11mm; }
   .lg.emp { justify-content:flex-start; } .lg.cons { justify-content:flex-end; }
-  .proto-logos { display:flex; justify-content:space-between; align-items:center; margin:0 0 3mm; }
+  .proto-logos { display:flex; justify-content:space-between; align-items:center; margin:0 0 1mm; }
   .lg img { max-width:100%; max-height:100%; object-fit:contain; }
   .cv-folio { position:relative; z-index:1; font-size:8pt; color:#888; margin-top:4px; }
   .cv-folio b { color:#2E7D33; }
@@ -242,7 +247,7 @@ function ensamblarHtml(datos: Required<DatosProtocoloIluminacion>): string {
 
   /* ── Ajustes de PRESENTACIÓN del protocolo (no modifican el HTML legal) ── */
   .hoja.horiz table.med { width: 94%; margin: 0 auto; }
-  .hoja.horiz table.med td.idx { height: 4.5mm; }
+  .hoja.horiz table.med td.idx { height: 3.8mm; }
   .hoja.horiz table.med th { font-size: 7pt; padding: 2px 2px; }
   .hoja.horiz table.med td { font-size: 8pt; }
   .hoja.horiz table.med .obs { height: 13mm; }
