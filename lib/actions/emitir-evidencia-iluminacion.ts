@@ -28,15 +28,19 @@ export async function emitirEvidenciaIluminacion(
   const supabase = await createClient()
 
   // ── 1. Resolver el medicionId desde el registro de gestión ──────────────────
-  const { data: med, error: medErr } = await supabase
+  // MISMA lógica que getMedicionIluminacionByRegistro (la vista que SÍ funciona):
+  // filtrar por rg_fecha_planificada SOLO si viene (las gestiones sin fecha planificada
+  // se guardan con rg_fecha_planificada = NULL, así que .eq('','') nunca matchearía).
+  // Tampoco filtramos por deleted_at (la vista de referencia no lo hace).
+  let medQuery = supabase
     .from('medicion_iluminacion')
     .select('id')
     .eq('registro_gestion_id', registroId)
-    .eq('rg_fecha_planificada', rgFechaPlanificada)
-    .is('deleted_at', null)
     .order('created_at', { ascending: false })
     .limit(1)
-    .maybeSingle()
+  if (rgFechaPlanificada) medQuery = medQuery.eq('rg_fecha_planificada', rgFechaPlanificada)
+
+  const { data: med, error: medErr } = await medQuery.maybeSingle()
 
   if (medErr || !med?.id) {
     console.error('[PDF-EVIDENCIA] medición NO encontrada', { registroId, rgFechaPlanificada, medErr: medErr?.message })
