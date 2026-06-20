@@ -27,6 +27,26 @@ const PROTOCOLOS = [
     descripcion: 'Protocolo de Iluminación (Res. SRT 84/2012)',
     ruta: 'contenido_gestiones/controles_operativos/Protocolos/Iluminacion_84_12/protocolo-iluminacion-srt-84-12.html',
   },
+  {
+    exportName: 'PROTOCOLO_RUIDO_HTML',
+    descripcion: 'Protocolo de Ruido (Res. SRT 85/2012)',
+    ruta: 'contenido_gestiones/controles_operativos/Protocolos/ruido_85_12/protocolo-ruido-srt-85-12.html',
+  },
+  {
+    exportName: 'PROTOCOLO_PAT_HTML',
+    descripcion: 'Protocolo de Puesta a Tierra (Res. SRT 900/2015)',
+    ruta: 'contenido_gestiones/controles_operativos/Protocolos/PAT_900_15/PAT_900_15.html',
+  },
+  {
+    exportName: 'PROTOCOLO_CARGA_TERMICA_HTML',
+    descripcion: 'Protocolo de Estrés Térmico por Calor (Res. SRT 30/2023)',
+    ruta: 'contenido_gestiones/controles_operativos/Protocolos/estres_por_calor30_23/protocolo-estres-calor-completo.html',
+  },
+  {
+    exportName: 'PROTOCOLO_ERGONOMIA_HTML',
+    descripcion: 'Protocolo de Ergonomía (Res. SRT 886/2015)',
+    ruta: 'contenido_gestiones/controles_operativos/Protocolos/ergonomia_886_15/protocolo-ergonomia-srt-886-15.html',
+  },
 ]
 
 const cuerpos = PROTOCOLOS.map(({ exportName, descripcion, ruta }) => {

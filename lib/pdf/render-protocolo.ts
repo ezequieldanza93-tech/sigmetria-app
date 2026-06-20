@@ -346,8 +346,16 @@ export async function renderProtocoloPdf(
     mediciones: datos.mediciones ?? MOCK_DATOS.mediciones,
   }
 
-  const html = ensamblarHtml(datosCompletos)
+  return renderHtmlToPdf(ensamblarHtml(datosCompletos))
+}
 
+/**
+ * Runner GENÉRICO de Chromium: toma un HTML completo y devuelve el PDF.
+ * Compartido por TODOS los protocolos (iluminación + ruido + PAT + carga térmica + ...).
+ * Fuerza la carga de las fuentes (Montserrat/Poppins) antes de page.pdf() para evitar
+ * el bug de "texto superpuesto" (layout medido con la fuente de reemplazo).
+ */
+export async function renderHtmlToPdf(html: string): Promise<Buffer> {
   let browser: Browser | null = null
   try {
     console.warn('[PDF-RENDER] lanzando browser', { isVercel: !!process.env.VERCEL || process.env.NODE_ENV === 'production' })
@@ -356,14 +364,10 @@ export async function renderProtocoloPdf(
     const page = await browser.newPage()
 
     // setContent de puppeteer-core SOLO acepta 'load' | 'domcontentloaded' (networkidle
-    // es solo para goto). El bug del "texto superpuesto" era que con 'load' el PDF se
-    // generaba antes de que Google Fonts (Montserrat/Poppins) cargara → fuente de
-    // reemplazo → layout roto. El fix NO es el waitUntil: es FORZAR la carga de las
-    // fuentes con document.fonts.load() (abajo) antes de page.pdf().
+    // es solo para goto). El fix del "texto superpuesto" NO es el waitUntil: es FORZAR la
+    // carga de las fuentes con document.fonts.load() (abajo) antes de page.pdf().
     await page.setContent(html, { waitUntil: 'load' })
 
-    // Doble seguro: forzar la carga de cada familia/peso usados y esperar a que se
-    // apliquen, así el layout se mide con las fuentes correctas (no con el fallback).
     await page.evaluate(async () => {
       try {
         await Promise.all([
