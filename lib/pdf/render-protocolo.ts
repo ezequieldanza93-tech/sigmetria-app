@@ -272,13 +272,20 @@ function ensamblarHtml(datos: Required<DatosProtocoloIluminacion>): string {
 // DETECCIÓN DE ENTORNO Y LAUNCH DE CHROMIUM
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Pack remoto de Chromium (brotli) para v149 x64. En Vercel pasamos esta URL a
+// executablePath() para que @sparticuz/chromium descargue el binario a /tmp en runtime,
+// en vez de depender de node_modules/.../bin (que el file-tracer de Next NO copia a la
+// función → 'input directory .../bin does not exist'). Externalizar el paquete no alcanza.
+const CHROMIUM_PACK_URL =
+  'https://github.com/Sparticuz/chromium/releases/download/v149.0.0/chromium-v149.0.0-pack.x64.tar'
+
 async function getBrowserExecutablePath(): Promise<string> {
   const isVercel = !!process.env.VERCEL || process.env.NODE_ENV === 'production'
 
   if (isVercel) {
-    // Producción: @sparticuz/chromium descarga / provee el binario optimizado para AWS Lambda / Vercel
+    // Producción: @sparticuz/chromium descarga el binario optimizado para AWS Lambda / Vercel
     const chromium = (await import('@sparticuz/chromium')).default
-    return chromium.executablePath()
+    return chromium.executablePath(CHROMIUM_PACK_URL)
   } else {
     // Local: Chromium de Playwright (ya instalado, no necesita descarga extra)
     const { chromium: pwChromium } = await import('playwright-core')
@@ -299,10 +306,12 @@ async function launchBrowser(): Promise<Browser> {
   ]
 
   if (isVercel) {
-    // @sparticuz/chromium v149: solo expone args y executablePath (sin headless/defaultViewport)
+    // @sparticuz/chromium v149: solo expone args y executablePath (sin headless/defaultViewport).
+    // Le pasamos la URL del pack remoto → descarga el binario a /tmp (no usa el bin/ del bundle,
+    // que el file-tracer de Next no copia a la función serverless).
     const chromium = (await import('@sparticuz/chromium')).default
     return launch({
-      executablePath: await chromium.executablePath(),
+      executablePath: await chromium.executablePath(CHROMIUM_PACK_URL),
       args: chromium.args,
       headless: true,
     })
