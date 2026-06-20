@@ -26,7 +26,7 @@ export function EstablecimientoShell({ empresaId, establecimientoId, children }:
   const items: SectionItem[] = [
     {
       id: 'empresa',
-      label: 'Empresa',
+      label: 'Establecimientos',
       icon: ArrowLeft,
       href: `/dashboard/empresas/${empresaId}`,
     },
