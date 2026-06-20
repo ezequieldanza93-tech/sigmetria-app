@@ -10,6 +10,7 @@ import {
   RefreshCw,
   AlertTriangle,
 } from 'lucide-react'
+import { CIIU_SECCIONES } from '@/lib/constants'
 import {
   useActividadesCiiu,
   useActividadesDeDocumentoTipo,
@@ -168,7 +169,7 @@ export function ActividadesCiiuEditor({ docTipoId, canEdit, enabled }: Actividad
                         }`}
                       >
                         {todosSeleccionados ? <Check size={11} /> : null}
-                        Sección {grupo.seccion}
+                        {grupo.seccion} · {CIIU_SECCIONES[grupo.seccion] ?? 'Sección'}
                       </button>
                       <span className="text-[11px] text-text-tertiary">
                         {algunoSeleccionado && !todosSeleccionados

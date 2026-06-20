@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Check, ChevronDown, ChevronUp, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { CIIU_SECCIONES } from '@/lib/constants'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/lib/hooks/use-toast'
@@ -200,7 +201,7 @@ export function NormativaActividadesModal({
                           {grupo.seccion}
                         </span>
                         <span className="text-xs font-semibold text-text-primary truncate">
-                          Sección {grupo.seccion}
+                          {CIIU_SECCIONES[grupo.seccion] ?? `Sección ${grupo.seccion}`}
                         </span>
                         <span className="shrink-0 text-[10px] text-text-tertiary">
                           {tildadas}/{ids.length}

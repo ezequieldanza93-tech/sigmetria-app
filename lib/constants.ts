@@ -233,6 +233,28 @@ export const IPERC_NIVELES_RIESGO = [
   { nombre: 'Riesgo Intolerable', min: 20, max: 25, valor_ref: 25, color: '#7f1d1d', acciones: 'Prohibición de Tareas. Se encuentra prohibida en su totalidad la operación en esta condición y se deben realizar en forma inmediata acciones para reducir el riesgo o impacto a un Nivel de Riesgo por lo menos Moderado.' },
 ]
 
+// Secciones CIIU/CLANAE Rev.3 (Argentina): letra → nombre descriptivo. Las divisiones
+// del catálogo `actividades_economicas` (códigos de 2 dígitos) se agrupan por estas letras.
+export const CIIU_SECCIONES: Record<string, string> = {
+  A: 'Agricultura, ganadería, caza y silvicultura',
+  B: 'Pesca',
+  C: 'Explotación de minas y canteras',
+  D: 'Industria manufacturera',
+  E: 'Suministro de electricidad, gas y agua',
+  F: 'Construcción',
+  G: 'Comercio al por mayor y al por menor; reparación de vehículos',
+  H: 'Servicios de hotelería y restaurantes',
+  I: 'Transporte, almacenamiento y comunicaciones',
+  J: 'Intermediación financiera',
+  K: 'Actividades inmobiliarias, empresariales y de alquiler',
+  L: 'Administración pública, defensa y seguridad social obligatoria',
+  M: 'Enseñanza',
+  N: 'Servicios sociales y de salud',
+  O: 'Servicios comunitarios, sociales y personales',
+  P: 'Hogares privados con servicio doméstico',
+  Q: 'Organizaciones y órganos extraterritoriales',
+}
+
 export const PROVINCIAS_AR = [
   'Buenos Aires',
   'Catamarca',
