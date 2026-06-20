@@ -641,30 +641,22 @@ function ProductosPageInner() {
 
   return (
     <div className="p-4 sm:p-6 md:p-8 max-w-[1700px] mx-auto">
-      {/* ── Encabezado: título + contador (izq) | botón + filtro Origen (der) ── */}
-      <div className="flex items-start justify-between mb-3 gap-3 min-w-0">
-        <div className="flex items-baseline gap-2 min-w-0">
-          <h1 className="text-xl font-bold text-text-primary leading-none">{tituloLib}</h1>
-          {productos !== null && (
-            <span className="text-xs text-text-tertiary shrink-0">
-              {filteredCount < totalCount
-                ? `${agrupadosCount} de ${totalCount}`
-                : agrupadosCount}
-            </span>
-          )}
-        </div>
-        <div className="flex flex-col items-end gap-2 shrink-0">
-          <Button onClick={() => setShowModal(true)} size="sm">+ Nuevo Producto</Button>
-          {/* Origen (Todos / Base / Agregados) — a la derecha, debajo del botón */}
-          <div className="flex items-center gap-1">
-            <Filter size={12} className="text-text-tertiary" aria-hidden="true" />
-            <OrigenFilter value={origen} onChange={setOrigen} className="flex-wrap justify-end" />
+      {/* ── Título + filtros (columna izq, pegados) | botón + Origen (der) ── */}
+      <div className="flex items-start justify-between gap-3 mb-2 min-w-0">
+        <div className="flex-1 min-w-0 space-y-2">
+          <div className="flex items-baseline gap-2 min-w-0">
+            <h1 className="text-xl font-bold text-text-primary leading-none">{tituloLib}</h1>
+            {productos !== null && (
+              <span className="text-xs text-text-tertiary shrink-0">
+                {filteredCount < totalCount
+                  ? `${agrupadosCount} de ${totalCount}`
+                  : agrupadosCount}
+              </span>
+            )}
           </div>
-        </div>
-      </div>
 
-      {/* ── Barra de filtros compacta: clase + buscador + origen + marca/proveedor + paginación ── */}
-      <div className="flex flex-wrap items-center gap-2 mb-2">
+          {/* Fila de filtros pegada al título: clase · Buscar · Categoría · Marca · paginación */}
+          <div className="flex flex-wrap items-center gap-2">
         {/* Tabs de clase — ocultos en librería scopeada (ya filtra por su clase) */}
         {!scopedClaseId && (
         <>
@@ -795,7 +787,18 @@ function ProductosPageInner() {
             >→</button>
           </div>
         )}
-      </div>
+          </div>{/* fin fila de filtros */}
+        </div>{/* fin columna izquierda (título + filtros) */}
+
+        {/* DERECHA: botón Nuevo Producto + Origen debajo */}
+        <div className="flex flex-col items-end gap-2 shrink-0">
+          <Button onClick={() => setShowModal(true)} size="sm">+ Nuevo Producto</Button>
+          <div className="flex items-center gap-1">
+            <Filter size={12} className="text-text-tertiary" aria-hidden="true" />
+            <OrigenFilter value={origen} onChange={setOrigen} className="flex-wrap justify-end" />
+          </div>
+        </div>
+      </div>{/* fin header (título+filtros | botón+origen) */}
 
       {/* ── Nivel 3: COMPONENTE / subcategorías (debajo de los filtros) ── */}
       {componentesVisibles.length > 0 && (
