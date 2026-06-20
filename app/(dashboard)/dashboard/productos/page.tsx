@@ -641,8 +641,8 @@ function ProductosPageInner() {
 
   return (
     <div className="p-4 sm:p-6 md:p-8 max-w-[1700px] mx-auto">
-      {/* ── Encabezado compacto: título + contador inline + botón a la derecha ── */}
-      <div className="flex items-center justify-between mb-3 gap-3 min-w-0">
+      {/* ── Encabezado: título + contador (izq) | botón + filtro Origen (der) ── */}
+      <div className="flex items-start justify-between mb-3 gap-3 min-w-0">
         <div className="flex items-baseline gap-2 min-w-0">
           <h1 className="text-xl font-bold text-text-primary leading-none">{tituloLib}</h1>
           {productos !== null && (
@@ -653,7 +653,14 @@ function ProductosPageInner() {
             </span>
           )}
         </div>
-        <Button onClick={() => setShowModal(true)} size="sm" className="shrink-0">+ Nuevo Producto</Button>
+        <div className="flex flex-col items-end gap-2 shrink-0">
+          <Button onClick={() => setShowModal(true)} size="sm">+ Nuevo Producto</Button>
+          {/* Origen (Todos / Base / Agregados) — a la derecha, debajo del botón */}
+          <div className="flex items-center gap-1">
+            <Filter size={12} className="text-text-tertiary" aria-hidden="true" />
+            <OrigenFilter value={origen} onChange={setOrigen} className="flex-wrap justify-end" />
+          </div>
+        </div>
       </div>
 
       {/* ── Barra de filtros compacta: clase + buscador + origen + marca/proveedor + paginación ── */}
@@ -727,13 +734,29 @@ function ProductosPageInner() {
           />
         </div>
 
-        {/* Filtro Origen */}
-        <div className="flex items-center gap-1">
-          <Filter size={12} className="text-text-tertiary" aria-hidden="true" />
-          <OrigenFilter value={origen} onChange={setOrigen} className="flex-wrap" />
-        </div>
+        {/* Categoría (multi-select) — en la fila: Buscar · Categoría · Marca */}
+        {categoriaOpciones.length > 0 && (
+          <div className="flex items-center gap-2">
+            <MultiSelectFilter
+              label="Categoría"
+              options={categoriaOpciones}
+              selected={categoriaSelSet}
+              onChange={handleCategoriaChange}
+              emptyLabel="Sin categorías"
+            />
+            {categoriasSel !== null && categoriasSel.size > 0 && (
+              <button
+                type="button"
+                onClick={() => { setCategoriasSel(null); setActiveComponente('todos') }}
+                className="text-xs text-text-tertiary hover:text-text-primary transition-colors underline"
+              >
+                Limpiar
+              </button>
+            )}
+          </div>
+        )}
 
-        {/* Marca / Proveedor */}
+        {/* Marca */}
         {marcasProveedoresOpciones.length > 0 && (
           <div className="min-w-[160px] max-w-[200px]">
             <SearchableSelect
@@ -774,29 +797,7 @@ function ProductosPageInner() {
         )}
       </div>
 
-      {/* ── Nivel 2: CATEGORÍA (multi-select, compacto, debajo si está activo) ── */}
-      {categoriaOpciones.length > 0 && (
-        <div className={`flex items-center gap-2 ${componentesVisibles.length > 0 ? 'mb-1' : 'mb-2'}`}>
-          <MultiSelectFilter
-            label="Categoría"
-            options={categoriaOpciones}
-            selected={categoriaSelSet}
-            onChange={handleCategoriaChange}
-            emptyLabel="Sin categorías"
-          />
-          {categoriasSel !== null && categoriasSel.size > 0 && (
-            <button
-              type="button"
-              onClick={() => { setCategoriasSel(null); setActiveComponente('todos') }}
-              className="text-xs text-text-tertiary hover:text-text-primary transition-colors underline"
-            >
-              Limpiar
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* ── Nivel 3: COMPONENTE (solo si hay exactamente una categoría seleccionada) ── */}
+      {/* ── Nivel 3: COMPONENTE / subcategorías (debajo de los filtros) ── */}
       {componentesVisibles.length > 0 && (
         <div className="flex gap-1 mb-2 flex-wrap pl-3 border-l-2 border-sig-200">
           <button

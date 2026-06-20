@@ -125,6 +125,7 @@ declare module 'lucide-react' {
   export const ScrollText: Icon
   export const Search: Icon
   export const Send: Icon
+  export const ZoomIn: Icon
   export const ServerCog: Icon
   export const Settings2: Icon
   export const Share2: Icon

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
-import { FileText, ExternalLink, Pencil } from 'lucide-react'
+import { FileText, ExternalLink, Pencil, ZoomIn } from 'lucide-react'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
@@ -36,11 +36,13 @@ export function ProductoDetalle({
   const [gestiones, setGestiones] = useState<{ nombre: string }[]>([])
   const [loading, setLoading] = useState(false)
   const [fotoActiva, setFotoActiva] = useState(0)
+  const [zoom, setZoom] = useState(false)  // lightbox de la imagen ampliada
 
   useEffect(() => {
     if (!open || !producto) return
     setLoading(true)
     setFotoActiva(0)
+    setZoom(false)
     const sb = createClient()
     Promise.all([
       sb.from('producto_variantes').select('*').eq('producto_id', producto.id).eq('is_active', true).order('orden').order('talle'),
@@ -86,18 +88,27 @@ export function ProductoDetalle({
             </Button>
           </div>
         )}
-        {/* Galería de fotos */}
+        {/* Galería de fotos — click en la imagen principal para ampliar (zoom) */}
         {fotoUrls.length > 0 && (
           <div>
-            <div className="relative h-64 bg-surface-sunken rounded-lg overflow-hidden border border-border-subtle">
+            <div
+              className="group relative h-64 bg-white rounded-lg overflow-hidden border border-border-subtle cursor-zoom-in"
+              onClick={() => setZoom(true)}
+              role="button"
+              aria-label="Ampliar imagen"
+              title="Click para ampliar"
+            >
               <Image
                 src={fotoUrls[fotoActiva] ?? fotoUrls[0]}
                 alt={producto.nombre}
                 fill
                 sizes="500px"
-                className="object-contain"
+                className="object-contain p-2"
                 unoptimized
               />
+              <div className="absolute bottom-2 right-2 bg-black/55 text-white rounded-full p-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
+                <ZoomIn size={16} aria-hidden="true" />
+              </div>
             </div>
             {fotoUrls.length > 1 && (
               <div className="flex gap-2 mt-2 overflow-x-auto pb-1">
@@ -113,6 +124,31 @@ export function ProductoDetalle({
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Lightbox: imagen ampliada (zoom). Click en cualquier lado o ✕ para cerrar. */}
+        {zoom && fotoUrls.length > 0 && (
+          <div
+            className="fixed inset-0 z-[120] bg-black/90 cursor-zoom-out"
+            onClick={() => setZoom(false)}
+            role="button"
+            aria-label="Cerrar imagen ampliada"
+          >
+            <Image
+              src={fotoUrls[fotoActiva] ?? fotoUrls[0]}
+              alt={producto.nombre}
+              fill
+              sizes="100vw"
+              className="object-contain p-6"
+              unoptimized
+            />
+            <button
+              type="button"
+              onClick={() => setZoom(false)}
+              className="absolute top-4 right-5 text-white/80 hover:text-white text-3xl leading-none"
+              aria-label="Cerrar"
+            >×</button>
           </div>
         )}
 
