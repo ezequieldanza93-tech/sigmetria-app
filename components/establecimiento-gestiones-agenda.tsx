@@ -35,6 +35,7 @@ import { emitirEvidenciaRuido } from '@/lib/actions/emitir-evidencia-ruido'
 import { emitirEvidenciaPat } from '@/lib/actions/emitir-evidencia-pat'
 import { emitirEvidenciaCargaTermica } from '@/lib/actions/emitir-evidencia-carga-termica'
 import { emitirEvidenciaErgonomia } from '@/lib/actions/emitir-evidencia-ergonomia'
+import { emitirEvidenciaCargaFuego } from '@/lib/actions/emitir-evidencia-carga-fuego'
 import { PersonaSelector } from '@/components/persona-selector'
 import { AuditHistorialLink } from '@/components/auditoria/audit-historial-link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
@@ -52,6 +53,7 @@ const EMITIR_PDF_PROTOCOLO = new Map<string, EmitirPdfFn>([
   ['medicion_pat', emitirEvidenciaPat],
   ['medicion_carga_termica', emitirEvidenciaCargaTermica],
   ['protocolo_ergonomia', emitirEvidenciaErgonomia],
+  ['calculo_carga_fuego', emitirEvidenciaCargaFuego],
 ])
 
 const CATEGORIA_META: Record<string, { icon: React.ComponentType<{ size?: number; className?: string }>; abbr: string }> = {
