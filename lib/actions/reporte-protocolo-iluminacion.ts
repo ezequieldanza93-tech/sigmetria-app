@@ -429,14 +429,25 @@ export async function generarReporteProtocoloIluminacion(
     return { success: false, error: `Error al renderizar el PDF: ${err instanceof Error ? err.message : String(err)}` }
   }
 
-  // ── 11. Anexar el CERTIFICADO DE CALIBRACIÓN real (best-effort, fusión pdf-lib) ──
-  // Primer paso del sistema de adjuntos: el certificado se fusiona DE VERDAD al final del
-  // PDF (antes era solo un placeholder). Si no hay cert cargado o falla, el PDF sale igual.
+  // ── 11. Anexar CERTIFICADO DE CALIBRACIÓN + PLANO/CROQUIS reales (fusión pdf-lib, best-effort) ──
+  // El cert sale del instrumento (mismo query que getCertificadoVigente del modal); el plano,
+  // del campo medicion_iluminacion.plano_url. Si falta alguno o falla, el PDF sale igual sin él.
   try {
-    const instrumentoId = instrRaw?.id as string | undefined
+    const { createClient } = await import('@/lib/supabase/server')
+    const supabase = await createClient()
+    const anexos: AnexoInput[] = []
+
+    // Traemos el instrumento + el plano directo de la cabecera (fuente de verdad).
+    const { data: medRow } = await supabase
+      .from('medicion_iluminacion')
+      .select('instrumento_id, plano_url')
+      .eq('id', medicionId)
+      .maybeSingle()
+    const instrumentoId = (medRow?.instrumento_id as string | null) ?? (instrRaw?.id as string | undefined) ?? null
+    const planoPath = (medRow?.plano_url as string | null) ?? null
+
+    // Certificado de calibración (bucket privado 'certificados').
     if (instrumentoId) {
-      const { createClient } = await import('@/lib/supabase/server')
-      const supabase = await createClient()
       const { data: certRow } = await supabase
         .from('certificados_calibracion')
         .select('certificado_url')
@@ -446,23 +457,29 @@ export async function generarReporteProtocoloIluminacion(
         .limit(1)
         .maybeSingle()
       const certPath = (certRow?.certificado_url as string | null) ?? null
+      console.warn('[PDF-REPORTE] anexo cert', { instrumentoId, certPath })
       if (certPath) {
         const { data: signed } = await supabase.storage.from('certificados').createSignedUrl(certPath, 600)
         if (signed?.signedUrl) {
-          const resCert = await fetch(signed.signedUrl)
-          if (resCert.ok) {
-            const anexos: AnexoInput[] = [{
-              titulo: 'Certificado de Calibración del Equipo',
-              buffer: Buffer.from(await resCert.arrayBuffer()),
-              mime: resCert.headers.get('content-type') ?? undefined,
-            }]
-            pdfBuffer = await mergePdfConAnexos(pdfBuffer, anexos)
-          }
+          const r = await fetch(signed.signedUrl)
+          if (r.ok) anexos.push({ titulo: 'Certificado de Calibración del Equipo', buffer: Buffer.from(await r.arrayBuffer()), mime: r.headers.get('content-type') ?? undefined })
         }
       }
     }
+
+    // Plano / croquis de mediciones (bucket privado 'documentos').
+    console.warn('[PDF-REPORTE] anexo plano', { planoPath })
+    if (planoPath) {
+      const { data: signedP } = await supabase.storage.from('documentos').createSignedUrl(planoPath, 600)
+      if (signedP?.signedUrl) {
+        const rp = await fetch(signedP.signedUrl)
+        if (rp.ok) anexos.push({ titulo: 'Plano o Croquis de Mediciones', buffer: Buffer.from(await rp.arrayBuffer()), mime: rp.headers.get('content-type') ?? undefined })
+      }
+    }
+
+    if (anexos.length) pdfBuffer = await mergePdfConAnexos(pdfBuffer, anexos)
   } catch (err) {
-    console.error('[PDF-REPORTE] no se pudo anexar el certificado:', err instanceof Error ? err.message : String(err))
+    console.error('[PDF-REPORTE] no se pudo anexar cert/plano:', err instanceof Error ? err.message : String(err))
   }
 
   return { success: true, data: pdfBuffer }

@@ -206,7 +206,6 @@ function ensamblarHtml(datos: Required<DatosProtocoloIluminacion>): string {
   <h2 class="cv-sec">Equipo utilizado</h2>
   <p class="cv-p">${datos.instrumento} · Clase B. <b>Último certificado de calibración:</b> ${datos.calibracion} (vigente, se adjunta como anexo).</p>
   <div class="cv-foot"><div class="emisor"><b>Emitido por: Consultora / Profesional</b>${datos.encomienda ? `Encomienda Colegio Profesional N° ${datos.encomienda}` : ''}</div><div class="qr">${datos.qrVerificacion ? `<img src="${datos.qrVerificacion}" style="width:22mm;height:22mm;display:block;margin:0 auto 3px">` : `<div class="qrc"></div>`}<div>Verificá la autenticidad</div></div></div>
-  <div class="hoja-num">Carátula</div>
 </section>`
 
   // Los anexos REALES (certificado de calibración, etc.) se fusionan al final del PDF
@@ -234,9 +233,9 @@ function ensamblarHtml(datos: Required<DatosProtocoloIluminacion>): string {
   .lg img { max-width:100%; max-height:100%; object-fit:contain; }
   .cv-folio { position:relative; z-index:1; font-size:8pt; color:#888; margin-top:4px; }
   .cv-folio b { color:#2E7D33; }
-  .cv-title { position:relative; z-index:1; text-align:center; margin-top:14mm; }
-  .cv-media { display:flex; gap:4mm; margin-top:10mm; }
-  .cv-media-box { flex:1; height:46mm; border:1px solid #E4E8E4; border-radius:10px; overflow:hidden; position:relative; }
+  .cv-title { position:relative; z-index:1; text-align:center; margin-top:8mm; }
+  .cv-media { display:flex; gap:4mm; margin-top:6mm; }
+  .cv-media-box { flex:1; height:34mm; border:1px solid #E4E8E4; border-radius:10px; overflow:hidden; position:relative; }
   .cv-media-box img { width:100%; height:100%; object-fit:cover; display:block; }
   .cv-media-box span { position:absolute; left:0; bottom:0; background:rgba(0,0,0,.55); color:#fff; font-size:7pt; font-family:'Poppins',sans-serif; padding:2px 8px; border-top-right-radius:6px; }
   .cv-title .kick { font-size:10pt; letter-spacing:3px; color:#888; text-transform:uppercase; }
@@ -247,7 +246,7 @@ function ensamblarHtml(datos: Required<DatosProtocoloIluminacion>): string {
   .card .k { font-size:7.5pt; letter-spacing:.5px; text-transform:uppercase; color:#888; font-family:'Poppins',sans-serif; }
   .card .v { font-size:11pt; font-weight:600; margin-top:1px; font-family:'Poppins',sans-serif; }
   .card .venc { background:#FFF8E1; } .card .venc .v { color:#9A7B00; }
-  .cv-sec, .anx-t { position:relative; z-index:1; font-size:13pt; font-weight:700; color:#2E7D33; border-bottom:1px solid #E4E8E4; padding-bottom:3px; margin:14mm 0 6px; }
+  .cv-sec, .anx-t { position:relative; z-index:1; font-size:13pt; font-weight:700; color:#2E7D33; border-bottom:1px solid #E4E8E4; padding-bottom:3px; margin:8mm 0 5px; }
   .cv-p { position:relative; z-index:1; font-family:'Poppins',sans-serif; font-size:10pt; line-height:1.5; }
   .cv-foot { position:relative; z-index:1; display:flex; justify-content:space-between; align-items:flex-end; margin-top:14mm; }
   .emisor { font-size:8pt; color:#888; font-family:'Poppins',sans-serif; } .emisor b { color:#333; display:block; font-size:9.5pt; }
