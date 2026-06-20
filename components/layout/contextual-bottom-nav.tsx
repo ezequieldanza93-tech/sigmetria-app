@@ -16,6 +16,8 @@ import {
   Building2,
   Library,
   Shield,
+  ShieldCheck,
+  Package,
   AlertTriangle,
   ScrollText,
   GraduationCap,
@@ -232,7 +234,9 @@ export function ContextualBottomNav({ canManageCursos = false }: ContextualBotto
               </div>
               {[
                 { id: 'lib-hub', label: 'Librerías', icon: Library, href: '/dashboard/librerias' },
-                { id: 'lib-productos', label: 'Elementos de Protección', icon: Shield, href: '/dashboard/productos' },
+                { id: 'lib-epp', label: 'Elementos de Protección (EPP)', icon: Shield, href: '/dashboard/productos?clase=epp' },
+                { id: 'lib-epc', label: 'Protección Colectiva (EPC)', icon: ShieldCheck, href: '/dashboard/productos?clase=epc' },
+                { id: 'lib-equipamiento', label: 'Equipamiento', icon: Package, href: '/dashboard/productos?clase=equipamiento' },
                 { id: 'lib-iperc', label: 'Librería IPERC', icon: AlertTriangle, href: '/dashboard/configuracion/iperc' },
                 { id: 'lib-gestiones', label: 'Librería de Gestiones', icon: ClipboardList, href: '/dashboard/libreria-gestiones' },
                 { id: 'lib-normativa', label: 'Normativa Legal', icon: ScrollText, href: '/dashboard/configuracion/normativa-legal' },

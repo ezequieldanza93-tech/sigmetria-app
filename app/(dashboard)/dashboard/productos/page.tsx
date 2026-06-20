@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useActionState, useRef } from 'react'
+import { useState, useEffect, useActionState, useRef, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import { Search, Filter, Layers, Shield, ShieldCheck, Package } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -417,7 +418,7 @@ function agruparProductos(lista: Producto[]): ProductoAgrupado[] {
 
 // ─── Página principal ──────────────────────────────────────────────────────────
 
-export default function ProductosPage() {
+function ProductosPageInner() {
   const [productos, setProductos] = useState<Producto[] | null>(null)
   const [marcas, setMarcas] = useState<Organizacion[]>([])
   const [unidades, setUnidades] = useState<Unidad[]>([])
@@ -452,20 +453,28 @@ export default function ProductosPage() {
     componentes: arbolQuery.data?.componentes ?? [],
   }
 
-  async function load() {
+  // Librería scopeada por clase vía ?clase=epp|epc|equipamiento. Cada librería carga
+  // SOLO los productos de su clase (filtro server-side) → abre rápido. Sin parámetro,
+  // se comporta como el catálogo completo (compatibilidad hacia atrás).
+  const searchParams = useSearchParams()
+  const claseSlug = searchParams.get('clase')
+  const clasePrefix = claseSlug === 'equipamiento' ? 'equip' : claseSlug
+  const scopedClase = clasePrefix
+    ? arbol.clases.find(cl => cl.nombre.toLowerCase().startsWith(clasePrefix))
+    : null
+  const scopedClaseId = scopedClase?.id ?? null
+
+  async function load(scopeClaseId: string | null) {
     const supabase = createClient()
-    const sel = '*, productos_categorias(nombre), marca:organizaciones_externas!productos_marca_id_fkey(nombre), proveedor:organizaciones_externas!productos_proveedor_id_fkey(nombre), unidades(nombre, simbolo), producto_variantes(count)'
-    // PostgREST corta en 1000 filas por request. Paginamos en lotes hasta traer TODO
-    // el catálogo; si no, solo se verían/clasificarían los primeros 1000 productos.
+    // Con scope: !inner + filtro clase_id (trae solo esa clase). Sin scope: left join (todo).
+    const sel = `*, productos_categorias${scopeClaseId ? '!inner' : ''}(nombre, clase_id), marca:organizaciones_externas!productos_marca_id_fkey(nombre), proveedor:organizaciones_externas!productos_proveedor_id_fkey(nombre), unidades(nombre, simbolo), producto_variantes(count)`
+    // PostgREST corta en 1000 filas por request. Paginamos en lotes hasta traer TODO.
     const LOTE = 1000
     const todos: Producto[] = []
     for (let desde = 0; ; desde += LOTE) {
-      const { data } = await supabase
-        .from('productos')
-        .select(sel)
-        .eq('is_active', true)
-        .order('nombre')
-        .range(desde, desde + LOTE - 1)
+      let qb = supabase.from('productos').select(sel).eq('is_active', true)
+      if (scopeClaseId) qb = qb.eq('productos_categorias.clase_id', scopeClaseId)
+      const { data } = await qb.order('nombre').range(desde, desde + LOTE - 1)
       const lote = (data as unknown as Producto[]) ?? []
       todos.push(...lote)
       if (lote.length < LOTE) break
@@ -473,8 +482,22 @@ export default function ProductosPage() {
     setProductos(todos)
   }
 
+  // Carga de productos: si hay slug de clase, espera a que el árbol cargue para
+  // resolver la clase y traer solo esa; si no, trae todo. Si el árbol ya cargó y la
+  // clase no matchea, cae a traer todo (fallback seguro).
   useEffect(() => {
-    load()
+    if (claseSlug && arbol.clases.length === 0) return // árbol aún cargando → esperar
+    setProductos(null)
+    load(scopedClaseId)
+  }, [scopedClaseId, claseSlug, arbol.clases.length])
+
+  // Al entrar a una librería scopeada, fijar la clase activa a esa clase.
+  useEffect(() => {
+    if (scopedClaseId) setActiveClase(scopedClaseId)
+  }, [scopedClaseId])
+
+  // Marcas + unidades (una sola vez).
+  useEffect(() => {
     const supabase = createClient()
     supabase.from('organizaciones_externas').select('id, nombre, tipo_id, organizaciones_tipos(nombre)')
       .range(0, 99)
@@ -610,12 +633,18 @@ export default function ProductosPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  // Título según la librería scopeada (?clase=…).
+  const tituloLib = claseSlug === 'epp' ? 'Elementos de Protección (EPP)'
+    : claseSlug === 'epc' ? 'Protección Colectiva (EPC)'
+    : claseSlug === 'equipamiento' ? 'Equipamiento'
+    : 'Productos'
+
   return (
     <div className="p-4 sm:p-6 md:p-8 max-w-[1700px] mx-auto">
       {/* ── Encabezado compacto: título + contador inline + botón a la derecha ── */}
       <div className="flex items-center justify-between mb-3 gap-3 min-w-0">
         <div className="flex items-baseline gap-2 min-w-0">
-          <h1 className="text-xl font-bold text-text-primary leading-none">Productos</h1>
+          <h1 className="text-xl font-bold text-text-primary leading-none">{tituloLib}</h1>
           {productos !== null && (
             <span className="text-xs text-text-tertiary shrink-0">
               {filteredCount < totalCount
@@ -629,7 +658,9 @@ export default function ProductosPage() {
 
       {/* ── Barra de filtros compacta: clase + buscador + origen + marca/proveedor + paginación ── */}
       <div className="flex flex-wrap items-center gap-2 mb-2">
-        {/* Tabs de clase */}
+        {/* Tabs de clase — ocultos en librería scopeada (ya filtra por su clase) */}
+        {!scopedClaseId && (
+        <>
         <button
           onClick={() => selectClase('todos')}
           className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md border transition-colors ${activeClase === 'todos' ? 'bg-gray-900 text-white border-gray-900' : 'border-border-default text-text-secondary hover:bg-surface-base'}`}
@@ -678,8 +709,11 @@ export default function ProductosPage() {
           </>
         )}
 
-        {/* Separador visual antes de filtros secundarios */}
-        <span className="text-text-tertiary/40 select-none hidden sm:inline">|</span>
+        </>
+        )}
+
+        {/* Separador visual antes de filtros secundarios (solo en vista completa) */}
+        {!scopedClaseId && <span className="text-text-tertiary/40 select-none hidden sm:inline">|</span>}
 
         {/* Buscador */}
         <div className="relative min-w-[160px] max-w-[220px] flex-1">
@@ -823,7 +857,7 @@ export default function ProductosPage() {
           arbol={arbol}
           marcas={marcas}
           unidades={unidades}
-          onSuccess={() => { setShowModal(false); load() }}
+          onSuccess={() => { setShowModal(false); load(scopedClaseId) }}
           isStaffDeveloper={isStaffDeveloper}
         />
       </Modal>
@@ -846,10 +880,19 @@ export default function ProductosPage() {
             arbol={arbol}
             marcas={marcas}
             unidades={unidades}
-            onSuccess={() => { setEditando(null); load() }}
+            onSuccess={() => { setEditando(null); load(scopedClaseId) }}
           />
         )}
       </Modal>
     </div>
+  )
+}
+
+// useSearchParams() requiere un boundary de Suspense en App Router.
+export default function ProductosPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-text-tertiary">Cargando…</div>}>
+      <ProductosPageInner />
+    </Suspense>
   )
 }

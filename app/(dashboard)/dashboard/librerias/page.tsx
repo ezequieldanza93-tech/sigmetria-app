@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import {
   Shield,
+  ShieldCheck,
+  Package,
   AlertTriangle,
   ClipboardList,
   ScrollText,
@@ -28,10 +30,22 @@ export default async function LibreriasHubPage() {
 
   const cards: HubCard[] = [
     {
-      href: '/dashboard/productos',
+      href: '/dashboard/productos?clase=epp',
       icon: Shield,
-      title: 'Elementos de Protección',
-      description: 'Catálogo de EPP y elementos de seguridad.',
+      title: 'Elementos de Protección (EPP)',
+      description: 'Catálogo de protección personal: cabeza, ocular, manos, cuerpo, altura.',
+    },
+    {
+      href: '/dashboard/productos?clase=epc',
+      icon: ShieldCheck,
+      title: 'Protección Colectiva (EPC)',
+      description: 'Catálogo de protección colectiva y señalización.',
+    },
+    {
+      href: '/dashboard/productos?clase=equipamiento',
+      icon: Package,
+      title: 'Equipamiento',
+      description: 'Herramientas, maquinaria, andamios y consumibles.',
     },
     {
       href: '/dashboard/configuracion/iperc',
