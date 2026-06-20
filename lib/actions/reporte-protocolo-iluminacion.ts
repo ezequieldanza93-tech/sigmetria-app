@@ -103,17 +103,26 @@ function generarFolio(medicionId: string, fechaMedicion: string | null | undefin
   return `SIG-${anio}-${hex}`
 }
 
-/** Descarga una URL y la convierte en data URL base64. */
+/**
+ * Descarga una URL y la convierte en data URL base64.
+ * Best-effort con timeout: el mapa estático de OSM (staticmap.openstreetmap.de)
+ * puede colgarse y trabar TODA la emisión del PDF. Abortamos a los 8s; si aborta
+ * o falla, devolvemos undefined (el motor del PDF ya tiene fallback sin imagen).
+ */
 async function urlToDataUrl(url: string | null | undefined): Promise<string | undefined> {
   if (!url) return undefined
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 8000)
   try {
-    const res = await fetch(url)
+    const res = await fetch(url, { signal: controller.signal })
     if (!res.ok) return undefined
     const contentType = res.headers.get('content-type') ?? 'image/png'
     const buf = Buffer.from(await res.arrayBuffer())
     return `data:${contentType};base64,${buf.toString('base64')}`
   } catch {
     return undefined
+  } finally {
+    clearTimeout(timeout)
   }
 }
 
@@ -183,9 +192,15 @@ export async function generarReporteProtocoloIluminacion(
   }
 
   // ── 4. Matrícula del profesional ──────────────────────────────────────────
-  // Si hay perfiles_profesionales con matriculas_profesionales activa, la usamos.
-  // Si no, queda vacío (el motor ya tiene ese fallback).
+  // Fuente preferida: el RESPONSABLE que EJECUTA la gestión (usuario autenticado),
+  // NO el perfil_profesional de la medición (perfilRaw), que suele venir vacío.
+  // Resolvemos: auth.getUser() → perfiles_profesionales (user_id = profile id) →
+  // matriculas_profesionales activa → "emisor numero". Best-effort: si no hay,
+  // caemos al valor de perfilRaw (sección original), y si tampoco, queda vacío
+  // (el motor del PDF ya tiene fallback).
   let matriculaStr: string | undefined
+
+  // 4a. Fallback histórico: matrícula del perfil_profesional de la medición.
   if (perfilRaw) {
     const matriculasRaw = perfilRaw.matriculas_profesionales as Record<string, unknown>[] | null ?? []
     const matriculaActiva = matriculasRaw.find(mp => mp.activa === true)
@@ -193,6 +208,45 @@ export async function generarReporteProtocoloIluminacion(
       const emisor = (matriculaActiva.emisor as string) ?? ''
       const numero = (matriculaActiva.numero as string) ?? ''
       matriculaStr = `${emisor} ${numero}`.trim() || undefined
+    }
+  }
+
+  // 4b. Override con la matrícula del responsable que ejecuta (usuario autenticado).
+  // Si la encontramos, prevalece SOLO cuando 4a quedó vacío (no pisamos un dato
+  // explícito del perfil de la medición si existe). Best-effort: errores → se omite.
+  if (!matriculaStr) {
+    try {
+      const { createClient } = await import('@/lib/supabase/server')
+      const supabase = await createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        // perfiles_profesionales.user_id → profiles.id (= auth user id).
+        const { data: perfilUser } = await supabase
+          .from('perfiles_profesionales')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle()
+        const perfilId = (perfilUser?.id as string | null) ?? null
+        if (perfilId) {
+          // Matrícula activa del perfil → "emisor numero".
+          const { data: matRow } = await supabase
+            .from('matriculas_profesionales')
+            .select('emisor, numero')
+            .eq('perfil_id', perfilId)
+            .eq('activa', true)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+          if (matRow) {
+            const emisor = (matRow.emisor as string | null) ?? ''
+            const numero = (matRow.numero as string | null) ?? ''
+            const compuesta = `${emisor} ${numero}`.trim()
+            if (compuesta) matriculaStr = compuesta
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[PDF-REPORTE] no se pudo resolver la matrícula del responsable que ejecuta:', err instanceof Error ? err.message : String(err))
     }
   }
 

@@ -83,7 +83,10 @@ export async function crearMedicionIluminacion(
 ): Promise<ActionResult<{ medicionId: string }>> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'No autenticado' }
+  if (!user) {
+    console.error('[MEDICION-ILUM] guardar falló:', 'No autenticado')
+    return { success: false, error: 'No autenticado' }
+  }
 
   const registroId = (formData.get('registro_id') as string) || ''
   const rgFechaPlanificada = (formData.get('rg_fecha_planificada') as string) || null
@@ -107,8 +110,14 @@ export async function crearMedicionIluminacion(
   const puntosRaw = (formData.get('puntos') as string) || '[]'
   const observacionesSeguimientoRaw = (formData.get('observaciones_seguimiento') as string) || null
 
-  if (!registroId) return { success: false, error: 'Registro requerido' }
-  if (!establecimientoId) return { success: false, error: 'Establecimiento requerido' }
+  if (!registroId) {
+    console.error('[MEDICION-ILUM] guardar falló:', 'Registro requerido')
+    return { success: false, error: 'Registro requerido' }
+  }
+  if (!establecimientoId) {
+    console.error('[MEDICION-ILUM] guardar falló:', 'Establecimiento requerido')
+    return { success: false, error: 'Establecimiento requerido' }
+  }
 
   // altura_criterio tiene CHECK en DB: solo 'piso' | 'plano_trabajo'.
   const alturaCriterio = ['piso', 'plano_trabajo'].includes(alturaCriterioRaw) ? alturaCriterioRaw : 'piso'
@@ -130,13 +139,17 @@ export async function crearMedicionIluminacion(
     const parsed = JSON.parse(puntosRaw)
     puntos = Array.isArray(parsed) ? parsed : []
   } catch {
+    console.error('[MEDICION-ILUM] guardar falló:', 'Los puntos de medición tienen un formato inválido')
     return { success: false, error: 'Los puntos de medición tienen un formato inválido' }
   }
 
   // El path de un bucket PRIVADO debe empezar con el consultora_id para que la RLS
   // de lectura por tenant matchee (ver lib/storage/tenant-path.ts).
   const consultoraId = await consultoraIdFromEstablecimiento(supabase, establecimientoId)
-  if (!consultoraId) return { success: false, error: 'No se pudo resolver la consultora del establecimiento' }
+  if (!consultoraId) {
+    console.error('[MEDICION-ILUM] guardar falló:', 'No se pudo resolver la consultora del establecimiento')
+    return { success: false, error: 'No se pudo resolver la consultora del establecimiento' }
+  }
 
   const ts = Date.now()
 
@@ -148,7 +161,10 @@ export async function crearMedicionIluminacion(
     const { data: up, error: upErr } = await supabase.storage
       .from('documentos')
       .upload(path, certificadoFile, { upsert: false })
-    if (upErr) return { success: false, error: 'Error al subir el certificado: ' + upErr.message }
+    if (upErr) {
+      console.error('[MEDICION-ILUM] guardar falló:', 'Error al subir el certificado: ' + upErr.message)
+      return { success: false, error: 'Error al subir el certificado: ' + upErr.message }
+    }
     certificadoUrl = up.path
   }
 
@@ -159,7 +175,10 @@ export async function crearMedicionIluminacion(
     const { data: up, error: upErr } = await supabase.storage
       .from('documentos')
       .upload(path, planoFile, { upsert: false })
-    if (upErr) return { success: false, error: 'Error al subir el plano: ' + upErr.message }
+    if (upErr) {
+      console.error('[MEDICION-ILUM] guardar falló:', 'Error al subir el plano: ' + upErr.message)
+      return { success: false, error: 'Error al subir el plano: ' + upErr.message }
+    }
     planoUrl = up.path
   }
 
@@ -177,7 +196,10 @@ export async function crearMedicionIluminacion(
   // si la UI lo manda, acotamos el UPDATE a la fila exacta.
   if (rgFechaPlanificada) regUpdate = regUpdate.eq('fecha_planificada', rgFechaPlanificada)
   const { data: regRow, error: regErr } = await regUpdate.select('fecha_planificada').single()
-  if (regErr) return { success: false, error: 'Error al actualizar el registro: ' + regErr.message }
+  if (regErr) {
+    console.error('[MEDICION-ILUM] guardar falló:', 'Error al actualizar el registro: ' + regErr.message)
+    return { success: false, error: 'Error al actualizar el registro: ' + regErr.message }
+  }
 
   // Geo-sello del lugar de ejecución. Usamos la fecha_planificada autoritativa del
   // registro (clave de partición). NO-BLOQUEANTE.
@@ -211,7 +233,10 @@ export async function crearMedicionIluminacion(
     })
     .select('id')
     .single()
-  if (cabErr) return { success: false, error: 'Error al crear la medición: ' + cabErr.message }
+  if (cabErr) {
+    console.error('[MEDICION-ILUM] guardar falló:', 'Error al crear la medición: ' + cabErr.message)
+    return { success: false, error: 'Error al crear la medición: ' + cabErr.message }
+  }
 
   const medicionId = cabecera.id as string
 
@@ -244,6 +269,7 @@ export async function crearMedicionIluminacion(
       .select('id')
       .single()
     if (puntoErr) {
+      console.error('[MEDICION-ILUM] guardar falló:', 'Error al guardar un punto de medición: ' + puntoErr.message)
       await supabase.from('medicion_iluminacion').delete().eq('id', medicionId)
       return { success: false, error: 'Error al guardar un punto de medición: ' + puntoErr.message }
     }
@@ -260,6 +286,7 @@ export async function crearMedicionIluminacion(
         .from('medicion_iluminacion_celdas')
         .insert(celdaRows)
       if (celdasErr) {
+        console.error('[MEDICION-ILUM] guardar falló:', 'Error al guardar la grilla de un punto: ' + celdasErr.message)
         await supabase.from('medicion_iluminacion').delete().eq('id', medicionId)
         return { success: false, error: 'Error al guardar la grilla de un punto: ' + celdasErr.message }
       }
@@ -279,6 +306,7 @@ export async function crearMedicionIluminacion(
       const parsed = JSON.parse(observacionesSeguimientoRaw)
       observaciones = Array.isArray(parsed) ? parsed : []
     } catch {
+      console.error('[MEDICION-ILUM] guardar falló:', 'Las observaciones de seguimiento tienen un formato inválido')
       return { success: false, error: 'Las observaciones de seguimiento tienen un formato inválido' }
     }
 
@@ -323,6 +351,7 @@ export async function crearMedicionIluminacion(
       const { error: obsError } = await supabase.from('gestiones_observaciones').insert(rows)
       if (obsError) {
         console.error('[medicionIluminacion] Error al insertar gestiones_observaciones:', obsError.message)
+        console.error('[MEDICION-ILUM] guardar falló:', 'La medición se guardó, pero no se pudieron registrar las observaciones de seguimiento: ' + obsError.message)
         return { success: false, error: 'La medición se guardó, pero no se pudieron registrar las observaciones de seguimiento: ' + obsError.message }
       }
     }

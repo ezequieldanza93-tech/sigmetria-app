@@ -780,9 +780,14 @@ export function MedicionIluminacionEjecutorModal({
     }
   }
 
-  // Sincroniza la lista de adjuntos con el control. La PRIMERA invocación es la
-  // carga inicial (no re-emite). Cualquier cambio posterior (subir/eliminar)
-  // re-emite la evidencia para que el PDF guardado fusione los adjuntos nuevos.
+  // Sincroniza la lista de adjuntos con el control. El control de adjuntos vive en
+  // el paso 'revisar' (ANTES de guardar): el registro ya existe, así que subir
+  // funciona, pero la medición todavía NO está guardada → NO se puede emitir la
+  // evidencia acá (el lookup no la encontraría). En 'revisar' solo recargamos la
+  // lista para el aviso de faltantes; el merge real ocurre al emitir tras guardar.
+  //
+  // En el paso 'listo' (post-guardado), un cambio posterior (subir/eliminar)
+  // SÍ re-emite la evidencia para que el PDF guardado fusione los adjuntos nuevos.
   const adjuntosCargaInicial = useRef(true)
   async function handleAdjuntosChange(items: AdjuntoProtocoloItem[]) {
     setAdjuntos(items)
@@ -790,6 +795,10 @@ export function MedicionIluminacionEjecutorModal({
       adjuntosCargaInicial.current = false
       return
     }
+    // Solo re-emitir cuando la medición YA está guardada (paso 'listo'). En
+    // 'revisar' la medición no existe aún: emitir fallaría. Acá solo mantenemos
+    // sincronizada la lista para el aviso de faltantes.
+    if (step !== 'listo') return
     // Re-emitir la evidencia con los adjuntos fusionados (best-effort, no bloquea).
     setEvidenciaStatus('guardando')
     try {
@@ -949,35 +958,6 @@ export function MedicionIluminacionEjecutorModal({
               <AlertTriangle size={12} /> No se pudo guardar la evidencia automáticamente — descargá el PDF con el botón.
             </p>
           )}
-
-          {/* ── Adjuntos manuales (encomienda / plano) + aviso de faltantes ── */}
-          {(() => {
-            const faltantes: string[] = []
-            if (!adjuntos.some(a => a.tipo === 'encomienda')) faltantes.push('Falta la encomienda del colegio profesional')
-            if (!adjuntos.some(a => a.tipo === 'plano')) faltantes.push('Falta el plano o croquis')
-            if (faltantes.length === 0) return null
-            return (
-              <div className="bg-warning-bg border border-amber-200 text-warning text-sm rounded-lg px-3 py-2.5 flex items-start gap-2">
-                <AlertTriangle size={16} className="shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-medium">Documentos pendientes (opcional)</p>
-                  <ul className="mt-1 space-y-0.5 text-xs list-disc list-inside">
-                    {faltantes.map(f => <li key={f}>{f}</li>)}
-                  </ul>
-                  <p className="mt-1 text-xs opacity-80">Podés adjuntarlos abajo para que se fusionen al PDF, o terminar igual.</p>
-                </div>
-              </div>
-            )
-          })()}
-
-          <div className="rounded-xl border border-border-subtle bg-surface-elevated/40 p-4">
-            <ProtocoloAdjuntosControl
-              registroId={registroId}
-              rgFechaPlanificada={rgFechaPlanificada}
-              tipos={['encomienda', 'plano']}
-              onAdjuntosChange={handleAdjuntosChange}
-            />
-          </div>
 
           <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3 justify-center pt-2">
             <Button type="button" onClick={handleDescargarPdf} disabled={descargandoPdf}>
@@ -1813,6 +1793,37 @@ export function MedicionIluminacionEjecutorModal({
               </ReviewSection>
             )}
 
+            {/* ── Documentos adjuntos (encomienda / plano) + aviso de faltantes ──
+                Se cargan DURANTE la ejecución (el registro ya existe, así que subir
+                funciona). NO se emite la evidencia acá: la medición todavía no está
+                guardada. El merge real al PDF ocurre al emitir tras "Finalizar y guardar". */}
+            <ReviewSection title="Documentos adjuntos (opcional)">
+              {(() => {
+                const faltantes: string[] = []
+                if (!adjuntos.some(a => a.tipo === 'encomienda')) faltantes.push('Falta la encomienda del colegio profesional')
+                if (!adjuntos.some(a => a.tipo === 'plano')) faltantes.push('Falta el plano o croquis')
+                if (faltantes.length === 0) return null
+                return (
+                  <div className="bg-warning-bg border border-amber-200 text-warning text-sm rounded-lg px-3 py-2.5 flex items-start gap-2 mb-3">
+                    <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium">Documentos pendientes (opcional)</p>
+                      <ul className="mt-1 space-y-0.5 text-xs list-disc list-inside">
+                        {faltantes.map(f => <li key={f}>{f}</li>)}
+                      </ul>
+                      <p className="mt-1 text-xs opacity-80">Adjuntalos abajo para que se fusionen al PDF al guardar, o terminá igual.</p>
+                    </div>
+                  </div>
+                )
+              })()}
+              <ProtocoloAdjuntosControl
+                registroId={registroId}
+                rgFechaPlanificada={rgFechaPlanificada}
+                tipos={['encomienda', 'plano']}
+                onAdjuntosChange={handleAdjuntosChange}
+              />
+            </ReviewSection>
+
             {/* Firma a mano del profesional (opcional, no bloquea el guardado) */}
             <ReviewSection title="Firma del profesional">
               <p className="text-xs text-text-tertiary mb-3">
@@ -1842,18 +1853,12 @@ export function MedicionIluminacionEjecutorModal({
               Continuar <ChevronRight size={14} />
             </Button>
           ) : (
-            <>
-              <Button type="button" onClick={handleGuardar} disabled={saving || descargandoPdf}>
-                {saving ? <><Loader2 size={14} className="animate-spin" /> Guardando…</> : 'Guardar protocolo'}
-              </Button>
-              <Button type="button" variant="secondary" onClick={handleDescargarPdf} disabled={saving || descargandoPdf}>
-                {descargandoPdf ? (
-                  <><Loader2 size={14} className="animate-spin" /> Generando…</>
-                ) : (
-                  <><Download size={14} /> Descargar PDF</>
-                )}
-              </Button>
-            </>
+            // Un solo botón primario: guarda la medición y emite la evidencia (con
+            // los adjuntos ya cargados). El PDF se descarga después, en el paso 'listo'
+            // (ahí ya está guardado). "Atrás" permite seguir editando.
+            <Button type="button" onClick={handleGuardar} disabled={saving}>
+              {saving ? <><Loader2 size={14} className="animate-spin" /> Guardando…</> : <><Check size={14} /> Finalizar y guardar</>}
+            </Button>
           )}
           <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>Cancelar</Button>
         </div>
