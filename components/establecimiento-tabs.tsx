@@ -13,6 +13,7 @@ import { FeedbackTab } from '@/components/establecimiento/feedback-tab'
 import { LegajoTab } from '@/components/establecimiento/legajo-tab'
 import { InfoTab } from '@/components/establecimiento/info-tab'
 import { MapaRiesgoTab } from '@/components/iperc/mapa-riesgo-tab'
+import { AuditoriaLegalTab } from '@/components/establecimiento/auditoria-legal-tab'
 import { AuditHistorialLink } from '@/components/auditoria/audit-historial-link'
 import { EstadoActivoToggle } from '@/components/papelera/estado-activo-toggle'
 import { BorrarEntidadButton } from '@/components/papelera/borrar-entidad-button'
@@ -31,7 +32,7 @@ import type {
   LegajoEsperados,
 } from '@/lib/types'
 
-type Tab = 'info' | 'sectores' | 'stakeholders' | 'asistencia' | 'incidentes' | 'inspecciones' | 'documentos' | 'legajo' | 'denuncias' | 'feedback' | 'mapa_riesgo'
+type Tab = 'info' | 'sectores' | 'stakeholders' | 'asistencia' | 'incidentes' | 'inspecciones' | 'documentos' | 'legajo' | 'auditoria_legal' | 'denuncias' | 'feedback' | 'mapa_riesgo'
 
 interface EstablecimientoTabsProps {
   establecimiento: Establecimiento
@@ -67,6 +68,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'inspecciones', label: 'Inspecciones' },
   { id: 'documentos', label: 'Documentos' },
   { id: 'legajo', label: 'Legajo Técnico' },
+  { id: 'auditoria_legal', label: 'Auditoría legal' },
   { id: 'denuncias', label: 'Denuncias' },
   { id: 'feedback', label: 'Feedback Clientes' },
   { id: 'mapa_riesgo', label: 'Mapa de Riesgo' },
@@ -250,6 +252,12 @@ export function EstablecimientoTabs({
           establecimientoId={establecimientoId}
           empresaId={empresaId}
           documentTypes={documentTypes}
+          canWrite={canWrite}
+        />
+      )}
+      {active === 'auditoria_legal' && (
+        <AuditoriaLegalTab
+          establecimientoId={establecimientoId}
           canWrite={canWrite}
         />
       )}
