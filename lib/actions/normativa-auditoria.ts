@@ -20,6 +20,7 @@ export interface AuditoriaItem {
   estado: AuditoriaItemEstado
   observacion: string | null
   evidencia_url: string | null
+  evidencia_path: string | null
   norma_numero: string | null
   norma_titulo: string | null
   norma_tipo: string | null
@@ -236,6 +237,87 @@ export async function updateAuditoriaEstado(
 export async function deleteAuditoria(auditoriaId: string): Promise<ActionResult<null>> {
   const supabase = await createClient()
   const { error } = await supabase.from('normativa_auditorias').delete().eq('id', auditoriaId)
+  if (error) return { success: false, error: error.message }
+  return { success: true, data: null }
+}
+
+// ── Evidencia como ARCHIVO adjunto ─────────────────────────────────────────
+// Se guarda en el bucket privado `documentos` con path por tenant
+// {consultora_id}/auditoria/{item_id}/evidencia.{ext} (la RLS per-tenant lo cubre).
+const EVIDENCIA_MAX_BYTES = 10 * 1024 * 1024
+const EVIDENCIA_MIME_EXT: Record<string, string> = {
+  'application/pdf': 'pdf',
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+  'image/webp': 'webp',
+}
+
+export async function subirEvidenciaItem(
+  itemId: string,
+  formData: FormData,
+): Promise<ActionResult<{ path: string }>> {
+  const supabase = await createClient()
+
+  const file = formData.get('file')
+  if (!(file instanceof File) || file.size === 0) {
+    return { success: false, error: 'Archivo vacío o inválido' }
+  }
+  if (file.size > EVIDENCIA_MAX_BYTES) {
+    return { success: false, error: 'El archivo supera los 10 MB' }
+  }
+  const ext = EVIDENCIA_MIME_EXT[file.type]
+  if (!ext) {
+    return { success: false, error: 'Tipo no permitido (PDF, PNG, JPG o WEBP)' }
+  }
+
+  const { data: item, error: itErr } = await supabase
+    .from('normativa_auditoria_items')
+    .select('id, evidencia_path, auditoria:normativa_auditorias(consultora_id)')
+    .eq('id', itemId)
+    .single()
+  if (itErr || !item) return { success: false, error: 'Ítem no encontrado' }
+
+  const aud = item.auditoria as unknown as { consultora_id: string } | { consultora_id: string }[] | null
+  const consultoraId = Array.isArray(aud) ? aud[0]?.consultora_id : aud?.consultora_id
+  if (!consultoraId) return { success: false, error: 'No se pudo resolver la consultora' }
+
+  const path = `${consultoraId}/auditoria/${itemId}/evidencia.${ext}`
+
+  const { error: upErr } = await supabase.storage
+    .from('documentos')
+    .upload(path, file, { upsert: true, contentType: file.type, cacheControl: '3600' })
+  if (upErr) return { success: false, error: upErr.message }
+
+  // Si había un archivo previo con otra extensión, lo borramos para no dejar huérfanos.
+  const prev = (item as { evidencia_path: string | null }).evidencia_path
+  if (prev && prev !== path) {
+    await supabase.storage.from('documentos').remove([prev])
+  }
+
+  const { error: updErr } = await supabase
+    .from('normativa_auditoria_items')
+    .update({ evidencia_path: path })
+    .eq('id', itemId)
+  if (updErr) return { success: false, error: updErr.message }
+
+  return { success: true, data: { path } }
+}
+
+export async function quitarEvidenciaItem(itemId: string): Promise<ActionResult<null>> {
+  const supabase = await createClient()
+  const { data: item } = await supabase
+    .from('normativa_auditoria_items')
+    .select('evidencia_path')
+    .eq('id', itemId)
+    .single()
+  const path = (item as { evidencia_path: string | null } | null)?.evidencia_path
+  if (path) {
+    await supabase.storage.from('documentos').remove([path])
+  }
+  const { error } = await supabase
+    .from('normativa_auditoria_items')
+    .update({ evidencia_path: null })
+    .eq('id', itemId)
   if (error) return { success: false, error: error.message }
   return { success: true, data: null }
 }

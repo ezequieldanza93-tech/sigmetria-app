@@ -24,7 +24,10 @@ import {
   useUpdateAuditoriaItem,
   useUpdateAuditoriaEstado,
   useDeleteAuditoria,
+  useSubirEvidencia,
+  useQuitarEvidencia,
 } from '@/lib/queries/normativa-auditoria'
+import { useSignedUrls } from '@/lib/storage/sign-client'
 import type {
   AuditoriaItem,
   AuditoriaItemEstado,
@@ -257,12 +260,20 @@ function ItemRow({
   onEstado,
   onObservacion,
   onEvidencia,
+  onSubirArchivo,
+  onQuitarArchivo,
+  getArchivoUrl,
+  subiendo,
 }: {
   item: AuditoriaItem
   editable: boolean
   onEstado: (itemId: string, estado: AuditoriaItemEstado) => void
   onObservacion: (itemId: string, observacion: string | null) => void
   onEvidencia: (itemId: string, evidenciaUrl: string | null) => void
+  onSubirArchivo: (itemId: string, file: File) => void
+  onQuitarArchivo: (itemId: string) => void
+  getArchivoUrl: (path: string | null | undefined) => string | null
+  subiendo: boolean
 }) {
   return (
     <div className="border-t border-border-subtle/60 py-3 first:border-t-0">
@@ -336,6 +347,50 @@ function ItemRow({
           </a>
         )}
       </div>
+      {/* Evidencia como archivo adjunto (PDF o imagen). */}
+      <div className="mt-2 flex items-center gap-3 text-xs">
+        {item.evidencia_path ? (
+          <>
+            {(() => {
+              const url = getArchivoUrl(item.evidencia_path)
+              return url ? (
+                <a href={url} target="_blank" rel="noopener noreferrer" className="font-medium text-sig-600 hover:underline">
+                  Ver archivo ↗
+                </a>
+              ) : (
+                <span className="text-text-tertiary">Archivo adjunto</span>
+              )
+            })()}
+            {editable && (
+              <button
+                type="button"
+                onClick={() => onQuitarArchivo(item.id)}
+                className="text-text-tertiary hover:text-danger hover:underline"
+              >
+                Quitar
+              </button>
+            )}
+          </>
+        ) : (
+          <span className="text-text-tertiary">Sin archivo de evidencia</span>
+        )}
+        {editable && (
+          <label className="cursor-pointer font-medium text-sig-600 hover:underline">
+            {subiendo ? 'Subiendo…' : item.evidencia_path ? 'Reemplazar' : 'Subir archivo'}
+            <input
+              type="file"
+              accept="application/pdf,image/png,image/jpeg,image/webp"
+              className="hidden"
+              disabled={subiendo}
+              onChange={(e) => {
+                const f = e.target.files?.[0]
+                if (f) onSubirArchivo(item.id, f)
+                e.target.value = ''
+              }}
+            />
+          </label>
+        )}
+      </div>
     </div>
   )
 }
@@ -348,6 +403,10 @@ function NormaGrupo({
   onEstado,
   onObservacion,
   onEvidencia,
+  onSubirArchivo,
+  onQuitarArchivo,
+  getArchivoUrl,
+  subiendoItemId,
 }: {
   grupo: GrupoNorma
   editable: boolean
@@ -356,6 +415,10 @@ function NormaGrupo({
   onEstado: (itemId: string, estado: AuditoriaItemEstado) => void
   onObservacion: (itemId: string, observacion: string | null) => void
   onEvidencia: (itemId: string, evidenciaUrl: string | null) => void
+  onSubirArchivo: (itemId: string, file: File) => void
+  onQuitarArchivo: (itemId: string) => void
+  getArchivoUrl: (path: string | null | undefined) => string | null
+  subiendoItemId: string | null
 }) {
   const evaluados = grupo.items.filter((i) => i.estado !== 'pendiente').length
   return (
@@ -390,6 +453,10 @@ function NormaGrupo({
               onEstado={onEstado}
               onObservacion={onObservacion}
               onEvidencia={onEvidencia}
+              onSubirArchivo={onSubirArchivo}
+              onQuitarArchivo={onQuitarArchivo}
+              getArchivoUrl={getArchivoUrl}
+              subiendo={subiendoItemId === item.id}
             />
           ))}
         </div>
@@ -414,7 +481,16 @@ function AuditoriaDetalle({
   const updateItem = useUpdateAuditoriaItem(establecimientoId, auditoriaId)
   const updateEstado = useUpdateAuditoriaEstado(establecimientoId)
   const eliminar = useDeleteAuditoria(establecimientoId)
+  const subirEv = useSubirEvidencia(auditoriaId)
+  const quitarEv = useQuitarEvidencia(auditoriaId)
   const [cerrados, setCerrados] = useState<Set<string>>(new Set())
+  const [subiendoItemId, setSubiendoItemId] = useState<string | null>(null)
+
+  // Firma en batch las URLs de los archivos de evidencia (bucket privado).
+  const evidenciaPaths = (data?.items ?? [])
+    .map((i) => i.evidencia_path)
+    .filter((p): p is string => !!p)
+  const { getUrl: getArchivoUrl } = useSignedUrls('documentos', evidenciaPaths)
 
   async function setEstadoItem(itemId: string, estado: AuditoriaItemEstado) {
     try {
@@ -437,6 +513,25 @@ function AuditoriaDetalle({
       await updateItem.mutateAsync({ itemId, evidencia_url })
     } catch (e) {
       error(e instanceof Error ? e.message : 'No se pudo guardar la evidencia')
+    }
+  }
+
+  async function subirArchivo(itemId: string, file: File) {
+    setSubiendoItemId(itemId)
+    try {
+      await subirEv.mutateAsync({ itemId, file })
+    } catch (e) {
+      error(e instanceof Error ? e.message : 'No se pudo subir el archivo')
+    } finally {
+      setSubiendoItemId(null)
+    }
+  }
+
+  async function quitarArchivo(itemId: string) {
+    try {
+      await quitarEv.mutateAsync(itemId)
+    } catch (e) {
+      error(e instanceof Error ? e.message : 'No se pudo quitar el archivo')
     }
   }
 
@@ -552,6 +647,10 @@ function AuditoriaDetalle({
                     onEstado={setEstadoItem}
                     onObservacion={setObsItem}
                     onEvidencia={setEvidenciaItem}
+                    onSubirArchivo={subirArchivo}
+                    onQuitarArchivo={quitarArchivo}
+                    getArchivoUrl={getArchivoUrl}
+                    subiendoItemId={subiendoItemId}
                   />
                 ))}
               </div>

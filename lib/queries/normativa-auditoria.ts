@@ -9,6 +9,8 @@ import {
   updateAuditoriaItem,
   updateAuditoriaEstado,
   deleteAuditoria,
+  subirEvidenciaItem,
+  quitarEvidenciaItem,
   type AuditoriaItemEstado,
   type AuditoriaEstado,
 } from '@/lib/actions/normativa-auditoria'
@@ -102,5 +104,30 @@ export function useDeleteAuditoria(establecimientoId: string) {
       if (!res.success) throw new Error(res.error)
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.list(establecimientoId) }),
+  })
+}
+
+export function useSubirEvidencia(auditoriaId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (vars: { itemId: string; file: File }) => {
+      const fd = new FormData()
+      fd.set('file', vars.file)
+      const res = await subirEvidenciaItem(vars.itemId, fd)
+      if (!res.success) throw new Error(res.error)
+      return res.data
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.detalle(auditoriaId) }),
+  })
+}
+
+export function useQuitarEvidencia(auditoriaId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (itemId: string) => {
+      const res = await quitarEvidenciaItem(itemId)
+      if (!res.success) throw new Error(res.error)
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.detalle(auditoriaId) }),
   })
 }
