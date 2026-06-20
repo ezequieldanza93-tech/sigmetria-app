@@ -60,6 +60,8 @@ export interface DatosProtocoloIluminacion {
   // Carátula visual
   fotoEstablecimiento?: string // data URL de la foto del sitio
   mapaEstablecimiento?: string // data URL del mapa estático (OSM)
+  // QR de verificación de autenticidad (data URL PNG; apunta a /verificar-protocolo/{folio})
+  qrVerificacion?: string
   // Filas de medición (tabla hoja 2)
   mediciones?: MedicionRow[]
 }
@@ -107,6 +109,7 @@ const MOCK_DATOS: Required<DatosProtocoloIluminacion> = {
     "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 250 70'><g fill='none' stroke='%23888' stroke-width='7'><circle cx='40' cy='35' r='28'/><circle cx='92' cy='35' r='28'/><circle cx='144' cy='35' r='28'/><circle cx='196' cy='35' r='28'/></g></svg>",
   fotoEstablecimiento: '',
   mapaEstablecimiento: '',
+  qrVerificacion: '',
   mediciones: [
     { n: 1, hora: '09:05', sector: 'Depósito', seccionPuesto: 'Pasillo A', tipoIluminacion: 'Mixta', tipofuente: 'Descarga', iluminacion: 'General', uniformidad: 'Cumple', valorMedido: '210', valorLegal: '200' },
     { n: 2, hora: '09:20', sector: 'Depósito', seccionPuesto: 'Estiba 1', tipoIluminacion: 'Artificial', tipofuente: 'Descarga', iluminacion: 'General', uniformidad: 'Cumple', valorMedido: '185', valorLegal: '200' },
@@ -202,7 +205,7 @@ function ensamblarHtml(datos: Required<DatosProtocoloIluminacion>): string {
   <p class="cv-p">Medición de niveles de iluminación en los puestos de trabajo del establecimiento, conforme a la Res. SRT 84/2012, para verificar el cumplimiento de los valores legales del Dec. 351/79 (Anexo IV).</p>
   <h2 class="cv-sec">Equipo utilizado</h2>
   <p class="cv-p">${datos.instrumento} · Clase B. <b>Último certificado de calibración:</b> ${datos.calibracion} (vigente, se adjunta como anexo).</p>
-  <div class="cv-foot"><div class="emisor"><b>Emitido por: Consultora / Profesional</b>${datos.encomienda ? `Encomienda Colegio Profesional N° ${datos.encomienda}` : ''}</div><div class="qr"><div class="qrc"></div><div>Verificá la autenticidad</div></div></div>
+  <div class="cv-foot"><div class="emisor"><b>Emitido por: Consultora / Profesional</b>${datos.encomienda ? `Encomienda Colegio Profesional N° ${datos.encomienda}` : ''}</div><div class="qr">${datos.qrVerificacion ? `<img src="${datos.qrVerificacion}" style="width:22mm;height:22mm;display:block;margin:0 auto 3px">` : `<div class="qrc"></div>`}<div>Verificá la autenticidad</div></div></div>
   <div class="hoja-num">Carátula</div>
 </section>`
 

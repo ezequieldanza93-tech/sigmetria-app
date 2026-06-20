@@ -282,6 +282,25 @@ export async function generarReporteProtocoloPat(
     tomas: tomas.length > 0 ? tomas : undefined,
   }
 
+  // ── 9b. QR de verificación: snapshot público + QR real en la carátula (best-effort) ──
+  try {
+    const { registrarVerificacion } = await import('@/lib/actions/registrar-verificacion')
+    datos.qrVerificacion = await registrarVerificacion({
+      folio,
+      tipo: 'medicion_pat',
+      medicionId: id,
+      consultoraId,
+      empresa: datos.razonSocial,
+      establecimiento: datos.establecimiento,
+      profesional: datos.profesional,
+      fechaEjecucion: datos.fechaMedicion,
+      fechaEmision: datos.fechaEmision,
+      fechaVencimiento: datos.fechaVencimiento,
+    })
+  } catch (err) {
+    console.error('[PDF-REPORTE-PAT] no se pudo registrar la verificación:', err instanceof Error ? err.message : String(err))
+  }
+
   // ── 10. Generar PDF con el motor genérico ────────────────────────────────────
   console.warn('[PDF-REPORTE-PAT] datos mapeados, llamando renderProtocolo', {
     folio,

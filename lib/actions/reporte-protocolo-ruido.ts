@@ -352,6 +352,25 @@ export async function generarReporteProtocoloRuido(
     filas: filas.length > 0 ? filas : undefined,
   }
 
+  // ── 8b. QR de verificación: snapshot público + QR real en la carátula (best-effort) ──
+  try {
+    const { registrarVerificacion } = await import('@/lib/actions/registrar-verificacion')
+    datos.qrVerificacion = await registrarVerificacion({
+      folio,
+      tipo: 'medicion_ruido',
+      medicionId: id,
+      consultoraId,
+      empresa: datos.razonSocial,
+      establecimiento: datos.establecimiento,
+      profesional: datos.profesional,
+      fechaEjecucion: datos.fechaMedicion,
+      fechaEmision: datos.fechaEmision,
+      fechaVencimiento: datos.fechaVencimiento,
+    })
+  } catch (err) {
+    console.error('[PDF-REPORTE-RUIDO] no se pudo registrar la verificación:', err instanceof Error ? err.message : String(err))
+  }
+
   // ── 9. Generar PDF ───────────────────────────────────────────────────────────
   console.warn('[PDF-REPORTE-RUIDO] datos mapeados, llamando renderProtocolo', {
     folio,

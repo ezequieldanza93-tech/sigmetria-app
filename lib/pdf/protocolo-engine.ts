@@ -44,6 +44,8 @@ export interface DatosProtocoloBase {
   // Logos (data URLs base64 para Chromium serverless)
   logoEmpresa?: string
   logoConsultora?: string
+  // QR de verificación de autenticidad (data URL PNG; apunta a /verificar-protocolo/{folio})
+  qrVerificacion?: string
 }
 
 export interface ProtocoloDescriptor<TDatos extends DatosProtocoloBase = DatosProtocoloBase> {
@@ -137,7 +139,7 @@ function caratula<T extends DatosProtocoloBase>(d: T, desc: ProtocoloDescriptor<
   <p class="cv-p">${desc.descripcion}</p>
   <h2 class="cv-sec">Equipo utilizado</h2>
   <p class="cv-p">${desc.equipoTexto(d)}</p>
-  <div class="cv-foot"><div class="emisor"><b>Emitido por: Consultora / Profesional</b>${d.encomienda ? `Encomienda Colegio Profesional N° ${d.encomienda}` : ''}</div><div class="qr"><div class="qrc"></div><div>Verificá la autenticidad</div></div></div>
+  <div class="cv-foot"><div class="emisor"><b>Emitido por: Consultora / Profesional</b>${d.encomienda ? `Encomienda Colegio Profesional N° ${d.encomienda}` : ''}</div><div class="qr">${d.qrVerificacion ? `<img src="${d.qrVerificacion}" style="width:22mm;height:22mm;display:block;margin:0 auto 3px">` : `<div class="qrc"></div>`}<div>Verificá la autenticidad</div></div></div>
   <div class="hoja-num">Carátula</div>
 </section>`
 }

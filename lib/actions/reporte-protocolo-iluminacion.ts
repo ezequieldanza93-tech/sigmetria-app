@@ -399,6 +399,25 @@ export async function generarReporteProtocoloIluminacion(
     console.error('[PDF-REPORTE] no se pudo resolver foto/mapa del establecimiento:', err instanceof Error ? err.message : String(err))
   }
 
+  // ── 9c. QR de verificación: snapshot público + QR real en la carátula (best-effort) ──
+  try {
+    const { registrarVerificacion } = await import('@/lib/actions/registrar-verificacion')
+    datos.qrVerificacion = await registrarVerificacion({
+      folio,
+      tipo: 'medicion_iluminacion',
+      medicionId,
+      consultoraId,
+      empresa: datos.razonSocial,
+      establecimiento: datos.establecimiento,
+      profesional: datos.profesional,
+      fechaEjecucion: datos.fechaMedicion,
+      fechaEmision: datos.fechaEmision,
+      fechaVencimiento: datos.fechaVencimiento,
+    })
+  } catch (err) {
+    console.error('[PDF-REPORTE] no se pudo registrar la verificación:', err instanceof Error ? err.message : String(err))
+  }
+
   // ── 10. Generar PDF ───────────────────────────────────────────────────────
   console.warn('[PDF-REPORTE] datos mapeados, llamando renderProtocoloPdf', { folio, establecimiento: datos.establecimiento, filas: mediciones.length })
   let pdfBuffer: Buffer

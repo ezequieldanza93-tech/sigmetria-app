@@ -226,6 +226,25 @@ export async function generarReporteProtocoloErgonomia(
     seguimiento: seguimiento.length > 0 ? seguimiento : undefined,
   }
 
+  // ── 5b. QR de verificación: snapshot público + QR real en la carátula (best-effort) ──
+  try {
+    const { registrarVerificacion } = await import('@/lib/actions/registrar-verificacion')
+    datos.qrVerificacion = await registrarVerificacion({
+      folio,
+      tipo: 'protocolo_ergonomia',
+      medicionId: id,
+      consultoraId: ev.consultora_id ?? null,
+      empresa: datos.razonSocial,
+      establecimiento: datos.establecimiento,
+      profesional: datos.profesional,
+      fechaEjecucion: datos.fechaMedicion,
+      fechaEmision: datos.fechaEmision,
+      fechaVencimiento: datos.fechaVencimiento,
+    })
+  } catch (err) {
+    console.error('[PDF-ERGO] no se pudo registrar la verificación:', err instanceof Error ? err.message : String(err))
+  }
+
   // ── 6. Generar PDF ──────────────────────────────────────────────────────────
   console.warn('[PDF-ERGO] datos mapeados, renderizando', {
     folio,

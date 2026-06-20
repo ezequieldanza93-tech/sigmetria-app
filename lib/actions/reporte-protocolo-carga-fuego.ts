@@ -395,6 +395,25 @@ export async function generarReporteProtocoloCargaFuego(
     sectores,
   }
 
+  // ── 7b. QR de verificación: snapshot público + QR real en la carátula (best-effort) ──
+  try {
+    const { registrarVerificacion } = await import('@/lib/actions/registrar-verificacion')
+    datos.qrVerificacion = await registrarVerificacion({
+      folio,
+      tipo: 'calculo_carga_fuego',
+      medicionId: id,
+      consultoraId,
+      empresa: datos.razonSocial,
+      establecimiento: datos.establecimiento,
+      profesional: datos.profesional,
+      fechaEjecucion: datos.fechaMedicion,
+      fechaEmision: datos.fechaEmision,
+      fechaVencimiento: datos.fechaVencimiento,
+    })
+  } catch (err) {
+    console.error('[PDF-REPORTE-CF] no se pudo registrar la verificación:', err instanceof Error ? err.message : String(err))
+  }
+
   // ── 8. Generar PDF ───────────────────────────────────────────────────────────
   console.warn('[PDF-REPORTE-CF] datos mapeados, llamando renderProtocolo', {
     folio,
