@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils'
 import type { NormativaNormaConConteo } from '@/lib/actions/normativa-legal'
 import { AMBITO_BADGE, ESTADO_BADGE, ESTADO_DOT } from './normativa-constants'
 import { NormativaRequisitos } from './normativa-requisitos'
+import { NormativaActividades } from './normativa-actividades'
 
 interface Props {
   norma: NormativaNormaConConteo
@@ -147,6 +148,7 @@ export function NormativaNormaCard({ norma, esPropia, puedeGestionarBase = false
             </div>
           )}
           <NormativaRequisitos normaId={norma.id} puedeEditar={editable} />
+          <NormativaActividades normaId={norma.id} puedeEditar={editable} />
         </div>
       )}
     </div>

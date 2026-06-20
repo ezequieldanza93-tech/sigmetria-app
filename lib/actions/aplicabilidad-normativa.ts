@@ -64,13 +64,14 @@ interface EstabDims {
   tipo_id: string | null
   tiene_habilitacion: boolean
   provincia_id: string | null
+  actividad_id: string | null
 }
 
 async function getEstabDims(establecimientoId: string): Promise<EstabDims | null> {
   const supabase = await createClient()
   const { data } = await supabase
     .from('establecimientos')
-    .select('tipo_id, tiene_habilitacion, localidades(provincia_id)')
+    .select('tipo_id, tiene_habilitacion, actividad_id, localidades(provincia_id)')
     .eq('id', establecimientoId)
     .single()
   if (!data) return null
@@ -80,6 +81,7 @@ async function getEstabDims(establecimientoId: string): Promise<EstabDims | null
     tipo_id: data.tipo_id as string | null,
     tiene_habilitacion: Boolean(data.tiene_habilitacion),
     provincia_id,
+    actividad_id: (data.actividad_id as string | null) ?? null,
   }
 }
 
@@ -122,6 +124,18 @@ export async function getNormativasAplicables(establecimientoId: string): Promis
     preguntasPorNorma.set(r.norma_id, arr)
   }
 
+  // Actividades (CIIU) que acotan cada norma. Sin filas para una norma = aplica a
+  // TODAS las actividades (comportamiento actual); con filas, solo a esas.
+  const { data: nnaData } = await supabase
+    .from('normativa_normas_actividades')
+    .select('norma_id, actividad_id')
+  const actividadesPorNorma = new Map<string, Set<string>>()
+  for (const r of (nnaData ?? []) as { norma_id: string; actividad_id: string }[]) {
+    const s = actividadesPorNorma.get(r.norma_id) ?? new Set<string>()
+    s.add(r.actividad_id)
+    actividadesPorNorma.set(r.norma_id, s)
+  }
+
   return normas
     .filter((n) => {
       const joins = n.normativa_normas_tipos_establecimiento ?? []
@@ -137,7 +151,11 @@ export async function getNormativasAplicables(establecimientoId: string): Promis
         ...(preguntasPorNorma.get(n.id) ?? []),
       ]
       const aplicaPregunta = !n.requiere_pregunta || linked.length === 0 || linked.some((pid) => respuestas.get(pid) === true)
-      return incluido && !excluido && aplicaJurisdiccion && aplicaHabilitacion && aplicaPregunta
+      // Actividad (CIIU): sin mapeo = aplica a todas; con mapeo, la actividad del
+      // establecimiento debe estar entre las cargadas.
+      const actSet = actividadesPorNorma.get(n.id)
+      const aplicaActividad = !actSet || actSet.size === 0 || (dims.actividad_id !== null && actSet.has(dims.actividad_id))
+      return incluido && !excluido && aplicaJurisdiccion && aplicaHabilitacion && aplicaPregunta && aplicaActividad
     })
     .map((n) => ({
       id: n.id,

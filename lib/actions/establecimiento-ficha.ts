@@ -244,6 +244,29 @@ export async function getLegajoEsperados(
     for (const c of (cvOff ?? []) as { nombre: string }[]) desactivados.add(c.nombre)
   }
 
+  // Actividad económica (CIIU) del establecimiento. Acota qué tipos de documento
+  // se esperan: un tipo SIN filas en documentos_tipos_actividades aplica a TODAS
+  // las actividades; CON filas, solo a las cargadas. Fetch chico dedicado.
+  const { data: estabRow } = await supabase
+    .from('establecimientos')
+    .select('actividad_id')
+    .eq('id', establecimientoId)
+    .single()
+  const actividadId = (estabRow as { actividad_id: string | null } | null)?.actividad_id ?? null
+
+  // Mapeo tipo de documento → actividades CIIU permitidas (documentos_tipos_actividades).
+  // Sin filas para un doc = aplica a todas las actividades. Con filas = solo si la
+  // actividad del establecimiento está entre las cargadas.
+  const { data: dtaData } = await supabase
+    .from('documentos_tipos_actividades')
+    .select('documento_tipo_id, actividad_id')
+  const actividadesPorDoc = new Map<string, Set<string>>()
+  for (const r of (dtaData ?? []) as { documento_tipo_id: string; actividad_id: string }[]) {
+    const set = actividadesPorDoc.get(r.documento_tipo_id) ?? new Set<string>()
+    set.add(r.actividad_id)
+    actividadesPorDoc.set(r.documento_tipo_id, set)
+  }
+
   // Respuestas del alta del establecimiento (gating de docs condicionales).
   const { data: respData } = await supabase
     .from('establecimientos_respuestas')
@@ -286,6 +309,13 @@ export async function getLegajoEsperados(
     if (!t.categoria_legajo) continue
     catalogoRawById.set(t.id, { nombre: t.nombre, periodicidad: t.periodicidad, categoria: t.categoria_legajo })
     if (desactivados.has(t.nombre)) continue
+    // Gating por actividad económica (CIIU): si el doc tiene actividades mapeadas,
+    // solo se espera cuando el establecimiento tiene una actividad cargada y está
+    // entre las mapeadas. Sin mapeo (set vacío/inexistente) → aplica a todas.
+    const actividadesDoc = actividadesPorDoc.get(t.id)
+    if (actividadesDoc && actividadesDoc.size > 0) {
+      if (!actividadId || !actividadesDoc.has(actividadId)) continue
+    }
     // Gating condicional (OR): si el doc requiere pregunta, entra cuando el
     // establecimiento respondió SÍ a CUALQUIERA de sus preguntas vinculadas
     // (pregunta_id simple + join N:N). Sin preguntas vinculadas → aplica siempre.

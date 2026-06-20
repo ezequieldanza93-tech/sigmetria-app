@@ -22,6 +22,7 @@ import {
   useNormas,
 } from '@/lib/queries/documentos-catalogo'
 import { SearchableSelect } from '@/components/ui/searchable-select'
+import { ActividadesCiiuEditor } from '@/components/forms/actividades-ciiu-editor'
 import { useEffectiveRoleContext } from '@/lib/contexts/effective-role-context'
 import { PROVINCIAS_AR } from '@/lib/constants'
 import type {
@@ -495,6 +496,9 @@ function EditPanel({ doc, tiposEstablecimiento, canEdit, onClose }: EditPanelPro
             )}
           </div>
         )}
+
+        {/* ── Actividades (CIIU) ── */}
+        <ActividadesCiiuEditor docTipoId={doc.id} canEdit={canEdit} enabled />
       </div>
 
       {/* ── Acciones ── */}
