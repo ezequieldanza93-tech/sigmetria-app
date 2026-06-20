@@ -369,6 +369,22 @@ export async function generarReporteProtocoloIluminacion(
 
     // Grilla
     mediciones: mediciones.length > 0 ? mediciones : undefined,
+
+    // Cabecera (hoja 1) y análisis (hoja 3)
+    conclusiones: (m.conclusiones as string) ?? undefined,
+    recomendaciones: (m.recomendaciones as string) ?? undefined,
+    condicionesAtmosfericas: (() => {
+      const c = (m.condiciones_atmosfericas as Record<string, unknown> | null) ?? null
+      if (!c) return undefined
+      const partes = [
+        c.cielo as string | undefined,
+        c.temperatura ? `${c.temperatura} °C` : undefined,
+        c.humedad ? `${c.humedad} % HR` : undefined,
+        c.observaciones as string | undefined,
+      ].filter(Boolean)
+      return partes.length ? partes.join(' · ') : undefined
+    })(),
+    // horariosTurnos se resuelve más abajo (query a establecimientos_horarios).
   }
 
   // ── 9b. Foto + mapa del establecimiento para la carátula (best-effort) ──────
@@ -393,6 +409,18 @@ export async function generarReporteProtocoloIluminacion(
         datos.mapaEstablecimiento = await urlToDataUrl(
           `https://staticmap.openstreetmap.de/staticmap.php?center=${lat},${lon}&zoom=16&size=520x300&markers=${lat},${lon},red-pushpin`
         )
+      }
+      // Horarios/turnos habituales del establecimiento (tabla establecimientos_horarios).
+      const { data: horarios } = await supabase
+        .from('establecimientos_horarios')
+        .select('dia_semana, hora_inicio, hora_fin')
+        .eq('establecimiento_id', establecimientoId)
+      if (horarios && horarios.length > 0) {
+        const txt = (horarios as Record<string, unknown>[])
+          .filter(h => h.hora_inicio)
+          .map(h => `${h.dia_semana} ${String(h.hora_inicio).slice(0, 5)}–${h.hora_fin ? String(h.hora_fin).slice(0, 5) : ''}`.trim())
+          .join(' · ')
+        if (txt) datos.horariosTurnos = txt
       }
     }
   } catch (err) {
@@ -440,24 +468,33 @@ export async function generarReporteProtocoloIluminacion(
     // Traemos el instrumento + el plano directo de la cabecera (fuente de verdad).
     const { data: medRow } = await supabase
       .from('medicion_iluminacion')
-      .select('instrumento_id, plano_url')
+      .select('instrumento_id, certificado_id, plano_url')
       .eq('id', medicionId)
       .maybeSingle()
     const instrumentoId = (medRow?.instrumento_id as string | null) ?? (instrRaw?.id as string | undefined) ?? null
+    const certificadoId = (medRow?.certificado_id as string | null) ?? null
     const planoPath = (medRow?.plano_url as string | null) ?? null
 
     // Certificado de calibración (bucket privado 'certificados').
-    if (instrumentoId) {
-      const { data: certRow } = await supabase
-        .from('certificados_calibracion')
-        .select('certificado_url')
-        .eq('instrumento_id', instrumentoId)
-        .eq('activo', true)
-        .order('fecha_emision', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-      const certPath = (certRow?.certificado_url as string | null) ?? null
-      console.warn('[PDF-REPORTE] anexo cert', { instrumentoId, certPath })
+    // Prioridad: el cert EXACTO referenciado por la medición (certificado_id); si no, el vigente del instrumento.
+    {
+      let certPath: string | null = null
+      if (certificadoId) {
+        const { data: c } = await supabase.from('certificados_calibracion').select('certificado_url').eq('id', certificadoId).maybeSingle()
+        certPath = (c?.certificado_url as string | null) ?? null
+      }
+      if (!certPath && instrumentoId) {
+        const { data: certRow } = await supabase
+          .from('certificados_calibracion')
+          .select('certificado_url')
+          .eq('instrumento_id', instrumentoId)
+          .eq('activo', true)
+          .order('fecha_emision', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        certPath = (certRow?.certificado_url as string | null) ?? null
+      }
+      console.warn('[PDF-REPORTE] anexo cert', { instrumentoId, certificadoId, certPath })
       if (certPath) {
         const { data: signed } = await supabase.storage.from('certificados').createSignedUrl(certPath, 600)
         if (signed?.signedUrl) {

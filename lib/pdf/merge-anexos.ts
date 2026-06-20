@@ -28,32 +28,24 @@ function esPdf(buf: Buffer, mime?: string): boolean {
   return buf.length >= 4 && buf[0] === 0x25 && buf[1] === 0x50 && buf[2] === 0x44 && buf[3] === 0x46
 }
 
-/** Convierte una imagen a un PDF de 1 página A4 con la imagen centrada y escalada. */
-async function imagenAPaginaPdf(buffer: Buffer): Promise<Buffer> {
+/** Convierte una imagen a un PDF de 1 página A4 con el título arriba + la imagen debajo. */
+async function imagenAPaginaPdf(buffer: Buffer, titulo: string): Promise<Buffer> {
   const png = await sharp(buffer).rotate().png().toBuffer() // rotate() respeta EXIF
   const doc = await PDFDocument.create()
   const page = doc.addPage(A4)
+  const bold = await doc.embedFont(StandardFonts.HelveticaBold)
+  page.drawText('ANEXO', { x: 36, y: 800, size: 9, font: bold, color: rgb(0.55, 0.6, 0.55) })
+  const t = titulo.length > 60 ? titulo.slice(0, 59) + '…' : titulo
+  page.drawText(t, { x: 36, y: 782, size: 14, font: bold, color: rgb(0.18, 0.49, 0.2) })
   const img = await doc.embedPng(png)
   const margin = 36
+  const top = 768 // debajo del título
   const maxW = A4[0] - margin * 2
-  const maxH = A4[1] - margin * 2
+  const maxH = top - margin
   const scale = Math.min(maxW / img.width, maxH / img.height, 1)
   const w = img.width * scale
   const h = img.height * scale
-  page.drawImage(img, { x: (A4[0] - w) / 2, y: (A4[1] - h) / 2, width: w, height: h })
-  return Buffer.from(await doc.save())
-}
-
-/** Hoja divisoria con el título del anexo (estilo sobrio, verde Sigmetría). */
-async function paginaDivisoria(titulo: string): Promise<Buffer> {
-  const doc = await PDFDocument.create()
-  const page = doc.addPage(A4)
-  const bold = await doc.embedFont(StandardFonts.HelveticaBold)
-  page.drawText('ANEXO', { x: 56, y: 800, size: 9, font: bold, color: rgb(0.55, 0.6, 0.55) })
-  // wrap simple del título a ~46 chars
-  const linea = titulo.length > 52 ? titulo.slice(0, 51) + '…' : titulo
-  page.drawText(linea, { x: 56, y: 778, size: 16, font: bold, color: rgb(0.18, 0.49, 0.2) })
-  page.drawLine({ start: { x: 56, y: 770 }, end: { x: A4[0] - 56, y: 770 }, thickness: 1, color: rgb(0.89, 0.91, 0.89) })
+  page.drawImage(img, { x: (A4[0] - w) / 2, y: margin + (maxH - h) / 2, width: w, height: h })
   return Buffer.from(await doc.save())
 }
 
@@ -69,16 +61,17 @@ export async function mergePdfConAnexos(base: Buffer, anexos: AnexoInput[]): Pro
 
   for (const ax of validos) {
     try {
-      // 1) Hoja divisoria.
-      const divDoc = await PDFDocument.load(await paginaDivisoria(ax.titulo))
-      const [divPage] = await merged.copyPages(divDoc, [0])
-      merged.addPage(divPage)
-
-      // 2) Documento (PDF tal cual, o imagen → página A4).
-      const docBuf = esPdf(ax.buffer, ax.mime) ? ax.buffer : await imagenAPaginaPdf(ax.buffer)
-      const src = await PDFDocument.load(docBuf, { ignoreEncryption: true })
-      const pages = await merged.copyPages(src, src.getPageIndices())
-      for (const p of pages) merged.addPage(p)
+      if (esPdf(ax.buffer, ax.mime)) {
+        // PDF: se anexan sus páginas TAL CUAL, sin hoja divisoria en blanco.
+        const src = await PDFDocument.load(ax.buffer, { ignoreEncryption: true })
+        const pages = await merged.copyPages(src, src.getPageIndices())
+        for (const p of pages) merged.addPage(p)
+      } else {
+        // Imagen: una sola página A4 con el título arriba + la imagen (sin divisoria aparte).
+        const src = await PDFDocument.load(await imagenAPaginaPdf(ax.buffer, ax.titulo))
+        const [p] = await merged.copyPages(src, [0])
+        merged.addPage(p)
+      }
     } catch (err) {
       // Anexo ilegible/corrupto → se saltea (no rompe el PDF final).
       console.error('[MERGE-ANEXOS] no se pudo anexar:', ax.titulo, err instanceof Error ? err.message : String(err))

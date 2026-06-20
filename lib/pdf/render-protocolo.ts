@@ -62,6 +62,11 @@ export interface DatosProtocoloIluminacion {
   mapaEstablecimiento?: string // data URL del mapa estático (OSM)
   // QR de verificación de autenticidad (data URL PNG; apunta a /verificar-protocolo/{folio})
   qrVerificacion?: string
+  // Campos extra de cabecera (hoja 1) y análisis (hoja 3)
+  horariosTurnos?: string
+  condicionesAtmosfericas?: string
+  conclusiones?: string
+  recomendaciones?: string
   // Filas de medición (tabla hoja 2)
   mediciones?: MedicionRow[]
 }
@@ -110,6 +115,10 @@ const MOCK_DATOS: Required<DatosProtocoloIluminacion> = {
   fotoEstablecimiento: '',
   mapaEstablecimiento: '',
   qrVerificacion: '',
+  horariosTurnos: '',
+  condicionesAtmosfericas: '',
+  conclusiones: '',
+  recomendaciones: '',
   mediciones: [
     { n: 1, hora: '09:05', sector: 'Depósito', seccionPuesto: 'Pasillo A', tipoIluminacion: 'Mixta', tipofuente: 'Descarga', iluminacion: 'General', uniformidad: 'Cumple', valorMedido: '210', valorLegal: '200' },
     { n: 2, hora: '09:20', sector: 'Depósito', seccionPuesto: 'Estiba 1', tipoIluminacion: 'Artificial', tipofuente: 'Descarga', iluminacion: 'General', uniformidad: 'Cumple', valorMedido: '185', valorLegal: '200' },
@@ -159,10 +168,18 @@ function ensamblarHtml(datos: Required<DatosProtocoloIluminacion>): string {
     ['Fecha de la Medición:</td>', `Fecha de la Medición: ${D(datos.fechaMedicion)}</td>`],
     ['Hora de Inicio:</td>', `Hora de Inicio: ${D(datos.horaInicio)}</td>`],
     ['Hora de Finalización:</td>', `Hora de Finalización: ${D(datos.horaFin)}</td>`],
+    ['CP:</td>', `CP: ${D(datos.cp)}</td>`],
+    ['Horarios/Turnos Habituales de Trabajo:</td>', `Horarios/Turnos Habituales de Trabajo: ${D(datos.horariosTurnos)}</td>`],
+    ['Condiciones Atmosféricas:</td>', `Condiciones Atmosféricas: ${D(datos.condicionesAtmosfericas)}</td>`],
   ]
   for (const [find, replace] of campos) {
     protoBody = protoBody.split(find).join(replace)
   }
+
+  // ── Conclusiones (40) y Recomendaciones (41): las 2 celdas col-an de la hoja 3 ──
+  // .replace toma la 1ra ocurrencia → primero conclusiones, después recomendaciones.
+  protoBody = protoBody.replace('<td class="col-an"></td>', `<td class="col-an" style="font-size:9.5pt">${D(datos.conclusiones)}</td>`)
+  protoBody = protoBody.replace('<td class="col-an"></td>', `<td class="col-an" style="font-size:9.5pt">${D(datos.recomendaciones)}</td>`)
 
   // ── Inyección de filas de medición ──
   for (const m of datos.mediciones) {
@@ -190,8 +207,8 @@ function ensamblarHtml(datos: Required<DatosProtocoloIluminacion>): string {
   <div class="cv-folio">PROTOCOLO N° <b>${datos.numeroProtocolo}</b> &nbsp;·&nbsp; Emitido ${datos.fechaEmision}</div>
   <div class="cv-title"><div class="kick">Protocolo / Informe Técnico</div><h1>Medición de Iluminación<br>en el Ambiente Laboral</h1><span class="norma">Res. SRT 84/2012</span></div>
   ${(datos.fotoEstablecimiento || datos.mapaEstablecimiento) ? `<div class="cv-media">
-    ${datos.fotoEstablecimiento ? `<div class="cv-media-box"><img src="${datos.fotoEstablecimiento}"><span>Establecimiento</span></div>` : ''}
-    ${datos.mapaEstablecimiento ? `<div class="cv-media-box"><img src="${datos.mapaEstablecimiento}"><span>Ubicación</span></div>` : ''}
+    ${datos.mapaEstablecimiento ? `<div class="cv-media-box mapa"><img src="${datos.mapaEstablecimiento}"><span>Ubicación</span></div>` : ''}
+    ${datos.fotoEstablecimiento ? `<div class="cv-media-box foto"><img src="${datos.fotoEstablecimiento}"><span>Establecimiento</span></div>` : ''}
   </div>` : ''}
   <div class="card">
     <div class="c"><div class="k">Empresa</div><div class="v">${datos.razonSocial}</div></div>
@@ -234,8 +251,9 @@ function ensamblarHtml(datos: Required<DatosProtocoloIluminacion>): string {
   .cv-folio { position:relative; z-index:1; font-size:8pt; color:#888; margin-top:4px; }
   .cv-folio b { color:#2E7D33; }
   .cv-title { position:relative; z-index:1; text-align:center; margin-top:8mm; }
-  .cv-media { display:flex; gap:4mm; margin-top:6mm; }
-  .cv-media-box { flex:1; height:34mm; border:1px solid #E4E8E4; border-radius:10px; overflow:hidden; position:relative; }
+  .cv-media { display:flex; gap:4mm; margin-top:6mm; justify-content:flex-start; }
+  .cv-media-box { height:48mm; border:1px solid #E4E8E4; border-radius:10px; overflow:hidden; position:relative; }
+  .cv-media-box.mapa { width:62mm; } .cv-media-box.foto { width:85mm; }
   .cv-media-box img { width:100%; height:100%; object-fit:cover; display:block; }
   .cv-media-box span { position:absolute; left:0; bottom:0; background:rgba(0,0,0,.55); color:#fff; font-size:7pt; font-family:'Poppins',sans-serif; padding:2px 8px; border-top-right-radius:6px; }
   .cv-title .kick { font-size:10pt; letter-spacing:3px; color:#888; text-transform:uppercase; }
@@ -246,9 +264,9 @@ function ensamblarHtml(datos: Required<DatosProtocoloIluminacion>): string {
   .card .k { font-size:7.5pt; letter-spacing:.5px; text-transform:uppercase; color:#888; font-family:'Poppins',sans-serif; }
   .card .v { font-size:11pt; font-weight:600; margin-top:1px; font-family:'Poppins',sans-serif; }
   .card .venc { background:#FFF8E1; } .card .venc .v { color:#9A7B00; }
-  .cv-sec, .anx-t { position:relative; z-index:1; font-size:13pt; font-weight:700; color:#2E7D33; border-bottom:1px solid #E4E8E4; padding-bottom:3px; margin:8mm 0 5px; }
+  .cv-sec, .anx-t { position:relative; z-index:1; font-size:13pt; font-weight:700; color:#2E7D33; border-bottom:1px solid #E4E8E4; padding-bottom:3px; margin:5mm 0 4px; }
   .cv-p { position:relative; z-index:1; font-family:'Poppins',sans-serif; font-size:10pt; line-height:1.5; }
-  .cv-foot { position:relative; z-index:1; display:flex; justify-content:space-between; align-items:flex-end; margin-top:14mm; }
+  .cv-foot { position:relative; z-index:1; display:flex; justify-content:space-between; align-items:flex-end; margin-top:6mm; }
   .emisor { font-size:8pt; color:#888; font-family:'Poppins',sans-serif; } .emisor b { color:#333; display:block; font-size:9.5pt; }
   .qr { text-align:center; font-size:6.5pt; color:#888; } .qr .qrc { width:22mm; height:22mm; background:conic-gradient(#000 25%,#fff 0 50%,#000 0 75%,#fff 0) 0 0/7px 7px,#000; border:3px solid #000; margin:0 auto 3px; }
   .anx-box { position:relative; z-index:1; border:1px solid #E4E8E4; border-radius:8px; min-height:170mm; margin-top:8px; display:flex; align-items:center; justify-content:center; color:#9aa6b2; font-family:'Poppins',sans-serif; font-weight:600;
