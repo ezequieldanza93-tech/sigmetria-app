@@ -28,14 +28,17 @@ export function ProductoCard({ producto: p, onDelete, canDelete, onOpen, count }
       className="group bg-surface-elevated border border-border-subtle rounded-xl overflow-hidden hover:shadow-md hover:border-brand-primary/30 transition-all duration-200 flex flex-col cursor-pointer"
     >
       {/* Foto del producto */}
-      <div className="h-44 bg-surface-sunken flex items-center justify-center overflow-hidden relative">
+      <div className="h-52 bg-white flex items-center justify-center overflow-hidden relative">
         {imgSrc ? (
           <Image
             src={imgSrc}
             alt={p.nombre}
             fill
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-            className="object-cover"
+            // object-contain = producto COMPLETO sin recortar (antes object-cover lo
+            // cortaba). p-3 da margen (efecto "zoom out") y fondo blanco para que la
+            // foto del producto respire dentro de los márgenes del card.
+            className="object-contain p-3"
             // Catálogo de 4800+ fotos únicas (ya en el CDN de Supabase): servimos
             // directo, sin el optimizador de Vercel (se agota su cupo → 402 → roto).
             unoptimized
