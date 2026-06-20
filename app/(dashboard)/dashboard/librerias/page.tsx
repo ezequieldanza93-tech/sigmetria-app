@@ -85,16 +85,16 @@ export default async function LibreriasHubPage() {
       icon: ClipboardList,
       cards: [
         {
-          href: '/dashboard/configuracion/iperc',
-          icon: AlertTriangle,
-          title: 'Librería IPERC',
-          description: 'Identificación de peligros y evaluación de riesgos.',
-        },
-        {
           href: '/dashboard/libreria-gestiones',
           icon: ClipboardList,
-          title: 'Librería de Gestiones',
+          title: 'Gestiones',
           description: 'Plantillas y modelos de gestiones reutilizables.',
+        },
+        {
+          href: '/dashboard/configuracion/iperc',
+          icon: AlertTriangle,
+          title: 'IPERC',
+          description: 'Identificación de peligros y evaluación de riesgos.',
         },
       ],
     },
