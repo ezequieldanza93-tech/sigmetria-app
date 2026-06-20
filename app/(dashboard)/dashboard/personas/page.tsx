@@ -21,6 +21,12 @@ function PersonaForm({
     createPersona,
     null as ActionResult<{ duplicado?: string }> | null
   )
+  const [step, setStep] = useState<1 | 2>(1)
+  const [nombre, setNombre] = useState('')
+  const [apellido, setApellido] = useState('')
+  const [dni, setDni] = useState('')
+  const [tipoId, setTipoId] = useState('')
+  const [stepError, setStepError] = useState<string | null>(null)
   const [selectedEmpresaId, setSelectedEmpresaId] = useState<string>('')
   const [establecimientos, setEstablecimientos] = useState<Establecimiento[]>([])
 
@@ -43,150 +49,195 @@ function PersonaForm({
       .then(({ data }) => setEstablecimientos((data as unknown as Establecimiento[]) ?? []))
   }, [selectedEmpresaId])
 
+  const tipoNombre = tiposPersona.find(t => t.id === tipoId)?.nombre ?? ''
+  const esTrabajador = tipoNombre === 'Trabajadores'
+  const inputCls = 'w-full border border-border-default rounded-lg px-3 py-2 text-sm'
+
+  function continuar() {
+    if (!nombre.trim() || !apellido.trim() || !tipoId) {
+      setStepError('Apellido, nombre y tipo de persona son obligatorios.')
+      return
+    }
+    setStepError(null)
+    setStep(2)
+  }
+
   return (
     <form action={formAction} className="space-y-4">
+      {/* Datos del paso 1 (siempre en el DOM para que viajen en el submit). */}
+      <input type="hidden" name="nombre" value={nombre} />
+      <input type="hidden" name="apellido" value={apellido} />
+      <input type="hidden" name="dni" value={dni} />
+      <input type="hidden" name="tipo_id" value={tipoId} />
+
       {state && !state.success && (
         <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3">{state.error}</div>
       )}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="text-sm font-medium text-text-secondary block mb-1">Nombre *</label>
-          <input name="nombre" required className="w-full border border-border-default rounded-lg px-3 py-2 text-sm" placeholder="Nombre" />
-        </div>
-        <div>
-          <label className="text-sm font-medium text-text-secondary block mb-1">Apellido *</label>
-          <input name="apellido" required className="w-full border border-border-default rounded-lg px-3 py-2 text-sm" placeholder="Apellido" />
-        </div>
-      </div>
-      <div>
-        <label className="text-sm font-medium text-text-secondary block mb-1">Tipo de persona *</label>
-        <select name="tipo_id" required className="w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base">
-          <option value="">Seleccioná un tipo…</option>
-          {tiposPersona.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
-        </select>
-      </div>
-      <div>
-        <label className="text-sm font-medium text-text-secondary block mb-1">Empresa *</label>
-        <select
-          value={selectedEmpresaId}
-          onChange={e => setSelectedEmpresaId(e.target.value)}
-          className="w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base"
-        >
-          <option value="">Seleccioná una empresa…</option>
-          {empresas.map(e => <option key={e.id} value={e.id}>{e.razon_social}</option>)}
-        </select>
-      </div>
-      <div>
-        <label className="text-sm font-medium text-text-secondary block mb-1">Establecimiento *</label>
-        <select
-          name="establecimiento_id"
-          required
-          disabled={!selectedEmpresaId}
-          className="w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base disabled:opacity-50"
-        >
-          <option value="">{selectedEmpresaId ? 'Seleccioná un establecimiento…' : 'Primero seleccioná una empresa'}</option>
-          {establecimientos.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}
-        </select>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="text-sm font-medium text-text-secondary block mb-1">DNI</label>
-          <input name="dni" className="w-full border border-border-default rounded-lg px-3 py-2 text-sm" placeholder="00.000.000" />
-        </div>
-        <div>
-          <label className="text-sm font-medium text-text-secondary block mb-1">Legajo</label>
-          <input name="legajo" className="w-full border border-border-default rounded-lg px-3 py-2 text-sm" placeholder="Nro. de legajo" />
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="text-sm font-medium text-text-secondary block mb-1">Fecha de nacimiento</label>
-          <input name="fecha_nacimiento" type="date" className="w-full border border-border-default rounded-lg px-3 py-2 text-sm" />
-        </div>
-        <div>
-          <label className="text-sm font-medium text-text-secondary block mb-1">Fecha de ingreso</label>
-          <input name="fecha_ingreso" type="date" className="w-full border border-border-default rounded-lg px-3 py-2 text-sm" />
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="text-sm font-medium text-text-secondary block mb-1">Teléfono</label>
-          <input name="telefono" className="w-full border border-border-default rounded-lg px-3 py-2 text-sm" placeholder="+54 11 0000-0000" />
-        </div>
-        <div>
-          <label className="text-sm font-medium text-text-secondary block mb-1">Email</label>
-          <input name="email" type="email" className="w-full border border-border-default rounded-lg px-3 py-2 text-sm" placeholder="correo@ejemplo.com" />
-        </div>
-      </div>
-      <div>
-        <label className="text-sm font-medium text-text-secondary block mb-1">Dirección</label>
-        <input name="direccion" className="w-full border border-border-default rounded-lg px-3 py-2 text-sm" placeholder="Calle, número, localidad" />
-      </div>
 
-      <details className="group">
-        <summary className="text-sm font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none py-1">
-          Talles
-        </summary>
-        <div className="grid grid-cols-3 gap-2 mt-2">
+      {step === 1 ? (
+        <>
+          <p className="text-xs font-medium text-text-tertiary uppercase tracking-wide">Paso 1 de 2 · Identidad</p>
           <div>
-            <label className="text-xs text-text-secondary block mb-0.5">Calzado</label>
-            <input name="talle_calzado" className="w-full border border-border-default rounded-lg px-2 py-1.5 text-sm" placeholder="Ej: 42" />
+            <label className="text-sm font-medium text-text-secondary block mb-1">DNI</label>
+            <input value={dni} onChange={e => setDni(e.target.value)} className={inputCls} placeholder="00.000.000" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-sm font-medium text-text-secondary block mb-1">Apellido *</label>
+              <input value={apellido} onChange={e => setApellido(e.target.value)} className={inputCls} placeholder="Apellido" />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-text-secondary block mb-1">Nombre *</label>
+              <input value={nombre} onChange={e => setNombre(e.target.value)} className={inputCls} placeholder="Nombre" />
+            </div>
           </div>
           <div>
-            <label className="text-xs text-text-secondary block mb-0.5">Pantalón</label>
-            <input name="talle_pantalon" className="w-full border border-border-default rounded-lg px-2 py-1.5 text-sm" placeholder="Ej: 44" />
+            <label className="text-sm font-medium text-text-secondary block mb-1">Tipo de persona *</label>
+            <select value={tipoId} onChange={e => setTipoId(e.target.value)} className={`${inputCls} bg-surface-base`}>
+              <option value="">Seleccioná un tipo…</option>
+              {tiposPersona.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+            </select>
           </div>
-          <div>
-            <label className="text-xs text-text-secondary block mb-0.5">Remera</label>
-            <input name="talle_remera" className="w-full border border-border-default rounded-lg px-2 py-1.5 text-sm" placeholder="Ej: L" />
+          {stepError && <p className="text-xs text-danger">{stepError}</p>}
+          <div className="flex justify-end">
+            <Button type="button" onClick={continuar}>Continuar →</Button>
           </div>
-          <div>
-            <label className="text-xs text-text-secondary block mb-0.5">Camisa</label>
-            <input name="talle_camisa" className="w-full border border-border-default rounded-lg px-2 py-1.5 text-sm" placeholder="Ej: M" />
+        </>
+      ) : (
+        <>
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium text-text-tertiary uppercase tracking-wide">Paso 2 de 2 · {tipoNombre || 'Datos'}</p>
+            <button type="button" onClick={() => setStep(1)} className="text-xs text-sig-600 hover:underline">← Volver</button>
           </div>
-          <div>
-            <label className="text-xs text-text-secondary block mb-0.5">Buzo</label>
-            <input name="talle_buzo" className="w-full border border-border-default rounded-lg px-2 py-1.5 text-sm" placeholder="Ej: XL" />
+          <div className="rounded-lg bg-surface-elevated px-3 py-2 text-sm text-text-secondary">
+            {apellido}, {nombre}{dni ? ` · DNI ${dni}` : ''} · <span className="font-medium text-text-primary">{tipoNombre}</span>
           </div>
-          <div>
-            <label className="text-xs text-text-secondary block mb-0.5">Campera</label>
-            <input name="talle_campera" className="w-full border border-border-default rounded-lg px-2 py-1.5 text-sm" placeholder="Ej: 48" />
-          </div>
-        </div>
-      </details>
 
-      <details className="group">
-        <summary className="text-sm font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none py-1">
-          Seguro
-        </summary>
-        <div className="mt-2">
-          <input name="beneficiario_seguro" className="w-full border border-border-default rounded-lg px-3 py-2 text-sm" placeholder="Nombre del beneficiario / obra social" />
-        </div>
-      </details>
-
-      <details className="group">
-        <summary className="text-sm font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none py-1">
-          Contacto de emergencia
-        </summary>
-        <div className="grid grid-cols-2 gap-2 mt-2">
           <div>
-            <label className="text-xs text-text-secondary block mb-0.5">Nombre</label>
-            <input name="contacto_emergencia_nombre" className="w-full border border-border-default rounded-lg px-2 py-1.5 text-sm" placeholder="Nombre completo" />
+            <label className="text-sm font-medium text-text-secondary block mb-1">Empresa *</label>
+            <select
+              value={selectedEmpresaId}
+              onChange={e => setSelectedEmpresaId(e.target.value)}
+              className={`${inputCls} bg-surface-base`}
+            >
+              <option value="">Seleccioná una empresa…</option>
+              {empresas.map(e => <option key={e.id} value={e.id}>{e.razon_social}</option>)}
+            </select>
           </div>
           <div>
-            <label className="text-xs text-text-secondary block mb-0.5">Teléfono</label>
-            <input name="contacto_emergencia_telefono" className="w-full border border-border-default rounded-lg px-2 py-1.5 text-sm" placeholder="+54 11 0000-0000" />
+            <label className="text-sm font-medium text-text-secondary block mb-1">Establecimiento *</label>
+            <select
+              name="establecimiento_id"
+              required
+              disabled={!selectedEmpresaId}
+              className={`${inputCls} bg-surface-base disabled:opacity-50`}
+            >
+              <option value="">{selectedEmpresaId ? 'Seleccioná un establecimiento…' : 'Primero seleccioná una empresa'}</option>
+              {establecimientos.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}
+            </select>
           </div>
-        </div>
-      </details>
 
-      <div>
-        <label className="text-sm font-medium text-text-secondary block mb-1">Notas</label>
-        <textarea name="notas" rows={2} className="w-full border border-border-default rounded-lg px-3 py-2 text-sm resize-none" placeholder="Opcional…" />
-      </div>
-      <div className="flex justify-end">
-        <Button type="submit" disabled={pending}>{pending ? 'Guardando…' : 'Guardar'}</Button>
-      </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-sm font-medium text-text-secondary block mb-1">Teléfono</label>
+              <input name="telefono" className={inputCls} placeholder="+54 11 0000-0000" />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-text-secondary block mb-1">Email</label>
+              <input name="email" type="email" className={inputCls} placeholder="correo@ejemplo.com" />
+            </div>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-text-secondary block mb-1">Dirección</label>
+            <input name="direccion" className={inputCls} placeholder="Calle, número, localidad" />
+          </div>
+
+          {esTrabajador && (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-sm font-medium text-text-secondary block mb-1">Legajo</label>
+                  <input name="legajo" className={inputCls} placeholder="Nro. de legajo" />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-text-secondary block mb-1">Fecha de ingreso</label>
+                  <input name="fecha_ingreso" type="date" className={inputCls} />
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-text-secondary block mb-1">Fecha de nacimiento</label>
+                <input name="fecha_nacimiento" type="date" className={inputCls} />
+              </div>
+              <p className="text-xs text-text-tertiary">El sector y el puesto se asignan desde la ficha del establecimiento → Sectores/Rubros.</p>
+
+              <details className="group">
+                <summary className="text-sm font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none py-1">
+                  Talles
+                </summary>
+                <div className="grid grid-cols-3 gap-2 mt-2">
+                  <div>
+                    <label className="text-xs text-text-secondary block mb-0.5">Calzado</label>
+                    <input name="talle_calzado" className="w-full border border-border-default rounded-lg px-2 py-1.5 text-sm" placeholder="Ej: 42" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-text-secondary block mb-0.5">Pantalón</label>
+                    <input name="talle_pantalon" className="w-full border border-border-default rounded-lg px-2 py-1.5 text-sm" placeholder="Ej: 44" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-text-secondary block mb-0.5">Remera</label>
+                    <input name="talle_remera" className="w-full border border-border-default rounded-lg px-2 py-1.5 text-sm" placeholder="Ej: L" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-text-secondary block mb-0.5">Camisa</label>
+                    <input name="talle_camisa" className="w-full border border-border-default rounded-lg px-2 py-1.5 text-sm" placeholder="Ej: M" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-text-secondary block mb-0.5">Buzo</label>
+                    <input name="talle_buzo" className="w-full border border-border-default rounded-lg px-2 py-1.5 text-sm" placeholder="Ej: XL" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-text-secondary block mb-0.5">Campera</label>
+                    <input name="talle_campera" className="w-full border border-border-default rounded-lg px-2 py-1.5 text-sm" placeholder="Ej: 48" />
+                  </div>
+                </div>
+              </details>
+
+              <details className="group">
+                <summary className="text-sm font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none py-1">
+                  Seguro
+                </summary>
+                <div className="mt-2">
+                  <input name="beneficiario_seguro" className={inputCls} placeholder="Nombre del beneficiario / obra social" />
+                </div>
+              </details>
+
+              <details className="group">
+                <summary className="text-sm font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none py-1">
+                  Contacto de emergencia
+                </summary>
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                  <div>
+                    <label className="text-xs text-text-secondary block mb-0.5">Nombre</label>
+                    <input name="contacto_emergencia_nombre" className="w-full border border-border-default rounded-lg px-2 py-1.5 text-sm" placeholder="Nombre completo" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-text-secondary block mb-0.5">Teléfono</label>
+                    <input name="contacto_emergencia_telefono" className="w-full border border-border-default rounded-lg px-2 py-1.5 text-sm" placeholder="+54 11 0000-0000" />
+                  </div>
+                </div>
+              </details>
+            </>
+          )}
+
+          <div>
+            <label className="text-sm font-medium text-text-secondary block mb-1">Notas</label>
+            <textarea name="notas" rows={2} className="w-full border border-border-default rounded-lg px-3 py-2 text-sm resize-none" placeholder="Opcional…" />
+          </div>
+          <div className="flex justify-end">
+            <Button type="submit" disabled={pending}>{pending ? 'Guardando…' : 'Guardar'}</Button>
+          </div>
+        </>
+      )}
     </form>
   )
 }
