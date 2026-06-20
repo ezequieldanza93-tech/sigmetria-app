@@ -32,6 +32,11 @@ const csp = cspDirectives.join('; ')
 
 const nextConfig: NextConfig = {
   transpilePackages: ['recharts'],
+  // @sparticuz/chromium + puppeteer-core NO deben bundlearse: webpack reubica el
+  // paquete y le rompe la carpeta bin/ con el binario de Chromium → en Vercel falla
+  // con 'input directory .../@sparticuz/chromium/bin does not exist'. Externalizarlos
+  // los deja en node_modules tal cual, con su bin/ intacto (motor de PDF de protocolos).
+  serverExternalPackages: ['@sparticuz/chromium', 'puppeteer-core'],
   experimental: {
     serverActions: { bodySizeLimit: '25mb' },
     optimizePackageImports: [
