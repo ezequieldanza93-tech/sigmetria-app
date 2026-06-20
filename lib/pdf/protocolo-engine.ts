@@ -114,9 +114,9 @@ const SHARED_CSS = `
   .qr { text-align:center; font-size:6.5pt; color:#888; } .qr .qrc { width:22mm; height:22mm; background:conic-gradient(#000 25%,#fff 0 50%,#000 0 75%,#fff 0) 0 0/7px 7px,#000; border:3px solid #000; margin:0 auto 3px; }
   .anx-box { position:relative; z-index:1; border:1px solid #E4E8E4; border-radius:8px; min-height:170mm; margin-top:8px; display:flex; align-items:center; justify-content:center; color:#9aa6b2; font-family:'Poppins',sans-serif; font-weight:600;
     background: repeating-linear-gradient(0deg,#eef3f7,#eef3f7 1px,#fff 1px,#fff 22px), repeating-linear-gradient(90deg,#eef3f7,#eef3f7 1px,#fff 1px,#fff 22px); }
-  /* Firma dibujada del profesional, encima de la línea de firma legal (no partir entre páginas) */
-  .firma { position: relative; break-inside: avoid; page-break-inside: avoid; }
-  .firma::before { content:''; display:block; width:44mm; height:11mm; margin:0 auto -4mm; background:var(--firma-url) center/contain no-repeat; }
+  /* Firma dibujada del profesional: compacta, debajo de la tabla, sin partirse ni saltar sola */
+  .firma { position: relative; margin-top: 4px !important; break-inside: avoid; page-break-inside: avoid; }
+  .firma::before { content:''; display:block; width:40mm; height:8mm; margin:0 auto -2mm; background:var(--firma-url) center/contain no-repeat; }
 `
 
 function caratula<T extends DatosProtocoloBase>(d: T, desc: ProtocoloDescriptor<T>): string {

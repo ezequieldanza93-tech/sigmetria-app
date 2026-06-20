@@ -242,18 +242,21 @@ function ensamblarHtml(datos: Required<DatosProtocoloIluminacion>): string {
 
   /* ── Ajustes de PRESENTACIÓN del protocolo (no modifican el HTML legal) ── */
   .hoja.horiz table.med { width: 94%; margin: 0 auto; }
-  .hoja.horiz table.med td.idx { height: 5.5mm; }
-  .hoja.horiz table.med .obs { height: 22mm; }
-  .hoja.horiz table.analisis .col-an { height: 90mm; }
+  .hoja.horiz table.med td.idx { height: 4.5mm; }
+  .hoja.horiz table.med th { font-size: 7pt; padding: 2px 2px; }
+  .hoja.horiz table.med td { font-size: 8pt; }
+  .hoja.horiz table.med .obs { height: 13mm; }
+  .hoja.horiz table.analisis .col-an { height: 66mm; }
   .hoja.vert table.form { width: 96%; margin: 0 auto; }
   .hoja.vert td[style*="height:40mm"] { height: 22mm !important; }
   .hoja.vert td[style*="height:34mm"] { height: 18mm !important; }
   .hoja.vert td[style*="height:32mm"] { height: 18mm !important; }
   .hoja.vert td[style*="height:30mm"] { height: 18mm !important; }
 
-  /* Firma del profesional (no partir el bloque entre páginas) */
-  .firma { position: relative; break-inside: avoid; page-break-inside: avoid; }
-  .firma::before { content:''; display:block; width:44mm; height:11mm; margin:0 auto -4mm; background:url("${datos.firma}") center/contain no-repeat; }
+  /* Firma del profesional: compacta, debajo de la tabla, sin partirse ni saltar sola */
+  .firma { position: relative; margin-top: 4px !important; break-inside: avoid; page-break-inside: avoid; }
+  .firma .linea { line-height: 1.05; }
+  .firma::before { content:''; display:block; width:40mm; height:8mm; margin:0 auto -2mm; background:url("${datos.firma}") center/contain no-repeat; }
 
   /* Unificar márgenes */
   .hoja.horiz .anexo, .hoja.horiz .titulo, .hoja.horiz table.form,
