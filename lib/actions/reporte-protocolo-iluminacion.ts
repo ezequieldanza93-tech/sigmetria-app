@@ -40,6 +40,7 @@ import {
   type DatosProtocoloIluminacion,
   type MedicionRow,
 } from '@/lib/pdf/render-protocolo'
+import { mergePdfConAnexos, type AnexoInput } from '@/lib/pdf/merge-anexos'
 import {
   eMedia,
   eMinima,
@@ -379,6 +380,42 @@ export async function generarReporteProtocoloIluminacion(
     const detalle = err instanceof Error ? (err.stack ?? err.message) : String(err)
     console.error('[PDF-REPORTE] renderProtocoloPdf lanzó:', detalle)
     return { success: false, error: `Error al renderizar el PDF: ${err instanceof Error ? err.message : String(err)}` }
+  }
+
+  // ── 11. Anexar el CERTIFICADO DE CALIBRACIÓN real (best-effort, fusión pdf-lib) ──
+  // Primer paso del sistema de adjuntos: el certificado se fusiona DE VERDAD al final del
+  // PDF (antes era solo un placeholder). Si no hay cert cargado o falla, el PDF sale igual.
+  try {
+    const instrumentoId = instrRaw?.id as string | undefined
+    if (instrumentoId) {
+      const { createClient } = await import('@/lib/supabase/server')
+      const supabase = await createClient()
+      const { data: certRow } = await supabase
+        .from('certificados_calibracion')
+        .select('certificado_url')
+        .eq('instrumento_id', instrumentoId)
+        .eq('activo', true)
+        .order('fecha_emision', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      const certPath = (certRow?.certificado_url as string | null) ?? null
+      if (certPath) {
+        const { data: signed } = await supabase.storage.from('certificados').createSignedUrl(certPath, 600)
+        if (signed?.signedUrl) {
+          const resCert = await fetch(signed.signedUrl)
+          if (resCert.ok) {
+            const anexos: AnexoInput[] = [{
+              titulo: 'Certificado de Calibración del Equipo',
+              buffer: Buffer.from(await resCert.arrayBuffer()),
+              mime: resCert.headers.get('content-type') ?? undefined,
+            }]
+            pdfBuffer = await mergePdfConAnexos(pdfBuffer, anexos)
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[PDF-REPORTE] no se pudo anexar el certificado:', err instanceof Error ? err.message : String(err))
   }
 
   return { success: true, data: pdfBuffer }
