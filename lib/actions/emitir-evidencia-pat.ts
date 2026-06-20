@@ -16,6 +16,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { generarReporteProtocoloPat } from '@/lib/actions/reporte-protocolo-pat'
 import { guardarEvidenciaProtocolo } from '@/lib/actions/protocolo-evidencia'
+import { mergeAdjuntosManuales } from '@/lib/pdf/anexos-manuales'
 import type { ActionResult } from '@/lib/types'
 
 export async function emitirEvidenciaPat(
@@ -51,7 +52,8 @@ export async function emitirEvidenciaPat(
     console.error('[PDF-EVIDENCIA-PAT] generarReporte falló', { error: pdfRes.error })
     return { success: false, error: pdfRes.error }
   }
-  const buffer = pdfRes.data as Buffer
+  // Fusionar adjuntos manuales (encomienda / plano / otro) si los hay (best-effort).
+  const buffer = await mergeAdjuntosManuales(pdfRes.data as Buffer, registroId, rgFechaPlanificada)
   const base64 = 'data:application/pdf;base64,' + Buffer.from(buffer).toString('base64')
 
   // ── 3. Guardar como evidencia de la gestión (sistema existente) ─────────────

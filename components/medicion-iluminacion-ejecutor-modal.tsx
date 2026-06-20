@@ -29,6 +29,8 @@ import {
 import { getCertificadoVigente } from '@/lib/actions/certificado'
 import { firmarProtocolo } from '@/lib/actions/firmar-protocolo'
 import { useSignedUrls } from '@/lib/storage/sign-client'
+import { ProtocoloAdjuntosControl } from '@/components/protocolo-adjuntos-control'
+import type { AdjuntoProtocoloItem } from '@/lib/actions/protocolo-adjuntos'
 import { pickClasificacionDefault } from '@/lib/medicion/clasificacion-default'
 import type { CertificadoCalibracion } from '@/lib/types'
 import { Modal } from '@/components/ui/modal'
@@ -325,6 +327,9 @@ export function MedicionIluminacionEjecutorModal({
   // Estado del guardado como evidencia (el PDF se genera server-side via Chromium).
   const [evidenciaStatus, setEvidenciaStatus] = useState<'idle' | 'guardando' | 'ok' | 'error'>('idle')
   const [evidenciaPdfUrl, setEvidenciaPdfUrl] = useState<string | null>(null)
+  // Adjuntos manuales del protocolo (encomienda / plano). Se sincroniza con el
+  // control para mostrar el aviso de "qué falta" en el paso final.
+  const [adjuntos, setAdjuntos] = useState<AdjuntoProtocoloItem[]>([])
 
   // ── Catálogos ───────────────────────────────────────────────────────
   const [estCtx, setEstCtx] = useState<EstablecimientoCtx | null>(null)
@@ -775,6 +780,31 @@ export function MedicionIluminacionEjecutorModal({
     }
   }
 
+  // Sincroniza la lista de adjuntos con el control. La PRIMERA invocación es la
+  // carga inicial (no re-emite). Cualquier cambio posterior (subir/eliminar)
+  // re-emite la evidencia para que el PDF guardado fusione los adjuntos nuevos.
+  const adjuntosCargaInicial = useRef(true)
+  async function handleAdjuntosChange(items: AdjuntoProtocoloItem[]) {
+    setAdjuntos(items)
+    if (adjuntosCargaInicial.current) {
+      adjuntosCargaInicial.current = false
+      return
+    }
+    // Re-emitir la evidencia con los adjuntos fusionados (best-effort, no bloquea).
+    setEvidenciaStatus('guardando')
+    try {
+      const res = await emitirEvidenciaIluminacion(registroId, rgFechaPlanificada)
+      if (res.success) {
+        setEvidenciaPdfUrl(res.data.pdfUrl)
+        setEvidenciaStatus('ok')
+      } else {
+        setEvidenciaStatus('error')
+      }
+    } catch {
+      setEvidenciaStatus('error')
+    }
+  }
+
   // ── Descargar PDF oficial (3 hojas SRT 84/2012) ────────────────────
   // Descarga el PDF de evidencia generado por el motor Chromium (vectorial, con
   // carátula/logos/watermark). El PDF ya se generó al llegar al paso 'listo'
@@ -919,6 +949,36 @@ export function MedicionIluminacionEjecutorModal({
               <AlertTriangle size={12} /> No se pudo guardar la evidencia automáticamente — descargá el PDF con el botón.
             </p>
           )}
+
+          {/* ── Adjuntos manuales (encomienda / plano) + aviso de faltantes ── */}
+          {(() => {
+            const faltantes: string[] = []
+            if (!adjuntos.some(a => a.tipo === 'encomienda')) faltantes.push('Falta la encomienda del colegio profesional')
+            if (!adjuntos.some(a => a.tipo === 'plano')) faltantes.push('Falta el plano o croquis')
+            if (faltantes.length === 0) return null
+            return (
+              <div className="bg-warning-bg border border-amber-200 text-warning text-sm rounded-lg px-3 py-2.5 flex items-start gap-2">
+                <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium">Documentos pendientes (opcional)</p>
+                  <ul className="mt-1 space-y-0.5 text-xs list-disc list-inside">
+                    {faltantes.map(f => <li key={f}>{f}</li>)}
+                  </ul>
+                  <p className="mt-1 text-xs opacity-80">Podés adjuntarlos abajo para que se fusionen al PDF, o terminar igual.</p>
+                </div>
+              </div>
+            )
+          })()}
+
+          <div className="rounded-xl border border-border-subtle bg-surface-elevated/40 p-4">
+            <ProtocoloAdjuntosControl
+              registroId={registroId}
+              rgFechaPlanificada={rgFechaPlanificada}
+              tipos={['encomienda', 'plano']}
+              onAdjuntosChange={handleAdjuntosChange}
+            />
+          </div>
+
           <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3 justify-center pt-2">
             <Button type="button" onClick={handleDescargarPdf} disabled={descargandoPdf}>
               {descargandoPdf ? (
