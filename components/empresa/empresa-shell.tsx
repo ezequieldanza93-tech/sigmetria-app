@@ -1,6 +1,6 @@
 'use client'
 
-import { ClipboardList, Eye, BarChart3, BookOpen, ArrowLeft } from 'lucide-react'
+import { ClipboardList, Eye, BarChart3, BookOpen, Home } from 'lucide-react'
 import { EstablecimientoIcon } from '@/components/icons/establecimiento-icon'
 import { useSearchParams, usePathname } from 'next/navigation'
 import { SectionsShell } from '@/components/layout/sections-shell'
@@ -30,8 +30,8 @@ export function EmpresaShell({ empresaId, children }: EmpresaShellProps) {
   const items: SectionItem[] = [
     {
       id: 'empresas',
-      label: 'Empresas',
-      icon: ArrowLeft,
+      label: 'Inicio',
+      icon: Home,
       href: '/dashboard/empresas',
     },
     {
