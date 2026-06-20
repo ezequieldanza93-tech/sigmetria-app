@@ -1797,21 +1797,28 @@ export function MedicionIluminacionEjecutorModal({
                 Se cargan DURANTE la ejecución (el registro ya existe, así que subir
                 funciona). NO se emite la evidencia acá: la medición todavía no está
                 guardada. El merge real al PDF ocurre al emitir tras "Finalizar y guardar". */}
-            <ReviewSection title="Documentos adjuntos (opcional)">
+            <ReviewSection title="Documentos para anexar al protocolo">
+              <p className="text-xs text-text-tertiary mb-3">
+                Cargá acá la <span className="font-medium text-text-secondary">encomienda del colegio profesional</span> y el
+                plano o croquis. Se anexan automáticamente al PDF (con una hoja índice de
+                anexos) cuando finalizás y guardás.
+              </p>
               {(() => {
-                const faltantes: string[] = []
-                if (!adjuntos.some(a => a.tipo === 'encomienda')) faltantes.push('Falta la encomienda del colegio profesional')
-                if (!adjuntos.some(a => a.tipo === 'plano')) faltantes.push('Falta el plano o croquis')
-                if (faltantes.length === 0) return null
+                const faltaEncomienda = !adjuntos.some(a => a.tipo === 'encomienda')
+                const faltaPlano = !adjuntos.some(a => a.tipo === 'plano')
+                if (!faltaEncomienda && !faltaPlano) return null
                 return (
                   <div className="bg-warning-bg border border-amber-200 text-warning text-sm rounded-lg px-3 py-2.5 flex items-start gap-2 mb-3">
                     <AlertTriangle size={16} className="shrink-0 mt-0.5" />
                     <div>
-                      <p className="font-medium">Documentos pendientes (opcional)</p>
+                      <p className="font-medium">
+                        {faltaEncomienda ? 'Falta cargar la encomienda profesional' : 'Documentos pendientes'}
+                      </p>
                       <ul className="mt-1 space-y-0.5 text-xs list-disc list-inside">
-                        {faltantes.map(f => <li key={f}>{f}</li>)}
+                        {faltaEncomienda && <li>Encomienda del colegio profesional (se anexa al protocolo)</li>}
+                        {faltaPlano && <li>Plano o croquis de mediciones</li>}
                       </ul>
-                      <p className="mt-1 text-xs opacity-80">Adjuntalos abajo para que se fusionen al PDF al guardar, o terminá igual.</p>
+                      <p className="mt-1 text-xs opacity-80">Adjuntalos abajo para que se fusionen al PDF, o terminá igual.</p>
                     </div>
                   </div>
                 )

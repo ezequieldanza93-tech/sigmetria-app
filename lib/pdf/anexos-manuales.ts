@@ -11,7 +11,7 @@
  */
 
 import { createClient } from '@/lib/supabase/server'
-import { mergePdfConAnexos, type AnexoInput } from '@/lib/pdf/merge-anexos'
+import { mergePdfConAnexos, type AnexoInput, type ClaveAnexo } from '@/lib/pdf/merge-anexos'
 
 /** Título legible de la hoja divisoria según el tipo de adjunto. */
 const TITULO_POR_TIPO: Record<string, string> = {
@@ -20,24 +20,31 @@ const TITULO_POR_TIPO: Record<string, string> = {
   otro: 'Documento Adjunto',
 }
 
+/** Clave de orden canónico según el tipo de adjunto manual. */
+const CLAVE_POR_TIPO: Record<string, ClaveAnexo> = {
+  encomienda: 'encomienda',
+  plano: 'plano',
+  otro: 'otro',
+}
+
 function tituloAnexo(tipo: string, nombre: string | null): string {
   const base = TITULO_POR_TIPO[tipo] ?? TITULO_POR_TIPO.otro
   return nombre ? `${base} — ${nombre}` : base
 }
 
 /**
- * Lee los adjuntos manuales del registro (orden created_at), baja cada archivo
- * del bucket privado `documentos` y los fusiona al `pdfBuffer` con pdf-lib.
+ * Lee los adjuntos manuales del registro (encomienda / plano / otro), baja cada
+ * archivo del bucket privado `documentos` y los devuelve como `AnexoInput[]` (con su
+ * clave de orden canónico). NO fusiona nada: deja que el caller decida el ensamblado.
  *
- * @returns el PDF fusionado, o el `pdfBuffer` original si no hay adjuntos o algo falla.
+ * Best-effort: cualquier falla devuelve la lista parcial reunida (o vacía).
  */
-export async function mergeAdjuntosManuales(
-  pdfBuffer: Buffer,
+export async function getAdjuntosManualesComoAnexos(
   registroId: string,
   rgFechaPlanificada: string,
-): Promise<Buffer> {
+): Promise<AnexoInput[]> {
   try {
-    if (!registroId) return pdfBuffer
+    if (!registroId) return []
 
     const supabase = await createClient()
 
@@ -49,7 +56,7 @@ export async function mergeAdjuntosManuales(
     if (rgFechaPlanificada) query = query.eq('rg_fecha_planificada', rgFechaPlanificada)
 
     const { data, error } = await query
-    if (error || !data || data.length === 0) return pdfBuffer
+    if (error || !data || data.length === 0) return []
 
     const rows = data as { tipo: string; nombre: string | null; mime: string | null; file_path: string }[]
 
@@ -71,6 +78,7 @@ export async function mergeAdjuntosManuales(
           titulo: tituloAnexo(r.tipo, r.nombre),
           buffer,
           mime: r.mime ?? undefined,
+          clave: CLAVE_POR_TIPO[r.tipo] ?? 'otro',
         })
       } catch (err) {
         // Adjunto individual ilegible/inaccesible → se saltea.
@@ -78,8 +86,27 @@ export async function mergeAdjuntosManuales(
       }
     }
 
-    if (anexos.length === 0) return pdfBuffer
+    return anexos
+  } catch (err) {
+    console.error('[ANEXOS-MANUALES] fallo al reunir adjuntos manuales:', err instanceof Error ? err.message : String(err))
+    return []
+  }
+}
 
+/**
+ * Lee los adjuntos manuales del registro (orden created_at), baja cada archivo
+ * del bucket privado `documentos` y los fusiona al `pdfBuffer` con pdf-lib.
+ *
+ * @returns el PDF fusionado, o el `pdfBuffer` original si no hay adjuntos o algo falla.
+ */
+export async function mergeAdjuntosManuales(
+  pdfBuffer: Buffer,
+  registroId: string,
+  rgFechaPlanificada: string,
+): Promise<Buffer> {
+  try {
+    const anexos = await getAdjuntosManualesComoAnexos(registroId, rgFechaPlanificada)
+    if (anexos.length === 0) return pdfBuffer
     return await mergePdfConAnexos(pdfBuffer, anexos)
   } catch (err) {
     // Cualquier fallo global → devolvemos el PDF base intacto.

@@ -44,6 +44,7 @@ export interface DatosProtocoloIluminacion {
   fechaMedicion?: string
   horaInicio?: string
   horaFin?: string
+  metodologia?: string
   // Profesional
   profesional?: string
   matricula?: string
@@ -100,6 +101,8 @@ const MOCK_DATOS: Required<DatosProtocoloIluminacion> = {
   fechaMedicion: '16/06/2026',
   horaInicio: '09:00',
   horaFin: '11:30',
+  metodologia:
+    'Medición realizada según el método de la cuadrícula (grilla) establecido en el Protocolo para la Medición de Iluminación (Res. SRT 84/2012), promediando los valores de iluminancia por puesto/sector.',
   profesional: 'Ing. Juan Pérez',
   matricula: 'COPIME 12345',
   firma: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 220 60'><path d='M8 44 C26 8 36 54 52 30 C66 10 78 50 96 32 C112 16 120 52 140 28 C156 10 172 48 198 22' fill='none' stroke='%231b2b6b' stroke-width='3' stroke-linecap='round'/></svg>",
@@ -174,6 +177,20 @@ function ensamblarHtml(datos: Required<DatosProtocoloIluminacion>): string {
   ]
   for (const [find, replace] of campos) {
     protoBody = protoBody.split(find).join(replace)
+  }
+
+  // ── (10) Metodología Utilizada en la Medición ──
+  // La celda es alta (height:32mm) y solo contiene el label; el valor (texto libre,
+  // puede ser multilínea) se inyecta como párrafo debajo del label, dentro de la misma celda.
+  if (datos.metodologia && datos.metodologia.trim()) {
+    const meto = datos.metodologia
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\n/g, '<br>')
+    protoBody = protoBody
+      .split('Metodología Utilizada en la Medición:</td>')
+      .join(`Metodología Utilizada en la Medición:<span class="dato" style="display:block;margin-top:2mm;font-weight:400;line-height:1.4">${meto}</span></td>`)
   }
 
   // ── Conclusiones (40) y Recomendaciones (41): las 2 celdas col-an de la hoja 3 ──

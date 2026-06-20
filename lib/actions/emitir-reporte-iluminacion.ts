@@ -26,6 +26,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { generarReporteProtocoloIluminacion } from '@/lib/actions/reporte-protocolo-iluminacion'
+import { armarPdfFinalConAnexos } from '@/lib/pdf/ensamblar-anexos'
 import { tenantStoragePath } from '@/lib/storage/tenant-path'
 import type { ActionResult } from '@/lib/types'
 
@@ -89,7 +90,9 @@ export async function emitirReporteIluminacion(
   if (!pdfResult.success) {
     return { success: false, error: `Error al generar el PDF: ${pdfResult.error}` }
   }
-  const pdfBuffer = pdfResult.data
+  // Ensamblar los anexos de sistema + hoja índice "ANEXOS" (sin adjuntos manuales,
+  // que dependen del registro de gestión y este bridge trabaja por medicionId).
+  const pdfBuffer = await armarPdfFinalConAnexos(pdfResult.data.pdf, pdfResult.data.anexos)
 
   // ── 3. Subir a Storage (bucket privado `documentos`, path tenant-prefijado) ───
   // Patrón idéntico al reporte fotográfico (crearReporteFotograficoEjecucion).

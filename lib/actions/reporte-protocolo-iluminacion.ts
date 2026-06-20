@@ -41,7 +41,7 @@ import {
   type DatosProtocoloIluminacion,
   type MedicionRow,
 } from '@/lib/pdf/render-protocolo'
-import { mergePdfConAnexos, type AnexoInput } from '@/lib/pdf/merge-anexos'
+import { type AnexoInput } from '@/lib/pdf/merge-anexos'
 import {
   eMedia,
   eMinima,
@@ -332,7 +332,7 @@ function construirHtmlAnexoObservaciones(items: ObsAnexoItem[]): string {
  */
 export async function generarReporteProtocoloIluminacion(
   medicionId: string,
-): Promise<ActionResult<Buffer>> {
+): Promise<ActionResult<{ pdf: Buffer; anexos: AnexoInput[] }>> {
   if (!medicionId) return { success: false, error: 'medicionId requerido' }
 
   // ── 1. Leer medición completa (join cabecera + establecimiento + empresa + puntos + celdas)
@@ -589,6 +589,7 @@ export async function generarReporteProtocoloIluminacion(
     fechaMedicion: formatFecha(fechaMedicion),
     horaInicio: formatHora(m.hora_inicio as string | null),
     horaFin: formatHora(m.hora_fin as string | null),
+    metodologia: (m.metodologia as string | null) ?? undefined,
 
     // Profesional firmante
     // El firmante es el campo de texto libre `medicion_iluminacion.firmante`,
@@ -637,18 +638,24 @@ export async function generarReporteProtocoloIluminacion(
         .select('photo_site, latitud, longitud')
         .eq('id', establecimientoId)
         .maybeSingle()
+      // Foto del establecimiento (bucket privado 'establecimientos'). Usamos resolveAssetUrl
+      // (igual que los logos) para soportar tanto PATHS relativos como URLs legacy absolutas;
+      // createSignedUrl crudo fallaba con las URLs legacy → la foto desaparecía.
       const photoPath = (estMedia?.photo_site as string | null) ?? null
       if (photoPath) {
-        const { data: signed } = await supabase.storage.from('establecimientos').createSignedUrl(photoPath, 600)
-        if (signed?.signedUrl) datos.fotoEstablecimiento = await urlToDataUrl(signed.signedUrl)
+        const fotoUrl = await resolveAssetUrl('establecimientos', photoPath)
+        datos.fotoEstablecimiento = await urlToDataUrl(fotoUrl)
+        console.warn('[PDF-REPORTE] foto establecimiento', { photoPath, resuelta: !!fotoUrl, incluida: !!datos.fotoEstablecimiento })
       }
       const lat = estMedia?.latitud as number | null
       const lon = estMedia?.longitud as number | null
       if (lat != null && lon != null) {
-        // Mapa estático de OpenStreetMap (sin API key). Fetch server-side → data URL.
-        datos.mapaEstablecimiento = await urlToDataUrl(
-          `https://staticmap.openstreetmap.de/staticmap.php?center=${lat},${lon}&zoom=16&size=520x300&markers=${lat},${lon},red-pushpin`
-        )
+        // Mapa estático armado pegando tiles oficiales de OSM (tile.openstreetmap.org),
+        // la misma fuente confiable que usan los mapas Leaflet de la app. Reemplaza a
+        // staticmap.openstreetmap.de (servicio de terceros que bloquea IPs de Vercel).
+        const { generarMapaEstaticoDataUrl } = await import('@/lib/pdf/mapa-estatico')
+        datos.mapaEstablecimiento = await generarMapaEstaticoDataUrl(lat, lon)
+        console.warn('[PDF-REPORTE] mapa establecimiento', { lat, lon, incluido: !!datos.mapaEstablecimiento })
       }
       // Horarios/turnos habituales del establecimiento (tabla establecimientos_horarios).
       const { data: horarios } = await supabase
@@ -697,13 +704,16 @@ export async function generarReporteProtocoloIluminacion(
     return { success: false, error: `Error al renderizar el PDF: ${err instanceof Error ? err.message : String(err)}` }
   }
 
-  // ── 11. Anexar CERTIFICADO DE CALIBRACIÓN + PLANO/CROQUIS reales (fusión pdf-lib, best-effort) ──
-  // El cert sale del instrumento (mismo query que getCertificadoVigente del modal); el plano,
-  // del campo medicion_iluminacion.plano_url. Si falta alguno o falla, el PDF sale igual sin él.
+  // ── 11. Reunir los ANEXOS DE SISTEMA (cert / plano / observaciones) ──
+  // Ya NO se fusionan acá: se devuelven como lista (con su clave de orden canónico) para
+  // que el bridge los una con los adjuntos manuales (encomienda/plano/otro) en UN solo punto
+  // (armarPdfFinalConAnexos), que también antepone la hoja índice "ANEXOS". Best-effort:
+  // si algo falla, se devuelve la lista parcial reunida hasta ahí.
+  const anexosSistema: AnexoInput[] = []
   try {
     const { createClient } = await import('@/lib/supabase/server')
     const supabase = await createClient()
-    const anexos: AnexoInput[] = []
+    const anexos: AnexoInput[] = anexosSistema
 
     // Traemos el instrumento + el plano directo de la cabecera (fuente de verdad).
     const { data: medRow } = await supabase
@@ -739,7 +749,7 @@ export async function generarReporteProtocoloIluminacion(
         const { data: signed } = await supabase.storage.from('certificados').createSignedUrl(certPath, 600)
         if (signed?.signedUrl) {
           const r = await fetch(signed.signedUrl)
-          if (r.ok) anexos.push({ titulo: 'Certificado de Calibración del Equipo', buffer: Buffer.from(await r.arrayBuffer()), mime: r.headers.get('content-type') ?? undefined })
+          if (r.ok) anexos.push({ titulo: 'Certificado de Calibración del Equipo', buffer: Buffer.from(await r.arrayBuffer()), mime: r.headers.get('content-type') ?? undefined, clave: 'certificado' })
         }
       }
     }
@@ -750,7 +760,7 @@ export async function generarReporteProtocoloIluminacion(
       const { data: signedP } = await supabase.storage.from('documentos').createSignedUrl(planoPath, 600)
       if (signedP?.signedUrl) {
         const rp = await fetch(signedP.signedUrl)
-        if (rp.ok) anexos.push({ titulo: 'Plano o Croquis de Mediciones', buffer: Buffer.from(await rp.arrayBuffer()), mime: rp.headers.get('content-type') ?? undefined })
+        if (rp.ok) anexos.push({ titulo: 'Plano o Croquis de Mediciones', buffer: Buffer.from(await rp.arrayBuffer()), mime: rp.headers.get('content-type') ?? undefined, clave: 'plano' })
       }
     }
 
@@ -766,17 +776,16 @@ export async function generarReporteProtocoloIluminacion(
       if (registroId) {
         const obsBuffer = await generarAnexoObservaciones(supabase, registroId, rgFecha)
         if (obsBuffer) {
-          anexos.push({ titulo: 'Observaciones de Seguimiento', buffer: obsBuffer, mime: 'application/pdf' })
+          anexos.push({ titulo: 'Observaciones de Seguimiento', buffer: obsBuffer, mime: 'application/pdf', clave: 'observaciones' })
         }
       }
     } catch (err) {
       console.error('[PDF-REPORTE] anexo observaciones falló:', err instanceof Error ? err.message : String(err))
     }
 
-    if (anexos.length) pdfBuffer = await mergePdfConAnexos(pdfBuffer, anexos)
   } catch (err) {
-    console.error('[PDF-REPORTE] no se pudo anexar cert/plano:', err instanceof Error ? err.message : String(err))
+    console.error('[PDF-REPORTE] no se pudieron reunir los anexos de sistema:', err instanceof Error ? err.message : String(err))
   }
 
-  return { success: true, data: pdfBuffer }
+  return { success: true, data: { pdf: pdfBuffer, anexos: anexosSistema } }
 }

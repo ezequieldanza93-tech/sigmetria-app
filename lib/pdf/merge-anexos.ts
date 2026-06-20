@@ -13,11 +13,20 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 import sharp from 'sharp'
 
+/**
+ * Clave de orden canónico de un anexo. Define en qué posición aparece dentro del
+ * PDF final (y por ende en la hoja índice "ANEXOS"). Ver ORDEN_CANONICO en
+ * lib/pdf/ensamblar-anexos.ts.
+ */
+export type ClaveAnexo = 'certificado' | 'encomienda' | 'plano' | 'observaciones' | 'otro'
+
 export interface AnexoInput {
   titulo: string
   buffer: Buffer
   /** mime opcional; si no viene se detecta por la firma del buffer. */
   mime?: string
+  /** Clave de orden canónico (default 'otro'). Define la posición en el PDF final. */
+  clave?: ClaveAnexo
 }
 
 const A4: [number, number] = [595.28, 841.89] // A4 portrait en puntos
@@ -50,6 +59,28 @@ async function imagenAPaginaPdf(buffer: Buffer, titulo: string): Promise<Buffer>
 }
 
 /**
+ * Prepara un anexo como buffer PDF listo para fusionar:
+ *   - PDF → se VALIDA (PDFDocument.load) y se devuelve el buffer original.
+ *   - Imagen → se convierte a una página A4 con título.
+ * Devuelve `null` si el anexo es ilegible/corrupto (así el caller puede excluirlo
+ * tanto del PDF final COMO de la hoja índice — coherencia índice ↔ contenido).
+ */
+export async function anexoAPdfBuffer(ax: AnexoInput): Promise<Buffer | null> {
+  try {
+    if (!ax?.buffer || ax.buffer.length === 0) return null
+    if (esPdf(ax.buffer, ax.mime)) {
+      await PDFDocument.load(ax.buffer, { ignoreEncryption: true }) // valida que sea cargable
+      return ax.buffer
+    }
+    // Imagen: una sola página A4 con el título arriba + la imagen.
+    return await imagenAPaginaPdf(ax.buffer, ax.titulo)
+  } catch (err) {
+    console.error('[MERGE-ANEXOS] anexo ilegible, se omite:', ax.titulo, err instanceof Error ? err.message : String(err))
+    return null
+  }
+}
+
+/**
  * Fusiona el PDF base con los anexos provistos. Devuelve un nuevo Buffer.
  * Si `anexos` está vacío, devuelve el base intacto.
  */
@@ -60,20 +91,13 @@ export async function mergePdfConAnexos(base: Buffer, anexos: AnexoInput[]): Pro
   const merged = await PDFDocument.load(base)
 
   for (const ax of validos) {
+    const pdf = await anexoAPdfBuffer(ax)
+    if (!pdf) continue // anexo ilegible/corrupto → se saltea (no rompe el PDF final)
     try {
-      if (esPdf(ax.buffer, ax.mime)) {
-        // PDF: se anexan sus páginas TAL CUAL, sin hoja divisoria en blanco.
-        const src = await PDFDocument.load(ax.buffer, { ignoreEncryption: true })
-        const pages = await merged.copyPages(src, src.getPageIndices())
-        for (const p of pages) merged.addPage(p)
-      } else {
-        // Imagen: una sola página A4 con el título arriba + la imagen (sin divisoria aparte).
-        const src = await PDFDocument.load(await imagenAPaginaPdf(ax.buffer, ax.titulo))
-        const [p] = await merged.copyPages(src, [0])
-        merged.addPage(p)
-      }
+      const src = await PDFDocument.load(pdf, { ignoreEncryption: true })
+      const pages = await merged.copyPages(src, src.getPageIndices())
+      for (const p of pages) merged.addPage(p)
     } catch (err) {
-      // Anexo ilegible/corrupto → se saltea (no rompe el PDF final).
       console.error('[MERGE-ANEXOS] no se pudo anexar:', ax.titulo, err instanceof Error ? err.message : String(err))
     }
   }
