@@ -169,10 +169,11 @@ function ensamblarHtml(datos: Required<DatosProtocoloIluminacion>): string {
   protoBody = protoBody.split('<section class="hoja vert">').join(`<section class="hoja vert">${WM}${PROTO_LOGOS}`)
   protoBody = protoBody.split('<section class="hoja horiz">').join(`<section class="hoja horiz">${WM}${PROTO_LOGOS}`)
 
-  // ── Firma del profesional ──
+  // ── Firma del profesional (omitir "· Mat." si no hay matrícula cargada) ──
+  const matLabel = datos.matricula ? ` · Mat. ${datos.matricula}` : ''
   protoBody = protoBody
     .split('<div class="ac">Firma, Aclaración y Registro del Profesional Interviniente</div>')
-    .join(`<div class="ac"><b class="dato">${datos.profesional}</b> · Mat. ${datos.matricula}<br>Firma, Aclaración y Registro del Profesional Interviniente</div>`)
+    .join(`<div class="ac"><b class="dato">${datos.profesional}</b>${matLabel}<br>Firma, Aclaración y Registro del Profesional Interviniente</div>`)
 
   // ── Carátula ──
   const caratula = `
@@ -250,8 +251,8 @@ function ensamblarHtml(datos: Required<DatosProtocoloIluminacion>): string {
   .hoja.vert td[style*="height:32mm"] { height: 18mm !important; }
   .hoja.vert td[style*="height:30mm"] { height: 18mm !important; }
 
-  /* Firma del profesional */
-  .firma { position: relative; }
+  /* Firma del profesional (no partir el bloque entre páginas) */
+  .firma { position: relative; break-inside: avoid; page-break-inside: avoid; }
   .firma::before { content:''; display:block; width:44mm; height:11mm; margin:0 auto -4mm; background:url("${datos.firma}") center/contain no-repeat; }
 
   /* Unificar márgenes */
