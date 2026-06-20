@@ -61,7 +61,7 @@ interface EstablecimientoTabsProps {
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'info', label: 'Información' },
-  { id: 'sectores', label: 'Sectores' },
+  { id: 'sectores', label: 'Sectores/Rubros' },
   { id: 'stakeholders', label: 'Directorio' },
   { id: 'asistencia', label: 'Asistencia' },
   { id: 'incidentes', label: 'Incidentes' },

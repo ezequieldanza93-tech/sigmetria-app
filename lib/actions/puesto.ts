@@ -62,6 +62,30 @@ export async function crearPuestoEstablecimiento(
   return { success: true, data: { id: data.id as string, nombre: data.nombre as string } }
 }
 
+export async function updatePuesto(
+  puestoId: string,
+  establecimientoId: string,
+  empresaId: string,
+  nombre: string,
+): Promise<ActionResult<null>> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'No autenticado' }
+
+  const nombreTrim = nombre.trim()
+  if (!nombreTrim) return { success: false, error: 'El nombre es obligatorio' }
+
+  const { error } = await supabase
+    .from('puestos_de_trabajo')
+    .update({ nombre: nombreTrim })
+    .eq('id', puestoId)
+
+  if (error) return { success: false, error: error.message }
+
+  revalidatePath(`/dashboard/empresas/${empresaId}/establecimientos/${establecimientoId}`)
+  return { success: true, data: null }
+}
+
 export async function deletePuesto(
   puestoId: string,
   establecimientoId: string,

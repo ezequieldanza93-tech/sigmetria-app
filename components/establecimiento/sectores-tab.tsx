@@ -6,7 +6,8 @@ import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { SectorForm } from '@/components/forms/sector-form'
 import { updateSectorTrabajadores, createSectorCustom } from '@/lib/actions/sector'
-import { createPuesto } from '@/lib/actions/puesto'
+import { createPuesto, updatePuesto } from '@/lib/actions/puesto'
+import { createPersonaRapida } from '@/lib/actions/persona'
 import { BorrarEntidadButton } from '@/components/papelera/borrar-entidad-button'
 import { removeTrabajadorFromPuesto, assignTrabajadorToPuesto } from '@/lib/actions/trabajador'
 import { addEppToPuesto, removeEppFromPuesto } from '@/lib/actions/epp-por-puesto'
@@ -38,6 +39,25 @@ function TrabajadorSearchPicker({
   const [available, setAvailable] = useState<{ id: string; nombre: string; apellido: string; dni: string | null }[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  // Alta inline de persona nueva (cuando no está en el directorio).
+  const [crear, setCrear] = useState(false)
+  const [tipos, setTipos] = useState<{ id: string; nombre: string }[]>([])
+  const [nuevo, setNuevo] = useState({ nombre: '', apellido: '', dni: '', tipo_id: '' })
+
+  // Tipos de persona para el alta inline; por defecto "Trabajadores".
+  useEffect(() => {
+    const supabase = createClient()
+    supabase
+      .from('personas_tipos')
+      .select('id, nombre')
+      .order('nombre')
+      .then(({ data }) => {
+        const t = (data as { id: string; nombre: string }[]) ?? []
+        setTipos(t)
+        const trab = t.find(x => x.nombre === 'Trabajadores')
+        setNuevo(n => ({ ...n, tipo_id: trab?.id ?? t[0]?.id ?? '' }))
+      })
+  }, [])
 
   useEffect(() => {
     const supabase = createClient()
@@ -104,43 +124,119 @@ function TrabajadorSearchPicker({
     })
   }
 
+  function crearYAsignar() {
+    setError(null)
+    if (!nuevo.nombre.trim() || !nuevo.apellido.trim() || !nuevo.tipo_id) {
+      setError('Nombre, apellido y tipo son obligatorios')
+      return
+    }
+    startTransition(async () => {
+      const fd = new FormData()
+      fd.set('nombre', nuevo.nombre)
+      fd.set('apellido', nuevo.apellido)
+      fd.set('dni', nuevo.dni)
+      fd.set('tipo_id', nuevo.tipo_id)
+      fd.set('establecimiento_id', establecimientoId)
+      const res = await createPersonaRapida(null, fd)
+      if (!res.success) {
+        setError(res.error ?? 'No se pudo crear la persona')
+        return
+      }
+      const asg = await assignTrabajadorToPuesto(puestoId, res.data.id, establecimientoId, empresaId)
+      if (!asg.success) {
+        setError(asg.error ?? 'Persona creada, pero no se pudo asignar al puesto')
+        return
+      }
+      onAssigned()
+    })
+  }
+
   return (
     <div className="bg-surface-base rounded-lg p-3 mt-2 space-y-2">
-      <input
-        type="search"
-        placeholder="Buscar por apellido, nombre o DNI…"
-        value={query}
-        onChange={e => setQuery(e.target.value)}
-        autoFocus
-        className="w-full border border-border-default rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-sig-400"
-      />
-      {available === null ? (
-        <p className="text-xs text-text-tertiary py-2 text-center">Cargando trabajadores…</p>
-      ) : filtered.length === 0 ? (
-        <p className="text-xs text-text-tertiary py-2 text-center">
-          {query ? 'Sin resultados para esa búsqueda.' : 'No hay trabajadores sin sector asignado.'}
-        </p>
+      {!crear ? (
+        <>
+          <input
+            type="search"
+            placeholder="Buscar por apellido, nombre o DNI…"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            autoFocus
+            className="w-full border border-border-default rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-sig-400"
+          />
+          {available === null ? (
+            <p className="text-xs text-text-tertiary py-2 text-center">Cargando trabajadores…</p>
+          ) : filtered.length === 0 ? (
+            <p className="text-xs text-text-tertiary py-2 text-center">
+              {query ? 'Sin resultados para esa búsqueda.' : 'No hay trabajadores sin sector asignado.'}
+            </p>
+          ) : (
+            <ul className="divide-y divide-gray-100 max-h-48 overflow-y-auto rounded border border-border-subtle bg-surface-base">
+              {filtered.map(p => (
+                <li key={p.id}>
+                  <button
+                    type="button"
+                    disabled={isPending}
+                    onClick={() => assign(p.id)}
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-sig-50 transition-colors disabled:opacity-50"
+                  >
+                    <span className="font-medium text-text-primary dark:text-white">{p.apellido}, {p.nombre}</span>
+                    {p.dni && <span className="text-text-tertiary text-xs ml-2">DNI {p.dni}</span>}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {error && <p className="text-xs text-danger">{error}</p>}
+          <div className="flex justify-between items-center">
+            <button
+              type="button"
+              onClick={() => { setCrear(true); setError(null) }}
+              className="text-xs font-medium text-sig-600 hover:text-sig-700 hover:underline"
+            >
+              + Crear persona nueva
+            </button>
+            <Button size="sm" variant="secondary" type="button" onClick={onCancel}>Cancelar</Button>
+          </div>
+        </>
       ) : (
-        <ul className="divide-y divide-gray-100 max-h-48 overflow-y-auto rounded border border-border-subtle bg-surface-base">
-          {filtered.map(p => (
-            <li key={p.id}>
-              <button
-                type="button"
-                disabled={isPending}
-                onClick={() => assign(p.id)}
-                className="w-full text-left px-3 py-2 text-sm hover:bg-sig-50 transition-colors disabled:opacity-50"
-              >
-                <span className="font-medium text-text-primary dark:text-white">{p.apellido}, {p.nombre}</span>
-                {p.dni && <span className="text-text-tertiary text-xs ml-2">DNI {p.dni}</span>}
-              </button>
-            </li>
-          ))}
-        </ul>
+        <>
+          <p className="text-xs font-semibold text-text-secondary">Nueva persona</p>
+          <div className="grid grid-cols-2 gap-2">
+            <input
+              placeholder="Nombre *"
+              value={nuevo.nombre}
+              onChange={e => setNuevo({ ...nuevo, nombre: e.target.value })}
+              className="border border-border-default rounded px-2 py-1.5 text-sm"
+            />
+            <input
+              placeholder="Apellido *"
+              value={nuevo.apellido}
+              onChange={e => setNuevo({ ...nuevo, apellido: e.target.value })}
+              className="border border-border-default rounded px-2 py-1.5 text-sm"
+            />
+            <input
+              placeholder="DNI"
+              value={nuevo.dni}
+              onChange={e => setNuevo({ ...nuevo, dni: e.target.value })}
+              className="border border-border-default rounded px-2 py-1.5 text-sm"
+            />
+            <select
+              value={nuevo.tipo_id}
+              onChange={e => setNuevo({ ...nuevo, tipo_id: e.target.value })}
+              className="border border-border-default rounded px-2 py-1.5 text-sm bg-surface-base"
+            >
+              {tipos.map(t => (
+                <option key={t.id} value={t.id}>{t.nombre}</option>
+              ))}
+            </select>
+          </div>
+          {error && <p className="text-xs text-danger">{error}</p>}
+          <div className="flex justify-end gap-2">
+            <Button size="sm" variant="secondary" type="button" onClick={() => { setCrear(false); setError(null) }}>Volver</Button>
+            <Button size="sm" type="button" disabled={isPending} onClick={crearYAsignar}>{isPending ? '…' : 'Crear y asignar'}</Button>
+          </div>
+        </>
       )}
-      {error && <p className="text-xs text-danger">{error}</p>}
-      <div className="flex justify-end">
-        <Button size="sm" variant="secondary" type="button" onClick={onCancel}>Cancelar</Button>
-      </div>
     </div>
   )
 }
@@ -270,6 +366,9 @@ function PuestoRow({
   const [showAddEpp, setShowAddEpp] = useState(false)
   const [selectedEp, setSelectedEp] = useState<TrabajadorPuesto | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [nombre, setNombre] = useState(puesto.nombre)
+  const [editingName, setEditingName] = useState(false)
+  const [nameVal, setNameVal] = useState(puesto.nombre)
 
   useEffect(() => {
     if (!open) return
@@ -304,39 +403,80 @@ function PuestoRow({
     })
   }
 
+  function saveName() {
+    const v = nameVal.trim()
+    if (!v || v === nombre) { setEditingName(false); setNameVal(nombre); return }
+    startTransition(async () => {
+      const res = await updatePuesto(puesto.id, establecimientoId, empresaId, v)
+      if (res.success) { setNombre(v); setEditingName(false) }
+    })
+  }
+
   const eppAction = addEppToPuesto.bind(null, puesto.id, establecimientoId, empresaId)
 
   return (
     <div className="border border-border-subtle rounded-lg">
       <div className="flex items-center gap-2 px-4 py-2.5">
-        <button
-          onClick={() => setOpen(v => !v)}
-          className="flex items-center gap-2 flex-1 text-left text-sm font-medium text-text-primary dark:text-white hover:text-text-primary"
-        >
-          <svg className={`w-3.5 h-3.5 text-text-tertiary transition-transform shrink-0 ${open ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-          </svg>
-          {puesto.nombre}
-          {puesto.tipo && (
-            <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${
-              puesto.tipo === 'operativo'
-                ? 'bg-info-bg text-info'
-                : 'bg-purple-50 text-purple-700'
-            }`}>
-              {puesto.tipo === 'operativo' ? 'Op.' : 'Admin.'}
-            </span>
-          )}
-          {personas !== null && (
-            <span className="text-xs text-text-tertiary font-normal">({personas.length} trabajador{personas.length !== 1 ? 'es' : ''})</span>
-          )}
-          {epp !== null && epp.length > 0 && (
-            <span className="text-xs bg-sig-50 text-sig-700 font-medium px-1.5 py-0.5 rounded">{epp.length} EPP</span>
-          )}
-        </button>
-        {esAdminPrincipal && (
-          <div className="flex items-center gap-1.5 shrink-0">
-            <BorrarEntidadButton tabla="puestos_de_trabajo" id={puesto.id} nombre={puesto.nombre} />
+        {editingName ? (
+          <div className="flex items-center gap-1.5 flex-1">
+            <input
+              value={nameVal}
+              onChange={e => setNameVal(e.target.value)}
+              autoFocus
+              className="flex-1 border border-border-default rounded px-2 py-1 text-sm"
+            />
+            <Button size="sm" onClick={saveName} disabled={isPending}>OK</Button>
+            <Button size="sm" variant="secondary" onClick={() => { setEditingName(false); setNameVal(nombre) }}>×</Button>
           </div>
+        ) : (
+          <>
+            <button
+              onClick={() => setOpen(v => !v)}
+              className="flex items-center gap-2 flex-1 text-left text-sm font-medium text-text-primary dark:text-white hover:text-text-primary"
+            >
+              <svg className={`w-3.5 h-3.5 text-text-tertiary transition-transform shrink-0 ${open ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+              {nombre}
+              {puesto.tipo && (
+                <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${
+                  puesto.tipo === 'operativo'
+                    ? 'bg-info-bg text-info'
+                    : 'bg-purple-50 text-purple-700'
+                }`}>
+                  {puesto.tipo === 'operativo' ? 'Op.' : 'Admin.'}
+                </span>
+              )}
+              {personas !== null && (
+                <span className="text-xs text-text-tertiary font-normal">({personas.length} trabajador{personas.length !== 1 ? 'es' : ''})</span>
+              )}
+            </button>
+            {canWrite && (
+              <button
+                type="button"
+                onClick={() => setOpen(true)}
+                className="shrink-0 inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-lg bg-sig-50 text-sig-700 hover:bg-sig-100 transition-colors"
+                title="EPP requerido del puesto"
+              >
+                EPP requerido{epp !== null && epp.length > 0 ? ` (${epp.length})` : ''}
+              </button>
+            )}
+            {canWrite && (
+              <button
+                type="button"
+                onClick={() => { setEditingName(true); setNameVal(nombre) }}
+                className="shrink-0 text-xs text-text-tertiary hover:text-sig-600"
+                title="Editar nombre del puesto"
+              >
+                Editar
+              </button>
+            )}
+            {esAdminPrincipal && (
+              <div className="flex items-center gap-1.5 shrink-0">
+                <BorrarEntidadButton tabla="puestos_de_trabajo" id={puesto.id} nombre={nombre} />
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -642,7 +782,7 @@ export function SectoresTab({ sectores, establecimientoId, empresaId, canWrite, 
     <div>
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="font-semibold text-text-primary dark:text-white">Sectores del Establecimiento</h3>
+          <h3 className="font-semibold text-text-primary dark:text-white">Sectores/Rubros del Establecimiento</h3>
           {workerCounts !== null && (workerCounts.operativo > 0 || workerCounts.administrativo > 0) && (
             <p className="text-xs text-text-secondary mt-0.5">
               <span className="text-info font-medium">{workerCounts.operativo} operativo{workerCounts.operativo !== 1 ? 's' : ''}</span>
