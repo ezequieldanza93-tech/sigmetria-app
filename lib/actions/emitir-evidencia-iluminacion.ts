@@ -39,18 +39,27 @@ export async function emitirEvidenciaIluminacion(
     .maybeSingle()
 
   if (medErr || !med?.id) {
+    console.error('[PDF-EVIDENCIA] medición NO encontrada', { registroId, rgFechaPlanificada, medErr: medErr?.message })
     return { success: false, error: 'No se encontró la medición de iluminación de este registro' }
   }
 
   // ── 2. Generar el PDF con el motor Chromium (vectorial) ─────────────────────
+  console.warn('[PDF-EVIDENCIA] medición encontrada, generando PDF', { medicionId: med.id })
   const pdfRes = await generarReporteProtocoloIluminacion(med.id as string)
-  if (!pdfRes.success) return { success: false, error: pdfRes.error }
+  if (!pdfRes.success) {
+    console.error('[PDF-EVIDENCIA] generarReporte falló', { error: pdfRes.error })
+    return { success: false, error: pdfRes.error }
+  }
   const buffer = pdfRes.data as Buffer
   const base64 = 'data:application/pdf;base64,' + Buffer.from(buffer).toString('base64')
 
   // ── 3. Guardar como evidencia de la gestión (sistema existente) ─────────────
   const ev = await guardarEvidenciaProtocolo(registroId, base64, 'mediciones-iluminacion')
-  if (!ev.success) return { success: false, error: ev.error }
+  if (!ev.success) {
+    console.error('[PDF-EVIDENCIA] guardarEvidencia falló', { error: ev.error })
+    return { success: false, error: ev.error }
+  }
+  console.warn('[PDF-EVIDENCIA] OK, evidencia guardada', { path: ev.path, bytes: buffer.length })
 
   // ── 4. Signed URL para descargar/visualizar ─────────────────────────────────
   const { data: signed } = await supabase.storage

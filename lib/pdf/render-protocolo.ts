@@ -341,7 +341,9 @@ export async function renderProtocoloPdf(
 
   let browser: Browser | null = null
   try {
+    console.warn('[PDF-RENDER] lanzando browser', { isVercel: !!process.env.VERCEL || process.env.NODE_ENV === 'production' })
     browser = await launchBrowser()
+    console.warn('[PDF-RENDER] browser lanzado, abriendo página')
     const page = await browser.newPage()
 
     // setContent de puppeteer-core SOLO acepta 'load' | 'domcontentloaded' (networkidle
@@ -373,7 +375,11 @@ export async function renderProtocoloPdf(
       printBackground: true,    // incluye colores de fondo (carátula, encabezados, etc.)
     })
 
+    console.warn('[PDF-RENDER] PDF generado', { bytes: pdfBuffer.length })
     return Buffer.from(pdfBuffer)
+  } catch (err) {
+    console.error('[PDF-RENDER] error generando PDF:', err instanceof Error ? (err.stack ?? err.message) : String(err))
+    throw err
   } finally {
     if (browser) {
       await browser.close()

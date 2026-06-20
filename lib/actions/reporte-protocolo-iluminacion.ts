@@ -141,7 +141,10 @@ export async function generarReporteProtocoloIluminacion(
 
   // ── 1. Leer medición completa (join cabecera + establecimiento + empresa + puntos + celdas)
   const medicionResult = await getMedicionIluminacion(medicionId)
-  if (!medicionResult.success) return { success: false, error: medicionResult.error }
+  if (!medicionResult.success) {
+    console.error('[PDF-REPORTE] getMedicionIluminacion falló', { medicionId, error: medicionResult.error })
+    return { success: false, error: medicionResult.error }
+  }
 
   const m = medicionResult.data as Record<string, unknown>
 
@@ -368,12 +371,14 @@ export async function generarReporteProtocoloIluminacion(
   }
 
   // ── 10. Generar PDF ───────────────────────────────────────────────────────
+  console.warn('[PDF-REPORTE] datos mapeados, llamando renderProtocoloPdf', { folio, establecimiento: datos.establecimiento, filas: mediciones.length })
   let pdfBuffer: Buffer
   try {
     pdfBuffer = await renderProtocoloPdf(datos)
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    return { success: false, error: `Error al renderizar el PDF: ${msg}` }
+    const detalle = err instanceof Error ? (err.stack ?? err.message) : String(err)
+    console.error('[PDF-REPORTE] renderProtocoloPdf lanzó:', detalle)
+    return { success: false, error: `Error al renderizar el PDF: ${err instanceof Error ? err.message : String(err)}` }
   }
 
   return { success: true, data: pdfBuffer }

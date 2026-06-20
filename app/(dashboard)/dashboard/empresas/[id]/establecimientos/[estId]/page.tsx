@@ -16,6 +16,11 @@ import { AnalyticsDashboard } from '@/components/analytics/real/analytics-dashbo
 import { LegajoTecnico } from '@/components/establecimiento/legajo-tecnico'
 import { QRPanel } from '@/components/establecimiento/qr-panel'
 
+// Las server actions invocadas desde esta ruta (entre ellas la generación del PDF
+// del protocolo con Chromium) necesitan más tiempo que el default: el cold start de
+// @sparticuz/chromium + el render puede superar los 10s. Subimos el límite.
+export const maxDuration = 60
+
 type Section = 'agenda' | 'ficha' | 'dashboard' | 'seguimiento' | 'legajo'
 const VALID_SECTIONS: Section[] = ['agenda', 'ficha', 'dashboard', 'seguimiento', 'legajo']
 
