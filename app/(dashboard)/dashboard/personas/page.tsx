@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { createClient } from '@/lib/supabase/client'
 import { createPersona, deletePersona } from '@/lib/actions/persona'
+import { SectorPuestoSelectorConAlta } from '@/components/sector-puesto-selector-con-alta'
 import type { DirectorioPersona, TipoPersona, Empresa, Establecimiento, ActionResult } from '@/lib/types'
 
 function PersonaForm({
@@ -28,6 +29,9 @@ function PersonaForm({
   const [tipoId, setTipoId] = useState('')
   const [stepError, setStepError] = useState<string | null>(null)
   const [selectedEmpresaId, setSelectedEmpresaId] = useState<string>('')
+  const [selectedEstablecimientoId, setSelectedEstablecimientoId] = useState<string>('')
+  const [sectorSel, setSectorSel] = useState<string>('')
+  const [puestoSel, setPuestoSel] = useState<string>('')
   const [establecimientos, setEstablecimientos] = useState<Establecimiento[]>([])
 
   const onSuccessRef = useRef(onSuccess)
@@ -117,7 +121,7 @@ function PersonaForm({
             <label className="text-sm font-medium text-text-secondary block mb-1">Empresa *</label>
             <select
               value={selectedEmpresaId}
-              onChange={e => setSelectedEmpresaId(e.target.value)}
+              onChange={e => { setSelectedEmpresaId(e.target.value); setSelectedEstablecimientoId(''); setSectorSel(''); setPuestoSel('') }}
               className={`${inputCls} bg-surface-base`}
             >
               <option value="">Seleccioná una empresa…</option>
@@ -130,6 +134,8 @@ function PersonaForm({
               name="establecimiento_id"
               required
               disabled={!selectedEmpresaId}
+              value={selectedEstablecimientoId}
+              onChange={e => { setSelectedEstablecimientoId(e.target.value); setSectorSel(''); setPuestoSel('') }}
               className={`${inputCls} bg-surface-base disabled:opacity-50`}
             >
               <option value="">{selectedEmpresaId ? 'Seleccioná un establecimiento…' : 'Primero seleccioná una empresa'}</option>
@@ -168,7 +174,21 @@ function PersonaForm({
                 <label className="text-sm font-medium text-text-secondary block mb-1">Fecha de nacimiento</label>
                 <input name="fecha_nacimiento" type="date" className={inputCls} />
               </div>
-              <p className="text-xs text-text-tertiary">El sector y el puesto se asignan desde la ficha del establecimiento → Sectores/Rubros.</p>
+              {selectedEstablecimientoId ? (
+                <div>
+                  <label className="text-sm font-medium text-text-secondary block mb-1">Sector y puesto</label>
+                  <SectorPuestoSelectorConAlta
+                    establecimientoId={selectedEstablecimientoId}
+                    sectorId={sectorSel}
+                    puestoId={puestoSel}
+                    onChange={sel => { setSectorSel(sel.sectorId); setPuestoSel(sel.puestoId) }}
+                    namePuesto="puesto_id"
+                  />
+                  <p className="text-xs text-text-tertiary mt-1">Si el sector o el puesto no existen, los podés crear desde el mismo selector.</p>
+                </div>
+              ) : (
+                <p className="text-xs text-text-tertiary">Elegí un establecimiento para asignar sector y puesto.</p>
+              )}
 
               <details className="group">
                 <summary className="text-sm font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none py-1">

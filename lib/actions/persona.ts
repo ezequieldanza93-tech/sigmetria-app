@@ -152,6 +152,22 @@ export async function createPersona(
 
   if (junctionError) return { success: false, error: junctionError.message }
 
+  // Si se eligió un puesto en el alta (trabajador con sector/puesto), lo asignamos.
+  const puestoId = (formData.get('puesto_id') as string)?.trim() || null
+  if (puestoId) {
+    const { error: puestoError } = await supabase
+      .from('puestos_personas')
+      .insert({
+        persona_id: persona.id,
+        puesto_id: puestoId,
+        fecha_alta: new Date().toISOString().split('T')[0],
+        tipo_relacion: 'permanente',
+      })
+    if (puestoError) {
+      return { success: false, error: `Persona creada, pero no se pudo asignar al puesto: ${puestoError.message}` }
+    }
+  }
+
   revalidatePath('/dashboard/personas')
   return { success: true, data: {} }
 }
