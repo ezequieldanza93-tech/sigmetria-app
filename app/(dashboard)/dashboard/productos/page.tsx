@@ -566,11 +566,11 @@ function ProductosPageInner() {
         (!termino || p.nombre.toLowerCase().includes(termino))
       )
 
-  // Marcas y proveedores presentes en los productos filtrados (sin el filtro de marca/prov).
+  // Marcas presentes en los productos filtrados (este es un catálogo por MARCA;
+  // el proveedor/distribuidor no es dimensión de navegación).
   const marcaProvMap = new Map<string, string>()
   filteredSinMarcaProv?.forEach(p => {
     if (p.marca_id && p.marca?.nombre) marcaProvMap.set(p.marca_id, p.marca.nombre)
-    if (p.proveedor_id && p.proveedor?.nombre) marcaProvMap.set(p.proveedor_id, p.proveedor.nombre)
   })
   const marcasProveedoresOpciones = [...marcaProvMap.entries()]
     .map(([id, nombre]) => ({ value: id, label: nombre }))
@@ -582,7 +582,7 @@ function ProductosPageInner() {
         (activeClase === 'todos' || categoriaIdsDeClase.has(p.categoria_id)) &&
         pasaCategoria(p.categoria_id) &&
         (activeComponente === 'todos' || p.componente_id === activeComponente) &&
-        (!activeMarcaProveedor || p.marca_id === activeMarcaProveedor || p.proveedor_id === activeMarcaProveedor) &&
+        (!activeMarcaProveedor || p.marca_id === activeMarcaProveedor) &&
         pasaOrigen(p.consultora_id, origen) &&
         (!termino || p.nombre.toLowerCase().includes(termino))
       )
@@ -739,7 +739,7 @@ function ProductosPageInner() {
             <SearchableSelect
               value={activeMarcaProveedor}
               onChange={setActiveMarcaProveedor}
-              placeholder="Marca / Proveedor"
+              placeholder="Marca"
               options={marcasProveedoresOpciones}
               emptyText="Sin resultados."
             />

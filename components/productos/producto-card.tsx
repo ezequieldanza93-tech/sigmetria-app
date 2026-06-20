@@ -69,22 +69,18 @@ export function ProductoCard({ producto: p, onDelete, canDelete, onOpen, count }
           {p.nombre}
         </h3>
 
-        {/* Metadata: proveedor/marca + variantes + tamaño */}
+        {/* Metadata: MARCA (no el proveedor) + variantes + tamaño */}
         <div className="flex items-center gap-2 text-xs text-text-tertiary flex-wrap mt-auto">
-          {p.proveedor?.nombre ? (
-            <span className="font-medium text-text-secondary">{p.proveedor.nombre}</span>
-          ) : p.marca?.nombre ? (
-            <span className="font-medium text-text-secondary">{p.marca.nombre}</span>
-          ) : null}
+          <span className="font-medium text-text-secondary">{p.marca?.nombre ?? 'Sin marca'}</span>
           {nVariantes > 0 && (
             <>
-              {(p.proveedor?.nombre || p.marca?.nombre) && <span>·</span>}
+              <span>·</span>
               <span className="font-medium text-sig-600">{nVariantes} {nVariantes === 1 ? 'variante' : 'variantes'}</span>
             </>
           )}
           {p.tamano && (
             <>
-              {(p.proveedor?.nombre || p.marca?.nombre || nVariantes > 0) && <span>·</span>}
+              <span>·</span>
               <span>{p.tamano} {p.unidades?.simbolo ?? ''}</span>
             </>
           )}
