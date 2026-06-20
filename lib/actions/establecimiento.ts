@@ -16,14 +16,16 @@ const establecimientoActionSchema = z.object({
   localidad_id: z.string().nullable().optional(),
   codigo_postal: z.string().nullable().optional(),
   actividad_principal: z.string().nullable().optional(),
-  actividad_id: z.string().uuid().nullable().optional(),
+  // El <select> manda '' cuando no se elige nada; lo normalizamos a null antes de
+  // validar el uuid (si no, z.string().uuid() rebota con "Invalid input").
+  actividad_id: z.preprocess(v => (v === '' ? null : v), z.string().uuid().nullable().optional()),
   description: z.string().nullable().optional(),
   ubicacion_gmaps: z.string().nullable().optional(),
   aplica_iso_45001: z.literal('on').optional(),
   cantidad_trabajadores: z.coerce.number().int().min(0).nullable().optional(),
   cantidad_trabajadores_operativos: z.coerce.number().int().min(0).nullable().optional(),
   cantidad_trabajadores_administrativos: z.coerce.number().int().min(0).nullable().optional(),
-  categoria_hys: z.enum(['A', 'B', 'C']).nullable().optional(),
+  categoria_hys: z.preprocess(v => (v === '' ? null : v), z.enum(['A', 'B', 'C']).nullable().optional()),
 })
 
 async function geocode(query: string): Promise<{ latitud: number | null; longitud: number | null }> {
