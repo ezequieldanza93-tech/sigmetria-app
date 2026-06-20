@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { getEffectiveRole } from '@/lib/auth/effective-role'
+import { uploadAsset } from '@/lib/storage/upload'
 import type { ActionResult } from '@/lib/types'
 
 // ============================================================
@@ -45,6 +46,7 @@ export interface NormativaNorma {
   organismo: string | null
   ambito: NormativaAmbito
   url_oficial: string | null
+  pdf_path: string | null
   estado: NormativaEstado
   modificaciones: string | null
   descripcion: string | null
@@ -240,7 +242,7 @@ export async function getNormativaNormas(
   let query = supabase
     .from('normativa_normas')
     .select(
-      'id, consultora_id, categoria_id, tipo, numero, anio, titulo, nombre_completo, organismo, ambito, url_oficial, estado, modificaciones, descripcion, aplica_a_todos, airtable_id, orden, normativa_requisitos(count), normativa_normas_tipos_establecimiento(establecimientos_tipos(codigo, nombre))',
+      'id, consultora_id, categoria_id, tipo, numero, anio, titulo, nombre_completo, organismo, ambito, url_oficial, pdf_path, estado, modificaciones, descripcion, aplica_a_todos, airtable_id, orden, normativa_requisitos(count), normativa_normas_tipos_establecimiento(establecimientos_tipos(codigo, nombre))',
     )
 
   if (filtros.categoria_id) query = query.eq('categoria_id', filtros.categoria_id)
@@ -287,6 +289,7 @@ export async function getNormativaNormas(
       organismo: n.organismo,
       ambito: n.ambito as NormativaAmbito,
       url_oficial: n.url_oficial,
+      pdf_path: (n as { pdf_path?: string | null }).pdf_path ?? null,
       estado: n.estado as NormativaEstado,
       modificaciones: n.modificaciones,
       descripcion: n.descripcion,
@@ -382,6 +385,14 @@ export async function createNormativa(formData: FormData): Promise<ActionResult<
   const parsed = parseNormativaForm(formData)
   if (!parsed.ok) return { success: false, error: parsed.error }
 
+  // Validar que haya al menos URL o PDF.
+  const pdfFile = formData.get('pdf')
+  const hasPdf = pdfFile instanceof File && pdfFile.size > 0
+  const hasUrl = Boolean(parsed.value.url_oficial)
+  if (!hasUrl && !hasPdf) {
+    return { success: false, error: 'Cargá una URL y/o un PDF (al menos uno).' }
+  }
+
   // `as_base` = crear una norma de la librería base (consultora_id NULL).
   // Solo lo permite quien puede gestionar librerías; el resto crea normas propias.
   const asBase = formData.get('as_base') === 'true'
@@ -398,15 +409,47 @@ export async function createNormativa(formData: FormData): Promise<ActionResult<
     consultoraId = cId.data
   }
 
-  const { data, error } = await supabase
+  // Insertar la norma primero para obtener el id (necesario para el path del PDF).
+  const { data: insertData, error: insertError } = await supabase
     .from('normativa_normas')
     .insert({ ...parsed.value, consultora_id: consultoraId })
-    .select('id, consultora_id, categoria_id, tipo, numero, anio, titulo, nombre_completo, organismo, ambito, url_oficial, estado, modificaciones, descripcion, aplica_a_todos, airtable_id, orden')
+    .select('id, consultora_id, categoria_id, tipo, numero, anio, titulo, nombre_completo, organismo, ambito, url_oficial, pdf_path, estado, modificaciones, descripcion, aplica_a_todos, airtable_id, orden')
     .single()
 
-  if (error) return { success: false, error: error.message }
+  if (insertError) return { success: false, error: insertError.message }
+
+  // Si viene PDF, subirlo y actualizar pdf_path.
+  if (hasPdf) {
+    // Para normas base (consultora_id NULL) usamos 'base' como segmento de consultora
+    // ya que uploadAsset requiere un string no vacío y las normas base no pertenecen
+    // a ninguna consultora. El path resultante es 'base/normativa/{id}/texto.pdf'.
+    const uploadConsultoraId = consultoraId ?? 'base'
+    const uploadResult = await uploadAsset({
+      bucket: 'normativa',
+      consultoraId: uploadConsultoraId,
+      entityType: 'normativa',
+      entityId: insertData.id,
+      kind: 'texto',
+      file: pdfFile,
+    })
+
+    if (!uploadResult.ok) {
+      // El insert ya ocurrió; devolvemos la norma igual pero avisamos del error de PDF.
+      return { success: false, error: `Normativa creada pero el PDF no se pudo subir: ${uploadResult.error}` }
+    }
+
+    const { error: updateError } = await supabase
+      .from('normativa_normas')
+      .update({ pdf_path: uploadResult.path })
+      .eq('id', insertData.id)
+
+    if (!updateError) {
+      insertData.pdf_path = uploadResult.path
+    }
+  }
+
   revalidatePath(REVALIDATE_PATH)
-  return { success: true, data: data as NormativaNorma }
+  return { success: true, data: insertData as NormativaNorma }
 }
 
 export async function updateNormativa(
@@ -418,16 +461,25 @@ export async function updateNormativa(
   const parsed = parseNormativaForm(formData)
   if (!parsed.ok) return { success: false, error: parsed.error }
 
-  // Averiguamos si la fila es base (consultora_id NULL) o propia.
+  // Averiguamos si la fila es base (consultora_id NULL) o propia, y el pdf_path actual.
   const { data: target } = await supabase
     .from('normativa_normas')
-    .select('consultora_id')
+    .select('consultora_id, pdf_path')
     .eq('id', id)
     .maybeSingle()
 
   if (!target) return { success: false, error: 'No se encontró la normativa o no es editable' }
 
-  let query = supabase.from('normativa_normas').update(parsed.value).eq('id', id)
+  // Validar que haya al menos URL o PDF (nuevo o existente).
+  const pdfFile = formData.get('pdf')
+  const hasPdfNuevo = pdfFile instanceof File && pdfFile.size > 0
+  const hasUrl = Boolean(parsed.value.url_oficial)
+  const hasPdfExistente = Boolean((target as { pdf_path?: string | null }).pdf_path)
+  if (!hasUrl && !hasPdfNuevo && !hasPdfExistente) {
+    return { success: false, error: 'Cargá una URL y/o un PDF (al menos uno).' }
+  }
+
+  let consultoraId: string | null = null
 
   if (target.consultora_id === null) {
     // Fila base: solo quien puede gestionar librerías. La RLS confirma el permiso.
@@ -438,11 +490,39 @@ export async function updateNormativa(
     // Fila propia: acotamos al scope de la consultora del usuario.
     const cId = await getConsultoraId()
     if (!cId.success) return cId
-    query = query.eq('consultora_id', cId.data)
+    consultoraId = cId.data
+  }
+
+  // Si viene PDF nuevo, subirlo antes del update para incluir el path en un solo UPDATE.
+  let newPdfPath: string | undefined
+  if (hasPdfNuevo) {
+    const uploadConsultoraId = target.consultora_id ?? 'base'
+    const uploadResult = await uploadAsset({
+      bucket: 'normativa',
+      consultoraId: uploadConsultoraId,
+      entityType: 'normativa',
+      entityId: id,
+      kind: 'texto',
+      file: pdfFile,
+    })
+    if (!uploadResult.ok) {
+      return { success: false, error: `El PDF no se pudo subir: ${uploadResult.error}` }
+    }
+    newPdfPath = uploadResult.path
+  }
+
+  const updatePayload = {
+    ...parsed.value,
+    ...(newPdfPath !== undefined ? { pdf_path: newPdfPath } : {}),
+  }
+
+  let query = supabase.from('normativa_normas').update(updatePayload).eq('id', id)
+  if (consultoraId) {
+    query = query.eq('consultora_id', consultoraId)
   }
 
   const { data, error } = await query
-    .select('id, consultora_id, categoria_id, tipo, numero, anio, titulo, nombre_completo, organismo, ambito, url_oficial, estado, modificaciones, descripcion, aplica_a_todos, airtable_id, orden')
+    .select('id, consultora_id, categoria_id, tipo, numero, anio, titulo, nombre_completo, organismo, ambito, url_oficial, pdf_path, estado, modificaciones, descripcion, aplica_a_todos, airtable_id, orden')
     .maybeSingle()
 
   if (error) return { success: false, error: error.message }

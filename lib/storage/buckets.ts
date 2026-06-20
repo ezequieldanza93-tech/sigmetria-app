@@ -28,6 +28,7 @@ export type AssetBucket =
   | 'contenido'
   | 'sap-autoproteccion'
   | 'productos-epp'
+  | 'normativa'
 
 /**
  * Nombre de cualquier bucket REAL de la app (no solo los que se suben con
@@ -40,6 +41,7 @@ export type StorageBucket =
   | 'establecimientos'
   | 'consultoras'
   | 'avatars'
+  // nota: 'normativa' ya está incluido via AssetBucket
 
 /**
  * Fuente de verdad público/privado por bucket. Debe estar ALINEADA con la
@@ -60,6 +62,8 @@ export const BUCKET_IS_PUBLIC: Record<StorageBucket, boolean> = {
   'cursos-portadas': true,
   // Fotos de catálogo de productos/EPP. Público: son imágenes de catálogo sin datos sensibles.
   'productos-epp': true,
+  // PDFs de texto oficial de normativas legales. Público: son documentos gubernamentales sin datos sensibles.
+  normativa: true,
   // 🔴 PRIVADOS — datos sensibles, signed URLs.
   // documentos/establecimientos ya privatizados (migración 20260617000004): los
   // datos legacy fueron migrados a paths {consultora_id}/... y se sirven firmados.

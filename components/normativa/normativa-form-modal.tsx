@@ -15,6 +15,14 @@ import {
 } from '@/lib/actions/normativa-legal'
 import { NORMATIVA_AMBITOS, NORMATIVA_ESTADOS, NORMATIVA_TIPOS } from './normativa-constants'
 
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
+
+/** Construye la URL pública de un path en el bucket 'normativa' (público). */
+function normativaPublicUrl(path: string): string {
+  const cleanPath = path.replace(/^\/+/, '')
+  return `${SUPABASE_URL}/storage/v1/object/public/normativa/${cleanPath}`
+}
+
 interface Props {
   open: boolean
   onClose: () => void
@@ -163,6 +171,37 @@ export function NormativaFormModal({ open, onClose, norma, categorias, puedeGest
           defaultValue={norma?.url_oficial ?? ''}
           placeholder="https://..."
         />
+
+        {/* PDF del texto oficial */}
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-medium text-text-primary">
+            PDF del texto oficial
+          </label>
+          {norma?.pdf_path && (
+            <p className="text-xs text-text-secondary">
+              PDF actual:{' '}
+              <a
+                href={normativaPublicUrl(norma.pdf_path)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-brand-primary underline underline-offset-2 hover:text-brand-primary/80"
+              >
+                Ver PDF
+              </a>
+              {' '}— subir uno nuevo lo reemplazará.
+            </p>
+          )}
+          <input
+            type="file"
+            name="pdf"
+            accept="application/pdf"
+            className="block w-full text-sm text-text-secondary file:mr-3 file:rounded-md file:border-0 file:bg-surface-raised file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-text-primary hover:file:bg-surface-hover cursor-pointer"
+          />
+          <p className="text-xs text-text-tertiary">
+            Máximo 10 MB. Debe cargar una URL y/o un PDF (al menos uno).
+          </p>
+        </div>
+
         <Textarea
           name="modificaciones"
           label="Modificaciones"
