@@ -185,6 +185,7 @@ export async function createPersonaRapida(
   const tipo_id = (formData.get('tipo_id') as string)?.trim()
   const dni = (formData.get('dni') as string)?.trim() || null
   const establecimientoId = (formData.get('establecimiento_id') as string) || null
+  const esExterna = (formData.get('es_externa') as string) === 'true'
 
   if (!nombre || !apellido || !tipo_id) {
     return { success: false, error: 'Nombre, apellido y tipo son obligatorios' }
@@ -196,7 +197,7 @@ export async function createPersonaRapida(
 
   const { data: persona, error } = await supabase
     .from('personas_directorio')
-    .insert({ nombre, apellido, tipo_id, dni })
+    .insert({ nombre, apellido, tipo_id, dni, es_externa: esExterna })
     .select('id, nombre, apellido')
     .single()
 

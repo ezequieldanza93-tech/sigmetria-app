@@ -41,8 +41,8 @@ function TrabajadorSearchPicker({
   const [isPending, startTransition] = useTransition()
   // Alta inline de persona nueva (cuando no está en el directorio).
   const [crear, setCrear] = useState(false)
-  const [tipos, setTipos] = useState<{ id: string; nombre: string }[]>([])
   const [nuevo, setNuevo] = useState({ nombre: '', apellido: '', dni: '', tipo_id: '' })
+  const [esExterna, setEsExterna] = useState(false)
 
   // Tipos de persona para el alta inline; por defecto "Trabajadores".
   useEffect(() => {
@@ -53,7 +53,6 @@ function TrabajadorSearchPicker({
       .order('nombre')
       .then(({ data }) => {
         const t = (data as { id: string; nombre: string }[]) ?? []
-        setTipos(t)
         const trab = t.find(x => x.nombre === 'Trabajadores')
         setNuevo(n => ({ ...n, tipo_id: trab?.id ?? t[0]?.id ?? '' }))
       })
@@ -126,8 +125,12 @@ function TrabajadorSearchPicker({
 
   function crearYAsignar() {
     setError(null)
-    if (!nuevo.nombre.trim() || !nuevo.apellido.trim() || !nuevo.tipo_id) {
-      setError('Nombre, apellido y tipo son obligatorios')
+    if (!nuevo.nombre.trim() || !nuevo.apellido.trim()) {
+      setError('Nombre y apellido son obligatorios')
+      return
+    }
+    if (!nuevo.tipo_id) {
+      setError('No se pudo resolver el tipo "Trabajadores"')
       return
     }
     startTransition(async () => {
@@ -136,6 +139,7 @@ function TrabajadorSearchPicker({
       fd.set('apellido', nuevo.apellido)
       fd.set('dni', nuevo.dni)
       fd.set('tipo_id', nuevo.tipo_id)
+      fd.set('es_externa', esExterna ? 'true' : 'false')
       fd.set('establecimiento_id', establecimientoId)
       const res = await createPersonaRapida(null, fd)
       if (!res.success) {
@@ -200,7 +204,7 @@ function TrabajadorSearchPicker({
         </>
       ) : (
         <>
-          <p className="text-xs font-semibold text-text-secondary">Nueva persona</p>
+          <p className="text-xs font-semibold text-text-secondary">Nuevo trabajador</p>
           <div className="grid grid-cols-2 gap-2">
             <input
               placeholder="Nombre *"
@@ -214,21 +218,23 @@ function TrabajadorSearchPicker({
               onChange={e => setNuevo({ ...nuevo, apellido: e.target.value })}
               className="border border-border-default rounded px-2 py-1.5 text-sm"
             />
-            <input
-              placeholder="DNI"
-              value={nuevo.dni}
-              onChange={e => setNuevo({ ...nuevo, dni: e.target.value })}
-              className="border border-border-default rounded px-2 py-1.5 text-sm"
-            />
-            <select
-              value={nuevo.tipo_id}
-              onChange={e => setNuevo({ ...nuevo, tipo_id: e.target.value })}
-              className="border border-border-default rounded px-2 py-1.5 text-sm bg-surface-base"
-            >
-              {tipos.map(t => (
-                <option key={t.id} value={t.id}>{t.nombre}</option>
-              ))}
-            </select>
+          </div>
+          <input
+            placeholder="DNI"
+            value={nuevo.dni}
+            onChange={e => setNuevo({ ...nuevo, dni: e.target.value })}
+            className="w-full border border-border-default rounded px-2 py-1.5 text-sm"
+          />
+          <div className="flex items-center gap-4 text-sm">
+            <span className="text-text-secondary">Relación:</span>
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input type="radio" name="rel-nuevo-trab" checked={!esExterna} onChange={() => setEsExterna(false)} />
+              Interno
+            </label>
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input type="radio" name="rel-nuevo-trab" checked={esExterna} onChange={() => setEsExterna(true)} />
+              Externo
+            </label>
           </div>
           {error && <p className="text-xs text-danger">{error}</p>}
           <div className="flex justify-end gap-2">
