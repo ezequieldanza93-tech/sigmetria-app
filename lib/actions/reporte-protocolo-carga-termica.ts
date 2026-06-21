@@ -40,6 +40,7 @@ import {
   type FilaGrillaCargaTermica,
 } from '@/lib/pdf/descriptors/carga-termica'
 import { getFotoYMapaEstablecimiento } from '@/lib/pdf/establecimiento-media'
+import { getAnexoCertificadoCalibracion } from '@/lib/pdf/anexo-certificado'
 import type { AnexoInput } from '@/lib/pdf/merge-anexos'
 import type { ActionResult } from '@/lib/types'
 
@@ -452,5 +453,13 @@ export async function generarReporteProtocoloCargaTermica(
     }
   }
 
-  return { success: true, data: { pdf: pdfBuffer, anexos: [] } }
+  // Anexo de sistema: certificado de calibración del medidor de estrés térmico (best-effort).
+  const anexosSistema: AnexoInput[] = []
+  const certAnexo = await getAnexoCertificadoCalibracion(
+    (m.certificado_id as string | null) ?? null,
+    (instrRaw?.id as string | undefined) ?? null,
+  )
+  if (certAnexo) anexosSistema.push(certAnexo)
+
+  return { success: true, data: { pdf: pdfBuffer, anexos: anexosSistema } }
 }

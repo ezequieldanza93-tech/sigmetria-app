@@ -40,6 +40,7 @@ import {
   type PeriodoExposicion,
 } from '@/lib/medicion-ruido/calculos'
 import { getFotoYMapaEstablecimiento } from '@/lib/pdf/establecimiento-media'
+import { getAnexoCertificadoCalibracion } from '@/lib/pdf/anexo-certificado'
 import type { AnexoInput } from '@/lib/pdf/merge-anexos'
 import type { ActionResult } from '@/lib/types'
 
@@ -396,7 +397,14 @@ export async function generarReporteProtocoloRuido(
     }
   }
 
-  // Este protocolo no arma anexos de sistema todavía → lista vacía. Los adjuntos
-  // manuales (encomienda/plano) se ensamblan en emitir-evidencia-ruido.ts.
-  return { success: true, data: { pdf: pdfBuffer, anexos: [] } }
+  // Anexo de sistema: certificado de calibración del sonómetro (best-effort).
+  // Los adjuntos manuales (encomienda/plano) se suman en emitir-evidencia-ruido.ts.
+  const anexosSistema: AnexoInput[] = []
+  const certAnexo = await getAnexoCertificadoCalibracion(
+    (m.certificado_id as string | null) ?? null,
+    (instrRaw?.id as string | undefined) ?? null,
+  )
+  if (certAnexo) anexosSistema.push(certAnexo)
+
+  return { success: true, data: { pdf: pdfBuffer, anexos: anexosSistema } }
 }

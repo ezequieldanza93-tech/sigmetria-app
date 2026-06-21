@@ -30,6 +30,7 @@ import { getFirmasEntidad } from '@/lib/actions/firmas'
 import { resolveAssetUrl } from '@/lib/storage/resolve-url'
 import { renderProtocolo } from '@/lib/pdf/protocolo-engine'
 import { getFotoYMapaEstablecimiento } from '@/lib/pdf/establecimiento-media'
+import { getAnexoCertificadoCalibracion } from '@/lib/pdf/anexo-certificado'
 import {
   PAT_DESCRIPTOR,
   type DatosProtocoloPat,
@@ -324,6 +325,13 @@ export async function generarReporteProtocoloPat(
     return { success: false, error: `Error al renderizar el PDF: ${err instanceof Error ? err.message : String(err)}` }
   }
 
-  // Este protocolo no arma anexos de sistema todavía → lista vacía.
-  return { success: true, data: { pdf: pdfBuffer, anexos: [] } }
+  // Anexo de sistema: certificado de calibración del telurímetro (best-effort).
+  const anexosSistema: AnexoInput[] = []
+  const certAnexo = await getAnexoCertificadoCalibracion(
+    (m.certificado_id as string | null) ?? null,
+    (instrRaw?.id as string | undefined) ?? null,
+  )
+  if (certAnexo) anexosSistema.push(certAnexo)
+
+  return { success: true, data: { pdf: pdfBuffer, anexos: anexosSistema } }
 }
