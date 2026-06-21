@@ -14,6 +14,7 @@ import type {
 } from '@/lib/types'
 import { AnalyticsDashboard } from '@/components/analytics/real/analytics-dashboard'
 import { LegajoTecnico } from '@/components/establecimiento/legajo-tecnico'
+import { LegajoTab } from '@/components/establecimiento/legajo-tab'
 import { QRPanel } from '@/components/establecimiento/qr-panel'
 
 // Las server actions invocadas desde esta ruta (entre ellas la generación del PDF
@@ -193,6 +194,25 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
       if (!legajoMedicionesPorTipo[m.tipo]) legajoMedicionesPorTipo[m.tipo] = []
       if (legajoMedicionesPorTipo[m.tipo].length < 3) legajoMedicionesPorTipo[m.tipo].push(m)
     }
+
+    // Checklist de documentos ESPERADOS (el mismo LegajoTab de la Ficha), para mostrarlo
+    // también acá en la sección Legajo Técnico del sidebar junto al QR.
+    const hoyLegajo = new Date().toISOString().split('T')[0]
+    const [le, dt, gl] = await Promise.all([
+      getLegajoEsperados(estId, empresaId),
+      getDocTiposAplicables(estId),
+      supabase
+        .from('gestiones_registros')
+        .select('id, fecha_planificada, notas, mostrar_lt, gestiones_establecimientos!inner(establecimiento_id, gestiones!inner(nombre, gestiones_categorias(nombre)))')
+        .eq('gestiones_establecimientos.establecimiento_id', estId)
+        .eq('mostrar_lt', true)
+        .is('fecha_ejecutada', null)
+        .gte('fecha_planificada', hoyLegajo)
+        .order('fecha_planificada'),
+    ])
+    legajoEsperados = le
+    documentTypes = dt
+    gestionesLegajo = (gl.data ?? []) as unknown as LegajoGestion[]
   }
 
   return (
@@ -249,7 +269,7 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
       )}
 
       {section === 'legajo' && (
-        <div className="px-6 py-6 max-w-5xl">
+        <div className="px-6 py-6 max-w-6xl space-y-6">
           <div className="flex flex-col lg:flex-row gap-6 items-start">
             <div className="flex-1 min-w-0">
               <LegajoTecnico
@@ -282,6 +302,15 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
               )}
             </div>
           </div>
+
+          <LegajoTab
+            legajoEsperados={legajoEsperados}
+            gestionesLegajo={gestionesLegajo}
+            establecimientoId={estId}
+            empresaId={empresaId}
+            documentTypes={documentTypes}
+            canWrite={userCanWrite}
+          />
         </div>
       )}
 

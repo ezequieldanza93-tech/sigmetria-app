@@ -56,7 +56,7 @@ export function EstablecimientoShell({ empresaId, establecimientoId, children }:
     },
     {
       id: 'legajo',
-      label: 'Legajo QR',
+      label: 'Legajo Técnico',
       icon: QrCode,
       href: `${baseUrl}?section=legajo`,
     },
