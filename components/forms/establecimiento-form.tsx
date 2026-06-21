@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { FileUploadInput } from '@/components/ui/file-upload-input'
+import { DireccionAutocomplete } from '@/components/ui/direccion-autocomplete'
 import { createClient } from '@/lib/supabase/client'
 import { useSignedUrls } from '@/lib/storage/sign-client'
 import { useLocalidades, useEstablecimientoTipos, useActividadesEconomicas } from '@/lib/queries/establecimiento-form'
@@ -308,8 +309,6 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
 
     const algunDiaActivo = Object.values(semana).some(d => d.activo && d.inicio && d.fin)
     const tieneRespuestas = preguntas.length > 0 && Object.keys(respuestas).length >= preguntas.length
-    const ubicacionGmaps = fieldValue('ubicacion_gmaps')
-    const yaTieneCoords = establecimiento?.latitud != null && establecimiento?.longitud != null
 
     return [
       { id: 'nombre',         label: 'Nombre del establecimiento', done: fieldValue('nombre').length > 0, section: 1 },
@@ -322,13 +321,12 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
       { id: 'actividad',      label: 'Actividad principal',        done: selectedActividadId.length > 0, section: 2 },
       { id: 'trabajadores',   label: 'Dotación HyS (operativos)',  done: fieldValue('cantidad_trabajadores_operativos').length > 0, section: 2 },
       { id: 'horarios',       label: 'Horarios de actividad',      done: algunDiaActivo, section: 2 },
-      { id: 'ubicacion',      label: 'Ubicación en Google Maps',   done: ubicacionGmaps.length > 0 || yaTieneCoords, section: 2 },
       { id: 'descripcion',    label: 'Información del establecimiento', done: fieldValue('description').length > 0, section: 3 },
       { id: 'riesgos',        label: 'Condiciones del establecimiento', done: preguntas.length === 0 ? true : tieneRespuestas, section: 3 },
       { id: 'plano_pdf',      label: 'Plano del establecimiento',  done: hasPlanoPdf, section: 3 },
       { id: 'plano_cad',      label: 'Plano CAD editable',         done: hasPlanoCad, section: 3 },
     ]
-  }, [tick, selectedTipoId, selectedProvincia, selectedLocalidadId, selectedActividadId, semana, respuestas, preguntas, establecimiento?.latitud, establecimiento?.longitud, hasFoto, hasPlanoPdf, hasPlanoCad])
+  }, [tick, selectedTipoId, selectedProvincia, selectedLocalidadId, selectedActividadId, semana, respuestas, preguntas, hasFoto, hasPlanoPdf, hasPlanoCad])
 
   const sectionStats = useMemo<Record<SectionId, { done: number; total: number }>>(() => {
     const stats: Record<SectionId, { done: number; total: number }> = {
@@ -458,11 +456,14 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
         isActive={currentSection === 2}
         sectionStats={sectionStats[2]}
       >
-        <Input
+        <DireccionAutocomplete
           label="Domicilio"
           name="domicilio"
+          gmapsName="ubicacion_gmaps"
           defaultValue={establecimiento?.domicilio ?? ''}
-          placeholder="Calle 123"
+          defaultLat={establecimiento?.latitud ?? null}
+          defaultLon={establecimiento?.longitud ?? null}
+          placeholder="Av. Corrientes 1234, Buenos Aires"
         />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -608,25 +609,6 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
               )
             })}
           </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-text-secondary mb-1">Ubicación Google Maps</label>
-          <input
-            name="ubicacion_gmaps"
-            type="text"
-            defaultValue={
-              establecimiento?.latitud != null && establecimiento?.longitud != null
-                ? `${establecimiento.latitud}, ${establecimiento.longitud}`
-                : ''
-            }
-            placeholder="Av. Corrientes 1234, Buenos Aires · o URL de Google Maps · o -34.6037, -58.3816"
-            className="w-full border border-border-default rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500"
-          />
-          <p className="text-xs text-text-tertiary mt-1">
-            Podés escribir una dirección, pegar una URL de Google Maps, o ingresar coordenadas.
-            Para obtener coordenadas exactas, hacé <strong>click derecho sobre la ubicación en Google Maps</strong> y seleccioná las coordenadas que aparecen.
-          </p>
         </div>
       </FormSection>
 

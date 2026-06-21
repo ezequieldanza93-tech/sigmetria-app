@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { FileUploadInput } from '@/components/ui/file-upload-input'
+import { DireccionAutocomplete } from '@/components/ui/direccion-autocomplete'
 import { createClient } from '@/lib/supabase/client'
 import { createPrivateArt } from '@/lib/actions/empresa'
 import { publicAssetUrl } from '@/lib/storage/asset-url'
@@ -186,13 +187,15 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
         />
       </div>
 
-      <Input
+      <DireccionAutocomplete
         label="Domicilio"
         name="domicilio"
-        value={form.domicilio}
-        onChange={set('domicilio')}
-        placeholder="Av. Corrientes 1234"
-        {...fb('domicilio')}
+        defaultValue={form.domicilio}
+        latName="latitude"
+        lonName="longitude"
+        defaultLat={empresa?.latitude ?? null}
+        defaultLon={empresa?.longitude ?? null}
+        placeholder="Av. Corrientes 1234, Buenos Aires"
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -227,25 +230,6 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
         className="w-32"
         {...fb('codigo_postal')}
       />
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Input
-          label="Latitud"
-          name="latitude"
-          value={form.latitude}
-          onChange={set('latitude')}
-          placeholder="-34.6037"
-          {...fb('latitude')}
-        />
-        <Input
-          label="Longitud"
-          name="longitude"
-          value={form.longitude}
-          onChange={set('longitude')}
-          placeholder="-58.3816"
-          {...fb('longitude')}
-        />
-      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
