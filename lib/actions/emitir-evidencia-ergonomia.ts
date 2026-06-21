@@ -17,7 +17,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { generarReporteProtocoloErgonomia } from '@/lib/actions/reporte-protocolo-ergonomia'
 import { guardarEvidenciaProtocolo } from '@/lib/actions/protocolo-evidencia'
-import { mergeAdjuntosManuales } from '@/lib/pdf/anexos-manuales'
+import { getAdjuntosManualesComoAnexos } from '@/lib/pdf/anexos-manuales'
+import { armarPdfFinalConAnexos } from '@/lib/pdf/ensamblar-anexos'
 import type { ActionResult } from '@/lib/types'
 
 export async function emitirEvidenciaErgonomia(
@@ -54,8 +55,10 @@ export async function emitirEvidenciaErgonomia(
     console.error('[PDF-ERGO-EVIDENCIA] generarReporte falló', { error: pdfRes.error })
     return { success: false, error: pdfRes.error }
   }
-  // Fusionar adjuntos manuales (encomienda / plano / otro) si los hay (best-effort).
-  const buffer = await mergeAdjuntosManuales(pdfRes.data as Buffer, registroId, rgFechaPlanificada)
+  // Fusionar anexos (los de sistema que devuelve el reporte + los adjuntos manuales:
+  // encomienda / plano / otro) en el PDF final, con su hoja índice "ANEXOS".
+  const anexosManuales = await getAdjuntosManualesComoAnexos(registroId, rgFechaPlanificada)
+  const buffer = await armarPdfFinalConAnexos(pdfRes.data.pdf, [...pdfRes.data.anexos, ...anexosManuales])
   const base64 = 'data:application/pdf;base64,' + Buffer.from(buffer).toString('base64')
 
   // ── 3. Guardar como evidencia de la gestión (sistema existente) ─────────────

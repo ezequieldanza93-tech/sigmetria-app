@@ -39,6 +39,8 @@ import {
   cumplePico,
   type PeriodoExposicion,
 } from '@/lib/medicion-ruido/calculos'
+import { getFotoYMapaEstablecimiento } from '@/lib/pdf/establecimiento-media'
+import type { AnexoInput } from '@/lib/pdf/merge-anexos'
 import type { ActionResult } from '@/lib/types'
 
 // ─── Labels de enums → texto legible (mismo criterio que el wizard) ─────────────
@@ -128,7 +130,7 @@ function fmtNum(n: number | null | undefined, decimales = 2): string {
  */
 export async function generarReporteProtocoloRuido(
   id: string,
-): Promise<ActionResult<Buffer>> {
+): Promise<ActionResult<{ pdf: Buffer; anexos: AnexoInput[] }>> {
   if (!id) return { success: false, error: 'medicionId requerido' }
 
   // ── 1. Leer medición completa ───────────────────────────────────────────────
@@ -371,6 +373,11 @@ export async function generarReporteProtocoloRuido(
     console.error('[PDF-REPORTE-RUIDO] no se pudo registrar la verificación:', err instanceof Error ? err.message : String(err))
   }
 
+  // ── 8c. Foto + mapa del establecimiento para la carátula (best-effort) ───────
+  const media = await getFotoYMapaEstablecimiento(establecimientoId)
+  datos.fotoEstablecimiento = media.fotoEstablecimiento
+  datos.mapaEstablecimiento = media.mapaEstablecimiento
+
   // ── 9. Generar PDF ───────────────────────────────────────────────────────────
   console.warn('[PDF-REPORTE-RUIDO] datos mapeados, llamando renderProtocolo', {
     folio,
@@ -389,5 +396,7 @@ export async function generarReporteProtocoloRuido(
     }
   }
 
-  return { success: true, data: pdfBuffer }
+  // Este protocolo no arma anexos de sistema todavía → lista vacía. Los adjuntos
+  // manuales (encomienda/plano) se ensamblan en emitir-evidencia-ruido.ts.
+  return { success: true, data: { pdf: pdfBuffer, anexos: [] } }
 }

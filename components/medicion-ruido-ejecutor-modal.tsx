@@ -13,6 +13,7 @@ import {
 } from '@/lib/actions/medicion-ruido'
 import { SectorPuestoSelectorConAlta } from '@/components/sector-puesto-selector-con-alta'
 import { PersonaSelectorConAlta } from '@/components/persona-selector-con-alta'
+import { ProtocoloAdjuntosControl } from '@/components/protocolo-adjuntos-control'
 import {
   tiempoMaxPermitido,
   dosis,
@@ -1072,6 +1073,21 @@ export function MedicionRuidoEjecutorModal({
                 <label className={labelCls}>Observaciones generales</label>
                 <textarea className={`${inputCls} resize-none`} rows={2} value={observacionesGenerales} onChange={e => setObservacionesGenerales(e.target.value)} placeholder="Observaciones generales del protocolo…" />
               </div>
+            </section>
+
+            {/* Documentos a anexar al PDF de evidencia (encomienda + plano) */}
+            <section className="space-y-3 rounded-xl border border-border-subtle p-4 sm:p-5">
+              <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2">
+                <FileCheck size={16} className="text-sig-500" /> Documentos del protocolo
+              </h3>
+              <p className="text-xs text-text-tertiary">
+                Cargá la encomienda del colegio profesional y el plano/croquis. Se anexan al PDF al emitir.
+              </p>
+              <ProtocoloAdjuntosControl
+                registroId={registroId}
+                rgFechaPlanificada={rgFechaPlanificada}
+                tipos={['encomienda', 'plano']}
+              />
             </section>
           </div>
         )}

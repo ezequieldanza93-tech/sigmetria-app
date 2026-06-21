@@ -39,6 +39,8 @@ import {
   type DatosProtocoloCargaTermica,
   type FilaGrillaCargaTermica,
 } from '@/lib/pdf/descriptors/carga-termica'
+import { getFotoYMapaEstablecimiento } from '@/lib/pdf/establecimiento-media'
+import type { AnexoInput } from '@/lib/pdf/merge-anexos'
 import type { ActionResult } from '@/lib/types'
 
 // ─── Helpers de formateo ────────────────────────────────────────────────────────
@@ -136,7 +138,7 @@ function str(v: unknown): string {
  */
 export async function generarReporteProtocoloCargaTermica(
   id: string,
-): Promise<ActionResult<Buffer>> {
+): Promise<ActionResult<{ pdf: Buffer; anexos: AnexoInput[] }>> {
   if (!id) return { success: false, error: 'medicionId requerido' }
 
   // ── 1. Leer medición completa ───────────────────────────────────────────────
@@ -426,6 +428,11 @@ export async function generarReporteProtocoloCargaTermica(
     console.error('[PDF-REPORTE-CT] no se pudo registrar la verificación:', err instanceof Error ? err.message : String(err))
   }
 
+  // ── 9c. Foto + mapa del establecimiento (carátula compartida) ────────────────
+  const media = await getFotoYMapaEstablecimiento(establecimientoId)
+  datos.fotoEstablecimiento = media.fotoEstablecimiento
+  datos.mapaEstablecimiento = media.mapaEstablecimiento
+
   // ── 10. Generar PDF ──────────────────────────────────────────────────────────
   console.warn('[PDF-REPORTE-CT] datos mapeados, llamando renderProtocolo', {
     folio,
@@ -445,5 +452,5 @@ export async function generarReporteProtocoloCargaTermica(
     }
   }
 
-  return { success: true, data: pdfBuffer }
+  return { success: true, data: { pdf: pdfBuffer, anexos: [] } }
 }

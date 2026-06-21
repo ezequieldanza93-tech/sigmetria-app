@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button'
 import { FirmaCanvas } from '@/components/firmas/firma-canvas'
 import { PersonaFirmanteSelector } from '@/components/persona-firmante-selector'
 import { PersonaSelectorConAlta } from '@/components/persona-selector-con-alta'
+import { ProtocoloAdjuntosControl } from '@/components/protocolo-adjuntos-control'
 import { pickClasificacionDefault } from '@/lib/medicion/clasificacion-default'
 import type { CertificadoCalibracion } from '@/lib/types'
 import {
@@ -917,6 +918,19 @@ export function MedicionPatEjecutorModal({
                   <input type="file" className={inputCls} accept=".pdf,image/*" onChange={e => setPlanoFile(e.target.files?.[0] ?? null)} />
                 </div>
               </div>
+
+              {/* Documentos profesionales que se anexan al PDF al emitir (encomienda + plano) */}
+              <div className="rounded-xl border border-border-subtle p-4 space-y-3">
+                <p className="text-xs text-text-secondary">
+                  Cargá la encomienda del colegio profesional y el plano/croquis. Se anexan al PDF al emitir.
+                </p>
+                <ProtocoloAdjuntosControl
+                  registroId={registroId}
+                  rgFechaPlanificada={rgFechaPlanificada}
+                  tipos={['encomienda', 'plano']}
+                />
+              </div>
+
               <div>
                 <label className={labelCls}>Observaciones generales</label>
                 <textarea className={`${inputCls} resize-none`} rows={2} value={observacionesGenerales} onChange={e => setObservacionesGenerales(e.target.value)} placeholder="Observaciones generales del protocolo…" />

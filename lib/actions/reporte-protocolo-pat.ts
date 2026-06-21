@@ -29,11 +29,13 @@ import { getMedicionPat } from '@/lib/actions/medicion-pat'
 import { getFirmasEntidad } from '@/lib/actions/firmas'
 import { resolveAssetUrl } from '@/lib/storage/resolve-url'
 import { renderProtocolo } from '@/lib/pdf/protocolo-engine'
+import { getFotoYMapaEstablecimiento } from '@/lib/pdf/establecimiento-media'
 import {
   PAT_DESCRIPTOR,
   type DatosProtocoloPat,
   type TomaPatRow,
 } from '@/lib/pdf/descriptors/pat'
+import type { AnexoInput } from '@/lib/pdf/merge-anexos'
 import type { ActionResult } from '@/lib/types'
 
 // ─── Helpers de formateo ────────────────────────────────────────────────────
@@ -106,11 +108,12 @@ function single<T>(v: EmbedOne<T>): T | null {
  * medición real guardada en `medicion_pat`.
  *
  * @param id - UUID de la medición en tabla `medicion_pat`
- * @returns { success: true, data: Buffer } con el PDF, o { success: false, error }
+ * @returns { success: true, data: { pdf: Buffer; anexos: AnexoInput[] } } con el PDF y
+ *          los anexos de sistema (vacío en PAT por ahora), o { success: false, error }
  */
 export async function generarReporteProtocoloPat(
   id: string,
-): Promise<ActionResult<Buffer>> {
+): Promise<ActionResult<{ pdf: Buffer; anexos: AnexoInput[] }>> {
   if (!id) return { success: false, error: 'id de medición requerido' }
 
   // ── 1. Leer medición completa (cabecera + tomas + joins) ────────────────────
@@ -301,6 +304,11 @@ export async function generarReporteProtocoloPat(
     console.error('[PDF-REPORTE-PAT] no se pudo registrar la verificación:', err instanceof Error ? err.message : String(err))
   }
 
+  // ── 9c. Foto + mapa del establecimiento para la carátula (best-effort) ────────
+  const media = await getFotoYMapaEstablecimiento(establecimientoId)
+  datos.fotoEstablecimiento = media.fotoEstablecimiento
+  datos.mapaEstablecimiento = media.mapaEstablecimiento
+
   // ── 10. Generar PDF con el motor genérico ────────────────────────────────────
   console.warn('[PDF-REPORTE-PAT] datos mapeados, llamando renderProtocolo', {
     folio,
@@ -316,5 +324,6 @@ export async function generarReporteProtocoloPat(
     return { success: false, error: `Error al renderizar el PDF: ${err instanceof Error ? err.message : String(err)}` }
   }
 
-  return { success: true, data: pdfBuffer }
+  // Este protocolo no arma anexos de sistema todavía → lista vacía.
+  return { success: true, data: { pdf: pdfBuffer, anexos: [] } }
 }

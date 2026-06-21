@@ -17,7 +17,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { generarReporteProtocoloCargaFuego } from '@/lib/actions/reporte-protocolo-carga-fuego'
 import { guardarEvidenciaProtocolo } from '@/lib/actions/protocolo-evidencia'
-import { mergeAdjuntosManuales } from '@/lib/pdf/anexos-manuales'
+import { getAdjuntosManualesComoAnexos } from '@/lib/pdf/anexos-manuales'
+import { armarPdfFinalConAnexos } from '@/lib/pdf/ensamblar-anexos'
 import type { ActionResult } from '@/lib/types'
 
 export async function emitirEvidenciaCargaFuego(
@@ -53,8 +54,10 @@ export async function emitirEvidenciaCargaFuego(
     console.error('[PDF-EVIDENCIA-CF] generarReporte falló', { error: pdfRes.error })
     return { success: false, error: pdfRes.error }
   }
-  // Fusionar adjuntos manuales (encomienda / plano / otro) si los hay (best-effort).
-  const buffer = await mergeAdjuntosManuales(pdfRes.data as Buffer, registroId, rgFechaPlanificada)
+  // Ensamblar el PDF final: anexos de sistema (ninguno por ahora) + adjuntos manuales
+  // (encomienda / plano / otro), con hoja índice "ANEXOS" y orden canónico (best-effort).
+  const anexosManuales = await getAdjuntosManualesComoAnexos(registroId, rgFechaPlanificada)
+  const buffer = await armarPdfFinalConAnexos(pdfRes.data.pdf, [...pdfRes.data.anexos, ...anexosManuales])
   const base64 = 'data:application/pdf;base64,' + Buffer.from(buffer).toString('base64')
 
   // ── 3. Guardar como evidencia de la gestión (sistema existente) ─────────────

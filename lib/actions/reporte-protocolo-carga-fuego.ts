@@ -39,6 +39,8 @@ import {
   type MaterialCargaFuego,
 } from '@/lib/pdf/descriptors/carga-fuego'
 import { coefEquiv, equivMadera } from '@/lib/calculo-carga-fuego/calculos'
+import { getFotoYMapaEstablecimiento } from '@/lib/pdf/establecimiento-media'
+import type { AnexoInput } from '@/lib/pdf/merge-anexos'
 import type { ActionResult } from '@/lib/types'
 
 // ─── Labels de enums → texto legible ────────────────────────────────────────────
@@ -203,7 +205,7 @@ function porOrden(rows: Record<string, unknown>[]): Record<string, unknown>[] {
  */
 export async function generarReporteProtocoloCargaFuego(
   id: string,
-): Promise<ActionResult<Buffer>> {
+): Promise<ActionResult<{ pdf: Buffer; anexos: AnexoInput[] }>> {
   if (!id) return { success: false, error: 'calculoId requerido' }
 
   // ── 1. Leer cálculo completo ─────────────────────────────────────────────────
@@ -395,6 +397,11 @@ export async function generarReporteProtocoloCargaFuego(
     sectores,
   }
 
+  // ── 7a. Foto + mapa del establecimiento para la carátula (best-effort) ───────
+  const media = await getFotoYMapaEstablecimiento(establecimientoId)
+  datos.fotoEstablecimiento = media.fotoEstablecimiento
+  datos.mapaEstablecimiento = media.mapaEstablecimiento
+
   // ── 7b. QR de verificación: snapshot público + QR real en la carátula (best-effort) ──
   try {
     const { registrarVerificacion } = await import('@/lib/actions/registrar-verificacion')
@@ -432,5 +439,5 @@ export async function generarReporteProtocoloCargaFuego(
     }
   }
 
-  return { success: true, data: pdfBuffer }
+  return { success: true, data: { pdf: pdfBuffer, anexos: [] } }
 }

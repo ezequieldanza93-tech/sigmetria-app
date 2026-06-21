@@ -26,12 +26,14 @@
 import { getProtocoloErgonomia } from '@/lib/actions/protocolo-ergonomia'
 import { resolveAssetUrl } from '@/lib/storage/resolve-url'
 import { renderProtocolo } from '@/lib/pdf/protocolo-engine'
+import { getFotoYMapaEstablecimiento } from '@/lib/pdf/establecimiento-media'
 import {
   ERGONOMIA_DESCRIPTOR,
   type DatosProtocoloErgonomia,
   type FactorTareaRow,
   type SeguimientoRow,
 } from '@/lib/pdf/descriptors/ergonomia'
+import type { AnexoInput } from '@/lib/pdf/merge-anexos'
 import type { ActionResult, ErgonomiaEvaluacionDetalle, FactorErgonomia } from '@/lib/types'
 
 // ─── Helpers de formateo (clonados de iluminación) ──────────────────────────
@@ -84,7 +86,7 @@ async function urlToDataUrl(url: string | null | undefined): Promise<string | un
  */
 export async function generarReporteProtocoloErgonomia(
   id: string,
-): Promise<ActionResult<Buffer>> {
+): Promise<ActionResult<{ pdf: Buffer; anexos: AnexoInput[] }>> {
   if (!id) return { success: false, error: 'id de evaluación requerido' }
 
   // ── 1. Leer evaluación completa (cabecera + 5 hijas + establecimiento + empresa) ──
@@ -245,6 +247,13 @@ export async function generarReporteProtocoloErgonomia(
     console.error('[PDF-ERGO] no se pudo registrar la verificación:', err instanceof Error ? err.message : String(err))
   }
 
+  // ── 5c. Foto + mapa del establecimiento para la carátula (best-effort) ───────
+  if (ev.establecimiento_id) {
+    const media = await getFotoYMapaEstablecimiento(ev.establecimiento_id)
+    datos.fotoEstablecimiento = media.fotoEstablecimiento
+    datos.mapaEstablecimiento = media.mapaEstablecimiento
+  }
+
   // ── 6. Generar PDF ──────────────────────────────────────────────────────────
   console.warn('[PDF-ERGO] datos mapeados, renderizando', {
     folio,
@@ -261,5 +270,5 @@ export async function generarReporteProtocoloErgonomia(
     return { success: false, error: `Error al renderizar el PDF: ${err instanceof Error ? err.message : String(err)}` }
   }
 
-  return { success: true, data: pdfBuffer }
+  return { success: true, data: { pdf: pdfBuffer, anexos: [] } }
 }

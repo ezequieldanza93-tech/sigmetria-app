@@ -29,6 +29,7 @@ import { Button } from '@/components/ui/button'
 import { FirmaCanvas } from '@/components/firmas/firma-canvas'
 import { PersonaFirmanteSelector } from '@/components/persona-firmante-selector'
 import { PersonaSelectorConAlta } from '@/components/persona-selector-con-alta'
+import { ProtocoloAdjuntosControl } from '@/components/protocolo-adjuntos-control'
 import {
   Flame, Building2, Layers, FileText, Plus, Trash2, X,
   ChevronLeft, ChevronRight, CheckCircle, Loader2,
@@ -994,6 +995,21 @@ export function CalculoCargaFuegoEjecutorModal({
                 <label className={labelCls}>Observaciones generales</label>
                 <textarea className={`${inputCls} resize-none`} rows={2} value={observacionesGenerales} onChange={e => setObservacionesGenerales(e.target.value)} placeholder="Observaciones generales del cálculo…" />
               </div>
+            </section>
+
+            {/* Documentos a anexar al PDF de evidencia (encomienda profesional + plano). */}
+            <section className="space-y-2 rounded-xl border border-border-subtle bg-surface-elevated/40 p-4">
+              <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2">
+                <FileText size={16} className="text-sig-500" /> Documentos a anexar al informe
+              </h3>
+              <p className="text-xs text-text-tertiary">
+                Cargá la encomienda del colegio profesional y el plano/croquis. Se anexan al PDF al emitir.
+              </p>
+              <ProtocoloAdjuntosControl
+                registroId={registroId}
+                rgFechaPlanificada={rgFechaPlanificada}
+                tipos={['encomienda', 'plano']}
+              />
             </section>
           </div>
         )}

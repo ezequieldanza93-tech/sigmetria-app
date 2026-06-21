@@ -16,6 +16,7 @@ import type {
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { PersonaFirmanteSelector, type PersonaFirmanteValue } from '@/components/persona-firmante-selector'
+import { ProtocoloAdjuntosControl } from '@/components/protocolo-adjuntos-control'
 import { PersonaSelectorConAlta, type PersonaSeleccionada } from '@/components/persona-selector-con-alta'
 import { SectorPuestoSelectorConAlta } from '@/components/sector-puesto-selector-con-alta'
 import { CantidadTrabajadoresInput } from '@/components/cantidad-trabajadores-input'
@@ -851,6 +852,18 @@ export function ProtocoloErgonomiaEjecutorModal({
               value={observacionesGlobales}
               onChange={e => setObservacionesGlobales(e.target.value)}
               placeholder="Observaciones generales del protocolo..."
+            />
+          </div>
+
+          {/* Documentos adjuntos (encomienda profesional + plano/croquis) */}
+          <div className="pt-2 border-t border-border-default">
+            <p className="text-xs text-text-secondary mb-3">
+              Cargá la encomienda del colegio profesional y el plano/croquis. Se anexan al PDF al emitir.
+            </p>
+            <ProtocoloAdjuntosControl
+              registroId={registroId}
+              rgFechaPlanificada={rgFechaPlanificada}
+              tipos={['encomienda', 'plano']}
             />
           </div>
         </div>

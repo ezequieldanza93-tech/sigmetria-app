@@ -17,7 +17,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { generarReporteProtocoloCargaTermica } from '@/lib/actions/reporte-protocolo-carga-termica'
 import { guardarEvidenciaProtocolo } from '@/lib/actions/protocolo-evidencia'
-import { mergeAdjuntosManuales } from '@/lib/pdf/anexos-manuales'
+import { getAdjuntosManualesComoAnexos } from '@/lib/pdf/anexos-manuales'
+import { armarPdfFinalConAnexos } from '@/lib/pdf/ensamblar-anexos'
 import type { ActionResult } from '@/lib/types'
 
 export async function emitirEvidenciaCargaTermica(
@@ -55,7 +56,10 @@ export async function emitirEvidenciaCargaTermica(
     return { success: false, error: pdfRes.error }
   }
   // Fusionar adjuntos manuales (encomienda / plano / otro) si los hay (best-effort).
-  const buffer = await mergeAdjuntosManuales(pdfRes.data as Buffer, registroId, rgFechaPlanificada)
+  // El reporte ya devuelve { pdf, anexos } (anexos de sistema, hoy vacíos); le sumamos
+  // los adjuntos manuales y armamos el PDF final con hoja índice "ANEXOS".
+  const anexosManuales = await getAdjuntosManualesComoAnexos(registroId, rgFechaPlanificada)
+  const buffer = await armarPdfFinalConAnexos(pdfRes.data.pdf, [...pdfRes.data.anexos, ...anexosManuales])
   const base64 = 'data:application/pdf;base64,' + Buffer.from(buffer).toString('base64')
 
   // ── 3. Guardar como evidencia de la gestión (sistema existente) ─────────────

@@ -16,7 +16,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { generarReporteProtocoloRuido } from '@/lib/actions/reporte-protocolo-ruido'
 import { guardarEvidenciaProtocolo } from '@/lib/actions/protocolo-evidencia'
-import { mergeAdjuntosManuales } from '@/lib/pdf/anexos-manuales'
+import { getAdjuntosManualesComoAnexos } from '@/lib/pdf/anexos-manuales'
+import { armarPdfFinalConAnexos } from '@/lib/pdf/ensamblar-anexos'
 import type { ActionResult } from '@/lib/types'
 
 export async function emitirEvidenciaRuido(
@@ -53,8 +54,11 @@ export async function emitirEvidenciaRuido(
     console.error('[PDF-EVIDENCIA-RUIDO] generarReporte falló', { error: pdfRes.error })
     return { success: false, error: pdfRes.error }
   }
-  // Fusionar adjuntos manuales (encomienda / plano / otro) si los hay (best-effort).
-  const buffer = await mergeAdjuntosManuales(pdfRes.data as Buffer, registroId, rgFechaPlanificada)
+  // ── 2b. Ensamblar anexos en UN solo punto ───────────────────────────────────
+  // Sistema (vacío por ahora en ruido) + manuales (encomienda/plano/otro), ordenados
+  // por clave canónica, con la hoja índice "ANEXOS" antepuesta. Best-effort.
+  const anexosManuales = await getAdjuntosManualesComoAnexos(registroId, rgFechaPlanificada)
+  const buffer = await armarPdfFinalConAnexos(pdfRes.data.pdf, [...pdfRes.data.anexos, ...anexosManuales])
   const base64 = 'data:application/pdf;base64,' + Buffer.from(buffer).toString('base64')
 
   // ── 3. Guardar como evidencia de la gestión (sistema existente) ─────────────

@@ -32,6 +32,7 @@ import { PersonaFirmanteSelector } from '@/components/persona-firmante-selector'
 import { PersonaSelectorConAlta } from '@/components/persona-selector-con-alta'
 import { SectorPuestoSelectorConAlta } from '@/components/sector-puesto-selector-con-alta'
 import { FirmaCanvas } from '@/components/firmas/firma-canvas'
+import { ProtocoloAdjuntosControl } from '@/components/protocolo-adjuntos-control'
 import { firmarProtocolo } from '@/lib/actions/firmar-protocolo'
 import {
   Building2, FileText, Plus, Trash2,
@@ -1259,6 +1260,17 @@ export function MedicionCargaTermicaEjecutorModal({
                 <label className={labelCls}>Observaciones generales</label>
                 <textarea className={`${inputCls} resize-none`} rows={2} value={observacionesGenerales} onChange={e => setObservacionesGenerales(e.target.value)} placeholder="Observaciones generales del protocolo…" />
               </div>
+            </section>
+
+            {/* Documentos anexos al PDF de evidencia (encomienda profesional + plano). */}
+            <section className="space-y-3">
+              <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2">
+                <FileCheck size={16} className="text-sig-500" /> Documentos para anexar al protocolo
+              </h3>
+              <p className="text-xs text-text-tertiary">
+                Cargá la encomienda del colegio profesional y el plano/croquis. Se anexan al PDF al emitir.
+              </p>
+              <ProtocoloAdjuntosControl registroId={registroId} rgFechaPlanificada={rgFechaPlanificada} tipos={['encomienda', 'plano']} />
             </section>
           </div>
         )}
