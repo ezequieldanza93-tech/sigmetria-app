@@ -512,22 +512,30 @@ export function CalculoCargaFuegoEjecutorModal({
       }
       setStep('materiales')
     } else if (step === 'materiales') {
-      // Sectores sin ningún material con peso + coef. C cargado.
-      const sinMateriales = sectoresWizard
-        .map((s, i) => ({ s, i }))
-        .filter(({ s }) => !s.materiales.some(m => num(m.peso_kg) != null && num(m.coef_c) != null))
-      // Si NINGÚN sector tiene materiales no hay nada para calcular: bloqueo duro.
-      if (sinMateriales.length === sectoresWizard.length) {
-        setError('Cargá al menos un material con su peso y coeficiente C en algún sector.')
-        return
-      }
-      // Si solo ALGUNOS quedaron sin materiales, avisamos y dejamos decidir.
-      if (sinMateriales.length > 0) {
-        const nombres = sinMateriales.map(({ s, i }) => s.sectorIncendio.trim() || `Sector ${i + 1}`).join(', ')
-        const seguir = confirm(
-          `Estos sectores no tienen materiales cargados: ${nombres}.\n\nNo se les va a calcular la carga de fuego. ¿Seguir igual? (Cancelá para completarlos antes de avanzar)`
-        )
-        if (!seguir) { setSectorActivoIdx(sinMateriales[0].i); return }
+      // Validación por ITEM: cada material de cada sector debe estar COMPLETO antes de
+      // avanzar (descripción + peso + coeficiente C). Son los campos que alimentan el
+      // cálculo de carga de fuego (equiv. madera = peso · C). El PCI es opcional porque
+      // C puede cargarse a mano. Cada sector debe tener al menos un material.
+      for (let i = 0; i < sectoresWizard.length; i++) {
+        const s = sectoresWizard[i]
+        const nombreSector = s.sectorIncendio.trim() || `Sector ${i + 1}`
+        if (s.materiales.length === 0) {
+          setSectorActivoIdx(i)
+          setError(`${nombreSector}: cargá al menos un material combustible.`)
+          return
+        }
+        for (let j = 0; j < s.materiales.length; j++) {
+          const m = s.materiales[j]
+          const faltantes: string[] = []
+          if (!m.descripcion.trim()) faltantes.push('descripción')
+          if (num(m.peso_kg) == null || (num(m.peso_kg) ?? 0) <= 0) faltantes.push('peso (kg)')
+          if (num(m.coef_c) == null || (num(m.coef_c) ?? 0) <= 0) faltantes.push('coeficiente C')
+          if (faltantes.length > 0) {
+            setSectorActivoIdx(i)
+            setError(`${nombreSector} · Material ${j + 1}: completá ${faltantes.join(', ')}.`)
+            return
+          }
+        }
       }
       setStep('resultado')
     } else if (step === 'resultado') {
@@ -1003,12 +1011,12 @@ export function CalculoCargaFuegoEjecutorModal({
                 <FileText size={16} className="text-sig-500" /> Documentos a anexar al informe
               </h3>
               <p className="text-xs text-text-tertiary">
-                Cargá la encomienda del colegio profesional y el plano/croquis. Se anexan al PDF al emitir.
+                Cargá la encomienda del colegio profesional. Se anexa al PDF al emitir. El plano/croquis se toma del adjunto cargado más arriba.
               </p>
               <ProtocoloAdjuntosControl
                 registroId={registroId}
                 rgFechaPlanificada={rgFechaPlanificada}
-                tipos={['encomienda', 'plano']}
+                tipos={['encomienda']}
               />
             </section>
           </div>

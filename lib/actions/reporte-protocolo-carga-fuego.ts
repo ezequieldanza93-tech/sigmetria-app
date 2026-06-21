@@ -40,6 +40,7 @@ import {
 } from '@/lib/pdf/descriptors/carga-fuego'
 import { coefEquiv, equivMadera } from '@/lib/calculo-carga-fuego/calculos'
 import { getFotoYMapaEstablecimiento } from '@/lib/pdf/establecimiento-media'
+import { getAnexoPlano } from '@/lib/pdf/anexo-certificado'
 import type { AnexoInput } from '@/lib/pdf/merge-anexos'
 import type { ActionResult } from '@/lib/types'
 
@@ -439,5 +440,12 @@ export async function generarReporteProtocoloCargaFuego(
     }
   }
 
-  return { success: true, data: { pdf: pdfBuffer, anexos: [] } }
+  // ── 9. Anexos de sistema: el plano/croquis cargado en la hoja 1 se anexa al
+  //       reporte (mismo patrón que iluminación: el croquis NO se pide de nuevo en
+  //       el paso "revisar", sale de calculo_carga_fuego.plano_url). ───────────────
+  const anexosSistema: AnexoInput[] = []
+  const planoAnexo = await getAnexoPlano((c.plano_url as string | null) ?? null)
+  if (planoAnexo) anexosSistema.push(planoAnexo)
+
+  return { success: true, data: { pdf: pdfBuffer, anexos: anexosSistema } }
 }

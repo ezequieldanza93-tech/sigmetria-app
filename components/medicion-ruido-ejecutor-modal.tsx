@@ -579,9 +579,36 @@ export function MedicionRuidoEjecutorModal({
       if (!fechaMedicion) { setError('Cargá la fecha de medición.'); return }
       setStep('puntos')
     } else if (step === 'puntos') {
-      // Mínimo de la hoja 2: al menos un punto con datos cargados.
-      const algunoConDatos = puntos.some(p => resumenPunto(p).tieneDatos)
-      if (!algunoConDatos) { setError('Cargá al menos un punto con su dosis (dosímetro) o sus períodos (sonómetro).'); return }
+      // Hoja 2: cada punto debe estar COMPLETO. Los campos que arman la fila de la
+      // tabla del protocolo (ubicación, Te, tiempo de integración, pico si es de
+      // impacto y los valores medidos según el método) son obligatorios.
+      if (puntos.length === 0) { setError('Cargá al menos un punto de medición.'); return }
+      for (let i = 0; i < puntos.length; i++) {
+        const p = puntos[i]
+        const n = i + 1
+        if (!p.sector_id || !p.puesto_id) { setError(`Punto ${n}: elegí sector y puesto.`); return }
+        if (!p.te_horas || p.te_horas.trim() === '' || num(p.te_horas) == null) { setError(`Punto ${n}: cargá el tiempo de exposición (Te, horas).`); return }
+        if (!p.tiempo_integracion || p.tiempo_integracion.trim() === '') { setError(`Punto ${n}: cargá el tiempo de integración.`); return }
+        // Nivel pico solo aplica (y solo se pide) cuando el ruido es de impacto.
+        if (p.caracteristicas_ruido === 'impacto' && (!p.lcpico_dbc || p.lcpico_dbc.trim() === '' || num(p.lcpico_dbc) == null)) {
+          setError(`Punto ${n}: cargá el nivel pico Lcpico (dBC) del ruido de impacto.`); return
+        }
+        // Valores medidos según el método.
+        if (p.metodo === 'dosimetro') {
+          if (!p.dosis_pct || p.dosis_pct.trim() === '' || num(p.dosis_pct) == null) {
+            setError(`Punto ${n}: cargá la dosis leída del equipo (%).`); return
+          }
+        } else {
+          // Sonómetro: cada período debe tener LAeq y tiempo (no filas a medias) y al menos uno válido.
+          for (let j = 0; j < p.periodos.length; j++) {
+            const per = p.periodos[j]
+            const laeqOk = per.laeq_dba.trim() !== '' && num(per.laeq_dba) != null
+            const teOk = per.tiempo_exposicion_horas.trim() !== '' && num(per.tiempo_exposicion_horas) != null
+            if (!laeqOk || !teOk) { setError(`Punto ${n}, período ${j + 1}: completá LAeq y tiempo de exposición.`); return }
+          }
+          if (periodosValidos(p).length === 0) { setError(`Punto ${n}: cargá al menos un período con LAeq y tiempo de exposición.`); return }
+        }
+      }
       setStep('analisis')
     } else if (step === 'analisis') {
       setStep('observaciones')
@@ -1006,15 +1033,12 @@ export function MedicionRuidoEjecutorModal({
                   <input type="date" className={inputCls} value={fechaMedicionFin} onChange={e => setFechaMedicionFin(e.target.value)} />
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className={labelCls}>Hora inicio</label>
                   <input type="time" className={inputCls} value={horaInicio} onChange={e => setHoraInicio(e.target.value)} />
                 </div>
-                <div>
-                  <label className={labelCls}>Hora fin</label>
-                  <input type="time" className={inputCls} value={horaFin} onChange={e => setHoraFin(e.target.value)} />
-                </div>
+                {/* La hora de finalización se carga en la última hoja (revisión): más cómodo para el ejecutor. */}
                 <div>
                   <label className={labelCls}>Jornada (horas)</label>
                   <input type="number" className={inputCls} value={jornadaHoras} onChange={e => setJornadaHoras(e.target.value)} placeholder="Ej: 8" />
@@ -1075,18 +1099,21 @@ export function MedicionRuidoEjecutorModal({
               </div>
             </section>
 
-            {/* Documentos a anexar al PDF de evidencia (encomienda + plano) */}
+            {/* Encomienda del colegio profesional (se anexa al PDF de evidencia).
+                El plano/croquis NO se pide acá: viene del campo "Plano / croquis"
+                de arriba (plano_url) — así no se duplica en el PDF. */}
             <section className="space-y-3 rounded-xl border border-border-subtle p-4 sm:p-5">
               <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2">
-                <FileCheck size={16} className="text-sig-500" /> Documentos del protocolo
+                <FileCheck size={16} className="text-sig-500" /> Encomienda del colegio profesional
               </h3>
               <p className="text-xs text-text-tertiary">
-                Cargá la encomienda del colegio profesional y el plano/croquis. Se anexan al PDF al emitir.
+                Cargá la encomienda del colegio profesional. Se anexa al PDF al emitir.
+                El plano/croquis sale del que cargaste arriba.
               </p>
               <ProtocoloAdjuntosControl
                 registroId={registroId}
                 rgFechaPlanificada={rgFechaPlanificada}
-                tipos={['encomienda', 'plano']}
+                tipos={['encomienda']}
               />
             </section>
           </div>
@@ -1532,6 +1559,16 @@ export function MedicionRuidoEjecutorModal({
         {step === 'revisar' && (
           <div className="space-y-5">
             <p className="text-sm text-text-secondary">Revisá las hojas antes de guardar el protocolo.</p>
+
+            {/* Cierre del relevamiento: la hora de finalización se carga acá (se movió desde la hoja 1). */}
+            <ReviewSection title="Cierre del relevamiento">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className={labelCls}>Hora de finalización</label>
+                  <input type="time" className={inputCls} value={horaFin} onChange={e => setHoraFin(e.target.value)} />
+                </div>
+              </div>
+            </ReviewSection>
 
             {/* Resumen hoja 1 */}
             <ReviewSection title="Datos del protocolo">

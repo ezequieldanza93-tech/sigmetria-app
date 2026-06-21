@@ -40,7 +40,7 @@ import {
   type FilaGrillaCargaTermica,
 } from '@/lib/pdf/descriptors/carga-termica'
 import { getFotoYMapaEstablecimiento } from '@/lib/pdf/establecimiento-media'
-import { getAnexoCertificadoCalibracion } from '@/lib/pdf/anexo-certificado'
+import { getAnexoCertificadoCalibracion, getAnexoPlano } from '@/lib/pdf/anexo-certificado'
 import type { AnexoInput } from '@/lib/pdf/merge-anexos'
 import type { ActionResult } from '@/lib/types'
 
@@ -460,6 +460,11 @@ export async function generarReporteProtocoloCargaTermica(
     (instrRaw?.id as string | undefined) ?? null,
   )
   if (certAnexo) anexosSistema.push(certAnexo)
+
+  // Anexo de sistema: plano / croquis de mediciones (cargado en la hoja 1, persistido
+  // en medicion_carga_termica.plano_url; bucket privado 'documentos'). Best-effort.
+  const planoAnexo = await getAnexoPlano((m.plano_url as string | null) ?? null)
+  if (planoAnexo) anexosSistema.push(planoAnexo)
 
   return { success: true, data: { pdf: pdfBuffer, anexos: anexosSistema } }
 }

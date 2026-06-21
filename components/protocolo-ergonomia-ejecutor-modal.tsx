@@ -642,8 +642,22 @@ export function ProtocoloErgonomiaEjecutorModal({
   }
 
   function avanzar() {
-    if (paso === 'datos') { setPaso('factores'); return }
+    if (paso === 'datos') { setErrorGlobal(null); setPaso('factores'); return }
     if (paso === 'factores') {
+      // Validación: cada factor marcado como presente debe estar completo
+      // (tiempo de exposición + nivel de riesgo) antes de avanzar.
+      for (const ft of factoresPresentes) {
+        const tiempoOk = ft.tiempo_exposicion.trim() !== '' && Number(ft.tiempo_exposicion) > 0
+        const nivelOk = ft.nivel_riesgo !== null
+        if (!tiempoOk || !nivelOk) {
+          const meta = FACTORES.find(f => f.key === ft.factor)
+          setErrorGlobal(
+            `Factor ${ft.factor} (${meta?.label ?? ''}) — Tarea ${ft.tarea_numero}: completá tiempo de exposición y nivel de riesgo.`
+          )
+          return
+        }
+      }
+      setErrorGlobal(null)
       if (factoresPresentes.length > 0) {
         iniciarEvaluacion()
       } else {
@@ -651,9 +665,9 @@ export function ProtocoloErgonomiaEjecutorModal({
       }
       return
     }
-    if (paso === 'evaluacion') { iniciarMedidas(); return }
-    if (paso === 'medidas') { iniciarSeguimiento(); return }
-    if (paso === 'seguimiento') { setPaso('revisar'); return }
+    if (paso === 'evaluacion') { setErrorGlobal(null); iniciarMedidas(); return }
+    if (paso === 'medidas') { setErrorGlobal(null); iniciarSeguimiento(); return }
+    if (paso === 'seguimiento') { setErrorGlobal(null); setPaso('revisar'); return }
   }
 
   function retroceder() {
@@ -968,8 +982,15 @@ export function ProtocoloErgonomiaEjecutorModal({
               <Info size={14} className="text-amber-600 shrink-0" />
               <p className="text-xs text-amber-700">
                 {factoresPresentes.length} factor{factoresPresentes.length !== 1 ? 'es' : ''} presente{factoresPresentes.length !== 1 ? 's' : ''}.
-                El siguiente paso completará la Evaluación Inicial (Planilla 2).
+                Completá tiempo de exposición y nivel de riesgo de cada uno. El siguiente paso completará la Evaluación Inicial (Planilla 2).
               </p>
+            </div>
+          )}
+
+          {errorGlobal && (
+            <div className="flex items-center gap-2 p-3 bg-red-50 rounded-lg border border-red-200">
+              <AlertCircle size={14} className="text-red-600 shrink-0" />
+              <p className="text-sm text-red-700">{errorGlobal}</p>
             </div>
           )}
         </div>

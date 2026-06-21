@@ -30,7 +30,7 @@ import { getFirmasEntidad } from '@/lib/actions/firmas'
 import { resolveAssetUrl } from '@/lib/storage/resolve-url'
 import { renderProtocolo } from '@/lib/pdf/protocolo-engine'
 import { getFotoYMapaEstablecimiento } from '@/lib/pdf/establecimiento-media'
-import { getAnexoCertificadoCalibracion } from '@/lib/pdf/anexo-certificado'
+import { getAnexoCertificadoCalibracion, getAnexoPlano } from '@/lib/pdf/anexo-certificado'
 import {
   PAT_DESCRIPTOR,
   type DatosProtocoloPat,
@@ -332,6 +332,10 @@ export async function generarReporteProtocoloPat(
     (instrRaw?.id as string | undefined) ?? null,
   )
   if (certAnexo) anexosSistema.push(certAnexo)
+
+  // Anexo de sistema: plano / croquis de las tomas cargado en la Hoja 1 (best-effort).
+  const planoAnexo = await getAnexoPlano((m.plano_url as string | null) ?? null)
+  if (planoAnexo) anexosSistema.push(planoAnexo)
 
   return { success: true, data: { pdf: pdfBuffer, anexos: anexosSistema } }
 }

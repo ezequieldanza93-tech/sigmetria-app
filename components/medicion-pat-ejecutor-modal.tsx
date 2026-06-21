@@ -475,8 +475,30 @@ export function MedicionPatEjecutorModal({
       if (!fechaMedicion) { setError('Cargá la fecha de medición.'); return }
       setStep('tomas')
     } else if (step === 'tomas') {
-      const algunaConValor = tomas.some(t => num(t.valor_medido_ohm) != null)
-      if (!algunaConValor) { setError('Cargá al menos una toma con su valor medido (Ω).'); return }
+      // Cada toma debe estar COMPLETA antes de avanzar (SRT 900/2015). Las
+      // `observaciones` de la toma son texto libre opcional; el resto es obligatorio.
+      for (let i = 0; i < tomas.length; i++) {
+        const t = tomas[i]
+        const etiqueta = `Toma ${t.numero_toma || i + 1}`
+        const faltantes: string[] = []
+        if (!t.numero_toma.trim() || num(t.numero_toma) == null) faltantes.push('N° de toma')
+        if (!t.sector_id) faltantes.push('sector')
+        if (!t.seccion.trim()) faltantes.push('sección / ubicación')
+        if (!t.uso_pat) faltantes.push('uso de la PaT')
+        if (!t.condicion_terreno) faltantes.push('condición del terreno')
+        if (!t.ect) faltantes.push('esquema de conexión (ECT)')
+        if (num(t.valor_medido_ohm) == null) faltantes.push('valor medido (Ω)')
+        if (num(t.valor_exigido_ohm) == null) faltantes.push('valor exigido (Ω)')
+        if (t.continuidad === '') faltantes.push('continuidad')
+        if (t.capacidad_carga === '') faltantes.push('capacidad de carga')
+        if (t.desconexion_automatica === '') faltantes.push('desconexión automática')
+        if (!t.proteccion) faltantes.push('dispositivo de protección')
+        if (faltantes.length > 0) {
+          setTomaActiva(i)
+          setError(`${etiqueta}: completá ${faltantes.join(', ')}.`)
+          return
+        }
+      }
       setStep('observaciones')
     } else if (step === 'observaciones') {
       const obsSinCat = observacionesSeguimiento.filter(o => o.descripcion.trim() && !o.categoria_id)
@@ -887,7 +909,7 @@ export function MedicionPatEjecutorModal({
             {/* Fecha y horario */}
             <section className="space-y-4">
               <h3 className="text-sm font-semibold text-text-primary">Fecha y horario</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className={labelCls}>Fecha de medición <span className="text-danger">*</span></label>
                   <input type="date" className={inputCls} value={fechaMedicion} onChange={e => setFechaMedicion(e.target.value)} />
@@ -899,10 +921,6 @@ export function MedicionPatEjecutorModal({
                 <div>
                   <label className={labelCls}>Hora inicio</label>
                   <input type="time" className={inputCls} value={horaInicio} onChange={e => setHoraInicio(e.target.value)} />
-                </div>
-                <div>
-                  <label className={labelCls}>Hora fin</label>
-                  <input type="time" className={inputCls} value={horaFin} onChange={e => setHoraFin(e.target.value)} />
                 </div>
               </div>
             </section>
@@ -919,15 +937,17 @@ export function MedicionPatEjecutorModal({
                 </div>
               </div>
 
-              {/* Documentos profesionales que se anexan al PDF al emitir (encomienda + plano) */}
+              {/* Documentos profesionales que se anexan al PDF al emitir (encomienda).
+                  El plano/croquis se carga arriba (Plano / croquis de las tomas → plano_url)
+                  y se anexa al reporte como anexo de sistema. */}
               <div className="rounded-xl border border-border-subtle p-4 space-y-3">
                 <p className="text-xs text-text-secondary">
-                  Cargá la encomienda del colegio profesional y el plano/croquis. Se anexan al PDF al emitir.
+                  Cargá la encomienda del colegio profesional. Se anexa al PDF al emitir.
                 </p>
                 <ProtocoloAdjuntosControl
                   registroId={registroId}
                   rgFechaPlanificada={rgFechaPlanificada}
-                  tipos={['encomienda', 'plano']}
+                  tipos={['encomienda']}
                 />
               </div>
 
@@ -1282,6 +1302,16 @@ export function MedicionPatEjecutorModal({
         {step === 'revisar' && (
           <div className="space-y-5">
             <p className="text-sm text-text-secondary">Revisá las hojas antes de guardar el protocolo.</p>
+
+            {/* Cierre del relevamiento: hora de finalización (se completa al terminar) */}
+            <ReviewSection title="Cierre del relevamiento">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className={labelCls}>Hora de finalización</label>
+                  <input type="time" className={inputCls} value={horaFin} onChange={e => setHoraFin(e.target.value)} />
+                </div>
+              </div>
+            </ReviewSection>
 
             {/* Resumen hoja 1 */}
             <ReviewSection title="Datos del protocolo">

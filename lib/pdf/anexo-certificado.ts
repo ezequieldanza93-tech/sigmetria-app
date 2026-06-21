@@ -58,3 +58,30 @@ export async function getAnexoCertificadoCalibracion(
     return null
   }
 }
+
+/**
+ * Resuelve el PLANO / CROQUIS de mediciones (cargado en la hoja 1 del formulario,
+ * persistido en <tabla>.plano_url, bucket privado 'documentos') como anexo de sistema.
+ * Best-effort: si no hay plano o falla, devuelve null. Igual que iluminación.
+ */
+export async function getAnexoPlano(
+  planoPath: string | null | undefined,
+): Promise<AnexoInput | null> {
+  try {
+    if (!planoPath) return null
+    const supabase = await createClient()
+    const { data: signed } = await supabase.storage.from('documentos').createSignedUrl(planoPath, 600)
+    if (!signed?.signedUrl) return null
+    const r = await fetch(signed.signedUrl)
+    if (!r.ok) return null
+    return {
+      titulo: 'Plano o Croquis de Mediciones',
+      buffer: Buffer.from(await r.arrayBuffer()),
+      mime: r.headers.get('content-type') ?? undefined,
+      clave: 'plano',
+    }
+  } catch (err) {
+    console.error('[ANEXO-PLANO] fallo al resolver el plano:', err instanceof Error ? err.message : String(err))
+    return null
+  }
+}

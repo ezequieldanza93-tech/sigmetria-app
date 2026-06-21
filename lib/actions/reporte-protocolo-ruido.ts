@@ -40,7 +40,7 @@ import {
   type PeriodoExposicion,
 } from '@/lib/medicion-ruido/calculos'
 import { getFotoYMapaEstablecimiento } from '@/lib/pdf/establecimiento-media'
-import { getAnexoCertificadoCalibracion } from '@/lib/pdf/anexo-certificado'
+import { getAnexoCertificadoCalibracion, getAnexoPlano } from '@/lib/pdf/anexo-certificado'
 import type { AnexoInput } from '@/lib/pdf/merge-anexos'
 import type { ActionResult } from '@/lib/types'
 
@@ -397,14 +397,20 @@ export async function generarReporteProtocoloRuido(
     }
   }
 
-  // Anexo de sistema: certificado de calibración del sonómetro (best-effort).
-  // Los adjuntos manuales (encomienda/plano) se suman en emitir-evidencia-ruido.ts.
+  // Anexos de sistema: certificado de calibración del sonómetro + plano/croquis
+  // (best-effort). El plano sale del campo "Plano / croquis" de la hoja 1
+  // (medicion_ruido.plano_url) — así NO se duplica con el control de adjuntos, que
+  // ahora pide SOLO la encomienda. El resto de adjuntos manuales (encomienda/otro)
+  // se suman en emitir-evidencia-ruido.ts.
   const anexosSistema: AnexoInput[] = []
   const certAnexo = await getAnexoCertificadoCalibracion(
     (m.certificado_id as string | null) ?? null,
     (instrRaw?.id as string | undefined) ?? null,
   )
   if (certAnexo) anexosSistema.push(certAnexo)
+
+  const planoAnexo = await getAnexoPlano((m.plano_url as string | null) ?? null)
+  if (planoAnexo) anexosSistema.push(planoAnexo)
 
   return { success: true, data: { pdf: pdfBuffer, anexos: anexosSistema } }
 }

@@ -791,8 +791,30 @@ export function MedicionCargaTermicaEjecutorModal({
       if (!fechaMedicion) { setError('Cargá la fecha de medición.'); return }
       setStep('puestos')
     } else if (step === 'puestos') {
-      const algunoConDatos = puestos.some(p => p.periodos.some(per => per.tareas.some(t => num(t.tiempo_min) != null && num(t.tm_w) != null)))
-      if (!algunoConDatos) { setError('Cargá al menos un puesto con un período que tenga tareas con tiempo y TM.'); return }
+      // Validación estricta: cada puesto identificado y cada tarea de cada período COMPLETA
+      // (descripción, tiempo, TM, TGBH y VAR). No alcanza con "al menos uno con datos".
+      for (let pi = 0; pi < puestos.length; pi++) {
+        const p = puestos[pi]
+        const etiqueta = p.trabajador.trim() || p.nombre_puesto.trim() || `Puesto ${pi + 1}`
+        if (!p.trabajador.trim() && !p.nombre_puesto.trim()) {
+          setError(`${etiqueta}: identificá el trabajador o el sector / puesto.`); return
+        }
+        for (const per of p.periodos) {
+          for (let ti = 0; ti < per.tareas.length; ti++) {
+            const t = per.tareas[ti]
+            const faltantes: string[] = []
+            if (!t.descripcion.trim()) faltantes.push('descripción')
+            if (num(t.tiempo_min) == null) faltantes.push('tiempo (min)')
+            if (num(t.tm_w) == null) faltantes.push('TM (W)')
+            if (tgbhDeTarea(t, per.exterior) == null) faltantes.push('TGBH (°C)')
+            if (num(t.var) == null) faltantes.push('VAR (ropa)')
+            if (faltantes.length > 0) {
+              setError(`${etiqueta} · Período ${per.numero} · Tarea ${ti + 1}: completá ${faltantes.join(', ')}.`)
+              return
+            }
+          }
+        }
+      }
       setStep('observaciones')
     } else if (step === 'observaciones') {
       const obsSinCat = observacionesSeguimiento.filter(o => o.descripcion.trim() && !o.categoria_id)
@@ -1131,7 +1153,7 @@ export function MedicionCargaTermicaEjecutorModal({
             {/* Fecha, horario y turnos */}
             <section className="space-y-4">
               <h3 className="text-sm font-semibold text-text-primary">Fecha, horario y turnos</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className={labelCls}>Fecha de medición <span className="text-danger">*</span></label>
                   <input type="date" className={inputCls} value={fechaMedicion} onChange={e => setFechaMedicion(e.target.value)} />
@@ -1143,10 +1165,6 @@ export function MedicionCargaTermicaEjecutorModal({
                 <div>
                   <label className={labelCls}>Hora inicio</label>
                   <input type="time" className={inputCls} value={horaInicio} onChange={e => setHoraInicio(e.target.value)} />
-                </div>
-                <div>
-                  <label className={labelCls}>Hora fin</label>
-                  <input type="time" className={inputCls} value={horaFin} onChange={e => setHoraFin(e.target.value)} />
                 </div>
               </div>
               <div>
@@ -1268,9 +1286,9 @@ export function MedicionCargaTermicaEjecutorModal({
                 <FileCheck size={16} className="text-sig-500" /> Documentos para anexar al protocolo
               </h3>
               <p className="text-xs text-text-tertiary">
-                Cargá la encomienda del colegio profesional y el plano/croquis. Se anexan al PDF al emitir.
+                Cargá la encomienda del colegio profesional. Se anexa al PDF al emitir. El plano/croquis que subiste arriba se anexa automáticamente.
               </p>
-              <ProtocoloAdjuntosControl registroId={registroId} rgFechaPlanificada={rgFechaPlanificada} tipos={['encomienda', 'plano']} />
+              <ProtocoloAdjuntosControl registroId={registroId} rgFechaPlanificada={rgFechaPlanificada} tipos={['encomienda']} />
             </section>
           </div>
         )}
@@ -1704,6 +1722,15 @@ export function MedicionCargaTermicaEjecutorModal({
         {step === 'revisar' && (
           <div className="space-y-5">
             <p className="text-sm text-text-secondary">Revisá las hojas antes de guardar el protocolo.</p>
+
+            <ReviewSection title="Cierre del relevamiento">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className={labelCls}>Hora de finalización</label>
+                  <input type="time" className={inputCls} value={horaFin} onChange={e => setHoraFin(e.target.value)} />
+                </div>
+              </div>
+            </ReviewSection>
 
             <ReviewSection title="Datos del protocolo">
               <ReviewGrid>
