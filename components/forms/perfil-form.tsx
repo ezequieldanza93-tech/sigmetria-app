@@ -8,6 +8,7 @@ import { vincularPersonaPerfil, crearYVincularPersona, updatePassword } from '@/
 import { setLocale } from '@/lib/actions/locale'
 import { EstablecimientoProgress, type ProgressCheck } from './establecimiento-progress'
 import { PersonaSelector } from '@/components/persona-selector'
+import { MiMatriculaDni, type MiPersona } from '@/components/perfil/mi-matricula-dni'
 
 type SectionId = 1 | 2 | 3
 type ModoPersona = 'vinculado' | 'selector' | 'nuevo'
@@ -132,9 +133,10 @@ interface Props {
   email: string
   avatarUrl: string | null
   personaId: string | null
+  miPersona: MiPersona | null
 }
 
-export function PerfilForm({ fullName, email, personaId: initialPersonaId }: Props) {
+export function PerfilForm({ fullName, email, personaId: initialPersonaId, miPersona }: Props) {
   const locale = useLocale()
   const [currentSection, setCurrentSection] = useState<SectionId>(1)
 
@@ -402,6 +404,11 @@ export function PerfilForm({ fullName, email, personaId: initialPersonaId }: Pro
             </div>
           </form>
         )}
+
+        {/* Matrícula y DNI de la persona del directorio vinculada al usuario */}
+        <div className="pt-4 mt-2 border-t border-border-subtle">
+          <MiMatriculaDni persona={miPersona} />
+        </div>
 
         <div className="flex justify-end pt-1">
           <button type="button" onClick={goNext} className="px-4 py-2 text-sm font-medium rounded-lg border border-border-default text-text-secondary hover:bg-surface-elevated transition-colors">

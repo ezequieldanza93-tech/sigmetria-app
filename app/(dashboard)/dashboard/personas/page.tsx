@@ -7,7 +7,12 @@ import { Modal } from '@/components/ui/modal'
 import { createClient } from '@/lib/supabase/client'
 import { createPersona, deletePersona } from '@/lib/actions/persona'
 import { SectorPuestoSelectorConAlta } from '@/components/sector-puesto-selector-con-alta'
-import type { DirectorioPersona, TipoPersona, Empresa, Establecimiento, ActionResult } from '@/lib/types'
+import { PersonaDetalleModal, type PersonaDetalle } from '@/components/persona-detalle-modal'
+import type { TipoPersona, Empresa, Establecimiento, ActionResult } from '@/lib/types'
+
+// El listado trae más columnas que el listado base (foto/dni/user_id) para
+// poder abrir el detalle sin un segundo fetch.
+type PersonaFila = PersonaDetalle
 
 function PersonaForm({
   tiposPersona,
@@ -264,21 +269,22 @@ function PersonaForm({
 
 export default function PersonasPage() {
   const searchParams = useSearchParams()
-  const [personas, setPersonas] = useState<DirectorioPersona[] | null>(null)
+  const [personas, setPersonas] = useState<PersonaFila[] | null>(null)
   const [tiposPersona, setTiposPersona] = useState<TipoPersona[]>([])
   const [empresas, setEmpresas] = useState<Empresa[]>([])
   const [activeTipo, setActiveTipo] = useState<string>('todos')
   const [showModal, setShowModal] = useState(false)
+  const [selectedPersona, setSelectedPersona] = useState<PersonaFila | null>(null)
 
   function load() {
     const supabase = createClient()
     supabase
       .from('personas_directorio')
-      .select('id, nombre, apellido, dni, legajo, telefono, tipo_id, personas_tipos(nombre)')
+      .select('id, nombre, apellido, dni, legajo, telefono, email, direccion, fecha_nacimiento, fecha_ingreso, tipo_id, user_id, foto_url, dni_frente_url, dni_dorso_url, personas_tipos(nombre)')
       .eq('is_active', true)
       .range(0, 99)
       .order('apellido')
-      .then(({ data }) => setPersonas((data as unknown as DirectorioPersona[]) ?? []))
+      .then(({ data }) => setPersonas((data as unknown as PersonaFila[]) ?? []))
   }
 
   // Las 3 queries del mount son independientes — Promise.all las dispara
@@ -363,12 +369,17 @@ export default function PersonasPage() {
                 <th className="px-5 py-3 text-text-secondary font-medium">DNI</th>
                 <th className="px-5 py-3 text-text-secondary font-medium">Legajo</th>
                 <th className="px-5 py-3 text-text-secondary font-medium">Teléfono</th>
+                <th className="px-5 py-3 text-text-secondary font-medium">Acceso</th>
                 <th className="px-5 py-3"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {filtered.map(p => (
-                <tr key={p.id} className="hover:bg-surface-base">
+                <tr
+                  key={p.id}
+                  onClick={() => setSelectedPersona(p)}
+                  className="hover:bg-surface-base cursor-pointer"
+                >
                   <td className="px-5 py-3.5 font-medium text-text-primary">{p.apellido}, {p.nombre}</td>
                   <td className="px-5 py-3.5">
                     <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-surface-elevated text-text-secondary">
@@ -378,9 +389,16 @@ export default function PersonasPage() {
                   <td className="px-5 py-3.5 text-text-secondary">{p.dni ?? '—'}</td>
                   <td className="px-5 py-3.5 text-text-secondary">{p.legajo ?? '—'}</td>
                   <td className="px-5 py-3.5 text-text-secondary">{p.telefono ?? '—'}</td>
+                  <td className="px-5 py-3.5">
+                    {p.user_id ? (
+                      <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-sig-50 text-sig-700">Usuario</span>
+                    ) : (
+                      <span className="text-text-tertiary text-xs">—</span>
+                    )}
+                  </td>
                   <td className="px-5 py-3.5 text-right">
                     <button
-                      onClick={() => handleDelete(p.id)}
+                      onClick={e => { e.stopPropagation(); handleDelete(p.id) }}
                       className="text-xs text-red-400 hover:text-danger"
                     >
                       Dar de baja
@@ -400,6 +418,15 @@ export default function PersonasPage() {
           onSuccess={() => { setShowModal(false); load() }}
         />
       </Modal>
+
+      {selectedPersona && (
+        <PersonaDetalleModal
+          persona={selectedPersona}
+          open={!!selectedPersona}
+          onClose={() => { setSelectedPersona(null); load() }}
+          canWrite
+        />
+      )}
     </div>
   )
 }

@@ -269,30 +269,26 @@ export async function updatePersona(
     }
   }
 
+  // Update PARCIAL: solo se tocan los campos PRESENTES en el formData. Así un form que
+  // edita un subconjunto (solo Datos, o solo DNI) no borra los campos que no manda
+  // (talles, seguro, contacto de emergencia, notas, etc.). nombre/apellido/dni siempre van.
+  const update: Record<string, unknown> = { nombre, apellido, dni }
+  const setSiViene = (key: string, esFecha = false) => {
+    if (!formData.has(key)) return
+    const raw = (formData.get(key) as string) ?? ''
+    update[key] = esFecha ? (raw || null) : (raw.trim() || null)
+  }
+  for (const k of [
+    'legajo', 'telefono', 'email', 'direccion', 'organizacion_id', 'notas',
+    'talle_calzado', 'talle_pantalon', 'talle_remera', 'talle_camisa', 'talle_buzo', 'talle_campera',
+    'beneficiario_seguro', 'contacto_emergencia_nombre', 'contacto_emergencia_telefono',
+  ]) setSiViene(k)
+  setSiViene('fecha_nacimiento', true)
+  setSiViene('fecha_ingreso', true)
+
   const { error } = await supabase
     .from('personas_directorio')
-    .update({
-      nombre,
-      apellido,
-      dni,
-      legajo: (formData.get('legajo') as string)?.trim() || null,
-      fecha_nacimiento: (formData.get('fecha_nacimiento') as string) || null,
-      fecha_ingreso: (formData.get('fecha_ingreso') as string) || null,
-      telefono: (formData.get('telefono') as string)?.trim() || null,
-      email: (formData.get('email') as string)?.trim() || null,
-      direccion: (formData.get('direccion') as string)?.trim() || null,
-      organizacion_id: (formData.get('organizacion_id') as string) || null,
-      notas: (formData.get('notas') as string)?.trim() || null,
-      talle_calzado: (formData.get('talle_calzado') as string)?.trim() || null,
-      talle_pantalon: (formData.get('talle_pantalon') as string)?.trim() || null,
-      talle_remera: (formData.get('talle_remera') as string)?.trim() || null,
-      talle_camisa: (formData.get('talle_camisa') as string)?.trim() || null,
-      talle_buzo: (formData.get('talle_buzo') as string)?.trim() || null,
-      talle_campera: (formData.get('talle_campera') as string)?.trim() || null,
-      beneficiario_seguro: (formData.get('beneficiario_seguro') as string)?.trim() || null,
-      contacto_emergencia_nombre: (formData.get('contacto_emergencia_nombre') as string)?.trim() || null,
-      contacto_emergencia_telefono: (formData.get('contacto_emergencia_telefono') as string)?.trim() || null,
-    })
+    .update(update)
     .eq('id', id)
 
   if (error) return { success: false, error: error.message }
