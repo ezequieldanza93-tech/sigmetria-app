@@ -10,17 +10,41 @@ export async function firmarGestion(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
-  // Obtener la gestión y su consultora
+  // Obtener la gestión y su consultora.
+  // Lookup robusto: maybeSingle() (no tira si el join devuelve 0 filas) + join NO-inner,
+  // para distinguir "gestión inexistente" de "empresa/consultora no legible por RLS".
+  // Antes, con .single() + empresas!inner, cualquiera de esos dos casos caía en el
+  // genérico "Gestión no encontrada" (feedback b00a891a).
   const { data: ge, error: geError } = await supabase
     .from('gestiones_establecimientos')
-    .select('id, establecimiento_id, empresas!inner(consultora_id)')
+    .select('id, establecimiento_id, empresas(consultora_id)')
     .eq('id', gestionEstablecimientoId)
-    .single()
+    .maybeSingle()
 
-  if (geError || !ge) return { success: false, error: 'Gestión no encontrada' }
+  if (geError) return { success: false, error: `No se pudo leer la gestión: ${geError.message}` }
+  if (!ge) return { success: false, error: 'Gestión no encontrada' }
 
-  const geData = ge as unknown as { id: string; establecimiento_id: string; empresas: { consultora_id: string } }
-  const consultoraId = geData.empresas.consultora_id
+  const geData = ge as unknown as {
+    id: string
+    establecimiento_id: string
+    empresas: { consultora_id: string } | { consultora_id: string }[] | null
+  }
+  const empresaRel = Array.isArray(geData.empresas) ? geData.empresas[0] : geData.empresas
+  let consultoraId = empresaRel?.consultora_id ?? null
+
+  // Fallback: si el join no trajo la empresa (RLS), derivamos la consultora por el
+  // camino canónico establecimiento → empresa → consultora.
+  if (!consultoraId && geData.establecimiento_id) {
+    const { data: est } = await supabase
+      .from('establecimientos')
+      .select('empresas!inner(consultora_id)')
+      .eq('id', geData.establecimiento_id)
+      .maybeSingle()
+    const estRel = (est as unknown as { empresas: { consultora_id: string } | { consultora_id: string }[] } | null)?.empresas
+    consultoraId = (Array.isArray(estRel) ? estRel[0] : estRel)?.consultora_id ?? null
+  }
+
+  if (!consultoraId) return { success: false, error: 'No se pudo resolver la consultora de la gestión' }
 
   // Obtener perfil del usuario
   const { data: profile } = await supabase
