@@ -458,7 +458,7 @@ export async function getMedicionIluminacion(
       establecimientos (
         id, nombre, domicilio, codigo_postal,
         empresas (
-          id, razon_social, cuit, domicilio, localidad_id
+          id, razon_social, cuit, domicilio, localidad_id, logo_destacado_url
         )
       ),
       mediciones_instrumentos (

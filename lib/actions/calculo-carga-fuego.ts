@@ -397,7 +397,7 @@ export async function getCalculoCargaFuego(
       establecimientos (
         id, nombre, domicilio, codigo_postal,
         empresas (
-          id, razon_social, cuit, domicilio, localidad_id
+          id, razon_social, cuit, domicilio, localidad_id, logo_destacado_url
         )
       ),
       calculo_carga_fuego_materiales (
