@@ -626,9 +626,26 @@ export function MedicionIluminacionEjecutorModal({
       if (!fechaMedicion) { setError('Cargá la fecha de medición.'); return }
       setStep('puntos')
     } else if (step === 'puntos') {
-      // Mínimo de la hoja 2: al menos un punto con grilla cargada.
-      const algunoConDatos = puntos.some(p => valoresDe(p).length > 0)
-      if (!algunoConDatos) { setError('Cargá al menos un punto con su grilla de mediciones.'); return }
+      // Hoja 2: cada punto debe estar COMPLETO. Los campos que arman la tabla del
+      // protocolo (ubicación, tipos, valor requerido y TODAS las celdas) son obligatorios.
+      if (puntos.length === 0) { setError('Cargá al menos un punto de medición.'); return }
+      for (let i = 0; i < puntos.length; i++) {
+        const p = puntos[i]
+        const n = i + 1
+        if (!p.sector_id || !p.puesto_id) { setError(`Punto ${n}: elegí sector y puesto.`); return }
+        if (!p.tipo_iluminacion) { setError(`Punto ${n}: indicá el tipo de iluminación.`); return }
+        if (!p.tipo_fuente) { setError(`Punto ${n}: indicá el tipo de fuente.`); return }
+        if (!p.tipo_sistema) { setError(`Punto ${n}: indicá el tipo de sistema (general/localizada/mixta).`); return }
+        if (!p.valor_requerido_lux || String(p.valor_requerido_lux).trim() === '') { setError(`Punto ${n}: cargá el valor requerido (lux).`); return }
+        let vacias = 0
+        for (let f = 0; f < p.filas; f++) {
+          for (let c = 0; c < p.columnas; c++) {
+            const v = p.celdas[`${f}-${c}`]
+            if (v == null || String(v).trim() === '') vacias++
+          }
+        }
+        if (vacias > 0) { setError(`Punto ${n}: completá todas las celdas de la grilla (${vacias} sin valor).`); return }
+      }
       setStep('analisis')
     } else if (step === 'analisis') {
       setStep('observaciones')
@@ -1141,10 +1158,7 @@ export function MedicionIluminacionEjecutorModal({
                   <label className={labelCls}>Hora inicio</label>
                   <input type="time" className={inputCls} value={horaInicio} onChange={e => setHoraInicio(e.target.value)} />
                 </div>
-                <div>
-                  <label className={labelCls}>Hora fin</label>
-                  <input type="time" className={inputCls} value={horaFin} onChange={e => setHoraFin(e.target.value)} />
-                </div>
+                {/* La hora de finalización se carga en la última hoja (revisión): más cómodo para el ejecutor. */}
               </div>
             </section>
 
@@ -1719,6 +1733,16 @@ export function MedicionIluminacionEjecutorModal({
           <div className="space-y-5">
             <p className="text-sm text-text-secondary">Revisá las tres hojas antes de guardar el protocolo.</p>
 
+            {/* Cierre del relevamiento: la hora de finalización se carga acá (se movió desde la hoja 1). */}
+            <ReviewSection title="Cierre del relevamiento">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className={labelCls}>Hora de finalización</label>
+                  <input type="time" className={inputCls} value={horaFin} onChange={e => setHoraFin(e.target.value)} />
+                </div>
+              </div>
+            </ReviewSection>
+
             {/* Resumen hoja 1 */}
             <ReviewSection title="Datos del protocolo">
               <ReviewGrid>
@@ -1793,40 +1817,29 @@ export function MedicionIluminacionEjecutorModal({
               </ReviewSection>
             )}
 
-            {/* ── Documentos adjuntos (encomienda / plano) + aviso de faltantes ──
-                Se cargan DURANTE la ejecución (el registro ya existe, así que subir
-                funciona). NO se emite la evidencia acá: la medición todavía no está
-                guardada. El merge real al PDF ocurre al emitir tras "Finalizar y guardar". */}
-            <ReviewSection title="Documentos para anexar al protocolo">
+            {/* ── Encomienda del colegio profesional (se anexa al PDF) ──
+                Se carga DURANTE la ejecución (el registro ya existe, así que subir funciona).
+                El PLANO/CROQUIS NO se pide acá: viene del campo "Plano / croquis" de la hoja 1
+                (plano_url) — así no se duplica. El merge real ocurre al "Finalizar y guardar". */}
+            <ReviewSection title="Encomienda del colegio profesional">
               <p className="text-xs text-text-tertiary mb-3">
-                Cargá acá la <span className="font-medium text-text-secondary">encomienda del colegio profesional</span> y el
-                plano o croquis. Se anexan automáticamente al PDF (con una hoja índice de
-                anexos) cuando finalizás y guardás.
+                Cargá la <span className="font-medium text-text-secondary">encomienda del colegio profesional</span>.
+                Se anexa automáticamente al PDF (en la hoja índice de anexos) cuando finalizás y
+                guardás. El plano/croquis sale del que cargaste en la primera hoja.
               </p>
-              {(() => {
-                const faltaEncomienda = !adjuntos.some(a => a.tipo === 'encomienda')
-                const faltaPlano = !adjuntos.some(a => a.tipo === 'plano')
-                if (!faltaEncomienda && !faltaPlano) return null
-                return (
-                  <div className="bg-warning-bg border border-amber-200 text-warning text-sm rounded-lg px-3 py-2.5 flex items-start gap-2 mb-3">
-                    <AlertTriangle size={16} className="shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-medium">
-                        {faltaEncomienda ? 'Falta cargar la encomienda profesional' : 'Documentos pendientes'}
-                      </p>
-                      <ul className="mt-1 space-y-0.5 text-xs list-disc list-inside">
-                        {faltaEncomienda && <li>Encomienda del colegio profesional (se anexa al protocolo)</li>}
-                        {faltaPlano && <li>Plano o croquis de mediciones</li>}
-                      </ul>
-                      <p className="mt-1 text-xs opacity-80">Adjuntalos abajo para que se fusionen al PDF, o terminá igual.</p>
-                    </div>
+              {!adjuntos.some(a => a.tipo === 'encomienda') && (
+                <div className="bg-warning-bg border border-amber-200 text-warning text-sm rounded-lg px-3 py-2.5 flex items-start gap-2 mb-3">
+                  <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-medium">Falta cargar la encomienda profesional</p>
+                    <p className="mt-1 text-xs opacity-80">Adjuntala abajo para que se fusione al PDF, o terminá igual.</p>
                   </div>
-                )
-              })()}
+                </div>
+              )}
               <ProtocoloAdjuntosControl
                 registroId={registroId}
                 rgFechaPlanificada={rgFechaPlanificada}
-                tipos={['encomienda', 'plano']}
+                tipos={['encomienda']}
                 onAdjuntosChange={handleAdjuntosChange}
               />
             </ReviewSection>
