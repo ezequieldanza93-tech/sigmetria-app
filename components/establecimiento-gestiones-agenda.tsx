@@ -37,6 +37,7 @@ import { emitirEvidenciaCargaTermica } from '@/lib/actions/emitir-evidencia-carg
 import { emitirEvidenciaErgonomia } from '@/lib/actions/emitir-evidencia-ergonomia'
 import { emitirEvidenciaCargaFuego } from '@/lib/actions/emitir-evidencia-carga-fuego'
 import { PersonaSelector } from '@/components/persona-selector'
+import { PersonaSelectorConAlta } from '@/components/persona-selector-con-alta'
 import { AuditHistorialLink } from '@/components/auditoria/audit-historial-link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 
@@ -1322,6 +1323,11 @@ function EjecucionModal({
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [personas, setPersonas] = useState<{ id: string; nombre: string; apellido: string }[]>([])
+  // Responsable de la gestión: arranca con el planificado. Si quien ejecuta (el usuario
+  // logueado) es OTRA persona, ofrecemos cambiar el responsable a sí mismo (swap-confirm).
+  const [miPersona, setMiPersona] = useState<{ id: string; nombre: string; apellido: string } | null>(null)
+  const [responsableId, setResponsableId] = useState<string>(registro.responsable_id ?? '')
+  const [swapVisto, setSwapVisto] = useState(false)
   const [clasificaciones, setClasificaciones] = useState<{ id: string; nombre: string }[]>([])
   const [categorias, setCategorias] = useState<CategoriaObs[]>([])
   const [observaciones, setObservaciones] = useState<ObsDraft[]>([])
@@ -1363,6 +1369,9 @@ function EjecucionModal({
       if (user) {
         supabase.from('profiles').select('auto_download_gestion').eq('id', user.id).maybeSingle()
           .then(({ data }) => setAutoDownload(data?.auto_download_gestion ?? true))
+        // Persona del directorio que corresponde al usuario logueado (para el swap-confirm).
+        supabase.from('personas_directorio').select('id, nombre, apellido').eq('user_id', user.id).maybeSingle()
+          .then(({ data }) => { if (data) setMiPersona(data as { id: string; nombre: string; apellido: string }) })
       }
     })
   }, [establecimientoId])
@@ -1505,8 +1514,49 @@ function EjecucionModal({
 
         <div>
           <label className="text-sm font-medium text-text-secondary block mb-1">Responsable</label>
-          <select name="responsable_id" defaultValue={registro.responsable_id ?? ''} className={inputCls}>
+          {(() => {
+            const planned = personas.find(p => p.id === registro.responsable_id)
+            const plannedNombre = planned
+              ? `${planned.apellido}, ${planned.nombre}`
+              : (registro.responsable_nombre ?? 'otra persona')
+            const showSwap = !!registro.responsable_id && !!miPersona
+              && registro.responsable_id !== miPersona.id && !swapVisto
+            if (!showSwap || !miPersona) return null
+            return (
+              <div className="mb-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                <p>
+                  Esta gestión estaba planificada para que la ejecute <strong>{plannedNombre}</strong>.
+                  ¿Querés cambiar el responsable y ejecutarla vos?
+                </p>
+                <div className="flex gap-2 mt-2">
+                  <button
+                    type="button"
+                    onClick={() => { setResponsableId(miPersona.id); setSwapVisto(true) }}
+                    className="px-2.5 py-1 rounded-md bg-amber-600 text-white font-medium hover:bg-amber-700"
+                  >
+                    Sí, la ejecuto yo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSwapVisto(true)}
+                    className="px-2.5 py-1 rounded-md border border-amber-300 bg-white font-medium hover:bg-amber-100"
+                  >
+                    No, mantener a {planned ? planned.nombre : 'el responsable'}
+                  </button>
+                </div>
+              </div>
+            )
+          })()}
+          <select
+            name="responsable_id"
+            value={responsableId}
+            onChange={e => setResponsableId(e.target.value)}
+            className={inputCls}
+          >
             <option value="">Sin asignar</option>
+            {miPersona && !personas.some(p => p.id === miPersona.id) && (
+              <option value={miPersona.id}>{miPersona.apellido}, {miPersona.nombre} (vos)</option>
+            )}
             {personas.map(p => (
               <option key={p.id} value={p.id}>{p.apellido}, {p.nombre}</option>
             ))}
@@ -1617,17 +1667,13 @@ function EjecucionModal({
                       </select>
                     </div>
                     <div>
-                      <label className="text-xs text-text-secondary block mb-0.5">Responsable</label>
-                      <select
-                        value={obs.responsable_id}
-                        onChange={e => updateObs(obs.key, 'responsable_id', e.target.value)}
-                        className="w-full border border-border-default rounded-lg px-2 py-1.5 text-xs bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500"
-                      >
-                        <option value="">Sin asignar</option>
-                        {personas.map(p => (
-                          <option key={p.id} value={p.id}>{p.apellido}, {p.nombre}</option>
-                        ))}
-                      </select>
+                      <label className="text-xs text-text-secondary block mb-0.5">Responsable de subsanar</label>
+                      <PersonaSelectorConAlta
+                        establecimientoId={establecimientoId}
+                        value={obs.responsable_id || null}
+                        onChange={p => updateObs(obs.key, 'responsable_id', p?.id ?? '')}
+                        placeholder="Buscar o crear persona…"
+                      />
                     </div>
                     <div>
                       <label className="text-xs text-text-secondary block mb-0.5">Fecha subsanación</label>
