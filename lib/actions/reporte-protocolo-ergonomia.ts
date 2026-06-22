@@ -34,9 +34,18 @@ import {
   type DatosProtocoloErgonomia,
   type FactorTareaRow,
   type SeguimientoRow,
+  type EvalFactorPlanilla2,
+  type MedidasPlanilla3,
 } from '@/lib/pdf/descriptors/ergonomia'
 import type { AnexoInput } from '@/lib/pdf/merge-anexos'
-import type { ActionResult, ErgonomiaEvaluacionDetalle, FactorErgonomia } from '@/lib/types'
+import type {
+  ActionResult,
+  ErgonomiaEvaluacionDetalle,
+  FactorErgonomia,
+  RespuestaPaso,
+  MedidaEspecifica,
+  VibSubtipo,
+} from '@/lib/types'
 
 // ─── Helpers de formateo (clonados de iluminación) ──────────────────────────
 
@@ -77,6 +86,19 @@ async function urlToDataUrl(url: string | null | undefined): Promise<string | un
   } catch {
     return undefined
   }
+}
+
+/**
+ * Combina respuestas de un mismo paso con semántica OR: el factor en el PUESTO se considera
+ * "SÍ" en la pregunta N si CUALQUIER tarea respondió SÍ. La Planilla 2 del PDF es por factor
+ * (una sola matriz), pero los datos se cargan por (factor, tarea). Mantenemos el número de
+ * pregunta `n` (mapea a la fila de la tabla `.sino`).
+ */
+function mergeRespuestas(acc: RespuestaPaso[], nuevas: RespuestaPaso[]): RespuestaPaso[] {
+  const out = new Map<number, boolean>()
+  for (const r of acc) out.set(r.n, r.respuesta)
+  for (const r of nuevas) out.set(r.n, (out.get(r.n) ?? false) || r.respuesta)
+  return [...out.entries()].sort((a, b) => a[0] - b[0]).map(([n, respuesta]) => ({ n, respuesta }))
 }
 
 // ─── FUNCIÓN PRINCIPAL ───────────────────────────────────────────────────────
@@ -145,6 +167,76 @@ export async function generarReporteProtocoloErgonomia(
       fechaImplIngenieria: formatFecha(s.fecha_implementacion_ingenieria),
       fechaCierre: formatFecha(s.fecha_cierre),
     }))
+
+  // ── 3b. Planilla 2 — Evaluación inicial SÍ/NO por (factor, subtipo) ─────────
+  // Los datos vienen por (factor, tarea[, subtipo de vibración]); la Planilla 2 del PDF
+  // es por factor (una matriz por factor — G tiene dos: mano-brazo y cuerpo entero).
+  // Agrupamos por factor+subtipo combinando las respuestas de las tareas con OR.
+  const porEvalFactor = new Map<string, EvalFactorPlanilla2>()
+  for (const efac of ev.ergonomia_evaluacion_factor ?? []) {
+    const subtipo: VibSubtipo | null = efac.vibracion_subtipo ?? null
+    const k = `${efac.factor}|${subtipo ?? ''}`
+    const prev = porEvalFactor.get(k)
+    if (prev) {
+      prev.paso1 = mergeRespuestas(prev.paso1, efac.paso1_respuestas ?? [])
+      prev.paso2 = mergeRespuestas(prev.paso2, efac.paso2_respuestas ?? [])
+    } else {
+      porEvalFactor.set(k, {
+        factor: efac.factor,
+        subtipo,
+        paso1: [...(efac.paso1_respuestas ?? [])],
+        paso2: [...(efac.paso2_respuestas ?? [])],
+      })
+    }
+  }
+  const evalFactores: EvalFactorPlanilla2[] = [...porEvalFactor.values()]
+
+  // ── 3c. Planilla 3 — Medidas Correctivas y Preventivas (agregadas) ─────────
+  // `ergonomia_medidas` es un registro por tarea (o uno genérico). La Planilla 3 del PDF
+  // tiene una sola tabla, así que agregamos: mg1/mg2/mg3 con OR (cualquier tarea que diga
+  // SÍ → SÍ), fechas/observaciones con la 1ra no vacía, y concatenamos las medidas
+  // específicas de todas las tareas. Las medidas con fecha ISO se formatean a DD/MM/YYYY.
+  const medRows = ev.ergonomia_medidas ?? []
+  let medidas: MedidasPlanilla3 | undefined
+  if (medRows.length > 0) {
+    // OR sobre un boolean nullable: true si alguno es true; false si alguno es false y ninguno true; null si todos null.
+    const orBool = (sel: (m: (typeof medRows)[number]) => boolean | null): boolean | null => {
+      let vistoFalse = false
+      for (const m of medRows) {
+        const v = sel(m)
+        if (v === true) return true
+        if (v === false) vistoFalse = true
+      }
+      return vistoFalse ? false : null
+    }
+    const primeraNoVacia = (sel: (m: (typeof medRows)[number]) => string | null): string | null => {
+      for (const m of medRows) {
+        const v = sel(m)
+        if (v && v.trim()) return v
+      }
+      return null
+    }
+    const especificas: MedidaEspecifica[] = medRows.flatMap((m) =>
+      (m.medidas_especificas ?? []).map((e) => ({
+        descripcion: e.descripcion,
+        tipo: e.tipo,
+        fecha: formatFecha(e.fecha) === '—' ? (e.fecha ?? null) : formatFecha(e.fecha),
+        observaciones: e.observaciones ?? null,
+      })),
+    )
+    const fechaGeneral = primeraNoVacia((m) => m.mg1_fecha) ?? primeraNoVacia((m) => m.mg2_fecha) ?? primeraNoVacia((m) => m.mg3_fecha)
+    medidas = {
+      mg1: orBool((m) => m.mg1_informado),
+      mg1Obs: primeraNoVacia((m) => m.mg1_observaciones),
+      mg2: orBool((m) => m.mg2_capacitado_sintomas),
+      mg2Obs: primeraNoVacia((m) => m.mg2_observaciones),
+      mg3: orBool((m) => m.mg3_capacitado_medidas),
+      mg3Obs: primeraNoVacia((m) => m.mg3_observaciones),
+      fechaGeneral: fechaGeneral ? (formatFecha(fechaGeneral) === '—' ? fechaGeneral : formatFecha(fechaGeneral)) : null,
+      especificas,
+      observaciones: primeraNoVacia((m) => m.observaciones),
+    }
+  }
 
   // ── 4. Query extra: localidad/provincia + CP + logo empresa + consultora ───
   // getProtocoloErgonomia no trae localidades, código postal, logo ni consultora.
@@ -241,6 +333,8 @@ export async function generarReporteProtocoloErgonomia(
 
     // Grillas
     factores: factores.length > 0 ? factores : undefined,
+    evalFactores: evalFactores.length > 0 ? evalFactores : undefined,
+    medidas,
     seguimiento: seguimiento.length > 0 ? seguimiento : undefined,
   }
 
@@ -275,6 +369,8 @@ export async function generarReporteProtocoloErgonomia(
     folio,
     establecimiento: datos.establecimiento,
     factores: factores.length,
+    evalFactores: evalFactores.length,
+    medidasEspecificas: medidas?.especificas.length ?? 0,
     seguimiento: seguimiento.length,
   })
   let pdfBuffer: Buffer
