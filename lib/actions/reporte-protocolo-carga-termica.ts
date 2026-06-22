@@ -22,12 +22,13 @@
  *   - Los cálculos (TGBHef, TGBH/VAR ponderados, VLP/VLA, supera SI/NO) YA vienen
  *     calculados y persistidos en períodos/tareas — NO se recalculan acá.
  *
- * LIMITACIÓN CONOCIDA (Planilla B):
- *   El HTML legal embebido trae UNA sola Planilla B con 7 filas de grilla. El modelo
- *   es anidado (N puestos → N períodos → N tareas). Aplanamos los períodos/tareas del
- *   PRIMER puesto en esas 7 filas. La cabecera del puesto (nombre/ambiente/fuente/
- *   trabajador/GHE) también es la del primer puesto. Si hay más puestos, no entran en
- *   esta versión del HTML embebido (mejor parcial que roto).
+ * PLANILLA B — TODOS LOS PUESTOS:
+ *   El modelo es anidado (N puestos → N períodos → N tareas). Construimos un arreglo
+ *   `puestos`, uno por puesto, cada uno con su cabecera (nombre/ambiente/fuente/
+ *   trabajador/GHE/info adicional) y su grilla aplanada (períodos → tareas). El descriptor
+ *   CLONA la sección de la Planilla B una vez por puesto y expande las filas de la grilla
+ *   si un puesto supera las 7 filas del template legal. Ya NO se trunca a 7 filas ni se
+ *   descarta del 2do puesto en adelante.
  */
 
 import { getMedicionCargaTermica } from '@/lib/actions/medicion-carga-termica'
@@ -38,6 +39,7 @@ import {
   CARGA_TERMICA_DESCRIPTOR,
   type DatosProtocoloCargaTermica,
   type FilaGrillaCargaTermica,
+  type PuestoCargaTermica,
 } from '@/lib/pdf/descriptors/carga-termica'
 import { getFotoYMapaEstablecimiento } from '@/lib/pdf/establecimiento-media'
 import { getAnexoCertificadoCalibracion, getAnexoPlano } from '@/lib/pdf/anexo-certificado'
@@ -128,6 +130,96 @@ function fmtSupera(v: unknown): string {
 function str(v: unknown): string {
   if (v == null) return ''
   return String(v)
+}
+
+/**
+ * Aplana la grilla de UN puesto: períodos → tareas → filas de la Planilla B.
+ * Columnas legales de la grilla (15):
+ *   (22)Período (23)Hora inicio (24)N°tarea (25)Tarea (26)Tiempo (27)TM tarea
+ *   (28)TM ponderada (29)TGBH (30)TGBH ponderado (31)VAR (32)VAR ponderado
+ *   (33)TGBHef ponderado (34a)VLP no-aclim (34b)VLA no-aclim (34c)VLP aclim
+ * Cols de TAREA (24-27,29,31) van por tarea; cols de PERÍODO (22,23,28,30,32,33,34*)
+ * se muestran SOLO en la 1ra tarea del período (evita repetición ruidosa).
+ * Devuelve la grilla aplanada + la info_adicional del primer período que la tenga.
+ */
+function aplanarGrillaPuesto(puesto: Record<string, unknown>): {
+  grilla: FilaGrillaCargaTermica[]
+  infoAdicional: string
+} {
+  const grilla: FilaGrillaCargaTermica[] = []
+  let infoAdicional = ''
+
+  const periodosRaw = (puesto.medicion_carga_termica_periodos as Record<string, unknown>[] | null) ?? []
+  const periodosOrd = [...periodosRaw].sort((a, b) => Number(a.orden ?? 0) - Number(b.orden ?? 0))
+
+  // info_adicional: tomamos la del primer período que la tenga (campo legal (35)).
+  const infoPer = periodosOrd.find((p) => str(p.info_adicional).trim() !== '')
+  if (infoPer) infoAdicional = str(infoPer.info_adicional)
+
+  for (const per of periodosOrd) {
+    const periodoNum = str(per.numero ?? '')
+    const horaInicio = formatHora(per.hora_inicio as string | null)
+    const tmPonderada = fmtNum(per.tm_ponderado, 1)
+    const tgbhPonderado = fmtNum(per.tgbh_ponderado, 1)
+    const varPonderado = fmtNum(per.var_ponderado, 1)
+    const tgbhef = fmtNum(per.tgbhef, 1)
+    // Supera SI/NO. El HTML separa VLP no-aclim, VLA no-aclim y VLP aclim.
+    // Persistimos supera_vlp / supera_vla; mapeamos:
+    //   VLP no-aclimatado  → supera_vlp
+    //   VLA no-aclimatado  → supera_vla
+    //   VLP aclimatado     → supera_vlp (mismo flag; el detalle aclimatado/no se
+    //                        documenta en Planilla C). Mejor parcial que en blanco.
+    const vlpNoAclim = fmtSupera(per.supera_vlp)
+    const vlaNoAclim = fmtSupera(per.supera_vla)
+    const vlpAclim = fmtSupera(per.supera_vlp)
+
+    const tareasRaw = (per.medicion_carga_termica_tareas as Record<string, unknown>[] | null) ?? []
+    const tareasOrd = [...tareasRaw].sort((a, b) => Number(a.orden ?? 0) - Number(b.orden ?? 0))
+
+    if (tareasOrd.length === 0) {
+      // Período sin tareas: una fila con los datos de período.
+      grilla.push({
+        periodo: periodoNum,
+        horaInicio,
+        nTarea: '',
+        tareaRealizada: '',
+        tiempoTarea: '',
+        tmTarea: '',
+        tmPonderada,
+        tgbh: '',
+        tgbhPonderado,
+        var: '',
+        varPonderado,
+        tgbhef,
+        vlpNoAclimatado: vlpNoAclim,
+        vlaNoAclimatado: vlaNoAclim,
+        vlpAclimatado: vlpAclim,
+      })
+    } else {
+      tareasOrd.forEach((t, ti) => {
+        const esPrimera = ti === 0
+        grilla.push({
+          periodo: esPrimera ? periodoNum : '',
+          horaInicio: esPrimera ? horaInicio : '',
+          nTarea: str(t.numero ?? ''),
+          tareaRealizada: str(t.descripcion ?? ''),
+          tiempoTarea: fmtNum(t.tiempo_min, 0),
+          tmTarea: fmtNum(t.tm_w, 0),
+          tmPonderada: esPrimera ? tmPonderada : '',
+          tgbh: fmtNum(t.tgbh, 1),
+          tgbhPonderado: esPrimera ? tgbhPonderado : '',
+          var: fmtNum(t.var, 1),
+          varPonderado: esPrimera ? varPonderado : '',
+          tgbhef: esPrimera ? tgbhef : '',
+          vlpNoAclimatado: esPrimera ? vlpNoAclim : '',
+          vlaNoAclimatado: esPrimera ? vlaNoAclim : '',
+          vlpAclimatado: esPrimera ? vlpAclim : '',
+        })
+      })
+    }
+  }
+
+  return { grilla, infoAdicional }
 }
 
 // ─── FUNCIÓN PRINCIPAL ──────────────────────────────────────────────────────────
@@ -232,104 +324,25 @@ export async function generarReporteProtocoloCargaTermica(
     }
   }
 
-  // ── 7. Primer puesto (cabecera de Planilla B) + aplanado de grilla ───────────
+  // ── 7. TODOS los puestos (cabecera de Planilla B + aplanado de grilla por puesto) ──
   // Ordenamos los puestos por `orden` (fallback al orden del array).
   const puestosOrdenados = [...puestosRaw].sort((a, b) => Number(a.orden ?? 0) - Number(b.orden ?? 0))
-  const primerPuesto = puestosOrdenados[0] as Record<string, unknown> | undefined
 
-  // Cabecera del primer puesto
-  const nombrePuesto = primerPuesto ? str(primerPuesto.nombre_puesto) : ''
-  const ambienteHomogeneo = primerPuesto ? fmtBool(primerPuesto.ambiente_homogeneo) : ''
-  const alturaMedicion = primerPuesto ? fmtNum(primerPuesto.altura_medicion, 2) : ''
-  const tipoFuente = primerPuesto ? str(primerPuesto.tipo_fuente) : ''
-  const trabajadorPuesto = primerPuesto ? str(primerPuesto.trabajador) : ''
-  const ghe = primerPuesto ? fmtBool(primerPuesto.ghe) : ''
-
-  // Aplanado: períodos del primer puesto → cada período expande sus tareas en filas.
-  // Columnas legales de la grilla (15):
-  //   (22)Período (23)Hora inicio (24)N°tarea (25)Tarea (26)Tiempo (27)TM tarea
-  //   (28)TM ponderada (29)TGBH (30)TGBH ponderado (31)VAR (32)VAR ponderado
-  //   (33)TGBHef ponderado (34a)VLP no-aclim (34b)VLA no-aclim (34c)VLP aclim
-  // Cols de TAREA (24-27,29,31) van por tarea; cols de PERÍODO (22,23,28,30,32,33,34*)
-  // se repiten en cada fila del período (mejor legibilidad de la planilla aplanada).
-  const grilla: FilaGrillaCargaTermica[] = []
-  let infoAdicional = ''
-
-  if (primerPuesto) {
-    const periodosRaw = (primerPuesto.medicion_carga_termica_periodos as Record<string, unknown>[] | null) ?? []
-    const periodosOrd = [...periodosRaw].sort((a, b) => Number(a.orden ?? 0) - Number(b.orden ?? 0))
-
-    // info_adicional: tomamos la del primer período que la tenga (campo legal (35)).
-    const infoPer = periodosOrd.find((p) => str(p.info_adicional).trim() !== '')
-    if (infoPer) infoAdicional = str(infoPer.info_adicional)
-
-    for (const per of periodosOrd) {
-      const periodoNum = str(per.numero ?? '')
-      const horaInicio = formatHora(per.hora_inicio as string | null)
-      const tmPonderada = fmtNum(per.tm_ponderado, 1)
-      const tgbhPonderado = fmtNum(per.tgbh_ponderado, 1)
-      const varPonderado = fmtNum(per.var_ponderado, 1)
-      const tgbhef = fmtNum(per.tgbhef, 1)
-      // Supera SI/NO. El HTML separa VLP no-aclim, VLA no-aclim y VLP aclim.
-      // Persistimos supera_vlp / supera_vla; mapeamos:
-      //   VLP no-aclimatado  → supera_vlp
-      //   VLA no-aclimatado  → supera_vla
-      //   VLP aclimatado     → supera_vlp (mismo flag; el detalle aclimatado/no se
-      //                        documenta en Planilla C). Mejor parcial que en blanco.
-      const vlpNoAclim = fmtSupera(per.supera_vlp)
-      const vlaNoAclim = fmtSupera(per.supera_vla)
-      const vlpAclim = fmtSupera(per.supera_vlp)
-
-      const tareasRaw = (per.medicion_carga_termica_tareas as Record<string, unknown>[] | null) ?? []
-      const tareasOrd = [...tareasRaw].sort((a, b) => Number(a.orden ?? 0) - Number(b.orden ?? 0))
-
-      if (tareasOrd.length === 0) {
-        // Período sin tareas: una fila con los datos de período.
-        grilla.push({
-          periodo: periodoNum,
-          horaInicio,
-          nTarea: '',
-          tareaRealizada: '',
-          tiempoTarea: '',
-          tmTarea: '',
-          tmPonderada,
-          tgbh: '',
-          tgbhPonderado,
-          var: '',
-          varPonderado,
-          tgbhef,
-          vlpNoAclimatado: vlpNoAclim,
-          vlaNoAclimatado: vlaNoAclim,
-          vlpAclimatado: vlpAclim,
-        })
-      } else {
-        tareasOrd.forEach((t, ti) => {
-          // Cols de período se muestran SOLO en la 1ra tarea del período (evita repetición ruidosa).
-          const esPrimera = ti === 0
-          grilla.push({
-            periodo: esPrimera ? periodoNum : '',
-            horaInicio: esPrimera ? horaInicio : '',
-            nTarea: str(t.numero ?? ''),
-            tareaRealizada: str(t.descripcion ?? ''),
-            tiempoTarea: fmtNum(t.tiempo_min, 0),
-            tmTarea: fmtNum(t.tm_w, 0),
-            tmPonderada: esPrimera ? tmPonderada : '',
-            tgbh: fmtNum(t.tgbh, 1),
-            tgbhPonderado: esPrimera ? tgbhPonderado : '',
-            var: fmtNum(t.var, 1),
-            varPonderado: esPrimera ? varPonderado : '',
-            tgbhef: esPrimera ? tgbhef : '',
-            vlpNoAclimatado: esPrimera ? vlpNoAclim : '',
-            vlaNoAclimatado: esPrimera ? vlaNoAclim : '',
-            vlpAclimatado: esPrimera ? vlpAclim : '',
-          })
-        })
-      }
+  // Un PuestoCargaTermica por cada puesto: su cabecera + su grilla aplanada (períodos→tareas).
+  // El descriptor clona la sección de la Planilla B una por puesto y expande las filas si supera 7.
+  const puestos: PuestoCargaTermica[] = puestosOrdenados.map((puesto) => {
+    const { grilla, infoAdicional } = aplanarGrillaPuesto(puesto)
+    return {
+      nombrePuesto: str(puesto.nombre_puesto) || undefined,
+      ambienteHomogeneo: fmtBool(puesto.ambiente_homogeneo) || undefined,
+      alturaMedicion: fmtNum(puesto.altura_medicion, 2) || undefined,
+      tipoFuente: str(puesto.tipo_fuente) || undefined,
+      trabajadorPuesto: str(puesto.trabajador) || undefined,
+      ghe: fmtBool(puesto.ghe) || undefined,
+      infoAdicional: infoAdicional || undefined,
+      grilla,
     }
-  }
-
-  // El HTML embebido trae 7 filas de grilla → si hay más, las truncamos (limitación conocida).
-  const grillaRecortada = grilla.slice(0, 7)
+  })
 
   // ── 8. Condiciones atmosféricas / turnos / representantes (cabecera) ─────────
   const atmTempMax = fmtNum(m.atm_temp_max, 1)
@@ -389,15 +402,8 @@ export async function generarReporteProtocoloCargaTermica(
     representanteTrabajadores: (m.representante_trabajadores as string) ?? undefined,
     representanteEmpresa: (m.representante_empresa as string) ?? undefined,
 
-    // Planilla B — cabecera del primer puesto + grilla
-    nombrePuesto: nombrePuesto || undefined,
-    ambienteHomogeneo: ambienteHomogeneo || undefined,
-    alturaMedicion: alturaMedicion || undefined,
-    tipoFuente: tipoFuente || undefined,
-    trabajadorPuesto: trabajadorPuesto || undefined,
-    ghe: ghe || undefined,
-    infoAdicional: infoAdicional || undefined,
-    grilla: grillaRecortada.length > 0 ? grillaRecortada : undefined,
+    // Planilla B — TODOS los puestos (cada uno con su cabecera + grilla).
+    puestos: puestos.length > 0 ? puestos : undefined,
 
     // Planilla C — conclusiones / recomendaciones
     conclusionesAclimatado: (m.conclusiones_aclimatado as string) ?? undefined,
@@ -448,8 +454,8 @@ export async function generarReporteProtocoloCargaTermica(
   console.warn('[PDF-REPORTE-CT] datos mapeados, llamando renderProtocolo', {
     folio,
     establecimiento: datos.establecimiento,
-    puestos: puestosOrdenados.length,
-    filasGrilla: grillaRecortada.length,
+    puestos: puestos.length,
+    filasGrillaTotal: puestos.reduce((acc, p) => acc + p.grilla.length, 0),
   })
   let pdfBuffer: Buffer
   try {

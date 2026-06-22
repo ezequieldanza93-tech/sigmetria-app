@@ -16,12 +16,21 @@
  *   para que contenga `<div class="ac">…</div>` (lo que el motor busca para estampar el firmante).
  *   Sin esta normalización, el motor no estamparía logos/watermark/firma en estas hojas.
  *
- * PLANILLA B (grilla anidada puesto → período → tarea):
+ * PLANILLA B (grilla anidada puesto → período → tarea) — REPETIBLE POR PUESTO:
  *   La grilla legal tiene 7 filas vacías y 15 columnas. El modelo de datos es anidado
  *   (un protocolo tiene N puestos, cada puesto N períodos, cada período N tareas). El HTML
- *   embebido solo trae UNA Planilla B (7 filas), así que aplanamos los períodos/tareas del
- *   PRIMER puesto en esas 7 filas. Cabecera del puesto (nombre/ambiente/fuente/trabajador/GHE)
- *   se inyecta en sus labels. Limitación documentada en `notas` del reporte de la tarea.
+ *   embebido solo trae UNA Planilla B. Para mostrar TODOS los puestos, CLONAMOS la sección
+ *   completa de la Planilla B (cabecera del puesto + grilla) una vez por puesto, inyectando
+ *   en cada clon su cabecera (nombre/ambiente/fuente/trabajador/GHE/info adicional) y su grilla
+ *   propia. Si un puesto tiene más de 7 filas, generamos filas vacías extra clonando
+ *   GRID_ROW_VACIA antes de llenarlas; si tiene menos, quedan las vacías que correspondan.
+ *
+ *   El clonado se hace por MANIPULACIÓN DE STRING sobre marcadores VERBATIM verificados leyendo
+ *   el HTML embebido real (PLANILLA_B_SECTION). Es best-effort: si el ancla no matchea (HTML
+ *   regenerado con otra forma), se deja la Planilla B original intacta (no se rompe el PDF).
+ *
+ *   Compatibilidad: si `datos.puestos` no viene, se sintetiza un único puesto desde los campos
+ *   planos legacy (nombrePuesto/.../grilla) para no romper llamadores viejos.
  */
 
 import {
@@ -54,6 +63,23 @@ export interface FilaGrillaCargaTermica {
   vlpAclimatado: string
 }
 
+/**
+ * Un puesto de la Planilla B: cabecera del puesto + su grilla de tareas (aplanada).
+ * El protocolo tiene N de estos; cada uno genera UNA sección "Planilla B" en el PDF.
+ */
+export interface PuestoCargaTermica {
+  // Cabecera del puesto
+  nombrePuesto?: string
+  ambienteHomogeneo?: string
+  alturaMedicion?: string
+  tipoFuente?: string
+  trabajadorPuesto?: string
+  ghe?: string
+  infoAdicional?: string
+  // Grilla de tareas (aplanada) propia de este puesto
+  grilla: FilaGrillaCargaTermica[]
+}
+
 export interface DatosProtocoloCargaTermica extends DatosProtocoloBase {
   // Planilla A — datos generales
   turnos?: string
@@ -67,6 +93,11 @@ export interface DatosProtocoloCargaTermica extends DatosProtocoloBase {
   // Representantes
   representanteTrabajadores?: string
   representanteEmpresa?: string
+  // Planilla B — TODOS los puestos (cada uno con su cabecera + grilla).
+  // El descriptor clona la sección Planilla B una vez por elemento de este array.
+  puestos?: PuestoCargaTermica[]
+  // ── Campos planos LEGACY (compatibilidad) ──
+  // Si `puestos` no viene, el descriptor sintetiza un único puesto con estos campos.
   // Planilla B — cabecera del puesto (primer puesto del protocolo)
   nombrePuesto?: string
   ambienteHomogeneo?: string
@@ -101,6 +132,21 @@ const GRID_ROW_VACIA =
 /** Primera fila de datos vacía de las condiciones atmosféricas (8 celdas). */
 const ATM_ROW_VACIA =
   '<tr><td style="height:6mm"></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>'
+
+// ── Marcadores VERBATIM para localizar la sección de la Planilla B en el body ──
+// Verificados leyendo el HTML embebido REAL (PROTOCOLO_CARGA_TERMICA_HTML, runtime).
+// El cuerpo embebido usa `<section class="hoja land">` (el descriptor lo renombra a
+// `horiz` al final). La sección de la Planilla B abre en el `<section class="hoja land">`
+// que precede a su barra `tbar`, y cierra en el `</section>` previo a la Planilla C.
+
+/** Apertura de hoja apaisada (antes del renombrado land→horiz). */
+const SECTION_LAND_OPEN = '<section class="hoja land">'
+/** Barra de título que marca el inicio del contenido de la Planilla B. */
+const PLANILLA_B_TBAR = '<div class="tbar">PLANILLA B: DATOS DEL ESTUDIO</div>'
+/** Barra de título de la Planilla C (sirve para acotar el fin de la Planilla B). */
+const PLANILLA_C_TBAR = '<div class="tbar">PLANILLA C: CONCLUSIONES</div>'
+/** Cierre de sección. */
+const SECTION_CLOSE = '</section>'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS DE RENDER DE FILAS
@@ -195,19 +241,10 @@ function inyectarCampos(body: string, d: DatosProtocoloCargaTermica): string {
       'Por la empresa: Apellido Nombre:',
       `Por la empresa: Apellido Nombre: ${D(d.representanteEmpresa)}`,
     ],
-    // Planilla B — cabecera del puesto
-    ['Nombre del puesto:</span>', `Nombre del puesto:</span> ${D(d.nombrePuesto)}`],
-    [
-      'Ambiente Homogéneo:</span>&nbsp;&nbsp;: Altura de la medición:',
-      `Ambiente Homogéneo:</span> ${D(d.ambienteHomogeneo)} &nbsp;: Altura de la medición: ${D(d.alturaMedicion)}`,
-    ],
-    ['Tipo de Fuente:</span>', `Tipo de Fuente:</span> ${D(d.tipoFuente)}`],
-    [
-      'Trabajador del puesto estudiado:</span> Nombre/Apellido:',
-      `Trabajador del puesto estudiado:</span> Nombre/Apellido: ${D(d.trabajadorPuesto)}`,
-    ],
-    ['<b>GHE:</b>', `<b>GHE:</b> ${D(d.ghe)}`],
-    ['Información adicional:</span>', `Información adicional:</span> ${D(d.infoAdicional)}`],
+    // NOTA: los campos de cabecera de la Planilla B (Nombre del puesto, Ambiente,
+    // Tipo de Fuente, Trabajador, GHE, Información adicional) NO se inyectan acá:
+    // viven dentro de cada SECCIÓN de Planilla B y se inyectan por puesto en
+    // inyectarCabeceraPuesto() para que cada clon muestre su propio puesto.
   ]
 
   let out = body
@@ -215,6 +252,128 @@ function inyectarCampos(body: string, d: DatosProtocoloCargaTermica): string {
     out = out.split(find).join(replace)
   }
   return out
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PLANILLA B — CABECERA Y GRILLA POR PUESTO (sobre UNA sección clonada)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Inyecta los campos de cabecera de un puesto DENTRO de una única sección de Planilla B.
+ * Opera solo sobre el string de la sección (no sobre el body completo), de modo que cada
+ * clon recibe los datos de SU puesto. Labels EXACTOS del HTML embebido (verificados).
+ */
+function inyectarCabeceraPuesto(seccion: string, p: PuestoCargaTermica): string {
+  const campos: Array<[string, string]> = [
+    ['Nombre del puesto:</span>', `Nombre del puesto:</span> ${D(p.nombrePuesto)}`],
+    [
+      'Ambiente Homogéneo:</span>&nbsp;&nbsp;: Altura de la medición:',
+      `Ambiente Homogéneo:</span> ${D(p.ambienteHomogeneo)} &nbsp;: Altura de la medición: ${D(p.alturaMedicion)}`,
+    ],
+    ['Tipo de Fuente:</span>', `Tipo de Fuente:</span> ${D(p.tipoFuente)}`],
+    [
+      'Trabajador del puesto estudiado:</span> Nombre/Apellido:',
+      `Trabajador del puesto estudiado:</span> Nombre/Apellido: ${D(p.trabajadorPuesto)}`,
+    ],
+    ['<b>GHE:</b>', `<b>GHE:</b> ${D(p.ghe)}`],
+    ['Información adicional:</span>', `Información adicional:</span> ${D(p.infoAdicional)}`],
+  ]
+  let out = seccion
+  for (const [find, replace] of campos) {
+    out = out.split(find).join(replace)
+  }
+  return out
+}
+
+/**
+ * Inyecta la grilla de un puesto en SU sección de Planilla B.
+ * El template trae 7 filas vacías (GRID_ROW_VACIA). Si el puesto tiene MÁS de 7 filas,
+ * agregamos filas vacías extra (clonando GRID_ROW_VACIA dentro del <tbody>) antes de
+ * llenarlas; si tiene menos, dejamos las vacías sobrantes del legal. Luego llenamos
+ * las primeras N filas vacías (de arriba hacia abajo) con los datos.
+ */
+function inyectarGrillaPuesto(seccion: string, filas: FilaGrillaCargaTermica[]): string {
+  let out = seccion
+
+  // 1) Asegurar que haya al menos `filas.length` filas vacías. El template trae 7.
+  //    Si necesitamos más, agregamos las que faltan ANTES de </tbody>.
+  const VACIAS_BASE = 7
+  const faltan = filas.length - VACIAS_BASE
+  if (faltan > 0) {
+    const extra = GRID_ROW_VACIA.repeat(faltan)
+    // Insertamos las filas extra justo antes del cierre del tbody de ESTA sección.
+    // El template termina el cuerpo de la grilla con: ...GRID_ROW_VACIA + '\r\n</tbody>'.
+    // Anclamos en '</tbody>' (única en la sección de Planilla B).
+    const idxTbodyClose = out.indexOf('</tbody>')
+    if (idxTbodyClose !== -1) {
+      out = out.slice(0, idxTbodyClose) + extra + out.slice(idxTbodyClose)
+    } else {
+      // Best-effort: si no hay </tbody> (HTML regenerado raro), apilamos al final de
+      // la última fila vacía conocida. Si tampoco existe, no hacemos nada (no rompemos).
+      const lastVacia = out.lastIndexOf(GRID_ROW_VACIA)
+      if (lastVacia !== -1) {
+        const insertAt = lastVacia + GRID_ROW_VACIA.length
+        out = out.slice(0, insertAt) + extra + out.slice(insertAt)
+      }
+    }
+  }
+
+  // 2) Llenar las primeras N filas vacías con los datos (1ra ocurrencia por iteración).
+  for (const f of filas) {
+    out = out.replace(GRID_ROW_VACIA, filaGrillaLlena(f))
+  }
+  return out
+}
+
+/**
+ * Localiza la sección de la Planilla B dentro del body y devuelve sus límites [inicio, fin)
+ * (índices sobre el string). `inicio` apunta al `<section class="hoja land">` que abre la
+ * Planilla B; `fin` apunta justo DESPUÉS del `</section>` que la cierra (antes de la Planilla C).
+ * Devuelve null si los marcadores no matchean (HTML regenerado con otra forma) → best-effort.
+ */
+function localizarSeccionPlanillaB(body: string): { start: number; end: number } | null {
+  const tbarB = body.indexOf(PLANILLA_B_TBAR)
+  if (tbarB === -1) return null
+  // Apertura de la sección: el <section land> inmediatamente anterior a la barra de B.
+  const start = body.lastIndexOf(SECTION_LAND_OPEN, tbarB)
+  if (start === -1) return null
+  // Fin de la sección: el </section> previo a la barra de la Planilla C (si existe);
+  // si no hay Planilla C, el primer </section> después de la barra de B.
+  const tbarC = body.indexOf(PLANILLA_C_TBAR)
+  let close: number
+  if (tbarC !== -1) {
+    close = body.lastIndexOf(SECTION_CLOSE, tbarC)
+  } else {
+    close = body.indexOf(SECTION_CLOSE, tbarB)
+  }
+  if (close === -1 || close < start) return null
+  const end = close + SECTION_CLOSE.length
+  return { start, end }
+}
+
+/**
+ * Reemplaza la ÚNICA sección de Planilla B del body por N secciones, una por puesto.
+ * Cada sección clon recibe la cabecera + grilla de su puesto. Best-effort: si no se puede
+ * localizar la sección, devuelve el body sin tocar (la Planilla B original queda intacta).
+ */
+function clonarPlanillaBPorPuesto(
+  body: string,
+  puestos: PuestoCargaTermica[],
+): string {
+  if (puestos.length === 0) return body
+  const loc = localizarSeccionPlanillaB(body)
+  if (!loc) {
+    // Ancla no encontrada: no rompemos. La Planilla B legal queda en blanco (mejor que romper).
+    console.warn('[carga-termica] no se localizó la sección de la Planilla B; se deja intacta (best-effort)')
+    return body
+  }
+
+  const template = body.slice(loc.start, loc.end)
+  const secciones = puestos
+    .map(p => inyectarGrillaPuesto(inyectarCabeceraPuesto(template, p), p.grilla))
+    .join('')
+
+  return body.slice(0, loc.start) + secciones + body.slice(loc.end)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -242,19 +401,34 @@ export const CARGA_TERMICA_DESCRIPTOR: ProtocoloDescriptor<DatosProtocoloCargaTe
   inyectarBody: (body, d) => {
     let out = body
 
-    // 1) Campos de texto por label (cabecera Planilla A + cabecera puesto Planilla B).
+    // 1) Campos de texto por label SOLO de la Planilla A (empresa, instrumental, representantes).
+    //    La cabecera de cada puesto (Planilla B) se inyecta por sección en el paso 3.
     out = inyectarCampos(out, d)
 
     // 2) Fila de condiciones atmosféricas: llenamos SOLO la primera fila de datos vacía
     //    (replace cambia la 1ra ocurrencia → la 2da queda como fila en blanco del legal).
     out = out.replace(ATM_ROW_VACIA, filaAtmLlena(d))
 
-    // 3) Grilla Planilla B: aplanamos las filas de la grilla (períodos/tareas) en las 7 filas
-    //    vacías, de arriba hacia abajo (replace = 1ra ocurrencia).
-    const filas = d.grilla ?? []
-    for (const f of filas) {
-      out = out.replace(GRID_ROW_VACIA, filaGrillaLlena(f))
-    }
+    // 3) Planilla B REPETIBLE POR PUESTO: clonamos la sección de la Planilla B una vez por
+    //    puesto. Cada clon lleva su cabecera (nombre/ambiente/fuente/trabajador/GHE/info) y
+    //    su grilla propia (expandiendo filas vacías si tiene más de 7).
+    //    Compatibilidad: si no vino `puestos`, sintetizamos uno desde los campos planos legacy.
+    const puestos: PuestoCargaTermica[] =
+      d.puestos && d.puestos.length > 0
+        ? d.puestos
+        : [
+            {
+              nombrePuesto: d.nombrePuesto,
+              ambienteHomogeneo: d.ambienteHomogeneo,
+              alturaMedicion: d.alturaMedicion,
+              tipoFuente: d.tipoFuente,
+              trabajadorPuesto: d.trabajadorPuesto,
+              ghe: d.ghe,
+              infoAdicional: d.infoAdicional,
+              grilla: d.grilla ?? [],
+            },
+          ]
+    out = clonarPlanillaBPorPuesto(out, puestos)
 
     // 4) Conclusiones / recomendaciones (Planilla C): inyectamos como anotación al final del
     //    encabezado de cada columna. El layout legal son líneas de checklist; agregamos el texto
