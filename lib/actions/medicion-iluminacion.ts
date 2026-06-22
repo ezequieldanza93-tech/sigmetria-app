@@ -13,8 +13,9 @@ import type { ActionResult } from '@/lib/types'
  * Patrón replicado:
  *  - recibe el registro planificado (registro_id + rg_fecha_planificada) + establecimiento + gestion_establecimiento
  *  - sube adjuntos al bucket PRIVADO `documentos` con tenantStoragePath (guarda PATH, no URL)
- *  - UPDATE gestiones_registros.fecha_ejecutada = hoy
- *  - INSERT cabecera + hijas (puntos + celdas)
+ *  - estado = finalizado | borrador (según el flag `finalizar` del FormData)
+ *  - SOLO al finalizar: UPDATE gestiones_registros.fecha_ejecutada = hoy (queda Realizado)
+ *  - INSERT (o UPDATE de un borrador previo) cabecera + reemplazo de hijas (puntos + celdas)
  *  - NO traga errores en silencio: si falla un insert crítico, rollback manual + { success:false }
  */
 
@@ -109,6 +110,10 @@ export async function crearMedicionIluminacion(
   const planoFile = formData.get('plano') as File | null
   const puntosRaw = (formData.get('puntos') as string) || '[]'
   const observacionesSeguimientoRaw = (formData.get('observaciones_seguimiento') as string) || null
+  // Flag de cierre: 'true' = finaliza el protocolo (queda cerrado, marca la gestión
+  // como Realizada). Cualquier otro valor = borrador (re-editable, NO toca la gestión).
+  const finalizar = (formData.get('finalizar') as string) === 'true'
+  const estado = finalizar ? 'finalizado' : 'borrador'
 
   if (!registroId) {
     console.error('[MEDICION-ILUM] guardar falló:', 'Registro requerido')
@@ -153,6 +158,33 @@ export async function crearMedicionIluminacion(
 
   const ts = Date.now()
 
+  // ── 0. Buscar una medición EXISTENTE del mismo registro (edición de borrador) ──
+  // El "Guardar borrador" puede re-guardarse y luego finalizar: si ya existe una
+  // cabecera para este registro (mismo registro_gestion_id + rg_fecha_planificada),
+  // editamos esa fila (UPDATE + reemplazo de hijas) en vez de crear otra. Una medición
+  // YA finalizada queda cerrada y no se puede modificar.
+  let medicionExistenteId: string | null = null
+  {
+    let exQuery = supabase
+      .from('medicion_iluminacion')
+      .select('id, estado')
+      .eq('registro_gestion_id', registroId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+    if (rgFechaPlanificada) exQuery = exQuery.eq('rg_fecha_planificada', rgFechaPlanificada)
+    const { data: existente, error: exErr } = await exQuery.maybeSingle()
+    if (exErr) {
+      console.error('[MEDICION-ILUM] guardar falló:', 'Error al buscar la medición existente: ' + exErr.message)
+      return { success: false, error: 'Error al buscar la medición existente: ' + exErr.message }
+    }
+    if (existente) {
+      if (existente.estado === 'finalizado') {
+        return { success: false, error: 'El protocolo ya fue finalizado y no se puede modificar' }
+      }
+      medicionExistenteId = existente.id as string
+    }
+  }
+
   // ── 1. Subir adjuntos opcionales (certificado / plano) → guardamos PATH, no URL ──
   let certificadoUrl: string | null = null
   if (certificadoFile && certificadoFile.size > 0) {
@@ -182,68 +214,133 @@ export async function crearMedicionIluminacion(
     planoUrl = up.path
   }
 
-  // ── 2. UPDATE del registro planificado (queda Realizado) ────────────
+  // ── 2. Marcar el registro planificado como Realizado (SOLO al finalizar) ──
   // Fecha de ejecución = HOY por componentes locales (sin drift UTC de toISOString,
   // que de noche en AR -3 puede adelantar un día).
   const now = new Date()
   const hoy = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-  let regUpdate = supabase
-    .from('gestiones_registros')
-    // ejecutado_at = now(): hora real de finalización de la medición (queda Realizado).
-    .update({ fecha_ejecutada: hoy, ejecutado_at: new Date().toISOString() })
-    .eq('id', registroId)
-  // rg_fecha_planificada completa la PK compuesta del registro particionado:
-  // si la UI lo manda, acotamos el UPDATE a la fila exacta.
-  if (rgFechaPlanificada) regUpdate = regUpdate.eq('fecha_planificada', rgFechaPlanificada)
-  const { data: regRow, error: regErr } = await regUpdate.select('fecha_planificada').single()
-  if (regErr) {
-    console.error('[MEDICION-ILUM] guardar falló:', 'Error al actualizar el registro: ' + regErr.message)
-    return { success: false, error: 'Error al actualizar el registro: ' + regErr.message }
+
+  // fecha_planificada autoritativa del registro (clave de partición), necesaria para
+  // el geo-sello y como fallback de las observaciones. La obtenemos del UPDATE (al
+  // finalizar) o de un SELECT (en borrador, donde NO tocamos el registro).
+  let regFechaPlanificada: string | null = rgFechaPlanificada
+  if (finalizar) {
+    // FINALIZAR: el registro queda Realizado. ejecutado_at = now() (hora real de cierre).
+    let regUpdate = supabase
+      .from('gestiones_registros')
+      .update({ fecha_ejecutada: hoy, ejecutado_at: new Date().toISOString() })
+      .eq('id', registroId)
+    // rg_fecha_planificada completa la PK compuesta del registro particionado:
+    // si la UI lo manda, acotamos el UPDATE a la fila exacta.
+    if (rgFechaPlanificada) regUpdate = regUpdate.eq('fecha_planificada', rgFechaPlanificada)
+    const { data: regRow, error: regErr } = await regUpdate.select('fecha_planificada').single()
+    if (regErr) {
+      console.error('[MEDICION-ILUM] guardar falló:', 'Error al actualizar el registro: ' + regErr.message)
+      return { success: false, error: 'Error al actualizar el registro: ' + regErr.message }
+    }
+    regFechaPlanificada = regRow.fecha_planificada as string
+
+    // Geo-sello del lugar de ejecución. Usamos la fecha_planificada autoritativa del
+    // registro (clave de partición). NO-BLOQUEANTE. Solo al cerrar (es el sello de cierre).
+    await aplicarSelloGeo(supabase, registroId, regFechaPlanificada, formData)
+  } else if (!regFechaPlanificada) {
+    // BORRADOR sin fecha enviada: la resolvemos para colgar bien las observaciones.
+    // NO actualizamos el registro (la gestión NO debe quedar Realizada en borrador).
+    const { data: regRow } = await supabase
+      .from('gestiones_registros')
+      .select('fecha_planificada')
+      .eq('id', registroId)
+      .order('fecha_planificada', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    regFechaPlanificada = (regRow?.fecha_planificada as string | undefined) ?? null
   }
 
-  // Geo-sello del lugar de ejecución. Usamos la fecha_planificada autoritativa del
-  // registro (clave de partición). NO-BLOQUEANTE.
-  await aplicarSelloGeo(supabase, registroId, regRow.fecha_planificada as string, formData)
-
-  // ── 3. INSERT cabecera ──────────────────────────────────────────────
-  const { data: cabecera, error: cabErr } = await supabase
-    .from('medicion_iluminacion')
-    .insert({
-      consultora_id: consultoraId,
-      establecimiento_id: establecimientoId,
-      registro_gestion_id: registroId,
-      rg_fecha_planificada: rgFechaPlanificada,
-      gestion_establecimiento_id: gestionEstablecimientoId,
-      instrumento_id: instrumentoId,
-      certificado_id: certificadoId,
-      firmante,
-      firmante_persona_id: firmantePersonaId,
-      metodologia,
-      fecha_medicion: fechaMedicion,
-      hora_inicio: horaInicio,
-      hora_fin: horaFin,
-      condiciones_atmosfericas: condicionesAtmosfericas,
-      altura_criterio: alturaCriterio,
-      certificado_url: certificadoUrl,
-      plano_url: planoUrl,
-      conclusiones,
-      recomendaciones,
-      observaciones,
-      estado: 'completado',
-    })
-    .select('id')
-    .single()
-  if (cabErr) {
-    console.error('[MEDICION-ILUM] guardar falló:', 'Error al crear la medición: ' + cabErr.message)
-    return { success: false, error: 'Error al crear la medición: ' + cabErr.message }
+  // ── 3. UPSERT cabecera ──────────────────────────────────────────────
+  // Si hay un borrador previo → UPDATE de la cabecera + reemplazo de las hijas
+  // (DELETE de los puntos: el ON DELETE CASCADE limpia las celdas). Si no, INSERT.
+  // Campos comunes de la cabecera (estado = borrador | finalizado). Los adjuntos:
+  // si en esta pasada NO se subió uno nuevo, conservamos el que ya estaba (no lo
+  // pisamos con null).
+  const cabeceraComun = {
+    instrumento_id: instrumentoId,
+    certificado_id: certificadoId,
+    firmante,
+    firmante_persona_id: firmantePersonaId,
+    metodologia,
+    fecha_medicion: fechaMedicion,
+    hora_inicio: horaInicio,
+    hora_fin: horaFin,
+    condiciones_atmosfericas: condicionesAtmosfericas,
+    altura_criterio: alturaCriterio,
+    conclusiones,
+    recomendaciones,
+    observaciones,
+    estado,
   }
 
-  const medicionId = cabecera.id as string
+  let medicionId: string
+  if (medicionExistenteId) {
+    // Edición de borrador existente: UPDATE de cabecera. Los adjuntos solo se
+    // sobrescriben si llegó uno nuevo en esta pasada (no perder el ya guardado).
+    const updatePayload: Record<string, unknown> = { ...cabeceraComun }
+    if (certificadoUrl != null) updatePayload.certificado_url = certificadoUrl
+    if (planoUrl != null) updatePayload.plano_url = planoUrl
+    const { error: updErr } = await supabase
+      .from('medicion_iluminacion')
+      .update(updatePayload)
+      .eq('id', medicionExistenteId)
+    if (updErr) {
+      console.error('[MEDICION-ILUM] guardar falló:', 'Error al actualizar la medición: ' + updErr.message)
+      return { success: false, error: 'Error al actualizar la medición: ' + updErr.message }
+    }
+    medicionId = medicionExistenteId
+
+    // Reemplazo de las hijas: borramos los puntos del borrador (ON DELETE CASCADE
+    // limpia las celdas) y re-insertamos abajo con el estado actual del wizard.
+    const { error: delErr } = await supabase
+      .from('medicion_iluminacion_puntos')
+      .delete()
+      .eq('medicion_id', medicionId)
+    if (delErr) {
+      console.error('[MEDICION-ILUM] guardar falló:', 'Error al limpiar los puntos del borrador: ' + delErr.message)
+      return { success: false, error: 'Error al limpiar los puntos del borrador: ' + delErr.message }
+    }
+  } else {
+    const { data: cabecera, error: cabErr } = await supabase
+      .from('medicion_iluminacion')
+      .insert({
+        ...cabeceraComun,
+        consultora_id: consultoraId,
+        establecimiento_id: establecimientoId,
+        registro_gestion_id: registroId,
+        rg_fecha_planificada: rgFechaPlanificada,
+        gestion_establecimiento_id: gestionEstablecimientoId,
+        certificado_url: certificadoUrl,
+        plano_url: planoUrl,
+      })
+      .select('id')
+      .single()
+    if (cabErr) {
+      console.error('[MEDICION-ILUM] guardar falló:', 'Error al crear la medición: ' + cabErr.message)
+      return { success: false, error: 'Error al crear la medición: ' + cabErr.message }
+    }
+    medicionId = cabecera.id as string
+  }
 
   // ── 4. INSERT puntos + celdas ───────────────────────────────────────
   // Cada punto se inserta y luego se cuelgan sus celdas. Si algo falla, rollback
   // manual de la cabecera (ON DELETE CASCADE limpia puntos/celdas ya insertados)
-  // y devolvemos error en vez de tragarlo y reportar éxito.
+  // y devolvemos error en vez de tragarlo y reportar éxito. En la EDICIÓN de un
+  // borrador NO borramos la cabecera (es preexistente: borrarla destruiría el
+  // borrador del usuario); solo limpiamos los puntos a medio escribir.
+  const rollbackCabecera = async () => {
+    if (medicionExistenteId) {
+      await supabase.from('medicion_iluminacion_puntos').delete().eq('medicion_id', medicionId)
+    } else {
+      await supabase.from('medicion_iluminacion').delete().eq('id', medicionId)
+    }
+  }
   for (let i = 0; i < puntos.length; i++) {
     const p = puntos[i]
     const { data: punto, error: puntoErr } = await supabase
@@ -270,7 +367,7 @@ export async function crearMedicionIluminacion(
       .single()
     if (puntoErr) {
       console.error('[MEDICION-ILUM] guardar falló:', 'Error al guardar un punto de medición: ' + puntoErr.message)
-      await supabase.from('medicion_iluminacion').delete().eq('id', medicionId)
+      await rollbackCabecera()
       return { success: false, error: 'Error al guardar un punto de medición: ' + puntoErr.message }
     }
 
@@ -287,7 +384,7 @@ export async function crearMedicionIluminacion(
         .insert(celdaRows)
       if (celdasErr) {
         console.error('[MEDICION-ILUM] guardar falló:', 'Error al guardar la grilla de un punto: ' + celdasErr.message)
-        await supabase.from('medicion_iluminacion').delete().eq('id', medicionId)
+        await rollbackCabecera()
         return { success: false, error: 'Error al guardar la grilla de un punto: ' + celdasErr.message }
       }
     }
@@ -300,7 +397,13 @@ export async function crearMedicionIluminacion(
   // Seguimiento), y subida de fotos al bucket privado `documentos` con tenantStoragePath.
   // Son findings ADICIONALES a los puntos de la grilla. NO se traga el error: si falla el
   // insert, devolvemos error (la medición ya quedó guardada, pero lo informamos).
-  if (observacionesSeguimientoRaw) {
+  //
+  // SOLO al FINALIZAR: las observaciones de seguimiento viven en el pool común
+  // gestiones_observaciones, que NO se reemplaza al re-guardar (no es hija con CASCADE
+  // del protocolo) y el wizard NO las re-hidrata al re-abrir un borrador. Persistirlas
+  // en cada "Guardar borrador" duplicaría findings en Seguimiento. Por eso se insertan
+  // una sola vez, en el cierre del protocolo.
+  if (finalizar && observacionesSeguimientoRaw) {
     let observaciones: ObsSeguimientoInput[] = []
     try {
       const parsed = JSON.parse(observacionesSeguimientoRaw)
@@ -337,7 +440,7 @@ export async function crearMedicionIluminacion(
           // rg_fecha_planificada completa la FK compuesta hacia el registro particionado
           // (registro_gestion_id + rg_fecha_planificada) y es NOT NULL. Debe matchear el
           // fecha_planificada del gestiones_registros que se está ejecutando.
-          rg_fecha_planificada: rgFechaPlanificada,
+          rg_fecha_planificada: regFechaPlanificada,
           descripcion: o.descripcion.trim(),
           categoria_id: o.categoria_id,
           clasificacion_id: o.clasificacion_id || null,

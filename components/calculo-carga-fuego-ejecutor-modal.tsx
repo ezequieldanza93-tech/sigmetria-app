@@ -14,6 +14,7 @@ import {
   type ResistenciaYExtintor,
   type SectorConPuestos,
 } from '@/lib/actions/calculo-carga-fuego'
+import { getCalculoCargaFuegoByRegistro } from '@/lib/actions/calculo-carga-fuego-view'
 import {
   coefEquiv,
   equivMadera,
@@ -184,6 +185,9 @@ export function CalculoCargaFuegoEjecutorModal({
   const { capturarUbicacion } = useGeoCaptura()
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  // Re-hidratación: mientras buscamos un borrador existente para este registro, no
+  // dejamos interactuar (evita arrancar vacío y pisar el borrador con un guardado).
+  const [hidratando, setHidratando] = useState(true)
   const [descargandoPdf, setDescargandoPdf] = useState(false)
   // Estado del guardado como evidencia (el PDF se genera server-side via Chromium,
   // mismo patrón que iluminación/ruido: el motor oficial arma carátula + anexos + logos).
@@ -299,6 +303,94 @@ export function CalculoCargaFuegoEjecutorModal({
 
     return () => { activo = false }
   }, [establecimientoId])
+
+  // ── Re-hidratación del borrador (si existe) ─────────────────────────
+  // Al abrir el wizard, buscamos un cálculo ya guardado para este registro. Si está
+  // en estado 'borrador', cargamos TODOS sus datos en el estado del wizard para seguir
+  // editando donde se dejó (cabecera + sectores + materiales). Si no hay borrador (o el
+  // existente está finalizado), arrancamos vacío como hoy. La lectura reusa la misma
+  // action que usa el Viewer (getCalculoCargaFuegoByRegistro).
+  useEffect(() => {
+    let activo = true
+    setHidratando(true)
+    getCalculoCargaFuegoByRegistro(registroId, rgFechaPlanificada || null)
+      .then(res => {
+        if (!activo) return
+        if (!res.success) return // sin borrador previo: arranca vacío
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const d = res.data as any
+        // Solo re-hidratamos borradores. Un finalizado/completado no se edita acá
+        // (la Agenda abre el Viewer read-only en ese caso).
+        if (d.estado && d.estado !== 'borrador') return
+
+        // Cabecera: firmante + textos generales.
+        if (d.firmante_persona_id) setFirmantePersonaId(String(d.firmante_persona_id))
+        if (d.firmante) setFirmante(String(d.firmante))
+        if (d.observaciones) setObservacionesGenerales(String(d.observaciones))
+        if (d.conclusiones) setConclusiones(String(d.conclusiones))
+        if (d.recomendaciones) setRecomendaciones(String(d.recomendaciones))
+
+        // Sectores: preferimos el modelo multi-sector; si está vacío caemos al legacy
+        // (cabecera + calculo_carga_fuego_materiales como sector único).
+        const num2str = (v: unknown): string => (v === null || v === undefined ? '' : String(v))
+        const normVent = (v: unknown): Ventilacion => (v === 'mecanica' ? 'mecanica' : 'natural')
+        const normRiesgo = (v: unknown): Riesgo | '' =>
+          (typeof v === 'string' && (RIESGOS as string[]).includes(v)) ? (v as Riesgo) : ''
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const mapMaterial = (m: any): MaterialState => ({
+          key: materialKeySeq++,
+          descripcion: num2str(m?.descripcion),
+          material_pci_id: '', // el catálogo no se persiste; queda en "carga manual"
+          estado: num2str(m?.estado),
+          peso_kg: num2str(m?.peso_kg),
+          pci_kcal: num2str(m?.pci_kcal),
+          coef_c: num2str(m?.coef_c),
+        })
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const sectoresRaw = (d.calculo_carga_fuego_sectores ?? []) as any[]
+        if (sectoresRaw.length > 0) {
+          const ordenados = sectoresRaw
+            .slice()
+            .sort((a, b) => (Number(a?.orden ?? 0)) - (Number(b?.orden ?? 0)))
+          const mapped: SectorWizardState[] = ordenados.map(s => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const mats = ((s?.calculo_carga_fuego_sector_materiales ?? []) as any[])
+              .slice()
+              .sort((a, b) => (Number(a?.orden ?? 0)) - (Number(b?.orden ?? 0)))
+              .map(mapMaterial)
+            return {
+              key: sectorKeySeq++,
+              sectorIncendio: num2str(s?.nombre_sector),
+              superficie: num2str(s?.superficie_m2),
+              ventilacion: normVent(s?.ventilacion),
+              materiales: mats.length > 0 ? mats : [nuevoMaterial()],
+              riesgo: normRiesgo(s?.riesgo),
+            }
+          })
+          setSectoresWizard(mapped.length > 0 ? mapped : [nuevoSectorWizard()])
+        } else {
+          // Legacy: una sola "hoja" derivada de la cabecera + materiales sueltos.
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const mats = ((d.calculo_carga_fuego_materiales ?? []) as any[])
+            .slice()
+            .sort((a, b) => (Number(a?.orden ?? 0)) - (Number(b?.orden ?? 0)))
+            .map(mapMaterial)
+          setSectoresWizard([{
+            key: sectorKeySeq++,
+            sectorIncendio: num2str(d.sector_incendio),
+            superficie: num2str(d.superficie_m2),
+            ventilacion: normVent(d.ventilacion),
+            materiales: mats.length > 0 ? mats : [nuevoMaterial()],
+            riesgo: normRiesgo(d.riesgo),
+          }])
+        }
+        setSectorActivoIdx(0)
+      })
+      .catch(() => { /* sin borrador: arranca vacío */ })
+      .finally(() => { if (activo) setHidratando(false) })
+    return () => { activo = false }
+  }, [registroId, rgFechaPlanificada])
 
   // ── Sector activo (derivado) ────────────────────────────────────────
   const sectorActivo = sectoresWizard[sectorActivoIdx] ?? sectoresWizard[0]
@@ -519,7 +611,9 @@ export function CalculoCargaFuegoEjecutorModal({
   }
 
   // ── Guardar ─────────────────────────────────────────────────────────
-  async function handleGuardar() {
+  // finalizar=false → guarda como BORRADOR (re-editable, no marca la gestión Realizada).
+  // finalizar=true  → FINALIZA (cierra el protocolo, marca la gestión y sigue al paso 'listo').
+  async function handleGuardar(finalizar: boolean) {
     setError(null)
 
     const obsSinCat = observacionesSeguimiento.filter(o => o.descripcion.trim() && !o.categoria_id)
@@ -535,6 +629,7 @@ export function CalculoCargaFuegoEjecutorModal({
       fd.set('registro_id', registroId)
       fd.set('rg_fecha_planificada', rgFechaPlanificada)
       fd.set('establecimiento_id', establecimientoId)
+      fd.set('finalizar', String(finalizar))
       if (gestionEstablecimientoId) fd.set('gestion_establecimiento_id', gestionEstablecimientoId)
       if (firmantePersonaId) fd.set('firmante_persona_id', firmantePersonaId)
       fd.set('firmante', firmante)
@@ -623,6 +718,14 @@ export function CalculoCargaFuegoEjecutorModal({
       const result = await crearCalculoCargaFuego(fd)
       if (!result.success) { setError(result.error); setSaving(false); return }
 
+      if (!finalizar) {
+        // BORRADOR: no marca Realizada, no registra firma, no emite PDF. Refrescamos la
+        // Agenda y dejamos el wizard editable para seguir cargando.
+        onSuccess()
+        setSaving(false)
+        return
+      }
+
       // Firma a mano del profesional (NO bloqueante): si dibujó algo y cargó su DNI,
       // la registramos contra la cabecera recién creada vía la tabla polimórfica
       // `firmas`. Un fallo acá no rompe el cierre del cálculo: solo se loguea.
@@ -651,6 +754,12 @@ export function CalculoCargaFuegoEjecutorModal({
     } finally {
       setSaving(false)
     }
+  }
+
+  // Finalizar: pide confirmación (el cierre es irreversible) antes de guardar definitivo.
+  function handleFinalizar() {
+    if (!window.confirm('Al finalizar, el protocolo queda cerrado y no se podra modificar. ¿Confirmas?')) return
+    void handleGuardar(true)
   }
 
   const stepIdx = STEP_ORDER.indexOf(step)
@@ -1473,18 +1582,28 @@ export function CalculoCargaFuegoEjecutorModal({
             </Button>
           )}
           {step !== 'revisar' ? (
-            <Button type="button" onClick={goNext}>
-              Continuar <ChevronRight size={14} />
-            </Button>
+            <>
+              <Button type="button" onClick={goNext} disabled={hidratando}>
+                Continuar <ChevronRight size={14} />
+              </Button>
+              <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>Cancelar</Button>
+            </>
           ) : (
-            // El motor oficial server-side necesita el cálculo guardado para emitir el PDF
-            // (carátula + anexos + logos), igual que iluminación/ruido: no se descarga acá.
-            // El PDF se genera y se ofrece en el paso 'listo'.
-            <Button type="button" onClick={handleGuardar} disabled={saving}>
-              {saving ? <><Loader2 size={14} className="animate-spin" /> Guardando…</> : 'Guardar cálculo'}
-            </Button>
+            // En 'revisar': 3 botones de cierre.
+            //  - Cancelar: descarta y cierra.
+            //  - Guardar borrador: persiste re-editable (NO marca la gestión Realizada).
+            //  - Finalizar: cierra el protocolo (confirm), emite el PDF y va al paso 'listo'.
+            //    El motor oficial server-side necesita el cálculo guardado para emitir el PDF.
+            <>
+              <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>Cancelar</Button>
+              <Button type="button" variant="secondary" onClick={() => void handleGuardar(false)} disabled={saving}>
+                {saving ? <><Loader2 size={14} className="animate-spin" /> Guardando…</> : 'Guardar borrador'}
+              </Button>
+              <Button type="button" onClick={handleFinalizar} disabled={saving}>
+                {saving ? <><Loader2 size={14} className="animate-spin" /> Guardando…</> : 'Finalizar protocolo'}
+              </Button>
+            </>
           )}
-          <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>Cancelar</Button>
         </div>
       </div>
     </Modal>

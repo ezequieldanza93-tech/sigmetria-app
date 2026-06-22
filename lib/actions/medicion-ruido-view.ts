@@ -16,6 +16,12 @@ import type { ActionResult } from '@/lib/types'
  * detalle completo (cabecera + puntos + períodos + joins).
  *
  * Read-only: ningún write.
+ *
+ * Devuelve el detalle de getMedicionRuido (cabecera + puntos + períodos + joins)
+ * y, ADEMÁS, anida en `observaciones_seguimiento` las observaciones de seguimiento
+ * que cuelgan de este registro (pool común gestiones_observaciones). Esto permite
+ * re-hidratar el wizard al re-editar un borrador (las observaciones no son hijas de
+ * la cabecera, viven en el pool; sin esto, re-guardar el borrador las perdería).
  */
 export async function getMedicionRuidoByRegistro(
   registroId: string,
@@ -28,7 +34,7 @@ export async function getMedicionRuidoByRegistro(
 
   let query = supabase
     .from('medicion_ruido')
-    .select('id')
+    .select('id, estado')
     .eq('registro_gestion_id', registroId)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -38,5 +44,26 @@ export async function getMedicionRuidoByRegistro(
   if (error) return { success: false, error: error.message }
   if (!data) return { success: false, error: 'No se encontró el protocolo de ruido para este registro' }
 
-  return getMedicionRuido(data.id as string)
+  const detalle = await getMedicionRuido(data.id as string)
+  if (!detalle.success) return detalle
+
+  // Observaciones de seguimiento del registro (pool común). Para re-hidratar el
+  // wizard: descripcion, categoría/clasificación/responsable, fecha comprometida
+  // (fecha_planificada = fecha de subsanación) y la foto (PATH en bucket privado).
+  let obsQuery = supabase
+    .from('gestiones_observaciones')
+    .select('id, descripcion, categoria_id, clasificacion_id, responsable_id, fecha_planificada, foto_url')
+    .eq('registro_gestion_id', registroId)
+    .order('created_at', { ascending: true })
+  if (rgFechaPlanificada) obsQuery = obsQuery.eq('rg_fecha_planificada', rgFechaPlanificada)
+  const { data: obsRows } = await obsQuery
+
+  return {
+    success: true,
+    data: {
+      ...detalle.data,
+      estado: data.estado,
+      observaciones_seguimiento: obsRows ?? [],
+    },
+  }
 }

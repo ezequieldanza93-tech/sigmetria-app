@@ -46,3 +46,40 @@ export async function getMedicionCargaTermicaByRegistro(
   // lectura existente.
   return getMedicionCargaTermica(data.id as string)
 }
+
+/**
+ * Lectura del BORRADOR (estado = 'borrador') de carga térmica para RE-HIDRATAR el
+ * wizard del ejecutor. Devuelve el detalle completo (mismo shape que
+ * getMedicionCargaTermica) o { success: false } si no hay borrador para ese registro.
+ *
+ * A diferencia de getMedicionCargaTermicaByRegistro (que trae la cabecera más reciente
+ * sea cual sea su estado, para la vista read-only), acá filtramos por estado='borrador'
+ * para que el modal NO intente re-editar un protocolo ya finalizado. Si el registro solo
+ * tiene una medición finalizada, esta función devuelve "no encontrado" y el wizard
+ * arranca vacío como en un alta.
+ */
+export async function getBorradorCargaTermicaByRegistro(
+  registroId: string,
+  rgFechaPlanificada: string | null,
+): Promise<ActionResult<Record<string, unknown>>> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'No autenticado' }
+  if (!registroId) return { success: false, error: 'Registro requerido' }
+
+  let query = supabase
+    .from('medicion_carga_termica')
+    .select('id')
+    .eq('registro_gestion_id', registroId)
+    .eq('estado', 'borrador')
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+    .limit(1)
+  if (rgFechaPlanificada) query = query.eq('rg_fecha_planificada', rgFechaPlanificada)
+
+  const { data, error } = await query.maybeSingle()
+  if (error) return { success: false, error: error.message }
+  if (!data) return { success: false, error: 'Sin borrador' }
+
+  return getMedicionCargaTermica(data.id as string)
+}

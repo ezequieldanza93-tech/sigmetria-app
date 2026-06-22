@@ -93,6 +93,9 @@ export async function crearCalculoCargaFuego(
   const registroId = (formData.get('registro_id') as string) || ''
   const rgFechaPlanificada = (formData.get('rg_fecha_planificada') as string) || null
   const establecimientoId = (formData.get('establecimiento_id') as string) || ''
+  // Flag de cierre: 'true' → finaliza (estado 'finalizado', marca la gestión como
+  // Realizada). false/ausente → borrador (estado 'borrador', NO marca la gestión).
+  const finalizar = (formData.get('finalizar') as string) === 'true'
   const gestionEstablecimientoId = (formData.get('gestion_establecimiento_id') as string) || null
   const firmante = (formData.get('firmante') as string) || null
   const firmantePersonaId = (formData.get('firmante_persona_id') as string) || null
@@ -170,6 +173,27 @@ export async function crearCalculoCargaFuego(
     }
   }
 
+  // ── 0. ¿Existe ya una medición para este registro? (edición / upsert) ──
+  // El borrador se puede re-guardar y luego finalizar. Buscamos la cabecera del
+  // mismo registro (referencia suelta: registro_gestion_id + rg_fecha_planificada):
+  //  - si existe en estado 'borrador'  → EDICIÓN (UPDATE cabecera + reemplazo de hijos)
+  //  - si existe en estado 'finalizado'/'completado' → bloqueado (no se modifica)
+  //  - si no existe                     → INSERT nuevo (comportamiento original)
+  let existingQuery = supabase
+    .from('calculo_carga_fuego')
+    .select('id, estado')
+    .eq('registro_gestion_id', registroId)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+    .limit(1)
+  if (rgFechaPlanificada) existingQuery = existingQuery.eq('rg_fecha_planificada', rgFechaPlanificada)
+  const { data: existing, error: existingErr } = await existingQuery.maybeSingle()
+  if (existingErr) return { success: false, error: 'No se pudo verificar el estado del cálculo: ' + existingErr.message }
+  if (existing && existing.estado !== 'borrador') {
+    return { success: false, error: 'El protocolo ya fue finalizado y no se puede modificar' }
+  }
+  const existingId = (existing?.id as string | undefined) ?? null
+
   const ts = Date.now()
 
   // ── 1. Subir adjuntos opcionales (certificado / plano) → guardamos PATH, no URL ──
@@ -195,58 +219,118 @@ export async function crearCalculoCargaFuego(
     planoUrl = up.path
   }
 
-  // ── 2. UPDATE del registro planificado (queda Realizado) ────────────
-  // Fecha de ejecución = HOY por componentes locales (sin drift UTC de toISOString).
+  // ── 2. Registro planificado ─────────────────────────────────────────
+  // Fecha = HOY por componentes locales (sin drift UTC de toISOString).
   const now = new Date()
   const hoy = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-  let regUpdate = supabase
-    .from('gestiones_registros')
-    // ejecutado_at = now(): hora real de finalización del cálculo (queda Realizado).
-    .update({ fecha_ejecutada: hoy, ejecutado_at: new Date().toISOString() })
-    .eq('id', registroId)
-  if (rgFechaPlanificada) regUpdate = regUpdate.eq('fecha_planificada', rgFechaPlanificada)
-  const { data: regRow, error: regErr } = await regUpdate.select('fecha_planificada').single()
-  if (regErr) return { success: false, error: 'Error al actualizar el registro: ' + regErr.message }
+  // Necesitamos la fecha_planificada autoritativa del registro (clave de partición)
+  // para el geo-sello. Solo marcamos Realizado (fecha_ejecutada + ejecutado_at) cuando
+  // se FINALIZA; en borrador dejamos esos campos como estén (la gestión NO queda Realizada).
+  let regFechaPlanificada: string
+  if (finalizar) {
+    let regUpdate = supabase
+      .from('gestiones_registros')
+      // ejecutado_at = now(): hora real de finalización del cálculo (queda Realizado).
+      .update({ fecha_ejecutada: hoy, ejecutado_at: new Date().toISOString() })
+      .eq('id', registroId)
+    if (rgFechaPlanificada) regUpdate = regUpdate.eq('fecha_planificada', rgFechaPlanificada)
+    const { data: regRow, error: regErr } = await regUpdate.select('fecha_planificada').single()
+    if (regErr) return { success: false, error: 'Error al actualizar el registro: ' + regErr.message }
+    regFechaPlanificada = regRow.fecha_planificada as string
+  } else {
+    // Borrador: no tocamos el registro, solo leemos su fecha_planificada para el geo-sello.
+    let regSel = supabase
+      .from('gestiones_registros')
+      .select('fecha_planificada')
+      .eq('id', registroId)
+    if (rgFechaPlanificada) regSel = regSel.eq('fecha_planificada', rgFechaPlanificada)
+    const { data: regRow, error: regErr } = await regSel.maybeSingle()
+    if (regErr) return { success: false, error: 'Error al leer el registro: ' + regErr.message }
+    regFechaPlanificada = (regRow?.fecha_planificada as string | undefined) ?? (rgFechaPlanificada ?? hoy)
+  }
 
   // Geo-sello del lugar de ejecución. Usamos la fecha_planificada autoritativa del
   // registro (clave de partición). NO-BLOQUEANTE.
-  await aplicarSelloGeo(supabase, registroId, regRow.fecha_planificada as string, formData)
+  await aplicarSelloGeo(supabase, registroId, regFechaPlanificada, formData)
 
-  // ── 3. INSERT cabecera ──────────────────────────────────────────────
-  const { data: cabecera, error: cabErr } = await supabase
-    .from('calculo_carga_fuego')
-    .insert({
-      consultora_id: consultoraId,
-      establecimiento_id: establecimientoId,
-      registro_gestion_id: registroId,
-      rg_fecha_planificada: rgFechaPlanificada,
-      gestion_establecimiento_id: gestionEstablecimientoId,
-      firmante,
-      firmante_persona_id: firmantePersonaId,
-      sector_incendio: sectorIncendio,
-      superficie_m2: superficieM2,
-      ventilacion,
-      riesgo,
-      qf_kg_m2: qfKgM2,
-      f_exigido: fExigido,
-      potencial_extintor_a: potencialA,
-      potencial_extintor_b: potencialB,
-      observaciones,
-      conclusiones,
-      recomendaciones,
-      certificado_url: certificadoUrl,
-      plano_url: planoUrl,
-      estado: 'completado',
-    })
-    .select('id')
-    .single()
-  if (cabErr) return { success: false, error: 'Error al crear el cálculo: ' + cabErr.message }
+  // ── 3. Cabecera: UPDATE de borrador existente o INSERT nuevo ────────
+  // estado = 'finalizado' al cerrar; 'borrador' mientras se sigue editando.
+  const estado = finalizar ? 'finalizado' : 'borrador'
+  // Campos de cabecera comunes a INSERT y UPDATE. En la EDICIÓN de un borrador, los
+  // adjuntos solo se pisan si se subió uno nuevo (no borramos un adjunto previo por
+  // re-guardar sin volver a adjuntar).
+  const cabeceraComun: Record<string, unknown> = {
+    gestion_establecimiento_id: gestionEstablecimientoId,
+    firmante,
+    firmante_persona_id: firmantePersonaId,
+    sector_incendio: sectorIncendio,
+    superficie_m2: superficieM2,
+    ventilacion,
+    riesgo,
+    qf_kg_m2: qfKgM2,
+    f_exigido: fExigido,
+    potencial_extintor_a: potencialA,
+    potencial_extintor_b: potencialB,
+    observaciones,
+    conclusiones,
+    recomendaciones,
+    estado,
+  }
 
-  const calculoId = cabecera.id as string
+  let calculoId: string
+  if (existingId) {
+    // EDICIÓN de un borrador: UPDATE de la cabecera + reemplazo total de los hijos
+    // (los nuevos vienen completos del wizard). Solo pisamos adjuntos si hay uno nuevo.
+    const cabeceraUpdate = { ...cabeceraComun }
+    if (certificadoUrl !== null) cabeceraUpdate.certificado_url = certificadoUrl
+    if (planoUrl !== null) cabeceraUpdate.plano_url = planoUrl
+    const { error: updErr } = await supabase
+      .from('calculo_carga_fuego')
+      .update(cabeceraUpdate)
+      .eq('id', existingId)
+    if (updErr) return { success: false, error: 'Error al actualizar el cálculo: ' + updErr.message }
+    calculoId = existingId
+
+    // Reemplazo de hijos: borramos materiales legacy + sectores (cascade limpia
+    // calculo_carga_fuego_sector_materiales). Best-effort: si falla el delete, abortamos
+    // antes de re-insertar para no duplicar.
+    const { error: delMatErr } = await supabase
+      .from('calculo_carga_fuego_materiales')
+      .delete()
+      .eq('calculo_id', calculoId)
+    if (delMatErr) return { success: false, error: 'Error al limpiar los materiales previos: ' + delMatErr.message }
+    const { error: delSecErr } = await supabase
+      .from('calculo_carga_fuego_sectores')
+      .delete()
+      .eq('calculo_id', calculoId)
+    if (delSecErr) return { success: false, error: 'Error al limpiar los sectores previos: ' + delSecErr.message }
+  } else {
+    // INSERT nuevo (comportamiento original).
+    const { data: cabecera, error: cabErr } = await supabase
+      .from('calculo_carga_fuego')
+      .insert({
+        consultora_id: consultoraId,
+        establecimiento_id: establecimientoId,
+        registro_gestion_id: registroId,
+        rg_fecha_planificada: rgFechaPlanificada,
+        certificado_url: certificadoUrl,
+        plano_url: planoUrl,
+        ...cabeceraComun,
+      })
+      .select('id')
+      .single()
+    if (cabErr) return { success: false, error: 'Error al crear el cálculo: ' + cabErr.message }
+    calculoId = cabecera.id as string
+  }
 
   // ── 4. INSERT materiales / sectores ────────────────────────────────
-  // Si algo falla, rollback manual de la cabecera (ON DELETE CASCADE limpia hijos
-  // ya insertados) y devolvemos error en vez de tragarlo y reportar éxito.
+  // Si algo falla, rollback y devolvemos error en vez de tragarlo y reportar éxito.
+  // En un INSERT nuevo, el rollback borra la cabecera (ON DELETE CASCADE limpia hijos).
+  // En la EDICIÓN de un borrador NO borramos la cabecera (perderíamos el borrador);
+  // los hijos ya fueron limpiados arriba y quedan vacíos hasta el próximo guardado OK.
+  const rollbackCabecera = async () => {
+    if (!existingId) await supabase.from('calculo_carga_fuego').delete().eq('id', calculoId)
+  }
   if (sectores.length > 0) {
     // Flujo multi-sector: insertar en calculo_carga_fuego_sectores + sector_materiales
     for (const sector of sectores) {
@@ -271,7 +355,7 @@ export async function crearCalculoCargaFuego(
         .select('id')
         .single()
       if (sectorErr) {
-        await supabase.from('calculo_carga_fuego').delete().eq('id', calculoId)
+        await rollbackCabecera()
         return { success: false, error: 'Error al guardar el sector "' + sector.nombre_sector + '": ' + sectorErr.message }
       }
       const sectorId = sectorRow.id as string
@@ -292,7 +376,7 @@ export async function crearCalculoCargaFuego(
           .from('calculo_carga_fuego_sector_materiales')
           .insert(sMatRows)
         if (sMatErr) {
-          await supabase.from('calculo_carga_fuego').delete().eq('id', calculoId)
+          await rollbackCabecera()
           return { success: false, error: 'Error al guardar los materiales del sector "' + sector.nombre_sector + '": ' + sMatErr.message }
         }
       }
@@ -316,7 +400,7 @@ export async function crearCalculoCargaFuego(
         .from('calculo_carga_fuego_materiales')
         .insert(materialRows)
       if (matErr) {
-        await supabase.from('calculo_carga_fuego').delete().eq('id', calculoId)
+        await rollbackCabecera()
         return { success: false, error: 'Error al guardar los materiales: ' + matErr.message }
       }
     }
@@ -326,7 +410,9 @@ export async function crearCalculoCargaFuego(
   // Replicado de crearMedicionIluminacion: mismo contrato (JSON `observaciones_seguimiento`
   // + fotos `obs-foto-{idx}`), misma inserción (registro_gestion_id + rg_fecha_planificada
   // para que entren a Seguimiento). Son findings ADICIONALES al cálculo.
-  if (observacionesSeguimientoRaw) {
+  // SOLO al FINALIZAR (no en borrador): el pool gestiones_observaciones no se re-hidrata,
+  // insertarlas en cada "Guardar borrador" las DUPLICARÍA. Mismo criterio que iluminación.
+  if (finalizar && observacionesSeguimientoRaw) {
     let obs: ObsSeguimientoInput[] = []
     try {
       const parsed = JSON.parse(observacionesSeguimientoRaw)

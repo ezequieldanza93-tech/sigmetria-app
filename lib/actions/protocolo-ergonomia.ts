@@ -75,6 +75,12 @@ export async function crearProtocoloErgonomia(
   const establecimientoId = (formData.get('establecimiento_id') as string) || ''
   const gestionEstablecimientoId = (formData.get('gestion_establecimiento_id') as string) || null
 
+  // Flag de cierre: 'true' = finaliza el protocolo (queda cerrado, marca la gestión
+  // como Realizada). Cualquier otro valor (o ausencia) = borrador (re-editable, NO
+  // marca la gestión como Realizada).
+  const finalizar = (formData.get('finalizar') as string) === 'true'
+  const estado: 'borrador' | 'finalizado' = finalizar ? 'finalizado' : 'borrador'
+
   if (!registroId) return { success: false, error: 'Registro requerido' }
   if (!establecimientoId) return { success: false, error: 'Establecimiento requerido' }
 
@@ -117,54 +123,120 @@ export async function crearProtocoloErgonomia(
   const consultoraId = await consultoraIdFromEstablecimiento(supabase, establecimientoId)
   if (!consultoraId) return { success: false, error: 'No se pudo resolver la consultora del establecimiento' }
 
-  // ── UPDATE del registro planificado (queda Realizado) ────────────────
+  // ── 0. ¿Existe ya una evaluación para este registro? (edición / upsert) ──
+  // El borrador se puede re-guardar y luego finalizar. Buscamos la cabecera del
+  // mismo registro (referencia suelta: registro_gestion_id + rg_fecha_planificada):
+  //  - si existe en estado 'borrador'  → EDICIÓN (UPDATE cabecera + reemplazo de hijos)
+  //  - si existe en estado 'finalizado'/'completado' → bloqueado (no se modifica)
+  //  - si no existe                     → INSERT nuevo (comportamiento original)
+  let existingQuery = supabase
+    .from('ergonomia_evaluaciones')
+    .select('id, estado')
+    .eq('registro_gestion_id', registroId)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+    .limit(1)
+  if (rgFechaPlanificada) existingQuery = existingQuery.eq('rg_fecha_planificada', rgFechaPlanificada)
+  const { data: existing, error: existingErr } = await existingQuery.maybeSingle()
+  if (existingErr) return { success: false, error: 'No se pudo verificar el estado del protocolo: ' + existingErr.message }
+  if (existing && existing.estado !== 'borrador') {
+    return { success: false, error: 'El protocolo ya fue finalizado y no se puede modificar' }
+  }
+  const existingId = (existing?.id as string | undefined) ?? null
+
+  // ── Registro planificado ─────────────────────────────────────────────
+  // Solo marcamos Realizado (fecha_ejecutada + ejecutado_at) cuando se FINALIZA;
+  // en borrador dejamos esos campos como estén (la gestión NO queda Realizada).
+  // De todos modos necesitamos la fecha_planificada autoritativa para el geo-sello.
   const fechaHoy = hoy()
-  let regUpdate = supabase
-    .from('gestiones_registros')
-    .update({ fecha_ejecutada: fechaHoy, ejecutado_at: new Date().toISOString() })
-    .eq('id', registroId)
-  if (rgFechaPlanificada) regUpdate = regUpdate.eq('fecha_planificada', rgFechaPlanificada)
-  const { data: regRow, error: regErr } = await regUpdate.select('fecha_planificada').single()
-  if (regErr) return { success: false, error: 'Error al actualizar el registro: ' + regErr.message }
+  let regFechaPlanificada: string
+  if (finalizar) {
+    let regUpdate = supabase
+      .from('gestiones_registros')
+      .update({ fecha_ejecutada: fechaHoy, ejecutado_at: new Date().toISOString() })
+      .eq('id', registroId)
+    if (rgFechaPlanificada) regUpdate = regUpdate.eq('fecha_planificada', rgFechaPlanificada)
+    const { data: regRow, error: regErr } = await regUpdate.select('fecha_planificada').single()
+    if (regErr) return { success: false, error: 'Error al actualizar el registro: ' + regErr.message }
+    regFechaPlanificada = regRow.fecha_planificada as string
+  } else {
+    let regSel = supabase
+      .from('gestiones_registros')
+      .select('fecha_planificada')
+      .eq('id', registroId)
+    if (rgFechaPlanificada) regSel = regSel.eq('fecha_planificada', rgFechaPlanificada)
+    const { data: regRow, error: regErr } = await regSel.maybeSingle()
+    if (regErr) return { success: false, error: 'Error al leer el registro: ' + regErr.message }
+    regFechaPlanificada = (regRow?.fecha_planificada as string | undefined) ?? (rgFechaPlanificada ?? fechaHoy)
+  }
 
   // Geo-sello NO-BLOQUEANTE
-  await aplicarSelloGeo(supabase, registroId, regRow.fecha_planificada as string, formData)
+  await aplicarSelloGeo(supabase, registroId, regFechaPlanificada, formData)
 
-  // ── INSERT cabecera ───────────────────────────────────────────────────
-  const { data: cabecera, error: cabErr } = await supabase
-    .from('ergonomia_evaluaciones')
-    .insert({
-      consultora_id: consultoraId,
-      establecimiento_id: establecimientoId,
-      registro_gestion_id: registroId,
-      rg_fecha_planificada: rgFechaPlanificada,
-      gestion_establecimiento_id: gestionEstablecimientoId,
-      area_sector: areaSector,
-      puesto_de_trabajo: puestoDeTrabajo,
-      n_trabajadores: nTrabajadores,
-      capacitacion,
-      procedimiento_escrito: procedimientoEscrito,
-      ubicacion_sintoma: ubicacionSintoma,
-      nombre_trabajadores: nombreTrabajadores,
-      trabajador_persona_id: trabajadorPersonaId || null,
-      manifestacion_temprana: manifestacionTemprana,
-      fecha_evaluacion: fechaEvaluacion,
-      firmante,
-      firmante_persona_id: firmantePersonaId || null,
-      observaciones,
-      conclusiones,
-      recomendaciones,
-      estado: 'completado',
-    })
-    .select('id')
-    .single()
-  if (cabErr) return { success: false, error: 'Error al crear la evaluación: ' + cabErr.message }
+  // ── Cabecera: UPDATE de borrador existente o INSERT nuevo ─────────────
+  const cabeceraComun = {
+    gestion_establecimiento_id: gestionEstablecimientoId,
+    area_sector: areaSector,
+    puesto_de_trabajo: puestoDeTrabajo,
+    n_trabajadores: nTrabajadores,
+    capacitacion,
+    procedimiento_escrito: procedimientoEscrito,
+    ubicacion_sintoma: ubicacionSintoma,
+    nombre_trabajadores: nombreTrabajadores,
+    trabajador_persona_id: trabajadorPersonaId || null,
+    manifestacion_temprana: manifestacionTemprana,
+    fecha_evaluacion: fechaEvaluacion,
+    firmante,
+    firmante_persona_id: firmantePersonaId || null,
+    observaciones,
+    conclusiones,
+    recomendaciones,
+    estado,
+  }
 
-  const evaluacionId = cabecera.id as string
+  let evaluacionId: string
+  if (existingId) {
+    // EDICIÓN de un borrador: UPDATE de la cabecera + reemplazo total de los hijos.
+    const { error: updErr } = await supabase
+      .from('ergonomia_evaluaciones')
+      .update(cabeceraComun)
+      .eq('id', existingId)
+    if (updErr) return { success: false, error: 'Error al actualizar la evaluación: ' + updErr.message }
+    evaluacionId = existingId
 
-  // Helper de rollback
+    // Reemplazo de hijos: borramos las filas previas (las nuevas vienen completas del
+    // wizard). Best-effort: si falla un delete, abortamos antes de re-insertar.
+    for (const tabla of [
+      'ergonomia_tareas',
+      'ergonomia_factores_tarea',
+      'ergonomia_evaluacion_factor',
+      'ergonomia_medidas',
+      'ergonomia_seguimiento',
+    ] as const) {
+      const { error: delErr } = await supabase.from(tabla).delete().eq('evaluacion_id', evaluacionId)
+      if (delErr) return { success: false, error: `Error al limpiar datos previos (${tabla}): ` + delErr.message }
+    }
+  } else {
+    const { data: cabecera, error: cabErr } = await supabase
+      .from('ergonomia_evaluaciones')
+      .insert({
+        consultora_id: consultoraId,
+        establecimiento_id: establecimientoId,
+        registro_gestion_id: registroId,
+        rg_fecha_planificada: rgFechaPlanificada,
+        ...cabeceraComun,
+      })
+      .select('id')
+      .single()
+    if (cabErr) return { success: false, error: 'Error al crear la evaluación: ' + cabErr.message }
+    evaluacionId = cabecera.id as string
+  }
+
+  // Helper de rollback. En un INSERT nuevo, borra la cabecera (ON DELETE CASCADE limpia
+  // hijos). En la EDICIÓN de un borrador NO borramos la cabecera (perderíamos el borrador):
+  // los hijos ya quedaron limpios arriba y se repueblan en el próximo guardado OK.
   const rollback = async (msg: string): Promise<ActionResult<never>> => {
-    await supabase.from('ergonomia_evaluaciones').delete().eq('id', evaluacionId)
+    if (!existingId) await supabase.from('ergonomia_evaluaciones').delete().eq('id', evaluacionId)
     return { success: false, error: msg }
   }
 

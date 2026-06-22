@@ -12,8 +12,16 @@ import type { ActionResult } from '@/lib/types'
  * medición de iluminación (ver lib/actions/medicion-iluminacion.ts). Patrón replicado:
  *  - recibe el registro planificado (registro_id + rg_fecha_planificada) + establecimiento + gestion_establecimiento
  *  - sube adjuntos al bucket PRIVADO `documentos` con tenantStoragePath (guarda PATH, no URL)
- *  - UPDATE gestiones_registros.fecha_ejecutada = hoy
- *  - INSERT cabecera + tomas
+ *  - SOLO al FINALIZAR: UPDATE gestiones_registros.fecha_ejecutada = hoy + ejecutado_at
+ *  - INSERT (o UPDATE si edita un borrador) cabecera + tomas
+ *
+ * Estado del protocolo (flag `finalizar` del FormData):
+ *  - finalizar=false (default) → estado 'borrador': la gestión NO queda Realizada
+ *    (no se tocan fecha_ejecutada/ejecutado_at), y el wizard se puede reabrir y
+ *    re-guardar las veces que haga falta. Re-guardar un borrador hace UPDATE de la
+ *    cabecera + reemplazo total de las tomas y observaciones de seguimiento.
+ *  - finalizar=true → estado 'finalizado': el protocolo queda cerrado e inmutable
+ *    (un re-guardado posterior devuelve error) y marca la gestión como Realizada.
  *  - INSERTA las observaciones de seguimiento en gestiones_observaciones para que
  *    entren al pool de Seguimiento (mismo contrato que iluminación / reporte fotográfico)
  *  - NO traga errores en silencio: si falla un insert crítico, rollback manual + { success:false }
@@ -105,6 +113,11 @@ export async function crearMedicionPat(
   const planoFile = formData.get('plano') as File | null
   const tomasRaw = (formData.get('tomas') as string) || '[]'
   const observacionesSeguimientoRaw = (formData.get('observaciones_seguimiento') as string) || null
+  // Flag de cierre: 'true' → el protocolo se finaliza (queda cerrado e inmutable y
+  // marca la gestión como Realizada). Cualquier otro valor (o ausencia) → borrador
+  // (re-editable, NO marca la gestión como Realizada).
+  const finalizar = (formData.get('finalizar') as string) === 'true'
+  const estadoNuevo = finalizar ? 'finalizado' : 'borrador'
 
   if (!registroId) return { success: false, error: 'Registro requerido' }
   if (!establecimientoId) return { success: false, error: 'Establecimiento requerido' }
@@ -149,61 +162,115 @@ export async function crearMedicionPat(
     planoUrl = up.path
   }
 
-  // ── 2. UPDATE del registro planificado (queda Realizado) ────────────
   // Fecha de ejecución = HOY por componentes locales (sin drift UTC de toISOString,
   // que de noche en AR -3 puede adelantar un día).
   const now = new Date()
   const hoy = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-  let regUpdate = supabase
-    .from('gestiones_registros')
-    // ejecutado_at = now(): hora real de finalización de la medición (queda Realizado).
-    .update({ fecha_ejecutada: hoy, ejecutado_at: new Date().toISOString() })
-    .eq('id', registroId)
-  // rg_fecha_planificada completa la PK compuesta del registro particionado:
-  // si la UI lo manda, acotamos el UPDATE a la fila exacta.
-  if (rgFechaPlanificada) regUpdate = regUpdate.eq('fecha_planificada', rgFechaPlanificada)
-  const { data: regRow, error: regErr } = await regUpdate.select('fecha_planificada').single()
-  if (regErr) return { success: false, error: 'Error al actualizar el registro: ' + regErr.message }
 
-  // Geo-sello del lugar de ejecución. Usamos la fecha_planificada autoritativa del
-  // registro (clave de partición). NO-BLOQUEANTE.
-  await aplicarSelloGeo(supabase, registroId, regRow.fecha_planificada as string, formData)
-
-  // ── 3. INSERT cabecera ──────────────────────────────────────────────
-  const { data: cabecera, error: cabErr } = await supabase
+  // ── 1.b Borrador existente del MISMO registro → edición (upsert) ─────
+  // El protocolo puede guardarse como borrador (re-editable) y luego finalizarse.
+  // Buscamos la cabecera viva más reciente de este registro planificado:
+  //   - si existe en estado 'finalizado' → está cerrada, NO se puede modificar.
+  //   - si existe en estado 'borrador'   → la editamos (UPDATE cabecera + reemplazo de tomas).
+  //   - si no existe                     → flujo nuevo (INSERT).
+  let existenteQuery = supabase
     .from('medicion_pat')
-    .insert({
-      consultora_id: consultoraId,
-      establecimiento_id: establecimientoId,
-      registro_gestion_id: registroId,
-      rg_fecha_planificada: rgFechaPlanificada,
-      gestion_establecimiento_id: gestionEstablecimientoId,
-      instrumento_id: instrumentoId,
-      certificado_id: certificadoId,
-      firmante,
-      firmante_persona_id: firmantePersonaId,
-      metodologia,
-      fecha_medicion: fechaMedicion,
-      fecha_medicion_fin: fechaMedicionFin,
-      hora_inicio: horaInicio,
-      hora_fin: horaFin,
-      conclusiones,
-      recomendaciones,
-      observaciones,
-      certificado_url: certificadoUrl,
-      plano_url: planoUrl,
-      estado: 'completado',
-    })
-    .select('id')
-    .single()
-  if (cabErr) return { success: false, error: 'Error al crear la medición: ' + cabErr.message }
+    .select('id, estado')
+    .eq('registro_gestion_id', registroId)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+    .limit(1)
+  if (rgFechaPlanificada) existenteQuery = existenteQuery.eq('rg_fecha_planificada', rgFechaPlanificada)
+  const { data: existente, error: existenteErr } = await existenteQuery.maybeSingle()
+  if (existenteErr) return { success: false, error: 'Error al verificar el protocolo existente: ' + existenteErr.message }
+  if (existente && existente.estado === 'finalizado') {
+    return { success: false, error: 'El protocolo ya fue finalizado y no se puede modificar' }
+  }
+  const borradorId = existente?.id as string | undefined
 
-  const medicionId = cabecera.id as string
+  // ── 2. UPDATE del registro planificado ──────────────────────────────
+  // Solo al FINALIZAR la gestión queda Realizada: seteamos fecha_ejecutada=hoy +
+  // ejecutado_at=now() (hora real de finalización). En BORRADOR NO tocamos esos
+  // campos (la gestión sigue Pendiente/Planificada y reabre el ejecutor para seguir
+  // editando).
+  if (finalizar) {
+    let regUpdate = supabase
+      .from('gestiones_registros')
+      .update({ fecha_ejecutada: hoy, ejecutado_at: new Date().toISOString() })
+      .eq('id', registroId)
+    // rg_fecha_planificada completa la PK compuesta del registro particionado:
+    // si la UI lo manda, acotamos el UPDATE a la fila exacta.
+    if (rgFechaPlanificada) regUpdate = regUpdate.eq('fecha_planificada', rgFechaPlanificada)
+    const { data: regRow, error: regErr } = await regUpdate.select('fecha_planificada').single()
+    if (regErr) return { success: false, error: 'Error al actualizar el registro: ' + regErr.message }
+
+    // Geo-sello del lugar de ejecución. Usamos la fecha_planificada autoritativa del
+    // registro (clave de partición). NO-BLOQUEANTE. Solo al finalizar (es el cierre real).
+    await aplicarSelloGeo(supabase, registroId, regRow.fecha_planificada as string, formData)
+  }
+
+  // ── 3. UPSERT cabecera ──────────────────────────────────────────────
+  // Payload común para INSERT (nuevo) y UPDATE (edición de borrador).
+  const cabeceraPayload = {
+    consultora_id: consultoraId,
+    establecimiento_id: establecimientoId,
+    registro_gestion_id: registroId,
+    rg_fecha_planificada: rgFechaPlanificada,
+    gestion_establecimiento_id: gestionEstablecimientoId,
+    instrumento_id: instrumentoId,
+    certificado_id: certificadoId,
+    firmante,
+    firmante_persona_id: firmantePersonaId,
+    metodologia,
+    fecha_medicion: fechaMedicion,
+    fecha_medicion_fin: fechaMedicionFin,
+    hora_inicio: horaInicio,
+    hora_fin: horaFin,
+    conclusiones,
+    recomendaciones,
+    observaciones,
+    certificado_url: certificadoUrl,
+    plano_url: planoUrl,
+    estado: estadoNuevo,
+  }
+
+  let medicionId: string
+  if (borradorId) {
+    // EDICIÓN de un borrador existente: UPDATE de la cabecera + reemplazo total de
+    // las tomas (DELETE + re-INSERT abajo). NO pisamos certificado_url/plano_url con
+    // null si esta vez no se adjuntó nada nuevo: conservamos el adjunto previo.
+    const cabeceraUpdate: Record<string, unknown> = { ...cabeceraPayload }
+    if (certificadoUrl === null) delete cabeceraUpdate.certificado_url
+    if (planoUrl === null) delete cabeceraUpdate.plano_url
+    const { error: updErr } = await supabase
+      .from('medicion_pat')
+      .update(cabeceraUpdate)
+      .eq('id', borradorId)
+    if (updErr) return { success: false, error: 'Error al actualizar el protocolo: ' + updErr.message }
+    medicionId = borradorId
+
+    // Reemplazo de las tomas hijas del borrador (ON DELETE CASCADE no aplica a un
+    // UPDATE de la cabecera, así que las borramos a mano y re-insertamos las nuevas).
+    const { error: delTomasErr } = await supabase
+      .from('medicion_pat_tomas')
+      .delete()
+      .eq('medicion_id', borradorId)
+    if (delTomasErr) return { success: false, error: 'Error al actualizar las tomas de tierra: ' + delTomasErr.message }
+  } else {
+    // FLUJO NUEVO: INSERT de la cabecera.
+    const { data: cabecera, error: cabErr } = await supabase
+      .from('medicion_pat')
+      .insert(cabeceraPayload)
+      .select('id')
+      .single()
+    if (cabErr) return { success: false, error: 'Error al crear la medición: ' + cabErr.message }
+    medicionId = cabecera.id as string
+  }
 
   // ── 4. INSERT tomas ─────────────────────────────────────────────────
-  // Se insertan en lote. Si algo falla, rollback manual de la cabecera
-  // (ON DELETE CASCADE limpia las tomas ya insertadas) y devolvemos error
-  // en vez de tragarlo y reportar éxito.
+  // Se insertan en lote. Si algo falla, rollback manual de la cabecera SOLO en el
+  // flujo nuevo (ON DELETE CASCADE limpia las tomas ya insertadas). En edición de
+  // borrador no borramos la cabecera (existía antes); devolvemos error igual.
   if (tomas.length > 0) {
     const tomaRows = tomas.map((t, i) => ({
       medicion_id: medicionId,
@@ -225,7 +292,9 @@ export async function crearMedicionPat(
     }))
     const { error: tomasErr } = await supabase.from('medicion_pat_tomas').insert(tomaRows)
     if (tomasErr) {
-      await supabase.from('medicion_pat').delete().eq('id', medicionId)
+      // Rollback de la cabecera SOLO si la acabamos de crear (flujo nuevo). En edición
+      // de un borrador la cabecera ya existía: no la borramos.
+      if (!borradorId) await supabase.from('medicion_pat').delete().eq('id', medicionId)
       return { success: false, error: 'Error al guardar las tomas de tierra: ' + tomasErr.message }
     }
   }
@@ -244,6 +313,22 @@ export async function crearMedicionPat(
       obsSeguimiento = Array.isArray(parsed) ? parsed : []
     } catch {
       return { success: false, error: 'Las observaciones de seguimiento tienen un formato inválido' }
+    }
+
+    // En edición de un borrador re-insertamos el set completo: borramos primero las
+    // observaciones de seguimiento previas de ESTE registro para no duplicarlas en
+    // cada re-guardado. El borrador aún no se finalizó, así que estas observaciones
+    // son del wizard en progreso (no hay subsanaciones cerradas que perder).
+    if (borradorId) {
+      let delObs = supabase
+        .from('gestiones_observaciones')
+        .delete()
+        .eq('registro_gestion_id', registroId)
+      if (rgFechaPlanificada) delObs = delObs.eq('rg_fecha_planificada', rgFechaPlanificada)
+      const { error: delObsErr } = await delObs
+      if (delObsErr) {
+        console.error('[medicionPat] Error al limpiar observaciones previas del borrador:', delObsErr.message)
+      }
     }
 
     const validas = obsSeguimiento.filter(o => o.descripcion?.trim() && o.categoria_id)

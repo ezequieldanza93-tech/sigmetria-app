@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useEffect, useTransition } from 'react'
 import { crearProtocoloErgonomia } from '@/lib/actions/protocolo-ergonomia'
+import { getProtocoloErgonomiaByRegistro } from '@/lib/actions/protocolo-ergonomia-view'
 import type {
   FactorErgonomia,
   NivelRiesgoErgonomia,
@@ -24,7 +25,7 @@ import {
   Activity, AlertCircle, AlertTriangle, ArrowRight, Building2, Calendar,
   Check, ChevronLeft, ChevronRight,
   ClipboardList, Dumbbell, FileCheck, Info,
-  Loader2, Plus, ShieldAlert, Thermometer, Trash2, Wind, Wrench, X,
+  Loader2, Plus, Save, ShieldAlert, Thermometer, Trash2, Wind, Wrench, X,
 } from 'lucide-react'
 
 // ── Tipos de factores (Res. SRT 886/15 Anexo I) ───────────────────────────
@@ -343,6 +344,8 @@ export function ProtocoloErgonomiaEjecutorModal({
   const [paso, setPaso] = useState<Paso>('datos')
   const [isPending, startTransition] = useTransition()
   const [errorGlobal, setErrorGlobal] = useState<string | null>(null)
+  // Re-hidratación: mientras cargamos un borrador existente para este registro.
+  const [hidratando, setHidratando] = useState(true)
 
   // ── Planilla 1 – datos generales ──
   // area_sector y puesto_de_trabajo son snapshot de texto derivado del selector.
@@ -392,6 +395,121 @@ export function ProtocoloErgonomiaEjecutorModal({
 
   // ── Seguimiento (Planilla 4) ──
   const [seguimiento, setSeguimiento] = useState<SeguimientoRow[]>([])
+
+  // ── Re-hidratación de un BORRADOR existente ───────────────────────────
+  // Al abrir el modal, si ya hay un borrador para este registro, cargamos TODOS
+  // sus datos en los useState para seguir editando donde se dejó. Si no hay borrador
+  // (o está finalizado/no encontrado), arrancamos vacío como hasta ahora.
+  useEffect(() => {
+    let activo = true
+    setHidratando(true)
+    getProtocoloErgonomiaByRegistro(registroId, rgFechaPlanificada)
+      .then(res => {
+        if (!activo) return
+        // No hay borrador (o no encontrado): arrancamos vacío. Si está finalizado, la
+        // server action bloquea el guardado; igual no re-hidratamos para edición.
+        if (!res.success || !res.data || res.data.estado !== 'borrador') return
+        const ev = res.data
+
+        // ── Cabecera (Planilla 1) ──
+        setAreaSector(ev.area_sector ?? '')
+        setPuesto(ev.puesto_de_trabajo ?? '')
+        setNTrabajadores(ev.n_trabajadores != null ? String(ev.n_trabajadores) : '')
+        setCapacitacion(ev.capacitacion)
+        setProcEscrito(ev.procedimiento_escrito)
+        setManifestacionTemprana(ev.manifestacion_temprana)
+        // ubicacion_sintoma: si no está en la lista cerrada, lo tratamos como "Otro".
+        const opcionesSintoma = [
+          'Cuello', 'Hombros', 'Espalda alta (dorsal)', 'Espalda baja (lumbar)', 'Brazos',
+          'Codos', 'Antebrazos', 'Muñecas / Manos', 'Cadera / Muslos', 'Rodillas',
+          'Piernas', 'Tobillos / Pies',
+        ]
+        if (ev.ubicacion_sintoma && !opcionesSintoma.includes(ev.ubicacion_sintoma)) {
+          setUbicacionSintoma('Otro')
+          setUbicacionSintomaOtro(ev.ubicacion_sintoma)
+        } else {
+          setUbicacionSintoma(ev.ubicacion_sintoma ?? '')
+          setUbicacionSintomaOtro('')
+        }
+        setNombreTrabajadores(ev.nombre_trabajadores ?? '')
+        if (ev.fecha_evaluacion) setFechaEvaluacion(ev.fecha_evaluacion)
+        setFirmante(ev.firmante ?? '')
+        setFirmantePersonaId(ev.firmante_persona_id ?? null)
+        setObservacionesGlobales(ev.observaciones ?? '')
+        setConclusiones(ev.conclusiones ?? '')
+        setRecomendaciones(ev.recomendaciones ?? '')
+
+        // ── Tareas (hasta 3) ──
+        const tareasHidratadas = [...(ev.ergonomia_tareas ?? [])]
+          .sort((a, b) => a.numero - b.numero)
+          .map(t => ({ numero: t.numero as 1 | 2 | 3, descripcion: t.descripcion ?? '' }))
+        setTareas(tareasHidratadas.length > 0 ? tareasHidratadas : [{ numero: 1, descripcion: '' }])
+
+        // ── Factores × tarea (grilla completa 9×3, marcando los guardados) ──
+        const guardados = ev.ergonomia_factores_tarea ?? []
+        setFactoresTarea(
+          FACTORES.flatMap(f =>
+            ([1, 2, 3] as const).map(t => {
+              const g = guardados.find(x => x.factor === f.key && x.tarea_numero === t)
+              return {
+                factor: f.key,
+                tarea_numero: t,
+                presente: g?.presente ?? false,
+                tiempo_exposicion: g?.tiempo_exposicion ?? '',
+                nivel_riesgo: g?.nivel_riesgo ?? null,
+              }
+            })
+          )
+        )
+
+        // ── Evaluación inicial por factor (Planilla 2) ──
+        setEvalFactores(
+          (ev.ergonomia_evaluacion_factor ?? []).map(ef => ({
+            factor: ef.factor,
+            tarea_numero: ef.tarea_numero as 1 | 2 | 3,
+            p1: ef.paso1_respuestas ?? [],
+            p1Implica: ef.paso1_implica,
+            p2: ef.paso2_respuestas ?? [],
+            nivel: ef.nivel_resultante,
+            observaciones: ef.observaciones ?? '',
+            vibSubtipo: ef.vibracion_subtipo ?? null,
+          }))
+        )
+        setEvalIdx(0)
+
+        // ── Medidas (Planilla 3) ──
+        setMedidas(
+          (ev.ergonomia_medidas ?? []).map(m => ({
+            tarea_numero: (m.tarea_numero as 1 | 2 | 3 | null) ?? null,
+            mg1: m.mg1_informado, mg1Fecha: m.mg1_fecha ?? '', mg1Obs: m.mg1_observaciones ?? '',
+            mg2: m.mg2_capacitado_sintomas, mg2Fecha: m.mg2_fecha ?? '', mg2Obs: m.mg2_observaciones ?? '',
+            mg3: m.mg3_capacitado_medidas, mg3Fecha: m.mg3_fecha ?? '', mg3Obs: m.mg3_observaciones ?? '',
+            especificas: m.medidas_especificas ?? [],
+            observaciones: m.observaciones ?? '',
+          }))
+        )
+
+        // ── Seguimiento (Planilla 4) ──
+        setSeguimiento(
+          [...(ev.ergonomia_seguimiento ?? [])]
+            .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))
+            .map(s => ({
+              numero_mcp: s.numero_mcp != null ? String(s.numero_mcp) : '',
+              nombre_puesto: s.nombre_puesto ?? '',
+              fecha_evaluacion: s.fecha_evaluacion ?? '',
+              nivel_riesgo: s.nivel_riesgo ?? '',
+              fecha_admin: s.fecha_implementacion_admin ?? '',
+              fecha_ingenieria: s.fecha_implementacion_ingenieria ?? '',
+              fecha_cierre: s.fecha_cierre ?? '',
+              observaciones: s.observaciones ?? '',
+            }))
+        )
+      })
+      .catch(() => { /* sin borrador → arranque vacío */ })
+      .finally(() => { if (activo) setHidratando(false) })
+    return () => { activo = false }
+    // Solo en montaje / cambio de registro: la re-hidratación es de carga inicial.
+  }, [registroId, rgFechaPlanificada])
 
   // ── Planilla 2: ítems a evaluar (factores presentes) ──────────────────
   const factoresPresentes = factoresTarea.filter(f => f.presente)
@@ -531,13 +649,14 @@ export function ProtocoloErgonomiaEjecutorModal({
 
   // ── Envío final ───────────────────────────────────────────────────────
 
-  function handleSubmit() {
+  function handleSubmit(finalizar: boolean) {
     setErrorGlobal(null)
     startTransition(async () => {
       const fd = new FormData()
       fd.set('registro_id', registroId)
       fd.set('rg_fecha_planificada', rgFechaPlanificada)
       fd.set('establecimiento_id', establecimientoId)
+      fd.set('finalizar', String(finalizar))
       if (gestionEstablecimientoId) fd.set('gestion_establecimiento_id', gestionEstablecimientoId)
 
       fd.set('area_sector', areaSector)
@@ -685,6 +804,19 @@ export function ProtocoloErgonomiaEjecutorModal({
   const currentEval = evalFactores[evalIdx]
 
   // ── UI ────────────────────────────────────────────────────────────────
+
+  // Mientras re-hidratamos un borrador existente, mostramos un spinner para no
+  // pisar inputs del usuario con los datos que llegan asíncronos.
+  if (hidratando) {
+    return (
+      <Modal open title="Protocolo de Ergonomía — Res. SRT 886/15" onClose={onClose} size="full">
+        <div className="flex items-center justify-center py-16 gap-3">
+          <Loader2 size={20} className="animate-spin text-sig-600" />
+          <span className="text-sm text-text-secondary">Cargando protocolo…</span>
+        </div>
+      </Modal>
+    )
+  }
 
   return (
     <Modal
@@ -1528,14 +1660,29 @@ export function ProtocoloErgonomiaEjecutorModal({
         </Button>
 
         {paso === 'revisar' ? (
-          <Button
-            onClick={handleSubmit}
-            disabled={isPending}
-            className="flex items-center gap-1.5 bg-sig-600 hover:bg-sig-700 text-white"
-          >
-            {isPending ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-            {isPending ? 'Guardando…' : 'Guardar protocolo'}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => handleSubmit(false)}
+              disabled={isPending}
+              className="flex items-center gap-1.5"
+            >
+              {isPending ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+              {isPending ? 'Guardando…' : 'Guardar borrador'}
+            </Button>
+            <Button
+              onClick={() => {
+                if (window.confirm('Al finalizar, el protocolo queda cerrado y no se podra modificar. ¿Confirmas?')) {
+                  handleSubmit(true)
+                }
+              }}
+              disabled={isPending}
+              className="flex items-center gap-1.5 bg-sig-600 hover:bg-sig-700 text-white"
+            >
+              {isPending ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+              Finalizar protocolo
+            </Button>
+          </div>
         ) : (
           <Button
             onClick={avanzar}

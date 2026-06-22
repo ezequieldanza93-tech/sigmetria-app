@@ -22,6 +22,7 @@ import {
   regimenFt,
 } from '@/lib/medicion-carga-termica/calculos'
 import { emitirEvidenciaCargaTermica } from '@/lib/actions/emitir-evidencia-carga-termica'
+import { getBorradorCargaTermicaByRegistro } from '@/lib/actions/medicion-carga-termica-view'
 import { getCertificadoVigente } from '@/lib/actions/certificado'
 import { useSignedUrls } from '@/lib/storage/sign-client'
 import { pickClasificacionDefault } from '@/lib/medicion/clasificacion-default'
@@ -160,6 +161,37 @@ interface ObsDraft {
   foto_file: File | null
 }
 let obsKeySeq = 0
+
+// ── Shape laxo del BORRADOR leído para re-hidratar (PostgREST embebido) ──
+interface RawTarea {
+  descripcion?: string | null
+  tiempo_min?: number | null
+  tm_w?: number | null
+  tgbh?: number | null
+  var?: number | null
+  orden?: number | null
+}
+interface RawPeriodo {
+  numero?: number | null
+  hora_inicio?: string | null
+  exterior?: boolean | null
+  info_adicional?: string | null
+  orden?: number | null
+  medicion_carga_termica_tareas?: RawTarea[] | null
+}
+interface RawPuesto {
+  nombre_puesto?: string | null
+  ambiente_homogeneo?: boolean | null
+  altura_medicion?: number | null
+  tipo_fuente?: string | null
+  trabajador?: string | null
+  trabajador_persona_id?: string | null
+  ghe?: boolean | null
+  aclimatado?: boolean | null
+  conclusion?: string | null
+  orden?: number | null
+  medicion_carga_termica_periodos?: RawPeriodo[] | null
+}
 
 // ── Constructores de estado ────────────────────────────────────────────
 let tareaKeySeq = 0
@@ -313,6 +345,11 @@ export function MedicionCargaTermicaEjecutorModal({
   const { capturarUbicacion } = useGeoCaptura()
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  // Aviso transitorio tras guardar un borrador (el wizard sigue editable).
+  const [borradorGuardado, setBorradorGuardado] = useState(false)
+  // Re-hidratación: mientras se busca/carga un borrador previo del registro, el wizard
+  // queda en estado de carga para no pisar lo cargado con los valores por defecto.
+  const [cargandoBorrador, setCargandoBorrador] = useState(true)
   const [descargandoPdf, setDescargandoPdf] = useState(false)
   // Estado del guardado como evidencia (el PDF se genera server-side via Chromium,
   // mismo patrón que iluminación/ruido: el motor oficial arma carátula + anexos + logos).
@@ -448,6 +485,116 @@ export function MedicionCargaTermicaEjecutorModal({
 
     return () => { activo = false }
   }, [establecimientoId])
+
+  // ── Re-hidratación del wizard desde un BORRADOR existente ───────────
+  // Si para este registro ya hay una medición en estado 'borrador', cargamos sus datos
+  // (cabecera + puestos → períodos → tareas) en los useState del wizard para seguir
+  // editando donde se dejó. Si no hay borrador, arrancamos vacío (estado inicial).
+  // Las tareas guardan el TGBH ya resuelto: re-hidratamos en modo 'directo'. Los
+  // catálogos (TM/VAR) se re-seleccionan solos porque los selects matchean por valor.
+  useEffect(() => {
+    let activo = true
+    setCargandoBorrador(true)
+    getBorradorCargaTermicaByRegistro(registroId, rgFechaPlanificada || null)
+      .then(res => {
+        if (!activo) return
+        if (!res.success) return // sin borrador → wizard vacío
+        const d = res.data as Record<string, unknown>
+        const str = (v: unknown): string => (v === null || v === undefined ? '' : String(v))
+
+        // Cabecera
+        setInstrumentoId(str(d.instrumento_id))
+        setFirmantePersonaId(str(d.firmante_persona_id))
+        setFirmante(str(d.firmante))
+        setFirmanteNombre(str(d.firmante))
+        if (d.fecha_medicion) setFechaMedicion(str(d.fecha_medicion))
+        setFechaMedicionFin(str(d.fecha_medicion_fin))
+        setHoraInicio(str(d.hora_inicio))
+        setHoraFin(str(d.hora_fin))
+        setTurnos(str(d.turnos))
+        setFuenteDatosAtm(str(d.fuente_datos_atm))
+        setAtmTempMax(str(d.atm_temp_max))
+        setAtmTempMin(str(d.atm_temp_min))
+        setAtmHumedad(str(d.atm_humedad))
+        setAtmPresion(str(d.atm_presion))
+        setAtmViento(str(d.atm_viento))
+        setCondicionesPuesto(str(d.condiciones_puesto))
+        setRepresentanteTrabajadores(str(d.representante_trabajadores))
+        setRepresentanteTrabajadoresPersonaId(str(d.representante_trabajadores_persona_id))
+        setRepresentanteEmpresa(str(d.representante_empresa))
+        setRepresentanteEmpresaPersonaId(str(d.representante_empresa_persona_id))
+        setObservacionesGenerales(str(d.observaciones))
+        setConclusionesAclimatado(str(d.conclusiones_aclimatado))
+        setConclusionesNoAclimatado(str(d.conclusiones_no_aclimatado))
+        setRecomendaciones(str(d.recomendaciones))
+
+        // Puestos → períodos → tareas (ordenados por `orden`).
+        const puestosRaw = (d.medicion_carga_termica_puestos as RawPuesto[] | null) ?? []
+        const puestosHidratados: PuestoState[] = puestosRaw
+          .slice()
+          .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))
+          .map((pu): PuestoState => {
+            const periodosRaw = (pu.medicion_carga_termica_periodos as RawPeriodo[] | null) ?? []
+            const periodos: PeriodoState[] = periodosRaw
+              .slice()
+              .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))
+              .map((per, peri): PeriodoState => {
+                const tareasRaw = (per.medicion_carga_termica_tareas as RawTarea[] | null) ?? []
+                const tareas: TareaState[] = tareasRaw
+                  .slice()
+                  .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))
+                  .map((t): TareaState => ({
+                    key: tareaKeySeq++,
+                    descripcion: str(t.descripcion),
+                    tiempo_min: str(t.tiempo_min),
+                    tm_w: str(t.tm_w),
+                    // El TGBH se persistió ya resuelto → re-hidratamos en modo directo.
+                    tgbh_modo: 'directo',
+                    tgbh: str(t.tgbh),
+                    tbh: '',
+                    tg: '',
+                    tbs: '',
+                    var: str(t.var),
+                  }))
+                return {
+                  key: periodoKeySeq++,
+                  numero: per.numero ?? peri + 1,
+                  hora_inicio: str(per.hora_inicio),
+                  exterior: per.exterior ?? false,
+                  info_adicional: str(per.info_adicional),
+                  tareas: tareas.length > 0 ? tareas : [nuevaTarea()],
+                  // B/D del régimen f/t no se persisten (solo el resultado regimen_ft).
+                  regimen_B: '',
+                  regimen_D: '',
+                }
+              })
+            return {
+              key: puestoKeySeq++,
+              nombre_puesto: str(pu.nombre_puesto),
+              // sector_id/puesto_id no se persisten (solo el snapshot nombre_puesto).
+              sector_id: '',
+              puesto_id: '',
+              trabajador: str(pu.trabajador),
+              trabajador_persona_id: str(pu.trabajador_persona_id),
+              ghe: pu.ghe ?? false,
+              ambiente_homogeneo: pu.ambiente_homogeneo ?? true,
+              altura_medicion: str(pu.altura_medicion),
+              tipo_fuente: (pu.tipo_fuente === 'fija' || pu.tipo_fuente === 'movil') ? pu.tipo_fuente : '',
+              aclimatado: pu.aclimatado ?? false,
+              conclusion: str(pu.conclusion),
+              periodos: periodos.length > 0 ? periodos : [nuevoPeriodo(1)],
+            }
+          })
+        if (puestosHidratados.length > 0) {
+          setPuestos(puestosHidratados)
+          setPuestoActivo(0)
+        }
+      })
+      .catch(() => { /* sin borrador / error de lectura → wizard vacío */ })
+      .finally(() => { if (activo) setCargandoBorrador(false) })
+    return () => { activo = false }
+    // Solo al montar (por registro): la re-hidratación es una carga inicial.
+  }, [registroId, rgFechaPlanificada])
 
   // Certificado de calibración VIGENTE del instrumento elegido. Ya NO se sube uno
   // por protocolo: se trae automáticamente el último certificado activo del
@@ -700,7 +847,10 @@ export function MedicionCargaTermicaEjecutorModal({
   }
 
   // ── Guardar ─────────────────────────────────────────────────────────
-  async function handleGuardar() {
+  // finalizar=false → guarda BORRADOR re-editable (la gestión NO queda Realizada y el
+  // wizard sigue abierto/editable). finalizar=true → cierra el protocolo (inmutable),
+  // marca la gestión Realizada y avanza al paso 'listo' (emisión de evidencia).
+  async function handleGuardar(finalizar: boolean) {
     setError(null)
     const obsSinCat = observacionesSeguimiento.filter(o => o.descripcion.trim() && !o.categoria_id)
     if (obsSinCat.length > 0) {
@@ -712,6 +862,9 @@ export function MedicionCargaTermicaEjecutorModal({
     setSaving(true)
     try {
       const fd = new FormData()
+      // Estado del guardado: 'true' finaliza (cierra el protocolo + Realizada),
+      // 'false' guarda como borrador re-editable.
+      fd.set('finalizar', String(finalizar))
       fd.set('registro_id', registroId)
       fd.set('rg_fecha_planificada', rgFechaPlanificada)
       fd.set('establecimiento_id', establecimientoId)
@@ -743,13 +896,16 @@ export function MedicionCargaTermicaEjecutorModal({
       fd.set('recomendaciones', recomendaciones)
       if (planoFile) fd.set('plano', planoFile)
 
-      // Geo-sello: capturamos la ubicación del dispositivo justo antes de cerrar la
-      // gestión. NO bloquea: si falla, se envía igual con el geo_estado correspondiente.
-      const geo = await capturarUbicacion()
-      fd.set('geo_lat', geo.lat != null ? String(geo.lat) : '')
-      fd.set('geo_lng', geo.lng != null ? String(geo.lng) : '')
-      fd.set('geo_accuracy', geo.accuracy != null ? String(geo.accuracy) : '')
-      fd.set('geo_estado', geo.estado)
+      // Geo-sello: capturamos la ubicación del dispositivo justo antes de CERRAR la
+      // gestión. Solo al finalizar (el server-side aplica el sello únicamente al
+      // finalizar). NO bloquea: si falla, se envía igual con el geo_estado correspondiente.
+      if (finalizar) {
+        const geo = await capturarUbicacion()
+        fd.set('geo_lat', geo.lat != null ? String(geo.lat) : '')
+        fd.set('geo_lng', geo.lng != null ? String(geo.lng) : '')
+        fd.set('geo_accuracy', geo.accuracy != null ? String(geo.accuracy) : '')
+        fd.set('geo_estado', geo.estado)
+      }
 
       // Puestos → períodos → tareas con cálculos resueltos por período.
       const puestosPayload = puestos.map((p, pi) => ({
@@ -817,8 +973,8 @@ export function MedicionCargaTermicaEjecutorModal({
       if (!result.success) { setError(result.error); setSaving(false); return }
 
       // Firma a mano del profesional (NO bloqueante): si el técnico dibujó algo,
-      // la registramos contra la cabecera recién creada vía la tabla polimórfica
-      // `firmas`. Un fallo acá no rompe el cierre del protocolo: solo se loguea.
+      // la registramos contra la cabecera (recién creada o re-guardada) vía la tabla
+      // polimórfica `firmas`. Un fallo acá no rompe el cierre del protocolo: solo se loguea.
       if (firmaSvg && firmanteDni.trim()) {
         try {
           const firmaRes = await firmarProtocolo({
@@ -837,13 +993,29 @@ export function MedicionCargaTermicaEjecutorModal({
         }
       }
 
-      setStep('listo')
-      onSuccess()
+      if (finalizar) {
+        // Protocolo cerrado: avanza al paso final (emisión de evidencia) y notifica al
+        // padre para refrescar el plan (la gestión quedó Realizada).
+        setStep('listo')
+        onSuccess()
+      } else {
+        // Borrador guardado: el wizard sigue abierto y editable. Mostramos un aviso
+        // transitorio sin cerrar ni avanzar de paso.
+        setBorradorGuardado(true)
+        window.setTimeout(() => setBorradorGuardado(false), 3500)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error inesperado al guardar la medición')
     } finally {
       setSaving(false)
     }
+  }
+
+  // Finalizar el protocolo: pide confirmación explícita (queda cerrado, no editable)
+  // y delega en handleGuardar(true).
+  function handleFinalizar() {
+    if (!window.confirm('Al finalizar, el protocolo queda cerrado y no se podra modificar. ¿Confirmas?')) return
+    handleGuardar(true)
   }
 
   const stepIdx = STEP_ORDER.indexOf(step)
@@ -897,6 +1069,18 @@ export function MedicionCargaTermicaEjecutorModal({
             </Button>
             <Button type="button" variant="secondary" onClick={onClose}>Cerrar</Button>
           </div>
+        </div>
+      </Modal>
+    )
+  }
+
+  // Mientras re-hidratamos un posible borrador, mostramos un loader (evita ver los
+  // campos vacíos antes de que se llenen con los datos guardados).
+  if (cargandoBorrador) {
+    return (
+      <Modal open title="Protocolo de Estrés Térmico por Calor / Carga Térmica" onClose={onClose} size="full">
+        <div className="flex items-center justify-center gap-2 py-16 text-sm text-text-tertiary">
+          <Loader2 size={16} className="animate-spin" /> Cargando protocolo…
         </div>
       </Modal>
     )
@@ -1689,6 +1873,13 @@ export function MedicionCargaTermicaEjecutorModal({
           </div>
         )}
 
+        {/* Acuse del guardado de borrador (efímero) */}
+        {borradorGuardado && (
+          <p className="text-xs text-success flex items-center gap-1.5">
+            <Check size={13} /> Borrador guardado. Podés seguir editando o finalizar cuando quieras.
+          </p>
+        )}
+
         {/* Footer */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-3 pt-3 pb-1 sticky bottom-0 bg-surface-base border-t border-border-subtle">
           {step !== 'datos' && (
@@ -1697,13 +1888,27 @@ export function MedicionCargaTermicaEjecutorModal({
             </Button>
           )}
           {step !== 'revisar' ? (
-            <Button type="button" onClick={goNext}>
-              Continuar <ChevronRight size={14} />
-            </Button>
+            <>
+              <Button type="button" onClick={goNext}>
+                Continuar <ChevronRight size={14} />
+              </Button>
+              {/* Guardar borrador disponible en cualquier paso: persiste el avance sin cerrar. */}
+              <Button type="button" variant="secondary" onClick={() => handleGuardar(false)} disabled={saving}>
+                {saving ? <><Loader2 size={14} className="animate-spin" /> Guardando…</> : <>Guardar borrador</>}
+              </Button>
+            </>
           ) : (
-            <Button type="button" onClick={handleGuardar} disabled={saving}>
-              {saving ? <><Loader2 size={14} className="animate-spin" /> Guardando…</> : 'Guardar protocolo'}
-            </Button>
+            <>
+              {/* Guardar borrador: re-editable, NO cierra la gestión. Sin confirm. */}
+              <Button type="button" variant="secondary" onClick={() => handleGuardar(false)} disabled={saving}>
+                {saving ? <><Loader2 size={14} className="animate-spin" /> Guardando…</> : <>Guardar borrador</>}
+              </Button>
+              {/* Finalizar: cierra el protocolo, marca la gestión Realizada y emite la
+                  evidencia/PDF (paso 'listo'). Pide confirmación explícita. */}
+              <Button type="button" onClick={handleFinalizar} disabled={saving}>
+                {saving ? <><Loader2 size={14} className="animate-spin" /> Guardando…</> : <><Check size={14} /> Finalizar protocolo</>}
+              </Button>
+            </>
           )}
           <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>Cancelar</Button>
         </div>

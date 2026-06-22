@@ -15,6 +15,7 @@ import {
   type SectorConPuestos,
   type ValorRequeridoSugerido,
 } from '@/lib/actions/medicion-iluminacion'
+import { getMedicionIluminacionByRegistro } from '@/lib/actions/medicion-iluminacion-view'
 import { SectorPuestoSelectorConAlta } from '@/components/sector-puesto-selector-con-alta'
 import { PersonaSelectorConAlta } from '@/components/persona-selector-con-alta'
 import {
@@ -250,6 +251,12 @@ function nuevoPunto(): PuntoState {
   }
 }
 
+/** Normaliza un `time` de Postgres (HH:MM:SS) al HH:MM que espera <input type="time">. */
+function hhmm(t: string): string {
+  if (!t) return ''
+  return t.slice(0, 5)
+}
+
 // Helpers de parseo numérico tolerante (campos de texto → number | null).
 function num(v: string): number | null {
   if (v.trim() === '') return null
@@ -318,6 +325,11 @@ export function MedicionIluminacionEjecutorModal({
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [descargandoPdf, setDescargandoPdf] = useState(false)
+  // Re-hidratación de un borrador existente: mientras carga, no mostramos el wizard
+  // (evita parpadeo de campos vacíos → llenos). Si no hay borrador, arranca vacío.
+  const [cargandoBorrador, setCargandoBorrador] = useState(true)
+  // Feedback efímero del "Guardar borrador" (no avanza el wizard, queda editable).
+  const [borradorGuardado, setBorradorGuardado] = useState(false)
 
   // Refs a las 3 hojas ocultas del protocolo oficial (DATOS / GRILLA / ANÁLISIS).
   // Se renderizan fuera de pantalla y se rasterizan al descargar el PDF.
@@ -458,6 +470,108 @@ export function MedicionIluminacionEjecutorModal({
 
     return () => { activo = false }
   }, [establecimientoId])
+
+  // ── Re-hidratación del borrador (edición) ──────────────────────────────
+  // Al abrir el modal, si existe un BORRADOR para este registro, cargamos sus
+  // datos (cabecera + puntos + celdas) en los useState del wizard para seguir
+  // editando donde se dejó. Si la medición existente está FINALIZADA, NO se
+  // re-hidrata para edición (el guardado igual la rechazaría): arranca vacío y el
+  // server devolverá el error de "ya finalizado" si intenta guardar.
+  // Las observaciones de seguimiento NO se re-hidratan: viven en el pool común
+  // gestiones_observaciones y solo se persisten al finalizar (evita duplicados).
+  useEffect(() => {
+    let activo = true
+    setCargandoBorrador(true)
+    getMedicionIluminacionByRegistro(registroId, rgFechaPlanificada || null)
+      .then(res => {
+        if (!activo) return
+        // Sin borrador (o no encontrado) → arrancamos vacío como hoy.
+        if (!res.success) return
+        const row = res.data as Record<string, unknown>
+        // Solo re-hidratamos un BORRADOR. Un protocolo finalizado no se re-edita.
+        if ((row.estado as string | null) === 'finalizado') return
+
+        // ── Cabecera ──────────────────────────────────────────────────
+        setInstrumentoId((row.instrumento_id as string | null) ?? '')
+        setFirmantePersonaId((row.firmante_persona_id as string | null) ?? '')
+        setFirmante((row.firmante as string | null) ?? '')
+        const met = (row.metodologia as string | null) ?? ''
+        setMetodologia(met)
+        // El selector de metodología refleja la opción guardada; si no es una de las
+        // estándar, queda en "Otro" (input libre con el texto persistido).
+        if (met) {
+          setMetodologiaSelector((METODOLOGIA_OPCIONES as readonly string[]).includes(met) ? met : 'Otro')
+        }
+        if (row.fecha_medicion) setFechaMedicion(row.fecha_medicion as string)
+        setHoraInicio(hhmm((row.hora_inicio as string | null) ?? ''))
+        setHoraFin(hhmm((row.hora_fin as string | null) ?? ''))
+        const altura = (row.altura_criterio as string | null) ?? 'piso'
+        setAlturaCriterio(altura === 'plano_trabajo' ? 'plano_trabajo' : 'piso')
+        const cond = (row.condiciones_atmosfericas as Record<string, unknown> | null) ?? null
+        if (cond) {
+          setCondiciones({
+            cielo: (cond.cielo as string | null) ?? '',
+            temperatura: cond.temperatura != null ? String(cond.temperatura) : '',
+            humedad: cond.humedad != null ? String(cond.humedad) : '',
+            observaciones: (cond.observaciones as string | null) ?? '',
+          })
+        }
+        setObservacionesGenerales((row.observaciones as string | null) ?? '')
+        setConclusiones((row.conclusiones as string | null) ?? '')
+        setRecomendaciones((row.recomendaciones as string | null) ?? '')
+
+        // ── Puntos + celdas ───────────────────────────────────────────
+        const puntosRaw = (row.medicion_iluminacion_puntos as Array<Record<string, unknown>> | null) ?? []
+        if (puntosRaw.length > 0) {
+          const puntosOrden = [...puntosRaw].sort((a, b) => ((a.orden as number | null) ?? 0) - ((b.orden as number | null) ?? 0))
+          const mapped: PuntoState[] = puntosOrden.map(p => {
+            const celdasRaw = (p.medicion_iluminacion_celdas as Array<Record<string, unknown>> | null) ?? []
+            const celdas: Record<string, string> = {}
+            let maxFila = 0, maxCol = 0
+            for (const c of celdasRaw) {
+              const f = (c.fila as number | null) ?? 0
+              const col = (c.columna as number | null) ?? 0
+              const v = c.valor_lux
+              if (v == null) continue
+              celdas[`${f}-${col}`] = String(v)
+              if (f > maxFila) maxFila = f
+              if (col > maxCol) maxCol = col
+            }
+            // Dimensiones de la grilla: derivadas de las celdas guardadas (índice máx + 1).
+            // Sin celdas → 4×4 (default del wizard).
+            const filas = celdasRaw.length > 0 ? maxFila + 1 : 4
+            const columnas = celdasRaw.length > 0 ? maxCol + 1 : 4
+            return {
+              key: puntoKeySeq++,
+              sector_id: (p.sector_id as string | null) ?? '',
+              puesto_id: (p.puesto_id as string | null) ?? '',
+              turno: (p.turno as string | null) ?? '',
+              tipo_iluminacion: ((p.tipo_iluminacion as string | null) ?? '') as TipoIluminacion | '',
+              tipo_fuente: ((p.tipo_fuente as string | null) ?? '') as TipoFuente | '',
+              tipo_sistema: ((p.tipo_sistema as string | null) ?? '') as TipoSistema | '',
+              largo: p.largo != null ? String(p.largo) : '',
+              ancho: p.ancho != null ? String(p.ancho) : '',
+              altura: p.altura != null ? String(p.altura) : '',
+              valor_requerido_lux: p.valor_requerido_lux != null ? String(p.valor_requerido_lux) : '',
+              requisito_ref: (p.requisito_ref as string | null) ?? '',
+              localizada_lux: p.localizada_lux != null ? String(p.localizada_lux) : '',
+              observaciones: (p.observaciones as string | null) ?? '',
+              filas,
+              columnas,
+              celdas,
+              busqueda: { rubro: '', local: '', tarea: '', claseTarea: '' },
+            }
+          })
+          setPuntos(mapped)
+          setPuntoActivo(0)
+        }
+      })
+      .finally(() => { if (activo) setCargandoBorrador(false) })
+    return () => { activo = false }
+    // Solo en el montaje: la re-hidratación es una carga inicial. registroId /
+    // rgFechaPlanificada son estables durante la vida del modal.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Certificado de calibración VIGENTE del instrumento elegido. Ya NO se sube uno
   // por protocolo: se trae automáticamente el último certificado activo del
@@ -665,7 +779,10 @@ export function MedicionIluminacionEjecutorModal({
   }
 
   // ── Guardar ─────────────────────────────────────────────────────────
-  async function handleGuardar() {
+  // finalizar=false → guarda como BORRADOR (re-editable, NO cierra la gestión).
+  // finalizar=true  → FINALIZA (cierra el protocolo, marca la gestión Realizada y
+  //                   avanza al paso 'listo' para emitir la evidencia/PDF).
+  async function handleGuardar(finalizar: boolean) {
     setError(null)
 
     // Validación: toda observación de seguimiento con descripción debe tener categoría
@@ -680,6 +797,7 @@ export function MedicionIluminacionEjecutorModal({
     setSaving(true)
     try {
       const fd = new FormData()
+      fd.set('finalizar', String(finalizar))
       fd.set('registro_id', registroId)
       fd.set('rg_fecha_planificada', rgFechaPlanificada)
       fd.set('establecimiento_id', establecimientoId)
@@ -767,6 +885,16 @@ export function MedicionIluminacionEjecutorModal({
       const result = await crearMedicionIluminacion(fd)
       if (!result.success) { setError(result.error); setSaving(false); return }
 
+      // BORRADOR: no cerramos ni avanzamos. Dejamos el wizard editable y mostramos
+      // un acuse efímero. onSuccess() refresca la agenda (la gestión NO queda Realizada).
+      if (!finalizar) {
+        setBorradorGuardado(true)
+        setSaving(false)
+        onSuccess()
+        setTimeout(() => setBorradorGuardado(false), 4000)
+        return
+      }
+
       // Firma a mano del profesional (opcional, NO bloqueante). Si el profesional
       // dibujó su firma, la registramos contra la cabecera recién creada. Un error
       // de firma no debe romper el cierre del protocolo: lo logueamos y seguimos.
@@ -795,6 +923,13 @@ export function MedicionIluminacionEjecutorModal({
     } finally {
       setSaving(false)
     }
+  }
+
+  // Finalizar el protocolo: pide confirmación explícita (queda cerrado, no editable)
+  // y delega en handleGuardar(true).
+  function handleFinalizar() {
+    if (!window.confirm('Al finalizar, el protocolo queda cerrado y no se podra modificar. ¿Confirmas?')) return
+    handleGuardar(true)
   }
 
   // Sincroniza la lista de adjuntos con el control. El control de adjuntos vive en
@@ -995,6 +1130,18 @@ export function MedicionIluminacionEjecutorModal({
           hojaGrillaRef={hojaGrillaRef}
           hojaAnalisisRef={hojaAnalisisRef}
         />
+      </Modal>
+    )
+  }
+
+  // Mientras re-hidratamos un posible borrador, mostramos un loader (evita ver los
+  // campos vacíos antes de que se llenen con los datos guardados).
+  if (cargandoBorrador) {
+    return (
+      <Modal open title="Protocolo de Medición de Iluminación" onClose={onClose} size="full">
+        <div className="flex items-center justify-center gap-2 py-16 text-sm text-text-tertiary">
+          <Loader2 size={16} className="animate-spin" /> Cargando protocolo…
+        </div>
       </Modal>
     )
   }
@@ -1861,6 +2008,13 @@ export function MedicionIluminacionEjecutorModal({
           </div>
         )}
 
+        {/* Acuse del guardado de borrador (efímero) */}
+        {borradorGuardado && (
+          <p className="text-xs text-success flex items-center gap-1.5">
+            <Check size={13} /> Borrador guardado. Podés seguir editando o finalizar cuando quieras.
+          </p>
+        )}
+
         {/* Footer */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-3 pt-3 pb-1 sticky bottom-0 bg-surface-base border-t border-border-subtle">
           {step !== 'datos' && (
@@ -1869,16 +2023,27 @@ export function MedicionIluminacionEjecutorModal({
             </Button>
           )}
           {step !== 'revisar' ? (
-            <Button type="button" onClick={goNext}>
-              Continuar <ChevronRight size={14} />
-            </Button>
+            <>
+              <Button type="button" onClick={goNext}>
+                Continuar <ChevronRight size={14} />
+              </Button>
+              {/* Guardar borrador disponible en cualquier paso: persiste el avance sin cerrar. */}
+              <Button type="button" variant="secondary" onClick={() => handleGuardar(false)} disabled={saving}>
+                {saving ? <><Loader2 size={14} className="animate-spin" /> Guardando…</> : <>Guardar borrador</>}
+              </Button>
+            </>
           ) : (
-            // Un solo botón primario: guarda la medición y emite la evidencia (con
-            // los adjuntos ya cargados). El PDF se descarga después, en el paso 'listo'
-            // (ahí ya está guardado). "Atrás" permite seguir editando.
-            <Button type="button" onClick={handleGuardar} disabled={saving}>
-              {saving ? <><Loader2 size={14} className="animate-spin" /> Guardando…</> : <><Check size={14} /> Finalizar y guardar</>}
-            </Button>
+            <>
+              {/* Guardar borrador: re-editable, NO cierra la gestión. Sin confirm. */}
+              <Button type="button" variant="secondary" onClick={() => handleGuardar(false)} disabled={saving}>
+                {saving ? <><Loader2 size={14} className="animate-spin" /> Guardando…</> : <>Guardar borrador</>}
+              </Button>
+              {/* Finalizar: cierra el protocolo, marca la gestión Realizada y emite la
+                  evidencia/PDF (paso 'listo'). Pide confirmación explícita. */}
+              <Button type="button" onClick={handleFinalizar} disabled={saving}>
+                {saving ? <><Loader2 size={14} className="animate-spin" /> Guardando…</> : <><Check size={14} /> Finalizar protocolo</>}
+              </Button>
+            </>
           )}
           <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>Cancelar</Button>
         </div>

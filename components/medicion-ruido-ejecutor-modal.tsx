@@ -11,6 +11,7 @@ import {
   type InstrumentoRuido,
   type SectorConPuestos,
 } from '@/lib/actions/medicion-ruido'
+import { getMedicionRuidoByRegistro } from '@/lib/actions/medicion-ruido-view'
 import { SectorPuestoSelectorConAlta } from '@/components/sector-puesto-selector-con-alta'
 import { PersonaSelectorConAlta } from '@/components/persona-selector-con-alta'
 import { ProtocoloAdjuntosControl } from '@/components/protocolo-adjuntos-control'
@@ -307,6 +308,11 @@ export function MedicionRuidoEjecutorModal({
   const { capturarUbicacion } = useGeoCaptura()
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  // Re-hidratación del wizard: si existe un BORRADOR previo de este registro, lo
+  // cargamos en los useState para seguir editando donde se dejó. Si está finalizado,
+  // queda bloqueado (no se puede modificar). cargandoBorrador evita parpadeo inicial.
+  const [cargandoBorrador, setCargandoBorrador] = useState(true)
+  const [borradorFinalizado, setBorradorFinalizado] = useState(false)
   const [descargandoPdf, setDescargandoPdf] = useState(false)
   // Estado del guardado como evidencia (el PDF se genera server-side via Chromium,
   // mismo patrón que iluminación: el motor oficial arma carátula + anexos + logos).
@@ -440,6 +446,110 @@ export function MedicionRuidoEjecutorModal({
 
     return () => { activo = false }
   }, [establecimientoId])
+
+  // ── Re-hidratación del wizard desde un BORRADOR previo ──────────────
+  // Al abrir el modal, si ya existe una medición de ruido para este registro
+  // (mismo registro_gestion_id + rg_fecha_planificada), cargamos su contenido en
+  // los useState para seguir editando. Reusa getMedicionRuidoByRegistro (la misma
+  // lectura del Viewer), que ahora anida también las observaciones de seguimiento.
+  // Si está 'finalizado', queda bloqueado. Si no hay nada, arranca vacío (como hoy).
+  useEffect(() => {
+    let activo = true
+    setCargandoBorrador(true)
+    getMedicionRuidoByRegistro(registroId, rgFechaPlanificada || null)
+      .then(res => {
+        if (!activo) return
+        // No hay protocolo previo → arranca vacío (flujo normal de alta).
+        if (!res.success) return
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const d = res.data as any
+
+        // Protocolo ya finalizado: bloqueado. Igualmente re-hidratamos para que se
+        // vea el contenido, pero el footer no permite editar ni re-guardar.
+        if (d.estado === 'finalizado') setBorradorFinalizado(true)
+
+        // ── Cabecera ──
+        if (d.instrumento_id) setInstrumentoId(String(d.instrumento_id))
+        if (d.firmante_persona_id) setFirmantePersonaId(String(d.firmante_persona_id))
+        if (d.firmante) setFirmante(String(d.firmante))
+        if (d.fecha_medicion) setFechaMedicion(String(d.fecha_medicion))
+        if (d.fecha_medicion_fin) setFechaMedicionFin(String(d.fecha_medicion_fin))
+        if (d.hora_inicio) setHoraInicio(String(d.hora_inicio).slice(0, 5))
+        if (d.hora_fin) setHoraFin(String(d.hora_fin).slice(0, 5))
+        if (d.jornada_horas != null) setJornadaHoras(String(d.jornada_horas))
+        if (d.turnos) setTurnos(String(d.turnos))
+        if (d.condiciones_normales) setCondicionesNormales(String(d.condiciones_normales))
+        if (d.condiciones_medicion) setCondicionesMedicion(String(d.condiciones_medicion))
+        if (d.observaciones) setObservacionesGenerales(String(d.observaciones))
+        if (d.conclusiones) setConclusiones(String(d.conclusiones))
+        if (d.recomendaciones) setRecomendaciones(String(d.recomendaciones))
+
+        // ── Puntos + períodos (método sonómetro) ──
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const puntosRaw = (d.medicion_ruido_puntos as any[] | null) ?? []
+        if (puntosRaw.length > 0) {
+          const puntosHidratados: PuntoState[] = puntosRaw
+            .slice()
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .sort((a: any, b: any) => (a.orden ?? 0) - (b.orden ?? 0))
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .map((p: any) => {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const periodosRaw = (p.medicion_ruido_periodos as any[] | null) ?? []
+              const periodos: PeriodoState[] = periodosRaw
+                .slice()
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                .sort((a: any, b: any) => (a.orden ?? 0) - (b.orden ?? 0))
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                .map((per: any) => ({
+                  key: periodoKeySeq++,
+                  laeq_dba: per.laeq_dba != null ? String(per.laeq_dba) : '',
+                  tiempo_exposicion_horas: per.tiempo_exposicion_horas != null ? String(per.tiempo_exposicion_horas) : '',
+                }))
+              return {
+                key: puntoKeySeq++,
+                sector_id: p.sector_id ? String(p.sector_id) : '',
+                puesto_id: p.puesto_id ? String(p.puesto_id) : '',
+                tipo_puesto: (p.tipo_puesto as TipoPuesto) ?? 'puesto',
+                caracteristicas_ruido: (p.caracteristicas_ruido as CaracteristicasRuido) ?? 'continuo',
+                te_horas: p.te_horas != null ? String(p.te_horas) : '',
+                tiempo_integracion: p.tiempo_integracion != null ? String(p.tiempo_integracion) : '',
+                lcpico_dbc: p.lcpico_dbc != null ? String(p.lcpico_dbc) : '',
+                metodo: (p.metodo as Metodo) ?? 'sonometro',
+                dosis_pct: p.dosis_pct != null ? String(p.dosis_pct) : '',
+                periodos: periodos.length > 0 ? periodos : [nuevoPeriodo()],
+                info_adicional: p.info_adicional != null ? String(p.info_adicional) : '',
+              }
+            })
+          setPuntos(puntosHidratados)
+          setPuntoActivo(0)
+        }
+
+        // ── Observaciones de seguimiento (pool común) ──
+        // foto_url es un PATH ya persistido: no se re-hidrata como File (la edición de
+        // borrador conserva el texto/meta; si el técnico no toca la foto, la perdería,
+        // por eso preservamos el flag visual en foto_preview no aplica acá). Mantenemos
+        // descripción + meta para no perderlas al re-guardar el borrador.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const obsRaw = (d.observaciones_seguimiento as any[] | null) ?? []
+        if (obsRaw.length > 0) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const obsHidratadas: ObsDraft[] = obsRaw.map((o: any) => ({
+            key: obsKeySeq++,
+            descripcion: o.descripcion != null ? String(o.descripcion) : '',
+            categoria_id: o.categoria_id ? String(o.categoria_id) : '',
+            clasificacion_id: o.clasificacion_id ? String(o.clasificacion_id) : '',
+            responsable_id: o.responsable_id ? String(o.responsable_id) : '',
+            fecha_subsanacion: o.fecha_planificada ? String(o.fecha_planificada) : '',
+            foto_preview: null,
+            foto_file: null,
+          }))
+          setObservacionesSeguimiento(obsHidratadas)
+        }
+      })
+      .finally(() => { if (activo) setCargandoBorrador(false) })
+    return () => { activo = false }
+  }, [registroId, rgFechaPlanificada])
 
   // Certificado de calibración VIGENTE del instrumento elegido. Ya NO se sube uno
   // por protocolo: se trae automáticamente el último certificado activo del
@@ -633,7 +743,9 @@ export function MedicionRuidoEjecutorModal({
   }
 
   // ── Guardar ─────────────────────────────────────────────────────────
-  async function handleGuardar() {
+  // `finalizar`: true cierra el protocolo (queda Realizado, no editable, se emite la
+  // evidencia → paso 'listo'). false guarda BORRADOR (re-editable, no toca la gestión).
+  async function handleGuardar(finalizar: boolean) {
     setError(null)
 
     // Validación: toda observación de seguimiento con descripción debe tener categoría
@@ -648,6 +760,7 @@ export function MedicionRuidoEjecutorModal({
     setSaving(true)
     try {
       const fd = new FormData()
+      fd.set('finalizar', String(finalizar))
       fd.set('registro_id', registroId)
       fd.set('rg_fecha_planificada', rgFechaPlanificada)
       fd.set('establecimiento_id', establecimientoId)
@@ -670,13 +783,16 @@ export function MedicionRuidoEjecutorModal({
       fd.set('observaciones', observacionesGenerales)
       if (planoFile) fd.set('plano', planoFile)
 
-      // Geo-sello: capturamos la ubicación del dispositivo justo antes de cerrar la
-      // gestión. NO bloquea: si falla, se envía igual con el geo_estado correspondiente.
-      const geo = await capturarUbicacion()
-      fd.set('geo_lat', geo.lat != null ? String(geo.lat) : '')
-      fd.set('geo_lng', geo.lng != null ? String(geo.lng) : '')
-      fd.set('geo_accuracy', geo.accuracy != null ? String(geo.accuracy) : '')
-      fd.set('geo_estado', geo.estado)
+      // Geo-sello: solo al FINALIZAR (es el sello de cierre del relevamiento). En
+      // borrador no tiene sentido capturar la ubicación porque no se cierra la gestión.
+      // NO bloquea: si falla, se envía igual con el geo_estado correspondiente.
+      if (finalizar) {
+        const geo = await capturarUbicacion()
+        fd.set('geo_lat', geo.lat != null ? String(geo.lat) : '')
+        fd.set('geo_lng', geo.lng != null ? String(geo.lng) : '')
+        fd.set('geo_accuracy', geo.accuracy != null ? String(geo.accuracy) : '')
+        fd.set('geo_estado', geo.estado)
+      }
 
       // Puntos → contrato del server action. Cada punto lleva sus períodos
       // (método sonómetro) o su dosis_pct (método dosímetro).
@@ -740,6 +856,14 @@ export function MedicionRuidoEjecutorModal({
 
       const result = await crearMedicionRuido(fd)
       if (!result.success) { setError(result.error); setSaving(false); return }
+
+      // BORRADOR: no se firma ni se emite evidencia (eso es del cierre). Avisamos al
+      // padre (refresca el estado en la agenda) y dejamos el wizard abierto y editable.
+      if (!finalizar) {
+        setSaving(false)
+        onSuccess()
+        return
+      }
 
       // Firma a mano del profesional (deseable, no obligatoria). NO bloquea el
       // cierre: si la firma falla, lo logueamos y seguimos. Solo se intenta si el
@@ -891,6 +1015,20 @@ export function MedicionRuidoEjecutorModal({
     jornadaHoras, turnos, condicionesNormales, condicionesMedicion,
     observacionesGenerales, firmante, firmaSvg, conclusiones, recomendaciones,
   ])
+
+  // ── Render: re-hidratando borrador ──────────────────────────────────
+  // Mientras buscamos un borrador previo, evitamos pintar el wizard vacío (que luego
+  // saltaría con los datos cargados). Solo aplica al abrir, antes de tocar nada.
+  if (cargandoBorrador && step === 'datos') {
+    return (
+      <Modal open title="Protocolo de Medición de Ruido" onClose={onClose} size="full">
+        <div className="flex items-center justify-center gap-2 py-16 text-text-secondary">
+          <Loader2 size={18} className="animate-spin" />
+          <span className="text-sm">Cargando protocolo…</span>
+        </div>
+      </Modal>
+    )
+  }
 
   // ── Render: post-guardado ───────────────────────────────────────────
   if (step === 'listo') {
@@ -1706,21 +1844,42 @@ export function MedicionRuidoEjecutorModal({
           </div>
         )}
 
-        {/* Footer */}
+        {/* Footer — Cancelar · (Atrás) · Guardar borrador · Continuar/Finalizar */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-3 pt-3 pb-1 sticky bottom-0 bg-surface-base border-t border-border-subtle">
           {step !== 'datos' && (
             <Button type="button" variant="secondary" onClick={goBack} disabled={saving}>
               <ChevronLeft size={14} /> Atrás
             </Button>
           )}
-          {step !== 'revisar' ? (
-            <Button type="button" onClick={goNext}>
-              Continuar <ChevronRight size={14} />
-            </Button>
+          {borradorFinalizado ? (
+            // Protocolo ya finalizado: solo lectura, no se puede modificar ni re-guardar.
+            <span className="text-xs text-text-tertiary inline-flex items-center gap-1.5">
+              <FileCheck size={13} className="text-success" /> Protocolo finalizado — cerrado, no se puede modificar.
+            </span>
           ) : (
-            <Button type="button" onClick={handleGuardar} disabled={saving}>
-              {saving ? <><Loader2 size={14} className="animate-spin" /> Guardando…</> : 'Guardar protocolo'}
-            </Button>
+            <>
+              {/* Guardar borrador: re-editable, no cierra la gestión, sin confirm. */}
+              <Button type="button" variant="secondary" onClick={() => handleGuardar(false)} disabled={saving}>
+                {saving ? <><Loader2 size={14} className="animate-spin" /> Guardando…</> : 'Guardar borrador'}
+              </Button>
+              {step !== 'revisar' ? (
+                <Button type="button" onClick={goNext} disabled={saving}>
+                  Continuar <ChevronRight size={14} />
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => {
+                    // Confirm de cierre: una vez finalizado, el protocolo queda inmutable.
+                    if (!window.confirm('Al finalizar, el protocolo queda cerrado y no se podra modificar. ¿Confirmas?')) return
+                    handleGuardar(true)
+                  }}
+                >
+                  {saving ? <><Loader2 size={14} className="animate-spin" /> Guardando…</> : 'Finalizar protocolo'}
+                </Button>
+              )}
+            </>
           )}
           <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>Cancelar</Button>
         </div>

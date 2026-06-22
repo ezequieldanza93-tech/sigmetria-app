@@ -12,6 +12,7 @@ import {
   type InstrumentoTelurimetro,
   type SectorConPuestos,
 } from '@/lib/actions/medicion-pat'
+import { getMedicionPatBorradorByRegistro } from '@/lib/actions/medicion-pat-view'
 import { getCertificadoVigente } from '@/lib/actions/certificado'
 import { firmarProtocolo } from '@/lib/actions/firmar-protocolo'
 import { useSignedUrls } from '@/lib/storage/sign-client'
@@ -28,7 +29,7 @@ import {
   Zap, Building2, FileText, Plus, Trash2,
   ChevronLeft, ChevronRight, CheckCircle, XCircle, Loader2,
   Info, ArrowRight, Check, Sparkles, MapPin, Gauge, Camera, ShieldCheck, Download,
-  AlertTriangle, FileCheck,
+  AlertTriangle, FileCheck, Save,
 } from 'lucide-react'
 
 // ── Props ────────────────────────────────────────────────────────────
@@ -166,6 +167,13 @@ function triToBool(v: TriEstado): boolean | null {
   return null
 }
 
+/** boolean | null (DB) → tri-estado ('si' | 'no' | '') para re-hidratar el wizard. */
+function boolToTri(v: boolean | null | undefined): TriEstado {
+  if (v === true) return 'si'
+  if (v === false) return 'no'
+  return ''
+}
+
 /** Resultado de cumplimiento (Ω) de una toma para vivo + análisis. */
 function cumpleDe(t: TomaState): boolean | null {
   return cumpleToma(num(t.valor_medido_ohm), num(t.valor_exigido_ohm))
@@ -182,6 +190,10 @@ export function MedicionPatEjecutorModal({
   const [step, setStep] = useState<WizardStep>('datos')
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  // Carga inicial: si existe un BORRADOR de este registro, re-hidratamos el wizard.
+  // Mientras tanto bloqueamos el contenido para no pisar los datos del borrador con
+  // los useState por defecto (ej. la única toma vacía inicial).
+  const [hidratando, setHidratando] = useState(true)
   const { capturarUbicacion } = useGeoCaptura()
 
   // ── Catálogos ───────────────────────────────────────────────────────
@@ -234,6 +246,10 @@ export function MedicionPatEjecutorModal({
   // ── Hoja 4: análisis ────────────────────────────────────────────────
   const [conclusiones, setConclusiones] = useState('')
   const [recomendaciones, setRecomendaciones] = useState('')
+
+  // Feedback efímero tras "Guardar borrador" (el wizard NO se cierra: el técnico
+  // puede seguir editando). Se limpia al volver a tocar el formulario.
+  const [borradorGuardado, setBorradorGuardado] = useState(false)
 
   // ── PDF oficial (SRT 900/2015) — generado server-side por el motor Chromium ──
   const [descargandoPdf, setDescargandoPdf] = useState(false)
@@ -326,6 +342,75 @@ export function MedicionPatEjecutorModal({
       .finally(() => { if (activo) setBuscandoCertificado(false) })
     return () => { activo = false }
   }, [instrumentoId])
+
+  // ── Re-hidratación del borrador ─────────────────────────────────────
+  // Al abrir el modal, si hay un BORRADOR de este registro, cargamos todos sus
+  // datos en los useState del wizard para seguir editando donde se dejó. Si no hay
+  // borrador (o la única ejecución está finalizada), arrancamos vacío como hoy.
+  // El instrumento_id hidratado dispara el useEffect del certificado vigente arriba.
+  // NOTA: las observaciones de seguimiento (gestiones_observaciones) NO se re-hidratan
+  // — viven en el pool compartido de Seguimiento, no en medicion_pat. El server action
+  // las reemplaza por el set actual al re-guardar el borrador, así que si el técnico no
+  // las recarga, se borran del borrador. Las tomas y la cabecera sí se re-hidratan.
+  useEffect(() => {
+    let activo = true
+    setHidratando(true)
+    getMedicionPatBorradorByRegistro(registroId, rgFechaPlanificada || null)
+      .then(res => {
+        if (!activo) return
+        if (!res.success || !res.data) return // sin borrador → wizard vacío
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const d = res.data as any
+
+        // Cabecera
+        if (d.instrumento_id) setInstrumentoId(d.instrumento_id)
+        if (d.firmante_persona_id) setFirmantePersonaId(d.firmante_persona_id)
+        if (d.firmante) setFirmante(d.firmante)
+        if (d.metodologia) {
+          setMetodologia(d.metodologia)
+          // Si la metodología guardada está en la lista estándar, seleccionamos esa
+          // opción; si no, marcamos "Otro" para que se muestre el campo de texto libre.
+          setMetodologiaSelector(
+            (METODOLOGIA_OPCIONES as readonly string[]).includes(d.metodologia) ? d.metodologia : 'Otro',
+          )
+        }
+        if (d.fecha_medicion) setFechaMedicion(d.fecha_medicion)
+        if (d.fecha_medicion_fin) setFechaMedicionFin(d.fecha_medicion_fin)
+        if (d.hora_inicio) setHoraInicio(String(d.hora_inicio).slice(0, 5))
+        if (d.hora_fin) setHoraFin(String(d.hora_fin).slice(0, 5))
+        if (d.observaciones) setObservacionesGenerales(d.observaciones)
+        if (d.conclusiones) setConclusiones(d.conclusiones)
+        if (d.recomendaciones) setRecomendaciones(d.recomendaciones)
+
+        // Tomas: mapeamos el shape de DB → TomaState del wizard (boolean→tri-estado,
+        // number→string). Si el borrador no tenía tomas, dejamos la toma vacía inicial.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const tomasDb = (d.medicion_pat_tomas as any[] | null) ?? []
+        if (tomasDb.length > 0) {
+          const ordenadas = [...tomasDb].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))
+          const tomasHidratadas: TomaState[] = ordenadas.map((t, i) => ({
+            key: tomaKeySeq++,
+            numero_toma: t.numero_toma != null ? String(t.numero_toma) : String(i + 1),
+            sector_id: t.sector_id ?? '',
+            seccion: t.seccion ?? '',
+            condicion_terreno: t.condicion_terreno ?? '',
+            uso_pat: t.uso_pat ?? '',
+            ect: (t.ect ?? '') as Ect | '',
+            valor_medido_ohm: t.valor_medido_ohm != null ? String(t.valor_medido_ohm) : '',
+            valor_exigido_ohm: t.valor_exigido_ohm != null ? String(t.valor_exigido_ohm) : String(raMaxTT()),
+            continuidad: boolToTri(t.continuidad),
+            capacidad_carga: boolToTri(t.capacidad_carga),
+            desconexion_automatica: boolToTri(t.desconexion_automatica),
+            proteccion: (t.proteccion ?? '') as Proteccion | '',
+            observaciones: t.observaciones ?? '',
+          }))
+          setTomas(tomasHidratadas)
+          setTomaActiva(0)
+        }
+      })
+      .finally(() => { if (activo) setHidratando(false) })
+    return () => { activo = false }
+  }, [registroId, rgFechaPlanificada])
 
   // ── Mutadores de tomas ──────────────────────────────────────────────
   function updateToma(key: number, patch: Partial<TomaState>) {
@@ -429,6 +514,7 @@ export function MedicionPatEjecutorModal({
   // ── Navegación ──────────────────────────────────────────────────────
   function goNext() {
     setError(null)
+    setBorradorGuardado(false)
     if (step === 'datos') {
       if (!instrumentoId) { setError('Elegí el telurímetro usado en la medición.'); return }
       if (!firmantePersonaId) { setError('Elegí el profesional firmante del protocolo.'); return }
@@ -471,12 +557,17 @@ export function MedicionPatEjecutorModal({
 
   function goBack() {
     setError(null)
+    setBorradorGuardado(false)
     const idx = STEP_ORDER.indexOf(step)
     if (idx > 0) setStep(STEP_ORDER[idx - 1])
   }
 
   // ── Guardar ─────────────────────────────────────────────────────────
-  async function handleGuardar() {
+  // finalizar=false → guarda como BORRADOR (no cierra la gestión, deja el wizard
+  //   editable para seguir cargando).
+  // finalizar=true  → FINALIZA el protocolo (queda cerrado e inmutable), marca la
+  //   gestión como Realizada y avanza al paso 'listo' (emisión de evidencia).
+  async function handleGuardar(finalizar: boolean) {
     setError(null)
 
     const obsSinCat = observacionesSeguimiento.filter(o => o.descripcion.trim() && !o.categoria_id)
@@ -492,6 +583,9 @@ export function MedicionPatEjecutorModal({
       fd.set('registro_id', registroId)
       fd.set('rg_fecha_planificada', rgFechaPlanificada)
       fd.set('establecimiento_id', establecimientoId)
+      // Flag de cierre: el server action lo lee para decidir estado (borrador/finalizado)
+      // y si marca la gestión como Realizada.
+      fd.set('finalizar', String(finalizar))
       if (gestionEstablecimientoId) fd.set('gestion_establecimiento_id', gestionEstablecimientoId)
       if (instrumentoId) fd.set('instrumento_id', instrumentoId)
       // Certificado: se persiste el certificado VIGENTE traído del instrumento (no se sube uno por protocolo).
@@ -510,11 +604,14 @@ export function MedicionPatEjecutorModal({
 
       // Geo-sello: capturamos la ubicación del dispositivo justo antes de cerrar la
       // gestión. NO bloquea: si falla, se envía igual con el geo_estado correspondiente.
-      const geo = await capturarUbicacion()
-      fd.set('geo_lat', geo.lat != null ? String(geo.lat) : '')
-      fd.set('geo_lng', geo.lng != null ? String(geo.lng) : '')
-      fd.set('geo_accuracy', geo.accuracy != null ? String(geo.accuracy) : '')
-      fd.set('geo_estado', geo.estado)
+      // Solo tiene sentido al finalizar (es el cierre real); en borrador no lo capturamos.
+      if (finalizar) {
+        const geo = await capturarUbicacion()
+        fd.set('geo_lat', geo.lat != null ? String(geo.lat) : '')
+        fd.set('geo_lng', geo.lng != null ? String(geo.lng) : '')
+        fd.set('geo_accuracy', geo.accuracy != null ? String(geo.accuracy) : '')
+        fd.set('geo_estado', geo.estado)
+      }
 
       // Tomas → contrato del server action.
       const tomasPayload = tomas.map((t, idx) => ({
@@ -556,9 +653,19 @@ export function MedicionPatEjecutorModal({
       const result = await crearMedicionPat(fd)
       if (!result.success) { setError(result.error); setSaving(false); return }
 
-      // Firma a mano del profesional (opcional). El protocolo ya quedó guardado:
-      // si la firma falla NO se rompe el cierre, sólo se loguea. Requiere DNI para
-      // resolver el trabajador y desambiguar la re-firma.
+      // BORRADOR: no firmamos, no avanzamos a 'listo'. Dejamos el wizard abierto y
+      // editable, con un feedback de que se guardó. Refrescamos la agenda (onSuccess)
+      // para que el registro quede consistente (sigue sin estar Realizado).
+      if (!finalizar) {
+        setBorradorGuardado(true)
+        onSuccess()
+        setSaving(false)
+        return
+      }
+
+      // FINALIZAR: firma a mano del profesional (opcional). El protocolo ya quedó
+      // guardado: si la firma falla NO se rompe el cierre, sólo se loguea. Requiere DNI
+      // para resolver el trabajador y desambiguar la re-firma.
       if (firmaSvg && firmanteDni) {
         try {
           const firmaResult = await firmarProtocolo({
@@ -687,6 +794,20 @@ export function MedicionPatEjecutorModal({
             </Button>
             <Button type="button" variant="secondary" onClick={onClose}>Cerrar</Button>
           </div>
+        </div>
+      </Modal>
+    )
+  }
+
+  // ── Render: cargando el borrador (re-hidratación) ──────────────────
+  // Bloqueamos el wizard hasta resolver si hay borrador, para no pisar sus datos con
+  // los useState por defecto ni que el técnico edite sobre la toma vacía inicial.
+  if (hidratando) {
+    return (
+      <Modal open title="Protocolo de Puesta a Tierra (SRT 900/2015)" onClose={onClose} size="full">
+        <div className="flex items-center justify-center gap-2 py-16 text-text-secondary">
+          <Loader2 size={18} className="animate-spin" />
+          <span className="text-sm">Cargando protocolo…</span>
         </div>
       </Modal>
     )
@@ -1339,6 +1460,13 @@ export function MedicionPatEjecutorModal({
           </div>
         )}
 
+        {/* Feedback de borrador guardado (el wizard sigue abierto y editable). */}
+        {borradorGuardado && (
+          <p className="text-xs text-success flex items-center gap-1.5">
+            <FileCheck size={13} /> Borrador guardado. Podés seguir editando y finalizar cuando esté listo.
+          </p>
+        )}
+
         {/* Footer */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-3 pt-3 pb-1 sticky bottom-0 bg-surface-base border-t border-border-subtle">
           {step !== 'datos' && (
@@ -1346,16 +1474,38 @@ export function MedicionPatEjecutorModal({
               <ChevronLeft size={14} /> Atrás
             </Button>
           )}
+
           {step !== 'revisar' ? (
-            <Button type="button" onClick={goNext}>
-              Continuar <ChevronRight size={14} />
-            </Button>
+            <>
+              <Button type="button" onClick={goNext} disabled={saving}>
+                Continuar <ChevronRight size={14} />
+              </Button>
+              {/* Guardar borrador disponible en cualquier paso: no exige completar el wizard. */}
+              <Button type="button" variant="secondary" onClick={() => handleGuardar(false)} disabled={saving}>
+                {saving ? <><Loader2 size={14} className="animate-spin" /> Guardando…</> : <><Save size={14} /> Guardar borrador</>}
+              </Button>
+              <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>Cancelar</Button>
+            </>
           ) : (
-            <Button type="button" onClick={handleGuardar} disabled={saving}>
-              {saving ? <><Loader2 size={14} className="animate-spin" /> Guardando…</> : 'Guardar protocolo'}
-            </Button>
+            <>
+              {/* Paso final: los 3 botones de cierre. */}
+              <Button type="button" variant="secondary" onClick={() => handleGuardar(false)} disabled={saving}>
+                {saving ? <><Loader2 size={14} className="animate-spin" /> Guardando…</> : <><Save size={14} /> Guardar borrador</>}
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  // Confirmación de cierre definitivo. Texto exacto pedido por el flujo.
+                  if (!window.confirm('Al finalizar, el protocolo queda cerrado y no se podra modificar. ¿Confirmas?')) return
+                  handleGuardar(true)
+                }}
+                disabled={saving}
+              >
+                {saving ? <><Loader2 size={14} className="animate-spin" /> Guardando…</> : <><ShieldCheck size={14} /> Finalizar protocolo</>}
+              </Button>
+              <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>Cancelar</Button>
+            </>
           )}
-          <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>Cancelar</Button>
         </div>
       </div>
     </Modal>

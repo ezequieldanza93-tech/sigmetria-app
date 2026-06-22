@@ -13,7 +13,11 @@ import type { ActionResult } from '@/lib/types'
  * (ver lib/actions/medicion-iluminacion.ts). Patrón replicado:
  *  - recibe el registro planificado (registro_id + rg_fecha_planificada) + establecimiento + gestion_establecimiento
  *  - sube adjuntos al bucket PRIVADO `documentos` con tenantStoragePath (guarda PATH, no URL)
- *  - UPDATE gestiones_registros.fecha_ejecutada = hoy
+ *  - flag `finalizar` (FormData): true cierra el protocolo (estado='finalizado',
+ *    gestión Realizada → fecha_ejecutada/ejecutado_at + geo-sello). false guarda como
+ *    BORRADOR re-editable (estado='borrador', la gestión NO queda Realizada).
+ *  - UPSERT: si ya existe un borrador del mismo registro, lo UPDATE-a + DELETE de
+ *    hijas (CASCADE) + re-INSERT. Un protocolo 'finalizado' NO se puede modificar.
  *  - INSERT cabecera + hijas (puestos → períodos → tareas) + observaciones → gestiones_observaciones
  *  - NO traga errores en silencio: si falla un insert crítico, rollback manual + { success:false }
  *
@@ -130,6 +134,12 @@ export async function crearMedicionCargaTermica(
   const puestosRaw = (formData.get('puestos') as string) || '[]'
   const observacionesSeguimientoRaw = (formData.get('observaciones_seguimiento') as string) || null
 
+  // Flag de cierre: 'true' => finaliza el protocolo (queda cerrado e inmutable y la
+  // gestión pasa a Realizada). 'false'/ausente => guarda como BORRADOR re-editable
+  // (la gestión NO se marca Realizada).
+  const finalizar = (formData.get('finalizar') as string) === 'true'
+  const estado: 'borrador' | 'finalizado' = finalizar ? 'finalizado' : 'borrador'
+
   if (!registroId) return { success: false, error: 'Registro requerido' }
   if (!establecimientoId) return { success: false, error: 'Establecimiento requerido' }
 
@@ -147,6 +157,26 @@ export async function crearMedicionCargaTermica(
   // de lectura por tenant matchee (ver lib/storage/tenant-path.ts).
   const consultoraId = await consultoraIdFromEstablecimiento(supabase, establecimientoId)
   if (!consultoraId) return { success: false, error: 'No se pudo resolver la consultora del establecimiento' }
+
+  // ── EDICIÓN / UPSERT: ¿ya existe una medición para este registro? ─────
+  // Buscamos la cabecera existente del mismo registro (mismo registro_gestion_id +
+  // rg_fecha_planificada). Si está 'finalizado' NO se puede tocar. Si es 'borrador'
+  // re-guardamos sobre ella (UPDATE cabecera + DELETE hijas → re-INSERT) para que el
+  // técnico pueda seguir editando donde dejó y luego finalizar.
+  let existenteQuery = supabase
+    .from('medicion_carga_termica')
+    .select('id, estado')
+    .eq('registro_gestion_id', registroId)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+    .limit(1)
+  if (rgFechaPlanificada) existenteQuery = existenteQuery.eq('rg_fecha_planificada', rgFechaPlanificada)
+  const { data: existente, error: existenteErr } = await existenteQuery.maybeSingle()
+  if (existenteErr) return { success: false, error: 'Error al verificar el protocolo existente: ' + existenteErr.message }
+  if (existente && existente.estado === 'finalizado') {
+    return { success: false, error: 'El protocolo ya fue finalizado y no se puede modificar' }
+  }
+  const medicionExistenteId = existente ? (existente.id as string) : null
 
   const ts = Date.now()
 
@@ -173,69 +203,110 @@ export async function crearMedicionCargaTermica(
     planoUrl = up.path
   }
 
-  // ── 2. UPDATE del registro planificado (queda Realizado) ────────────
+  // ── 2. UPDATE del registro planificado ──────────────────────────────
   // Fecha de ejecución = HOY por componentes locales (sin drift UTC de toISOString).
   const now = new Date()
   const hoy = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-  let regUpdate = supabase
-    .from('gestiones_registros')
-    // ejecutado_at = now(): hora real de finalización de la medición (queda Realizado).
-    .update({ fecha_ejecutada: hoy, ejecutado_at: new Date().toISOString() })
-    .eq('id', registroId)
-  if (rgFechaPlanificada) regUpdate = regUpdate.eq('fecha_planificada', rgFechaPlanificada)
-  const { data: regRow, error: regErr } = await regUpdate.select('fecha_planificada').single()
-  if (regErr) return { success: false, error: 'Error al actualizar el registro: ' + regErr.message }
+  // Solo al FINALIZAR la gestión queda Realizada (fecha_ejecutada + ejecutado_at).
+  // En BORRADOR NO se tocan esos campos: el plan sigue mostrando la gestión pendiente.
+  if (finalizar) {
+    let regUpdate = supabase
+      .from('gestiones_registros')
+      // ejecutado_at = now(): hora real de finalización de la medición (queda Realizado).
+      .update({ fecha_ejecutada: hoy, ejecutado_at: new Date().toISOString() })
+      .eq('id', registroId)
+    if (rgFechaPlanificada) regUpdate = regUpdate.eq('fecha_planificada', rgFechaPlanificada)
+    const { data: regRow, error: regErr } = await regUpdate.select('fecha_planificada').single()
+    if (regErr) return { success: false, error: 'Error al actualizar el registro: ' + regErr.message }
 
-  // Geo-sello del lugar de ejecución. Usamos la fecha_planificada autoritativa del
-  // registro (clave de partición). NO-BLOQUEANTE.
-  await aplicarSelloGeo(supabase, registroId, regRow.fecha_planificada as string, formData)
+    // Geo-sello del lugar de ejecución. Usamos la fecha_planificada autoritativa del
+    // registro (clave de partición). NO-BLOQUEANTE. Solo al finalizar.
+    await aplicarSelloGeo(supabase, registroId, regRow.fecha_planificada as string, formData)
+  }
 
-  // ── 3. INSERT cabecera ──────────────────────────────────────────────
-  const { data: cabecera, error: cabErr } = await supabase
-    .from('medicion_carga_termica')
-    .insert({
-      consultora_id: consultoraId,
-      establecimiento_id: establecimientoId,
-      registro_gestion_id: registroId,
-      rg_fecha_planificada: rgFechaPlanificada,
-      gestion_establecimiento_id: gestionEstablecimientoId,
-      instrumento_id: instrumentoId,
-      certificado_id: certificadoId,
-      firmante,
-      firmante_persona_id: firmantePersonaId,
-      fecha_medicion: fechaMedicion,
-      fecha_medicion_fin: fechaMedicionFin,
-      hora_inicio: horaInicio,
-      hora_fin: horaFin,
-      turnos,
-      fuente_datos_atm: fuenteDatosAtm,
-      atm_temp_max: atmTempMax,
-      atm_temp_min: atmTempMin,
-      atm_humedad: atmHumedad,
-      atm_presion: atmPresion,
-      atm_viento: atmViento,
-      condiciones_puesto: condicionesPuesto,
-      representante_trabajadores: representanteTrabajadores,
-      representante_trabajadores_persona_id: representanteTrabajadoresPersonaId,
-      representante_empresa: representanteEmpresa,
-      representante_empresa_persona_id: representanteEmpresaPersonaId,
-      observaciones,
-      conclusiones_aclimatado: conclusionesAclimatado,
-      conclusiones_no_aclimatado: conclusionesNoAclimatado,
-      recomendaciones,
-      certificado_url: certificadoUrl,
-      plano_url: planoUrl,
-      estado: 'completado',
-    })
-    .select('id')
-    .single()
-  if (cabErr) return { success: false, error: 'Error al crear la medición: ' + cabErr.message }
+  // ── 3. UPSERT cabecera ──────────────────────────────────────────────
+  // Campos comunes a INSERT (alta) y UPDATE (re-guardado de borrador). Para no perder
+  // un adjunto previo cuando NO se sube uno nuevo en la re-edición, solo pisamos
+  // certificado_url/plano_url si llegó un archivo nuevo (certificadoUrl/planoUrl != null).
+  const cabeceraData = {
+    consultora_id: consultoraId,
+    establecimiento_id: establecimientoId,
+    registro_gestion_id: registroId,
+    rg_fecha_planificada: rgFechaPlanificada,
+    gestion_establecimiento_id: gestionEstablecimientoId,
+    instrumento_id: instrumentoId,
+    certificado_id: certificadoId,
+    firmante,
+    firmante_persona_id: firmantePersonaId,
+    fecha_medicion: fechaMedicion,
+    fecha_medicion_fin: fechaMedicionFin,
+    hora_inicio: horaInicio,
+    hora_fin: horaFin,
+    turnos,
+    fuente_datos_atm: fuenteDatosAtm,
+    atm_temp_max: atmTempMax,
+    atm_temp_min: atmTempMin,
+    atm_humedad: atmHumedad,
+    atm_presion: atmPresion,
+    atm_viento: atmViento,
+    condiciones_puesto: condicionesPuesto,
+    representante_trabajadores: representanteTrabajadores,
+    representante_trabajadores_persona_id: representanteTrabajadoresPersonaId,
+    representante_empresa: representanteEmpresa,
+    representante_empresa_persona_id: representanteEmpresaPersonaId,
+    observaciones,
+    conclusiones_aclimatado: conclusionesAclimatado,
+    conclusiones_no_aclimatado: conclusionesNoAclimatado,
+    recomendaciones,
+    estado,
+  }
 
-  const medicionId = cabecera.id as string
+  let medicionId: string
+  if (medicionExistenteId) {
+    // Re-guardado de un BORRADOR existente: UPDATE cabecera + limpieza de hijas.
+    const updatePayload: Record<string, unknown> = { ...cabeceraData }
+    // Adjuntos: solo se pisan si se subió uno nuevo en esta edición.
+    if (certificadoUrl != null) updatePayload.certificado_url = certificadoUrl
+    if (planoUrl != null) updatePayload.plano_url = planoUrl
+    const { error: updErr } = await supabase
+      .from('medicion_carga_termica')
+      .update(updatePayload)
+      .eq('id', medicionExistenteId)
+    if (updErr) return { success: false, error: 'Error al actualizar la medición: ' + updErr.message }
+    medicionId = medicionExistenteId
+
+    // DELETE de las filas hijas (puestos). El ON DELETE CASCADE limpia períodos y
+    // tareas. Re-insertamos a continuación con el contenido actual del wizard.
+    const { error: delErr } = await supabase
+      .from('medicion_carga_termica_puestos')
+      .delete()
+      .eq('medicion_id', medicionId)
+    if (delErr) return { success: false, error: 'Error al limpiar los puestos previos: ' + delErr.message }
+  } else {
+    // Alta nueva.
+    const { data: cabecera, error: cabErr } = await supabase
+      .from('medicion_carga_termica')
+      .insert({
+        ...cabeceraData,
+        certificado_url: certificadoUrl,
+        plano_url: planoUrl,
+      })
+      .select('id')
+      .single()
+    if (cabErr) return { success: false, error: 'Error al crear la medición: ' + cabErr.message }
+    medicionId = cabecera.id as string
+  }
 
   // ── 4. INSERT puestos → períodos → tareas ───────────────────────────
-  // Inserción en cascada. Si algo falla, rollback manual de la cabecera
-  // (ON DELETE CASCADE limpia puestos/períodos/tareas ya insertados).
+  // Inserción en cascada. Si algo falla en un ALTA nueva, rollback manual de la
+  // cabecera (ON DELETE CASCADE limpia puestos/períodos/tareas ya insertados). En
+  // un RE-GUARDADO de borrador NO borramos la cabecera (perderíamos el borrador):
+  // dejamos lo insertado y devolvemos el error para que el técnico reintente.
+  const rollbackCabecera = async () => {
+    if (!medicionExistenteId) {
+      await supabase.from('medicion_carga_termica').delete().eq('id', medicionId)
+    }
+  }
   for (let i = 0; i < puestos.length; i++) {
     const pu = puestos[i]
     const { data: puesto, error: puErr } = await supabase
@@ -256,7 +327,7 @@ export async function crearMedicionCargaTermica(
       .select('id')
       .single()
     if (puErr) {
-      await supabase.from('medicion_carga_termica').delete().eq('id', medicionId)
+      await rollbackCabecera()
       return { success: false, error: 'Error al guardar un puesto: ' + puErr.message }
     }
 
@@ -285,7 +356,7 @@ export async function crearMedicionCargaTermica(
         .select('id')
         .single()
       if (perErr) {
-        await supabase.from('medicion_carga_termica').delete().eq('id', medicionId)
+        await rollbackCabecera()
         return { success: false, error: 'Error al guardar un período: ' + perErr.message }
       }
 
@@ -305,7 +376,7 @@ export async function crearMedicionCargaTermica(
           .from('medicion_carga_termica_tareas')
           .insert(tareaRows)
         if (tarErr) {
-          await supabase.from('medicion_carga_termica').delete().eq('id', medicionId)
+          await rollbackCabecera()
           return { success: false, error: 'Error al guardar las tareas de un período: ' + tarErr.message }
         }
       }
@@ -315,7 +386,12 @@ export async function crearMedicionCargaTermica(
   // ── 5. INSERT observaciones de seguimiento → pool común gestiones_observaciones
   // Replicado de crearMedicionIluminacion: mismo contrato de FormData y forma de
   // inserción (registro_gestion_id + rg_fecha_planificada para que entren a Seguimiento).
-  if (observacionesSeguimientoRaw) {
+  //
+  // Las observaciones de seguimiento SOLO se insertan al FINALIZAR (no en borrador):
+  // viven en el pool gestiones_observaciones (Seguimiento), NO son hijas con CASCADE del
+  // protocolo y el wizard no las re-hidrata, así que insertarlas en cada "Guardar borrador"
+  // las DUPLICARÍA en Seguimiento. Mismo criterio que crearMedicionIluminacion.
+  if (finalizar && observacionesSeguimientoRaw) {
     let observacionesSeg: ObsSeguimientoInput[] = []
     try {
       const parsed = JSON.parse(observacionesSeguimientoRaw)

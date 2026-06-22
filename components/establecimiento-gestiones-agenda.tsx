@@ -17,7 +17,7 @@ import {
   Camera, BarChart3, FileCheck,
   ClipboardCheck, GraduationCap, Heart, FileText, AlertTriangle,
   ClipboardList, UserPlus, Dumbbell, Kanban, HelpCircle,
-  Play, Upload, Download, BookMarked, Eye,
+  Play, Upload, Download, BookMarked, Eye, RefreshCw,
   ChevronUp, ChevronDown, Columns, CalendarDays, List, X, Thermometer, Flame, Zap, Volume2, Lightbulb,
   Activity,
 } from 'lucide-react'
@@ -1830,46 +1830,51 @@ function AgendaActionsCell({
   // evidencia_url, así que NO deben caer en el flujo de "Cargar" ni volver a mostrar
   // "Ejecutar". Tipos con viewer propio: medicion_pat, medicion_carga_termica,
   // protocolo_ergonomia, medicion_iluminacion, medicion_ruido, calculo_carga_fuego.
-  // Los tres últimos usan visor HTML interino (el botón dice "Ver (HTML)") mientras
-  // el agente de PDF los migra en paralelo.
+  // Todos pre-generan/regeneran PDF; el visor es "Ver reporte".
   // Este bloque va ANTES de los bloques por evidencia para ganarles la prioridad.
-  // Tipos que tienen visor HTML interino (mientras se migra a PDF en paralelo).
-  const TIPOS_VISOR_HTML_INTERINO = new Set([
-    'medicion_iluminacion',
-    'medicion_ruido',
-    'calculo_carga_fuego',
-  ])
-  const esVisorHtmlInterino = TIPOS_VISOR_HTML_INTERINO.has(r.ge_tipo_ejecucion ?? '')
-
   if (yaEjecutada && esProtocoloMedicion) {
     // Prioridad: si el protocolo ya guardó su PDF como evidencia adjunta →
-    // "Descargar PDF" (le gana al visor HTML interino). + toggle de legajo.
+    // "Descargar PDF". + "Regenerar PDF" (re-emite con el motor actual) + toggle de legajo.
     if (tieneEvidencia) {
       return (
-        <div className="flex items-center gap-1.5 justify-center">
-          <a
-            href={getUrl(r.evidencia_url) ?? '#'}
-            target="_blank"
-            rel="noopener noreferrer"
-            title="Descargar el PDF del protocolo"
-            className={`${primaryBtn} ${primaryActive}`}
-            aria-disabled={!getUrl(r.evidencia_url)}
-          >
-            <Download size={14} />
-            <span className="hidden sm:inline">Descargar PDF</span>
-          </a>
-          <button
-            title={r.mostrar_lt ? 'En Legajo Técnico (click para quitar)' : 'Fuera del Legajo Técnico (click para agregar)'}
-            onClick={onToggleLegajo}
-            aria-pressed={!!r.mostrar_lt}
-            className={`${toggleBtn} ${r.mostrar_lt ? toggleOn : toggleOff}`}
-          >
-            <BookMarked size={14} fill={r.mostrar_lt ? 'currentColor' : 'none'} />
-          </button>
+        <div className="flex flex-col items-center gap-1">
+          <div className="flex items-center gap-1.5 justify-center">
+            <a
+              href={getUrl(r.evidencia_url) ?? '#'}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Descargar el PDF del protocolo"
+              className={`${primaryBtn} ${primaryActive}`}
+              aria-disabled={!getUrl(r.evidencia_url)}
+            >
+              <Download size={14} />
+              <span className="hidden sm:inline">Descargar PDF</span>
+            </a>
+            {emitirPdfProtocolo && (
+              <button
+                title="Regenerar el PDF con la última versión del motor (sin re-ejecutar la medición)"
+                onClick={handleGenerarPdf}
+                disabled={generandoPdf}
+                className={`${primaryBtn} ${primaryActive} disabled:opacity-60`}
+              >
+                <RefreshCw size={14} className={generandoPdf ? 'animate-spin' : ''} />
+                <span className="hidden sm:inline">{generandoPdf ? 'Regenerando…' : 'Regenerar PDF'}</span>
+              </button>
+            )}
+            <button
+              title={r.mostrar_lt ? 'En Legajo Técnico (click para quitar)' : 'Fuera del Legajo Técnico (click para agregar)'}
+              onClick={onToggleLegajo}
+              aria-pressed={!!r.mostrar_lt}
+              className={`${toggleBtn} ${r.mostrar_lt ? toggleOn : toggleOff}`}
+            >
+              <BookMarked size={14} fill={r.mostrar_lt ? 'currentColor' : 'none'} />
+            </button>
+          </div>
+          {pdfError && <span className="text-[10px] text-red-600 max-w-[200px] text-center leading-tight">{pdfError}</span>}
         </div>
       )
     }
-    // Sin PDF guardado todavía → visor HTML interino / ver reporte.
+    // Sin PDF guardado todavía → ver reporte.
     // Para ILUMINACIÓN, además, botón para GENERAR el PDF desde los datos ya
     // cargados (sin reabrir el formulario) y descargarlo. Al terminar queda como
     // evidencia y el row pasa a "Descargar PDF".
@@ -1889,12 +1894,12 @@ function AgendaActionsCell({
               </button>
             )}
             <button
-              title={esVisorHtmlInterino ? 'Ver el protocolo ejecutado (visor HTML)' : 'Ver el protocolo ejecutado'}
+              title="Ver el protocolo ejecutado"
               onClick={onViewReporte}
               className={`${primaryBtn} ${primaryActive}`}
             >
               <Eye size={14} />
-              <span className="hidden sm:inline">{esVisorHtmlInterino ? 'Ver (HTML)' : 'Ver reporte'}</span>
+              <span className="hidden sm:inline">Ver reporte</span>
             </button>
           </div>
           {pdfError && <span className="text-[10px] text-red-600 max-w-[200px] text-center leading-tight">{pdfError}</span>}
