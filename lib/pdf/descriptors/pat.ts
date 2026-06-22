@@ -127,14 +127,14 @@ export const PAT_DESCRIPTOR: ProtocoloDescriptor<DatosProtocoloPat> = {
   // alto a la grilla/celdas de análisis, sin tocar el HTML legal.
   ajustesCss: `
   .hoja.vert table.form { width: 96%; margin: 0 auto; }
-  .hoja.vert td[style*="height:40mm"] { height: 24mm !important; }
-  .hoja.vert td[style*="height:32mm"] { height: 20mm !important; }
-  .hoja.vert td[style*="height:20mm"] { height: 14mm !important; }
-  .hoja.vert td[style*="height:16mm"] { height: 12mm !important; }
+  .hoja.vert td[style*="height:40mm"] { height: 19mm !important; }
+  .hoja.vert td[style*="height:32mm"] { height: 16mm !important; }
+  .hoja.vert td[style*="height:20mm"] { height: 11mm !important; }
+  .hoja.vert td[style*="height:16mm"] { height: 9.6mm !important; }
   .hoja.horiz table.med { width: 96%; margin: 0 auto; }
-  .hoja.horiz table.med td.fila { height: 7mm; }
-  .hoja.horiz table.med .info-ad { height: 24mm; }
-  .hoja.horiz table.analisis .col-an { height: 120mm; }
+  .hoja.horiz table.med td.fila { height: 5.6mm; }
+  .hoja.horiz table.med .info-ad { height: 19mm; }
+  .hoja.horiz table.analisis .col-an { height: 96mm; }
   .hoja.horiz .anexo, .hoja.horiz .titulo, .hoja.horiz table.form,
   .hoja.horiz table.med, .hoja.horiz table.analisis, .hoja.horiz .hoja-num,
   .hoja.horiz .proto-logos { width:96%; margin-left:auto; margin-right:auto; }

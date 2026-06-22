@@ -234,7 +234,7 @@ export const CARGA_TERMICA_DESCRIPTOR: ProtocoloDescriptor<DatosProtocoloCargaTe
   firmaTexto: FIRMA_TEXTO,
   ajustesCss: `
     /* Ajustes de presentación del protocolo de carga térmica (no tocan el HTML legal). */
-    .hoja.horiz table.grid td.cell { height: 7mm; }
+    .hoja.horiz table.grid td.cell { height: 5.6mm; }
     .hoja.horiz .dato, .hoja.vert .dato { font-size: 7.5pt; }
     .hoja.horiz table.f .dato { font-size: 8pt; }
   `,

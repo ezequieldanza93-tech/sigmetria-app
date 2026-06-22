@@ -150,6 +150,27 @@ export const RUIDO_DESCRIPTOR: ProtocoloDescriptor<DatosProtocoloRuido> = {
     }`,
   // Texto EXACTO dentro de <div class="ac">…</div> del HTML de ruido (con punto final).
   firmaTexto: 'Firma, aclaración y registro del Profesional interviniente.',
+  // Ajustes de presentación: reducimos ~20% TODAS las alturas de fila/celda de las tablas
+  // normativas para que cada hoja + su firma entren en 1 página A4 (igual que iluminación).
+  // Estas reglas se concatenan DESPUÉS del <style> embebido del protocolo (mismo <style>),
+  // así ganan por orden de fuente; las alturas inline de los <td> legales se sobreescriben
+  // con !important (no se toca el HTML embebido en protocolos-html.ts).
+  ajustesCss: `
+    /* Grilla de mediciones (hoja 2). */
+    table.med td.fila { height: 6.8mm; }
+    .info-ad { height: 25.6mm; }
+    /* Análisis de los datos (hoja 3). */
+    .col-an { height: 120mm; }
+    /* Cabecera vertical (hoja 1): alturas inline de los <td> legales (~20% menos). */
+    .hoja.vert table.form td[style*="height:13mm"] { height: 10.4mm !important; }
+    .hoja.vert table.form td[style*="height:11mm"] { height: 8.8mm !important; }
+    .hoja.vert table.form td[style*="height:15mm"] { height: 12mm !important; }
+    .hoja.vert table.form td[style*="height:9mm"] { height: 7.2mm !important; }
+    .hoja.vert table.form td[style*="height:22mm"] { height: 17.6mm !important; }
+    .hoja.vert table.form td[style*="height:18mm"] { height: 14.4mm !important; }
+    .hoja.vert table.form td[style*="height:40mm"] { height: 32mm !important; }
+    .hoja.vert table.form td[style*="height:8mm"] { height: 6.4mm !important; }
+  `,
   inyectarBody(body, d) {
     // ── 1. Campos de cabecera (hoja 1, vertical) ──────────────────────────────
     // Labels EXACTOS tal como figuran en el HTML del protocolo (mayúsculas/acentos).
