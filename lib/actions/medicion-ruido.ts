@@ -361,7 +361,7 @@ export async function getMedicionRuido(
       ),
       mediciones_instrumentos (
         id, modelo, numero_serie,
-        mediciones_instrumentos_tipos ( nombre ),
+        productos_componentes ( nombre ),
         organizaciones_externas ( nombre )
       ),
       certificados_calibracion (
@@ -409,9 +409,9 @@ export async function getInstrumentosRuido(): Promise<ActionResult<InstrumentoRu
 
   const { data, error } = await supabase
     .from('mediciones_instrumentos')
-    .select('id, modelo, numero_serie, mediciones_instrumentos_tipos!inner(nombre), organizaciones_externas(nombre)')
+    .select('id, modelo, numero_serie, productos_componentes!inner(nombre), organizaciones_externas(nombre)')
     .eq('is_active', true)
-    .in('mediciones_instrumentos_tipos.nombre', ['Sonómetro', 'Dosímetro', 'Decibelímetro'])
+    .eq('productos_componentes.nombre', 'Ruido')
     .order('modelo', { ascending: true })
 
   if (error) return { success: false, error: error.message }
@@ -419,7 +419,7 @@ export async function getInstrumentosRuido(): Promise<ActionResult<InstrumentoRu
   const result: InstrumentoRuido[] = (data ?? []).map(r => {
     const marca = r.organizaciones_externas as { nombre: string } | { nombre: string }[] | null
     const marcaRow = Array.isArray(marca) ? marca[0] : marca
-    const tipo = r.mediciones_instrumentos_tipos as { nombre: string } | { nombre: string }[] | null
+    const tipo = r.productos_componentes as { nombre: string } | { nombre: string }[] | null
     const tipoRow = Array.isArray(tipo) ? tipo[0] : tipo
     return {
       id: r.id as string,

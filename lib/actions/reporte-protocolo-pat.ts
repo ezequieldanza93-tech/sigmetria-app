@@ -149,7 +149,7 @@ export async function generarReporteProtocoloPat(
   // ── 4. Instrumento (telurímetro) ─────────────────────────────────────────────
   let instrumentoStr: string | undefined
   if (instrRaw) {
-    const tipoRaw = single<Record<string, unknown>>(instrRaw.mediciones_instrumentos_tipos as EmbedOne<Record<string, unknown>>)
+    const tipoRaw = single<Record<string, unknown>>(instrRaw.productos_componentes as EmbedOne<Record<string, unknown>>)
     const marcaRaw = single<Record<string, unknown>>(instrRaw.organizaciones_externas as EmbedOne<Record<string, unknown>>)
     const tipo = (tipoRaw?.nombre as string) ?? ''
     const marca = (marcaRaw?.nombre as string) ?? ''

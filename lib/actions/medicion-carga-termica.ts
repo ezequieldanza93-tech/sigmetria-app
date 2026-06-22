@@ -392,7 +392,7 @@ export async function getMedicionCargaTermica(
       ),
       mediciones_instrumentos (
         id, modelo, numero_serie,
-        mediciones_instrumentos_tipos ( nombre ),
+        productos_componentes ( nombre ),
         organizaciones_externas ( nombre )
       ),
       certificados_calibracion (
@@ -438,9 +438,9 @@ export async function getInstrumentosCargaTermica(): Promise<ActionResult<Instru
 
   const { data, error } = await supabase
     .from('mediciones_instrumentos')
-    .select('id, modelo, numero_serie, mediciones_instrumentos_tipos!inner(nombre), organizaciones_externas(nombre)')
+    .select('id, modelo, numero_serie, productos_componentes!inner(nombre), organizaciones_externas(nombre)')
     .eq('is_active', true)
-    .eq('mediciones_instrumentos_tipos.nombre', 'Monitor de Estrés Térmico')
+    .eq('productos_componentes.nombre', 'Carga Térmica')
     .order('modelo', { ascending: true })
 
   if (error) return { success: false, error: error.message }

@@ -5,6 +5,20 @@ import { revalidatePath } from 'next/cache'
 import { uploadAsset } from '@/lib/storage/upload'
 import type { ActionResult } from '@/lib/types'
 
+// El modelo y la marca del instrumento se DERIVAN del producto del catálogo (Mediciones HyS).
+// Devuelve null si el producto no existe.
+async function productoCatalogo(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  productoId: string,
+): Promise<{ nombre: string; marca_id: string | null } | null> {
+  const { data } = await supabase
+    .from('productos')
+    .select('nombre, marca_id')
+    .eq('id', productoId)
+    .maybeSingle()
+  return (data as { nombre: string; marca_id: string | null } | null) ?? null
+}
+
 export async function createInstrumento(
   _prev: ActionResult<null> | null,
   formData: FormData
@@ -13,11 +27,16 @@ export async function createInstrumento(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
-  const modelo = (formData.get('modelo') as string)?.trim()
-  const tipoId = formData.get('tipo_id') as string
+  const subcategoriaId = (formData.get('subcategoria_id') as string) || ''
+  const productoId = (formData.get('producto_id') as string) || ''
 
-  if (!modelo) return { success: false, error: 'El modelo es obligatorio' }
-  if (!tipoId) return { success: false, error: 'El tipo es obligatorio' }
+  if (!subcategoriaId) return { success: false, error: 'Elegí el tipo de medición (subcategoría)' }
+  if (!productoId) return { success: false, error: 'Elegí el modelo del instrumento desde el catálogo' }
+
+  const prod = await productoCatalogo(supabase, productoId)
+  if (!prod) return { success: false, error: 'El producto elegido no existe en el catálogo' }
+  const modelo = prod.nombre
+  const marcaId = prod.marca_id
 
   // Certificado de calibración OPCIONAL al dar de alta. Si vino archivo, ambas fechas
   // son obligatorias; si no vino archivo pero sí fechas, igual se registra la calibración.
@@ -35,8 +54,9 @@ export async function createInstrumento(
   const { data: inserted, error } = await supabase
     .from('mediciones_instrumentos')
     .insert({
-      tipo_id: tipoId,
-      marca_id: (formData.get('marca_id') as string) || null,
+      producto_id: productoId,
+      subcategoria_id: subcategoriaId,
+      marca_id: marcaId,
       modelo,
       numero_serie: (formData.get('numero_serie') as string) || null,
       dueño_id: (formData.get('dueño_id') as string) || null,
@@ -110,18 +130,22 @@ export async function updateInstrumento(
   const id = formData.get('id') as string
   if (!id) return { success: false, error: 'ID requerido' }
 
-  const modelo = (formData.get('modelo') as string)?.trim()
-  const tipoId = formData.get('tipo_id') as string
+  const subcategoriaId = (formData.get('subcategoria_id') as string) || ''
+  const productoId = (formData.get('producto_id') as string) || ''
 
-  if (!modelo) return { success: false, error: 'El modelo es obligatorio' }
-  if (!tipoId) return { success: false, error: 'El tipo es obligatorio' }
+  if (!subcategoriaId) return { success: false, error: 'Elegí el tipo de medición (subcategoría)' }
+  if (!productoId) return { success: false, error: 'Elegí el modelo del instrumento desde el catálogo' }
+
+  const prod = await productoCatalogo(supabase, productoId)
+  if (!prod) return { success: false, error: 'El producto elegido no existe en el catálogo' }
 
   const { error } = await supabase
     .from('mediciones_instrumentos')
     .update({
-      tipo_id: tipoId,
-      marca_id: (formData.get('marca_id') as string) || null,
-      modelo,
+      producto_id: productoId,
+      subcategoria_id: subcategoriaId,
+      marca_id: prod.marca_id,
+      modelo: prod.nombre,
       numero_serie: (formData.get('numero_serie') as string) || null,
       dueño_id: (formData.get('dueño_id') as string) || null,
     })

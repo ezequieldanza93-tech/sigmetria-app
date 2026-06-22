@@ -65,7 +65,7 @@ export function InstrumentoModal({ instrumento, open, onClose, canWrite }: Instr
   }, [open])
 
   return (
-    <Modal open={open} onClose={onClose} title={instrumento.modelo}>
+    <Modal open={open} onClose={onClose} title={instrumento.modelo ?? 'Instrumento'}>
       <div className="flex gap-1 border-b border-border-subtle mb-4 -mt-1">
         {(['datos', 'calibraciones'] as const).map(t => (
           <button
@@ -84,8 +84,8 @@ export function InstrumentoModal({ instrumento, open, onClose, canWrite }: Instr
         <div className="space-y-3 text-sm">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <p className="text-xs text-text-tertiary font-medium mb-0.5">Tipo</p>
-              <p className="text-text-primary">{instrumento.mediciones_instrumentos_tipos?.nombre ?? '—'}</p>
+              <p className="text-xs text-text-tertiary font-medium mb-0.5">Tipo de medición</p>
+              <p className="text-text-primary">{instrumento.productos_componentes?.nombre ?? '—'}</p>
             </div>
             <div>
               <p className="text-xs text-text-tertiary font-medium mb-0.5">Marca</p>

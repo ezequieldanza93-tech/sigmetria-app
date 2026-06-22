@@ -976,24 +976,22 @@ export interface VerificacionToken {
   access_count: number
 }
 
-export interface TipoInstrumentoMedicion {
-  id: string
-  nombre: string
-  descripcion: string | null
-  created_at: string
-}
-
 export interface InstrumentoMedicion {
   id: string
-  tipo_id: string
+  // El instrumento se clasifica por la SUBCATEGORÍA del catálogo ("Mediciones HyS")
+  // y su modelo sale del producto del catálogo. modelo/marca_id quedan denormalizados
+  // (se setean desde el producto) para no romper lecturas existentes.
+  subcategoria_id: string | null
+  producto_id: string | null
   marca_id: string | null
-  modelo: string
+  modelo: string | null
   numero_serie: string | null
   dueño_id: string | null
   is_active: boolean
   created_at: string
   updated_at: string
-  mediciones_instrumentos_tipos?: { nombre: string } | null
+  productos_componentes?: { nombre: string } | null
+  productos?: { nombre: string } | null
   organizaciones_externas?: { nombre: string } | null
   personas_directorio?: { nombre: string; apellido: string } | null
 }

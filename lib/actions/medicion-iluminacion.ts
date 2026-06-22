@@ -463,7 +463,7 @@ export async function getMedicionIluminacion(
       ),
       mediciones_instrumentos (
         id, modelo, numero_serie,
-        mediciones_instrumentos_tipos ( nombre ),
+        productos_componentes ( nombre ),
         organizaciones_externas ( nombre )
       ),
       certificados_calibracion (
@@ -548,9 +548,9 @@ export async function getInstrumentosLuxometro(): Promise<ActionResult<Instrumen
 
   const { data, error } = await supabase
     .from('mediciones_instrumentos')
-    .select('id, modelo, numero_serie, mediciones_instrumentos_tipos!inner(nombre), organizaciones_externas(nombre)')
+    .select('id, modelo, numero_serie, productos_componentes!inner(nombre), organizaciones_externas(nombre)')
     .eq('is_active', true)
-    .eq('mediciones_instrumentos_tipos.nombre', 'Luxómetro')
+    .eq('productos_componentes.nombre', 'Iluminación')
     .order('modelo', { ascending: true })
 
   if (error) return { success: false, error: error.message }

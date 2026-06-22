@@ -3,24 +3,27 @@
 import { useState, useEffect, useActionState, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import { createClient } from '@/lib/supabase/client'
 import { createInstrumento, updateInstrumento, deleteInstrumento } from '@/lib/actions/instrumento'
-import { createMarcaInline } from '@/lib/actions/organizacion'
 import { InstrumentoModal } from '@/components/instrumento-modal'
 import { PersonaSelector } from '@/components/persona-selector'
 import { FileUploadInput } from '@/components/ui/file-upload-input'
-import type { InstrumentoMedicion, TipoInstrumentoMedicion, Organizacion, ActionResult } from '@/lib/types'
+import type { InstrumentoMedicion, ActionResult } from '@/lib/types'
 
-type MarcaOption = { id: string; nombre: string }
+// Categoría del catálogo (clase EPC) de la que sale el modelo del instrumento.
+// Sus subcategorías (componentes) SON los tipos de medición.
+const CAT_MEDICIONES_HYS = '318ea652-2295-4d3f-8ffb-f8f047f84fe6'
+
+type Subcategoria = { id: string; nombre: string }
+type ProductoCat = { id: string; nombre: string; codigo: string | null }
 
 function InstrumentoForm({
-  tipos,
-  marcas,
+  subcategorias,
   instrumento,
   onSuccess,
 }: {
-  tipos: TipoInstrumentoMedicion[]
-  marcas: Organizacion[]
+  subcategorias: Subcategoria[]
   instrumento?: InstrumentoMedicion | null
   onSuccess: () => void
 }) {
@@ -30,40 +33,38 @@ function InstrumentoForm({
     null as ActionResult<null> | null
   )
   const [dueñoId, setDueñoId] = useState<string | null>(instrumento?.dueño_id ?? null)
-  const onSuccessRef = useRef(onSuccess)
-  onSuccessRef.current = onSuccess
-  useEffect(() => { if (state?.success) onSuccessRef.current() }, [state])
-
-  const [localMarcas, setLocalMarcas] = useState<MarcaOption[]>(
-    () => marcas.map(m => ({ id: m.id, nombre: m.nombre }))
-  )
-  const [selectedMarcaId, setSelectedMarcaId] = useState<string>(instrumento?.marca_id ?? '')
-  const [showNewMarca, setShowNewMarca] = useState(false)
-  const [newMarcaNombre, setNewMarcaNombre] = useState('')
-  const [creatingMarca, setCreatingMarca] = useState(false)
-  const [createMarcaError, setCreateMarcaError] = useState<string | null>(null)
+  const [subcategoriaId, setSubcategoriaId] = useState<string>(instrumento?.subcategoria_id ?? '')
+  const [productoId, setProductoId] = useState<string>(instrumento?.producto_id ?? '')
+  const [productos, setProductos] = useState<ProductoCat[]>([])
+  const [loadingProductos, setLoadingProductos] = useState(false)
   // El certificado sólo se ofrece al dar de alta. Las renovaciones se cargan después
   // desde la pestaña "Calibraciones" del detalle del instrumento.
   const [showCertificado, setShowCertificado] = useState(false)
 
-  async function handleCreateMarca() {
-    if (!newMarcaNombre.trim()) return
-    setCreatingMarca(true)
-    setCreateMarcaError(null)
-    const result = await createMarcaInline(newMarcaNombre.trim())
-    setCreatingMarca(false)
-    if (!result.success) {
-      setCreateMarcaError(result.error ?? 'Error al crear la marca')
-      return
-    }
-    setLocalMarcas(prev =>
-      [...prev, { id: result.data.id, nombre: result.data.nombre }]
-        .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
-    )
-    setSelectedMarcaId(result.data.id)
-    setShowNewMarca(false)
-    setNewMarcaNombre('')
-  }
+  const onSuccessRef = useRef(onSuccess)
+  onSuccessRef.current = onSuccess
+  useEffect(() => { if (state?.success) onSuccessRef.current() }, [state])
+
+  // Al elegir el tipo de medición (subcategoría), cargamos los modelos del catálogo
+  // que cuelgan de ese componente.
+  useEffect(() => {
+    if (!subcategoriaId) { setProductos([]); return }
+    let activo = true
+    setLoadingProductos(true)
+    const supabase = createClient()
+    supabase
+      .from('productos')
+      .select('id, nombre, codigo')
+      .eq('componente_id', subcategoriaId)
+      .eq('is_active', true)
+      .order('nombre')
+      .then(({ data }) => {
+        if (!activo) return
+        setProductos((data ?? []) as ProductoCat[])
+        setLoadingProductos(false)
+      })
+    return () => { activo = false }
+  }, [subcategoriaId])
 
   return (
     <form action={formAction} className="space-y-4">
@@ -71,72 +72,39 @@ function InstrumentoForm({
         <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3">{state.error}</div>
       )}
       {instrumento && <input type="hidden" name="id" value={instrumento.id} />}
+      <input type="hidden" name="subcategoria_id" value={subcategoriaId} />
+
       <div>
-        <label className="text-sm font-medium text-text-secondary block mb-1">Tipo *</label>
-        <select name="tipo_id" required defaultValue={instrumento?.tipo_id ?? ''} className="w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base">
-          <option value="">Seleccioná un tipo…</option>
-          {tipos.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+        <label className="text-sm font-medium text-text-secondary block mb-1">Tipo de medición *</label>
+        <select
+          required
+          value={subcategoriaId}
+          onChange={e => { setSubcategoriaId(e.target.value); setProductoId('') }}
+          className="w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base"
+        >
+          <option value="">Seleccioná el tipo de medición…</option>
+          {subcategorias.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
         </select>
       </div>
+
       <div>
-        <label className="text-sm font-medium text-text-secondary block mb-1">Modelo *</label>
-        <input name="modelo" required defaultValue={instrumento?.modelo ?? ''} className="w-full border border-border-default rounded-lg px-3 py-2 text-sm" placeholder="Ej: Testo 440" />
+        <label className="text-sm font-medium text-text-secondary block mb-1">Modelo (catálogo Mediciones HyS) *</label>
+        <SearchableSelect
+          name="producto_id"
+          value={productoId}
+          onChange={setProductoId}
+          options={productos.map(p => ({ value: p.id, label: p.codigo ? `${p.nombre} · ${p.codigo}` : p.nombre }))}
+          placeholder={
+            !subcategoriaId ? 'Elegí primero el tipo de medición'
+              : loadingProductos ? 'Cargando modelos…'
+              : 'Buscar modelo en el catálogo…'
+          }
+          emptyText="No hay modelos en esta subcategoría del catálogo."
+          disabled={!subcategoriaId || loadingProductos}
+        />
+        <p className="text-xs text-text-tertiary mt-1">La marca se toma del catálogo. Si falta un modelo, agregalo en Librerías → Mediciones HyS.</p>
       </div>
-      <div>
-        <label className="text-sm font-medium text-text-secondary block mb-1">Marca</label>
-        <div className="flex gap-2">
-          <select
-            name="marca_id"
-            value={selectedMarcaId}
-            onChange={e => setSelectedMarcaId(e.target.value)}
-            className="flex-1 border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base"
-          >
-            <option value="">Sin marca</option>
-            {localMarcas.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
-          </select>
-          <button
-            type="button"
-            onClick={() => { setShowNewMarca(v => !v); setCreateMarcaError(null); setNewMarcaNombre('') }}
-            className="px-3 py-2 text-sm border border-border-default rounded-lg hover:bg-surface-base transition-colors text-text-secondary"
-            title="Crear nueva marca"
-          >
-            +
-          </button>
-        </div>
-        {showNewMarca && (
-          <div className="mt-2 space-y-1.5">
-            {createMarcaError && (
-              <p className="text-xs text-danger">{createMarcaError}</p>
-            )}
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={newMarcaNombre}
-                onChange={e => setNewMarcaNombre(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleCreateMarca() } }}
-                placeholder="Nombre de la marca…"
-                className="flex-1 border border-border-default rounded-lg px-3 py-2 text-sm"
-                autoFocus
-              />
-              <button
-                type="button"
-                onClick={handleCreateMarca}
-                disabled={creatingMarca || !newMarcaNombre.trim()}
-                className="px-3 py-2 text-sm bg-sig-500 text-white rounded-lg hover:bg-sig-600 disabled:opacity-50 transition-colors"
-              >
-                {creatingMarca ? '…' : 'Crear'}
-              </button>
-              <button
-                type="button"
-                onClick={() => { setShowNewMarca(false); setCreateMarcaError(null) }}
-                className="px-3 py-2 text-sm border border-border-default rounded-lg hover:bg-surface-base transition-colors"
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+
       <div>
         <label className="text-sm font-medium text-text-secondary block mb-1">Número de serie</label>
         <input name="numero_serie" defaultValue={instrumento?.numero_serie ?? ''} className="w-full border border-border-default rounded-lg px-3 py-2 text-sm" placeholder="Ej: SN-12345" />
@@ -201,9 +169,8 @@ function InstrumentoForm({
 
 export default function InstrumentosPage() {
   const [instrumentos, setInstrumentos] = useState<InstrumentoMedicion[] | null>(null)
-  const [tipos, setTipos] = useState<TipoInstrumentoMedicion[]>([])
-  const [marcas, setMarcas] = useState<Organizacion[]>([])
-  const [activeTipo, setActiveTipo] = useState<string>('todos')
+  const [subcategorias, setSubcategorias] = useState<Subcategoria[]>([])
+  const [activeSubcat, setActiveSubcat] = useState<string>('todos')
   const [showModal, setShowModal] = useState(false)
   const [selectedInstrumento, setSelectedInstrumento] = useState<InstrumentoMedicion | null>(null)
 
@@ -211,7 +178,7 @@ export default function InstrumentosPage() {
     const supabase = createClient()
     supabase
       .from('mediciones_instrumentos')
-      .select('*, mediciones_instrumentos_tipos(nombre), organizaciones_externas(nombre), personas_directorio(nombre, apellido)')
+      .select('*, productos_componentes(nombre), organizaciones_externas(nombre), personas_directorio(nombre, apellido)')
       .eq('is_active', true)
       .range(0, 99)
       .order('modelo')
@@ -221,25 +188,19 @@ export default function InstrumentosPage() {
   useEffect(() => {
     load()
     const supabase = createClient()
-    supabase.from('mediciones_instrumentos_tipos').select('*').order('nombre')
-      .then(({ data }) => setTipos(data ?? []))
     supabase
-      .from('organizaciones_externas')
-      .select('id, nombre, tipo_id, organizaciones_tipos(nombre)')
-      .range(0, 99)
-      .eq('is_active', true)
+      .from('productos_componentes')
+      .select('id, nombre')
+      .eq('categoria_id', CAT_MEDICIONES_HYS)
       .order('nombre')
-      .then(({ data }) => {
-        const marcasOnly = ((data ?? []) as unknown as Organizacion[]).filter(o => o.organizaciones_tipos?.nombre === 'Marca')
-        setMarcas(marcasOnly)
-      })
+      .then(({ data }) => setSubcategorias((data ?? []) as Subcategoria[]))
   }, [])
 
   const filtered = instrumentos === null
     ? null
-    : activeTipo === 'todos'
+    : activeSubcat === 'todos'
       ? instrumentos
-      : instrumentos.filter(i => i.tipo_id === activeTipo)
+      : instrumentos.filter(i => i.subcategoria_id === activeSubcat)
 
   async function handleDelete(id: string) {
     if (!confirm('¿Dar de baja este instrumento?')) return
@@ -257,23 +218,23 @@ export default function InstrumentosPage() {
         <Button onClick={() => setShowModal(true)}>+ Nuevo Instrumento</Button>
       </div>
 
-      {/* Filter tabs */}
+      {/* Filtro por tipo de medición (subcategoría del catálogo) */}
       <div className="flex gap-1 mb-5 flex-wrap">
         <button
-          onClick={() => setActiveTipo('todos')}
-          className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${activeTipo === 'todos' ? 'bg-gray-900 text-white border-gray-900' : 'border-border-default text-text-secondary hover:bg-surface-base'}`}
+          onClick={() => setActiveSubcat('todos')}
+          className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${activeSubcat === 'todos' ? 'bg-gray-900 text-white border-gray-900' : 'border-border-default text-text-secondary hover:bg-surface-base'}`}
         >
           Todos {instrumentos !== null && `(${instrumentos.length})`}
         </button>
-        {tipos.map(t => {
-          const count = instrumentos?.filter(i => i.tipo_id === t.id).length ?? 0
+        {subcategorias.map(s => {
+          const count = instrumentos?.filter(i => i.subcategoria_id === s.id).length ?? 0
           return (
             <button
-              key={t.id}
-              onClick={() => setActiveTipo(t.id)}
-              className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${activeTipo === t.id ? 'bg-sig-500 text-white border-sig-500' : 'border-border-default text-text-secondary hover:bg-surface-base'}`}
+              key={s.id}
+              onClick={() => setActiveSubcat(s.id)}
+              className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${activeSubcat === s.id ? 'bg-sig-500 text-white border-sig-500' : 'border-border-default text-text-secondary hover:bg-surface-base'}`}
             >
-              {t.nombre} ({count})
+              {s.nombre} ({count})
             </button>
           )
         })}
@@ -283,7 +244,7 @@ export default function InstrumentosPage() {
         <div className="bg-surface-base rounded-xl border border-border-subtle p-8 text-center text-text-tertiary">Cargando…</div>
       ) : filtered.length === 0 ? (
         <div className="bg-surface-base rounded-xl border border-border-subtle p-8 text-center text-text-tertiary">
-          No hay instrumentos registrados{activeTipo !== 'todos' ? ' de este tipo' : ''}.
+          No hay instrumentos registrados{activeSubcat !== 'todos' ? ' de este tipo' : ''}.
         </div>
       ) : (
         <div className="bg-surface-base rounded-xl border border-border-subtle overflow-hidden">
@@ -291,7 +252,7 @@ export default function InstrumentosPage() {
             <thead className="border-b border-border-subtle bg-surface-base">
               <tr className="text-left">
                 <th className="px-5 py-3 text-text-secondary font-medium">Modelo</th>
-                <th className="px-5 py-3 text-text-secondary font-medium">Tipo</th>
+                <th className="px-5 py-3 text-text-secondary font-medium">Tipo de medición</th>
                 <th className="px-5 py-3 text-text-secondary font-medium">Marca</th>
                 <th className="px-5 py-3 text-text-secondary font-medium">Nro. de serie</th>
                 <th className="px-5 py-3 text-text-secondary font-medium">Dueño</th>
@@ -301,10 +262,10 @@ export default function InstrumentosPage() {
             <tbody className="divide-y divide-gray-50">
               {filtered.map(i => (
                 <tr key={i.id} className="hover:bg-surface-base cursor-pointer" onClick={() => setSelectedInstrumento(i)}>
-                  <td className="px-5 py-3.5 font-medium text-text-primary">{i.modelo}</td>
+                  <td className="px-5 py-3.5 font-medium text-text-primary">{i.modelo ?? '—'}</td>
                   <td className="px-5 py-3.5">
                     <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-sig-50 text-sig-700">
-                      {i.mediciones_instrumentos_tipos?.nombre ?? '—'}
+                      {i.productos_componentes?.nombre ?? '—'}
                     </span>
                   </td>
                   <td className="px-5 py-3.5 text-text-secondary">{i.organizaciones_externas?.nombre ?? '—'}</td>
@@ -336,8 +297,7 @@ export default function InstrumentosPage() {
 
       <Modal open={showModal} onClose={() => setShowModal(false)} title="Nuevo Instrumento">
         <InstrumentoForm
-          tipos={tipos}
-          marcas={marcas}
+          subcategorias={subcategorias}
           onSuccess={() => { setShowModal(false); load() }}
         />
       </Modal>
