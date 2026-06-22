@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useGeoCaptura } from '@/lib/hooks/use-geo-captura'
-import { descargarProtocoloPdf } from '@/lib/pdf/protocolo-pdf'
+import { emitirEvidenciaRuido } from '@/lib/actions/emitir-evidencia-ruido'
 import {
   crearMedicionRuido,
   getInstrumentosRuido,
@@ -308,9 +308,14 @@ export function MedicionRuidoEjecutorModal({
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [descargandoPdf, setDescargandoPdf] = useState(false)
+  // Estado del guardado como evidencia (el PDF se genera server-side via Chromium,
+  // mismo patrón que iluminación: el motor oficial arma carátula + anexos + logos).
+  const [evidenciaStatus, setEvidenciaStatus] = useState<'idle' | 'guardando' | 'ok' | 'error'>('idle')
+  const [evidenciaPdfUrl, setEvidenciaPdfUrl] = useState<string | null>(null)
 
   // Refs a las 3 hojas ocultas del protocolo oficial (DATOS / GRILLA / ANÁLISIS).
-  // Se renderizan fuera de pantalla y se rasterizan al descargar el PDF.
+  // Vestigiales: el PDF oficial ahora lo genera el motor server-side (emitirEvidenciaRuido),
+  // ya no se rasterizan en el cliente. Se dejan montadas igual que en iluminación.
   const hojaDatosRef = useRef<HTMLDivElement>(null)
   const hojaGrillaRef = useRef<HTMLDivElement>(null)
   const hojaAnalisisRef = useRef<HTMLDivElement>(null)
@@ -766,24 +771,53 @@ export function MedicionRuidoEjecutorModal({
     }
   }
 
-  // ── Descargar PDF oficial (3 hojas SRT 85/2012) ────────────────────
-  // Genera el protocolo client-side a partir de los datos en memoria, sin tocar
-  // storage (v1): rasteriza las 3 hojas ocultas y arma un A4 multipágina.
+  // ── Descargar PDF oficial (Res. SRT 85/2012) ───────────────────────
+  // Abre el PDF de evidencia generado por el motor Chromium server-side (vectorial,
+  // con carátula/logos/anexos), mismo patrón que iluminación. El PDF ya se generó al
+  // llegar al paso 'listo' (useEffect de evidencia); acá abrimos su signed URL. Si
+  // todavía no está, lo generamos on-demand.
   async function handleDescargarPdf() {
-    const hojas = [hojaDatosRef.current, hojaGrillaRef.current, hojaAnalisisRef.current]
-      .filter((h): h is HTMLDivElement => h != null)
-    if (hojas.length === 0) return
     setDescargandoPdf(true)
     setError(null)
     try {
-      const nombre = `protocolo-ruido-${fechaMedicion || new Date().toISOString().slice(0, 10)}.pdf`
-      await descargarProtocoloPdf({ hojas }, nombre)
+      let url = evidenciaPdfUrl
+      if (!url) {
+        const res = await emitirEvidenciaRuido(registroId, rgFechaPlanificada)
+        if (!res.success) { setError(res.error ?? 'No se pudo generar el PDF.'); return }
+        url = res.data.pdfUrl
+        setEvidenciaPdfUrl(url)
+      }
+      if (url) window.open(url, '_blank', 'noopener,noreferrer')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo generar el PDF.')
     } finally {
       setDescargandoPdf(false)
     }
   }
+
+  // Al llegar al paso final, genera el PDF con el motor Chromium (vectorial) y lo
+  // guarda como EVIDENCIA ADJUNTA de la gestión (best-effort, no bloquea). El signed
+  // URL queda cacheado para la descarga manual. Espeja iluminación.
+  useEffect(() => {
+    if (step !== 'listo' || evidenciaStatus !== 'idle') return
+    let cancelled = false
+    ;(async () => {
+      setEvidenciaStatus('guardando')
+      try {
+        const res = await emitirEvidenciaRuido(registroId, rgFechaPlanificada)
+        if (cancelled) return
+        if (res.success) {
+          setEvidenciaPdfUrl(res.data.pdfUrl)
+          setEvidenciaStatus('ok')
+        } else {
+          setEvidenciaStatus('error')
+        }
+      } catch {
+        if (!cancelled) setEvidenciaStatus('error')
+      }
+    })()
+    return () => { cancelled = true }
+  }, [step, evidenciaStatus, registroId, rgFechaPlanificada])
 
   const stepIdx = STEP_ORDER.indexOf(step)
   const punto = puntos[puntoActivo]
@@ -877,6 +911,21 @@ export function MedicionRuidoEjecutorModal({
           </div>
           {error && (
             <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-3 py-2">{error}</div>
+          )}
+          {evidenciaStatus === 'guardando' && (
+            <p className="text-xs text-text-tertiary flex items-center justify-center gap-1.5">
+              <Loader2 size={12} className="animate-spin" /> Guardando PDF en la evidencia de la gestión…
+            </p>
+          )}
+          {evidenciaStatus === 'ok' && (
+            <p className="text-xs text-success flex items-center justify-center gap-1.5">
+              <FileCheck size={12} /> PDF guardado como evidencia de la gestión
+            </p>
+          )}
+          {evidenciaStatus === 'error' && (
+            <p className="text-xs text-warning flex items-center justify-center gap-1.5">
+              <AlertTriangle size={12} /> No se pudo guardar la evidencia automáticamente — descargá el PDF con el botón.
+            </p>
           )}
           <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3 justify-center pt-2">
             <Button type="button" onClick={handleDescargarPdf} disabled={descargandoPdf}>
@@ -1669,18 +1718,9 @@ export function MedicionRuidoEjecutorModal({
               Continuar <ChevronRight size={14} />
             </Button>
           ) : (
-            <>
-              <Button type="button" onClick={handleGuardar} disabled={saving || descargandoPdf}>
-                {saving ? <><Loader2 size={14} className="animate-spin" /> Guardando…</> : 'Guardar protocolo'}
-              </Button>
-              <Button type="button" variant="secondary" onClick={handleDescargarPdf} disabled={saving || descargandoPdf}>
-                {descargandoPdf ? (
-                  <><Loader2 size={14} className="animate-spin" /> Generando…</>
-                ) : (
-                  <><Download size={14} /> Descargar PDF</>
-                )}
-              </Button>
-            </>
+            <Button type="button" onClick={handleGuardar} disabled={saving}>
+              {saving ? <><Loader2 size={14} className="animate-spin" /> Guardando…</> : 'Guardar protocolo'}
+            </Button>
           )}
           <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>Cancelar</Button>
         </div>
