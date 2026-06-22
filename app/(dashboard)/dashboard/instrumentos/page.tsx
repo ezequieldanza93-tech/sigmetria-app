@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { createClient } from '@/lib/supabase/client'
-import { createInstrumento, updateInstrumento, deleteInstrumento } from '@/lib/actions/instrumento'
+import { createInstrumento, updateInstrumento, deleteInstrumento, crearModeloCatalogo } from '@/lib/actions/instrumento'
 import { InstrumentoModal } from '@/components/instrumento-modal'
 import { PersonaSelector } from '@/components/persona-selector'
 import { FileUploadInput } from '@/components/ui/file-upload-input'
@@ -37,6 +37,11 @@ function InstrumentoForm({
   const [productoId, setProductoId] = useState<string>(instrumento?.producto_id ?? '')
   const [productos, setProductos] = useState<ProductoCat[]>([])
   const [loadingProductos, setLoadingProductos] = useState(false)
+  // Alta inline de un modelo en el catálogo (Mediciones HyS) desde acá.
+  const [showNuevoModelo, setShowNuevoModelo] = useState(false)
+  const [nuevoModelo, setNuevoModelo] = useState('')
+  const [creandoModelo, setCreandoModelo] = useState(false)
+  const [errorModelo, setErrorModelo] = useState<string | null>(null)
   // El certificado sólo se ofrece al dar de alta. Las renovaciones se cargan después
   // desde la pestaña "Calibraciones" del detalle del instrumento.
   const [showCertificado, setShowCertificado] = useState(false)
@@ -65,6 +70,28 @@ function InstrumentoForm({
       })
     return () => { activo = false }
   }, [subcategoriaId])
+
+  async function handleCrearModelo() {
+    const nombre = nuevoModelo.trim()
+    if (!nombre) return
+    setCreandoModelo(true)
+    setErrorModelo(null)
+    const res = await crearModeloCatalogo(nombre, subcategoriaId)
+    setCreandoModelo(false)
+    if (!res.success) { setErrorModelo(res.error); return }
+    // Refrescar la lista del componente y seleccionar el modelo recién creado.
+    const supabase = createClient()
+    const { data } = await supabase
+      .from('productos')
+      .select('id, nombre, codigo')
+      .eq('componente_id', subcategoriaId)
+      .eq('is_active', true)
+      .order('nombre')
+    setProductos((data ?? []) as ProductoCat[])
+    setProductoId(res.data.id)
+    setShowNuevoModelo(false)
+    setNuevoModelo('')
+  }
 
   return (
     <form action={formAction} className="space-y-4">
@@ -102,7 +129,48 @@ function InstrumentoForm({
           emptyText="No hay modelos en esta subcategoría del catálogo."
           disabled={!subcategoriaId || loadingProductos}
         />
-        <p className="text-xs text-text-tertiary mt-1">La marca se toma del catálogo. Si falta un modelo, agregalo en Librerías → Mediciones HyS.</p>
+        {subcategoriaId && !showNuevoModelo && (
+          <button
+            type="button"
+            onClick={() => { setShowNuevoModelo(true); setErrorModelo(null) }}
+            className="mt-1.5 text-xs text-sig-600 hover:text-sig-700 font-medium"
+          >
+            + Crear un modelo nuevo en el catálogo
+          </button>
+        )}
+        {showNuevoModelo && (
+          <div className="mt-2 space-y-1.5">
+            {errorModelo && <p className="text-xs text-danger">{errorModelo}</p>}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={nuevoModelo}
+                onChange={e => setNuevoModelo(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleCrearModelo() } }}
+                placeholder="Nombre del modelo (ej: Testo 815)…"
+                className="flex-1 border border-border-default rounded-lg px-3 py-2 text-sm"
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={handleCrearModelo}
+                disabled={creandoModelo || !nuevoModelo.trim()}
+                className="px-3 py-2 text-sm bg-sig-500 text-white rounded-lg hover:bg-sig-600 disabled:opacity-50 transition-colors"
+              >
+                {creandoModelo ? '…' : 'Crear'}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setShowNuevoModelo(false); setErrorModelo(null); setNuevoModelo('') }}
+                className="px-3 py-2 text-sm border border-border-default rounded-lg hover:bg-surface-base transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
+            <p className="text-xs text-text-tertiary">Se agrega a tu catálogo (Mediciones HyS) en la subcategoría elegida y queda seleccionado.</p>
+          </div>
+        )}
+        {!showNuevoModelo && <p className="text-xs text-text-tertiary mt-1">La marca se toma del catálogo.</p>}
       </div>
 
       <div>

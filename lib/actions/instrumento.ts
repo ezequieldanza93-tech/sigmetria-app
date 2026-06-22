@@ -5,6 +5,9 @@ import { revalidatePath } from 'next/cache'
 import { uploadAsset } from '@/lib/storage/upload'
 import type { ActionResult } from '@/lib/types'
 
+// Categoría del catálogo (clase EPC) de la que salen los modelos de instrumentos.
+const CAT_MEDICIONES_HYS = '318ea652-2295-4d3f-8ffb-f8f047f84fe6'
+
 // El modelo y la marca del instrumento se DERIVAN del producto del catálogo (Mediciones HyS).
 // Devuelve null si el producto no existe.
 async function productoCatalogo(
@@ -160,6 +163,46 @@ export async function updateInstrumento(
 
   revalidatePath('/dashboard/instrumentos')
   return { success: true, data: null }
+}
+
+/**
+ * Alta inline de un MODELO en el catálogo (categoría Mediciones HyS, subcategoría elegida),
+ * desde el selector de modelo del alta de instrumento. Se crea como producto PROPIO de la
+ * consultora (no toca la librería base). Devuelve el id para auto-seleccionarlo.
+ */
+export async function crearModeloCatalogo(
+  nombre: string,
+  subcategoriaId: string,
+): Promise<ActionResult<{ id: string; nombre: string }>> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'No autenticado' }
+
+  const nombreTrim = nombre.trim()
+  if (!nombreTrim) return { success: false, error: 'El nombre del modelo es obligatorio' }
+  if (!subcategoriaId) return { success: false, error: 'Elegí primero el tipo de medición' }
+
+  const { data: member } = await supabase
+    .from('consultoras_members')
+    .select('consultora_id')
+    .eq('user_id', user.id)
+    .eq('is_active', true)
+    .maybeSingle()
+  if (!member) return { success: false, error: 'Sin membresía activa' }
+
+  const { data, error } = await supabase
+    .from('productos')
+    .insert({
+      nombre: nombreTrim,
+      categoria_id: CAT_MEDICIONES_HYS,
+      componente_id: subcategoriaId,
+      consultora_id: member.consultora_id,
+    })
+    .select('id, nombre')
+    .single()
+
+  if (error || !data) return { success: false, error: error?.message ?? 'No se pudo crear el modelo' }
+  return { success: true, data: { id: data.id as string, nombre: data.nombre as string } }
 }
 
 export async function deleteInstrumento(id: string): Promise<ActionResult<null>> {
