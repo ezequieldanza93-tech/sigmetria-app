@@ -9,6 +9,7 @@ export type UserRole =
   | 'responsable_estandares'
   | 'viewer_observaciones'
   | 'auditor_externo'
+  | 'trabajador'
 
 export type TipoEstablecimiento =
   | 'industria'
@@ -824,6 +825,7 @@ export const ROLE_LABELS: Record<UserRole | SystemRole, string> = {
   responsable_estandares: 'Resp. de Estándares',
   viewer_observaciones: 'Viewer de Observaciones',
   auditor_externo: 'Auditor (organismo de control)',
+  trabajador: 'Trabajador',
 }
 
 export const ROLE_COLORS: Record<UserRole | 'developer', string> = {
@@ -837,6 +839,7 @@ export const ROLE_COLORS: Record<UserRole | 'developer', string> = {
   responsable_estandares: 'bg-indigo-100 text-indigo-800',
   viewer_observaciones: 'bg-amber-100 text-amber-800',
   auditor_externo: 'bg-slate-100 text-slate-800',
+  trabajador: 'bg-cyan-100 text-cyan-800',
 }
 
 export const RIESGO_NIVEL_COLORS: Record<RiesgoNivel, string> = {
@@ -918,7 +921,10 @@ export function isFreeViewerRole(role: UserRole | null | undefined): boolean {
 // cargo). Desacopla "no consume seat" de "lo puede invitar un colaborador".
 export function consumesSeat(role: UserRole | null | undefined): boolean {
   if (role == null) return false
-  return !isFreeViewerRole(role) && role !== 'auditor_externo'
+  // El trabajador (usuario final / operario) TAMPOCO consume seat: puede haber
+  // cientos o miles por consultora. Lo da de alta cualquier colaborador desde el
+  // directorio (persona tipo "Trabajadores"). Ve solo lo suyo.
+  return !isFreeViewerRole(role) && role !== 'auditor_externo' && role !== 'trabajador'
 }
 
 // El Admin (full_access_main) gestiona todo el equipo; los colaboradores
@@ -929,7 +935,7 @@ export function canInviteViewers(role: UserRole | null, systemRole: SystemRole):
 }
 
 // ── Roles amigables (mapea los 7 roles internos a 3 categorías + compliance) ──
-export type FriendlyRoleKey = 'admin' | 'colaborador' | 'visualizador' | 'viewer_obs' | 'auditor'
+export type FriendlyRoleKey = 'admin' | 'colaborador' | 'visualizador' | 'viewer_obs' | 'auditor' | 'trabajador'
 export type ScopeKey = 'todo' | 'especifico'
 
 export interface FriendlyRole {
@@ -950,6 +956,7 @@ export function roleToFriendly(role: UserRole | 'developer' | null | undefined):
     case 'viewer_observaciones': return { label: 'Viewer de Observaciones', scope: 'Solo sus observaciones', color: 'bg-amber-100 text-amber-800' }
     case 'responsable_estandares': return { label: 'Resp. de Estándares', scope: 'Compliance SRT', color: 'bg-indigo-100 text-indigo-800' }
     case 'auditor_externo': return { label: 'Auditor', scope: 'Organismo de control (solo lectura)', color: 'bg-slate-100 text-slate-800' }
+    case 'trabajador': return { label: 'Trabajador', scope: 'Solo lo suyo (capacitaciones y EPP)', color: 'bg-cyan-100 text-cyan-800' }
     default: return { label: 'Sin rol', color: 'bg-surface-elevated text-text-secondary' }
   }
 }
@@ -964,6 +971,8 @@ export function resolveUserRole(friendly: FriendlyRoleKey, scope: ScopeKey): Use
   if (friendly === 'viewer_obs') return 'viewer_observaciones'
   // Auditor del organismo de control: solo lectura consultora-wide, nunca escribe.
   if (friendly === 'auditor') return 'auditor_externo'
+  // Trabajador: usuario final (operario). Ve solo lo suyo. No consume seat.
+  if (friendly === 'trabajador') return 'trabajador'
   return 'visualizador_comentarista'
 }
 
@@ -1401,6 +1410,65 @@ export interface Firma {
   profiles?: { full_name: string } | null
   asistentes?: { full_name: string } | null
   personas_directorio?: { nombre: string; apellido: string } | null
+}
+
+// ---- Entrega de EPP (conformidad / descargo POR ÍTEM) ----
+// El profesional registra la entrega; el trabajador (cuenta + MFA) confirma u
+// observa cada ítem. Validez legal vía audit_log con hash encadenado + firmas.
+export type EntregaEppEstado = 'pendiente' | 'parcial' | 'confirmada' | 'observada'
+export type EntregaEppItemConformidad = 'pendiente' | 'conforme' | 'observado'
+
+export interface EntregaEppItem {
+  id: string
+  entrega_id: string
+  consultora_id: string
+  producto_id: string | null
+  variante_id: string | null
+  producto_nombre: string   // snapshot: qué se entregó (congelado para validez legal)
+  talle: string | null
+  cantidad: number
+  conformidad: EntregaEppItemConformidad
+  descargo: string | null   // motivo del trabajador si observa
+  respondido_at: string | null
+  created_at: string
+}
+
+export interface EntregaEpp {
+  id: string
+  consultora_id: string
+  establecimiento_id: string | null
+  persona_id: string        // el trabajador que recibe
+  entregado_por_id: string | null
+  entregado_por_nombre: string | null
+  fecha_entrega: string
+  estado: EntregaEppEstado
+  observaciones: string | null
+  geo_lat: number | null
+  geo_lng: number | null
+  geo_precision_m: number | null
+  geo_captured_at: string | null
+  respondida_at: string | null
+  firma_id: string | null
+  created_at: string
+  updated_at: string
+  // joins / agregados opcionales
+  items?: EntregaEppItem[]
+  personas_directorio?: { nombre: string; apellido: string } | null
+  establecimientos?: { nombre: string } | null
+}
+
+export const ENTREGA_EPP_ESTADO_LABELS: Record<EntregaEppEstado, string> = {
+  pendiente: 'Pendiente de conformidad',
+  parcial: 'Respondida parcialmente',
+  confirmada: 'Confirmada',
+  observada: 'Con observaciones',
+}
+
+export const ENTREGA_EPP_ESTADO_COLORS: Record<EntregaEppEstado, string> = {
+  pendiente: 'bg-gray-100 text-gray-800',
+  parcial: 'bg-blue-100 text-blue-800',
+  confirmada: 'bg-green-100 text-green-800',
+  observada: 'bg-amber-100 text-amber-800',
 }
 
 // ---- Campus Virtual (Cursos) ----
