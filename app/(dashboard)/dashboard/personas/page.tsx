@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { createClient } from '@/lib/supabase/client'
 import { createPersona, deletePersona } from '@/lib/actions/persona'
+import { crearUsuarioTrabajador } from '@/lib/actions/trabajador-usuario'
+import { EntregaEppModal } from '@/components/entrega-epp-modal'
 import { SectorPuestoSelectorConAlta } from '@/components/sector-puesto-selector-con-alta'
 import { PersonaDetalleModal, type PersonaDetalle } from '@/components/persona-detalle-modal'
 import type { TipoPersona, Empresa, Establecimiento, ActionResult } from '@/lib/types'
@@ -275,6 +277,8 @@ export default function PersonasPage() {
   const [activeTipo, setActiveTipo] = useState<string>('todos')
   const [showModal, setShowModal] = useState(false)
   const [selectedPersona, setSelectedPersona] = useState<PersonaFila | null>(null)
+  const [creatingId, setCreatingId] = useState<string | null>(null)
+  const [entregaPersona, setEntregaPersona] = useState<PersonaFila | null>(null)
 
   function load() {
     const supabase = createClient()
@@ -318,6 +322,42 @@ export default function PersonasPage() {
     if (!confirm('¿Dar de baja a esta persona?')) return
     await deletePersona(id)
     setPersonas(prev => prev?.filter(p => p.id !== id) ?? null)
+  }
+
+  // Crea la cuenta del trabajador desde el directorio (password = DNI, cambio
+  // obligatorio en el primer ingreso). Cualquier profesional puede hacerlo.
+  async function handleCrearUsuario(p: PersonaFila) {
+    if (!p.email) {
+      alert('Esta persona no tiene email cargado. Editala y agregá el email antes de crear el usuario.')
+      return
+    }
+    if (!p.dni) {
+      alert('Esta persona no tiene DNI cargado. El DNI es la contraseña inicial — completalo primero.')
+      return
+    }
+    if (!confirm(
+      `Crear usuario para ${p.apellido}, ${p.nombre}\n\n` +
+      `Ingreso: ${p.email}\n` +
+      `Contraseña inicial: su DNI (${p.dni})\n` +
+      `Deberá cambiarla en el primer ingreso.`,
+    )) return
+
+    setCreatingId(p.id)
+    const res = await crearUsuarioTrabajador(p.id)
+    setCreatingId(null)
+
+    if (res.success) {
+      alert(
+        `✅ Usuario creado.\n\n` +
+        `El trabajador ingresa con:\n` +
+        `• Email: ${res.data.email}\n` +
+        `• Contraseña: su DNI sin puntos\n\n` +
+        `Se le pedirá cambiar la contraseña en el primer ingreso.`,
+      )
+      load()
+    } else {
+      alert(`No se pudo crear el usuario:\n${res.error}`)
+    }
   }
 
   return (
@@ -392,11 +432,27 @@ export default function PersonasPage() {
                   <td className="px-5 py-3.5">
                     {p.user_id ? (
                       <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-sig-50 text-sig-700">Usuario</span>
+                    ) : p.personas_tipos?.nombre === 'Trabajadores' ? (
+                      <button
+                        onClick={e => { e.stopPropagation(); handleCrearUsuario(p) }}
+                        disabled={creatingId === p.id}
+                        className="text-xs font-medium px-2 py-0.5 rounded-full border border-sig-300 text-sig-700 hover:bg-sig-50 disabled:opacity-50"
+                      >
+                        {creatingId === p.id ? 'Creando…' : '+ Crear usuario'}
+                      </button>
                     ) : (
                       <span className="text-text-tertiary text-xs">—</span>
                     )}
                   </td>
-                  <td className="px-5 py-3.5 text-right">
+                  <td className="px-5 py-3.5 text-right whitespace-nowrap">
+                    {p.personas_tipos?.nombre === 'Trabajadores' && (
+                      <button
+                        onClick={e => { e.stopPropagation(); setEntregaPersona(p) }}
+                        className="text-xs text-sig-600 hover:text-sig-800 mr-3"
+                      >
+                        Entregar EPP
+                      </button>
+                    )}
                     <button
                       onClick={e => { e.stopPropagation(); handleDelete(p.id) }}
                       className="text-xs text-red-400 hover:text-danger"
@@ -425,6 +481,15 @@ export default function PersonasPage() {
           open={!!selectedPersona}
           onClose={() => { setSelectedPersona(null); load() }}
           canWrite
+        />
+      )}
+
+      {entregaPersona && (
+        <EntregaEppModal
+          open={!!entregaPersona}
+          onClose={() => setEntregaPersona(null)}
+          persona={{ id: entregaPersona.id, nombre: entregaPersona.nombre, apellido: entregaPersona.apellido }}
+          onDone={() => alert('✅ Entrega registrada. El trabajador la verá en su cuenta para confirmar u observar.')}
         />
       )}
     </div>

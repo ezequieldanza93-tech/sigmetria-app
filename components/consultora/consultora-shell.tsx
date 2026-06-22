@@ -1,6 +1,6 @@
 'use client'
 
-import { Building2, ClipboardList, BarChart3, BookOpen, Eye, ScrollText, ArrowLeft, Users, Library } from 'lucide-react'
+import { Building2, ClipboardList, BarChart3, BookOpen, Eye, ScrollText, ArrowLeft, Users, Library, ShieldCheck } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { SectionsShell } from '@/components/layout/sections-shell'
@@ -70,6 +70,20 @@ export function ConsultoraShell({ children }: ConsultoraShellProps) {
   // Rutas de empresa y establecimiento tienen su propio shell — no duplicar sidebar
   if (pathname?.startsWith('/dashboard/empresas/')) {
     return <>{children}</>
+  }
+
+  // El Trabajador solo ve SU espacio: entregas de EPP y sus capacitaciones.
+  if (eff?.userRole === 'trabajador') {
+    const trabajadorItems: SectionItem[] = [
+      { id: 'mis-entregas', label: 'Mis EPP', icon: ShieldCheck, href: '/dashboard/mis-entregas' },
+      { id: 'mis-capacitaciones', label: 'Mis Capacitaciones', icon: BookOpen, href: '/dashboard/mis-capacitaciones' },
+    ]
+    const activeTrab = pathname?.startsWith('/dashboard/mis-capacitaciones') ? 'mis-capacitaciones' : 'mis-entregas'
+    return (
+      <SectionsShell items={trabajadorItems} activeId={activeTrab} ariaLabel="Mi espacio">
+        {children}
+      </SectionsShell>
+    )
   }
 
   // El Viewer de Observaciones solo opera sobre sus observaciones: nav acotado.

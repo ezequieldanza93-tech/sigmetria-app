@@ -934,6 +934,14 @@ export function canInviteViewers(role: UserRole | null, systemRole: SystemRole):
   return role === 'full_access_main' || role === 'full_access_branch' || role === 'colaborador'
 }
 
+// Cualquier PROFESIONAL de la consultora (admin o colaborador) puede crear
+// usuarios TRABAJADORES desde el directorio. Mismo set que canInviteViewers,
+// pero con nombre explícito porque es otro acto (alta de usuario final, no viewer).
+export function canCreateTrabajadores(role: UserRole | null, systemRole: SystemRole): boolean {
+  if (systemRole === 'developer') return true
+  return role === 'full_access_main' || role === 'full_access_branch' || role === 'colaborador'
+}
+
 // ── Roles amigables (mapea los 7 roles internos a 3 categorías + compliance) ──
 export type FriendlyRoleKey = 'admin' | 'colaborador' | 'visualizador' | 'viewer_obs' | 'auditor' | 'trabajador'
 export type ScopeKey = 'todo' | 'especifico'

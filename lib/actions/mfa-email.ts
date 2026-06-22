@@ -4,7 +4,7 @@ import crypto from 'crypto'
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
-import { sendMfaCode } from '@/lib/email/mfa'
+import { resolveMfaChannel, sendMfaCodeVia } from '@/lib/auth/mfa-channels'
 import { createMfaCookie, MFA_COOKIE_NAME, MFA_COOKIE_TTL_MS } from '@/lib/mfa-cookie'
 
 function hashCode(code: string): string {
@@ -33,21 +33,25 @@ export async function sendMfaEmailCode(): Promise<{ error?: string }> {
     code_hash: hashCode(code),
   })
 
-  const { data: profile } = await service
-    .from('profiles')
-    .select('full_name')
-    .eq('id', user.id)
-    .maybeSingle()
+  const [{ data: profile }, { data: persona }] = await Promise.all([
+    service.from('profiles').select('full_name').eq('id', user.id).maybeSingle(),
+    service.from('personas_directorio').select('telefono').eq('user_id', user.id).maybeSingle(),
+  ])
+
+  // Canal enchufable: email hoy; WhatsApp cuando esté configurado (ver mfa-channels.ts).
+  const channel = resolveMfaChannel({ hasPhone: !!persona?.telefono })
 
   try {
-    await sendMfaCode({
-      email: user.email,
+    await sendMfaCodeVia({
+      channel,
       code,
       userName: profile?.full_name ?? user.email,
+      email: user.email,
+      phone: persona?.telefono ?? null,
     })
   } catch (e) {
-    console.error('[MFA] Error enviando email:', e)
-    return { error: 'No se pudo enviar el email. Intentá de nuevo.' }
+    console.error('[MFA] Error enviando código:', e)
+    return { error: 'No se pudo enviar el código. Intentá de nuevo.' }
   }
 
   return {}

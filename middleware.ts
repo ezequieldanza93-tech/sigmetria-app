@@ -97,13 +97,28 @@ export async function middleware(request: NextRequest) {
           .eq('is_active', true)
           .maybeSingle()
 
-        if (member && ['full_access_main', 'responsable_estandares', 'auditor_externo'].includes(member.role)) {
+        if (member && ['full_access_main', 'responsable_estandares', 'auditor_externo', 'trabajador'].includes(member.role)) {
           return NextResponse.redirect(new URL('/mfa/verify', request.url))
         }
       } catch {
         // Si la consulta falla, no bloqueamos el acceso
       }
     }
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // ── Cambio de contraseña OBLIGATORIO (primer ingreso del trabajador) ─────
+  // Entró con password=DNI; debe elegir una propia antes de usar la app. El MFA
+  // de arriba ya corrió: primero posesión (código), después credencial real.
+  // El DNI es semipúblico, así que sin este paso no hay no-repudio.
+  if (
+    user &&
+    (user.user_metadata as Record<string, unknown> | undefined)?.must_change_password === true &&
+    !pathname.startsWith('/cambiar-password') &&
+    !pathname.startsWith('/mfa/') &&
+    !pathname.startsWith('/login')
+  ) {
+    return NextResponse.redirect(new URL('/cambiar-password', request.url))
   }
   // ─────────────────────────────────────────────────────────────────────────
 

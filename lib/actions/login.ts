@@ -87,6 +87,8 @@ export async function login(
       .eq('is_active', true)
       .maybeSingle()
     if (m?.role === 'viewer_observaciones') dest = '/dashboard/mis-observaciones'
+    // El trabajador aterriza en su espacio (entregas de EPP / capacitaciones).
+    if (m?.role === 'trabajador') dest = '/dashboard/mis-entregas'
 
     // Evento de acceso en el audit log (cadena de custodia, Art. 4.2).
     // Best-effort (D3): nunca bloquea el login. No registra credenciales.
