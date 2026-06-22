@@ -41,6 +41,8 @@ import {
 } from '@/lib/medicion-ruido/calculos'
 import { getFotoYMapaEstablecimiento } from '@/lib/pdf/establecimiento-media'
 import { getAnexoCertificadoCalibracion, getAnexoPlano } from '@/lib/pdf/anexo-certificado'
+import { generarAnexoObservaciones } from '@/lib/pdf/anexo-observaciones'
+import { resolverMatriculaProfesional } from '@/lib/pdf/resolver-matricula'
 import type { AnexoInput } from '@/lib/pdf/merge-anexos'
 import type { ActionResult } from '@/lib/types'
 
@@ -305,6 +307,23 @@ export async function generarReporteProtocoloRuido(
     }
   })
 
+  // ── 7b. Matrícula del profesional que ejecuta ────────────────────────────────
+  // La cabecera de ruido NO trae la matrícula. La resolvemos del usuario autenticado
+  // que ejecuta la gestión (auth.getUser() → perfiles_profesionales → matrícula activa)
+  // con el helper compartido. Ruido NO tiene bloque 4a (perfilRaw), así que lo llamamos
+  // directo. Best-effort: si no hay, queda undefined (el motor del PDF tiene fallback).
+  const matriculaStr = (await resolverMatriculaProfesional()) ?? undefined
+
+  // ── 7c. Información adicional consolidada (campo 34, hoja 2) ───────────────────
+  // Cada punto puede traer su propia nota; consolidamos las no vacías en un solo bloque.
+  const infoAdicionalStr = (() => {
+    const notas = puntosOrdenados
+      .map((p) => (p.info_adicional as string | null) ?? null)
+      .map((s) => (s ? s.trim() : ''))
+      .filter((s) => s.length > 0)
+    return notas.length > 0 ? notas.join('\n') : undefined
+  })()
+
   // ── 8. Armar DatosProtocoloRuido ─────────────────────────────────────────────
   const fechaMedicion = m.fecha_medicion as string | null
   const folio = generarFolio(id, fechaMedicion)
@@ -336,9 +355,13 @@ export async function generarReporteProtocoloRuido(
     horaFin: formatHora(m.hora_fin as string | null),
     turnos: (m.turnos as string) ?? undefined,
 
-    // Profesional firmante (texto libre; matrícula no la trae la cabecera de ruido)
+    // Condiciones de trabajo (campos 13-14, hoja 1).
+    condicionesNormales: (m.condiciones_normales as string) ?? undefined,
+    condicionesMedicion: (m.condiciones_medicion as string) ?? undefined,
+
+    // Profesional firmante (texto libre; matrícula del usuario que ejecuta — ver 7b)
     profesional: (m.firmante as string) ?? undefined,
-    matricula: undefined,
+    matricula: matriculaStr,
     firma: firmaDataUrl,
 
     // Carátula
@@ -353,6 +376,11 @@ export async function generarReporteProtocoloRuido(
 
     // Grilla
     filas: filas.length > 0 ? filas : undefined,
+
+    // Información adicional (campo 34, hoja 2) + análisis (hoja 3)
+    infoAdicional: infoAdicionalStr,
+    conclusiones: (m.conclusiones as string) ?? undefined,
+    recomendaciones: (m.recomendaciones as string) ?? undefined,
   }
 
   // ── 8b. QR de verificación: snapshot público + QR real en la carátula (best-effort) ──
@@ -411,6 +439,27 @@ export async function generarReporteProtocoloRuido(
 
   const planoAnexo = await getAnexoPlano((m.plano_url as string | null) ?? null)
   if (planoAnexo) anexosSistema.push(planoAnexo)
+
+  // ── Observaciones de seguimiento cargadas en el último paso del protocolo ──
+  // Viven en el pool común `gestiones_observaciones`, ligadas al registro ejecutado
+  // por (registro_gestion_id + rg_fecha_planificada). Se renderizan como UNA hoja HTML
+  // estilo Sigmetría (con sus fotos del bucket privado `documentos`) y se anexan como PDF
+  // — DESPUÉS de certificado + plano, con clave canónica 'observaciones' (el bridge ordena).
+  // Best-effort: si algo falla, el PDF sale igual con cert+plano; no rompemos la emisión.
+  try {
+    const registroId = m.registro_gestion_id as string | null
+    const rgFecha = m.rg_fecha_planificada as string | null
+    if (registroId) {
+      const { createClient } = await import('@/lib/supabase/server')
+      const supabase = await createClient()
+      const obsBuffer = await generarAnexoObservaciones(supabase, registroId, rgFecha)
+      if (obsBuffer) {
+        anexosSistema.push({ titulo: 'Observaciones de Seguimiento', buffer: obsBuffer, mime: 'application/pdf', clave: 'observaciones' })
+      }
+    }
+  } catch (err) {
+    console.error('[PDF-REPORTE-RUIDO] anexo observaciones falló:', err instanceof Error ? err.message : String(err))
+  }
 
   return { success: true, data: { pdf: pdfBuffer, anexos: anexosSistema } }
 }

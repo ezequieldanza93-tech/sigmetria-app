@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useGeoCaptura } from '@/lib/hooks/use-geo-captura'
 import {
@@ -21,7 +21,7 @@ import {
   vla,
   regimenFt,
 } from '@/lib/medicion-carga-termica/calculos'
-import { descargarProtocoloPdf } from '@/lib/pdf/protocolo-pdf'
+import { emitirEvidenciaCargaTermica } from '@/lib/actions/emitir-evidencia-carga-termica'
 import { getCertificadoVigente } from '@/lib/actions/certificado'
 import { useSignedUrls } from '@/lib/storage/sign-client'
 import { pickClasificacionDefault } from '@/lib/medicion/clasificacion-default'
@@ -301,74 +301,6 @@ function calcularPeriodo(p: PeriodoState, aclimatado: boolean): PeriodoCalc {
   }
 }
 
-// ── Datos consolidados para el PDF oficial (3 planillas SRT 30/2023) ───
-// Modelo desnormalizado, listo para maquetar. Toda la matemática ya está
-// resuelta con lib/medicion-carga-termica/calculos vía calcularPeriodo().
-interface PdfTarea {
-  descripcion: string
-  tiempo: string
-  tm: string
-  tgbh: string
-  var: string
-}
-interface PdfPeriodo {
-  numero: number
-  hora: string
-  tgbhPonderado: string
-  tmPonderado: string
-  varPonderado: string
-  tgbhef: string
-  vlp: string
-  vla: string
-  superaVlp: boolean | null
-  superaVla: boolean | null
-  regimen: string
-  tareas: PdfTarea[]
-}
-interface PdfPuesto {
-  nombre: string
-  trabajador: string
-  ghe: string
-  ambienteHomogeneo: string
-  aclimatado: string
-  periodos: PdfPeriodo[]
-}
-interface ProtocoloCargaTermicaPdfData {
-  // Planilla A — datos
-  razonSocial: string | null
-  cuit: string | null
-  domicilio: string | null
-  localidad: string | null
-  provincia: string | null
-  instrumento: string | null
-  instrumentoSerie: string | null
-  fechaCalibracion: string | null
-  fechaMedicion: string | null
-  fechaMedicionFin: string | null
-  horaInicio: string | null
-  horaFin: string | null
-  turnos: string | null
-  atmTempMax: string | null
-  atmTempMin: string | null
-  atmHumedad: string | null
-  atmPresion: string | null
-  atmViento: string | null
-  fuenteDatosAtm: string | null
-  condicionesPuesto: string | null
-  representanteTrabajadores: string | null
-  representanteEmpresa: string | null
-  observacionesGenerales: string | null
-  firmante: string | null
-  /** Firma a mano del profesional (dataURL PNG). null = sin firma dibujada. */
-  firmaImg: string | null
-  // Planilla B — estudio
-  puestos: PdfPuesto[]
-  // Planilla C — conclusiones
-  conclusionesAclimatado: string | null
-  conclusionesNoAclimatado: string | null
-  recomendaciones: string | null
-}
-
 export function MedicionCargaTermicaEjecutorModal({
   establecimientoId,
   registroId,
@@ -382,9 +314,10 @@ export function MedicionCargaTermicaEjecutorModal({
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [descargandoPdf, setDescargandoPdf] = useState(false)
-  // Refs de las hojas A4 ocultas del PDF (cantidad dinámica: 1 datos + N puestos
-  // + 1 conclusiones). Callback refs juntan los nodos montados en este array.
-  const hojasRef = useRef<(HTMLDivElement | null)[]>([])
+  // Estado del guardado como evidencia (el PDF se genera server-side via Chromium,
+  // mismo patrón que iluminación/ruido: el motor oficial arma carátula + anexos + logos).
+  const [evidenciaStatus, setEvidenciaStatus] = useState<'idle' | 'guardando' | 'ok' | 'error'>('idle')
+  const [evidenciaPdfUrl, setEvidenciaPdfUrl] = useState<string | null>(null)
 
   // ── Catálogos ───────────────────────────────────────────────────────
   const [estCtx, setEstCtx] = useState<EstablecimientoCtx | null>(null)
@@ -670,117 +603,53 @@ export function MedicionCargaTermicaEjecutorModal({
     return { puestos: puestos.length, periodos, superan, conDatos }
   }, [puestos])
 
-  // ── Datos consolidados para el PDF oficial (3 planillas SRT 30/2023) ──
-  // Se arma con los datos en memoria del wizard. Los valores de cumplimiento y
-  // ponderaciones salen de calcularPeriodo() (que usa lib/.../calculos: vlp, vla,
-  // ponderar, tgbhEf, regimenFt) — no se reimplementa nada acá.
-  const pdfData: ProtocoloCargaTermicaPdfData = useMemo(() => {
-    const instr = instrumentos.find(i => i.id === instrumentoId)
-    const cert = certificadoVigente
-    const fmt = (n: number, d = 1) => n.toFixed(d)
-
-    const puestosPdf: PdfPuesto[] = puestos.map(p => {
-      const periodosPdf: PdfPeriodo[] = p.periodos.map(per => {
-        const calc = calcularPeriodo(per, p.aclimatado)
-        const conDatos = calc.tmPonderado > 0
-        const tareasPdf: PdfTarea[] = per.tareas
-          .filter(t => t.descripcion.trim() || num(t.tiempo_min) != null || num(t.tm_w) != null)
-          .map(t => {
-            const tgbh = tgbhDeTarea(t, per.exterior)
-            const tmN = num(t.tm_w)
-            const varN = num(t.var)
-            const act = tmN != null ? tmActividades.find(a => a.tm_w === tmN) : undefined
-            const ropa = varN != null ? varRopa.find(v => v.var === varN) : undefined
-            return {
-              descripcion: t.descripcion.trim() || '—',
-              tiempo: num(t.tiempo_min) != null ? `${num(t.tiempo_min)} min` : '—',
-              tm: tmN != null ? `${fmt(tmN, 0)} W${act ? ` (${act.actividad})` : ''}` : '—',
-              tgbh: tgbh != null ? `${fmt(tgbh)} °C` : '—',
-              var: varN != null ? `+${fmt(varN)}${ropa ? ` (${ropa.tipo_ropa})` : ''}` : '—',
-            }
-          })
-        return {
-          numero: per.numero,
-          hora: per.hora_inicio || '—',
-          tgbhPonderado: conDatos ? `${fmt(calc.tgbhPonderado)} °C` : '—',
-          tmPonderado: conDatos ? `${fmt(calc.tmPonderado, 0)} W` : '—',
-          varPonderado: conDatos ? `+${fmt(calc.varPonderado)}` : '—',
-          tgbhef: conDatos ? `${fmt(calc.tgbhef)} °C` : '—',
-          vlp: conDatos ? `${fmt(calc.vlp)} °C` : '—',
-          vla: conDatos ? `${fmt(calc.vla)} °C` : '—',
-          superaVlp: conDatos ? calc.superaVlp : null,
-          superaVla: conDatos ? calc.superaVla : null,
-          regimen: calc.regimen != null ? `${fmt(calc.regimen, 0)} min/h` : '—',
-          tareas: tareasPdf,
-        }
-      })
-      return {
-        nombre: p.nombre_puesto.trim() || '—',
-        trabajador: p.trabajador.trim() || '—',
-        ghe: p.ghe ? 'Sí' : 'No',
-        ambienteHomogeneo: p.ambiente_homogeneo ? 'Sí' : `No (altura ${p.altura_medicion || '—'})`,
-        aclimatado: p.aclimatado ? 'Sí' : 'No',
-        periodos: periodosPdf,
-      }
-    })
-
-    return {
-      razonSocial: estCtx?.empresa_razon_social ?? null,
-      cuit: estCtx?.empresa_cuit ?? null,
-      domicilio: estCtx?.domicilio ?? estCtx?.empresa_domicilio ?? null,
-      localidad: estCtx?.localidad ?? null,
-      provincia: estCtx?.provincia ?? null,
-      instrumento: instr ? [instr.marca, instr.modelo].filter(Boolean).join(' ') || null : null,
-      instrumentoSerie: instr?.numero_serie ?? null,
-      fechaCalibracion: cert?.fecha_emision ?? null,
-      fechaMedicion: fechaMedicion || null,
-      fechaMedicionFin: fechaMedicionFin || null,
-      horaInicio: horaInicio || null,
-      horaFin: horaFin || null,
-      turnos: turnos || null,
-      atmTempMax: atmTempMax || null,
-      atmTempMin: atmTempMin || null,
-      atmHumedad: atmHumedad || null,
-      atmPresion: atmPresion || null,
-      atmViento: atmViento || null,
-      fuenteDatosAtm: fuenteDatosAtm || null,
-      condicionesPuesto: condicionesPuesto || null,
-      representanteTrabajadores: representanteTrabajadores || null,
-      representanteEmpresa: representanteEmpresa || null,
-      observacionesGenerales: observacionesGenerales || null,
-      firmante: firmante || null,
-      firmaImg: firmaSvg,
-      puestos: puestosPdf,
-      conclusionesAclimatado: conclusionesAclimatado || null,
-      conclusionesNoAclimatado: conclusionesNoAclimatado || null,
-      recomendaciones: recomendaciones || null,
-    }
-  }, [
-    instrumentos, instrumentoId, certificadoVigente, puestos,
-    tmActividades, varRopa, estCtx, fechaMedicion, fechaMedicionFin, horaInicio,
-    horaFin, turnos, atmTempMax, atmTempMin, atmHumedad, atmPresion, atmViento,
-    fuenteDatosAtm, condicionesPuesto, representanteTrabajadores,
-    representanteEmpresa, observacionesGenerales, firmante, firmaSvg,
-    conclusionesAclimatado, conclusionesNoAclimatado, recomendaciones,
-  ])
-
   // ── Descargar PDF oficial (3 planillas SRT 30/2023) ────────────────────
-  // Genera el protocolo client-side a partir de los datos en memoria, sin tocar
-  // storage (v1): rasteriza las hojas ocultas y arma un A4 multipágina.
+  // Abre el PDF de evidencia generado por el motor Chromium server-side (vectorial,
+  // con carátula/logos/anexos), mismo patrón que iluminación/ruido. El PDF ya se generó
+  // al llegar al paso 'listo' (useEffect de evidencia); acá abrimos su signed URL. Si
+  // todavía no está, lo generamos on-demand.
   async function handleDescargarPdf() {
-    const hojas = hojasRef.current.filter((h): h is HTMLDivElement => h != null)
-    if (hojas.length === 0) return
     setDescargandoPdf(true)
     setError(null)
     try {
-      const nombre = `protocolo-carga-termica-${fechaMedicion || new Date().toISOString().slice(0, 10)}.pdf`
-      await descargarProtocoloPdf({ hojas }, nombre)
+      let url = evidenciaPdfUrl
+      if (!url) {
+        const res = await emitirEvidenciaCargaTermica(registroId, rgFechaPlanificada)
+        if (!res.success) { setError(res.error ?? 'No se pudo generar el PDF.'); return }
+        url = res.data.pdfUrl
+        setEvidenciaPdfUrl(url)
+      }
+      if (url) window.open(url, '_blank', 'noopener,noreferrer')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo generar el PDF.')
     } finally {
       setDescargandoPdf(false)
     }
   }
+
+  // Al llegar al paso final, genera el PDF con el motor Chromium (vectorial) y lo
+  // guarda como EVIDENCIA ADJUNTA de la gestión (best-effort, no bloquea). El signed
+  // URL queda cacheado para la descarga manual. Espeja iluminación/ruido.
+  useEffect(() => {
+    if (step !== 'listo' || evidenciaStatus !== 'idle') return
+    let cancelled = false
+    ;(async () => {
+      setEvidenciaStatus('guardando')
+      try {
+        const res = await emitirEvidenciaCargaTermica(registroId, rgFechaPlanificada)
+        if (cancelled) return
+        if (res.success) {
+          setEvidenciaPdfUrl(res.data.pdfUrl)
+          setEvidenciaStatus('ok')
+        } else {
+          setEvidenciaStatus('error')
+        }
+      } catch {
+        if (!cancelled) setEvidenciaStatus('error')
+      }
+    })()
+    return () => { cancelled = true }
+  }, [step, evidenciaStatus, registroId, rgFechaPlanificada])
 
   // ── Navegación ──────────────────────────────────────────────────────
   function goNext() {
@@ -1003,6 +872,21 @@ export function MedicionCargaTermicaEjecutorModal({
           {error && (
             <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-3 py-2">{error}</div>
           )}
+          {evidenciaStatus === 'guardando' && (
+            <p className="text-xs text-text-tertiary flex items-center justify-center gap-1.5">
+              <Loader2 size={12} className="animate-spin" /> Guardando PDF en la evidencia de la gestión…
+            </p>
+          )}
+          {evidenciaStatus === 'ok' && (
+            <p className="text-xs text-success flex items-center justify-center gap-1.5">
+              <FileCheck size={12} /> PDF guardado como evidencia de la gestión
+            </p>
+          )}
+          {evidenciaStatus === 'error' && (
+            <p className="text-xs text-warning flex items-center justify-center gap-1.5">
+              <AlertTriangle size={12} /> No se pudo guardar la evidencia automáticamente — descargá el PDF con el botón.
+            </p>
+          )}
           <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3 justify-center pt-2">
             <Button type="button" onClick={handleDescargarPdf} disabled={descargandoPdf}>
               {descargandoPdf ? (
@@ -1014,9 +898,6 @@ export function MedicionCargaTermicaEjecutorModal({
             <Button type="button" variant="secondary" onClick={onClose}>Cerrar</Button>
           </div>
         </div>
-
-        {/* Hojas ocultas del PDF oficial (se rasterizan al descargar). */}
-        <ProtocoloCargaTermicaHojas data={pdfData} hojasRef={hojasRef} />
       </Modal>
     )
   }
@@ -1960,308 +1841,3 @@ function ProgressRing({ pct, level }: { pct: number; level: Level }) {
   )
 }
 
-// ── Hojas ocultas del PDF oficial (3 planillas SRT 30/2023) ─────────────
-//
-// Maqueta autocontenida con estilos INLINE (no tokens de Tailwind): html2canvas
-// rasteriza mejor colores concretos, y el protocolo debe verse igual sin importar
-// el tema de la app. Cada hoja es un nodo A4 (≈794px = 210mm @96dpi) fuera de
-// pantalla (position:fixed, left:-99999px) para que html2canvas pueda medirlo.
-//
-// REUTILIZACIÓN: shell A4 (`HojaA4`), tipografía y helpers (`PdfSeccion`,
-// `PdfCampo`, `PdfFirma`) son el patrón de referencia de Iluminación, copiado
-// tal cual. Solo cambia el contenido de las hojas (planillas A/B/C). La cantidad
-// de hojas es DINÁMICA: 1 (datos) + N (un puesto por hoja) + 1 (conclusiones).
-
-const PDF_PAGE_WIDTH = 794 // px ≈ 210mm @ 96dpi
-const PDF_FONT = 'Helvetica, Arial, sans-serif'
-const PDF_INK = '#1a1a1a'
-const PDF_MUTED = '#555555'
-const PDF_BORDER = '#999999'
-const PDF_OK = '#15803d'
-const PDF_NO = '#b91c1c'
-
-function dash(v: string | number | null | undefined): string {
-  if (v == null || v === '') return '—'
-  return String(v)
-}
-
-function HojaA4({
-  hojaRef,
-  titulo,
-  subtitulo,
-  children,
-}: {
-  hojaRef: (el: HTMLDivElement | null) => void
-  titulo: string
-  subtitulo: string
-  children: React.ReactNode
-}) {
-  return (
-    <div
-      ref={hojaRef}
-      style={{
-        width: PDF_PAGE_WIDTH,
-        minHeight: 1123, // ≈ 297mm @ 96dpi
-        backgroundColor: '#ffffff',
-        color: PDF_INK,
-        fontFamily: PDF_FONT,
-        fontSize: 12,
-        lineHeight: 1.4,
-        padding: 48,
-        boxSizing: 'border-box',
-      }}
-    >
-      <div style={{ borderBottom: `2px solid ${PDF_INK}`, paddingBottom: 8, marginBottom: 16 }}>
-        <p style={{ margin: 0, fontSize: 11, letterSpacing: 1, color: PDF_MUTED, textTransform: 'uppercase' }}>
-          Protocolo de Estrés Térmico por Calor · SRT 30/2023
-        </p>
-        <h1 style={{ margin: '4px 0 0', fontSize: 18, fontWeight: 700 }}>{titulo}</h1>
-        <p style={{ margin: '2px 0 0', fontSize: 12, color: PDF_MUTED }}>{subtitulo}</p>
-      </div>
-      {children}
-    </div>
-  )
-}
-
-function PdfSeccion({ titulo, children }: { titulo: string; children: React.ReactNode }) {
-  return (
-    <div style={{ marginBottom: 16 }}>
-      <h2 style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: PDF_INK }}>{titulo}</h2>
-      {children}
-    </div>
-  )
-}
-
-function PdfCampo({ label, value }: { label: string; value: string | null }) {
-  return (
-    <div style={{ display: 'flex', gap: 6, padding: '3px 0', borderBottom: `1px solid #eeeeee` }}>
-      <span style={{ minWidth: 180, color: PDF_MUTED, fontSize: 11 }}>{label}</span>
-      <span style={{ flex: 1, fontWeight: 500 }}>{dash(value)}</span>
-    </div>
-  )
-}
-
-function PdfFirma({ firmante, firmaImg }: { firmante: string | null; firmaImg?: string | null }) {
-  return (
-    <div style={{ marginTop: 40 }}>
-      <div style={{ width: 280 }}>
-        {firmaImg && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={firmaImg}
-            alt="Firma del profesional"
-            style={{ display: 'block', height: 60, maxWidth: 280, objectFit: 'contain', borderBottom: `1px solid ${PDF_INK}` }}
-          />
-        )}
-        <div style={{ borderTop: firmaImg ? 'none' : `1px solid ${PDF_INK}`, paddingTop: 6 }}>
-          <p style={{ margin: 0, fontWeight: 600 }}>{dash(firmante)}</p>
-          <p style={{ margin: '2px 0 0', fontSize: 10, color: PDF_MUTED }}>Firma · Aclaración · Matrícula / Registro</p>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function ProtocoloCargaTermicaHojas({
-  data,
-  hojasRef,
-}: {
-  data: ProtocoloCargaTermicaPdfData
-  hojasRef: React.MutableRefObject<(HTMLDivElement | null)[]>
-}) {
-  const subtitulo = [data.razonSocial, data.localidad].filter(Boolean).join(' · ') || 'Establecimiento'
-  const horario = data.horaInicio && data.horaFin
-    ? `${data.horaInicio} – ${data.horaFin}`
-    : (data.horaInicio || data.horaFin || null)
-  const fechaTexto = data.fechaMedicion && data.fechaMedicionFin && data.fechaMedicionFin !== data.fechaMedicion
-    ? `${data.fechaMedicion} – ${data.fechaMedicionFin}`
-    : (data.fechaMedicion || null)
-  const tempTexto = [
-    data.atmTempMax ? `máx ${data.atmTempMax} °C` : null,
-    data.atmTempMin ? `mín ${data.atmTempMin} °C` : null,
-  ].filter(Boolean).join(' / ') || null
-
-  // La cantidad de hojas es dinámica → cada HojaA4 se registra en su índice fijo
-  // vía callback ref (React pasa null al desmontar, el elemento al montar). El
-  // total = 1 (datos) + N puestos + 1 (conclusiones); fijamos la longitud del
-  // array para que el handler filtre nulls de hojas que se hayan desmontado.
-  const totalHojas = 1 + data.puestos.length + 1
-  hojasRef.current.length = totalHojas
-  let hojaIdx = 0
-  const registrar = () => {
-    const i = hojaIdx++
-    return (el: HTMLDivElement | null) => { hojasRef.current[i] = el }
-  }
-
-  const th: React.CSSProperties = {
-    border: `1px solid ${PDF_BORDER}`,
-    padding: '5px 4px',
-    fontSize: 9,
-    fontWeight: 700,
-    backgroundColor: '#f0f0f0',
-    textAlign: 'center',
-    verticalAlign: 'middle',
-  }
-  const td: React.CSSProperties = {
-    border: `1px solid ${PDF_BORDER}`,
-    padding: '4px',
-    fontSize: 9.5,
-    textAlign: 'center',
-    verticalAlign: 'middle',
-  }
-  const supera = (v: boolean | null): React.CSSProperties => ({
-    ...td,
-    color: v == null ? PDF_MUTED : v ? PDF_NO : PDF_OK,
-    fontWeight: 600,
-  })
-  const superaTxt = (v: boolean | null) => v == null ? '—' : v ? 'Supera' : 'No supera'
-
-  return (
-    <div
-      aria-hidden
-      style={{ position: 'fixed', left: -99999, top: 0, width: PDF_PAGE_WIDTH, pointerEvents: 'none' }}
-    >
-      {/* ── PLANILLA A: DATOS ──────────────────────────────────────── */}
-      <HojaA4 hojaRef={registrar()} titulo="Planilla A — Datos del relevamiento" subtitulo={subtitulo}>
-        <PdfSeccion titulo="Empresa y establecimiento">
-          <PdfCampo label="Razón social" value={data.razonSocial} />
-          <PdfCampo label="CUIT" value={data.cuit} />
-          <PdfCampo label="Domicilio" value={data.domicilio} />
-          <PdfCampo label="Localidad" value={data.localidad} />
-          <PdfCampo label="Provincia" value={data.provincia} />
-        </PdfSeccion>
-
-        <PdfSeccion titulo="Instrumental">
-          <PdfCampo label="Instrumento (marca/modelo)" value={data.instrumento} />
-          <PdfCampo label="N° de serie" value={data.instrumentoSerie} />
-          <PdfCampo label="Fecha de calibración" value={data.fechaCalibracion} />
-        </PdfSeccion>
-
-        <PdfSeccion titulo="Condiciones de la medición">
-          <PdfCampo label="Fecha de medición" value={fechaTexto} />
-          <PdfCampo label="Horario" value={horario} />
-          <PdfCampo label="Turnos" value={data.turnos} />
-        </PdfSeccion>
-
-        <PdfSeccion titulo="Condiciones atmosféricas">
-          <PdfCampo label="Temperatura" value={tempTexto} />
-          <PdfCampo label="Humedad relativa" value={data.atmHumedad ? `${data.atmHumedad} % HR` : null} />
-          <PdfCampo label="Presión" value={data.atmPresion ? `${data.atmPresion} hPa` : null} />
-          <PdfCampo label="Viento" value={data.atmViento ? `${data.atmViento} m/s` : null} />
-          <PdfCampo label="Fuente de datos atmosféricos" value={data.fuenteDatosAtm} />
-        </PdfSeccion>
-
-        <PdfSeccion titulo="Condiciones del puesto y representantes">
-          <PdfCampo label="Condiciones del puesto" value={data.condicionesPuesto} />
-          <PdfCampo label="Representante de los trabajadores" value={data.representanteTrabajadores} />
-          <PdfCampo label="Representante de la empresa" value={data.representanteEmpresa} />
-          <PdfCampo label="Observaciones" value={data.observacionesGenerales} />
-        </PdfSeccion>
-
-        <PdfFirma firmante={data.firmante} firmaImg={data.firmaImg} />
-      </HojaA4>
-
-      {/* ── PLANILLA B: ESTUDIO (una hoja por puesto/GHE) ──────────── */}
-      {data.puestos.map((p, pi) => (
-        <HojaA4
-          key={pi}
-          hojaRef={registrar()}
-          titulo={`Planilla B — Estudio · Puesto ${pi + 1} de ${data.puestos.length}`}
-          subtitulo={subtitulo}
-        >
-          <PdfSeccion titulo={`Puesto / GHE: ${p.nombre}`}>
-            <PdfCampo label="Trabajador" value={p.trabajador} />
-            <PdfCampo label="GHE (grupo homogéneo)" value={p.ghe} />
-            <PdfCampo label="Ambiente homogéneo" value={p.ambienteHomogeneo} />
-            <PdfCampo label="Aclimatado" value={p.aclimatado} />
-          </PdfSeccion>
-
-          <PdfSeccion titulo="Períodos (ponderados a 60 min)">
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  <th style={{ ...th, width: 22 }}>N°</th>
-                  <th style={th}>Hora</th>
-                  <th style={th}>TGBH<br />pond.</th>
-                  <th style={th}>TM<br />pond.</th>
-                  <th style={th}>VAR<br />pond.</th>
-                  <th style={th}>TGBHef</th>
-                  <th style={th}>VLP</th>
-                  <th style={th}>VLA</th>
-                  <th style={th}>Supera<br />VLP</th>
-                  <th style={th}>Supera<br />VLA</th>
-                  <th style={th}>Régimen<br />f/t</th>
-                </tr>
-              </thead>
-              <tbody>
-                {p.periodos.map((per, peri) => (
-                  <tr key={peri}>
-                    <td style={td}>{per.numero}</td>
-                    <td style={td}>{per.hora}</td>
-                    <td style={td}>{per.tgbhPonderado}</td>
-                    <td style={td}>{per.tmPonderado}</td>
-                    <td style={td}>{per.varPonderado}</td>
-                    <td style={{ ...td, fontWeight: 700 }}>{per.tgbhef}</td>
-                    <td style={td}>{per.vlp}</td>
-                    <td style={td}>{per.vla}</td>
-                    <td style={supera(per.superaVlp)}>{superaTxt(per.superaVlp)}</td>
-                    <td style={supera(per.superaVla)}>{superaTxt(per.superaVla)}</td>
-                    <td style={td}>{per.regimen}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </PdfSeccion>
-
-          {p.periodos.map((per, peri) => (
-            <PdfSeccion key={peri} titulo={`Tareas del período ${per.numero} (${per.hora})`}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr>
-                    <th style={{ ...th, textAlign: 'left' }}>Descripción de la tarea</th>
-                    <th style={{ ...th, width: 70 }}>Tiempo</th>
-                    <th style={{ ...th, width: 130 }}>TM</th>
-                    <th style={{ ...th, width: 70 }}>TGBH</th>
-                    <th style={{ ...th, width: 110 }}>VAR</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {per.tareas.length === 0 ? (
-                    <tr><td style={{ ...td, color: PDF_MUTED }} colSpan={5}>Sin tareas cargadas</td></tr>
-                  ) : per.tareas.map((t, ti) => (
-                    <tr key={ti}>
-                      <td style={{ ...td, textAlign: 'left' }}>{t.descripcion}</td>
-                      <td style={td}>{t.tiempo}</td>
-                      <td style={{ ...td, textAlign: 'left' }}>{t.tm}</td>
-                      <td style={td}>{t.tgbh}</td>
-                      <td style={{ ...td, textAlign: 'left' }}>{t.var}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </PdfSeccion>
-          ))}
-
-          <p style={{ marginTop: 10, fontSize: 9, color: PDF_MUTED }}>
-            VLP = 56.7 − 11.5·log₁₀(TM) (no aclimatado) · VLA = 59.9 − 14.1·log₁₀(TM) (aclimatado).
-            TGBHef = TGBH ponderado + VAR ponderado. Cálculos según SRT 30/2023.
-          </p>
-        </HojaA4>
-      ))}
-
-      {/* ── PLANILLA C: CONCLUSIONES ───────────────────────────────── */}
-      <HojaA4 hojaRef={registrar()} titulo="Planilla C — Conclusiones" subtitulo={subtitulo}>
-        <PdfSeccion titulo="Conclusiones — Trabajador aclimatado (VLA)">
-          <p style={{ margin: 0, whiteSpace: 'pre-wrap', minHeight: 50 }}>{dash(data.conclusionesAclimatado)}</p>
-        </PdfSeccion>
-        <PdfSeccion titulo="Conclusiones — Trabajador no aclimatado (VLP)">
-          <p style={{ margin: 0, whiteSpace: 'pre-wrap', minHeight: 50 }}>{dash(data.conclusionesNoAclimatado)}</p>
-        </PdfSeccion>
-        <PdfSeccion titulo="Recomendaciones">
-          <p style={{ margin: 0, whiteSpace: 'pre-wrap', minHeight: 50 }}>{dash(data.recomendaciones)}</p>
-        </PdfSeccion>
-        <PdfFirma firmante={data.firmante} firmaImg={data.firmaImg} />
-      </HojaA4>
-    </div>
-  )
-}

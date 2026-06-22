@@ -57,6 +57,8 @@ export interface DatosProtocoloPat extends DatosProtocoloBase {
   metodologia?: string
   /** (13) Observaciones de la medición. */
   observaciones?: string
+  /** (33) Información adicional (consolida las observaciones por toma). */
+  infoAdicional?: string
   /** (40) Conclusiones. */
   conclusiones?: string
   /** (41) Recomendaciones para la adecuación a la legislación vigente. */
@@ -176,7 +178,15 @@ export const PAT_DESCRIPTOR: ProtocoloDescriptor<DatosProtocoloPat> = {
       out = out.replace(FILA_VACIA, filaToma(toma))
     }
 
-    // ── 4. Celdas de análisis (Conclusiones / Recomendaciones) ──
+    // ── 4. Información adicional (campo 33): se inyecta DESPUÉS del label, dentro de la
+    // misma celda colspan=11. El ancla es el span numerado + el rótulo, verbatim del
+    // HTML embebido. Si el valor viene vacío, queda solo el rótulo (sin tocar la celda).
+    if (d.infoAdicional && d.infoAdicional.trim()) {
+      const anclaInfo = '<span class="nh">(33)</span>Información adicional:'
+      out = out.split(anclaInfo).join(`${anclaInfo} ${D(d.infoAdicional)}`)
+    }
+
+    // ── 5. Celdas de análisis (Conclusiones / Recomendaciones) ──
     out = inyectarColAnalisis(out, d.conclusiones, d.recomendaciones)
 
     return out

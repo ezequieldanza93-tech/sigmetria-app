@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { useGeoCaptura } from '@/lib/hooks/use-geo-captura'
-import { descargarProtocoloPdf } from '@/lib/pdf/protocolo-pdf'
+import { emitirEvidenciaPat } from '@/lib/actions/emitir-evidencia-pat'
 import {
   crearMedicionPat,
   getInstrumentosPat,
@@ -129,47 +129,6 @@ interface ObsDraft {
   foto_file: File | null
 }
 
-// ── Datos consolidados para el PDF oficial (3 hojas SRT 900/2015) ──────
-interface PdfFilaGrilla {
-  n: number
-  sector: string
-  seccion: string
-  condicionTerreno: string
-  usoPat: string
-  ect: string
-  valorMedido: number | null
-  valorExigido: number | null
-  cumple: boolean | null
-  continuidad: boolean | null
-  capacidadCarga: boolean | null
-  proteccion: string
-  desconexionAutomatica: boolean | null
-}
-
-interface ProtocoloPdfData {
-  razonSocial: string | null
-  cuit: string | null
-  establecimiento: string | null
-  domicilio: string | null
-  localidad: string | null
-  provincia: string | null
-  instrumento: string | null
-  instrumentoSerie: string | null
-  fechaCalibracion: string | null
-  metodologia: string | null
-  fechaMedicion: string | null
-  fechaMedicionFin: string | null
-  horaInicio: string | null
-  horaFin: string | null
-  observacionesGenerales: string | null
-  firmante: string | null
-  /** DataURL (PNG base64) de la firma a mano del profesional, si la dibujó. */
-  firmaSvg: string | null
-  filasGrilla: PdfFilaGrilla[]
-  conclusiones: string | null
-  recomendaciones: string | null
-}
-
 let obsKeySeq = 0
 let tomaKeySeq = 0
 
@@ -276,11 +235,12 @@ export function MedicionPatEjecutorModal({
   const [conclusiones, setConclusiones] = useState('')
   const [recomendaciones, setRecomendaciones] = useState('')
 
-  // ── PDF oficial (3 hojas SRT 900/2015) ──────────────────────────────
+  // ── PDF oficial (SRT 900/2015) — generado server-side por el motor Chromium ──
   const [descargandoPdf, setDescargandoPdf] = useState(false)
-  const hojaDatosRef = useRef<HTMLDivElement>(null)
-  const hojaGrillaRef = useRef<HTMLDivElement>(null)
-  const hojaAnalisisRef = useRef<HTMLDivElement>(null)
+  // Estado del guardado como evidencia (el PDF se genera server-side via Chromium,
+  // mismo patrón que iluminación/ruido: el motor oficial arma carátula + anexos + logos).
+  const [evidenciaStatus, setEvidenciaStatus] = useState<'idle' | 'guardando' | 'ok' | 'error'>('idle')
+  const [evidenciaPdfUrl, setEvidenciaPdfUrl] = useState<string | null>(null)
 
   const inputCls = 'w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500'
   const labelCls = 'text-sm font-medium text-text-secondary block mb-1'
@@ -626,24 +586,53 @@ export function MedicionPatEjecutorModal({
     }
   }
 
-  // ── Descargar PDF oficial (3 hojas SRT 900/2015) ───────────────────
-  // Genera el protocolo client-side a partir de los datos en memoria, sin tocar
-  // storage (v1): rasteriza las 3 hojas ocultas y arma un A4 multipágina.
+  // ── Descargar PDF oficial (Res. SRT 900/2015) ──────────────────────
+  // Abre el PDF de evidencia generado por el motor Chromium server-side (vectorial,
+  // con carátula/logos/anexos), mismo patrón que iluminación/ruido. El PDF ya se generó
+  // al llegar al paso 'listo' (useEffect de evidencia); acá abrimos su signed URL. Si
+  // todavía no está, lo generamos on-demand.
   async function handleDescargarPdf() {
-    const hojas = [hojaDatosRef.current, hojaGrillaRef.current, hojaAnalisisRef.current]
-      .filter((h): h is HTMLDivElement => h != null)
-    if (hojas.length === 0) return
     setDescargandoPdf(true)
     setError(null)
     try {
-      const nombre = `protocolo-pat-${fechaMedicion || new Date().toISOString().slice(0, 10)}.pdf`
-      await descargarProtocoloPdf({ hojas }, nombre)
+      let url = evidenciaPdfUrl
+      if (!url) {
+        const res = await emitirEvidenciaPat(registroId, rgFechaPlanificada)
+        if (!res.success) { setError(res.error ?? 'No se pudo generar el PDF.'); return }
+        url = res.data.pdfUrl
+        setEvidenciaPdfUrl(url)
+      }
+      if (url) window.open(url, '_blank', 'noopener,noreferrer')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo generar el PDF.')
     } finally {
       setDescargandoPdf(false)
     }
   }
+
+  // Al llegar al paso final, genera el PDF con el motor Chromium (vectorial) y lo
+  // guarda como EVIDENCIA ADJUNTA de la gestión (best-effort, no bloquea). El signed
+  // URL queda cacheado para la descarga manual. Espeja iluminación/ruido.
+  useEffect(() => {
+    if (step !== 'listo' || evidenciaStatus !== 'idle') return
+    let cancelled = false
+    ;(async () => {
+      setEvidenciaStatus('guardando')
+      try {
+        const res = await emitirEvidenciaPat(registroId, rgFechaPlanificada)
+        if (cancelled) return
+        if (res.success) {
+          setEvidenciaPdfUrl(res.data.pdfUrl)
+          setEvidenciaStatus('ok')
+        } else {
+          setEvidenciaStatus('error')
+        }
+      } catch {
+        if (!cancelled) setEvidenciaStatus('error')
+      }
+    })()
+    return () => { cancelled = true }
+  }, [step, evidenciaStatus, registroId, rgFechaPlanificada])
 
   const stepIdx = STEP_ORDER.indexOf(step)
   const toma = tomas[tomaActiva]
@@ -652,58 +641,6 @@ export function MedicionPatEjecutorModal({
 
   // Firma del certificado de calibración (bucket privado `certificados`) para el link "Ver".
   const { getUrl: getCertUrl } = useSignedUrls('certificados', [certificadoVigente?.certificado_url])
-
-  // ── Datos consolidados para el PDF oficial ─────────────────────────
-  // Se arma una sola vez con los datos en memoria del wizard. Los valores de
-  // cumplimiento salen de `cumpleDe` (que ya usa lib/medicion-pat/calculos).
-  const pdfData: ProtocoloPdfData = useMemo(() => {
-    const instr = instrumentos.find(i => i.id === instrumentoId)
-    const cert = certificadoVigente
-    const filasGrilla: PdfFilaGrilla[] = tomas.map((t, i) => {
-      const sec = sectores.find(s => s.id === t.sector_id)
-      return {
-        n: num(t.numero_toma) ?? i + 1,
-        sector: sec?.nombre ?? '—',
-        seccion: t.seccion || '—',
-        condicionTerreno: t.condicion_terreno || '—',
-        usoPat: t.uso_pat || '—',
-        ect: t.ect || '—',
-        valorMedido: num(t.valor_medido_ohm),
-        valorExigido: num(t.valor_exigido_ohm),
-        cumple: cumpleDe(t),
-        continuidad: triToBool(t.continuidad),
-        capacidadCarga: triToBool(t.capacidad_carga),
-        proteccion: t.proteccion || '—',
-        desconexionAutomatica: triToBool(t.desconexion_automatica),
-      }
-    })
-    return {
-      razonSocial: estCtx?.empresa_razon_social ?? null,
-      cuit: estCtx?.empresa_cuit ?? null,
-      establecimiento: estCtx?.nombre ?? null,
-      domicilio: estCtx?.domicilio ?? estCtx?.empresa_domicilio ?? null,
-      localidad: estCtx?.localidad ?? null,
-      provincia: estCtx?.provincia ?? null,
-      instrumento: instr ? [instr.marca, instr.modelo].filter(Boolean).join(' ') || null : null,
-      instrumentoSerie: instr?.numero_serie ?? null,
-      fechaCalibracion: cert?.fecha_emision ?? null,
-      metodologia: metodologia || null,
-      fechaMedicion: fechaMedicion || null,
-      fechaMedicionFin: fechaMedicionFin || null,
-      horaInicio: horaInicio || null,
-      horaFin: horaFin || null,
-      observacionesGenerales: observacionesGenerales || null,
-      firmante: firmante || null,
-      firmaSvg,
-      filasGrilla,
-      conclusiones: conclusiones || null,
-      recomendaciones: recomendaciones || null,
-    }
-  }, [
-    instrumentos, instrumentoId, certificadoVigente, tomas, sectores,
-    estCtx, metodologia, fechaMedicion, fechaMedicionFin, horaInicio, horaFin,
-    observacionesGenerales, firmante, firmaSvg, conclusiones, recomendaciones,
-  ])
 
   // ── Render: post-guardado ───────────────────────────────────────────
   if (step === 'listo') {
@@ -725,6 +662,21 @@ export function MedicionPatEjecutorModal({
           {error && (
             <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-3 py-2">{error}</div>
           )}
+          {evidenciaStatus === 'guardando' && (
+            <p className="text-xs text-text-tertiary flex items-center justify-center gap-1.5">
+              <Loader2 size={12} className="animate-spin" /> Guardando PDF en la evidencia de la gestión…
+            </p>
+          )}
+          {evidenciaStatus === 'ok' && (
+            <p className="text-xs text-success flex items-center justify-center gap-1.5">
+              <FileCheck size={12} /> PDF guardado como evidencia de la gestión
+            </p>
+          )}
+          {evidenciaStatus === 'error' && (
+            <p className="text-xs text-warning flex items-center justify-center gap-1.5">
+              <AlertTriangle size={12} /> No se pudo guardar la evidencia automáticamente — descargá el PDF con el botón.
+            </p>
+          )}
           <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3 justify-center pt-2">
             <Button type="button" onClick={handleDescargarPdf} disabled={descargandoPdf}>
               {descargandoPdf ? (
@@ -736,14 +688,6 @@ export function MedicionPatEjecutorModal({
             <Button type="button" variant="secondary" onClick={onClose}>Cerrar</Button>
           </div>
         </div>
-
-        {/* Hojas ocultas del PDF oficial (se rasterizan al descargar). */}
-        <ProtocoloPatHojas
-          data={pdfData}
-          hojaDatosRef={hojaDatosRef}
-          hojaGrillaRef={hojaGrillaRef}
-          hojaAnalisisRef={hojaAnalisisRef}
-        />
       </Modal>
     )
   }
@@ -1564,244 +1508,6 @@ function ProgressRing({ pct, level }: { pct: number; level: Level }) {
       <div className="absolute inset-0 flex items-center justify-center">
         {pct >= 100 ? <Check className="text-success" size={20} strokeWidth={2.5} /> : <span className={`text-sm font-bold tabular-nums ${level.color}`}>{pct}%</span>}
       </div>
-    </div>
-  )
-}
-
-// ── Hojas ocultas del PDF oficial (3 hojas SRT 900/2015) ────────────────
-//
-// Maqueta autocontenida con estilos INLINE (no tokens de Tailwind): html2canvas
-// rasteriza mejor colores concretos, y el protocolo debe verse igual sin importar
-// el tema de la app. Cada hoja es un nodo A4 (≈794px = 210mm @96dpi) fuera de
-// pantalla (position:fixed, left:-99999px) para que html2canvas pueda medirlo.
-//
-// REUTILIZACIÓN: replica el patrón de referencia de Iluminación (SRT 84/2012).
-// El shell A4 (`HojaA4`), la tipografía y los helpers de tabla se reusan tal cual;
-// solo cambia el contenido de las hojas (datos, grilla, análisis) para PAT.
-
-const PDF_PAGE_WIDTH = 794 // px ≈ 210mm @ 96dpi
-const PDF_FONT = 'Helvetica, Arial, sans-serif'
-const PDF_INK = '#1a1a1a'
-const PDF_MUTED = '#555555'
-const PDF_BORDER = '#999999'
-const PDF_OK = '#15803d'
-const PDF_NO = '#b91c1c'
-
-function dash(v: string | number | null | undefined): string {
-  if (v == null || v === '') return '—'
-  return String(v)
-}
-
-/** Muestra un boolean tri-estado como Sí / No / —. */
-function siNo(v: boolean | null | undefined): string {
-  if (v == null) return '—'
-  return v ? 'Sí' : 'No'
-}
-
-function HojaA4({
-  hojaRef,
-  titulo,
-  subtitulo,
-  children,
-}: {
-  hojaRef: React.RefObject<HTMLDivElement | null>
-  titulo: string
-  subtitulo: string
-  children: React.ReactNode
-}) {
-  return (
-    <div
-      ref={hojaRef}
-      style={{
-        width: PDF_PAGE_WIDTH,
-        minHeight: 1123, // ≈ 297mm @ 96dpi
-        backgroundColor: '#ffffff',
-        color: PDF_INK,
-        fontFamily: PDF_FONT,
-        fontSize: 12,
-        lineHeight: 1.4,
-        padding: 48,
-        boxSizing: 'border-box',
-      }}
-    >
-      <div style={{ borderBottom: `2px solid ${PDF_INK}`, paddingBottom: 8, marginBottom: 16 }}>
-        <p style={{ margin: 0, fontSize: 11, letterSpacing: 1, color: PDF_MUTED, textTransform: 'uppercase' }}>
-          Protocolo de Medición de Puesta a Tierra · SRT 900/2015
-        </p>
-        <h1 style={{ margin: '4px 0 0', fontSize: 18, fontWeight: 700 }}>{titulo}</h1>
-        <p style={{ margin: '2px 0 0', fontSize: 12, color: PDF_MUTED }}>{subtitulo}</p>
-      </div>
-      {children}
-    </div>
-  )
-}
-
-function PdfSeccion({ titulo, children }: { titulo: string; children: React.ReactNode }) {
-  return (
-    <div style={{ marginBottom: 16 }}>
-      <h2 style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: PDF_INK }}>{titulo}</h2>
-      {children}
-    </div>
-  )
-}
-
-function PdfCampo({ label, value }: { label: string; value: string | null }) {
-  return (
-    <div style={{ display: 'flex', gap: 6, padding: '3px 0', borderBottom: `1px solid #eeeeee` }}>
-      <span style={{ minWidth: 150, color: PDF_MUTED, fontSize: 11 }}>{label}</span>
-      <span style={{ flex: 1, fontWeight: 500 }}>{dash(value)}</span>
-    </div>
-  )
-}
-
-function PdfFirma({ firmante, firmaSvg }: { firmante: string | null; firmaSvg?: string | null }) {
-  return (
-    <div style={{ marginTop: 40 }}>
-      {firmaSvg && (
-        // Firma a mano rasterizada (dataURL PNG). Va ARRIBA de la aclaración/matrícula,
-        // con una línea inferior que hace de pie de firma sobre el nombre.
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={firmaSvg}
-          alt="Firma del profesional"
-          style={{ display: 'block', height: 60, width: 'auto', maxWidth: 280, objectFit: 'contain', borderBottom: `1px solid ${PDF_INK}` }}
-        />
-      )}
-      <div style={{ width: 280, borderTop: firmaSvg ? 'none' : `1px solid ${PDF_INK}`, paddingTop: 6 }}>
-        <p style={{ margin: 0, fontWeight: 600 }}>{dash(firmante)}</p>
-        <p style={{ margin: '2px 0 0', fontSize: 10, color: PDF_MUTED }}>Firma · Aclaración · Matrícula / Registro</p>
-      </div>
-    </div>
-  )
-}
-
-function ProtocoloPatHojas({
-  data,
-  hojaDatosRef,
-  hojaGrillaRef,
-  hojaAnalisisRef,
-}: {
-  data: ProtocoloPdfData
-  hojaDatosRef: React.RefObject<HTMLDivElement | null>
-  hojaGrillaRef: React.RefObject<HTMLDivElement | null>
-  hojaAnalisisRef: React.RefObject<HTMLDivElement | null>
-}) {
-  const subtitulo = [data.establecimiento, data.razonSocial].filter(Boolean).join(' · ') || 'Establecimiento'
-  const horario = data.horaInicio && data.horaFin
-    ? `${data.horaInicio} – ${data.horaFin}`
-    : (data.horaInicio || data.horaFin || null)
-  const fecha = data.fechaMedicion && data.fechaMedicionFin
-    ? `${data.fechaMedicion} – ${data.fechaMedicionFin}`
-    : (data.fechaMedicion || null)
-
-  const th: React.CSSProperties = {
-    border: `1px solid ${PDF_BORDER}`,
-    padding: '5px 3px',
-    fontSize: 8.5,
-    fontWeight: 700,
-    backgroundColor: '#f0f0f0',
-    textAlign: 'center',
-    verticalAlign: 'middle',
-  }
-  const td: React.CSSProperties = {
-    border: `1px solid ${PDF_BORDER}`,
-    padding: '4px 3px',
-    fontSize: 9,
-    textAlign: 'center',
-    verticalAlign: 'middle',
-  }
-
-  return (
-    <div
-      aria-hidden
-      style={{ position: 'fixed', left: -99999, top: 0, width: PDF_PAGE_WIDTH, pointerEvents: 'none' }}
-    >
-      {/* ── HOJA 1: DATOS ─────────────────────────────────────────── */}
-      <HojaA4 hojaRef={hojaDatosRef} titulo="Hoja 1 — Datos del relevamiento" subtitulo={subtitulo}>
-        <PdfSeccion titulo="Empresa y establecimiento">
-          <PdfCampo label="Razón social" value={data.razonSocial} />
-          <PdfCampo label="CUIT" value={data.cuit} />
-          <PdfCampo label="Establecimiento" value={data.establecimiento} />
-          <PdfCampo label="Domicilio" value={data.domicilio} />
-          <PdfCampo label="Localidad" value={data.localidad} />
-          <PdfCampo label="Provincia" value={data.provincia} />
-        </PdfSeccion>
-
-        <PdfSeccion titulo="Instrumental">
-          <PdfCampo label="Telurímetro (marca/modelo)" value={data.instrumento} />
-          <PdfCampo label="N° de serie" value={data.instrumentoSerie} />
-          <PdfCampo label="Fecha de calibración" value={data.fechaCalibracion} />
-          <PdfCampo label="Metodología" value={data.metodologia} />
-        </PdfSeccion>
-
-        <PdfSeccion titulo="Condiciones de la medición">
-          <PdfCampo label="Fecha de medición" value={fecha} />
-          <PdfCampo label="Horario" value={horario} />
-          <PdfCampo label="Observaciones" value={data.observacionesGenerales} />
-        </PdfSeccion>
-
-        <PdfFirma firmante={data.firmante} firmaSvg={data.firmaSvg} />
-      </HojaA4>
-
-      {/* ── HOJA 2: GRILLA ────────────────────────────────────────── */}
-      <HojaA4 hojaRef={hojaGrillaRef} titulo="Hoja 2 — Grilla de tomas de tierra" subtitulo={subtitulo}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              <th style={{ ...th, width: 22 }}>N°</th>
-              <th style={th}>Sector</th>
-              <th style={th}>Sección</th>
-              <th style={th}>Condición<br />terreno</th>
-              <th style={th}>Uso PaT</th>
-              <th style={th}>ECT</th>
-              <th style={th}>Medido<br />(Ω)</th>
-              <th style={th}>Exigido<br />(Ω)</th>
-              <th style={th}>Cumple</th>
-              <th style={th}>Cont.</th>
-              <th style={th}>Cap.<br />carga</th>
-              <th style={th}>Prot.</th>
-              <th style={th}>Desc.<br />autom.</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.filasGrilla.map(f => (
-              <tr key={f.n}>
-                <td style={td}>{f.n}</td>
-                <td style={{ ...td, textAlign: 'left' }}>{f.sector}</td>
-                <td style={{ ...td, textAlign: 'left' }}>{f.seccion}</td>
-                <td style={td}>{f.condicionTerreno}</td>
-                <td style={td}>{f.usoPat}</td>
-                <td style={td}>{f.ect}</td>
-                <td style={td}>{f.valorMedido != null ? f.valorMedido : '—'}</td>
-                <td style={td}>{f.valorExigido != null ? f.valorExigido : '—'}</td>
-                <td style={{ ...td, color: f.cumple == null ? PDF_MUTED : f.cumple ? PDF_OK : PDF_NO, fontWeight: 600 }}>
-                  {f.cumple == null ? '—' : f.cumple ? 'Sí' : 'No'}
-                </td>
-                <td style={td}>{siNo(f.continuidad)}</td>
-                <td style={td}>{siNo(f.capacidadCarga)}</td>
-                <td style={td}>{f.proteccion}</td>
-                <td style={td}>{siNo(f.desconexionAutomatica)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <p style={{ marginTop: 10, fontSize: 9, color: PDF_MUTED }}>
-          La toma cumple cuando el valor medido (Ω) ≤ valor exigido (Ω). Valor exigido por defecto
-          40 Ω (esquema TT con diferencial general IΔn ≤ 300 mA). Prot.: DD = disyuntor diferencial,
-          IA = interruptor automático, Fus = fusible. Cálculos según SRT 900/2015.
-        </p>
-      </HojaA4>
-
-      {/* ── HOJA 3: ANÁLISIS ──────────────────────────────────────── */}
-      <HojaA4 hojaRef={hojaAnalisisRef} titulo="Hoja 3 — Análisis de resultados" subtitulo={subtitulo}>
-        <PdfSeccion titulo="Conclusiones">
-          <p style={{ margin: 0, whiteSpace: 'pre-wrap', minHeight: 60 }}>{dash(data.conclusiones)}</p>
-        </PdfSeccion>
-        <PdfSeccion titulo="Recomendaciones">
-          <p style={{ margin: 0, whiteSpace: 'pre-wrap', minHeight: 60 }}>{dash(data.recomendaciones)}</p>
-        </PdfSeccion>
-        <PdfFirma firmante={data.firmante} firmaSvg={data.firmaSvg} />
-      </HojaA4>
     </div>
   )
 }

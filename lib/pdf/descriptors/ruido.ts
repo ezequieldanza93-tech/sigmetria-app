@@ -52,6 +52,16 @@ export interface FilaRuido {
 export interface DatosProtocoloRuido extends DatosProtocoloBase {
   /** (12) Horarios / turnos habituales de trabajo. */
   turnos?: string
+  /** (13) Condiciones normales y/o habituales de trabajo. */
+  condicionesNormales?: string
+  /** (14) Condiciones de trabajo al momento de la medición. */
+  condicionesMedicion?: string
+  /** (34) Información adicional consolidada de los puntos (hoja 2). */
+  infoAdicional?: string
+  /** (41) Conclusiones (hoja 3, celda col-an izquierda). */
+  conclusiones?: string
+  /** (42) Recomendaciones para adecuar el nivel de ruido (hoja 3, celda col-an derecha). */
+  recomendaciones?: string
   /** Filas de la grilla de mediciones (hoja 2). */
   filas?: FilaRuido[]
 }
@@ -98,6 +108,30 @@ function inyectarCampo(body: string, label: string, valor: string | undefined): 
   return body.split(find).join(replace)
 }
 
+/** Escapa texto libre para inyectarlo seguro en el HTML (preserva saltos de línea). */
+function escTexto(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br>')
+}
+
+/**
+ * Inyecta un valor de texto libre como un <span class="dato"> en bloque DEBAJO de un
+ * label cuyo <td> termina en `etiquetaCierre` (ej. `trabajo.</td>`). El span se inserta
+ * ANTES del `</td>` de cierre, dentro de la misma celda. No-op si el valor es vacío o si
+ * el ancla no aparece (best-effort). Mismo patrón que la metodología de iluminación.
+ */
+function inyectarBloque(body: string, anclaCierre: string, valor: string | undefined): string {
+  if (!valor || !valor.trim()) return body
+  const span = `<span class="dato" style="display:block;margin-top:2mm;font-weight:400;line-height:1.4">${escTexto(valor)}</span>`
+  // anclaCierre termina en `</td>`; insertamos el span justo antes del cierre.
+  const find = anclaCierre
+  const replace = `${anclaCierre.slice(0, -'</td>'.length)}${span}</td>`
+  return body.split(find).join(replace)
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // DESCRIPTOR
 // ─────────────────────────────────────────────────────────────────────────────
@@ -140,12 +174,31 @@ export const RUIDO_DESCRIPTOR: ProtocoloDescriptor<DatosProtocoloRuido> = {
     out = inyectarCampo(out, 'Hora finalización', d.horaFin) // (11)
     out = inyectarCampo(out, 'Horarios/turnos habituales de trabajo', d.turnos) // (12)
 
+    // Condiciones de trabajo (campos 13-14). Celdas altas (height:40mm) que solo
+    // contienen el label terminado en punto; inyectamos el valor (texto libre, puede
+    // ser multilínea) como párrafo DEBAJO del label, dentro de la misma celda.
+    out = inyectarBloque(out, 'Describa las condiciones normales y/o habituales de trabajo.</td>', d.condicionesNormales) // (13)
+    out = inyectarBloque(out, 'Describa las condiciones de trabajo al momento de la medición.</td>', d.condicionesMedicion) // (14)
+
     // ── 2. Grilla de mediciones (hoja 2). FILA_VACIA es idéntica ×11; replace
     // reemplaza solo la 1ra ocurrencia → llena de arriba hacia abajo. ────────────
     const filas = d.filas ?? []
     for (const f of filas) {
       out = out.replace(FILA_VACIA, filaLlena(f))
     }
+
+    // (34) Información adicional: celda al pie de la grilla (hoja 2). El label termina
+    // en `:</td>`; inyectamos el valor consolidado como bloque debajo del label.
+    out = inyectarBloque(out, 'Información adicional:</td>', d.infoAdicional) // (34)
+
+    // ── 3. Análisis de los datos (hoja 3): conclusiones (41) y recomendaciones (42). ──
+    // Son las DOS celdas `<td class="col-an"></td>` que siguen a los headers (41)/(42).
+    // .replace toma la 1ra ocurrencia → primero conclusiones, después recomendaciones
+    // (mismo orden e idéntico estilo que iluminación). Se reemplazan AMBAS de forma
+    // incondicional (D() rinde "—" si está vacío) para no descalzar las celdas cuando
+    // sólo una trae dato: si saltáramos la 1ra, la 2da pisaría la celda equivocada.
+    out = out.replace('<td class="col-an"></td>', `<td class="col-an" style="font-size:9.5pt">${D(d.conclusiones)}</td>`)
+    out = out.replace('<td class="col-an"></td>', `<td class="col-an" style="font-size:9.5pt">${D(d.recomendaciones)}</td>`)
 
     return out
   },

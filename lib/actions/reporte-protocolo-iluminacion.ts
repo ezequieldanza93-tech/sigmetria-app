@@ -37,11 +37,12 @@ import { getFirmasEntidad } from '@/lib/actions/firmas'
 import { resolveAssetUrl } from '@/lib/storage/resolve-url'
 import {
   renderProtocoloPdf,
-  renderHtmlToPdf,
   type DatosProtocoloIluminacion,
   type MedicionRow,
 } from '@/lib/pdf/render-protocolo'
 import { type AnexoInput } from '@/lib/pdf/merge-anexos'
+import { generarAnexoObservaciones } from '@/lib/pdf/anexo-observaciones'
+import { resolverMatriculaProfesional } from '@/lib/pdf/resolver-matricula'
 import {
   eMedia,
   eMinima,
@@ -138,188 +139,9 @@ function single<T>(v: EmbedOne<T>): T | null {
 
 // ─── ANEXO: OBSERVACIONES DE SEGUIMIENTO ─────────────────────────────────────
 //
-// Las "observaciones de seguimiento" cargadas en el último paso del protocolo se
-// insertan en el pool común `gestiones_observaciones` (ver lib/actions/medicion-iluminacion.ts):
-//   - descripcion                          → texto del finding
-//   - categoria_id  → observaciones_categorias (nombre, nivel, color)  → chip
-//   - clasificacion_id → observaciones_clasificaciones (nombre)        → tipo de riesgo
-//   - responsable_id → personas_directorio (nombre, apellido)         → responsable
-//   - fecha_planificada                     → fecha de subsanación comprometida (PLAZO)
-//   - foto_url                              → PATH en el bucket privado `documentos`
-// La FK al registro ejecutado es suelta: (registro_gestion_id + rg_fecha_planificada).
-
-type SupabaseServerClient = Awaited<
-  ReturnType<typeof import('@/lib/supabase/server')['createClient']>
->
-
-interface ObsAnexoRow {
-  descripcion: string
-  fecha_planificada: string | null
-  foto_url: string | null
-  observaciones_categorias: EmbedOne<{ nombre: string; nivel: number; color: string }>
-  observaciones_clasificaciones: EmbedOne<{ nombre: string }>
-  personas_directorio: EmbedOne<{ nombre: string; apellido: string }>
-}
-
-/** Escapa texto para inyectarlo seguro en el HTML del anexo. */
-function escHtml(s: string | null | undefined): string {
-  if (!s) return ''
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-}
-
-/** Formatea una fecha ISO (YYYY-MM-DD) a dd/mm/yyyy (best-effort). */
-function fmtFecha(iso: string | null | undefined): string {
-  if (!iso) return '—'
-  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/)
-  return m ? `${m[3]}/${m[2]}/${m[1]}` : iso
-}
-
-/** Nombre legible de la persona responsable. */
-function nombrePersona(p: { nombre: string; apellido: string } | null): string {
-  if (!p) return '—'
-  const full = `${p.nombre ?? ''} ${p.apellido ?? ''}`.trim()
-  return full || '—'
-}
-
-/**
- * Genera una hoja PDF (estilo Sigmetría) con las observaciones de seguimiento del
- * registro ejecutado, incluyendo sus fotos embebidas. Devuelve null si no hay
- * observaciones (no se agrega anexo). Best-effort: una foto que no baja se omite.
- */
-async function generarAnexoObservaciones(
-  supabase: SupabaseServerClient,
-  registroId: string,
-  rgFecha: string | null,
-): Promise<Buffer | null> {
-  let query = supabase
-    .from('gestiones_observaciones')
-    .select(`
-      descripcion, fecha_planificada, foto_url,
-      observaciones_categorias(nombre, nivel, color),
-      observaciones_clasificaciones(nombre),
-      personas_directorio!responsable_id(nombre, apellido)
-    `)
-    .eq('registro_gestion_id', registroId)
-  if (rgFecha) query = query.eq('rg_fecha_planificada', rgFecha)
-  query = query.order('fecha_planificada', { ascending: true })
-
-  const { data, error } = await query
-  if (error) {
-    console.warn('[PDF-REPORTE] anexo observaciones: query falló:', error.message)
-    return null
-  }
-  const rows = (data ?? []) as unknown as ObsAnexoRow[]
-  if (rows.length === 0) return null
-
-  // Bajamos cada foto (bucket privado `documentos`) a data URL base64 — best-effort.
-  const items = await Promise.all(
-    rows.map(async (o) => {
-      const cat = single(o.observaciones_categorias)
-      const clas = single(o.observaciones_clasificaciones)
-      const resp = single(o.personas_directorio)
-      let fotoDataUrl: string | undefined
-      if (o.foto_url) {
-        try {
-          const { data: signed } = await supabase.storage
-            .from('documentos')
-            .createSignedUrl(o.foto_url, 600)
-          if (signed?.signedUrl) fotoDataUrl = await urlToDataUrl(signed.signedUrl)
-        } catch (err) {
-          console.warn('[PDF-REPORTE] anexo observaciones: foto no disponible:', err instanceof Error ? err.message : String(err))
-        }
-      }
-      return {
-        descripcion: o.descripcion,
-        categoriaNombre: cat?.nombre ?? null,
-        categoriaColor: cat?.color ?? '#2E7D33',
-        clasificacionNombre: clas?.nombre ?? null,
-        responsable: nombrePersona(resp),
-        fechaSubsanacion: o.fecha_planificada,
-        fotoDataUrl,
-      }
-    }),
-  )
-
-  const html = construirHtmlAnexoObservaciones(items)
-  return renderHtmlToPdf(html)
-}
-
-interface ObsAnexoItem {
-  descripcion: string
-  categoriaNombre: string | null
-  categoriaColor: string
-  clasificacionNombre: string | null
-  responsable: string
-  fechaSubsanacion: string | null
-  fotoDataUrl: string | undefined
-}
-
-/** Arma el HTML autónomo (A4 portrait, estilo Sigmetría) de la hoja de observaciones. */
-function construirHtmlAnexoObservaciones(items: ObsAnexoItem[]): string {
-  const tarjetas = items
-    .map((o, i) => {
-      const chipCat = o.categoriaNombre
-        ? `<span class="chip" style="--c:${escHtml(o.categoriaColor)}">${escHtml(o.categoriaNombre)}</span>`
-        : ''
-      const chipClas = o.clasificacionNombre
-        ? `<span class="chip chip-clas">${escHtml(o.clasificacionNombre)}</span>`
-        : ''
-      const foto = o.fotoDataUrl
-        ? `<div class="foto"><img src="${o.fotoDataUrl}" alt="Foto observación ${i + 1}"></div>`
-        : ''
-      return `
-      <article class="obs">
-        <div class="obs-head">
-          <span class="num">${i + 1}</span>
-          <div class="chips">${chipCat}${chipClas}</div>
-        </div>
-        <p class="desc">${escHtml(o.descripcion)}</p>
-        <div class="meta">
-          <div><span class="k">Responsable</span><span class="v">${escHtml(o.responsable)}</span></div>
-          <div><span class="k">Fecha de subsanación</span><span class="v">${escHtml(fmtFecha(o.fechaSubsanacion))}</span></div>
-        </div>
-        ${foto}
-      </article>`
-    })
-    .join('')
-
-  return `<!DOCTYPE html><html lang="es-AR"><head><meta charset="UTF-8">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;700;800&family=Poppins:wght@400;600&display=swap" rel="stylesheet">
-<style>
-  @page { size: A4 portrait; margin: 14mm 14mm 16mm; }
-  * { box-sizing: border-box; }
-  body { margin: 0; font-family: 'Poppins','Segoe UI',sans-serif; color: #333; }
-  .anx-head { display:flex; align-items:baseline; justify-content:space-between; border-bottom:2px solid #2E7D33; padding-bottom:6px; margin-bottom:10px; }
-  .anx-head h1 { font-family:'Montserrat',sans-serif; font-size:15pt; font-weight:800; color:#2E7D33; margin:0; letter-spacing:.3px; }
-  .anx-head .kick { font-size:8pt; letter-spacing:2px; text-transform:uppercase; color:#888; }
-  .anx-head .count { font-size:8.5pt; color:#888; }
-  .obs { border:1px solid #E4E8E4; border-radius:10px; padding:10px 12px; margin-bottom:8px; break-inside:avoid; page-break-inside:avoid; }
-  .obs-head { display:flex; align-items:center; gap:8px; margin-bottom:4px; }
-  .num { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; background:#2E7D33; color:#fff; font-size:8.5pt; font-weight:700; font-family:'Montserrat',sans-serif; flex:0 0 auto; }
-  .chips { display:flex; flex-wrap:wrap; gap:5px; }
-  .chip { display:inline-block; font-size:7.5pt; font-weight:600; padding:2px 9px; border-radius:100px; background:var(--c,#2E7D33); color:#fff; border:1px solid rgba(0,0,0,.08); }
-  .chip-clas { background:#EEF3EE; color:#2E7D33; border:1px solid #CFE0CF; }
-  .desc { font-size:10pt; line-height:1.45; margin:4px 0 7px; color:#1f2d1f; }
-  .meta { display:flex; gap:18px; flex-wrap:wrap; margin-bottom:6px; }
-  .meta .k { display:block; font-size:7pt; letter-spacing:.4px; text-transform:uppercase; color:#888; }
-  .meta .v { display:block; font-size:9pt; font-weight:600; color:#333; }
-  .foto { margin-top:4px; text-align:center; }
-  .foto img { max-width:100%; max-height:70mm; object-fit:contain; border:1px solid #E4E8E4; border-radius:8px; }
-</style></head>
-<body>
-  <div class="anx-head">
-    <div><div class="kick">Anexo</div><h1>ANEXO — Observaciones de Seguimiento</h1></div>
-    <div class="count">${items.length} ${items.length === 1 ? 'observación' : 'observaciones'}</div>
-  </div>
-  ${tarjetas}
-</body></html>`
-}
+// La generación del anexo de observaciones de seguimiento se extrajo al helper
+// compartido `lib/pdf/anexo-observaciones.ts` (reusado por ruido/PAT/carga-térmica/
+// carga-fuego/ergonomía). Acá solo lo invocamos con (registroId + rgFechaPlanificada).
 
 // ─── FUNCIÓN PRINCIPAL ────────────────────────────────────────────────────────
 
@@ -398,42 +220,12 @@ export async function generarReporteProtocoloIluminacion(
   }
 
   // 4b. Override con la matrícula del responsable que ejecuta (usuario autenticado).
-  // Si la encontramos, prevalece SOLO cuando 4a quedó vacío (no pisamos un dato
-  // explícito del perfil de la medición si existe). Best-effort: errores → se omite.
+  // La cascada auth.getUser() → perfiles_profesionales → matriculas_profesionales activa
+  // se extrajo al helper compartido resolverMatriculaProfesional(). Solo prevalece cuando
+  // 4a quedó vacío (no pisamos un dato explícito del perfil de la medición si existe).
   if (!matriculaStr) {
-    try {
-      const { createClient } = await import('@/lib/supabase/server')
-      const supabase = await createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        // perfiles_profesionales.user_id → profiles.id (= auth user id).
-        const { data: perfilUser } = await supabase
-          .from('perfiles_profesionales')
-          .select('id')
-          .eq('user_id', user.id)
-          .maybeSingle()
-        const perfilId = (perfilUser?.id as string | null) ?? null
-        if (perfilId) {
-          // Matrícula activa del perfil → "emisor numero".
-          const { data: matRow } = await supabase
-            .from('matriculas_profesionales')
-            .select('emisor, numero')
-            .eq('perfil_id', perfilId)
-            .eq('activa', true)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle()
-          if (matRow) {
-            const emisor = (matRow.emisor as string | null) ?? ''
-            const numero = (matRow.numero as string | null) ?? ''
-            const compuesta = `${emisor} ${numero}`.trim()
-            if (compuesta) matriculaStr = compuesta
-          }
-        }
-      }
-    } catch (err) {
-      console.error('[PDF-REPORTE] no se pudo resolver la matrícula del responsable que ejecuta:', err instanceof Error ? err.message : String(err))
-    }
+    const matResponsable = await resolverMatriculaProfesional()
+    if (matResponsable) matriculaStr = matResponsable
   }
 
   // ── 5. Instrumento ────────────────────────────────────────────────────────

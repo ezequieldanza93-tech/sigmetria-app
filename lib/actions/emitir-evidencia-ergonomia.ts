@@ -49,8 +49,12 @@ export async function emitirEvidenciaErgonomia(
   }
 
   // ── 2. Generar el PDF con el motor genérico (vectorial) ─────────────────────
+  // Pasamos registroId + rgFechaPlanificada para que el reporte genere el anexo de
+  // observaciones de seguimiento (pool común gestiones_observaciones, FK suelta por
+  // registro_gestion_id + rg_fecha_planificada). rgFechaPlanificada puede venir vacío:
+  // el helper no filtra por fecha si es falsy (misma semántica que el lookup de arriba).
   console.warn('[PDF-ERGO-EVIDENCIA] evaluación encontrada, generando PDF', { evaluacionId: ev.id })
-  const pdfRes = await generarReporteProtocoloErgonomia(ev.id as string)
+  const pdfRes = await generarReporteProtocoloErgonomia(ev.id as string, registroId, rgFechaPlanificada || null)
   if (!pdfRes.success) {
     console.error('[PDF-ERGO-EVIDENCIA] generarReporte falló', { error: pdfRes.error })
     return { success: false, error: pdfRes.error }

@@ -27,6 +27,8 @@ import { getProtocoloErgonomia } from '@/lib/actions/protocolo-ergonomia'
 import { resolveAssetUrl } from '@/lib/storage/resolve-url'
 import { renderProtocolo } from '@/lib/pdf/protocolo-engine'
 import { getFotoYMapaEstablecimiento } from '@/lib/pdf/establecimiento-media'
+import { generarAnexoObservaciones } from '@/lib/pdf/anexo-observaciones'
+import { resolverMatriculaProfesional } from '@/lib/pdf/resolver-matricula'
 import {
   ERGONOMIA_DESCRIPTOR,
   type DatosProtocoloErgonomia,
@@ -83,9 +85,15 @@ async function urlToDataUrl(url: string | null | undefined): Promise<string | un
  * Genera el PDF del Protocolo de Evaluación Ergonómica (Res. SRT 886/2015).
  *
  * @param id - UUID de la evaluación en tabla `ergonomia_evaluaciones`
+ * @param registroId - registro_gestion_id del registro ejecutado (para el anexo de
+ *   observaciones de seguimiento). Si no se pasa, no se genera el anexo de observaciones.
+ * @param rgFecha - rg_fecha_planificada del registro (segunda mitad de la FK suelta del
+ *   pool de observaciones); puede ser null (el helper no filtra por fecha si es null).
  */
 export async function generarReporteProtocoloErgonomia(
   id: string,
+  registroId: string | null = null,
+  rgFecha: string | null = null,
 ): Promise<ActionResult<{ pdf: Buffer; anexos: AnexoInput[] }>> {
   if (!id) return { success: false, error: 'id de evaluación requerido' }
 
@@ -185,6 +193,13 @@ export async function generarReporteProtocoloErgonomia(
     }
   }
 
+  // ── 4d. Matrícula del profesional que ejecuta la gestión ───────────────────
+  // Ergonomía NO tiene perfil_profesional en la cabecera (no hay bloque 4a inline como
+  // iluminación), así que resolvemos directo desde el responsable autenticado. El helper
+  // hace auth.getUser() → perfiles_profesionales → matriculas_profesionales activa. Best-
+  // effort: si no hay, queda undefined (el motor/descriptor ya omite la matrícula en la firma).
+  const matriculaStr = (await resolverMatriculaProfesional()) ?? undefined
+
   // ── 5. Armar DatosProtocoloErgonomia ───────────────────────────────────────
   const folio = generarFolio(id, ev.fecha_evaluacion)
   const hoy = formatFecha(new Date().toISOString().slice(0, 10))
@@ -211,6 +226,7 @@ export async function generarReporteProtocoloErgonomia(
 
     // Profesional firmante (texto libre; ergonomía no tiene firma dibujada)
     profesional: ev.firmante ?? undefined,
+    matricula: matriculaStr,
 
     // Carátula
     numeroProtocolo: folio,
@@ -270,5 +286,30 @@ export async function generarReporteProtocoloErgonomia(
     return { success: false, error: `Error al renderizar el PDF: ${err instanceof Error ? err.message : String(err)}` }
   }
 
-  return { success: true, data: { pdf: pdfBuffer, anexos: [] } }
+  // ── 7. Anexos de sistema: observaciones de seguimiento (best-effort) ─────────
+  // Las observaciones cargadas en el último paso del protocolo viven en el pool común
+  // `gestiones_observaciones`, ligadas al registro ejecutado por (registro_gestion_id +
+  // rg_fecha_planificada). Las renderizamos como UNA hoja PDF estilo Sigmetría con el
+  // helper compartido y las devolvemos con clave canónica 'observaciones' para que el
+  // bridge (emitir-evidencia) las una con los adjuntos manuales en armarPdfFinalConAnexos.
+  // Best-effort: si algo falla, el PDF sale igual sin el anexo; no rompemos la emisión.
+  // `supabase` es el client server ya creado para los logos/localidad/consultora.
+  const anexosSistema: AnexoInput[] = []
+  try {
+    if (registroId) {
+      const obsBuffer = await generarAnexoObservaciones(supabase, registroId, rgFecha)
+      if (obsBuffer) {
+        anexosSistema.push({
+          titulo: 'Observaciones de Seguimiento',
+          buffer: obsBuffer,
+          mime: 'application/pdf',
+          clave: 'observaciones',
+        })
+      }
+    }
+  } catch (err) {
+    console.error('[PDF-ERGO] anexo observaciones falló:', err instanceof Error ? err.message : String(err))
+  }
+
+  return { success: true, data: { pdf: pdfBuffer, anexos: anexosSistema } }
 }

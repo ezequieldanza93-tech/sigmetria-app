@@ -41,6 +41,8 @@ import {
 import { coefEquiv, equivMadera } from '@/lib/calculo-carga-fuego/calculos'
 import { getFotoYMapaEstablecimiento } from '@/lib/pdf/establecimiento-media'
 import { getAnexoPlano } from '@/lib/pdf/anexo-certificado'
+import { generarAnexoObservaciones } from '@/lib/pdf/anexo-observaciones'
+import { resolverMatriculaProfesional } from '@/lib/pdf/resolver-matricula'
 import type { AnexoInput } from '@/lib/pdf/merge-anexos'
 import type { ActionResult } from '@/lib/types'
 
@@ -283,6 +285,14 @@ export async function generarReporteProtocoloCargaFuego(
     }
   }
 
+  // ── 5b. Matrícula del profesional que EJECUTA la gestión ─────────────────────
+  // La cabecera de CF no trae perfil_profesional ni matrícula (a diferencia de
+  // iluminación), así que la resolvemos directo desde el usuario autenticado con el
+  // helper compartido (auth.getUser() → perfiles_profesionales → matriculas_profesionales
+  // activa → "emisor numero"). Best-effort: si no hay, queda vacío (el motor del PDF
+  // tiene fallback).
+  const matriculaStr = (await resolverMatriculaProfesional()) ?? undefined
+
   // ── 6. Construir los sectores (multi-sector nuevo | legacy 1 sector) ─────────
 
   /** Deriva el chip de cumplimiento de un sector. Heurística: si no hay potencial
@@ -379,9 +389,10 @@ export async function generarReporteProtocoloCargaFuego(
     calibracion: undefined,
     fechaMedicion: formatFecha(fechaBase),
 
-    // Profesional firmante (texto libre; matrícula no la trae la cabecera de CF).
+    // Profesional firmante (texto libre). La matrícula se resuelve del usuario que
+    // ejecuta la gestión (helper compartido; la cabecera de CF no la trae).
     profesional: (c.firmante as string) ?? undefined,
-    matricula: undefined,
+    matricula: matriculaStr,
     firma: firmaDataUrl,
 
     // Carátula
@@ -440,12 +451,35 @@ export async function generarReporteProtocoloCargaFuego(
     }
   }
 
-  // ── 9. Anexos de sistema: el plano/croquis cargado en la hoja 1 se anexa al
-  //       reporte (mismo patrón que iluminación: el croquis NO se pide de nuevo en
-  //       el paso "revisar", sale de calculo_carga_fuego.plano_url). ───────────────
+  // ── 9. Anexos de sistema: plano/croquis + observaciones de seguimiento ───────
+  // El plano/croquis cargado en la hoja 1 se anexa al reporte (mismo patrón que
+  // iluminación: el croquis NO se pide de nuevo en el paso "revisar", sale de
+  // calculo_carga_fuego.plano_url). NO se fusionan acá: se devuelven como lista (con
+  // su clave de orden canónico) para que el bridge los una con los adjuntos manuales
+  // en armarPdfFinalConAnexos. Best-effort: si algo falla, la lista sale parcial.
   const anexosSistema: AnexoInput[] = []
   const planoAnexo = await getAnexoPlano((c.plano_url as string | null) ?? null)
   if (planoAnexo) anexosSistema.push(planoAnexo)
+
+  // Observaciones de seguimiento cargadas en el último paso del protocolo. Viven en el
+  // pool común `gestiones_observaciones`, ligadas al registro ejecutado por
+  // (registro_gestion_id + rg_fecha_planificada). Se renderizan como UNA hoja PDF estilo
+  // Sigmetría (con sus fotos) y se anexan DESPUÉS del plano. Best-effort: si algo falla,
+  // el PDF sale igual con el plano; no rompemos la emisión.
+  try {
+    const { createClient } = await import('@/lib/supabase/server')
+    const supabase = await createClient()
+    const registroId = c.registro_gestion_id as string | null
+    const rgFecha = c.rg_fecha_planificada as string | null
+    if (registroId) {
+      const obsBuffer = await generarAnexoObservaciones(supabase, registroId, rgFecha)
+      if (obsBuffer) {
+        anexosSistema.push({ titulo: 'Observaciones de Seguimiento', buffer: obsBuffer, mime: 'application/pdf', clave: 'observaciones' })
+      }
+    }
+  } catch (err) {
+    console.error('[PDF-REPORTE-CF] anexo observaciones falló:', err instanceof Error ? err.message : String(err))
+  }
 
   return { success: true, data: { pdf: pdfBuffer, anexos: anexosSistema } }
 }

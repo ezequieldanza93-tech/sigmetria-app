@@ -41,6 +41,8 @@ import {
 } from '@/lib/pdf/descriptors/carga-termica'
 import { getFotoYMapaEstablecimiento } from '@/lib/pdf/establecimiento-media'
 import { getAnexoCertificadoCalibracion, getAnexoPlano } from '@/lib/pdf/anexo-certificado'
+import { generarAnexoObservaciones } from '@/lib/pdf/anexo-observaciones'
+import { resolverMatriculaProfesional } from '@/lib/pdf/resolver-matricula'
 import type { AnexoInput } from '@/lib/pdf/merge-anexos'
 import type { ActionResult } from '@/lib/types'
 
@@ -336,6 +338,14 @@ export async function generarReporteProtocoloCargaTermica(
   const atmPresion = fmtNum(m.atm_presion, 0)
   const atmViento = str(m.atm_viento)
 
+  // ── 8b. Matrícula del profesional que EJECUTA la gestión (carátula/firma) ────
+  // La cabecera de carga térmica NO trae matrícula. La resolvemos best-effort desde el
+  // usuario autenticado vía el helper compartido (auth → perfiles_profesionales →
+  // matriculas_profesionales activa → "emisor numero"). CT no tiene un dato explícito
+  // previo (no hay bloque 4a como iluminación), así que lo usamos directo; si no se
+  // puede resolver, queda undefined (el motor del PDF ya tiene fallback).
+  const matriculaResuelta = await resolverMatriculaProfesional()
+
   // ── 9. Armar DatosProtocoloCargaTermica ──────────────────────────────────────
   const fechaMedicion = m.fecha_medicion as string | null
   const folio = generarFolio(id, fechaMedicion)
@@ -394,9 +404,9 @@ export async function generarReporteProtocoloCargaTermica(
     conclusionesNoAclimatado: (m.conclusiones_no_aclimatado as string) ?? undefined,
     recomendaciones: (m.recomendaciones as string) ?? undefined,
 
-    // Profesional firmante (texto libre; matrícula no la trae la cabecera de CT)
+    // Profesional firmante (texto libre; la matrícula se resuelve del usuario que ejecuta)
     profesional: (m.firmante as string) ?? undefined,
-    matricula: undefined,
+    matricula: matriculaResuelta ?? undefined,
     firma: firmaDataUrl,
 
     // Carátula
@@ -465,6 +475,27 @@ export async function generarReporteProtocoloCargaTermica(
   // en medicion_carga_termica.plano_url; bucket privado 'documentos'). Best-effort.
   const planoAnexo = await getAnexoPlano((m.plano_url as string | null) ?? null)
   if (planoAnexo) anexosSistema.push(planoAnexo)
+
+  // Anexo de sistema: observaciones de seguimiento cargadas en el último paso del
+  // protocolo. Viven en el pool común `gestiones_observaciones`, ligadas al registro
+  // ejecutado por (registro_gestion_id + rg_fecha_planificada). Se renderizan como UNA
+  // hoja HTML estilo Sigmetría (con sus fotos del bucket privado `documentos`) y se
+  // anexan DESPUÉS de certificado + plano. Best-effort: si algo falla, el PDF sale igual
+  // con cert+plano; no rompemos la emisión.
+  try {
+    const registroId = m.registro_gestion_id as string | null
+    const rgFecha = m.rg_fecha_planificada as string | null
+    if (registroId) {
+      const { createClient } = await import('@/lib/supabase/server')
+      const supabase = await createClient()
+      const obsBuffer = await generarAnexoObservaciones(supabase, registroId, rgFecha)
+      if (obsBuffer) {
+        anexosSistema.push({ titulo: 'Observaciones de Seguimiento', buffer: obsBuffer, mime: 'application/pdf', clave: 'observaciones' })
+      }
+    }
+  } catch (err) {
+    console.error('[PDF-REPORTE-CT] anexo observaciones falló:', err instanceof Error ? err.message : String(err))
+  }
 
   return { success: true, data: { pdf: pdfBuffer, anexos: anexosSistema } }
 }

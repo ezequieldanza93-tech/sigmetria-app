@@ -31,6 +31,8 @@ import { resolveAssetUrl } from '@/lib/storage/resolve-url'
 import { renderProtocolo } from '@/lib/pdf/protocolo-engine'
 import { getFotoYMapaEstablecimiento } from '@/lib/pdf/establecimiento-media'
 import { getAnexoCertificadoCalibracion, getAnexoPlano } from '@/lib/pdf/anexo-certificado'
+import { generarAnexoObservaciones } from '@/lib/pdf/anexo-observaciones'
+import { resolverMatriculaProfesional } from '@/lib/pdf/resolver-matricula'
 import {
   PAT_DESCRIPTOR,
   type DatosProtocoloPat,
@@ -241,6 +243,22 @@ export async function generarReporteProtocoloPat(
       }
     })
 
+  // ── 8b. Información adicional (campo 33): consolida las observaciones por toma ─
+  // El formulario legal SRT tiene UNA celda de "Información adicional" para toda la
+  // hoja, pero el ejecutor carga observaciones POR toma (TomaState.observaciones →
+  // medicion_pat_tomas.observaciones). Las unimos prefijando el N° de toma, omitiendo
+  // las vacías. Si ninguna tiene texto, queda vacío (el descriptor no toca la celda).
+  const infoAdicional = tomasRaw
+    .slice()
+    .sort((a, b) => Number(a.orden ?? a.numero_toma ?? 0) - Number(b.orden ?? b.numero_toma ?? 0))
+    .map((t, idx) => {
+      const obs = (t.observaciones as string | null)?.trim()
+      if (!obs) return null
+      return `Toma ${(t.numero_toma as number) ?? idx + 1}: ${obs}`
+    })
+    .filter((s): s is string => s != null)
+    .join(' · ')
+
   // ── 9. Armar DatosProtocoloPat ───────────────────────────────────────────────
   const fechaMedicion = m.fecha_medicion as string | null
   const folio = generarFolio(id, fechaMedicion)
@@ -263,9 +281,11 @@ export async function generarReporteProtocoloPat(
     horaInicio: formatHora(m.hora_inicio as string | null),
     horaFin: formatHora(m.hora_fin as string | null),
 
-    // Profesional firmante (PAT: campo `firmante` derivado de la persona; sin matrícula)
+    // Profesional firmante (PAT: campo `firmante` derivado de la persona).
+    // La matrícula se resuelve del responsable que EJECUTA (auth → perfil → matrícula
+    // activa) vía resolverMatriculaProfesional(); null si no hay (el motor tiene fallback).
     profesional: (m.firmante as string) ?? undefined,
-    matricula: undefined,
+    matricula: (await resolverMatriculaProfesional()) ?? undefined,
     firma: firmaDataUrl,
 
     // Carátula
@@ -281,6 +301,7 @@ export async function generarReporteProtocoloPat(
     // Campos PAT-específicos
     metodologia: (m.metodologia as string) ?? undefined,
     observaciones: (m.observaciones as string) ?? undefined,
+    infoAdicional: infoAdicional || undefined,
     conclusiones: (m.conclusiones as string) ?? undefined,
     recomendaciones: (m.recomendaciones as string) ?? undefined,
     tomas: tomas.length > 0 ? tomas : undefined,
@@ -336,6 +357,26 @@ export async function generarReporteProtocoloPat(
   // Anexo de sistema: plano / croquis de las tomas cargado en la Hoja 1 (best-effort).
   const planoAnexo = await getAnexoPlano((m.plano_url as string | null) ?? null)
   if (planoAnexo) anexosSistema.push(planoAnexo)
+
+  // Anexo de sistema: observaciones de seguimiento cargadas en el último paso del
+  // protocolo. Viven en el pool común `gestiones_observaciones`, ligadas al registro
+  // ejecutado por (registro_gestion_id + rg_fecha_planificada). Se renderizan como UNA
+  // hoja PDF estilo Sigmetría (con sus fotos del bucket privado `documentos`) — DESPUÉS
+  // de cert + plano. Best-effort: si algo falla, el PDF sale igual con cert+plano.
+  try {
+    const registroId = m.registro_gestion_id as string | null
+    const rgFecha = m.rg_fecha_planificada as string | null
+    if (registroId) {
+      const { createClient } = await import('@/lib/supabase/server')
+      const supabase = await createClient()
+      const obsBuffer = await generarAnexoObservaciones(supabase, registroId, rgFecha)
+      if (obsBuffer) {
+        anexosSistema.push({ titulo: 'Observaciones de Seguimiento', buffer: obsBuffer, mime: 'application/pdf', clave: 'observaciones' })
+      }
+    }
+  } catch (err) {
+    console.error('[PDF-REPORTE-PAT] anexo observaciones falló:', err instanceof Error ? err.message : String(err))
+  }
 
   return { success: true, data: { pdf: pdfBuffer, anexos: anexosSistema } }
 }
