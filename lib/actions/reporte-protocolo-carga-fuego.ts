@@ -37,8 +37,17 @@ import {
   type DatosProtocoloCargaFuego,
   type SectorCargaFuego,
   type MaterialCargaFuego,
+  type FilaExtintor,
+  type FilaCondiciones,
+  type ConclusionesCargaFuego,
 } from '@/lib/pdf/descriptors/carga-fuego'
-import { coefEquiv, equivMadera } from '@/lib/calculo-carga-fuego/calculos'
+import {
+  coefEquiv,
+  equivMadera,
+  dimensionarExtintores,
+  type MaterialClase,
+  type CumplimientoExtintor,
+} from '@/lib/calculo-carga-fuego/calculos'
 import { getFotoYMapaEstablecimiento } from '@/lib/pdf/establecimiento-media'
 import { getAnexoPlano } from '@/lib/pdf/anexo-certificado'
 import { generarAnexoObservaciones } from '@/lib/pdf/anexo-observaciones'
@@ -168,9 +177,15 @@ function potencialLabel(raw: unknown): string {
 /**
  * Mapea una fila de material de DB (sea de sector_materiales o legacy materiales) a
  * MaterialCargaFuego. Deriva coef. C / equiv. madera SOLO si faltan, usando calculos.ts.
- * Devuelve también el equivalente en madera numérico para el total Σ del sector.
+ * Devuelve también: equivalente en madera numérico (total Σ), calor generado numérico
+ * (Σ calor), y el estado físico crudo (para inferir la clase de fuego del sector).
  */
-function mapMaterial(raw: Record<string, unknown>): { mat: MaterialCargaFuego; equivNum: number } {
+function mapMaterial(raw: Record<string, unknown>): {
+  mat: MaterialCargaFuego
+  equivNum: number
+  calorNum: number
+  estadoRaw: string | null
+} {
   const peso = toNum(raw.peso_kg)
   const pci = toNum(raw.pci_kcal)
   let coef = toNum(raw.coef_c)
@@ -181,15 +196,24 @@ function mapMaterial(raw: Record<string, unknown>): { mat: MaterialCargaFuego; e
   // Si no vino el equivalente pero tenemos peso + C, lo derivamos (equiv = peso · C).
   if (equivNum == null && peso != null && coef != null) equivNum = equivMadera(peso, coef)
 
+  // Calor generado (Kcal) = peso · PCI. Solo si tenemos ambos datos.
+  const calorNum = peso != null && pci != null ? peso * pci : null
+
   const mat: MaterialCargaFuego = {
     descripcion: (raw.descripcion as string) ?? '—',
     estado: estadoLabel(raw.estado),
     peso: fmtPeso(peso),
     pci: fmtNum(pci, 0),
+    calorGenerado: fmtNum(calorNum, 0),
     coefC: coef != null ? coef.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—',
     equivMadera: fmtPeso(equivNum),
   }
-  return { mat, equivNum: equivNum ?? 0 }
+  return {
+    mat,
+    equivNum: equivNum ?? 0,
+    calorNum: calorNum ?? 0,
+    estadoRaw: raw.estado != null ? String(raw.estado) : null,
+  }
 }
 
 /** Ordena filas por `orden` (fallback al orden del array). */
@@ -295,17 +319,28 @@ export async function generarReporteProtocoloCargaFuego(
 
   // ── 6. Construir los sectores (multi-sector nuevo | legacy 1 sector) ─────────
 
-  /** Deriva el chip de cumplimiento de un sector. Heurística: si no hay potencial
-   *  extintor exigido (A y B vacíos) o no hay riesgo, no podemos afirmar cumplimiento
-   *  → null (chip "Sin dato"). En el flujo actual el cumplimiento concreto (cantidad
-   *  real de matafuegos vs. exigida) no se persiste, así que el informe muestra los
-   *  valores EXIGIDOS; el "Cumple" se deja en null salvo que el sector tenga riesgo
-   *  y F definidos (caso en que el cálculo está completo). */
+  /** Estado del sector para el chip. El cumplimiento real (matafuegos instalados vs.
+   *  potencial extintor exigido) NO se persiste, así que NUNCA se afirma "Cumple":
+   *  un sector con riesgo + F definidos (cálculo completo) devuelve true y el chip lo
+   *  muestra como "Verificar"; si falta riesgo o F → null → "Sin dato". */
   function cumpleSector(riesgo: unknown, fExigido: unknown): boolean | null {
     const tieneRiesgo = riesgo != null && String(riesgo).trim() !== ''
     const tieneF = fExigido != null && String(fExigido).trim() !== ''
     if (tieneRiesgo && tieneF) return true
     return null
+  }
+
+  /** Datos crudos de un sector que necesitan las tablas de dimensionamiento y condiciones
+   *  (no formateados): superficie numérica, raw qf/riesgo/F/potencial y estados físicos. */
+  interface SectorRaw {
+    nombre: string
+    superficie: number | null
+    qf: number | null
+    riesgoLabel: string
+    fExigido: string | null
+    potA: string | null
+    potB: string | null
+    materialesClase: MaterialClase[]
   }
 
   function buildSector(
@@ -317,31 +352,60 @@ export async function generarReporteProtocoloCargaFuego(
     fExigido: unknown,
     potA: unknown,
     potB: unknown,
-  ): SectorCargaFuego {
+  ): { sector: SectorCargaFuego; raw: SectorRaw } {
     let equivTotal = 0
+    let calorTotal = 0
+    const materialesClase: MaterialClase[] = []
     const mats: MaterialCargaFuego[] = porOrden(materiales).map((m) => {
-      const { mat, equivNum } = mapMaterial(m)
+      const { mat, equivNum, calorNum, estadoRaw } = mapMaterial(m)
       equivTotal += equivNum
+      calorTotal += calorNum
+      materialesClase.push({ estado: estadoRaw })
       return mat
     })
-    return {
+    const fStr = fExigido != null && String(fExigido).trim() !== '' ? String(fExigido) : null
+    const potAStr = potA != null && String(potA).trim() !== '' ? String(potA) : null
+    const potBStr = potB != null && String(potB).trim() !== '' ? String(potB) : null
+
+    // Clase de fuego predominante (de los estados de los materiales).
+    const clase = dimensionarExtintores({
+      superficie,
+      materiales: materialesClase,
+      potencialA: potAStr,
+      potencialB: potBStr,
+    }).clase
+
+    const sector: SectorCargaFuego = {
       nombre,
       superficie: fmtSuperficie(superficie),
       materiales: mats,
       equivTotal: fmtPeso(equivTotal),
+      calorTotal: fmtNum(calorTotal, 0),
+      claseFuego: clase,
       qf: qf != null ? qf.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—',
       riesgo: riesgoLabel(riesgo),
-      fExigido: fExigido != null && String(fExigido).trim() !== '' ? String(fExigido) : '—',
+      fExigido: fStr ?? '—',
       potencialA: potencialLabel(potA),
       potencialB: potencialLabel(potB),
       cumple: cumpleSector(riesgo, fExigido),
     }
+    const raw: SectorRaw = {
+      nombre,
+      superficie,
+      qf,
+      riesgoLabel: riesgoLabel(riesgo),
+      fExigido: fStr,
+      potA: potAStr,
+      potB: potBStr,
+      materialesClase,
+    }
+    return { sector, raw }
   }
 
-  let sectores: SectorCargaFuego[]
+  let built: { sector: SectorCargaFuego; raw: SectorRaw }[]
   if (sectoresRaw.length > 0) {
     // Flujo multi-sector.
-    sectores = porOrden(sectoresRaw).map((s) =>
+    built = porOrden(sectoresRaw).map((s) =>
       buildSector(
         (s.nombre_sector as string) ?? 'Sector',
         toNum(s.superficie_m2),
@@ -355,7 +419,7 @@ export async function generarReporteProtocoloCargaFuego(
     )
   } else {
     // Flujo legacy: la cabecera ES el único sector implícito.
-    sectores = [
+    built = [
       buildSector(
         (c.sector_incendio as string) ?? (estRaw.nombre as string) ?? 'Sector único',
         toNum(c.superficie_m2),
@@ -368,6 +432,95 @@ export async function generarReporteProtocoloCargaFuego(
       ),
     ]
   }
+
+  const sectores: SectorCargaFuego[] = built.map((b) => b.sector)
+
+  // ── 6b. AUTO-CÁLCULO del dimensionamiento de extintores (en vivo, NO se persiste) ──
+  // Para cada sector: clase de fuego, potencial mínimo exigido (ya persistido, Tablas
+  // I/II), cantidad mínima por superficie (Art. 176) y tipo recomendado. Ver
+  // lib/calculo-carga-fuego/calculos.ts → dimensionarExtintores para los supuestos.
+  const cumpleLabel: Record<CumplimientoExtintor, string> = {
+    cumple: 'Cumple',
+    excede: 'Excede',
+    verificar: 'Verificar',
+    sin_dato: 'Sin dato',
+  }
+
+  const extintores: FilaExtintor[] = built.map((b) => {
+    const dim = dimensionarExtintores({
+      superficie: b.raw.superficie,
+      materiales: b.raw.materialesClase,
+      potencialA: b.raw.potA,
+      potencialB: b.raw.potB,
+    })
+    return {
+      sector: b.raw.nombre,
+      superficie: fmtSuperficie(b.raw.superficie),
+      cargaA: dim.potencialA,
+      cargaB: dim.potencialB,
+      tipo: dim.tipo,
+      cantidad: dim.cantidad != null ? String(dim.cantidad) : '—',
+      cumple: cumpleLabel[dim.cumplimiento],
+      recomendaciones: dim.recomendaciones,
+    }
+  })
+
+  // ── 6c. CONDICIONES de situación/construcción/extinción ───────────────────────
+  // El modal NO captura estos campos hoy. Dejamos la estructura con los datos que SÍ
+  // existen (sector + resistencia al fuego del sector) y guion en lo no relevado. NO se
+  // inventan condiciones: situación/construcción/extinción quedan en '—'.
+  const condiciones: FilaCondiciones[] = built.map((b) => ({
+    sector: b.raw.nombre,
+    situacion: '—',
+    construccion: '—',
+    extincion: '—',
+    resistencia: b.raw.fExigido ?? '—',
+  }))
+
+  // ── 6d. CONCLUSIONES estructuradas (derivadas) + texto libre del modal ─────────
+  // Extintores: si TODOS los sectores con dato exigen ≤ potencial estándar → "Cumple";
+  // si alguno exige más → "Verificar"; si ninguno tiene potencial exigido → "Sin dato".
+  // Condiciones (situación/construcción/extinción): el modal no las releva → "No se relevó".
+  const estadosExt = extintores.map((e) => e.cumple.toLowerCase())
+  const conDato = estadosExt.filter((s) => s !== 'sin dato')
+  let conclExtintores: string
+  if (conDato.length === 0) conclExtintores = 'Sin dato'
+  else if (conDato.some((s) => s === 'verificar')) conclExtintores = 'Verificar'
+  else conclExtintores = 'Cumple'
+
+  const conclusiones: ConclusionesCargaFuego = {
+    extintores: conclExtintores,
+    situacion: 'No se relevó',
+    construccion: 'No se relevó',
+    extincion: 'No se relevó',
+    textoConclusiones: (c.conclusiones as string | null) ?? undefined,
+    textoRecomendaciones: (c.recomendaciones as string | null) ?? undefined,
+  }
+
+  // Clasificación de riesgo del establecimiento: el mayor (más crítico) entre los sectores
+  // con riesgo definido. R1 es el más crítico (explosivos) y R7 el menos. Tomamos el menor
+  // número Rx presente (criterio conservador).
+  let clasificacionRiesgo: string | undefined
+  const riesgosNum = built
+    .map((b) => {
+      const m = b.raw.riesgoLabel.match(/R(\d)/)
+      return m ? Number(m[1]) : null
+    })
+    .filter((n): n is number => n != null)
+  if (riesgosNum.length > 0) {
+    const peor = Math.min(...riesgosNum)
+    clasificacionRiesgo = riesgoLabel(`R${peor}`)
+  }
+
+  // Superficie cubierta total = suma de las superficies de los sectores con dato.
+  const supNums = built.map((b) => b.raw.superficie).filter((s): s is number => s != null)
+  const superficieCubierta = supNums.length > 0
+    ? fmtSuperficie(supNums.reduce((a, s) => a + s, 0))
+    : undefined
+
+  // Actividad del establecimiento: el modal no la captura como campo dedicado; usamos las
+  // observaciones de cabecera si las hay (texto libre), si no queda en '—' en el informe.
+  const actividad = (c.observaciones as string | null)?.trim() || undefined
 
   // ── 7. Armar DatosProtocoloCargaFuego ────────────────────────────────────────
   const fechaBase = (c.created_at as string | null) ?? null
@@ -407,6 +560,12 @@ export async function generarReporteProtocoloCargaFuego(
 
     // Cuerpo data-driven
     sectores,
+    actividad,
+    superficieCubierta,
+    clasificacionRiesgo,
+    extintores,
+    condiciones,
+    conclusiones,
   }
 
   // ── 7a. Foto + mapa del establecimiento para la carátula (best-effort) ───────
