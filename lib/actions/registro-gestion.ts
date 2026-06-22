@@ -1,6 +1,7 @@
 'use server'
 import { z } from 'zod'
 import { createAuditedClient } from '@/lib/audit/trace'
+import { createClient } from '@/lib/supabase/server'
 import { consultoraIdFromRegistroGestion, tenantStoragePath } from '@/lib/storage/tenant-path'
 import type { ActionResult } from '@/lib/types'
 import { validateFormData, formatZodErrors } from '@/lib/validation/helpers'
@@ -60,15 +61,25 @@ export async function ejecutarGestion(
   }
   const { registro_id: registroId, fecha_ejecutada: fechaEjecutada, index: indexParsed, notas, responsable_id: responsableId, fecha_vencimiento: fechaVencimiento } = parsed.data
   const file = formData.get('evidencia') as File | null
+  // 'true' (default si ausente, por compat) = finaliza la gestión (queda Realizada).
+  // 'false' = "Guardar y continuar luego" → BORRADOR re-editable: guarda los datos
+  // cargados PERO no setea fecha_ejecutada (la gestión sigue Planificada/Pendiente) y
+  // marca estado='borrador' para que la agenda ofrezca "Seguir editando".
+  const finalizar = (formData.get('finalizar') as string) !== 'false'
 
   const updates: Record<string, unknown> = {
-    fecha_ejecutada: fechaEjecutada,
     notas: notas || null,
     responsable_id: responsableId || null,
     fecha_vencimiento: fechaVencimiento || null,
   }
   if (indexParsed !== undefined && !isNaN(indexParsed)) {
     updates.index = indexParsed
+  }
+  if (finalizar) {
+    updates.fecha_ejecutada = fechaEjecutada
+    updates.estado = null
+  } else {
+    updates.estado = 'borrador'
   }
 
   if (file && file.size > 0) {
@@ -93,6 +104,46 @@ export async function ejecutarGestion(
 
   if (error) return { success: false, error: error.message }
   return { success: true, data: null }
+}
+
+/**
+ * Devuelve los ids de gestiones_registros que están en BORRADOR (guardados sin
+ * finalizar), para que la agenda ofrezca "Seguir editando" en vez de "Ejecutar". Cubre:
+ *  - Gestiones estándar: gestiones_registros.estado='borrador' (sin fecha_ejecutada).
+ *  - Protocolos de medición: medicion_* / calculo_carga_fuego con estado='borrador'.
+ * (Los formularios tienen su propio flujo de borrador y NO entran acá.)
+ */
+export async function getRegistrosBorrador(
+  establecimientoId: string,
+): Promise<ActionResult<string[]>> {
+  if (!establecimientoId) return { success: true, data: [] }
+  const supabase = await createClient()
+
+  const ids = new Set<string>()
+
+  // Estándar: borrador en el propio registro (scopeado por establecimiento vía la gestión).
+  const { data: std } = await supabase
+    .from('gestiones_registros')
+    .select('id, gestiones_establecimientos!inner(establecimiento_id)')
+    .eq('estado', 'borrador')
+    .is('fecha_ejecutada', null)
+    .eq('gestiones_establecimientos.establecimiento_id', establecimientoId)
+  for (const r of (std ?? []) as { id: string }[]) ids.add(r.id)
+
+  // Protocolos de medición: estado='borrador' en su tabla → registro_gestion_id.
+  const tablas = ['medicion_iluminacion', 'medicion_ruido', 'medicion_pat', 'medicion_carga_termica', 'calculo_carga_fuego'] as const
+  const results = await Promise.all(
+    tablas.map(t =>
+      supabase.from(t).select('registro_gestion_id').eq('establecimiento_id', establecimientoId).eq('estado', 'borrador')
+    )
+  )
+  for (const res of results) {
+    for (const row of (res.data ?? []) as { registro_gestion_id: string | null }[]) {
+      if (row.registro_gestion_id) ids.add(row.registro_gestion_id)
+    }
+  }
+
+  return { success: true, data: [...ids] }
 }
 
 export async function crearObservaciones(

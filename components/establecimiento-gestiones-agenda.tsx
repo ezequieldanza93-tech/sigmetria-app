@@ -29,7 +29,7 @@ import {
   createGrupoGestion,
   createCategoriaGestion,
 } from '@/lib/actions/gestion-establecimiento'
-import { ejecutarGestion, crearObservaciones } from '@/lib/actions/registro-gestion'
+import { ejecutarGestion, crearObservaciones, getRegistrosBorrador } from '@/lib/actions/registro-gestion'
 import { emitirEvidenciaIluminacion } from '@/lib/actions/emitir-evidencia-iluminacion'
 import { emitirEvidenciaRuido } from '@/lib/actions/emitir-evidencia-ruido'
 import { emitirEvidenciaPat } from '@/lib/actions/emitir-evidencia-pat'
@@ -1395,26 +1395,29 @@ function EjecucionModal({
     setObservaciones(prev => prev.map(o => o.key === key ? { ...o, [field]: value } : o))
   }
 
-  function doSave(callback: () => void) {
+  function doSave(finalizar: boolean, callback: () => void) {
     setError(null)
     const form = document.getElementById('ejecucion-form') as HTMLFormElement
     if (!form) return
     const fd = new FormData(form)
+    // 'false' = "Guardar y continuar luego" → borrador (no marca Realizado, re-editable).
+    fd.set('finalizar', finalizar ? 'true' : 'false')
     startTransition(async () => {
-      // Validamos las observaciones ANTES de ejecutar: ejecutarGestion marca el
-      // registro como Realizado, así que no conviene persistir la ejecución si las
-      // observaciones son inválidas (falta categoría) y después no se guardan.
+      // Las observaciones se persisten SOLO al finalizar (van al pool de Seguimiento).
+      // En borrador quedan en el wizard; se recargan al reabrir con "Seguir editando".
       const validObs = observaciones.filter(o => o.descripcion.trim())
-      const sinCategoria = validObs.filter(o => !o.categoria_id)
-      if (sinCategoria.length > 0) {
-        setError('Toda observación requiere una categoría.')
-        return
+      if (finalizar) {
+        const sinCategoria = validObs.filter(o => !o.categoria_id)
+        if (sinCategoria.length > 0) {
+          setError('Toda observación requiere una categoría.')
+          return
+        }
       }
 
       const result = await ejecutarGestion(null, fd)
       if (!result.success) { setError(result.error); return }
 
-      if (validObs.length > 0) {
+      if (finalizar && validObs.length > 0) {
         const obsResult = await crearObservaciones(registro.id, validObs)
         if (!obsResult.success) { setError(obsResult.error); return }
       }
@@ -1424,11 +1427,11 @@ function EjecucionModal({
   }
 
   function handleSaveAndContinue() {
-    doSave(onSuccess)
+    doSave(false, onSuccess)
   }
 
   function handleFinalizar() {
-    doSave(() => {
+    doSave(true, () => {
       if (autoDownload && registro.evidencia_url) {
         const evidenciaPath = registro.evidencia_url
         // Firmamos on-demand (bucket privado) antes de descargar.
@@ -1715,6 +1718,7 @@ function EjecucionModal({
 function AgendaActionsCell({
   registro: r,
   canWrite,
+  esBorrador,
   onExecuteForm,
   onExecuteReporte,
   onExecuteMedicionCargaTermica,
@@ -1731,6 +1735,8 @@ function AgendaActionsCell({
 }: {
   registro: FullRegistro
   canWrite: boolean
+  /** El registro tiene un borrador guardado ("Guardar y continuar luego") → "Seguir editando". */
+  esBorrador?: boolean
   onExecuteForm: () => void
   onExecuteReporte: () => void
   onExecuteMedicionCargaTermica: () => void
@@ -1824,6 +1830,8 @@ function AgendaActionsCell({
   const toggleOff = 'bg-white border-border-default text-text-tertiary hover:bg-surface-base hover:text-text-secondary'
 
   const esProtocoloMedicion = TIPOS_PROTOCOLO_MEDICION.has(r.ge_tipo_ejecucion ?? '')
+  // Si la gestión tiene un borrador guardado, el botón de ejecutar dice "Seguir editando".
+  const ejecutarLabel = esBorrador ? 'Seguir editando' : 'Ejecutar'
 
   // Caso: protocolo de medición YA EJECUTADO → "Ver reporte" (read-only).
   // Estos protocolos guardan sus datos en sus propias tablas (medicion_*) y NO en
@@ -1893,14 +1901,6 @@ function AgendaActionsCell({
                 <span className="hidden sm:inline">{generandoPdf ? 'Generando…' : 'Descargar PDF'}</span>
               </button>
             )}
-            <button
-              title="Ver el protocolo ejecutado"
-              onClick={onViewReporte}
-              className={`${primaryBtn} ${primaryActive}`}
-            >
-              <Eye size={14} />
-              <span className="hidden sm:inline">Ver reporte</span>
-            </button>
           </div>
           {pdfError && <span className="text-[10px] text-red-600 max-w-[200px] text-center leading-tight">{pdfError}</span>}
         </div>
@@ -2048,7 +2048,7 @@ function AgendaActionsCell({
             className={`${primaryBtn} ${primaryActive} rounded-r-none pr-2.5 border-r-0`}
           >
             <Camera size={14} />
-            <span className="hidden sm:inline">Ejecutar</span>
+            <span className="hidden sm:inline">{ejecutarLabel}</span>
           </button>
           <button
             title="Más opciones"
@@ -2102,7 +2102,7 @@ function AgendaActionsCell({
             className={`${primaryBtn} ${primaryActive} rounded-r-none pr-2.5 border-r-0`}
           >
             <Lightbulb size={14} />
-            <span className="hidden sm:inline">Ejecutar</span>
+            <span className="hidden sm:inline">{ejecutarLabel}</span>
           </button>
           <button
             title="Más opciones"
@@ -2156,7 +2156,7 @@ function AgendaActionsCell({
             className={`${primaryBtn} ${primaryActive} rounded-r-none pr-2.5 border-r-0`}
           >
             <Volume2 size={14} />
-            <span className="hidden sm:inline">Ejecutar</span>
+            <span className="hidden sm:inline">{ejecutarLabel}</span>
           </button>
           <button
             title="Más opciones"
@@ -2210,7 +2210,7 @@ function AgendaActionsCell({
             className={`${primaryBtn} ${primaryActive} rounded-r-none pr-2.5 border-r-0`}
           >
             <Zap size={14} />
-            <span className="hidden sm:inline">Ejecutar</span>
+            <span className="hidden sm:inline">{ejecutarLabel}</span>
           </button>
           <button
             title="Más opciones"
@@ -2264,7 +2264,7 @@ function AgendaActionsCell({
             className={`${primaryBtn} ${primaryActive} rounded-r-none pr-2.5 border-r-0`}
           >
             <Flame size={14} />
-            <span className="hidden sm:inline">Ejecutar</span>
+            <span className="hidden sm:inline">{ejecutarLabel}</span>
           </button>
           <button
             title="Más opciones"
@@ -2318,7 +2318,7 @@ function AgendaActionsCell({
             className={`${primaryBtn} ${primaryActive} rounded-r-none pr-2.5 border-r-0`}
           >
             <Thermometer size={14} />
-            <span className="hidden sm:inline">Ejecutar</span>
+            <span className="hidden sm:inline">{ejecutarLabel}</span>
           </button>
           <button
             title="Más opciones"
@@ -2372,7 +2372,7 @@ function AgendaActionsCell({
             className={`${primaryBtn} ${primaryActive} rounded-r-none pr-2.5 border-r-0`}
           >
             <Activity size={14} />
-            <span className="hidden sm:inline">Ejecutar</span>
+            <span className="hidden sm:inline">{ejecutarLabel}</span>
           </button>
           <button
             title="Más opciones"
@@ -2426,7 +2426,7 @@ function AgendaActionsCell({
             className={`${primaryBtn} ${primaryActive} rounded-r-none pr-2.5 border-r-0`}
           >
             <Play size={14} />
-            <span className="hidden sm:inline">Ejecutar</span>
+            <span className="hidden sm:inline">{ejecutarLabel}</span>
           </button>
           <button
             title="Más opciones"
@@ -2632,6 +2632,18 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
   const { data: gestionesEst = [], isPending: isGestionesPending } = useGestionesEstablecimiento(year !== null ? establecimientoId : undefined, year ?? 0)
   const geIds = gestionesEst?.map(g => g.id) ?? []
   const { data: rawRegistros } = useRegistrosGestion(geIds.length > 0 ? geIds : undefined, year ?? 0)
+  // Registros guardados como BORRADOR ("Guardar y continuar luego") → la celda de acciones
+  // ofrece "Seguir editando" en vez de "Ejecutar". Key prefijada con 'registros-gestion'
+  // para refrescarse con los invalidateQueries existentes (match por prefijo).
+  const { data: borradorIds } = useQuery({
+    queryKey: ['registros-gestion', 'borrador', establecimientoId],
+    queryFn: async () => {
+      const res = await getRegistrosBorrador(establecimientoId)
+      return res.success ? res.data : []
+    },
+    enabled: !!establecimientoId,
+  })
+  const borradorSet = new Set(borradorIds ?? [])
   const { data: catalogo } = useCatalogo()
   const { data: sapAplica } = useQuery({
     queryKey: ['sap-aplica', establecimientoId],
@@ -2882,6 +2894,7 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
             <AgendaActionsCell
               registro={r}
               canWrite={canWrite}
+              esBorrador={borradorSet.has(r.id)}
               onExecuteForm={() => setExecutingFormulario(r)}
               onExecuteReporte={() => setExecutingReporte(r)}
               onExecuteMedicionCargaTermica={() => setExecutingMedicionCargaTermica(r)}
