@@ -64,10 +64,13 @@ export async function guardarBorrador(
 
   // Recuperamos fecha_planificada (clave de partición) en el mismo UPDATE para
   // poder aplicar el geo-sello sin un round-trip extra.
+  // BORRADOR REAL: NO seteamos fecha_ejecutada (la gestión sigue Planificada/Pendiente,
+  // no Realizada) y marcamos estado='borrador' para que la agenda ofrezca "Seguir
+  // editando". Se finaliza con finalizarFormulario (que sí setea fecha_ejecutada).
   const { data: regRow, error: regError } = await supabase
     .from('gestiones_registros')
     .update({
-      fecha_ejecutada: fechaEjecutada,
+      estado: 'borrador',
       notas,
       responsable_id: responsableId,
     })

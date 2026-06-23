@@ -121,6 +121,7 @@ export async function finalizarFormulario(
   const updates: Record<string, unknown> = {
     fecha_ejecutada: fechaEjecutada,
     ejecutado_at: new Date().toISOString(),
+    estado: null, // finalizado: limpia el marcador de borrador si lo tenía
     notas,
     responsable_id: responsableId,
   }

@@ -2469,16 +2469,16 @@ function AgendaActionsCell({
     )
   }
 
-  // Sin formulario → botón directo "Cargar"
+  // Sin formulario → botón directo "Cargar" (o "Seguir editando" si hay borrador)
   return (
     <div className="flex items-center justify-center gap-1.5">
       <button
-        title="Cargar evidencia"
+        title={esBorrador ? 'Seguir editando el borrador' : 'Cargar evidencia'}
         onClick={onLoadEvidence}
         className={`${primaryBtn} ${primaryActive}`}
       >
         <Upload size={14} />
-        <span className="hidden sm:inline">Cargar</span>
+        <span className="hidden sm:inline">{esBorrador ? 'Seguir editando' : 'Cargar'}</span>
       </button>
       {/* Legajo Técnico oculto hasta que haya evidencia (informativo) */}
       {legajoDisabled ? null : (
