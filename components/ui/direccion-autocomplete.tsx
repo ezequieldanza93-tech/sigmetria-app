@@ -36,6 +36,12 @@ interface Props {
    * sugerencia. Útil para autocompletar el campo Código Postal.
    */
   onPostcode?: (cp: string) => void
+  /**
+   * Se llama con provincia y/o localidad al elegir una sugerencia.
+   * Los valores son los que devuelve Nominatim — pueden no coincidir exactamente
+   * con los de la tabla localidades.
+   */
+  onLocation?: (data: { provincia?: string; localidad?: string }) => void
   helpText?: string
 }
 
@@ -53,6 +59,7 @@ export function DireccionAutocomplete({
   nearLat,
   nearLon,
   onPostcode,
+  onLocation,
   helpText,
 }: Props) {
   const [query, setQuery] = useState(defaultValue)
@@ -92,6 +99,7 @@ export function DireccionAutocomplete({
     setLat(s.lat)
     setLon(s.lon)
     if (s.postcode && onPostcode) onPostcode(s.postcode)
+    if (onLocation && (s.provincia || s.localidad)) onLocation({ provincia: s.provincia, localidad: s.localidad })
     setSugerencias([])
     setOpen(false)
   }

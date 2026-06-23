@@ -14,6 +14,10 @@ export interface SugerenciaDireccion {
   lon: number
   /** Código postal si Nominatim lo devuelve (no siempre disponible). */
   postcode?: string
+  /** Provincia (address.state). */
+  provincia?: string
+  /** Localidad: city > town > village > municipality. */
+  localidad?: string
 }
 
 function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -48,7 +52,15 @@ export async function buscarDirecciones(
       display_name?: string
       lat?: string
       lon?: string
-      address?: { postcode?: string }
+      address?: {
+        postcode?: string
+        state?: string
+        city?: string
+        town?: string
+        village?: string
+        municipality?: string
+        county?: string
+      }
     }[]
     if (!Array.isArray(data)) return []
 
@@ -58,6 +70,14 @@ export async function buscarDirecciones(
         lat: parseFloat(d.lat ?? ''),
         lon: parseFloat(d.lon ?? ''),
         postcode: d.address?.postcode?.trim() || undefined,
+        provincia: d.address?.state?.trim() || undefined,
+        localidad: (
+          d.address?.city ??
+          d.address?.town ??
+          d.address?.village ??
+          d.address?.municipality ??
+          d.address?.county
+        )?.trim() || undefined,
       }))
       .filter((d) => d.label && !Number.isNaN(d.lat) && !Number.isNaN(d.lon))
 

@@ -468,6 +468,17 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
           nearLat={establecimiento?.latitud != null ? Number(establecimiento.latitud) : null}
           nearLon={establecimiento?.longitud != null ? Number(establecimiento.longitud) : null}
           onPostcode={cp => { if (codigoPostalRef.current && !codigoPostalRef.current.value) codigoPostalRef.current.value = cp }}
+          onLocation={({ provincia, localidad }) => {
+            if (provincia && !selectedProvincia) {
+              setSelectedProvincia(provincia)
+              if (localidad) {
+                const match = localidades.find(
+                  l => l.provincia === provincia && l.nombre.toLowerCase() === localidad.toLowerCase()
+                )
+                if (match && !selectedLocalidadId) setSelectedLocalidadId(match.id)
+              }
+            }
+          }}
           placeholder="Av. Corrientes 1234, Buenos Aires"
         />
 

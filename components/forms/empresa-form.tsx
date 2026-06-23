@@ -213,6 +213,17 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
         nearLat={empresa?.latitude != null ? Number(empresa.latitude) : null}
         nearLon={empresa?.longitude != null ? Number(empresa.longitude) : null}
         onPostcode={cp => setForm(f => ({ ...f, codigo_postal: f.codigo_postal || cp }))}
+        onLocation={({ provincia, localidad }) => {
+          if (provincia && !selectedProvincia) {
+            setSelectedProvincia(provincia)
+            if (localidad) {
+              const match = localidades.find(
+                l => l.provincia === provincia && l.nombre.toLowerCase() === localidad.toLowerCase()
+              )
+              if (match) setForm(f => ({ ...f, localidad_id: f.localidad_id || match.id }))
+            }
+          }
+        }}
         placeholder="Av. Corrientes 1234, Buenos Aires"
       />
 
