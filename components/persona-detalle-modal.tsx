@@ -8,6 +8,8 @@ import { FileUploadInput } from '@/components/ui/file-upload-input'
 import { createClient } from '@/lib/supabase/client'
 import { updatePersona } from '@/lib/actions/persona'
 import { createMatricula } from '@/lib/actions/matricula'
+import { createPersonaDocumento } from '@/lib/actions/persona-documento'
+import { EntregaEppModal } from '@/components/entrega-epp-modal'
 import { subirImagenPersona, quitarImagenPersona } from '@/lib/actions/persona-imagenes'
 import { useSignedUrls } from '@/lib/storage/sign-client'
 import { formatDate } from '@/lib/utils'
@@ -37,11 +39,16 @@ export interface PersonaDetalle {
 interface PersonaDoc {
   id: string
   tipo_id: string
-  archivo_url: string | null
+  personas_documentos_archivos: { url: string }[] | null
   fecha_emision: string | null
   fecha_vencimiento: string | null
   created_at: string
   documentos_tipos: { nombre: string } | null
+}
+
+interface DocumentoTipo {
+  id: string
+  nombre: string
 }
 
 interface PersonaDetalleModalProps {
@@ -390,11 +397,64 @@ function MatriculaForm({ personaId, onSuccess }: { personaId: string; onSuccess:
   )
 }
 
+function DocumentoPersonaForm({
+  personaId,
+  tiposDoc,
+  onSuccess,
+}: {
+  personaId: string
+  tiposDoc: DocumentoTipo[]
+  onSuccess: () => void
+}) {
+  const action = createPersonaDocumento.bind(null, personaId)
+  const [state, formAction, pending] = useActionState(action, null)
+  const onSuccessRef = useRef(onSuccess)
+  onSuccessRef.current = onSuccess
+  useEffect(() => { if (state?.success) onSuccessRef.current() }, [state])
+
+  return (
+    <form action={formAction} className="space-y-3 bg-surface-elevated rounded-lg p-3 mt-3 border border-border-subtle">
+      <div>
+        <label className="text-xs font-medium text-text-secondary block mb-1">Tipo de documento *</label>
+        <select name="tipo_id" required className="w-full border border-border-default rounded px-2 py-1.5 text-sm bg-surface-base">
+          <option value="">Seleccioná un tipo…</option>
+          {tiposDoc.map(t => (
+            <option key={t.id} value={t.id}>{t.nombre}</option>
+          ))}
+        </select>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="text-xs font-medium text-text-secondary block mb-1">Fecha emisión</label>
+          <input name="fecha_emision" type="date" className="w-full border border-border-default rounded px-2 py-1.5 text-sm" />
+        </div>
+        <div>
+          <label className="text-xs font-medium text-text-secondary block mb-1">Fecha vencimiento</label>
+          <input name="fecha_vencimiento" type="date" className="w-full border border-border-default rounded px-2 py-1.5 text-sm" />
+        </div>
+      </div>
+      <div>
+        <label className="text-xs font-medium text-text-secondary block mb-1">Archivo</label>
+        <input name="archivo" type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" className="w-full text-sm text-text-secondary file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-medium file:bg-sig-50 file:text-sig-700 hover:file:bg-sig-100" />
+      </div>
+      {state && !state.success && <p className="text-xs text-danger">{state.error}</p>}
+      <div className="flex justify-end">
+        <Button size="sm" type="submit" disabled={pending}>
+          {pending ? 'Guardando…' : 'Guardar documento'}
+        </Button>
+      </div>
+    </form>
+  )
+}
+
 export function PersonaDetalleModal({ persona, open, onClose, canWrite }: PersonaDetalleModalProps) {
   const [tab, setTab] = useState<Tab>('datos')
   const [documentos, setDocumentos] = useState<PersonaDoc[] | null>(null)
+  const [tiposDocPersona, setTiposDocPersona] = useState<DocumentoTipo[] | null>(null)
+  const [showDocForm, setShowDocForm] = useState(false)
   const [matriculas, setMatriculas] = useState<Matricula[] | null>(null)
   const [showMatriculaForm, setShowMatriculaForm] = useState(false)
+  const [showEntregaEpp, setShowEntregaEpp] = useState(false)
   // Bump local para re-firmar/re-leer la persona tras subir/quitar imágenes
   // sin necesidad de recargar el listado padre. Mantenemos una copia local de
   // los paths de imágenes para reflejar los cambios al instante.
@@ -406,6 +466,7 @@ export function PersonaDetalleModal({ persona, open, onClose, canWrite }: Person
     if (!open) {
       setTab('datos')
       setShowMatriculaForm(false)
+      setShowDocForm(false)
     } else {
       setFotoUrl(persona.foto_url)
       setDniFrenteUrl(persona.dni_frente_url)
@@ -417,13 +478,25 @@ export function PersonaDetalleModal({ persona, open, onClose, canWrite }: Person
     if (!open) return
     const supabase = createClient()
 
-    if (tab === 'documentos' && documentos === null) {
-      supabase
-        .from('personas_documentos')
-        .select('id, tipo_id, archivo_url, fecha_emision, fecha_vencimiento, created_at, documentos_tipos(nombre)')
-        .eq('persona_id', persona.id)
-        .order('created_at', { ascending: false })
-        .then(({ data }) => setDocumentos((data as unknown as PersonaDoc[]) ?? []))
+    if (tab === 'documentos') {
+      if (documentos === null) {
+        supabase
+          .from('personas_documentos')
+          .select('id, tipo_id, personas_documentos_archivos(url), fecha_emision, fecha_vencimiento, created_at, documentos_tipos(nombre)')
+          .eq('persona_id', persona.id)
+          .is('deleted_at', null)
+          .order('created_at', { ascending: false })
+          .then(({ data }) => setDocumentos((data as unknown as PersonaDoc[]) ?? []))
+      }
+      if (tiposDocPersona === null) {
+        supabase
+          .from('documentos_tipos')
+          .select('id, nombre')
+          .eq('aplica_empleado', true)
+          .eq('is_active', true)
+          .order('nombre')
+          .then(({ data }) => setTiposDocPersona((data as DocumentoTipo[]) ?? []))
+      }
     }
 
     if (tab === 'matriculas' && matriculas === null) {
@@ -454,7 +527,7 @@ export function PersonaDetalleModal({ persona, open, onClose, canWrite }: Person
     dni_dorso_url: dniDorsoUrl,
   }
 
-  const { getUrl: getDocUrl } = useSignedUrls('documentos', (documentos ?? []).map(d => d.archivo_url))
+  const { getUrl: getDocUrl } = useSignedUrls('documentos', (documentos ?? []).map(d => d.personas_documentos_archivos?.[0]?.url ?? null))
   const { getUrl: getCertUrl } = useSignedUrls('certificados', (matriculas ?? []).map(m => m.certificado_url))
 
   // Re-leemos los paths de imágenes de la DB para reflejar subida/quita.
@@ -483,9 +556,10 @@ export function PersonaDetalleModal({ persona, open, onClose, canWrite }: Person
   ]
 
   return (
+    <>
     <Modal open={open} onClose={onClose} title={`${persona.apellido}, ${persona.nombre}`} size="full">
       {/* Cabecera con foto + tipo + badge usuario */}
-      <div className="flex flex-wrap items-center gap-3 mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-2 flex-wrap">
           {persona.personas_tipos?.nombre && (
             <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-surface-elevated text-text-secondary">
@@ -498,6 +572,14 @@ export function PersonaDetalleModal({ persona, open, onClose, canWrite }: Person
             </span>
           )}
         </div>
+        {canWrite && (
+          <button
+            onClick={() => setShowEntregaEpp(true)}
+            className="text-xs text-sig-600 hover:text-sig-800 font-medium border border-sig-200 hover:border-sig-400 rounded-lg px-3 py-1.5 transition-colors"
+          >
+            Entregar EPP
+          </button>
+        )}
       </div>
 
       {/* Tabs */}
@@ -538,40 +620,62 @@ export function PersonaDetalleModal({ persona, open, onClose, canWrite }: Person
         </div>
       )}
 
-      {/* Documentos (read-only) */}
+      {/* Documentos */}
       {tab === 'documentos' && (
         <div>
           {documentos === null ? (
             <p className="text-sm text-text-tertiary text-center py-4">Cargando…</p>
-          ) : documentos.length === 0 ? (
+          ) : documentos.length === 0 && !showDocForm ? (
             <p className="text-sm text-text-tertiary text-center py-4">Sin documentos cargados.</p>
           ) : (
             <div className="space-y-1.5">
-              {documentos.map(d => (
-                <div key={d.id} className="flex items-center justify-between bg-surface-base rounded-lg px-3 py-2 text-sm border border-border-subtle">
-                  <div>
-                    <p className="font-medium text-text-primary">{d.documentos_tipos?.nombre ?? '—'}</p>
-                    {d.fecha_vencimiento && (
-                      <p className={`text-xs ${vencimientoClass(d.fecha_vencimiento)}`}>
-                        Vence: {formatDate(d.fecha_vencimiento)}
-                      </p>
+              {documentos.map(d => {
+                const archivoUrl = d.personas_documentos_archivos?.[0]?.url ?? null
+                return (
+                  <div key={d.id} className="flex items-center justify-between bg-surface-base rounded-lg px-3 py-2 text-sm border border-border-subtle">
+                    <div>
+                      <p className="font-medium text-text-primary">{d.documentos_tipos?.nombre ?? '—'}</p>
+                      {d.fecha_vencimiento && (
+                        <p className={`text-xs ${vencimientoClass(d.fecha_vencimiento)}`}>
+                          Vence: {formatDate(d.fecha_vencimiento)}
+                        </p>
+                      )}
+                    </div>
+                    {archivoUrl && getDocUrl(archivoUrl) && (
+                      <a
+                        href={getDocUrl(archivoUrl) ?? '#'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-sig-500 hover:underline ml-3 shrink-0 inline-flex items-center gap-1"
+                      >
+                        <FileText size={12} /> Ver archivo
+                      </a>
                     )}
                   </div>
-                  {d.archivo_url && getDocUrl(d.archivo_url) && (
-                    <a
-                      href={getDocUrl(d.archivo_url) ?? '#'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-sig-500 hover:underline ml-3 shrink-0 inline-flex items-center gap-1"
-                    >
-                      <FileText size={12} /> Ver archivo
-                    </a>
-                  )}
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
-          <p className="text-xs text-text-tertiary mt-3">La carga de documentos se hace desde el establecimiento.</p>
+
+          {canWrite && !showDocForm && (
+            <button
+              onClick={() => setShowDocForm(true)}
+              className="mt-3 text-sm text-sig-500 hover:text-sig-700 font-medium inline-flex items-center gap-1"
+            >
+              <Upload size={14} /> Agregar documento
+            </button>
+          )}
+
+          {showDocForm && tiposDocPersona && (
+            <DocumentoPersonaForm
+              personaId={persona.id}
+              tiposDoc={tiposDocPersona}
+              onSuccess={() => {
+                setShowDocForm(false)
+                setDocumentos(null)
+              }}
+            />
+          )}
         </div>
       )}
 
@@ -628,7 +732,7 @@ export function PersonaDetalleModal({ persona, open, onClose, canWrite }: Person
                   onClick={() => setShowMatriculaForm(true)}
                   className="mt-3 text-sm text-sig-500 hover:text-sig-700 font-medium inline-flex items-center gap-1"
                 >
-                  <Upload size={14} /> {matriculas.length > 0 ? 'Renovar matrícula' : 'Cargar matrícula'}
+                  <Upload size={14} /> {matriculas.length > 0 ? 'Agregar matrícula' : 'Cargar matrícula'}
                 </button>
               )}
             </>
@@ -636,5 +740,15 @@ export function PersonaDetalleModal({ persona, open, onClose, canWrite }: Person
         </div>
       )}
     </Modal>
+
+    {showEntregaEpp && (
+      <EntregaEppModal
+        open={showEntregaEpp}
+        onClose={() => setShowEntregaEpp(false)}
+        persona={{ id: persona.id, nombre: persona.nombre, apellido: persona.apellido }}
+        onDone={() => setShowEntregaEpp(false)}
+      />
+    )}
+  </>
   )
 }

@@ -404,13 +404,13 @@ export default function PersonasPage() {
           <table className="w-full text-sm">
             <thead className="border-b border-border-subtle bg-surface-base">
               <tr className="text-left">
-                <th className="px-5 py-3 text-text-secondary font-medium">Apellido y nombre</th>
-                <th className="px-5 py-3 text-text-secondary font-medium">Tipo</th>
-                <th className="px-5 py-3 text-text-secondary font-medium">DNI</th>
-                <th className="px-5 py-3 text-text-secondary font-medium">Legajo</th>
-                <th className="px-5 py-3 text-text-secondary font-medium">Teléfono</th>
-                <th className="px-5 py-3 text-text-secondary font-medium">Acceso</th>
-                <th className="px-5 py-3"></th>
+                <th className="px-4 py-3 text-text-secondary font-medium">Apellido y nombre</th>
+                <th className="px-4 py-3 text-text-secondary font-medium hidden sm:table-cell">Tipo</th>
+                <th className="px-4 py-3 text-text-secondary font-medium hidden sm:table-cell">DNI</th>
+                <th className="px-4 py-3 text-text-secondary font-medium hidden md:table-cell">Legajo</th>
+                <th className="px-4 py-3 text-text-secondary font-medium hidden md:table-cell">Teléfono</th>
+                <th className="px-4 py-3 text-text-secondary font-medium hidden lg:table-cell">Acceso</th>
+                <th className="px-4 py-3"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -420,16 +420,16 @@ export default function PersonasPage() {
                   onClick={() => setSelectedPersona(p)}
                   className="hover:bg-surface-base cursor-pointer"
                 >
-                  <td className="px-5 py-3.5 font-medium text-text-primary">{p.apellido}, {p.nombre}</td>
-                  <td className="px-5 py-3.5">
+                  <td className="px-4 py-2.5 sm:py-3 font-medium text-text-primary">{p.apellido}, {p.nombre}</td>
+                  <td className="px-4 py-2.5 sm:py-3 hidden sm:table-cell">
                     <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-surface-elevated text-text-secondary">
                       {p.personas_tipos?.nombre ?? '—'}
                     </span>
                   </td>
-                  <td className="px-5 py-3.5 text-text-secondary">{p.dni ?? '—'}</td>
-                  <td className="px-5 py-3.5 text-text-secondary">{p.legajo ?? '—'}</td>
-                  <td className="px-5 py-3.5 text-text-secondary">{p.telefono ?? '—'}</td>
-                  <td className="px-5 py-3.5">
+                  <td className="px-4 py-2.5 sm:py-3 text-text-secondary hidden sm:table-cell">{p.dni ?? '—'}</td>
+                  <td className="px-4 py-2.5 sm:py-3 text-text-secondary hidden md:table-cell">{p.legajo ?? '—'}</td>
+                  <td className="px-4 py-2.5 sm:py-3 text-text-secondary hidden md:table-cell">{p.telefono ?? '—'}</td>
+                  <td className="px-4 py-2.5 sm:py-3 hidden lg:table-cell">
                     {p.user_id ? (
                       <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-sig-50 text-sig-700">Usuario</span>
                     ) : p.personas_tipos?.nombre === 'Trabajadores' ? (
@@ -444,7 +444,7 @@ export default function PersonasPage() {
                       <span className="text-text-tertiary text-xs">—</span>
                     )}
                   </td>
-                  <td className="px-5 py-3.5 text-right whitespace-nowrap">
+                  <td className="px-4 py-2.5 sm:py-3 text-right whitespace-nowrap">
                     {p.personas_tipos?.nombre === 'Trabajadores' && (
                       <button
                         onClick={e => { e.stopPropagation(); setEntregaPersona(p) }}

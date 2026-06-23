@@ -79,9 +79,11 @@ const MENU_ITEMS: MenuItem[] = [
 interface ContextualBottomNavProps {
   /** Muestra "Administrar Cursos" y "Compliance" en el grupo Librerías (gate full_access + superAdmin). */
   canManageCursos?: boolean
+  /** Rol efectivo del usuario. Trabajadores ven solo Mis EPP + Mis Capacitaciones. */
+  userRole?: string | null
 }
 
-export function ContextualBottomNav({ canManageCursos = false }: ContextualBottomNavProps) {
+export function ContextualBottomNav({ canManageCursos = false, userRole }: ContextualBottomNavProps) {
   const { level, empresaId, establecimientoId } = useNavigationLevel()
   const { emit } = useShortcuts()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -130,6 +132,34 @@ export function ContextualBottomNav({ canManageCursos = false }: ContextualBotto
     'text-text-tertiary hover:text-brand-primary hover:bg-brand-muted/30 active:scale-95',
     'transition-all duration-150',
   )
+
+  // Trabajadores solo ven sus 2 secciones propias.
+  if (userRole === 'trabajador') {
+    return (
+      <>
+        <div className="lg:hidden h-16 safe-area-pb" aria-hidden="true" />
+        <nav
+          aria-label="Navegación"
+          className={cn(
+            'fixed bottom-0 left-0 right-0 z-40 lg:hidden',
+            'bg-surface-base/95 backdrop-blur-md border-t border-border-subtle',
+            'safe-area-pb',
+          )}
+        >
+          <div className="flex items-stretch justify-around h-16 px-1 max-w-lg mx-auto">
+            <Link href="/dashboard/mis-entregas" aria-label="Mis EPP" className={tabClasses}>
+              <ShieldCheck size={20} strokeWidth={1.75} aria-hidden="true" />
+              <span className="text-[9px] font-medium leading-none">Mis EPP</span>
+            </Link>
+            <Link href="/dashboard/mis-capacitaciones" aria-label="Mis Capacitaciones" className={tabClasses}>
+              <BookOpen size={20} strokeWidth={1.75} aria-hidden="true" />
+              <span className="text-[9px] font-medium leading-none">Cursos</span>
+            </Link>
+          </div>
+        </nav>
+      </>
+    )
+  }
 
   return (
     <>

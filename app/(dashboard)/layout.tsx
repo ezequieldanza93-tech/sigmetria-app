@@ -132,6 +132,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
               effectiveUserRole === 'full_access_main' ||
               effectiveUserRole === 'full_access_branch'
             }
+            userRole={effectiveUserRole}
           />
       <GestionLauncher />
       <ChatWidget />

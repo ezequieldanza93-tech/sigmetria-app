@@ -19,7 +19,7 @@ interface DocumentoTipo {
 interface PersonaDoc {
   id: string
   tipo_id: string
-  archivo_url: string | null
+  personas_documentos_archivos: { url: string }[] | null
   fecha_emision: string | null
   fecha_vencimiento: string | null
   created_at: string
@@ -161,7 +161,7 @@ export function TrabajadorModal({
       if (documentos === null) {
         supabase
           .from('personas_documentos')
-          .select('id, tipo_id, archivo_url, fecha_emision, fecha_vencimiento, created_at, documentos_tipos(nombre)')
+          .select('id, tipo_id, personas_documentos_archivos(url), fecha_emision, fecha_vencimiento, created_at, documentos_tipos(nombre)')
           .eq('persona_id', persona.id)
           .order('created_at', { ascending: false })
           .then(({ data }) => setDocumentos((data as unknown as PersonaDoc[]) ?? []))
@@ -191,7 +191,7 @@ export function TrabajadorModal({
 
   const docAction = createTrabajadorDocumento.bind(null, persona.id, establecimientoId, empresaId)
   // Buckets privados: firmamos las URLs en el cliente (batch, una llamada por bucket).
-  const { getUrl: getDocUrl } = useSignedUrls('documentos', (documentos ?? []).map(d => d.archivo_url))
+  const { getUrl: getDocUrl } = useSignedUrls('documentos', (documentos ?? []).map(d => d.personas_documentos_archivos?.[0]?.url ?? null))
   const { getUrl: getCertUrl } = useSignedUrls('certificados', (matriculas ?? []).map(m => m.certificado_url))
 
   return (
@@ -284,9 +284,9 @@ export function TrabajadorModal({
                       </p>
                     )}
                   </div>
-                  {d.archivo_url && getDocUrl(d.archivo_url) && (
+                  {d.personas_documentos_archivos?.[0]?.url && getDocUrl(d.personas_documentos_archivos[0].url) && (
                     <a
-                      href={getDocUrl(d.archivo_url) ?? '#'}
+                      href={getDocUrl(d.personas_documentos_archivos[0].url) ?? '#'}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-xs text-sig-500 hover:underline ml-3 shrink-0"

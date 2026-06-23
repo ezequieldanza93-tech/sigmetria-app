@@ -168,6 +168,7 @@ type DocVigente = {
 
 type DocVigentePersona = DocVigente & {
   persona_id: string
+  personas_documentos_archivos: { url: string }[] | null
   personas_directorio: { nombre: string; apellido: string; legajo: string | null; tipo_id: string | null } | null
 }
 
@@ -393,7 +394,7 @@ export async function getLegajoEsperados(
 
   // 3) Instancias vigentes (deleted_at IS NULL), ordenadas DESC por created_at.
   const docSelect = 'id, tipo_id, archivo_url, fecha_vencimiento, fecha_emision, created_at, documentos_tipos(nombre, categoria_legajo, periodicidad)'
-  const personaSelect = 'id, tipo_id, persona_id, archivo_url, fecha_vencimiento, fecha_emision, created_at, documentos_tipos(nombre, categoria_legajo, periodicidad), personas_directorio(nombre, apellido, legajo, tipo_id)'
+  const personaSelect = 'id, tipo_id, persona_id, personas_documentos_archivos(url), fecha_vencimiento, fecha_emision, created_at, documentos_tipos(nombre, categoria_legajo, periodicidad), personas_directorio(nombre, apellido, legajo, tipo_id)'
 
   const [empRes, estRes, perRes] = await Promise.all([
     supabase
@@ -459,6 +460,8 @@ export async function getLegajoEsperados(
   for (const d of personaData) {
     if (!d.tipo_id) continue
     const catLegajo = (d as unknown as { documentos_tipos: { categoria_legajo?: CategoriaLegajo | null } | null }).documentos_tipos?.categoria_legajo
+    // Normalizar archivo_url desde la tabla hija (post-migración 1FN).
+    const dNorm: DocVigente = { ...d, archivo_url: d.personas_documentos_archivos?.[0]?.url ?? null }
     let entry = porPersona.get(d.persona_id)
     if (!entry) {
       entry = { persona: d.personas_directorio, persona_tipo_id: d.personas_directorio?.tipo_id ?? null, persona_legajo: new Map(), persona_estab: new Map() }
@@ -466,7 +469,7 @@ export async function getLegajoEsperados(
     }
     const target = catLegajo === 'persona_por_establecimiento' ? entry.persona_estab : entry.persona_legajo
     const arr = target.get(d.tipo_id) ?? []
-    arr.push(d)
+    arr.push(dNorm)
     target.set(d.tipo_id, arr)
   }
 
