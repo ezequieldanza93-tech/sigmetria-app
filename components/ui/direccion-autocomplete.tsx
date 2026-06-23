@@ -142,7 +142,7 @@ export function DireccionAutocomplete({
             <li key={`${s.lat}-${s.lon}-${i}`}>
               <button
                 type="button"
-                onClick={() => elegir(s)}
+                onPointerDown={e => { e.preventDefault(); elegir(s) }}
                 className="w-full text-left px-3 py-2 text-sm hover:bg-sig-50 flex items-start gap-2"
               >
                 <MapPin size={14} className="text-text-tertiary mt-0.5 shrink-0" />
