@@ -39,8 +39,8 @@ async function geocode(query: string): Promise<{ latitud: number | null; longitu
 }
 
 // Resuelve coordenadas del establecimiento. Prioridad:
-// 1) ubicacion_gmaps (link de Maps o coords pegadas) — lo que cargó el usuario.
-// 2) Fallback: geocoding del domicilio si no hay ubicacion_gmaps que resuelva.
+// 1) latitud/longitud enviados directamente por DireccionAutocomplete.
+// 2) Fallback: geocoding del domicilio.
 async function parseUbicacion(
   raw: string | null,
   domicilioFallback?: string | null,
@@ -64,6 +64,23 @@ async function parseUbicacion(
   }
 
   return { latitud: null, longitud: null }
+}
+
+// Resuelve coordenadas del establecimiento. Prioridad:
+// 1) latitud/longitud enviados directamente por DireccionAutocomplete (latName/lonName).
+// 2) Fallback: geocoding del domicilio.
+function resolveCoordenadas(
+  formData: FormData,
+  domicilio: string | null | undefined,
+): Promise<{ latitud: number | null; longitud: number | null }> {
+  const latRaw = (formData.get('latitud') as string)?.trim()
+  const lonRaw = (formData.get('longitud') as string)?.trim()
+  const latNum = latRaw ? parseFloat(latRaw) : NaN
+  const lonNum = lonRaw ? parseFloat(lonRaw) : NaN
+  if (!Number.isNaN(latNum) && !Number.isNaN(lonNum)) {
+    return Promise.resolve({ latitud: latNum, longitud: lonNum })
+  }
+  return parseUbicacion(null, domicilio ?? null)
 }
 
 async function saveHorarios(
@@ -188,9 +205,9 @@ export async function createEstablecimiento(
   if (!parsed.success) {
     return { success: false, error: formatZodErrors(parsed.error) }
   }
-  const { nombre, tipo_id, domicilio, localidad_id, codigo_postal, actividad_principal, actividad_id, description, ubicacion_gmaps, aplica_iso_45001, cantidad_trabajadores, cantidad_trabajadores_operativos, cantidad_trabajadores_administrativos, categoria_hys } = parsed.data
+  const { nombre, tipo_id, domicilio, localidad_id, codigo_postal, actividad_principal, actividad_id, description, aplica_iso_45001, cantidad_trabajadores, cantidad_trabajadores_operativos, cantidad_trabajadores_administrativos, categoria_hys } = parsed.data
 
-  const { latitud, longitud } = await parseUbicacion(ubicacion_gmaps ?? null, domicilio ?? null)
+  const { latitud, longitud } = await resolveCoordenadas(formData, domicilio)
 
   // Id generado en el server + insert SIN RETURNING (.select()) a propósito:
   // el RETURNING dispara la policy de SELECT (has_establecimiento_read_access,
@@ -284,9 +301,9 @@ export async function updateEstablecimiento(
   if (!parsed.success) {
     return { success: false, error: formatZodErrors(parsed.error) }
   }
-  const { nombre, tipo_id, domicilio, localidad_id, codigo_postal, actividad_principal, actividad_id, description, ubicacion_gmaps, aplica_iso_45001, cantidad_trabajadores, cantidad_trabajadores_operativos, cantidad_trabajadores_administrativos, categoria_hys } = parsed.data
+  const { nombre, tipo_id, domicilio, localidad_id, codigo_postal, actividad_principal, actividad_id, description, aplica_iso_45001, cantidad_trabajadores, cantidad_trabajadores_operativos, cantidad_trabajadores_administrativos, categoria_hys } = parsed.data
 
-  const { latitud, longitud } = await parseUbicacion(ubicacion_gmaps ?? null, domicilio ?? null)
+  const { latitud, longitud } = await resolveCoordenadas(formData, domicilio)
 
   const { data: existing } = await supabase
     .from('establecimientos')

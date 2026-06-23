@@ -114,6 +114,16 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
     })
   }, [empresa?.id])
 
+  // Safety net para edit mode: si llega el localidad_id pero no el join de
+  // localidades, recuperamos la provincia desde el array una vez que carga.
+  useEffect(() => {
+    if (selectedProvincia) return
+    if (!form.localidad_id) return
+    if (!localidades.length) return
+    const loc = localidades.find(l => l.id === form.localidad_id)
+    if (loc?.provincia) setSelectedProvincia(loc.provincia)
+  }, [localidades, form.localidad_id, selectedProvincia])
+
   const provincias = [...new Set(localidades.map(l => l.provincia))].sort()
   const localidadesFiltradas = localidades.filter(l => l.provincia === selectedProvincia)
 
@@ -200,6 +210,8 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
         lonName="longitude"
         defaultLat={empresa?.latitude ?? null}
         defaultLon={empresa?.longitude ?? null}
+        nearLat={empresa?.latitude != null ? Number(empresa.latitude) : null}
+        nearLon={empresa?.longitude != null ? Number(empresa.longitude) : null}
         placeholder="Av. Corrientes 1234, Buenos Aires"
       />
 

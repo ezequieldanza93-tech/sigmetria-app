@@ -28,6 +28,9 @@ interface Props {
   gmapsName?: string
   defaultLat?: number | string | null
   defaultLon?: number | string | null
+  /** Punto de referencia para ordenar sugerencias por proximidad. */
+  nearLat?: number | null
+  nearLon?: number | null
   helpText?: string
 }
 
@@ -42,6 +45,8 @@ export function DireccionAutocomplete({
   gmapsName,
   defaultLat = null,
   defaultLon = null,
+  nearLat,
+  nearLon,
   helpText,
 }: Props) {
   const [query, setQuery] = useState(defaultValue)
@@ -67,7 +72,7 @@ export function DireccionAutocomplete({
     }
     setLoading(true)
     const t = setTimeout(async () => {
-      const res = await buscarDirecciones(q)
+      const res = await buscarDirecciones(q, nearLat, nearLon)
       setSugerencias(res)
       setOpen(res.length > 0)
       setLoading(false)

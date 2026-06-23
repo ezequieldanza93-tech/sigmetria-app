@@ -45,7 +45,7 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
 
   const [effective, { data: empresa }] = await Promise.all([
     getEffectiveRole(),
-    supabase.from('empresas').select('*, empresas_rubros(nombre), localidades(nombre, provincia), organizaciones_externas!art_id(nombre)').eq('id', id).single(),
+    supabase.from('empresas').select('*, actividades_economicas!actividad_id(codigo, nombre), localidades(nombre, provincia), organizaciones_externas!art_id(nombre)').eq('id', id).single(),
   ])
 
   if (!effective) redirect('/login')
@@ -204,8 +204,10 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
                   {empresa.cuit && (
                     <p className="text-sm text-text-tertiary font-mono">{formatCUIT(empresa.cuit)}</p>
                   )}
-                  {(empresa.empresas_rubros as unknown as { nombre: string } | null)?.nombre && (
-                    <p className="text-sm text-text-tertiary mt-0.5">{(empresa.empresas_rubros as unknown as { nombre: string }).nombre}</p>
+                  {(empresa.actividades_economicas as unknown as { codigo: string; nombre: string } | null)?.nombre && (
+                    <p className="text-sm text-text-tertiary mt-0.5">
+                      {(empresa.actividades_economicas as unknown as { codigo: string; nombre: string }).codigo} — {(empresa.actividades_economicas as unknown as { codigo: string; nombre: string }).nombre}
+                    </p>
                   )}
                 </div>
                 {esAdminPrincipal ? (

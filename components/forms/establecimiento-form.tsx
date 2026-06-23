@@ -459,10 +459,13 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
         <DireccionAutocomplete
           label="Domicilio"
           name="domicilio"
-          gmapsName="ubicacion_gmaps"
+          latName="latitud"
+          lonName="longitud"
           defaultValue={establecimiento?.domicilio ?? ''}
           defaultLat={establecimiento?.latitud ?? null}
           defaultLon={establecimiento?.longitud ?? null}
+          nearLat={establecimiento?.latitud != null ? Number(establecimiento.latitud) : null}
+          nearLon={establecimiento?.longitud != null ? Number(establecimiento.longitud) : null}
           placeholder="Av. Corrientes 1234, Buenos Aires"
         />
 
