@@ -31,6 +31,10 @@ export default async function EmpresasPage({ searchParams }: Props) {
   const effective = await getEffectiveRole()
   if (!effective) redirect('/login')
 
+  // El trabajador no opera sobre empresas: lo mandamos a su espacio (mis EPP).
+  // Cubre el aterrizaje en /dashboard tras el cambio de contraseña o nav directa.
+  if (effective.effectiveUserRole === 'trabajador') redirect('/dashboard/mis-entregas')
+
   // Empresas list (with linked establecimientos) — para la sidebar y los aggregators.
   // NOTA: NO filtramos por estado en la fuente. Traemos is_active (empresa) y status
   // (establecimiento) para que la ficha global filtre client-side con su toggle.
