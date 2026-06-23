@@ -1302,6 +1302,7 @@ interface ObsDraft {
   clasificacion_id: string
   responsable_id: string
   fecha_subsanacion: string
+  foto?: File | null
 }
 
 interface CategoriaObs {
@@ -1407,8 +1408,12 @@ function EjecucionModal({
     setObservaciones(prev => prev.filter(o => o.key !== key))
   }
 
-  function updateObs(key: number, field: keyof Omit<ObsDraft, 'key'>, value: string) {
+  function updateObs(key: number, field: keyof Omit<ObsDraft, 'key' | 'foto'>, value: string) {
     setObservaciones(prev => prev.map(o => o.key === key ? { ...o, [field]: value } : o))
+  }
+
+  function updateObsFoto(key: number, file: File | null) {
+    setObservaciones(prev => prev.map(o => o.key === key ? { ...o, foto: file } : o))
   }
 
   function doSave(finalizar: boolean, callback: () => void) {
@@ -1426,6 +1431,9 @@ function EjecucionModal({
         const sinCategoria = validObs.filter(o => !o.categoria_id)
         if (sinCategoria.length > 0) {
           setError('Toda observación requiere una categoría.')
+          requestAnimationFrame(() => {
+            document.getElementById('error-ejecucion')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          })
           return
         }
       }
@@ -1476,7 +1484,7 @@ function EjecucionModal({
         <input type="hidden" name="registro_id" value={registro.id} />
 
         {error && (
-          <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-3 py-2">
+          <div id="error-ejecucion" className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-3 py-2">
             {error}
           </div>
         )}
@@ -1492,7 +1500,7 @@ function EjecucionModal({
         </div>
 
         <div>
-          <label className="text-sm font-medium text-text-secondary block mb-1">Fecha de Ejecución *</label>
+          <label className="text-sm font-medium text-text-secondary block mb-1">Fecha de Ejecución <span className="text-danger text-xs ml-0.5">*</span></label>
           <input
             type="date"
             name="fecha_ejecutada"
@@ -1704,6 +1712,38 @@ function EjecucionModal({
                         className="w-full border border-border-default rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-sig-500"
                       />
                     </div>
+                  </div>
+                  {/* Foto de la observación */}
+                  <div className="pl-0 sm:pl-6">
+                    {obs.foto ? (
+                      <div className="flex items-center gap-2">
+                        <img
+                          src={URL.createObjectURL(obs.foto)}
+                          alt="Foto observación"
+                          className="w-16 h-16 object-cover rounded-lg border border-border-subtle shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-text-secondary truncate">{obs.foto.name}</p>
+                          <button
+                            type="button"
+                            onClick={() => updateObsFoto(obs.key, null)}
+                            className="text-xs text-danger hover:text-danger/80 mt-0.5"
+                          >
+                            Quitar foto
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <label className="cursor-pointer inline-flex items-center gap-1.5 text-xs text-sig-600 hover:text-sig-700 font-medium">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={e => updateObsFoto(obs.key, e.target.files?.[0] ?? null)}
+                        />
+                        + Agregar foto
+                      </label>
+                    )}
                   </div>
                 </div>
               ))}

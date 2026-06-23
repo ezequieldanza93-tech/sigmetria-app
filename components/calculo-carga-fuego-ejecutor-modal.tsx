@@ -555,14 +555,14 @@ export function CalculoCargaFuegoEjecutorModal({
   function goNext() {
     setError(null)
     if (step === 'datos') {
-      if (!firmantePersonaId) { setError('Elegí el profesional firmante del cálculo.'); return }
-      if (sectores.length === 0) { setError('Primero creá sectores en la ficha del establecimiento: el sector de incendio se elige de esa lista.'); return }
+      if (!firmantePersonaId) { setError('Elegí el profesional firmante del cálculo.'); requestAnimationFrame(() => document.getElementById('error-carga-fuego')?.scrollIntoView({ behavior: 'smooth', block: 'center' })); return }
+      if (sectores.length === 0) { setError('Primero creá sectores en la ficha del establecimiento: el sector de incendio se elige de esa lista.'); requestAnimationFrame(() => document.getElementById('error-carga-fuego')?.scrollIntoView({ behavior: 'smooth', block: 'center' })); return }
       // Validar todos los sectores wizard
       for (let i = 0; i < sectoresWizard.length; i++) {
         const s = sectoresWizard[i]
-        if (!s.sectorIncendio.trim()) { setSectorActivoIdx(i); setError(`El sector ${i + 1} no tiene sector de incendio seleccionado.`); return }
-        if (!sectores.some(x => x.nombre === s.sectorIncendio)) { setSectorActivoIdx(i); setError(`El sector "${s.sectorIncendio}" no existe en el establecimiento.`); return }
-        if (num(s.superficie) == null || (num(s.superficie) ?? 0) <= 0) { setSectorActivoIdx(i); setError(`El sector "${s.sectorIncendio}" necesita una superficie válida (m²).`); return }
+        if (!s.sectorIncendio.trim()) { setSectorActivoIdx(i); setError(`El sector ${i + 1} no tiene sector de incendio seleccionado.`); requestAnimationFrame(() => document.getElementById('error-carga-fuego')?.scrollIntoView({ behavior: 'smooth', block: 'center' })); return }
+        if (!sectores.some(x => x.nombre === s.sectorIncendio)) { setSectorActivoIdx(i); setError(`El sector "${s.sectorIncendio}" no existe en el establecimiento.`); requestAnimationFrame(() => document.getElementById('error-carga-fuego')?.scrollIntoView({ behavior: 'smooth', block: 'center' })); return }
+        if (num(s.superficie) == null || (num(s.superficie) ?? 0) <= 0) { setSectorActivoIdx(i); setError(`El sector "${s.sectorIncendio}" necesita una superficie válida (m²).`); requestAnimationFrame(() => document.getElementById('error-carga-fuego')?.scrollIntoView({ behavior: 'smooth', block: 'center' })); return }
       }
       setStep('materiales')
     } else if (step === 'materiales') {
@@ -576,6 +576,7 @@ export function CalculoCargaFuegoEjecutorModal({
         if (s.materiales.length === 0) {
           setSectorActivoIdx(i)
           setError(`${nombreSector}: cargá al menos un material combustible.`)
+          requestAnimationFrame(() => document.getElementById('error-carga-fuego')?.scrollIntoView({ behavior: 'smooth', block: 'center' }))
           return
         }
         for (let j = 0; j < s.materiales.length; j++) {
@@ -587,17 +588,18 @@ export function CalculoCargaFuegoEjecutorModal({
           if (faltantes.length > 0) {
             setSectorActivoIdx(i)
             setError(`${nombreSector} · Material ${j + 1}: completá ${faltantes.join(', ')}.`)
+            requestAnimationFrame(() => document.getElementById('error-carga-fuego')?.scrollIntoView({ behavior: 'smooth', block: 'center' }))
             return
           }
         }
       }
       setStep('resultado')
     } else if (step === 'resultado') {
-      if (!sectoresWizard.some(s => !!s.riesgo)) { setError('Definí el nivel de riesgo en al menos un sector (R1-R7).'); return }
+      if (!sectoresWizard.some(s => !!s.riesgo)) { setError('Definí el nivel de riesgo en al menos un sector (R1-R7).'); requestAnimationFrame(() => document.getElementById('error-carga-fuego')?.scrollIntoView({ behavior: 'smooth', block: 'center' })); return }
       setStep('observaciones')
     } else if (step === 'observaciones') {
       const obsSinCat = observacionesSeguimiento.filter(o => o.descripcion.trim() && !o.categoria_id)
-      if (obsSinCat.length > 0) { setError('Toda observación de seguimiento requiere una categoría.'); return }
+      if (obsSinCat.length > 0) { setError('Toda observación de seguimiento requiere una categoría.'); requestAnimationFrame(() => document.getElementById('error-carga-fuego')?.scrollIntoView({ behavior: 'smooth', block: 'center' })); return }
       setStep('conclusiones')
     } else if (step === 'conclusiones') {
       setStep('revisar')
@@ -906,7 +908,7 @@ export function CalculoCargaFuegoEjecutorModal({
         </div>
 
         {error && (
-          <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-3 py-2">{error}</div>
+          <div id="error-carga-fuego" className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-3 py-2">{error}</div>
         )}
 
         {/* ══ HOJA 1: DATOS ═══════════════════════════════════════════ */}

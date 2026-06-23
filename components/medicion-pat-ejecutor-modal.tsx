@@ -516,9 +516,9 @@ export function MedicionPatEjecutorModal({
     setError(null)
     setBorradorGuardado(false)
     if (step === 'datos') {
-      if (!instrumentoId) { setError('Elegí el telurímetro usado en la medición.'); return }
-      if (!firmantePersonaId) { setError('Elegí el profesional firmante del protocolo.'); return }
-      if (!fechaMedicion) { setError('Cargá la fecha de medición.'); return }
+      if (!instrumentoId) { setError('Elegí el telurímetro usado en la medición.'); requestAnimationFrame(() => document.getElementById('error-pat')?.scrollIntoView({ behavior: 'smooth', block: 'center' })); return }
+      if (!firmantePersonaId) { setError('Elegí el profesional firmante del protocolo.'); requestAnimationFrame(() => document.getElementById('error-pat')?.scrollIntoView({ behavior: 'smooth', block: 'center' })); return }
+      if (!fechaMedicion) { setError('Cargá la fecha de medición.'); requestAnimationFrame(() => document.getElementById('error-pat')?.scrollIntoView({ behavior: 'smooth', block: 'center' })); return }
       setStep('tomas')
     } else if (step === 'tomas') {
       // Cada toma debe estar COMPLETA antes de avanzar (SRT 900/2015). Las
@@ -542,13 +542,14 @@ export function MedicionPatEjecutorModal({
         if (faltantes.length > 0) {
           setTomaActiva(i)
           setError(`${etiqueta}: completá ${faltantes.join(', ')}.`)
+          requestAnimationFrame(() => document.getElementById('error-pat')?.scrollIntoView({ behavior: 'smooth', block: 'center' }))
           return
         }
       }
       setStep('observaciones')
     } else if (step === 'observaciones') {
       const obsSinCat = observacionesSeguimiento.filter(o => o.descripcion.trim() && !o.categoria_id)
-      if (obsSinCat.length > 0) { setError('Toda observación de seguimiento requiere una categoría.'); return }
+      if (obsSinCat.length > 0) { setError('Toda observación de seguimiento requiere una categoría.'); requestAnimationFrame(() => document.getElementById('error-pat')?.scrollIntoView({ behavior: 'smooth', block: 'center' })); return }
       setStep('analisis')
     } else if (step === 'analisis') {
       setStep('revisar')
@@ -859,7 +860,7 @@ export function MedicionPatEjecutorModal({
         </div>
 
         {error && (
-          <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-3 py-2">{error}</div>
+          <div id="error-pat" className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-3 py-2">{error}</div>
         )}
 
         {/* ══ HOJA 1: DATOS ═══════════════════════════════════════════ */}

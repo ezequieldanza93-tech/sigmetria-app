@@ -689,29 +689,33 @@ export function MedicionRuidoEjecutorModal({
     setError(null)
     if (step === 'datos') {
       // Mínimo de la hoja 1: instrumento + profesional + fecha.
-      if (!instrumentoId) { setError('Elegí el instrumento usado en la medición.'); return }
-      if (!firmantePersonaId) { setError('Elegí el profesional firmante del protocolo.'); return }
-      if (!fechaMedicion) { setError('Cargá la fecha de medición.'); return }
+      if (!instrumentoId) { setError('Elegí el instrumento usado en la medición.'); requestAnimationFrame(() => document.getElementById('error-ruido')?.scrollIntoView({ behavior: 'smooth', block: 'center' })); return }
+      if (!firmantePersonaId) { setError('Elegí el profesional firmante del protocolo.'); requestAnimationFrame(() => document.getElementById('error-ruido')?.scrollIntoView({ behavior: 'smooth', block: 'center' })); return }
+      if (!fechaMedicion) { setError('Cargá la fecha de medición.'); requestAnimationFrame(() => document.getElementById('error-ruido')?.scrollIntoView({ behavior: 'smooth', block: 'center' })); return }
       setStep('puntos')
     } else if (step === 'puntos') {
       // Hoja 2: cada punto debe estar COMPLETO. Los campos que arman la fila de la
       // tabla del protocolo (ubicación, Te, tiempo de integración, pico si es de
       // impacto y los valores medidos según el método) son obligatorios.
-      if (puntos.length === 0) { setError('Cargá al menos un punto de medición.'); return }
+      if (puntos.length === 0) { setError('Cargá al menos un punto de medición.'); requestAnimationFrame(() => document.getElementById('error-ruido')?.scrollIntoView({ behavior: 'smooth', block: 'center' })); return }
       for (let i = 0; i < puntos.length; i++) {
         const p = puntos[i]
         const n = i + 1
-        if (!p.sector_id || !p.puesto_id) { setError(`Punto ${n}: elegí sector y puesto.`); return }
-        if (!p.te_horas || p.te_horas.trim() === '' || num(p.te_horas) == null) { setError(`Punto ${n}: cargá el tiempo de exposición (Te, horas).`); return }
-        if (!p.tiempo_integracion || p.tiempo_integracion.trim() === '') { setError(`Punto ${n}: cargá el tiempo de integración.`); return }
+        if (!p.sector_id || !p.puesto_id) { setError(`Punto ${n}: elegí sector y puesto.`); requestAnimationFrame(() => document.getElementById('error-ruido')?.scrollIntoView({ behavior: 'smooth', block: 'center' })); return }
+        if (!p.te_horas || p.te_horas.trim() === '' || num(p.te_horas) == null) { setError(`Punto ${n}: cargá el tiempo de exposición (Te, horas).`); requestAnimationFrame(() => document.getElementById('error-ruido')?.scrollIntoView({ behavior: 'smooth', block: 'center' })); return }
+        if (!p.tiempo_integracion || p.tiempo_integracion.trim() === '') { setError(`Punto ${n}: cargá el tiempo de integración.`); requestAnimationFrame(() => document.getElementById('error-ruido')?.scrollIntoView({ behavior: 'smooth', block: 'center' })); return }
         // Nivel pico solo aplica (y solo se pide) cuando el ruido es de impacto.
         if (p.caracteristicas_ruido === 'impacto' && (!p.lcpico_dbc || p.lcpico_dbc.trim() === '' || num(p.lcpico_dbc) == null)) {
-          setError(`Punto ${n}: cargá el nivel pico Lcpico (dBC) del ruido de impacto.`); return
+          setError(`Punto ${n}: cargá el nivel pico Lcpico (dBC) del ruido de impacto.`)
+          requestAnimationFrame(() => document.getElementById('error-ruido')?.scrollIntoView({ behavior: 'smooth', block: 'center' }))
+          return
         }
         // Valores medidos según el método.
         if (p.metodo === 'dosimetro') {
           if (!p.dosis_pct || p.dosis_pct.trim() === '' || num(p.dosis_pct) == null) {
-            setError(`Punto ${n}: cargá la dosis leída del equipo (%).`); return
+            setError(`Punto ${n}: cargá la dosis leída del equipo (%).`)
+            requestAnimationFrame(() => document.getElementById('error-ruido')?.scrollIntoView({ behavior: 'smooth', block: 'center' }))
+            return
           }
         } else {
           // Sonómetro: cada período debe tener LAeq y tiempo (no filas a medias) y al menos uno válido.
@@ -719,9 +723,9 @@ export function MedicionRuidoEjecutorModal({
             const per = p.periodos[j]
             const laeqOk = per.laeq_dba.trim() !== '' && num(per.laeq_dba) != null
             const teOk = per.tiempo_exposicion_horas.trim() !== '' && num(per.tiempo_exposicion_horas) != null
-            if (!laeqOk || !teOk) { setError(`Punto ${n}, período ${j + 1}: completá LAeq y tiempo de exposición.`); return }
+            if (!laeqOk || !teOk) { setError(`Punto ${n}, período ${j + 1}: completá LAeq y tiempo de exposición.`); requestAnimationFrame(() => document.getElementById('error-ruido')?.scrollIntoView({ behavior: 'smooth', block: 'center' })); return }
           }
-          if (periodosValidos(p).length === 0) { setError(`Punto ${n}: cargá al menos un período con LAeq y tiempo de exposición.`); return }
+          if (periodosValidos(p).length === 0) { setError(`Punto ${n}: cargá al menos un período con LAeq y tiempo de exposición.`); requestAnimationFrame(() => document.getElementById('error-ruido')?.scrollIntoView({ behavior: 'smooth', block: 'center' })); return }
         }
       }
       setStep('analisis')
@@ -731,7 +735,7 @@ export function MedicionRuidoEjecutorModal({
       // Las observaciones de seguimiento son opcionales, pero si hay alguna con
       // descripción debe tener categoría (categoría es obligatoria).
       const obsSinCat = observacionesSeguimiento.filter(o => o.descripcion.trim() && !o.categoria_id)
-      if (obsSinCat.length > 0) { setError('Toda observación de seguimiento requiere una categoría.'); return }
+      if (obsSinCat.length > 0) { setError('Toda observación de seguimiento requiere una categoría.'); requestAnimationFrame(() => document.getElementById('error-ruido')?.scrollIntoView({ behavior: 'smooth', block: 'center' })); return }
       setStep('revisar')
     }
   }
@@ -1134,7 +1138,7 @@ export function MedicionRuidoEjecutorModal({
         </div>
 
         {error && (
-          <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-3 py-2">{error}</div>
+          <div id="error-ruido" className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-3 py-2">{error}</div>
         )}
 
         {/* ══ HOJA 1: DATOS ═══════════════════════════════════════════ */}

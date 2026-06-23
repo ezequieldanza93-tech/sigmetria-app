@@ -802,9 +802,9 @@ export function MedicionCargaTermicaEjecutorModal({
   function goNext() {
     setError(null)
     if (step === 'datos') {
-      if (!instrumentoId) { setError('Elegí el monitor de estrés térmico usado.'); return }
-      if (!firmantePersonaId) { setError('Elegí el profesional firmante del protocolo.'); return }
-      if (!fechaMedicion) { setError('Cargá la fecha de medición.'); return }
+      if (!instrumentoId) { setError('Elegí el monitor de estrés térmico usado.'); requestAnimationFrame(() => document.getElementById('error-carga-termica')?.scrollIntoView({ behavior: 'smooth', block: 'center' })); return }
+      if (!firmantePersonaId) { setError('Elegí el profesional firmante del protocolo.'); requestAnimationFrame(() => document.getElementById('error-carga-termica')?.scrollIntoView({ behavior: 'smooth', block: 'center' })); return }
+      if (!fechaMedicion) { setError('Cargá la fecha de medición.'); requestAnimationFrame(() => document.getElementById('error-carga-termica')?.scrollIntoView({ behavior: 'smooth', block: 'center' })); return }
       setStep('puestos')
     } else if (step === 'puestos') {
       // Validación estricta: cada puesto identificado y cada tarea de cada período COMPLETA
@@ -813,7 +813,9 @@ export function MedicionCargaTermicaEjecutorModal({
         const p = puestos[pi]
         const etiqueta = p.trabajador.trim() || p.nombre_puesto.trim() || `Puesto ${pi + 1}`
         if (!p.trabajador.trim() && !p.nombre_puesto.trim()) {
-          setError(`${etiqueta}: identificá el trabajador o el sector / puesto.`); return
+          setError(`${etiqueta}: identificá el trabajador o el sector / puesto.`)
+          requestAnimationFrame(() => document.getElementById('error-carga-termica')?.scrollIntoView({ behavior: 'smooth', block: 'center' }))
+          return
         }
         for (const per of p.periodos) {
           for (let ti = 0; ti < per.tareas.length; ti++) {
@@ -826,6 +828,7 @@ export function MedicionCargaTermicaEjecutorModal({
             if (num(t.var) == null) faltantes.push('VAR (ropa)')
             if (faltantes.length > 0) {
               setError(`${etiqueta} · Período ${per.numero} · Tarea ${ti + 1}: completá ${faltantes.join(', ')}.`)
+              requestAnimationFrame(() => document.getElementById('error-carga-termica')?.scrollIntoView({ behavior: 'smooth', block: 'center' }))
               return
             }
           }
@@ -834,7 +837,7 @@ export function MedicionCargaTermicaEjecutorModal({
       setStep('observaciones')
     } else if (step === 'observaciones') {
       const obsSinCat = observacionesSeguimiento.filter(o => o.descripcion.trim() && !o.categoria_id)
-      if (obsSinCat.length > 0) { setError('Toda observación de seguimiento requiere una categoría.'); return }
+      if (obsSinCat.length > 0) { setError('Toda observación de seguimiento requiere una categoría.'); requestAnimationFrame(() => document.getElementById('error-carga-termica')?.scrollIntoView({ behavior: 'smooth', block: 'center' })); return }
       setStep('conclusiones')
     } else if (step === 'conclusiones') {
       setStep('revisar')
@@ -1132,7 +1135,7 @@ export function MedicionCargaTermicaEjecutorModal({
         </div>
 
         {error && (
-          <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-3 py-2">{error}</div>
+          <div id="error-carga-termica" className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-3 py-2">{error}</div>
         )}
 
         {/* Nota visible del método */}

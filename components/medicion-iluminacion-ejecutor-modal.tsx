@@ -735,22 +735,22 @@ export function MedicionIluminacionEjecutorModal({
     setError(null)
     if (step === 'datos') {
       // Mínimo de la hoja 1: luxómetro + profesional + fecha.
-      if (!instrumentoId) { setError('Elegí el luxómetro usado en la medición.'); return }
-      if (!firmantePersonaId) { setError('Elegí el profesional firmante del protocolo.'); return }
-      if (!fechaMedicion) { setError('Cargá la fecha de medición.'); return }
+      if (!instrumentoId) { setError('Elegí el luxómetro usado en la medición.'); requestAnimationFrame(() => document.getElementById('error-iluminacion')?.scrollIntoView({ behavior: 'smooth', block: 'center' })); return }
+      if (!firmantePersonaId) { setError('Elegí el profesional firmante del protocolo.'); requestAnimationFrame(() => document.getElementById('error-iluminacion')?.scrollIntoView({ behavior: 'smooth', block: 'center' })); return }
+      if (!fechaMedicion) { setError('Cargá la fecha de medición.'); requestAnimationFrame(() => document.getElementById('error-iluminacion')?.scrollIntoView({ behavior: 'smooth', block: 'center' })); return }
       setStep('puntos')
     } else if (step === 'puntos') {
       // Hoja 2: cada punto debe estar COMPLETO. Los campos que arman la tabla del
       // protocolo (ubicación, tipos, valor requerido y TODAS las celdas) son obligatorios.
-      if (puntos.length === 0) { setError('Cargá al menos un punto de medición.'); return }
+      if (puntos.length === 0) { setError('Cargá al menos un punto de medición.'); requestAnimationFrame(() => document.getElementById('error-iluminacion')?.scrollIntoView({ behavior: 'smooth', block: 'center' })); return }
       for (let i = 0; i < puntos.length; i++) {
         const p = puntos[i]
         const n = i + 1
-        if (!p.sector_id || !p.puesto_id) { setError(`Punto ${n}: elegí sector y puesto.`); return }
-        if (!p.tipo_iluminacion) { setError(`Punto ${n}: indicá el tipo de iluminación.`); return }
-        if (!p.tipo_fuente) { setError(`Punto ${n}: indicá el tipo de fuente.`); return }
-        if (!p.tipo_sistema) { setError(`Punto ${n}: indicá el tipo de sistema (general/localizada/mixta).`); return }
-        if (!p.valor_requerido_lux || String(p.valor_requerido_lux).trim() === '') { setError(`Punto ${n}: cargá el valor requerido (lux).`); return }
+        if (!p.sector_id || !p.puesto_id) { setError(`Punto ${n}: elegí sector y puesto.`); requestAnimationFrame(() => document.getElementById('error-iluminacion')?.scrollIntoView({ behavior: 'smooth', block: 'center' })); return }
+        if (!p.tipo_iluminacion) { setError(`Punto ${n}: indicá el tipo de iluminación.`); requestAnimationFrame(() => document.getElementById('error-iluminacion')?.scrollIntoView({ behavior: 'smooth', block: 'center' })); return }
+        if (!p.tipo_fuente) { setError(`Punto ${n}: indicá el tipo de fuente.`); requestAnimationFrame(() => document.getElementById('error-iluminacion')?.scrollIntoView({ behavior: 'smooth', block: 'center' })); return }
+        if (!p.tipo_sistema) { setError(`Punto ${n}: indicá el tipo de sistema (general/localizada/mixta).`); requestAnimationFrame(() => document.getElementById('error-iluminacion')?.scrollIntoView({ behavior: 'smooth', block: 'center' })); return }
+        if (!p.valor_requerido_lux || String(p.valor_requerido_lux).trim() === '') { setError(`Punto ${n}: cargá el valor requerido (lux).`); requestAnimationFrame(() => document.getElementById('error-iluminacion')?.scrollIntoView({ behavior: 'smooth', block: 'center' })); return }
         let vacias = 0
         for (let f = 0; f < p.filas; f++) {
           for (let c = 0; c < p.columnas; c++) {
@@ -758,7 +758,7 @@ export function MedicionIluminacionEjecutorModal({
             if (v == null || String(v).trim() === '') vacias++
           }
         }
-        if (vacias > 0) { setError(`Punto ${n}: completá todas las celdas de la grilla (${vacias} sin valor).`); return }
+        if (vacias > 0) { setError(`Punto ${n}: completá todas las celdas de la grilla (${vacias} sin valor).`); requestAnimationFrame(() => document.getElementById('error-iluminacion')?.scrollIntoView({ behavior: 'smooth', block: 'center' })); return }
       }
       setStep('analisis')
     } else if (step === 'analisis') {
@@ -767,7 +767,7 @@ export function MedicionIluminacionEjecutorModal({
       // Las observaciones de seguimiento son opcionales, pero si hay alguna con
       // descripción debe tener categoría (categoría es obligatoria).
       const obsSinCat = observacionesSeguimiento.filter(o => o.descripcion.trim() && !o.categoria_id)
-      if (obsSinCat.length > 0) { setError('Toda observación de seguimiento requiere una categoría.'); return }
+      if (obsSinCat.length > 0) { setError('Toda observación de seguimiento requiere una categoría.'); requestAnimationFrame(() => document.getElementById('error-iluminacion')?.scrollIntoView({ behavior: 'smooth', block: 'center' })); return }
       setStep('revisar')
     }
   }
@@ -1192,7 +1192,7 @@ export function MedicionIluminacionEjecutorModal({
         </div>
 
         {error && (
-          <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-3 py-2">{error}</div>
+          <div id="error-iluminacion" className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-3 py-2">{error}</div>
         )}
 
         {/* ══ HOJA 1: DATOS ═══════════════════════════════════════════ */}

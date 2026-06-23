@@ -54,6 +54,7 @@ declare module 'lucide-react' {
   export const Download: Icon
   export const Droplets: Icon
   export const Dumbbell: Icon
+  export const Edit: Icon
   export const ExternalLink: Icon
   export const Eye: Icon
   export const EyeOff: Icon

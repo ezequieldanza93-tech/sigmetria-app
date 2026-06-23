@@ -100,3 +100,36 @@ export async function cerrarObservacion(
   if (error) return { success: false, error: error.message }
   return { success: true, data: null }
 }
+
+export async function actualizarFotoObservacion(
+  obsId: string,
+  registroId: string,
+  foto: File | null
+): Promise<ActionResult<{ foto_url: string | null }>> {
+  const { client: supabase } = await createAuditedClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'No autenticado' }
+
+  let fotoPath: string | null = null
+
+  if (foto && foto.size > 0) {
+    const consultoraId = await consultoraIdFromRegistroGestion(supabase, registroId)
+    if (!consultoraId) return { success: false, error: 'No se pudo resolver la consultora' }
+
+    const ext = foto.name.split('.').pop() ?? 'jpg'
+    const path = tenantStoragePath(consultoraId, 'observaciones-fotos', registroId, `${Date.now()}.${ext}`)
+    const { data: upload, error: uploadError } = await supabase.storage
+      .from('documentos')
+      .upload(path, foto, { upsert: false })
+    if (uploadError) return { success: false, error: 'Error al subir foto: ' + uploadError.message }
+    fotoPath = upload.path
+  }
+
+  const { error } = await supabase
+    .from('gestiones_observaciones')
+    .update({ foto_url: fotoPath })
+    .eq('id', obsId)
+
+  if (error) return { success: false, error: error.message }
+  return { success: true, data: { foto_url: fotoPath } }
+}

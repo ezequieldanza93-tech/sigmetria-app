@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { useSignedUrls } from '@/lib/storage/sign-client'
-import { cerrarObservacion, actualizarCategoriaObservacion } from '@/lib/actions/observacion-gestion'
+import { cerrarObservacion, actualizarCategoriaObservacion, actualizarFotoObservacion } from '@/lib/actions/observacion-gestion'
 import { addObservacionComentario, addObservacionFoto, marcarObservacionVista } from '@/lib/actions/observacion-comentarios'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
@@ -52,6 +52,10 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [confirmNoPhoto, setConfirmNoPhoto] = useState(false)
+
+  // Edición de foto principal de la observación
+  const [updatingFoto, setUpdatingFoto] = useState(false)
+  const [fotoPreview, setFotoPreview] = useState<string | null>(null)
 
   // Chat
   const [comentarios, setComentarios] = useState<ObservacionComentario[]>([])
@@ -184,6 +188,37 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
     setEvidenciaName(file.name)
   }
 
+  async function handleFotoObsCambiar(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !observacion) return
+    setUpdatingFoto(true)
+    setError(null)
+    const preview = URL.createObjectURL(file)
+    setFotoPreview(preview)
+    const result = await actualizarFotoObservacion(observacion.id, observacion.registro_gestion_id, file)
+    setUpdatingFoto(false)
+    if (result.success) {
+      onSuccess()
+    } else {
+      setError(result.error ?? 'Error al actualizar foto')
+      setFotoPreview(null)
+    }
+  }
+
+  async function handleFotoObsQuitar() {
+    if (!observacion) return
+    setUpdatingFoto(true)
+    setError(null)
+    setFotoPreview(null)
+    const result = await actualizarFotoObservacion(observacion.id, observacion.registro_gestion_id, null)
+    setUpdatingFoto(false)
+    if (result.success) {
+      onSuccess()
+    } else {
+      setError(result.error ?? 'Error al quitar foto')
+    }
+  }
+
   async function handleFotoClienteChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file || !observacion) return
@@ -302,10 +337,36 @@ export function CierreObservacionModal({ observacion, onClose, onSuccess, canWri
             <AuditHistorialLink tabla="gestiones_observaciones" id={obs.id} className="shrink-0" />
           </div>
           <p className="text-sm font-medium text-text-primary">{obs.descripcion}</p>
-          {obs.foto_url && getUrl(obs.foto_url) && (
-            <div className="relative mt-3 w-full aspect-[4/3] rounded-xl overflow-hidden border border-border-subtle">
-              <Image src={getUrl(obs.foto_url)!} alt="Foto de la observación" fill sizes="(max-width: 768px) 100vw, 600px" className="object-contain" />
+          {(obs.foto_url || fotoPreview) && (getUrl(obs.foto_url) || fotoPreview) && (
+            <div className="mt-3 space-y-1.5">
+              <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden border border-border-subtle">
+                <Image
+                  src={fotoPreview ?? getUrl(obs.foto_url)!}
+                  alt="Foto de la observación"
+                  fill
+                  sizes="(max-width: 768px) 100vw, 600px"
+                  className="object-contain"
+                />
+              </div>
+              {canWrite && !isCerrado && (
+                <div className="flex items-center gap-3">
+                  <label className={`cursor-pointer text-xs text-sig-600 hover:text-sig-700 font-medium ${updatingFoto ? 'opacity-50 pointer-events-none' : ''}`}>
+                    <input type="file" accept="image/*" className="hidden" onChange={handleFotoObsCambiar} disabled={updatingFoto} />
+                    {updatingFoto ? 'Actualizando…' : 'Cambiar foto'}
+                  </label>
+                  <button type="button" onClick={handleFotoObsQuitar} disabled={updatingFoto}
+                    className="text-xs text-danger hover:text-danger/80 disabled:opacity-50">
+                    Quitar foto
+                  </button>
+                </div>
+              )}
             </div>
+          )}
+          {!obs.foto_url && !fotoPreview && canWrite && !isCerrado && (
+            <label className="mt-2 cursor-pointer inline-flex items-center gap-1.5 text-xs text-sig-600 hover:text-sig-700 font-medium">
+              <input type="file" accept="image/*" className="hidden" onChange={handleFotoObsCambiar} disabled={updatingFoto} />
+              + Agregar foto
+            </label>
           )}
         </div>
 

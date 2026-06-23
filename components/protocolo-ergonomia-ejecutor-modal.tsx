@@ -773,6 +773,9 @@ export function ProtocoloErgonomiaEjecutorModal({
           setErrorGlobal(
             `Factor ${ft.factor} (${meta?.label ?? ''}) — Tarea ${ft.tarea_numero}: completá tiempo de exposición y nivel de riesgo.`
           )
+          requestAnimationFrame(() => {
+            document.getElementById('error-ergonomia')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          })
           return
         }
       }
@@ -1120,7 +1123,7 @@ export function ProtocoloErgonomiaEjecutorModal({
           )}
 
           {errorGlobal && (
-            <div className="flex items-center gap-2 p-3 bg-red-50 rounded-lg border border-red-200">
+            <div id="error-ergonomia" className="flex items-center gap-2 p-3 bg-red-50 rounded-lg border border-red-200">
               <AlertCircle size={14} className="text-red-600 shrink-0" />
               <p className="text-sm text-red-700">{errorGlobal}</p>
             </div>
@@ -1636,7 +1639,7 @@ export function ProtocoloErgonomiaEjecutorModal({
           </div>
 
           {errorGlobal && (
-            <div className="flex items-center gap-2 p-3 bg-red-50 rounded-lg border border-red-200">
+            <div id="error-ergonomia" className="flex items-center gap-2 p-3 bg-red-50 rounded-lg border border-red-200">
               <AlertCircle size={14} className="text-red-600 shrink-0" />
               <p className="text-sm text-red-700">{errorGlobal}</p>
             </div>
