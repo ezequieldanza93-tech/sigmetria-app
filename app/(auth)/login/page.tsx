@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useState, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { AlertCircle, Loader2, CheckCircle2, Eye, EyeOff } from 'lucide-react'
 import { DemoCredentials } from '@/components/demo-credentials'
@@ -12,6 +12,11 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showSignupPassword, setShowSignupPassword] = useState(false)
 
+  // Capturamos email+pass del signup para pre-cargar el login inmediatamente después.
+  const [signupEmail, setSignupEmail] = useState('')
+  const [signupPassword, setSignupPassword] = useState('')
+  const [prefill, setPrefill] = useState({ email: '', password: '', key: 0 })
+
   const [loginState, loginAction, loginPending] = useActionState<
     { error?: string } | undefined,
     FormData
@@ -21,6 +26,15 @@ export default function LoginPage() {
     { error?: string; success?: boolean } | undefined,
     FormData
   >(signup, undefined)
+
+  // Al crear cuenta con éxito → cambiar a login con email y contraseña pre-cargados.
+  useEffect(() => {
+    if (signupState?.success) {
+      setPrefill({ email: signupEmail, password: signupPassword, key: Date.now() })
+      setMode('login')
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signupState?.success])
 
   const pending = loginPending || signupPending
 
@@ -85,7 +99,7 @@ export default function LoginPage() {
 
           {mode === 'login' ? (
             <>
-              <form action={loginAction} className="space-y-5">
+              <form key={prefill.key} action={loginAction} className="space-y-5">
                 {loginState?.error && (
                   <div
                     role="alert"
@@ -93,6 +107,13 @@ export default function LoginPage() {
                   >
                     <AlertCircle className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
                     <span className="text-sm font-medium">{loginState.error}</span>
+                  </div>
+                )}
+
+                {prefill.email && (
+                  <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                    <CheckCircle2 size={15} className="shrink-0" />
+                    ¡Cuenta creada! Ya podés ingresar.
                   </div>
                 )}
 
@@ -106,6 +127,7 @@ export default function LoginPage() {
                     type="email"
                     required
                     autoComplete="email"
+                    defaultValue={prefill.email}
                     placeholder={t('emailPlaceholder')}
                     className="w-full bg-surface-base border border-border-default text-text-primary rounded-lg px-4 py-3 text-sm placeholder-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent transition-shadow"
                   />
@@ -122,6 +144,7 @@ export default function LoginPage() {
                       type={showPassword ? 'text' : 'password'}
                       required
                       autoComplete="current-password"
+                      defaultValue={prefill.password}
                       placeholder={t('passwordPlaceholder')}
                       className="w-full bg-surface-base border border-border-default text-text-primary rounded-lg px-4 py-3 pr-11 text-sm placeholder-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent transition-shadow"
                     />
@@ -168,24 +191,7 @@ export default function LoginPage() {
             </>
           ) : (
             <>
-              {signupState?.success ? (
-                <div className="text-center py-6 space-y-4">
-                  <div className="inline-flex items-center justify-center w-14 h-14 bg-green-100 dark:bg-green-950 rounded-full">
-                    <CheckCircle2 size={28} className="text-green-600 dark:text-green-400" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-text-primary">¡Cuenta creada!</h3>
-                  <p className="text-sm text-text-secondary">
-                    Tu cuenta está lista. Ya podés iniciar sesión con tu email y contraseña.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setMode('login')}
-                    className="text-sm font-medium text-white bg-brand-primary hover:bg-brand-hover px-4 py-2 rounded-lg transition-colors"
-                  >
-                    Iniciar sesión
-                  </button>
-                </div>
-              ) : (
+              {!signupState?.success && (
                 <form action={signupAction} className="space-y-5">
                   {signupState?.error && (
                     <div
@@ -197,19 +203,35 @@ export default function LoginPage() {
                     </div>
                   )}
 
-                  <div>
-                    <label htmlFor="full_name" className="block text-text-primary text-sm font-medium mb-2">
-                      Nombre completo
-                    </label>
-                    <input
-                      id="full_name"
-                      name="full_name"
-                      type="text"
-                      required
-                      autoComplete="name"
-                      placeholder="Juan Pérez"
-                      className="w-full bg-surface-base border border-border-default text-text-primary rounded-lg px-4 py-3 text-sm placeholder-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent transition-shadow"
-                    />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label htmlFor="apellido" className="block text-text-primary text-sm font-medium mb-2">
+                        Apellido
+                      </label>
+                      <input
+                        id="apellido"
+                        name="apellido"
+                        type="text"
+                        required
+                        autoComplete="family-name"
+                        placeholder="Pérez"
+                        className="w-full bg-surface-base border border-border-default text-text-primary rounded-lg px-4 py-3 text-sm placeholder-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent transition-shadow"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="nombre" className="block text-text-primary text-sm font-medium mb-2">
+                        Nombre
+                      </label>
+                      <input
+                        id="nombre"
+                        name="nombre"
+                        type="text"
+                        required
+                        autoComplete="given-name"
+                        placeholder="Juan"
+                        className="w-full bg-surface-base border border-border-default text-text-primary rounded-lg px-4 py-3 text-sm placeholder-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent transition-shadow"
+                      />
+                    </div>
                   </div>
 
                   <div>
@@ -223,6 +245,8 @@ export default function LoginPage() {
                       required
                       autoComplete="email"
                       placeholder="usuario@empresa.com"
+                      value={signupEmail}
+                      onChange={e => setSignupEmail(e.target.value)}
                       className="w-full bg-surface-base border border-border-default text-text-primary rounded-lg px-4 py-3 text-sm placeholder-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent transition-shadow"
                     />
                   </div>
@@ -240,6 +264,8 @@ export default function LoginPage() {
                         autoComplete="new-password"
                         minLength={8}
                         placeholder="Mínimo 8 caracteres"
+                        value={signupPassword}
+                        onChange={e => setSignupPassword(e.target.value)}
                         className="w-full bg-surface-base border border-border-default text-text-primary rounded-lg px-4 py-3 pr-11 text-sm placeholder-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent transition-shadow"
                       />
                       <button
