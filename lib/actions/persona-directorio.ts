@@ -65,6 +65,11 @@ export async function createPersonaDirectorio(
     .eq('is_active', true)
     .maybeSingle()
 
+  // tipo_id es NOT NULL en personas_directorio. Para la creación inline (sin
+  // formulario completo) usamos "Trabajadores" como tipo por defecto —
+  // puede editarse luego desde la ficha de la persona.
+  const TIPO_TRABAJADORES = '6b30e41f-404e-4772-ada1-19c33e1f8cd1'
+
   const { data, error } = await supabase
     .from('personas_directorio')
     .insert({
@@ -76,6 +81,7 @@ export async function createPersonaDirectorio(
       direccion,
       cargo,
       es_externa,
+      tipo_id: TIPO_TRABAJADORES,
       is_active: true,
       created_in_consultora_id: membership?.consultora_id || null,
     })

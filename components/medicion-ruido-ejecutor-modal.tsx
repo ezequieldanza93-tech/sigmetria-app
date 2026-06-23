@@ -1397,8 +1397,8 @@ export function MedicionRuidoEjecutorModal({
                   <input type="number" className={inputCls} value={punto.te_horas} onChange={e => updatePunto(punto.key, { te_horas: e.target.value })} placeholder="Ej: 8" />
                 </div>
                 <div>
-                  <label className={labelCls}>Tiempo de integración</label>
-                  <input type="text" className={inputCls} value={punto.tiempo_integracion} onChange={e => updatePunto(punto.key, { tiempo_integracion: e.target.value })} placeholder="Ej: 5 min" />
+                  <label className={labelCls}>Tiempo de integración (min)</label>
+                  <input type="number" min="1" step="1" className={inputCls} value={punto.tiempo_integracion} onChange={e => updatePunto(punto.key, { tiempo_integracion: e.target.value })} placeholder="Ej: 5" />
                 </div>
               </div>
 

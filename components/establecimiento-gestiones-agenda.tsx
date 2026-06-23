@@ -1309,14 +1309,26 @@ interface CategoriaObs {
   color: string
 }
 
+function pdfFilename(establecimiento: string | null | undefined, gestion: string | null | undefined, fechaEjecutada: string | null | undefined, responsable: string | null | undefined) {
+  const san = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w\s-]/g, '').trim()
+  const est = san(establecimiento ?? '')
+  const ges = san(gestion ?? '')
+  const fecha = (fechaEjecutada ?? '').substring(0, 10)
+  const iniciales = responsable ? responsable.split(' ').map(w => w[0]?.toUpperCase() ?? '').filter(Boolean).join('') : ''
+  const parts = [est && ges ? `${est} - ${ges}` : est || ges, fecha].filter(Boolean)
+  return ((parts.join(' ') + (iniciales ? `.${iniciales}` : '')) || 'protocolo') + '.pdf'
+}
+
 function EjecucionModal({
   registro,
   establecimientoId,
+  establecimientoNombre,
   onClose,
   onSuccess,
 }: {
   registro: FullRegistro
   establecimientoId: string
+  establecimientoNombre?: string
   onClose: () => void
   onSuccess: () => void
 }) {
@@ -1442,7 +1454,7 @@ function EjecucionModal({
             const url = URL.createObjectURL(blob)
             const a = document.createElement('a')
             a.href = url
-            a.download = `${registro.ge_gestion_nombre ?? 'gestion'}.pdf`
+            a.download = pdfFilename(establecimientoNombre, registro.ge_gestion_nombre, registro.fecha_ejecutada, registro.responsable_nombre)
             document.body.appendChild(a)
             a.click()
             document.body.removeChild(a)
@@ -1617,6 +1629,7 @@ function EjecucionModal({
               Sin observaciones. Hacé clic en &quot;+ Agregar&quot; para registrar una.
             </p>
           ) : (
+            <>
             <div className="space-y-2">
               {observaciones.map((obs, idx) => (
                 <div key={obs.key} className="border border-border-subtle rounded-lg p-3 space-y-2 bg-gray-50/50">
@@ -1691,6 +1704,14 @@ function EjecucionModal({
                 </div>
               ))}
             </div>
+            <button
+              type="button"
+              onClick={addObs}
+              className="mt-2 text-xs text-sig-600 hover:text-sig-700 font-medium flex items-center gap-1"
+            >
+              + Agregar observación
+            </button>
+            </>
           )}
         </div>
 
@@ -1732,6 +1753,7 @@ function AgendaActionsCell({
   onLoadEvidence,
   onToggleLegajo,
   onEjecutarCapacitacion,
+  establecimientoNombre,
 }: {
   registro: FullRegistro
   canWrite: boolean
@@ -1752,6 +1774,7 @@ function AgendaActionsCell({
   onToggleLegajo: () => void | Promise<void>
   /** Solo para gestiones de categoría Capacitaciones: abre el flujo de capacitación LMS. */
   onEjecutarCapacitacion?: () => void
+  establecimientoNombre?: string
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
@@ -1781,7 +1804,7 @@ function AgendaActionsCell({
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
-        a.download = `${r.ge_gestion_nombre ?? 'protocolo'}.pdf`
+        a.download = pdfFilename(establecimientoNombre, r.ge_gestion_nombre, r.fecha_ejecutada, r.responsable_nombre)
         document.body.appendChild(a)
         a.click()
         document.body.removeChild(a)
@@ -2895,6 +2918,7 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
               registro={r}
               canWrite={canWrite}
               esBorrador={borradorSet.has(r.id)}
+              establecimientoNombre={establecimientoNombre}
               onExecuteForm={() => setExecutingFormulario(r)}
               onExecuteReporte={() => setExecutingReporte(r)}
               onExecuteMedicionCargaTermica={() => setExecutingMedicionCargaTermica(r)}
@@ -3505,6 +3529,7 @@ export function GestionesAgenda({ establecimientoId, empresaId, canWrite: canWri
         <EjecucionModal
           registro={editingRegistro}
           establecimientoId={establecimientoId}
+          establecimientoNombre={establecimientoNombre}
           onClose={() => setEditingRegistro(null)}
           onSuccess={() => { setEditingRegistro(null); queryClient.invalidateQueries({ queryKey: ['gestiones-establecimiento', establecimientoId, year] }); queryClient.invalidateQueries({ queryKey: ['registros-gestion'] }) }}
         />
