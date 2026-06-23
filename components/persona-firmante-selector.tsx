@@ -74,6 +74,18 @@ export function PersonaFirmanteSelector({
     }
   }, [isLoading, ejecutores, miPersonaId, value, onChange])
 
+  // Re-hidratación de borrador: cuando el `value` viene pre-cargado (el padre tiene el
+  // persona_id guardado pero NO el nombre/apellido/DNI), al resolver la persona en la
+  // lista re-emitimos el contrato COMPLETO una sola vez por id. Sin esto, el DNI queda
+  // vacío y la firma a mano no se registra al finalizar un borrador re-abierto.
+  const syncedValueId = useRef<string | null>(null)
+  useEffect(() => {
+    if (!value || !selected) return
+    if (syncedValueId.current === selected.id) return
+    syncedValueId.current = selected.id
+    onChange({ id: selected.id, nombre: selected.nombre, apellido: selected.apellido, dni: selected.dni })
+  }, [value, selected, onChange])
+
   // Click-outside.
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
