@@ -97,7 +97,13 @@ export async function middleware(request: NextRequest) {
           .eq('is_active', true)
           .maybeSingle()
 
-        if (member && ['full_access_main', 'responsable_estandares', 'auditor_externo', 'trabajador'].includes(member.role)) {
+        // El MFA del trabajador está CONFIGURADO por email, pero queda BYPASSEADO por
+        // defecto hasta que Resend esté pago y enviando mails (si no, el trabajador no
+        // recibiría el código y quedaría afuera). Para activarlo: setear en Vercel la
+        // env var TRABAJADOR_MFA_ENABLED=true y redeploy. No hace falta tocar código.
+        const mfaRoles = ['full_access_main', 'responsable_estandares', 'auditor_externo']
+        if (process.env.TRABAJADOR_MFA_ENABLED === 'true') mfaRoles.push('trabajador')
+        if (member && mfaRoles.includes(member.role)) {
           return NextResponse.redirect(new URL('/mfa/verify', request.url))
         }
       } catch {
