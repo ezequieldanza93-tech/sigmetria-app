@@ -209,6 +209,7 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
   const [semana, setSemana] = useState<Record<number, DiaConfig>>(HORARIO_DEFAULT)
   const formRef = useRef<HTMLFormElement>(null)
   const submitIntentRef = useRef(false)
+  const codigoPostalRef = useRef<HTMLInputElement>(null)
   const [tick, setTick] = useState(0)
   const [currentSection, setCurrentSection] = useState<SectionId>(1)
 
@@ -466,6 +467,7 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
           defaultLon={establecimiento?.longitud ?? null}
           nearLat={establecimiento?.latitud != null ? Number(establecimiento.latitud) : null}
           nearLon={establecimiento?.longitud != null ? Number(establecimiento.longitud) : null}
+          onPostcode={cp => { if (codigoPostalRef.current && !codigoPostalRef.current.value) codigoPostalRef.current.value = cp }}
           placeholder="Av. Corrientes 1234, Buenos Aires"
         />
 
@@ -495,6 +497,7 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
         </div>
 
         <Input
+          ref={codigoPostalRef}
           label="Código Postal"
           name="codigo_postal"
           defaultValue={establecimiento?.codigo_postal ?? ''}

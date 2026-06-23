@@ -212,6 +212,7 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
         defaultLon={empresa?.longitude ?? null}
         nearLat={empresa?.latitude != null ? Number(empresa.latitude) : null}
         nearLon={empresa?.longitude != null ? Number(empresa.longitude) : null}
+        onPostcode={cp => setForm(f => ({ ...f, codigo_postal: f.codigo_postal || cp }))}
         placeholder="Av. Corrientes 1234, Buenos Aires"
       />
 

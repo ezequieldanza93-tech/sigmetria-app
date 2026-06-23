@@ -31,6 +31,11 @@ interface Props {
   /** Punto de referencia para ordenar sugerencias por proximidad. */
   nearLat?: number | null
   nearLon?: number | null
+  /**
+   * Se llama con el código postal si Nominatim lo devuelve al elegir una
+   * sugerencia. Útil para autocompletar el campo Código Postal.
+   */
+  onPostcode?: (cp: string) => void
   helpText?: string
 }
 
@@ -47,6 +52,7 @@ export function DireccionAutocomplete({
   defaultLon = null,
   nearLat,
   nearLon,
+  onPostcode,
   helpText,
 }: Props) {
   const [query, setQuery] = useState(defaultValue)
@@ -85,6 +91,7 @@ export function DireccionAutocomplete({
     setQuery(s.label)
     setLat(s.lat)
     setLon(s.lon)
+    if (s.postcode && onPostcode) onPostcode(s.postcode)
     setSugerencias([])
     setOpen(false)
   }

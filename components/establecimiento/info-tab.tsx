@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useActionState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import {
   MapPin, Building2, Users, Clock, FileText,
   CheckCircle2, XCircle, ExternalLink, Upload, Trash2, Pencil,
@@ -30,6 +31,8 @@ export function InfoTab({ establecimiento, canWrite, empresaId }: Props) {
   const [planoUrl, setPlanoUrl] = useState(establecimiento.plano_url)
   // Bucket privado `planos`: firmamos la URL del plano en el cliente.
   const { getUrl: getPlanoUrl } = useSignedUrls('planos', [planoUrl])
+  // Bucket privado `establecimientos`: firmamos la URL de la foto del lugar.
+  const { getUrl: getFotoUrl } = useSignedUrls('establecimientos', [establecimiento.photo_site])
 
   const uploadAction = uploadPlanoEstablecimiento.bind(null, establecimiento.id)
   const deleteAction = deletePlanoEstablecimiento.bind(null, establecimiento.id)
@@ -63,6 +66,21 @@ export function InfoTab({ establecimiento, canWrite, empresaId }: Props) {
 
   return (
     <div className="space-y-5">
+
+      {/* Foto del establecimiento */}
+      {establecimiento.photo_site && getFotoUrl(establecimiento.photo_site) && (
+        <section className="bg-surface-base border border-border-subtle rounded-xl overflow-hidden">
+          <div className="relative w-full h-52 sm:h-64">
+            <Image
+              src={getFotoUrl(establecimiento.photo_site)!}
+              alt={`Foto de ${establecimiento.nombre}`}
+              fill
+              className="object-cover"
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 800px"
+            />
+          </div>
+        </section>
+      )}
 
       {/* Hero: mapa · clima + hora local */}
       {hasLocation && (

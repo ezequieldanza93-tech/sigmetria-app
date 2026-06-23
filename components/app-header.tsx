@@ -193,12 +193,6 @@ export function AppHeader({
           >
             SIGMETRÍA <span className="text-text-tertiary font-normal">HyS</span>
           </span>
-          <Home
-            size={15}
-            strokeWidth={1.75}
-            className="hidden sm:inline text-text-tertiary group-hover:text-brand-primary transition-colors"
-            aria-hidden="true"
-          />
         </Link>
 
         {/* Breadcrumb + address */}

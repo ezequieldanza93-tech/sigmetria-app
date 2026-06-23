@@ -12,6 +12,8 @@ export interface SugerenciaDireccion {
   label: string // texto legible para mostrar / guardar como domicilio
   lat: number
   lon: number
+  /** Código postal si Nominatim lo devuelve (no siempre disponible). */
+  postcode?: string
 }
 
 function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -34,7 +36,7 @@ export async function buscarDirecciones(
 
   try {
     const url =
-      `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&addressdetails=0` +
+      `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&addressdetails=1` +
       `&countrycodes=ar&q=${encodeURIComponent(trimmed)}`
     const res = await fetch(url, {
       headers: { 'User-Agent': 'Sigmetria-HyS/1.0' },
@@ -42,7 +44,12 @@ export async function buscarDirecciones(
     })
     if (!res.ok) return []
 
-    const data = (await res.json()) as { display_name?: string; lat?: string; lon?: string }[]
+    const data = (await res.json()) as {
+      display_name?: string
+      lat?: string
+      lon?: string
+      address?: { postcode?: string }
+    }[]
     if (!Array.isArray(data)) return []
 
     const results = data
@@ -50,6 +57,7 @@ export async function buscarDirecciones(
         label: (d.display_name ?? '').trim(),
         lat: parseFloat(d.lat ?? ''),
         lon: parseFloat(d.lon ?? ''),
+        postcode: d.address?.postcode?.trim() || undefined,
       }))
       .filter((d) => d.label && !Number.isNaN(d.lat) && !Number.isNaN(d.lon))
 
