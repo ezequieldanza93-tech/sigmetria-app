@@ -1018,6 +1018,7 @@ export interface Matricula {
   persona_id: string
   numero: string
   organismo_emisor_id: string | null
+  colegio_profesional_id: string | null
   fecha_emision: string
   fecha_vencimiento: string
   certificado_url: string | null
@@ -1025,6 +1026,7 @@ export interface Matricula {
   created_at: string
   personas_directorio?: { nombre: string; apellido: string } | null
   organizaciones_externas?: { nombre: string } | null
+  colegios_profesionales?: { sigla: string; nombre: string; provincia: string } | null
 }
 
 export interface CertificadoCalibracion {

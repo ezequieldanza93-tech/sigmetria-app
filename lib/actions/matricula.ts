@@ -45,6 +45,7 @@ export async function createMatricula(
       persona_id: personaId,
       numero,
       organismo_emisor_id: (formData.get('organismo_emisor_id') as string) || null,
+      colegio_profesional_id: (formData.get('colegio_profesional_id') as string) || null,
       fecha_emision: fechaEmision,
       fecha_vencimiento: fechaVencimiento,
       activa: true,

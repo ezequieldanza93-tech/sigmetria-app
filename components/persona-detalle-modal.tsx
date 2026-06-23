@@ -334,6 +334,18 @@ function MatriculaForm({ personaId, onSuccess }: { personaId: string; onSuccess:
   onSuccessRef.current = onSuccess
   useEffect(() => { if (state?.success) onSuccessRef.current() }, [state])
 
+  const [colegios, setColegios] = useState<{ id: string; sigla: string; nombre: string; provincia: string }[]>([])
+  useEffect(() => {
+    const supabase = createClient()
+    supabase
+      .from('colegios_profesionales')
+      .select('id, sigla, nombre, provincia')
+      .eq('is_active', true)
+      .order('provincia')
+      .order('sigla')
+      .then(({ data }) => setColegios(data ?? []))
+  }, [])
+
   return (
     <form action={formAction} className="space-y-3 bg-surface-base rounded-lg p-3 mt-3 border border-border-subtle">
       <input type="hidden" name="persona_id" value={personaId} />
@@ -352,6 +364,17 @@ function MatriculaForm({ personaId, onSuccess }: { personaId: string; onSuccess:
           <input name="fecha_vencimiento" type="date" required className="w-full border border-border-default rounded px-2 py-1.5 text-sm" />
         </div>
       </div>
+      {colegios.length > 0 && (
+        <div>
+          <label className="text-xs font-medium text-text-secondary block mb-1">Colegio / consejo profesional</label>
+          <select name="colegio_profesional_id" className="w-full border border-border-default rounded px-2 py-1.5 text-sm bg-surface-base text-text-primary">
+            <option value="">Sin especificar</option>
+            {colegios.map(c => (
+              <option key={c.id} value={c.id}>{c.sigla} — {c.provincia}</option>
+            ))}
+          </select>
+        </div>
+      )}
       <FileUploadInput
         name="certificado"
         label="Certificado / constancia"
@@ -406,7 +429,7 @@ export function PersonaDetalleModal({ persona, open, onClose, canWrite }: Person
     if (tab === 'matriculas' && matriculas === null) {
       supabase
         .from('matriculas')
-        .select('*, organizaciones_externas(nombre)')
+        .select('*, organizaciones_externas(nombre), colegios_profesionales(sigla, nombre, provincia)')
         .eq('persona_id', persona.id)
         .order('fecha_emision', { ascending: false })
         .then(({ data }) => setMatriculas((data as unknown as Matricula[]) ?? []))
@@ -417,7 +440,7 @@ export function PersonaDetalleModal({ persona, open, onClose, canWrite }: Person
     const supabase = createClient()
     supabase
       .from('matriculas')
-      .select('*, organizaciones_externas(nombre)')
+      .select('*, organizaciones_externas(nombre), colegios_profesionales(sigla, nombre, provincia)')
       .eq('persona_id', persona.id)
       .order('fecha_emision', { ascending: false })
       .then(({ data }) => setMatriculas((data as unknown as Matricula[]) ?? []))
@@ -574,7 +597,10 @@ export function PersonaDetalleModal({ persona, open, onClose, canWrite }: Person
                           <p className="font-medium text-text-primary">Nº {m.numero}</p>
                           <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${statusClass}`}>{statusLabel}</span>
                         </div>
-                        {m.organizaciones_externas && (
+                        {m.colegios_profesionales && (
+                          <p className="text-xs text-text-tertiary mt-0.5">{m.colegios_profesionales.sigla} — {m.colegios_profesionales.provincia}</p>
+                        )}
+                        {!m.colegios_profesionales && m.organizaciones_externas && (
                           <p className="text-xs text-text-tertiary mt-0.5">{m.organizaciones_externas.nombre}</p>
                         )}
                         <p className="text-xs text-text-tertiary">
