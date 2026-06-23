@@ -208,6 +208,27 @@ export async function createEmpresa(_prev: EmpresaFormState | null, formData: Fo
 
   if (error) return { success: false, error: error.message, fields }
 
+  // Si el usuario pidió crear una ART nueva durante el alta, crearla ahora que
+  // ya tenemos el empresaId y enlazarla al registro.
+  const newArtNombre = (formData.get('new_art_nombre') as string)?.trim()
+  if (newArtNombre && !fields.art_id) {
+    const { data: tipoArt } = await supabase
+      .from('organizaciones_tipos')
+      .select('id')
+      .eq('nombre', 'ART')
+      .maybeSingle()
+    if (tipoArt) {
+      const { data: newArt } = await supabase
+        .from('organizaciones_externas')
+        .insert({ nombre: newArtNombre, tipo_id: tipoArt.id, scope: 'empresa', empresa_id: empresaId, is_active: true })
+        .select('id')
+        .single()
+      if (newArt) {
+        await supabase.from('empresas').update({ art_id: newArt.id }).eq('id', empresaId)
+      }
+    }
+  }
+
   const logos = await processLogoUploads(
     membership!.consultora_id,
     empresaId,

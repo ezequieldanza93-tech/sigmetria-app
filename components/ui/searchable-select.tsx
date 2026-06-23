@@ -210,7 +210,7 @@ export function SearchableSelect({
         </button>
 
         {open && (
-          <div className="absolute top-full mt-1 left-0 right-0 z-50 bg-surface-base border border-border-default rounded-xl shadow-xl overflow-hidden">
+          <div className="absolute top-full mt-1 left-0 min-w-full w-max max-w-[min(32rem,90vw)] z-50 bg-surface-base border border-border-default rounded-xl shadow-xl overflow-hidden">
             <div className="flex items-center gap-2 px-3 py-2 border-b border-border-subtle">
               <Search className="w-4 h-4 text-text-tertiary shrink-0" />
               <input
@@ -251,6 +251,7 @@ export function SearchableSelect({
                       id={listboxId ? `${listboxId}-opt-${idx}` : undefined}
                       role="option"
                       aria-selected={isSelected}
+                      title={opt.label}
                       onMouseEnter={() => setActiveIndex(idx)}
                       onClick={() => selectOption(opt)}
                       className={cn(
@@ -258,7 +259,7 @@ export function SearchableSelect({
                         isActive && 'bg-surface-sunken',
                       )}
                     >
-                      <span className="flex-1 truncate">{opt.label}</span>
+                      <span className="flex-1 break-words">{opt.label}</span>
                       {isSelected && <Check className="w-4 h-4 text-brand-primary shrink-0" />}
                     </li>
                   )

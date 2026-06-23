@@ -38,6 +38,7 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
   const [selectedProvincia, setSelectedProvincia] = useState(empresa?.localidades?.provincia ?? '')
   const [showAddArt, setShowAddArt] = useState(false)
   const [newArtName, setNewArtName] = useState('')
+  const [newArtPreview, setNewArtPreview] = useState<string | null>(null)
   const [addArtPending, setAddArtPending] = useState(false)
   const [addArtError, setAddArtError] = useState('')
 
@@ -117,18 +118,22 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
   const localidadesFiltradas = localidades.filter(l => l.provincia === selectedProvincia)
 
   async function handleAddArt() {
-    if (!empresa?.id || !newArtName.trim()) return
-    setAddArtPending(true)
-    setAddArtError('')
-    const result = await createPrivateArt(empresa.id, newArtName)
-    setAddArtPending(false)
-    if (!result.success) {
-      setAddArtError(result.error ?? 'Error al crear la ART')
-      return
+    if (!newArtName.trim()) return
+    if (empresa?.id) {
+      setAddArtPending(true)
+      setAddArtError('')
+      const result = await createPrivateArt(empresa.id, newArtName)
+      setAddArtPending(false)
+      if (!result.success) {
+        setAddArtError(result.error ?? 'Error al crear la ART')
+        return
+      }
+      const newArt = result.data as { id: string; nombre: string }
+      setArtOrgs(prev => [...prev, newArt].sort((a, b) => a.nombre.localeCompare(b.nombre)))
+      setForm(f => ({ ...f, art_id: newArt.id }))
+    } else {
+      setNewArtPreview(newArtName.trim())
     }
-    const newArt = result.data as { id: string; nombre: string }
-    setArtOrgs(prev => [...prev, newArt].sort((a, b) => a.nombre.localeCompare(b.nombre)))
-    setForm(f => ({ ...f, art_id: newArt.id }))
     setNewArtName('')
     setShowAddArt(false)
   }
@@ -242,7 +247,7 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
             placeholder="Seleccionar ART..."
             {...fb('art_id')}
           />
-          {empresa?.id && !showAddArt && (
+          {!showAddArt && !newArtPreview && (
             <button
               type="button"
               onClick={() => setShowAddArt(true)}
@@ -250,6 +255,19 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
             >
               + No encontrás tu ART? Agregar nueva
             </button>
+          )}
+          {newArtPreview && !empresa?.id && (
+            <div className="mt-2 flex items-center gap-2 px-3 py-2 bg-sig-50 border border-sig-200 rounded-lg">
+              <span className="text-xs text-sig-700 flex-1">Nueva ART: <strong>{newArtPreview}</strong></span>
+              <button
+                type="button"
+                onClick={() => setNewArtPreview(null)}
+                className="text-xs text-text-tertiary hover:text-danger transition-colors"
+              >
+                ✕
+              </button>
+              <input type="hidden" name="new_art_nombre" value={newArtPreview} />
+            </div>
           )}
           {showAddArt && (
             <div className="mt-2 space-y-2">
