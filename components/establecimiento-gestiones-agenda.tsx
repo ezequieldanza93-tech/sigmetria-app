@@ -19,7 +19,7 @@ import {
   ClipboardList, UserPlus, Dumbbell, Kanban, HelpCircle,
   Play, Upload, Download, BookMarked, Eye, RefreshCw,
   ChevronUp, ChevronDown, Columns, CalendarDays, List, X, Thermometer, Flame, Zap, Volume2, Lightbulb,
-  Activity,
+  Activity, FileSignature,
 } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { createPortal } from 'react-dom'
@@ -39,6 +39,8 @@ import { emitirEvidenciaCargaFuego } from '@/lib/actions/emitir-evidencia-carga-
 import { PersonaSelector } from '@/components/persona-selector'
 import { PersonaSelectorConAlta } from '@/components/persona-selector-con-alta'
 import { AuditHistorialLink } from '@/components/auditoria/audit-historial-link'
+import { useFirmasEntidad } from '@/lib/queries/firmas'
+import { FirmaTrabajadorModal } from '@/components/firmas/firma-trabajador-modal'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 
 
@@ -1344,9 +1346,11 @@ function EjecucionModal({
   const [categorias, setCategorias] = useState<CategoriaObs[]>([])
   const [observaciones, setObservaciones] = useState<ObsDraft[]>([])
   const [autoDownload, setAutoDownload] = useState(true)
+  const [showFirmaModal, setShowFirmaModal] = useState(false)
   const obsKeyRef = useRef(0)
   // Bucket privado `documentos`: firmamos la evidencia actual para el link "Ver".
   const { getUrl } = useSignedUrls('documentos', [registro.evidencia_url])
+  const { data: firmas = [], refetch: refetchFirmas } = useFirmasEntidad('gestion', registro.gestion_establecimiento_id)
 
   const inputCls = 'w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500'
 
@@ -1715,8 +1719,40 @@ function EjecucionModal({
           )}
         </div>
 
+        {/* Firma obligatoria — debe capturarse antes de poder finalizar */}
+        <div className="border border-border-default rounded-lg p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-text-secondary flex items-center gap-1.5">
+              <FileSignature size={15} />
+              Firma del trabajador
+              {firmas.length === 0 && (
+                <span className="text-xs text-danger font-normal ml-1">(requerida para finalizar)</span>
+              )}
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowFirmaModal(true)}
+              className="text-xs text-sig-600 hover:text-sig-700 font-medium flex items-center gap-1"
+            >
+              + Capturar firma
+            </button>
+          </div>
+          {firmas.length > 0 ? (
+            <div className="space-y-1">
+              {firmas.map(f => (
+                <div key={f.id} className="text-xs text-text-secondary flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-success shrink-0" />
+                  {f.nombre_completo} · {new Date(f.created_at).toLocaleDateString('es-AR')}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-text-tertiary">Sin firma registrada.</p>
+          )}
+        </div>
+
         <div className="flex flex-wrap gap-3 pt-1">
-          <Button type="button" onClick={handleFinalizar} disabled={isPending}>
+          <Button type="button" onClick={handleFinalizar} disabled={isPending || firmas.length === 0}>
             {isPending ? 'Guardando…' : 'Finalizar y guardar'}
           </Button>
           <Button type="button" variant="secondary" onClick={handleSaveAndContinue} disabled={isPending}>
@@ -1727,6 +1763,16 @@ function EjecucionModal({
           </Button>
         </div>
       </form>
+
+      <FirmaTrabajadorModal
+        open={showFirmaModal}
+        onClose={() => setShowFirmaModal(false)}
+        entidadTipo="gestion"
+        entidadId={registro.gestion_establecimiento_id}
+        entidadNombre={registro.ge_gestion_nombre ?? 'Gestión'}
+        establecimientoId={establecimientoId}
+        onSuccess={() => { setShowFirmaModal(false); refetchFirmas() }}
+      />
     </Modal>
   )
 }

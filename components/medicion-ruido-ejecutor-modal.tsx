@@ -1225,7 +1225,10 @@ export function MedicionRuidoEjecutorModal({
                   <label className={labelCls}>Hora inicio</label>
                   <input type="time" className={inputCls} value={horaInicio} onChange={e => setHoraInicio(e.target.value)} />
                 </div>
-                {/* La hora de finalización se carga en la última hoja (revisión): más cómodo para el ejecutor. */}
+                <div>
+                  <label className={labelCls}>Hora de fin (opcional)</label>
+                  <input type="time" className={inputCls} value={horaFin} onChange={e => setHoraFin(e.target.value)} />
+                </div>
                 <div>
                   <label className={labelCls}>Jornada (horas)</label>
                   <input type="number" className={inputCls} value={jornadaHoras} onChange={e => setJornadaHoras(e.target.value)} placeholder="Ej: 8" />
