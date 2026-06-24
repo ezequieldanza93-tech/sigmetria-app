@@ -325,6 +325,21 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
             empresaId={empresaId}
             documentTypes={documentTypes}
             canWrite={userCanWrite}
+            snapshotMeta={(() => {
+              const loc = establecimiento.localidades as
+                | { nombre: string | null; provincia: string | null }
+                | { nombre: string | null; provincia: string | null }[]
+                | null
+              const locRow = Array.isArray(loc) ? loc[0] ?? null : loc
+              return {
+                id: estId,
+                nombre: establecimiento.nombre,
+                domicilio: establecimiento.domicilio ?? null,
+                localidad: locRow?.nombre ?? null,
+                provincia: locRow?.provincia ?? null,
+                empresaRazonSocial: empresa.razon_social ?? null,
+              }
+            })()}
           />
         </div>
       )}

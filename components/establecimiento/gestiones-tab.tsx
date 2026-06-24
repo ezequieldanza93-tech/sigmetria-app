@@ -9,6 +9,10 @@ import { getGestionesPresentacionAplicables } from '@/lib/actions/aplicabilidad-
 import { createRegistroGestion, ejecutarGestion } from '@/lib/actions/registro-gestion'
 import { createObservacionGestion, cerrarObservacion } from '@/lib/actions/observacion-gestion'
 import { calcularEstadoGestion } from '@/lib/types'
+import { useOfflineSync } from '@/lib/hooks/use-offline-sync'
+import { enqueueMutation } from '@/lib/offline/queue'
+import { compressImage } from '@/lib/offline/compress-image'
+import { WifiOff } from 'lucide-react'
 import type {
   GestionEstablecimiento,
   Gestion,
@@ -149,18 +153,22 @@ function RegistroGestionForm({
 
 function ObservacionForm({
   registroGestionId,
+  establecimientoId,
   personas,
   onSuccess,
 }: {
   registroGestionId: string
+  establecimientoId: string
   personas: { id: string; nombre: string; apellido: string }[]
   onSuccess: () => void
 }) {
-  const [state, formAction, pending] = useActionState(createObservacionGestion, null)
+  const { isOnline, supported, syncNow } = useOfflineSync()
   const [categorias, setCategorias] = useState<{ id: string; nombre: string; nivel: number }[]>([])
+  const [pending, setPending] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const formRef = useRef<HTMLFormElement>(null)
   const onSuccessRef = useRef(onSuccess)
   onSuccessRef.current = onSuccess
-  useEffect(() => { if (state?.success) onSuccessRef.current() }, [state])
 
   useEffect(() => {
     createClient().from('observaciones_categorias').select('id, nombre, nivel').order('nivel').then(({ data }) => {
@@ -168,10 +176,72 @@ function ObservacionForm({
     })
   }, [])
 
+  // Encolamos SIEMPRE (cero pérdida de datos): la observación se persiste en
+  // IndexedDB con su op_id antes de tocar la red. Si hay señal, drenamos la cola
+  // de inmediato; si no, queda pendiente y se sincroniza al reconectar. El op_id
+  // (unique parcial en gestiones_observaciones) evita duplicados en el replay.
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setError(null)
+    const fd = new FormData(e.currentTarget)
+    const descripcion = (fd.get('descripcion') as string)?.trim()
+    const categoriaId = (fd.get('categoria_id') as string)?.trim()
+    const fechaPlanificada = fd.get('fecha_planificada') as string
+    const responsableCierreId = (fd.get('responsable_cierre_id') as string) || null
+    const fotoFile = fd.get('foto') as File | null
+
+    if (!descripcion) { setError('Descripción requerida'); return }
+    if (!categoriaId) { setError('Categoría requerida'); return }
+    if (!fechaPlanificada) { setError('Fecha límite requerida'); return }
+
+    setPending(true)
+    try {
+      // Si el entorno no soporta offline (sin IndexedDB), camino online directo.
+      if (!supported) {
+        const res = await createObservacionGestion(null, fd)
+        if (!res.success) { setError(res.error); setPending(false); return }
+        formRef.current?.reset()
+        onSuccessRef.current()
+        return
+      }
+
+      const photo =
+        fotoFile && fotoFile.size > 0 ? await compressImage(fotoFile) : null
+
+      await enqueueMutation({
+        kind: 'observacion-create',
+        label: `Observación: ${descripcion.slice(0, 40)}`,
+        establecimientoId,
+        payload: {
+          registroGestionId,
+          descripcion,
+          fechaPlanificada,
+          categoriaId,
+          responsableCierreId,
+        },
+        photo,
+      })
+
+      formRef.current?.reset()
+      // Online → intentar sincronizar ya. Offline → queda en cola (indicador lo muestra).
+      if (isOnline) void syncNow()
+      onSuccessRef.current()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo guardar la observación')
+    } finally {
+      setPending(false)
+    }
+  }
+
   return (
-    <form action={formAction} className="bg-surface-base border border-border-subtle rounded-lg p-3 mt-2 space-y-2">
-      <input type="hidden" name="registro_gestion_id" value={registroGestionId} />
-      {state && !state.success && <p className="text-xs text-danger">{state.error}</p>}
+    <form ref={formRef} onSubmit={handleSubmit} className="bg-surface-base border border-border-subtle rounded-lg p-3 mt-2 space-y-2">
+      {error && <p className="text-xs text-danger">{error}</p>}
+      {!isOnline && (
+        <p className="flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-300">
+          <WifiOff size={13} aria-hidden="true" />
+          Sin conexión: se guardará y se sincronizará al volver la señal.
+        </p>
+      )}
       <div>
         <label className="text-xs font-medium text-text-secondary block mb-1">
           Categoría <span className="text-danger">*</span>
@@ -200,6 +270,16 @@ function ObservacionForm({
           </select>
         </div>
       </div>
+      <div>
+        <label className="text-xs font-medium text-text-secondary block mb-1">Foto de evidencia</label>
+        <input
+          name="foto"
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="w-full text-xs text-text-secondary file:mr-2 file:rounded file:border-0 file:bg-sig-50 file:px-2 file:py-1 file:text-xs file:font-medium file:text-sig-700"
+        />
+      </div>
       <div className="flex justify-end">
         <Button type="submit" size="sm" disabled={pending}>{pending ? 'Guardando…' : 'Guardar observación'}</Button>
       </div>
@@ -214,6 +294,7 @@ interface GestionesTabProps {
 
 export function GestionesTab({ establecimientoId, canWrite }: GestionesTabProps) {
   type PHVASection = 'planificar' | 'hacer' | 'verificar' | 'actuar'
+  const { isOnline, supported: offlineSupported, syncNow } = useOfflineSync()
   const [activeSection, setActiveSection] = useState<PHVASection>('planificar')
   const [gestionesEstablecimiento, setGestionesEstablecimiento] = useState<GestionEstablecimiento[] | null>(null)
   const [todasGestiones, setTodasGestiones] = useState<Gestion[]>([])
@@ -484,12 +565,39 @@ export function GestionesTab({ establecimientoId, canWrite }: GestionesTabProps)
                               <button
                                 onClick={async () => {
                                   const hoy = new Date().toISOString().split('T')[0]
-                                  const fd = new FormData()
-                                  fd.set('registro_id', r.id)
-                                  fd.set('fecha_ejecutada', hoy)
-                                  if (r.notas) fd.set('notas', r.notas)
-                                  await ejecutarGestion(null, fd)
-                                  loadRegistros(gestionesEstablecimiento?.map(ge => ge.id) ?? []).then(setRegistros)
+                                  // Sin soporte offline → camino online directo (como antes).
+                                  if (!offlineSupported) {
+                                    const fd = new FormData()
+                                    fd.set('registro_id', r.id)
+                                    fd.set('fecha_ejecutada', hoy)
+                                    if (r.notas) fd.set('notas', r.notas)
+                                    await ejecutarGestion(null, fd)
+                                    loadRegistros(gestionesEstablecimiento?.map(ge => ge.id) ?? []).then(setRegistros)
+                                    return
+                                  }
+                                  // Encolar SIEMPRE (cero pérdida). El UPDATE es idempotente
+                                  // (op_id de traza); si hay señal, drenamos ya.
+                                  await enqueueMutation({
+                                    kind: 'gestion-ejecutar',
+                                    label: `Ejecutar: ${ge?.gestiones?.nombre ?? 'gestión'}`,
+                                    establecimientoId,
+                                    payload: {
+                                      registroId: r.id,
+                                      fechaEjecutada: hoy,
+                                      notas: r.notas ?? null,
+                                      responsableId: null,
+                                    },
+                                  })
+                                  if (isOnline) {
+                                    await syncNow()
+                                    loadRegistros(gestionesEstablecimiento?.map(ge => ge.id) ?? []).then(setRegistros)
+                                  } else {
+                                    // Offline: reflejar la ejecución localmente (optimista) para
+                                    // que salga de la lista de pendientes hasta sincronizar.
+                                    setRegistros(prev =>
+                                      prev ? prev.map(x => (x.id === r.id ? { ...x, fecha_ejecutada: hoy } : x)) : prev,
+                                    )
+                                  }
                                 }}
                                 className="text-xs bg-sig-500 hover:bg-sig-700 text-white px-3 py-1 rounded-lg font-medium transition-colors"
                               >
@@ -509,6 +617,7 @@ export function GestionesTab({ establecimientoId, canWrite }: GestionesTabProps)
                             {showObsForm === r.id && (
                               <ObservacionForm
                                 registroGestionId={r.id}
+                                establecimientoId={establecimientoId}
                                 personas={personas}
                                 onSuccess={() => {
                                   setShowObsForm(null)

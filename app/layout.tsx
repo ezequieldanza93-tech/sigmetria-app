@@ -6,6 +6,7 @@ import { DevErrorBoundary } from '@/components/dev-error-boundary'
 import { ThemeProvider } from '@/components/theme-provider'
 import { QueryProvider } from '@/components/query-provider'
 import { NetworkStatusBanner } from '@/components/network-status'
+import { OfflineIndicator } from '@/components/offline-indicator'
 import { ErrorCapture } from '@/components/error-capture'
 import { Toaster } from '@/components/ui/toaster'
 import 'flag-icons/css/flag-icons.min.css'
@@ -126,6 +127,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <DevErrorBoundary>{children}</DevErrorBoundary>
             </ThemeProvider>
           </QueryProvider>
+          <OfflineIndicator />
           <ErrorCapture />
           <Toaster />
         </NextIntlClientProvider>

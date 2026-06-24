@@ -45,6 +45,8 @@ declare module 'lucide-react' {
   export const ClipboardCheck: Icon
   export const ClipboardList: Icon
   export const Clock: Icon
+  export const Cloud: Icon
+  export const CloudOff: Icon
   export const Code: Icon
   export const Columns: Icon
   export const Contact: Icon
@@ -145,6 +147,7 @@ declare module 'lucide-react' {
   export const TrendingDown: Icon
   export const TrendingUp: Icon
   export const Upload: Icon
+  export const UploadCloud: Icon
   export const User: Icon
   export const UserCog: Icon
   export const UserPlus: Icon

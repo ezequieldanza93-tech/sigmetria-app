@@ -22,6 +22,9 @@ import {
 } from '@/lib/actions/establecimiento-ficha'
 import type { PeriodicidadDoc } from '@/lib/types'
 import { CATEGORIAS_LEGAJO, periodicidadLabel } from '@/lib/legajo'
+import { cacheLegajoForOffline, getLegajoSnapshot } from '@/lib/offline/legajo-cache'
+import { LegajoOfflineViewer } from '@/components/offline/legajo-offline-viewer'
+import type { LegajoSnapshot, LegajoSnapshotEstablecimiento } from '@/lib/offline/types'
 import type {
   ActionResult,
   DocumentType,
@@ -42,6 +45,9 @@ interface LegajoTabProps {
   empresaId: string
   documentTypes: DocumentType[]
   canWrite?: boolean
+  // Cabecera para el snapshot offline (nombre/empresa/domicilio). Si viene, el tab
+  // cachea el legajo para uso sin señal y puede mostrarlo offline.
+  snapshotMeta?: LegajoSnapshotEstablecimiento
 }
 
 // Identifica qué entidad/acción corresponde a cada categoría de documentos.
@@ -371,9 +377,32 @@ export function LegajoTab({
   empresaId,
   documentTypes,
   canWrite = false,
+  snapshotMeta,
 }: LegajoTabProps) {
   const [now, setNow] = useState<number | null>(null)
   useEffect(() => { setNow(Date.now()) }, [])
+
+  // ── Modo OFFLINE (PRIORIDAD #1) ────────────────────────────────────────────
+  // Cuando el legajo carga CON datos del server (online), lo cacheamos en
+  // background para que un inspector lo pueda ver sin señal. Si NO hay datos
+  // (offline / fallo de carga), intentamos servir el último snapshot cacheado.
+  const [offlineSnapshot, setOfflineSnapshot] = useState<LegajoSnapshot | null>(null)
+
+  useEffect(() => {
+    if (legajoEsperados && snapshotMeta) {
+      // Datos frescos → cachear para offline (no bloquea el render; ignora errores).
+      void cacheLegajoForOffline({
+        establecimientoId,
+        empresaId,
+        establecimiento: snapshotMeta,
+        legajoEsperados,
+        gestionesLegajo,
+      }).catch(() => {})
+    } else if (!legajoEsperados) {
+      // Sin datos → buscar snapshot cacheado para mostrar offline.
+      getLegajoSnapshot(establecimientoId).then(setOfflineSnapshot).catch(() => {})
+    }
+  }, [legajoEsperados, gestionesLegajo, snapshotMeta, establecimientoId, empresaId])
 
   // Override por establecimiento: documentos quitados a mano del legajo.
   const router = useRouter()
@@ -532,6 +561,13 @@ export function LegajoTab({
     return `${formatDate(iso)} ${d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}`
   }
   const estaRevisado = Boolean(revision?.revisado_at)
+
+  // Sin datos del server PERO con snapshot cacheado → visor offline de solo lectura
+  // (PRIORIDAD #1: inspector sin señal). Va DESPUÉS de todos los hooks para no
+  // romper el orden de hooks de React.
+  if (!legajoEsperados && offlineSnapshot) {
+    return <LegajoOfflineViewer snapshot={offlineSnapshot} />
+  }
 
   return (
     <div className="space-y-4">
