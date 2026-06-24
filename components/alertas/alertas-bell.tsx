@@ -38,7 +38,7 @@ export function AlertasBell() {
       const supabase = createClient()
       const { data, count } = await supabase
         .from('alertas')
-        .select('id, tipo, severidad, mensaje, created_at, empresas(nombre)', { count: 'exact' })
+        .select('id, tipo, severidad, mensaje, created_at, empresas(nombre:razon_social)', { count: 'exact' })
         .eq('resuelta', false)
         .limit(5)
 

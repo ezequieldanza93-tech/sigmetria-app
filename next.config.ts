@@ -13,7 +13,7 @@ const cspDirectives = [
   "script-src 'self' 'unsafe-inline'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://*.supabase.co https://*.tile.openstreetmap.org https://multimedia.3m.com",
-  "connect-src 'self' https://*.supabase.co https://nominatim.openstreetmap.org https://api.open-meteo.com",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://nominatim.openstreetmap.org https://api.open-meteo.com",
   "font-src 'self'",
   "frame-src 'self' https://www.openstreetmap.org",
   "object-src 'none'",

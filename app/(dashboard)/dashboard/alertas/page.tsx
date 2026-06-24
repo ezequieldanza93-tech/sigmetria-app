@@ -82,7 +82,7 @@ export default function AlertasPage() {
     const supabase = createClient()
     const { data } = await supabase
       .from('alertas')
-      .select('id, tipo, severidad, mensaje, resuelta, resuelta_at, created_at, empresas(id, nombre), establecimientos(nombre)')
+      .select('id, tipo, severidad, mensaje, resuelta, resuelta_at, created_at, empresas(id, nombre:razon_social), establecimientos(nombre)')
       .order('resuelta', { ascending: true })
       .order('created_at', { ascending: false })
     setAlertas((data ?? []) as unknown as Alerta[])
@@ -94,7 +94,7 @@ export default function AlertasPage() {
     // También cargar lista de empresas para el filtro
     async function loadEmpresas() {
       const supabase = createClient()
-      const { data } = await supabase.from('empresas').select('id, nombre').eq('is_active', true).order('nombre')
+      const { data } = await supabase.from('empresas').select('id, nombre:razon_social').eq('is_active', true).order('razon_social')
       setEmpresas((data ?? []) as unknown as Empresa[])
     }
     loadEmpresas()

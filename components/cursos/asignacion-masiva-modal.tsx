@@ -34,7 +34,7 @@ export function AsignacionMasivaModal({ cursoId, onClose, onSuccess }: Asignacio
   const supabase = createClient()
 
   useEffect(() => {
-    supabase.from('empresas').select('id, nombre').order('nombre').then(({ data }) => {
+    supabase.from('empresas').select('id, nombre:razon_social').order('razon_social').then(({ data }) => {
       setEmpresas((data ?? []).map(e => ({ value: e.id, label: e.nombre })))
     })
   }, [])

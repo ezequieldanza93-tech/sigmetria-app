@@ -69,7 +69,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: criticas } = await supabase
       .from('alertas')
-      .select('id, tipo, mensaje, empresas(nombre)')
+      .select('id, tipo, mensaje, empresas(nombre:razon_social)')
       .eq('consultora_id', consultora.id)
       .eq('severidad', 'critical')
       .eq('resuelta', false)
