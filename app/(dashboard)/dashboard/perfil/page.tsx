@@ -23,12 +23,23 @@ export default async function PerfilPage() {
       'id, nombre, apellido, tipo_id, dni, dni_frente_url, dni_dorso_url, legajo, ' +
       'fecha_nacimiento, fecha_ingreso, telefono, email, direccion, organizacion_id, notas, ' +
       'talle_calzado, talle_pantalon, talle_remera, talle_camisa, talle_buzo, talle_campera, ' +
-      'beneficiario_seguro, contacto_emergencia_nombre, contacto_emergencia_telefono',
+      'beneficiario_seguro, contacto_emergencia_nombre, contacto_emergencia_telefono, foto_url',
     )
     .eq('user_id', user.id)
     .maybeSingle()
 
-  const miPersona = (personaRow as unknown as MiPersona | null) ?? null
+  type PersonaRow = MiPersona & { foto_url?: string | null }
+  const personaData = (personaRow as unknown as PersonaRow | null) ?? null
+  const miPersona: MiPersona | null = personaData
+
+  // Generar URL firmada para la foto de perfil (si existe)
+  let fotoSignedUrl: string | null = null
+  if (personaData?.foto_url) {
+    const { data: signed } = await supabase.storage
+      .from('documentos')
+      .createSignedUrl(personaData.foto_url, 60 * 60 * 24 * 365)
+    fotoSignedUrl = signed?.signedUrl ?? null
+  }
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6">
@@ -38,6 +49,7 @@ export default async function PerfilPage() {
         avatarUrl={profile?.avatar_url ?? null}
         personaId={profile?.persona_id ?? null}
         miPersona={miPersona}
+        fotoUrl={fotoSignedUrl}
       />
     </div>
   )

@@ -302,6 +302,8 @@ export interface TipoPersona {
   nombre: string
   descripcion: string | null
   created_at: string
+  /** Tipos con este flag solo se crean vía cuenta de usuario, no desde el directorio manual. */
+  solo_via_cuenta?: boolean
 }
 
 export interface TipoOrganizacion {

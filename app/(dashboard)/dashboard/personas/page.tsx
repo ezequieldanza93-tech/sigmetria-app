@@ -297,11 +297,13 @@ export default function PersonasPage() {
     load()
     const supabase = createClient()
     Promise.all([
-      supabase.from('personas_tipos').select('id, nombre').order('nombre'),
+      supabase.from('personas_tipos').select('id, nombre, solo_via_cuenta').order('nombre'),
       supabase.from('empresas').select('id, razon_social').eq('is_active', true).order('razon_social'),
     ]).then(([tiposRes, empresasRes]) => {
       const tipos = (tiposRes.data ?? []) as TipoPersona[]
-      setTiposPersona(tipos)
+      // "Profesional H y S" (y cualquier tipo con solo_via_cuenta) solo se crea
+      // via cuenta de usuario — no aparece en la lista del formulario del directorio.
+      setTiposPersona(tipos.filter(t => !t.solo_via_cuenta))
       setEmpresas((empresasRes.data as unknown as Empresa[]) ?? [])
       // Si la URL trae ?tipo=Nombre, aplicar ese filtro por tipo al entrar
       const tipoParam = searchParams.get('tipo')

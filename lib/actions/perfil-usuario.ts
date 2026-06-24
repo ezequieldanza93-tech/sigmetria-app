@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import type { ActionResult } from '@/lib/types'
 
 export async function updatePerfil(data: { full_name: string }) {
   const supabase = await createClient()
@@ -79,14 +80,14 @@ export async function crearYVincularPersona(data: {
     .eq('is_active', true)
     .maybeSingle()
 
-  // Obtener tipo_id de "Profesionales"
+  // Obtener tipo_id de "Profesional H y S" (tipo reservado para cuentas de usuario)
   const { data: tipo } = await supabase
     .from('personas_tipos')
     .select('id')
-    .eq('nombre', 'Profesionales')
+    .eq('nombre', 'Profesional H y S')
     .single()
 
-  if (!tipo) return { error: 'Tipo "Profesionales" no encontrado. Contactá al administrador.' }
+  if (!tipo) return { error: 'Tipo "Profesional H y S" no encontrado. Contactá al administrador.' }
 
   // Crear la persona. created_in_consultora_id se setea en un paso separado
   // para evitar el error de schema cache de PostgREST en columnas recientes.
@@ -128,6 +129,62 @@ export async function crearYVincularPersona(data: {
   if (updateError) return { error: updateError.message }
   revalidatePath('/', 'layout')
   return { success: true, full_name }
+}
+
+const MAX_FOTO_BYTES = 5 * 1024 * 1024 // 5 MB
+
+/**
+ * Sube una foto de perfil y la vincula a la persona del directorio del usuario.
+ * Guarda la URL firmada (1 año) en personas_directorio.foto_url y profiles.avatar_url.
+ */
+export async function uploadFotoPerfil(
+  personaId: string,
+  formData: FormData,
+): Promise<ActionResult<{ signedUrl: string }>> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'No autenticado' }
+
+  const file = formData.get('foto') as File | null
+  if (!file || file.size === 0) return { success: false, error: 'No se recibió ninguna imagen' }
+  if (file.size > MAX_FOTO_BYTES) return { success: false, error: 'La imagen no puede superar 5 MB' }
+
+  const { data: membership } = await supabase
+    .from('consultoras_members')
+    .select('consultora_id')
+    .eq('user_id', user.id)
+    .eq('is_active', true)
+    .maybeSingle()
+
+  const consultoraId = membership?.consultora_id ?? 'sin-consultora'
+
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg'
+  const path = `${consultoraId}/personas/${personaId}/foto.${ext}`
+
+  const { error: uploadError } = await supabase.storage
+    .from('documentos')
+    .upload(path, file, { upsert: true, contentType: file.type })
+
+  if (uploadError) return { success: false, error: uploadError.message }
+
+  const { data: signed } = await supabase.storage
+    .from('documentos')
+    .createSignedUrl(path, 60 * 60 * 24 * 365) // 1 año
+
+  if (!signed?.signedUrl) return { success: false, error: 'No se pudo generar la URL de la foto' }
+
+  await supabase
+    .from('personas_directorio')
+    .update({ foto_url: path })
+    .eq('id', personaId)
+
+  await supabase
+    .from('profiles')
+    .update({ avatar_url: signed.signedUrl })
+    .eq('id', user.id)
+
+  revalidatePath('/dashboard/perfil')
+  return { success: true, data: { signedUrl: signed.signedUrl } }
 }
 
 export async function updatePassword(data: { current: string; next: string }) {

@@ -1,11 +1,10 @@
 'use client'
 
 import { useState, useTransition, useEffect } from 'react'
-import { useLocale } from 'next-intl'
-import { Check, Eye, EyeOff, Globe, Sun, Moon, Loader2, ArrowLeft, UserPlus, Search, X } from 'lucide-react'
+import { Check, Eye, EyeOff, Sun, Moon, Loader2, ArrowLeft, UserPlus, Search, X, Camera } from 'lucide-react'
+import Image from 'next/image'
 import Link from 'next/link'
-import { vincularPersonaPerfil, crearYVincularPersona, updatePassword } from '@/lib/actions/perfil-usuario'
-import { setLocale } from '@/lib/actions/locale'
+import { vincularPersonaPerfil, crearYVincularPersona, updatePassword, uploadFotoPerfil } from '@/lib/actions/perfil-usuario'
 import { EstablecimientoProgress, type ProgressCheck } from './establecimiento-progress'
 import { PersonaSelector } from '@/components/persona-selector'
 import { MiMatriculaDni, type MiPersona } from '@/components/perfil/mi-matricula-dni'
@@ -31,7 +30,7 @@ const SECTIONS: SectionMeta[] = [
     id: 2,
     title: 'Apariencia',
     shortTitle: 'Apariencia',
-    description: 'Idioma de la interfaz y tema visual (claro u oscuro).',
+    description: 'Tema visual de la interfaz (claro u oscuro).',
   },
   {
     id: 3,
@@ -134,10 +133,10 @@ interface Props {
   avatarUrl: string | null
   personaId: string | null
   miPersona: MiPersona | null
+  fotoUrl?: string | null
 }
 
-export function PerfilForm({ fullName, email, personaId: initialPersonaId, miPersona }: Props) {
-  const locale = useLocale()
+export function PerfilForm({ fullName, email, personaId: initialPersonaId, miPersona, fotoUrl: initialFotoUrl }: Props) {
   const [currentSection, setCurrentSection] = useState<SectionId>(1)
 
   // — Sección 1: Persona vinculada —
@@ -160,9 +159,13 @@ export function PerfilForm({ fullName, email, personaId: initialPersonaId, miPer
   const [crearStatus, setCrearStatus] = useState<'idle' | 'ok' | 'error'>('idle')
   const [crearMsg, setCrearMsg] = useState('')
 
+  // — Foto de perfil —
+  const [fotoUrl, setFotoUrl] = useState<string | null>(initialFotoUrl ?? null)
+  const [fotoMsg, setFotoMsg] = useState('')
+  const [fotoPending, startFotoTransition] = useTransition()
+
   // — Sección 2: Apariencia —
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
-  const [localePending, startLocaleTransition] = useTransition()
 
   useEffect(() => {
     const stored = localStorage.getItem('sigmetria.theme')
@@ -184,7 +187,7 @@ export function PerfilForm({ fullName, email, personaId: initialPersonaId, miPer
   const checks: ProgressCheck[] = [
     { id: 'persona', label: 'Nombre y apellido vinculados al directorio', done: !!personaId, section: 1 },
     { id: 'email', label: 'Email de la cuenta', done: email.length > 0, section: 1 },
-    { id: 'idioma', label: 'Idioma configurado', done: true, section: 2 },
+    { id: 'foto', label: 'Foto de perfil', done: !!fotoUrl, section: 1 },
     { id: 'tema', label: 'Tema configurado', done: true, section: 2 },
     { id: 'password', label: 'Contraseña actualizada', done: pwStatus === 'ok', section: 3 },
   ]
@@ -240,9 +243,21 @@ export function PerfilForm({ fullName, email, personaId: initialPersonaId, miPer
     localStorage.setItem('sigmetria.theme', next)
   }
 
-  function changeLocale(code: 'es' | 'en') {
-    if (code === locale || localePending) return
-    startLocaleTransition(() => { void setLocale(code) })
+  function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !personaId) return
+    const fd = new FormData()
+    fd.append('foto', file)
+    setFotoMsg('')
+    startFotoTransition(async () => {
+      const res = await uploadFotoPerfil(personaId, fd)
+      if (res.success) {
+        setFotoUrl(res.data.signedUrl)
+        setFotoMsg('Foto actualizada correctamente')
+      } else {
+        setFotoMsg(res.error ?? 'Error al subir la foto')
+      }
+    })
   }
 
   function handleChangePassword(e: React.FormEvent) {
@@ -405,6 +420,48 @@ export function PerfilForm({ fullName, email, personaId: initialPersonaId, miPer
           </form>
         )}
 
+        {/* Foto de perfil — solo cuando hay persona vinculada */}
+        {modo === 'vinculado' && personaId && (
+          <div className="pt-4 mt-2 border-t border-border-subtle space-y-2">
+            <label className="block text-xs font-medium text-text-secondary">Foto de perfil</label>
+            <div className="flex items-center gap-4">
+              {fotoUrl ? (
+                <Image
+                  src={fotoUrl}
+                  alt="Foto de perfil"
+                  width={64}
+                  height={64}
+                  className="w-16 h-16 rounded-full object-cover border border-border-subtle"
+                  unoptimized
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-surface-sunken border border-border-subtle flex items-center justify-center text-text-tertiary">
+                  <Camera size={22} strokeWidth={1.5} />
+                </div>
+              )}
+              <div className="flex flex-col gap-1">
+                <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-border-default text-text-secondary hover:bg-surface-elevated transition-colors">
+                  {fotoPending ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
+                  {fotoUrl ? 'Cambiar foto' : 'Agregar foto'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={fotoPending}
+                    onChange={handleFotoChange}
+                  />
+                </label>
+                {fotoMsg && (
+                  <p className={`text-[11px] ${fotoMsg.startsWith('Foto actualizada') ? 'text-success' : 'text-danger'}`}>
+                    {fotoMsg}
+                  </p>
+                )}
+                <p className="text-[10px] text-text-tertiary">PNG, JPG o WEBP · máx. 5 MB</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Matrícula y DNI de la persona del directorio vinculada al usuario */}
         <div className="pt-4 mt-2 border-t border-border-subtle">
           <MiMatriculaDni persona={miPersona} />
@@ -420,17 +477,6 @@ export function PerfilForm({ fullName, email, personaId: initialPersonaId, miPer
       {/* ── Sección 2: Apariencia ── */}
       <FormSection step={2} title={SECTIONS[1].title} description={SECTIONS[1].description} isActive={currentSection === 2} sectionStats={sectionStats[2]}>
         <div className="space-y-5">
-          <div>
-            <label className="block text-xs font-medium text-text-secondary mb-2 flex items-center gap-1.5"><Globe size={13} /> Idioma</label>
-            <div className="flex gap-2">
-              {(['es', 'en'] as const).map(code => (
-                <button key={code} type="button" onClick={() => changeLocale(code)} disabled={localePending}
-                  className={`flex-1 py-2 text-sm font-medium rounded-lg border transition-colors disabled:opacity-50 ${locale === code ? 'border-brand-primary bg-brand-muted text-brand-primary' : 'border-border-default bg-surface-base text-text-secondary hover:bg-surface-elevated'}`}>
-                  {code === 'es' ? 'Español' : 'English'}
-                </button>
-              ))}
-            </div>
-          </div>
           <div>
             <label className="block text-xs font-medium text-text-secondary mb-2">Tema</label>
             <div className="flex gap-2">
