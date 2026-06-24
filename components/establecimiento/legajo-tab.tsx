@@ -10,7 +10,16 @@ import { DocumentoHistorialModal } from '@/components/establecimiento/documento-
 import { ProtocolosVencimientos } from '@/components/establecimiento/protocolos-vencimientos'
 import { createDocumento } from '@/lib/actions/documento'
 import { createTrabajadorDocumento } from '@/lib/actions/trabajador-documento'
-import { setDocumentoOverride, getDocumentoOverrides, createDocumentoCustom } from '@/lib/actions/establecimiento-ficha'
+import {
+  setDocumentoOverride,
+  getDocumentoOverrides,
+  createDocumentoCustom,
+  confirmarLegajo,
+  getLegajoRevision,
+  getCatalogoGlobal,
+  type LegajoRevision,
+  type CatalogoGlobalItem,
+} from '@/lib/actions/establecimiento-ficha'
 import type { PeriodicidadDoc } from '@/lib/types'
 import { CATEGORIAS_LEGAJO, periodicidadLabel } from '@/lib/legajo'
 import type {
@@ -233,6 +242,128 @@ function AgregarDocForm({ empresaId, onDone }: { empresaId: string; onDone: () =
   )
 }
 
+// Label de cada categoría para agrupar en el picker del catálogo global.
+const CATEGORIA_LABEL: Record<CategoriaLegajo, string> = CATEGORIAS_LEGAJO.reduce(
+  (acc, { key, titulo }) => { acc[key] = titulo; return acc },
+  {} as Record<CategoriaLegajo, string>,
+)
+
+// Picker "Elegir del catálogo global" (B2 · force-in). Lista TODOS los docs
+// activos del catálogo (genéricos + propios de la consultora) agrupados por
+// categoría, marcando los que ya están en el legajo. Force-in con override.
+function CatalogoGlobalPicker({
+  establecimientoId,
+  empresaId,
+  onChanged,
+}: {
+  establecimientoId: string
+  empresaId: string
+  onChanged: () => void
+}) {
+  const [items, setItems] = useState<CatalogoGlobalItem[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [busca, setBusca] = useState('')
+  const [savingId, setSavingId] = useState<string | null>(null)
+
+  const reload = useCallback(() => {
+    setError(null)
+    getCatalogoGlobal(establecimientoId, empresaId)
+      .then(setItems)
+      .catch(() => setError('No se pudo cargar el catálogo'))
+  }, [establecimientoId, empresaId])
+  useEffect(() => { reload() }, [reload])
+
+  const agregar = async (tipoId: string) => {
+    setSavingId(tipoId)
+    const res = await setDocumentoOverride(establecimientoId, tipoId, true)
+    setSavingId(null)
+    if (!res.success) { setError(res.error); return }
+    // Optimista: marcar como incluido y avisar al padre para refrescar el legajo.
+    setItems(prev => prev?.map(it => it.tipo_id === tipoId ? { ...it, ya_incluido: true } : it) ?? prev)
+    onChanged()
+  }
+
+  if (error && !items) {
+    return (
+      <div className="space-y-3">
+        <p className="text-sm text-danger">{error}</p>
+        <button type="button" onClick={reload} className="text-xs font-medium text-sig-600 hover:underline">Reintentar</button>
+      </div>
+    )
+  }
+  if (!items) {
+    return <p className="text-sm text-text-tertiary py-6 text-center">Cargando catálogo…</p>
+  }
+
+  const q = busca.trim().toLowerCase()
+  const filtrados = q ? items.filter(it => it.nombre.toLowerCase().includes(q)) : items
+
+  // Agrupar por categoría, respetando el orden de CATEGORIAS_LEGAJO.
+  const porCategoria = new Map<CategoriaLegajo, CatalogoGlobalItem[]>()
+  for (const it of filtrados) {
+    const arr = porCategoria.get(it.categoria) ?? []
+    arr.push(it)
+    porCategoria.set(it.categoria, arr)
+  }
+  const categoriasOrdenadas = CATEGORIAS_LEGAJO
+    .map(c => c.key)
+    .filter(k => porCategoria.has(k))
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-text-secondary">
+        Elegí un documento del catálogo para incluirlo en el legajo de este establecimiento,
+        aunque las reglas automáticas no lo incluyan. Después lo podés quitar cuando quieras.
+      </p>
+      <input
+        type="search"
+        value={busca}
+        onChange={e => setBusca(e.target.value)}
+        placeholder="Buscar documento…"
+        className="w-full px-3 py-2 text-sm border border-border-default rounded-lg bg-surface-base text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary"
+      />
+      {error && <p className="text-xs text-danger">{error}</p>}
+      {filtrados.length === 0 ? (
+        <p className="text-sm text-text-tertiary py-6 text-center">No hay documentos que coincidan.</p>
+      ) : (
+        <div className="space-y-4 max-h-[55vh] overflow-y-auto pr-1">
+          {categoriasOrdenadas.map(cat => (
+            <div key={cat}>
+              <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1.5">
+                {CATEGORIA_LABEL[cat]}
+              </p>
+              <ul className="divide-y divide-border-subtle border border-border-subtle rounded-lg overflow-hidden">
+                {porCategoria.get(cat)!.map(it => (
+                  <li key={it.tipo_id} className="flex items-center justify-between gap-3 px-3 py-2.5 bg-surface-base">
+                    <div className="min-w-0">
+                      <p className="text-sm text-text-primary truncate">{it.nombre}</p>
+                      <p className="text-xs text-text-tertiary">{periodicidadLabel(it.periodicidad)}</p>
+                    </div>
+                    {it.ya_incluido ? (
+                      <span className="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success border border-success/20">
+                        En el legajo
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => agregar(it.tipo_id)}
+                        disabled={savingId === it.tipo_id}
+                        className="shrink-0 text-xs font-medium text-sig-600 hover:text-sig-700 hover:underline disabled:opacity-50"
+                      >
+                        {savingId === it.tipo_id ? 'Agregando…' : '+ Agregar'}
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function LegajoTab({
   legajoEsperados,
   gestionesLegajo,
@@ -264,6 +395,25 @@ export function LegajoTab({
   }
   const quitados = overrides.filter(o => !o.incluido)
   const [agregarOpen, setAgregarOpen] = useState(false)
+  // Solapa activa del modal "Agregar documento": catálogo global (default) o crear propio.
+  const [agregarTab, setAgregarTab] = useState<'catalogo' | 'propio'>('catalogo')
+
+  // F2: estado de revisión del legajo (sello de cadena de custodia).
+  const [revision, setRevision] = useState<LegajoRevision | null>(null)
+  const [confirmando, setConfirmando] = useState(false)
+  const reloadRevision = useCallback(() => {
+    getLegajoRevision(establecimientoId).then(setRevision).catch(() => {})
+  }, [establecimientoId])
+  useEffect(() => { reloadRevision() }, [reloadRevision])
+
+  const confirmar = async () => {
+    setConfirmando(true)
+    const res = await confirmarLegajo(establecimientoId)
+    setConfirmando(false)
+    if (res.success) {
+      setRevision({ revisado_at: res.data.revisado_at, revisado_by: null, revisor_nombre: res.data.revisor_nombre })
+    }
+  }
 
   // Modal de carga: tipo prefijado + acción según categoría/persona.
   const [subirState, setSubirState] = useState<{
@@ -371,13 +521,56 @@ export function LegajoTab({
     }
   }
 
+  // Formato corto de fecha+hora para el sello de revisión.
+  const fechaHora = (iso: string): string => {
+    const d = new Date(iso)
+    return `${formatDate(iso)} ${d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}`
+  }
+  const estaRevisado = Boolean(revision?.revisado_at)
+
   return (
     <div className="space-y-4">
+      {/* F2 · Sello de revisión del legajo (cadena de custodia, Disp. 15/2026). */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-surface-base dark:bg-surface-elevated border border-border-subtle rounded-xl px-4 py-3">
+        <div className="flex items-center gap-2 min-w-0">
+          {estaRevisado ? (
+            <>
+              <span className="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success border border-success/20">
+                Legajo revisado
+              </span>
+              <span className="text-xs text-text-secondary truncate">
+                {revision?.revisor_nombre ? `por ${revision.revisor_nombre} · ` : ''}
+                {revision?.revisado_at ? fechaHora(revision.revisado_at) : ''}
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
+                Revisión pendiente
+              </span>
+              <span className="text-xs text-text-tertiary truncate">
+                Confirmá el legajo cuando hayas revisado los documentos esperados.
+              </span>
+            </>
+          )}
+        </div>
+        {canWrite && (
+          <button
+            type="button"
+            onClick={confirmar}
+            disabled={confirmando}
+            className="shrink-0 self-start sm:self-auto px-3 py-1.5 text-xs font-medium bg-brand-primary text-white rounded-lg hover:bg-brand-primary/90 disabled:opacity-50"
+          >
+            {confirmando ? 'Confirmando…' : estaRevisado ? 'Volver a confirmar' : 'Confirmar legajo'}
+          </button>
+        )}
+      </div>
+
       {canWrite && (
         <div className="flex justify-end">
           <button
             type="button"
-            onClick={() => setAgregarOpen(true)}
+            onClick={() => { setAgregarTab('catalogo'); setAgregarOpen(true) }}
             className="text-xs font-medium text-sig-600 hover:text-sig-700 hover:underline"
           >
             + Agregar documento al legajo
@@ -511,16 +704,53 @@ export function LegajoTab({
         versiones={historialState?.versiones ?? []}
       />
 
-      {/* Modal: agregar un documento PROPIO de la consultora al legajo. */}
+      {/* Modal: agregar un documento al legajo — del catálogo global (force-in)
+          o creando uno propio de la consultora. */}
       <Modal
         open={agregarOpen}
         onClose={() => setAgregarOpen(false)}
         title="Agregar documento al legajo"
+        size="wide"
       >
-        <AgregarDocForm
-          empresaId={empresaId}
-          onDone={() => { setAgregarOpen(false); router.refresh() }}
-        />
+        {agregarOpen && (
+        <div className="space-y-4">
+          {/* Solapas */}
+          <div role="tablist" aria-label="Modo de agregar documento" className="flex gap-1 border-b border-border-subtle">
+            {([['catalogo', 'Elegir del catálogo global'], ['propio', 'Crear documento propio']] as const).map(([id, label]) => {
+              const active = agregarTab === id
+              return (
+                <button
+                  key={id}
+                  role="tab"
+                  aria-selected={active}
+                  type="button"
+                  onClick={() => setAgregarTab(id)}
+                  className={`px-3 py-2 text-sm font-medium -mb-px border-b-2 transition-colors ${
+                    active
+                      ? 'border-brand-primary text-brand-primary'
+                      : 'border-transparent text-text-secondary hover:text-text-primary'
+                  }`}
+                >
+                  {label}
+                </button>
+              )
+            })}
+          </div>
+
+          {agregarTab === 'catalogo' ? (
+            <CatalogoGlobalPicker
+              establecimientoId={establecimientoId}
+              empresaId={empresaId}
+              onChanged={() => { reloadOverrides(); router.refresh() }}
+            />
+          ) : (
+            <AgregarDocForm
+              empresaId={empresaId}
+              onDone={() => { setAgregarOpen(false); router.refresh() }}
+            />
+          )}
+        </div>
+        )}
       </Modal>
     </div>
   )

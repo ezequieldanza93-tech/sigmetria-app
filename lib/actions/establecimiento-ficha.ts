@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { getDocTiposAplicables, getDocTiposAplicablesEmpresa } from '@/lib/actions/aplicabilidad'
 import type {
+  ActionResult,
   Establecimiento,
   SectorEstablecimiento,
   Incidente,
@@ -610,4 +611,144 @@ export async function getDocumentoOverrides(
     incluido: o.incluido,
     nombre: o.documentos_tipos?.nombre ?? 'Documento',
   }))
+}
+
+// ============================================================
+// F2 . Sello de revision del Legajo Tecnico (cadena de custodia).
+// Un profesional "confirma" que reviso el legajo auto-armado. Queda el timestamp
+// + el autor. Mientras legajo_revisado_at sea NULL -> revision pendiente.
+// ============================================================
+
+/** Estado de revision del legajo de un establecimiento + nombre del revisor. */
+export interface LegajoRevision {
+  revisado_at: string | null
+  revisado_by: string | null
+  revisor_nombre: string | null
+}
+
+export async function getLegajoRevision(
+  establecimientoId: string,
+): Promise<LegajoRevision> {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('establecimientos')
+    .select('legajo_revisado_at, legajo_revisado_by')
+    .eq('id', establecimientoId)
+    .single()
+
+  const row = (data ?? null) as { legajo_revisado_at: string | null; legajo_revisado_by: string | null } | null
+  if (!row) return { revisado_at: null, revisado_by: null, revisor_nombre: null }
+
+  let revisor_nombre: string | null = null
+  if (row.legajo_revisado_by) {
+    const { data: prof } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', row.legajo_revisado_by)
+      .single()
+    revisor_nombre = (prof as { full_name: string | null } | null)?.full_name ?? null
+  }
+
+  return {
+    revisado_at: row.legajo_revisado_at,
+    revisado_by: row.legajo_revisado_by,
+    revisor_nombre,
+  }
+}
+
+/**
+ * Sella el Legajo Tecnico como revisado por el usuario actual (timestamp = ahora).
+ * Es el "visto bueno" del profesional sobre el legajo auto-armado (Disp. 15/2026).
+ * RLS: el UPDATE pasa por has_establecimiento_write_access del establecimiento.
+ */
+export async function confirmarLegajo(
+  establecimientoId: string,
+): Promise<ActionResult<{ revisado_at: string; revisor_nombre: string | null }>> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'No autenticado' }
+
+  const revisado_at = new Date().toISOString()
+  const { error } = await supabase
+    .from('establecimientos')
+    .update({ legajo_revisado_at: revisado_at, legajo_revisado_by: user.id })
+    .eq('id', establecimientoId)
+
+  if (error) return { success: false, error: error.message }
+
+  const { data: prof } = await supabase
+    .from('profiles')
+    .select('full_name')
+    .eq('id', user.id)
+    .single()
+  const revisor_nombre = (prof as { full_name: string | null } | null)?.full_name ?? null
+
+  return { success: true, data: { revisado_at, revisor_nombre } }
+}
+
+// ============================================================
+// B2 . Catalogo global para el modal "force-in".
+// Lista TODOS los docs activos del catalogo (genericos Sigmetria + propios de la
+// consultora), agrupados por categoria, marcando cuales YA estan computados en el
+// legajo de este establecimiento. El modal dispara setDocumentoOverride(incluido=true)
+// para los que el profesional quiera agregar a mano aunque el motor no los compute.
+// ============================================================
+
+/** Un item del catalogo global para el modal de "agregar del catalogo". */
+export interface CatalogoGlobalItem {
+  tipo_id: string
+  nombre: string
+  categoria: CategoriaLegajo
+  periodicidad: PeriodicidadDoc | null
+  /** Ya esta en el legajo computado (motor) o forzado (override incluido=true). */
+  ya_incluido: boolean
+}
+
+export async function getCatalogoGlobal(
+  establecimientoId: string,
+  empresaId: string,
+): Promise<CatalogoGlobalItem[]> {
+  const supabase = await createClient()
+
+  // Consultora de la empresa: el catalogo = genericos (consultora_id IS NULL) +
+  // propios de esta consultora.
+  const { data: empresaRow } = await supabase
+    .from('empresas')
+    .select('consultora_id')
+    .eq('id', empresaId)
+    .single()
+  const consultoraId = (empresaRow as { consultora_id: string | null } | null)?.consultora_id ?? null
+
+  let query = supabase
+    .from('documentos_tipos')
+    .select('id, nombre, categoria_legajo, periodicidad, consultora_id')
+    .eq('is_active', true)
+    .order('nombre')
+  query = consultoraId
+    ? query.or(`consultora_id.is.null,consultora_id.eq.${consultoraId}`)
+    : query.is('consultora_id', null)
+  const { data: catalogoRaw } = await query
+
+  // Lo que YA esta en el legajo (computado por el motor + force-in vigentes):
+  // reunimos los tipo_id de todas las categorias de esperados.
+  const legajo = await getLegajoEsperados(establecimientoId, empresaId)
+  const yaIncluidos = new Set<string>()
+  const addFilas = (filas: LegajoEsperadoRow[]) => filas.forEach(f => yaIncluidos.add(f.tipo_id))
+  addFilas(legajo.empresa)
+  addFilas(legajo.empresa_por_establecimiento)
+  addFilas(legajo.establecimiento)
+  legajo.persona.forEach(p => addFilas(p.filas))
+  legajo.persona_por_establecimiento.forEach(p => addFilas(p.filas))
+
+  return ((catalogoRaw ?? []) as {
+    id: string; nombre: string; categoria_legajo: CategoriaLegajo | null; periodicidad: PeriodicidadDoc | null
+  }[])
+    .filter(t => t.categoria_legajo !== null)
+    .map(t => ({
+      tipo_id: t.id,
+      nombre: t.nombre,
+      categoria: t.categoria_legajo as CategoriaLegajo,
+      periodicidad: t.periodicidad,
+      ya_incluido: yaIncluidos.has(t.id),
+    }))
 }
