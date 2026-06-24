@@ -145,6 +145,12 @@ interface SectorWizardState {
   ventilacion: Ventilacion
   materiales: MaterialState[]
   riesgo: Riesgo | ''
+  // Condiciones de situación / construcción / extinción (Dec 351/79). Texto libre,
+  // opcionales: el profesional las releva. La resistencia al fuego NO va acá (se
+  // deriva de f_exigido). Vacío → el informe muestra guion.
+  condicionSituacion: string
+  condicionConstruccion: string
+  condicionExtincion: string
 }
 
 let sectorKeySeq = 0
@@ -156,6 +162,9 @@ function nuevoSectorWizard(): SectorWizardState {
     ventilacion: 'natural',
     materiales: [nuevoMaterial()],
     riesgo: '',
+    condicionSituacion: '',
+    condicionConstruccion: '',
+    condicionExtincion: '',
   }
 }
 
@@ -366,6 +375,9 @@ export function CalculoCargaFuegoEjecutorModal({
               ventilacion: normVent(s?.ventilacion),
               materiales: mats.length > 0 ? mats : [nuevoMaterial()],
               riesgo: normRiesgo(s?.riesgo),
+              condicionSituacion: num2str(s?.condicion_situacion),
+              condicionConstruccion: num2str(s?.condicion_construccion),
+              condicionExtincion: num2str(s?.condicion_extincion),
             }
           })
           setSectoresWizard(mapped.length > 0 ? mapped : [nuevoSectorWizard()])
@@ -383,6 +395,10 @@ export function CalculoCargaFuegoEjecutorModal({
             ventilacion: normVent(d.ventilacion),
             materiales: mats.length > 0 ? mats : [nuevoMaterial()],
             riesgo: normRiesgo(d.riesgo),
+            // El legacy (cabecera) no tiene condiciones por sector: arrancan vacías.
+            condicionSituacion: '',
+            condicionConstruccion: '',
+            condicionExtincion: '',
           }])
         }
         setSectorActivoIdx(0)
@@ -675,6 +691,10 @@ export function CalculoCargaFuegoEjecutorModal({
           f_exigido: sFExigido,
           potencial_extintor_a: sPotA,
           potencial_extintor_b: sPotB,
+          // Condiciones relevadas (texto libre). Vacío → null (el informe muestra guion).
+          condicion_situacion: s.condicionSituacion.trim() || null,
+          condicion_construccion: s.condicionConstruccion.trim() || null,
+          condicion_extincion: s.condicionExtincion.trim() || null,
           orden: sIdx,
           materiales: s.materiales
             .filter(m => m.descripcion.trim() || num(m.peso_kg) != null)
@@ -1035,6 +1055,49 @@ export function CalculoCargaFuegoEjecutorModal({
                   </div>
                 </div>
               </div>
+              {/* Condiciones de situación / construcción / extinción (Dec 351/79). Texto
+                  libre, opcionales: las releva el profesional. Salen en la tabla de
+                  condiciones del informe; vacío → guion. La resistencia al fuego NO se
+                  pide acá (se deriva de f_exigido en el paso Resultado). */}
+              <div className="space-y-3 pt-1">
+                <div className="flex items-center gap-2">
+                  <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Condiciones del sector (Dec 351/79)</h4>
+                  <InfoTooltip text="Condiciones de situación, construcción y extinción exigidas (Dec 351/79). Texto libre y opcional: relevá lo que aplica al sector. Lo que dejes vacío sale con guion en el informe. La resistencia al fuego se calcula sola a partir del riesgo y la carga de fuego." />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className={labelCls}>Situación</label>
+                    <textarea
+                      className={`${inputCls} resize-none`}
+                      rows={3}
+                      value={sectorActivo.condicionSituacion}
+                      onChange={e => updateSectorActivo({ condicionSituacion: e.target.value })}
+                      placeholder="Condiciones de situación relevadas…"
+                    />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Construcción</label>
+                    <textarea
+                      className={`${inputCls} resize-none`}
+                      rows={3}
+                      value={sectorActivo.condicionConstruccion}
+                      onChange={e => updateSectorActivo({ condicionConstruccion: e.target.value })}
+                      placeholder="Condiciones de construcción relevadas…"
+                    />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Extinción</label>
+                    <textarea
+                      className={`${inputCls} resize-none`}
+                      rows={3}
+                      value={sectorActivo.condicionExtincion}
+                      onChange={e => updateSectorActivo({ condicionExtincion: e.target.value })}
+                      placeholder="Condiciones de extinción relevadas…"
+                    />
+                  </div>
+                </div>
+              </div>
+
               {sectoresWizard.length === 1 && (
                 <div>
                   <button

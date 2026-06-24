@@ -164,14 +164,15 @@ function aplanarGrillaPuesto(puesto: Record<string, unknown>): {
     const varPonderado = fmtNum(per.var_ponderado, 1)
     const tgbhef = fmtNum(per.tgbhef, 1)
     // Supera SI/NO. El HTML separa VLP no-aclim, VLA no-aclim y VLP aclim.
-    // Persistimos supera_vlp / supera_vla; mapeamos:
+    // Persistimos supera_vlp / supera_vla / supera_vlp_aclimatado; mapeamos:
     //   VLP no-aclimatado  → supera_vlp
     //   VLA no-aclimatado  → supera_vla
-    //   VLP aclimatado     → supera_vlp (mismo flag; el detalle aclimatado/no se
-    //                        documenta en Planilla C). Mejor parcial que en blanco.
+    //   VLP aclimatado     → supera_vlp_aclimatado (flag propio: umbral del personal
+    //                        aclimatado, NO el de supera_vlp que es del no-aclimatado).
+    //                        Fallback a supera_vlp para períodos viejos (columna NULL).
     const vlpNoAclim = fmtSupera(per.supera_vlp)
     const vlaNoAclim = fmtSupera(per.supera_vla)
-    const vlpAclim = fmtSupera(per.supera_vlp)
+    const vlpAclim = fmtSupera(per.supera_vlp_aclimatado ?? per.supera_vlp)
 
     const tareasRaw = (per.medicion_carga_termica_tareas as Record<string, unknown>[] | null) ?? []
     const tareasOrd = [...tareasRaw].sort((a, b) => Number(a.orden ?? 0) - Number(b.orden ?? 0))

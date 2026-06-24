@@ -429,13 +429,17 @@ function seccionResultados(d: DatosProtocoloCargaFuego): string {
       ).join('')
     : `<tr><td colspan="8" style="text-align:center;color:#7b8a7b;">Sin sectores para dimensionar.</td></tr>`
 
+  // Situación / construcción / extinción son TEXTO LIBRE del profesional: se escapan
+  // (esc) para no romper el markup. Si vienen vacías llegan como '—' desde el reporte;
+  // preservamos ese guion (esc('—') === '—'). El sector y la resistencia son valores
+  // derivados/controlados → D() (estilo .dato + fallback a guion).
   const filasCond = d.condiciones.length > 0
     ? d.condiciones.map((c) =>
         `<tr>` +
         `<td>${D(c.sector)}</td>` +
-        `<td>${D(c.situacion)}</td>` +
-        `<td>${D(c.construccion)}</td>` +
-        `<td>${D(c.extincion)}</td>` +
+        `<td>${esc(c.situacion) || '—'}</td>` +
+        `<td>${esc(c.construccion) || '—'}</td>` +
+        `<td>${esc(c.extincion) || '—'}</td>` +
         `<td class="c">${D(c.resistencia)}</td>` +
         `</tr>`,
       ).join('')

@@ -341,6 +341,17 @@ export async function generarReporteProtocoloCargaFuego(
     potA: string | null
     potB: string | null
     materialesClase: MaterialClase[]
+    // Condiciones relevadas (texto libre del modal). null si no se cargaron.
+    condicionSituacion: string | null
+    condicionConstruccion: string | null
+    condicionExtincion: string | null
+  }
+
+  /** Normaliza un valor de texto libre de DB → string trim no vacío, o null. */
+  function textoOrNull(v: unknown): string | null {
+    if (v == null) return null
+    const s = String(v).trim()
+    return s !== '' ? s : null
   }
 
   function buildSector(
@@ -352,6 +363,9 @@ export async function generarReporteProtocoloCargaFuego(
     fExigido: unknown,
     potA: unknown,
     potB: unknown,
+    condSituacion: unknown,
+    condConstruccion: unknown,
+    condExtincion: unknown,
   ): { sector: SectorCargaFuego; raw: SectorRaw } {
     let equivTotal = 0
     let calorTotal = 0
@@ -398,6 +412,9 @@ export async function generarReporteProtocoloCargaFuego(
       potA: potAStr,
       potB: potBStr,
       materialesClase,
+      condicionSituacion: textoOrNull(condSituacion),
+      condicionConstruccion: textoOrNull(condConstruccion),
+      condicionExtincion: textoOrNull(condExtincion),
     }
     return { sector, raw }
   }
@@ -415,6 +432,9 @@ export async function generarReporteProtocoloCargaFuego(
         s.f_exigido,
         s.potencial_extintor_a,
         s.potencial_extintor_b,
+        s.condicion_situacion,
+        s.condicion_construccion,
+        s.condicion_extincion,
       ),
     )
   } else {
@@ -429,6 +449,10 @@ export async function generarReporteProtocoloCargaFuego(
         c.f_exigido,
         c.potencial_extintor_a,
         c.potencial_extintor_b,
+        // El legacy (cabecera) no persiste condiciones por sector → guion en el informe.
+        null,
+        null,
+        null,
       ),
     ]
   }
@@ -466,21 +490,20 @@ export async function generarReporteProtocoloCargaFuego(
   })
 
   // ── 6c. CONDICIONES de situación/construcción/extinción ───────────────────────
-  // El modal NO captura estos campos hoy. Dejamos la estructura con los datos que SÍ
-  // existen (sector + resistencia al fuego del sector) y guion en lo no relevado. NO se
-  // inventan condiciones: situación/construcción/extinción quedan en '—'.
+  // El modal releva estos campos como TEXTO LIBRE por sector (opcionales). Salen tal
+  // cual en la tabla del informe; lo que el profesional no cargó queda en guion ('—').
+  // NO se inventa ni se impone el criterio normativo de qué condición aplica.
   const condiciones: FilaCondiciones[] = built.map((b) => ({
     sector: b.raw.nombre,
-    situacion: '—',
-    construccion: '—',
-    extincion: '—',
+    situacion: b.raw.condicionSituacion ?? '—',
+    construccion: b.raw.condicionConstruccion ?? '—',
+    extincion: b.raw.condicionExtincion ?? '—',
     resistencia: b.raw.fExigido ?? '—',
   }))
 
   // ── 6d. CONCLUSIONES estructuradas (derivadas) + texto libre del modal ─────────
   // Extintores: si TODOS los sectores con dato exigen ≤ potencial estándar → "Cumple";
   // si alguno exige más → "Verificar"; si ninguno tiene potencial exigido → "Sin dato".
-  // Condiciones (situación/construcción/extinción): el modal no las releva → "No se relevó".
   const estadosExt = extintores.map((e) => e.cumple.toLowerCase())
   const conDato = estadosExt.filter((s) => s !== 'sin dato')
   let conclExtintores: string
@@ -488,11 +511,19 @@ export async function generarReporteProtocoloCargaFuego(
   else if (conDato.some((s) => s === 'verificar')) conclExtintores = 'Verificar'
   else conclExtintores = 'Cumple'
 
+  // Condiciones: el profesional las releva como texto libre, NO emitimos un juicio de
+  // cumplimiento (sería imponer un criterio normativo que el modal no captura). Solo
+  // reflejamos si al menos un sector relevó esa condición → "Relevado" / "No se relevó".
+  const estadoCondicion = (relevado: boolean): string => (relevado ? 'Relevado' : 'No se relevó')
+  const algunaSituacion = built.some((b) => b.raw.condicionSituacion != null)
+  const algunaConstruccion = built.some((b) => b.raw.condicionConstruccion != null)
+  const algunaExtincion = built.some((b) => b.raw.condicionExtincion != null)
+
   const conclusiones: ConclusionesCargaFuego = {
     extintores: conclExtintores,
-    situacion: 'No se relevó',
-    construccion: 'No se relevó',
-    extincion: 'No se relevó',
+    situacion: estadoCondicion(algunaSituacion),
+    construccion: estadoCondicion(algunaConstruccion),
+    extincion: estadoCondicion(algunaExtincion),
     textoConclusiones: (c.conclusiones as string | null) ?? undefined,
     textoRecomendaciones: (c.recomendaciones as string | null) ?? undefined,
   }

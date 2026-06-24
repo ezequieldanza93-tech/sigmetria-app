@@ -48,6 +48,9 @@ interface PeriodoInput {
   vla?: number | null
   supera_vlp?: boolean | null
   supera_vla?: boolean | null
+  // Flag propio de la columna "VLP Aclimatado" (Planilla B): umbral del personal
+  // aclimatado (curva VLA), distinto de supera_vlp (no-aclimatado).
+  supera_vlp_aclimatado?: boolean | null
   regimen_ft?: number | null
   info_adicional?: string | null
   orden?: number | null
@@ -349,6 +352,7 @@ export async function crearMedicionCargaTermica(
           vla: per.vla ?? null,
           supera_vlp: per.supera_vlp ?? null,
           supera_vla: per.supera_vla ?? null,
+          supera_vlp_aclimatado: per.supera_vlp_aclimatado ?? null,
           regimen_ft: per.regimen_ft ?? null,
           info_adicional: per.info_adicional ?? null,
           orden: per.orden ?? j,

@@ -45,6 +45,11 @@ interface SectorInput {
   f_exigido?: string | null
   potencial_extintor_a?: string | null
   potencial_extintor_b?: string | null
+  // Condiciones de situación / construcción / extinción (Dec 351/79). Texto libre,
+  // opcionales: las releva el profesional. NULL/vacío → el informe muestra guion.
+  condicion_situacion?: string | null
+  condicion_construccion?: string | null
+  condicion_extincion?: string | null
   orden?: number
   materiales: MaterialInput[]
 }
@@ -350,6 +355,9 @@ export async function crearCalculoCargaFuego(
           f_exigido: sector.f_exigido ?? null,
           potencial_extintor_a: sector.potencial_extintor_a ?? null,
           potencial_extintor_b: sector.potencial_extintor_b ?? null,
+          condicion_situacion: sector.condicion_situacion ?? null,
+          condicion_construccion: sector.condicion_construccion ?? null,
+          condicion_extincion: sector.condicion_extincion ?? null,
           orden: sector.orden ?? 0,
         })
         .select('id')
@@ -492,6 +500,7 @@ export async function getCalculoCargaFuego(
       calculo_carga_fuego_sectores (
         id, nombre_sector, superficie_m2, ventilacion, riesgo, qf_kg_m2,
         f_exigido, potencial_extintor_a, potencial_extintor_b, orden,
+        condicion_situacion, condicion_construccion, condicion_extincion,
         calculo_carga_fuego_sector_materiales (
           id, descripcion, estado, peso_kg, pci_kcal, coef_c, equiv_madera_kg, orden
         )

@@ -263,6 +263,16 @@ interface PeriodoCalc {
   vla: number
   superaVlp: boolean
   superaVla: boolean
+  /**
+   * ¿Supera el umbral del personal ACLIMATADO? (columna "VLP Aclimatado" de la Planilla B).
+   * El personal aclimatado tolera MÁS calor que el no-aclimatado, por lo que su umbral
+   * NO es el mismo `supera_vlp` (que es el del NO-aclimatado). En este modelo el límite
+   * del aclimatado es la curva VLA (59.9 − 14.1·log10(TM)) — la misma que el wizard usa
+   * para `superaLimiteAplicable` cuando el puesto es aclimatado. Es por eso el MISMO valor
+   * que `superaVla`, pero lo exponemos con nombre propio para que la 3ra columna del PDF
+   * deje de reusar `supera_vlp` (normativamente incorrecto).
+   */
+  superaVlpAclimatado: boolean
   /** Régimen f/t (min de trabajo) si se cargaron B y D. */
   regimen: number | null
   /** ¿Supera el límite que aplica al trabajador (según aclimatado)? */
@@ -327,6 +337,10 @@ function calcularPeriodo(p: PeriodoState, aclimatado: boolean): PeriodoCalc {
     vla: vlaValor,
     superaVlp: sVlp,
     superaVla: sVla,
+    // Umbral del personal ACLIMATADO (3ra columna de la Planilla B). El aclimatado
+    // se rige por la curva VLA (más permisiva que VLP): mismo cómputo que `sVla`,
+    // expuesto con nombre propio para persistir un flag aclimatado-específico.
+    superaVlpAclimatado: sVla,
     regimen,
     // El aclimatado se rige por VLA; el no aclimatado por VLP.
     superaLimiteAplicable: aclimatado ? sVla : sVlp,
@@ -936,6 +950,9 @@ export function MedicionCargaTermicaEjecutorModal({
             vla: round1(calc.vla),
             supera_vlp: calc.superaVlp,
             supera_vla: calc.superaVla,
+            // Flag propio de la columna "VLP Aclimatado" (Planilla B): umbral del personal
+            // aclimatado (curva VLA), NO el de supera_vlp (no-aclimatado).
+            supera_vlp_aclimatado: calc.superaVlpAclimatado,
             regimen_ft: calc.regimen != null ? round1(calc.regimen) : null,
             info_adicional: per.info_adicional || null,
             orden: peri,
