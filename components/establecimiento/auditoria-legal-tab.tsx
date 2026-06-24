@@ -89,6 +89,41 @@ function agruparPorNorma(items: AuditoriaItem[]): GrupoNorma[] {
   return [...mapa.values()]
 }
 
+// Texto curado largo del artículo (snapshot). Negritas markdown mínimas
+// (`**texto**`) sin dangerouslySetInnerHTML + clamp con "Ver texto completo",
+// mismo patrón que components/normativa/normativa-requisitos.tsx.
+const TEXTO_CLAMP_CHARS = 280
+
+function renderNegritas(texto: string): React.ReactNode[] {
+  return texto.split('**').map((tramo, i) =>
+    i % 2 === 1 ? <strong key={i}>{tramo}</strong> : <span key={i}>{tramo}</span>,
+  )
+}
+
+function TextoArticulo({ texto }: { texto: string | null }) {
+  const [open, setOpen] = useState(false)
+  const oficial = texto?.trim() ?? ''
+  if (!oficial) return null
+  const esLargo = oficial.length > TEXTO_CLAMP_CHARS
+  const visible = open || !esLargo ? oficial : `${oficial.slice(0, TEXTO_CLAMP_CHARS).trimEnd()}…`
+  return (
+    <div className="mt-1">
+      <p className="text-xs text-text-secondary whitespace-pre-line leading-relaxed">
+        {renderNegritas(visible)}
+      </p>
+      {esLargo && (
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="mt-0.5 text-xs font-medium text-brand-primary hover:underline"
+        >
+          {open ? 'Ver menos' : 'Ver texto completo'}
+        </button>
+      )}
+    </div>
+  )
+}
+
 // ============================================================
 // Componentes de presentación
 // ============================================================
@@ -299,6 +334,7 @@ function ItemRow({
           {item.descripcion_corta && (
             <p className="text-xs text-text-secondary mt-0.5">{item.descripcion_corta}</p>
           )}
+          <TextoArticulo texto={item.descripcion_oficial} />
         </div>
         <div className="flex shrink-0 gap-1">
           {ESTADO_ITEM_OPCIONES.map((opt) => {

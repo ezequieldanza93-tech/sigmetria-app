@@ -531,7 +531,17 @@ export async function updateNormativa(
   return { success: true, data: data as NormativaNorma }
 }
 
-export async function deleteNormativa(id: string): Promise<ActionResult<null>> {
+/**
+ * Borra una norma. Distingue PROPIA vs BASE (decisión A5):
+ *  - PROPIA (consultora_id no NULL): borrado duro acotado al scope de la consultora.
+ *  - BASE (consultora_id NULL): afecta a TODAS las consultoras → exige
+ *    `confirmBase = true` (guard server-side, defensa en profundidad además
+ *    de la doble confirmación en la UI) + puede_gestionar_librerias().
+ */
+export async function deleteNormativa(
+  id: string,
+  opts?: { confirmBase?: boolean },
+): Promise<ActionResult<null>> {
   const supabase = await createClient()
 
   const { data: target } = await supabase
@@ -547,6 +557,13 @@ export async function deleteNormativa(id: string): Promise<ActionResult<null>> {
   if (target.consultora_id === null) {
     if (!(await puedeGestionarLibreriasServer())) {
       return { success: false, error: 'Sin permiso para gestionar la normativa base' }
+    }
+    // Guard explícito: borrar una norma BASE impacta a todas las consultoras.
+    if (!opts?.confirmBase) {
+      return {
+        success: false,
+        error: 'Esta es una norma base (afecta a todas las consultoras). Confirmá la baja para continuar.',
+      }
     }
   } else {
     const cId = await getConsultoraId()

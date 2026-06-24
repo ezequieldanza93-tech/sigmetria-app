@@ -29,6 +29,7 @@ export interface AuditoriaItem {
   ambito: string | null
   articulo: string | null
   descripcion_corta: string | null
+  descripcion_oficial: string | null
   orden: number | null
 }
 
@@ -150,15 +151,16 @@ export async function createAuditoria(
 
   const { data: reqs, error: reqErr } = await supabase
     .from('normativa_requisitos')
-    .select('id, norma_id, articulo, descripcion_corta, orden')
+    .select('id, norma_id, articulo, descripcion_corta, descripcion_oficial, orden')
     .in('norma_id', normas.map((n) => n.id))
     .order('orden', { ascending: true, nullsFirst: false })
   if (reqErr) return { success: false, error: reqErr.message }
 
-  const reqsPorNorma = new Map<string, { id: string; articulo: string | null; descripcion_corta: string | null }[]>()
-  for (const r of (reqs ?? []) as { id: string; norma_id: string; articulo: string | null; descripcion_corta: string | null }[]) {
+  type ReqSnap = { id: string; articulo: string | null; descripcion_corta: string | null; descripcion_oficial: string | null }
+  const reqsPorNorma = new Map<string, ReqSnap[]>()
+  for (const r of (reqs ?? []) as (ReqSnap & { norma_id: string })[]) {
     const arr = reqsPorNorma.get(r.norma_id) ?? []
-    arr.push({ id: r.id, articulo: r.articulo, descripcion_corta: r.descripcion_corta })
+    arr.push({ id: r.id, articulo: r.articulo, descripcion_corta: r.descripcion_corta, descripcion_oficial: r.descripcion_oficial })
     reqsPorNorma.set(r.norma_id, arr)
   }
 
@@ -191,10 +193,10 @@ export async function createAuditoria(
       ambito: n.ambito,
     }
     if (rs.length === 0) {
-      itemsToInsert.push({ ...base, requisito_id: null, articulo: null, descripcion_corta: null, orden: ordenGlobal++ })
+      itemsToInsert.push({ ...base, requisito_id: null, articulo: null, descripcion_corta: null, descripcion_oficial: null, orden: ordenGlobal++ })
     } else {
       for (const r of rs) {
-        itemsToInsert.push({ ...base, requisito_id: r.id, articulo: r.articulo, descripcion_corta: r.descripcion_corta, orden: ordenGlobal++ })
+        itemsToInsert.push({ ...base, requisito_id: r.id, articulo: r.articulo, descripcion_corta: r.descripcion_corta, descripcion_oficial: r.descripcion_oficial, orden: ordenGlobal++ })
       }
     }
   }
@@ -383,6 +385,7 @@ export async function addAdHocItemToAuditoria(
       norma_tipo: 'Otro',
       articulo: titulo,
       descripcion_corta: data.descripcion?.trim() || null,
+      descripcion_oficial: null,
       orden: 9999,
     })
     .select('*')

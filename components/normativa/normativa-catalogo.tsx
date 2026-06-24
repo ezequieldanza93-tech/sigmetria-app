@@ -173,8 +173,15 @@ export function NormativaCatalogo() {
   const categoriasForm = puedeGestionarLibrerias ? categorias : categoriasPropias
 
   async function handleDelete(norma: NormativaNormaConConteo) {
-    if (!confirm(`¿Eliminar "${norma.titulo}"? Esta acción no se puede deshacer.`)) return
-    const res = await deleteNormativa(norma.id)
+    const esBase = norma.consultora_id === null
+    if (esBase) {
+      // Norma BASE: afecta a TODAS las consultoras → doble confirmación (decisión A5).
+      if (!confirm(`"${norma.titulo}" es una norma BASE: se eliminará para TODAS las consultoras. Esta acción no se puede deshacer.\n\n¿Continuar?`)) return
+      if (!confirm('Confirmación final: vas a borrar una norma de la librería base compartida.\n\n¿Estás seguro?')) return
+    } else {
+      if (!confirm(`¿Eliminar "${norma.titulo}"? Esta acción no se puede deshacer.`)) return
+    }
+    const res = await deleteNormativa(norma.id, esBase ? { confirmBase: true } : undefined)
     if (res.success) {
       success('Normativa eliminada')
       refrescar()

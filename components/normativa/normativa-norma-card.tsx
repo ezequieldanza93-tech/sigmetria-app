@@ -5,12 +5,14 @@ import {
   ChevronDown,
   ChevronRight,
   ExternalLink,
+  FileCheck,
   FileText,
   Pencil,
   Trash2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { NormativaNormaConConteo } from '@/lib/actions/normativa-legal'
+import { useSignedUrls } from '@/lib/storage/sign-client'
 import { AMBITO_BADGE, ESTADO_BADGE, ESTADO_DOT } from './normativa-constants'
 import { NormativaRequisitos } from './normativa-requisitos'
 import { NormativaActividades } from './normativa-actividades'
@@ -30,6 +32,11 @@ export function NormativaNormaCard({ norma, esPropia, puedeGestionarBase = false
 
   // Es editable si es propia (full_access) o si es base y el usuario gestiona librerías.
   const editable = esPropia || (!esPropia && puedeGestionarBase)
+
+  // Indicador "PDF disponible" SOLO cuando hay pdf_path (decisión A2). El bucket
+  // `normativa` es público → getUrl resuelve la URL de inmediato (sin red).
+  const { getUrl } = useSignedUrls('normativa', norma.pdf_path ? [norma.pdf_path] : [])
+  const pdfUrl = norma.pdf_path ? getUrl(norma.pdf_path) : null
 
   const titulo = norma.nombre_completo?.trim() || norma.titulo
   const subtitulo = norma.nombre_completo && norma.nombre_completo.trim() !== norma.titulo
@@ -85,6 +92,24 @@ export function NormativaNormaCard({ norma, esPropia, puedeGestionarBase = false
               <FileText className="h-3.5 w-3.5" aria-hidden="true" />
               {norma.requisitos_count} {norma.requisitos_count === 1 ? 'requisito' : 'requisitos'}
             </span>
+            {norma.pdf_path && (
+              pdfUrl ? (
+                <a
+                  href={pdfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-brand-primary hover:underline"
+                >
+                  <FileCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                  PDF disponible
+                </a>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-text-tertiary">
+                  <FileCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                  PDF disponible
+                </span>
+              )
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-1 mt-2">
