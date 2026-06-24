@@ -1,8 +1,12 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { CheckCircle2, AlertCircle, Loader2, ShieldCheck } from 'lucide-react'
+import { CheckCircle2, AlertCircle, Loader2, ShieldCheck, PenLine } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { Modal } from '@/components/ui/modal'
+import { Button } from '@/components/ui/button'
+import { FirmaCanvas } from '@/components/firmas/firma-canvas'
+import { useGeoCaptura } from '@/lib/hooks/use-geo-captura'
 import type { EntregaEppItemConformidad } from '@/lib/types'
 
 type ItemRow = {
@@ -22,7 +26,10 @@ type EntregaRow = {
   observaciones: string | null
   respondida_at: string | null
   firma_id: string | null
+  firma_svg_data: string | null
+  firma_at: string | null
   created_at: string
+  entregado_por_nombre: string | null
   establecimiento_nombre: string | null
   empresa_nombre: string | null
   items: ItemRow[]
@@ -34,6 +41,7 @@ export default function MisEntregasPage() {
   const [observando, setObservando] = useState<string | null>(null)
   const [descargo, setDescargo] = useState('')
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [firmando, setFirmando] = useState<EntregaRow | null>(null)
 
   const load = useCallback(async () => {
     const supabase = createClient()
@@ -83,7 +91,8 @@ export default function MisEntregasPage() {
       </div>
       <p className="text-sm text-text-secondary mb-6">
         Revisá lo que te entregaron. Confirmá si está todo bien, o dejá una observación si algo no corresponde
-        (talle, modelo, estado). Tu respuesta queda registrada.
+        (talle, modelo, estado). Cuando respondiste todos los elementos, firmá la conformidad. Tu respuesta y tu
+        firma quedan registradas.
       </p>
 
       {errorMsg && (
@@ -98,7 +107,13 @@ export default function MisEntregasPage() {
         </div>
       ) : (
         <div className="space-y-5">
-          {entregas.map(entrega => (
+          {entregas.map(entrega => {
+            const totalItems = entrega.items.length
+            const respondidos = entrega.items.filter(i => i.conformidad !== 'pendiente').length
+            const todosRespondidos = totalItems > 0 && respondidos === totalItems
+            const yaFirmada = entrega.firma_id !== null
+
+            return (
             <div key={entrega.id} className="bg-surface-base rounded-xl border border-border-subtle overflow-hidden">
               <div className="px-5 py-3 border-b border-border-subtle flex items-center justify-between">
                 <div>
@@ -109,6 +124,9 @@ export default function MisEntregasPage() {
                     <p className="text-xs text-text-tertiary">
                       {[entrega.empresa_nombre, entrega.establecimiento_nombre].filter(Boolean).join(' · ')}
                     </p>
+                  )}
+                  {entrega.entregado_por_nombre && (
+                    <p className="text-xs text-text-tertiary">Entregó: {entrega.entregado_por_nombre}</p>
                   )}
                 </div>
                 <EstadoBadge estado={entrega.estado} />
@@ -130,7 +148,7 @@ export default function MisEntregasPage() {
                       <ItemEstado conformidad={item.conformidad} />
                     </div>
 
-                    {item.conformidad === 'pendiente' && (
+                    {item.conformidad === 'pendiente' && !yaFirmada && (
                       <div className="mt-3">
                         {observando === item.id ? (
                           <div className="space-y-2">
@@ -183,11 +201,140 @@ export default function MisEntregasPage() {
                   </li>
                 ))}
               </ul>
+
+              {/* Bloque de firma / conformidad final */}
+              <div className="px-5 py-4 border-t border-border-subtle bg-gray-50/40">
+                {yaFirmada ? (
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1.5 text-sm font-medium text-green-700">
+                      <PenLine className="h-4 w-4" aria-hidden="true" /> Firmaste esta entrega
+                    </div>
+                    {entrega.firma_svg_data && (
+                      <div className="border border-border-subtle rounded bg-surface-base inline-block">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={entrega.firma_svg_data} alt="Tu firma" className="h-9 w-auto" style={{ imageRendering: 'pixelated' }} />
+                      </div>
+                    )}
+                    {entrega.firma_at && (
+                      <span className="text-xs text-text-tertiary">{formatFechaHora(entrega.firma_at)}</span>
+                    )}
+                  </div>
+                ) : todosRespondidos ? (
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-xs text-text-secondary">
+                      Ya respondiste los {totalItems} elementos. Firmá para dejar tu conformidad registrada.
+                    </p>
+                    <Button type="button" onClick={() => setFirmando(entrega)}>
+                      <PenLine className="h-4 w-4 mr-1.5 inline" aria-hidden="true" /> Firmar conformidad
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="text-xs text-text-tertiary">
+                    Respondé los {totalItems} elementos ({respondidos}/{totalItems}) para poder firmar la conformidad.
+                  </p>
+                )}
+              </div>
             </div>
-          ))}
+          )})}
         </div>
       )}
+
+      {firmando && (
+        <FirmaEntregaModal
+          entrega={firmando}
+          onClose={() => setFirmando(null)}
+          onSigned={async () => { setFirmando(null); await load() }}
+        />
+      )}
     </div>
+  )
+}
+
+function FirmaEntregaModal({
+  entrega,
+  onClose,
+  onSigned,
+}: {
+  entrega: EntregaRow
+  onClose: () => void
+  onSigned: () => void
+}) {
+  const [firmaData, setFirmaData] = useState<string | null>(null)
+  const [pending, setPending] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const { capturarUbicacion } = useGeoCaptura()
+
+  const hayObservaciones = entrega.items.some(i => i.conformidad === 'observado')
+
+  async function confirmar() {
+    if (!firmaData) return
+    setPending(true)
+    setError(null)
+    // Geo-sello del dispositivo del trabajador al firmar. No bloquea: si falla, firma igual.
+    const geo = await capturarUbicacion()
+    const supabase = createClient()
+    const { error: rpcErr } = await supabase.rpc('firmar_entrega_epp', {
+      p_entrega_id: entrega.id,
+      p_firma_svg: firmaData,
+      p_geo_lat: geo.lat,
+      p_geo_lng: geo.lng,
+      p_geo_precision: geo.accuracy,
+    })
+    setPending(false)
+    if (rpcErr) {
+      setError(rpcErr.message)
+      return
+    }
+    onSigned()
+  }
+
+  return (
+    <Modal open onClose={onClose} title="Firmar conformidad de entrega" size="full">
+      <div className="space-y-4">
+        {error && (
+          <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-3 py-2">{error}</div>
+        )}
+
+        <div className="bg-surface-base rounded-lg px-3 py-2 text-sm text-text-secondary">
+          Entrega del {formatFecha(entrega.fecha_entrega)} · {entrega.items.length}{' '}
+          {entrega.items.length === 1 ? 'elemento' : 'elementos'}
+          {hayObservaciones && ' · con observaciones'}
+        </div>
+
+        <ul className="text-sm text-text-secondary space-y-1">
+          {entrega.items.map(it => (
+            <li key={it.id} className="flex items-center justify-between gap-2">
+              <span>{it.producto_nombre}{it.talle ? ` · Talle ${it.talle}` : ''} · x{it.cantidad}</span>
+              <ItemEstado conformidad={it.conformidad} />
+            </li>
+          ))}
+        </ul>
+
+        <div>
+          <label className="text-sm font-medium text-text-secondary block mb-1.5">
+            Tu firma <span className="text-[var(--danger)]">*</span>
+          </label>
+          <FirmaCanvas onDataChange={setFirmaData} />
+          {firmaData === null && (
+            <p className="text-xs text-text-tertiary mt-1">Dibujá tu firma y tocá &quot;Confirmar trazo&quot;.</p>
+          )}
+        </div>
+
+        <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700">
+          Al firmar dejás constancia de la recepción. La firma queda registrada con fecha, hora y sello de ubicación
+          (cadena de custodia).
+        </div>
+
+        <div className="flex gap-3 pt-1">
+          <Button onClick={confirmar} disabled={!firmaData || pending}>
+            {pending
+              ? <><Loader2 className="h-4 w-4 animate-spin mr-1.5 inline" aria-hidden="true" /> Registrando…</>
+              : <><PenLine className="h-4 w-4 mr-1.5 inline" aria-hidden="true" /> Confirmar firma</>}
+          </Button>
+          <Button type="button" variant="secondary" onClick={onClose} disabled={pending}>Cancelar</Button>
+        </div>
+      </div>
+    </Modal>
   )
 }
 
@@ -195,6 +342,12 @@ function formatFecha(iso: string): string {
   // iso = 'YYYY-MM-DD' (date). Mostrar dd/mm/yyyy sin corrimiento de timezone.
   const [y, m, d] = iso.split('-')
   return d && m && y ? `${d}/${m}/${y}` : iso
+}
+
+function formatFechaHora(iso: string): string {
+  return new Date(iso).toLocaleString('es-AR', {
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  })
 }
 
 function EstadoBadge({ estado }: { estado: string }) {

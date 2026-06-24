@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Users, Building2 } from 'lucide-react'
+import { Users, Building2, ShieldCheck } from 'lucide-react'
 
 interface HubCard {
   href: string
@@ -20,6 +20,12 @@ const CARDS: HubCard[] = [
     icon: Building2,
     title: 'Organizaciones externas',
     description: 'Proveedores, contratistas y entidades de terceros.',
+  },
+  {
+    href: '/dashboard/entregas-epp',
+    icon: ShieldCheck,
+    title: 'Entregas de EPP',
+    description: 'Historial de entregas con conformidad y constancia firmada.',
   },
 ]
 

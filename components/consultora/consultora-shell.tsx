@@ -17,6 +17,7 @@ const DIRECTORIO_PREFIXES = [
   '/dashboard/directorio',
   '/dashboard/personas',
   '/dashboard/organizaciones-externas',
+  '/dashboard/entregas-epp',
 ] as const
 
 const LIBRERIA_PREFIXES = [
