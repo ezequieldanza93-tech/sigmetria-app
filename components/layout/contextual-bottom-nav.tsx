@@ -271,7 +271,7 @@ export function ContextualBottomNav({ canManageCursos = false, userRole }: Conte
                 { id: 'lib-iperc', label: 'IPERC', icon: AlertTriangle, href: '/dashboard/configuracion/iperc' },
                 { id: 'lib-normativa', label: 'Normativa Legal', icon: ScrollText, href: '/dashboard/configuracion/normativa-legal' },
                 { id: 'lib-docs-catalogo', label: 'Catálogo Documentos', icon: FileText, href: '/dashboard/configuracion/documentos-catalogo' },
-                { id: 'lib-cursos', label: 'Mis Cursos', icon: GraduationCap, href: '/dashboard/cursos' },
+                { id: 'lib-cursos', label: 'Campus', icon: GraduationCap, href: '/dashboard/cursos' },
                 ...(canManageCursos
                   ? [
                       { id: 'lib-cursos-admin', label: 'Administrar Cursos', icon: BookOpen, href: '/dashboard/cursos/admin' },

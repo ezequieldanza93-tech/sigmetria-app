@@ -1650,6 +1650,15 @@ export interface CumplimientoEmpresa {
   }[]
 }
 
+export interface CumplimientoEmpresaResumen {
+  empresa_id: string
+  empresa_nombre: string
+  porcentaje: number
+  total: number
+  aprobadas: number
+  vencidas: number
+}
+
 export interface CumplimientoTrendPoint {
   mes: string
   porcentaje: number

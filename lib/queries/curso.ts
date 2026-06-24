@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
-import type { Curso, CursoModulo, CursoAsignacion, CumplimientoStats, CumplimientoEmpresa, CumplimientoTrendPoint } from '@/lib/types'
+import type { Curso, CursoModulo, CursoAsignacion, CumplimientoStats, CumplimientoEmpresa, CumplimientoEmpresaResumen, CumplimientoTrendPoint } from '@/lib/types'
 import {
   crearCurso, actualizarCurso, publicarCurso,
   asignarCurso, asignarMasivo,
@@ -19,6 +19,7 @@ export const cursoKeys = {
   asignaciones: (cursoId: string) => [...cursoKeys.all, 'asignaciones', cursoId] as const,
   progreso: (asignacionId: string) => [...cursoKeys.all, 'progreso', asignacionId] as const,
   cumplimiento: () => [...cursoKeys.all, 'cumplimiento'] as const,
+  cumplimientoPorEmpresa: () => [...cursoKeys.cumplimiento(), 'por-empresa'] as const,
   cumplimientoEmpresa: (empresaId: string) => [...cursoKeys.cumplimiento(), empresaId] as const,
 }
 
@@ -180,6 +181,18 @@ export function useCumplimientoConsultora() {
       const res = await obtenerCumplimientoConsultora()
       if (!res.success) throw new Error(res.error)
       return res.data as CumplimientoStats
+    },
+  })
+}
+
+export function useCumplimientoPorEmpresa() {
+  return useQuery({
+    queryKey: cursoKeys.cumplimientoPorEmpresa(),
+    queryFn: async () => {
+      const { obtenerCumplimientoPorEmpresa } = await import('@/lib/actions/curso')
+      const res = await obtenerCumplimientoPorEmpresa()
+      if (!res.success) throw new Error(res.error)
+      return res.data as CumplimientoEmpresaResumen[]
     },
   })
 }

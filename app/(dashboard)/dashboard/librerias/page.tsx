@@ -99,14 +99,14 @@ export default async function LibreriasHubPage() {
       ],
     },
     {
-      title: 'Formaciones',
+      title: 'Campus Virtual',
       icon: GraduationCap,
       cards: [
         {
           href: '/dashboard/cursos',
           icon: GraduationCap,
-          title: 'Mis Cursos',
-          description: 'Formaciones asignadas y estado de completitud.',
+          title: 'Campus',
+          description: 'Cursos asignados y estado de completitud.',
         },
         ...(canManageCursos
           ? [
@@ -120,7 +120,7 @@ export default async function LibreriasHubPage() {
                 href: '/dashboard/cursos/compliance',
                 icon: CheckCircle,
                 title: 'Compliance',
-                description: 'Control de cumplimiento de formaciones.',
+                description: 'Control de cumplimiento del Campus.',
               } as HubCard,
             ]
           : []),

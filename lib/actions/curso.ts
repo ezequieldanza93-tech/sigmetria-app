@@ -1361,6 +1361,62 @@ export async function obtenerCumplimientoEmpresa(empresaId: string): Promise<Act
   }
 }
 
+export async function obtenerCumplimientoPorEmpresa(): Promise<ActionResult<{
+  empresa_id: string
+  empresa_nombre: string
+  porcentaje: number
+  total: number
+  aprobadas: number
+  vencidas: number
+}[]>> {
+  const { supabase, user } = await getUserAuth()
+  if (!user) return { success: false, error: 'No autenticado' }
+
+  const member = await getConsultoraMembership(user.id)
+  if (!member) return { success: false, error: 'Sin membresía activa' }
+
+  // Empresas de la consultora (RLS las acota; agregamos el filtro explícito para mayor robustez)
+  const { data: empresas } = await supabase
+    .from('empresas')
+    .select('id, razon_social')
+    .order('razon_social')
+
+  if (!empresas || empresas.length === 0) return { success: true, data: [] }
+
+  const empresaIds = empresas.map(e => e.id)
+
+  // Una sola consulta de asignaciones para todas las empresas; agrupamos en memoria.
+  const { data: asignaciones } = await supabase
+    .from('curso_asignaciones')
+    .select('empresa_id, estado')
+    .in('empresa_id', empresaIds)
+    .neq('estado', 'desasignado')
+
+  const porEmpresa = new Map<string, { total: number; aprobadas: number; vencidas: number }>()
+  for (const a of asignaciones ?? []) {
+    if (!a.empresa_id) continue
+    const acc = porEmpresa.get(a.empresa_id) ?? { total: 0, aprobadas: 0, vencidas: 0 }
+    acc.total += 1
+    if (a.estado === 'aprobado') acc.aprobadas += 1
+    if (a.estado === 'vencido') acc.vencidas += 1
+    porEmpresa.set(a.empresa_id, acc)
+  }
+
+  const data = empresas.map(e => {
+    const acc = porEmpresa.get(e.id) ?? { total: 0, aprobadas: 0, vencidas: 0 }
+    return {
+      empresa_id: e.id,
+      empresa_nombre: e.razon_social,
+      porcentaje: acc.total > 0 ? Math.round((acc.aprobadas / acc.total) * 100) : 100,
+      total: acc.total,
+      aprobadas: acc.aprobadas,
+      vencidas: acc.vencidas,
+    }
+  })
+
+  return { success: true, data }
+}
+
 export async function obtenerTrendCumplimiento(): Promise<ActionResult<{ mes: string; porcentaje: number; total: number }[]>> {
   const { supabase, user } = await getUserAuth()
   if (!user) return { success: false, error: 'No autenticado' }

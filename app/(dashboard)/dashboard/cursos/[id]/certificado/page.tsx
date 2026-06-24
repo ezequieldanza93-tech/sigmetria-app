@@ -16,18 +16,30 @@ export default function CertificadoPage({ params }: { params: Promise<{ id: stri
   const asignacion = asignaciones?.find(a => (a as any)?.cursos?.id === cursoId)
 
   const [certificado, setCertificado] = useState<any>(null)
+  const [personaNombre, setPersonaNombre] = useState('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function load() {
       if (!asignacion) { setLoading(false); return }
       const supabase = createClient()
-      const { data } = await supabase
-        .from('cursos_certificados')
-        .select('*')
-        .eq('asignacion_id', asignacion.id)
-        .maybeSingle()
-      setCertificado(data)
+
+      const [{ data: cert }, { data: asig }] = await Promise.all([
+        supabase
+          .from('cursos_certificados')
+          .select('*')
+          .eq('asignacion_id', asignacion.id)
+          .maybeSingle(),
+        supabase
+          .from('curso_asignaciones')
+          .select('personas_directorio!persona_id(nombre, apellido)')
+          .eq('id', asignacion.id)
+          .maybeSingle<{ personas_directorio: { nombre: string | null; apellido: string | null } | null }>(),
+      ])
+
+      setCertificado(cert)
+      const persona = asig?.personas_directorio
+      if (persona) setPersonaNombre(`${persona.nombre ?? ''} ${persona.apellido ?? ''}`.trim())
       setLoading(false)
     }
     load()
@@ -78,7 +90,7 @@ export default function CertificadoPage({ params }: { params: Promise<{ id: stri
         pdfUrl={certificado.pdf_url}
         codigoValidacion={certificado.codigo_validacion}
         cursoTitulo={curso?.titulo ?? ''}
-        personaNombre=""
+        personaNombre={personaNombre}
         fechaEmision={certificado.fecha_emision}
         fechaVencimiento={certificado.fecha_vencimiento}
       />
