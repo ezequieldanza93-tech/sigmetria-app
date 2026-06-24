@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getMatrizLegal,
+  getNovedadesNormativas,
   getAuditorias,
   getAuditoriaDetalle,
   createAuditoria,
@@ -19,6 +20,7 @@ import {
 const keys = {
   all: ['normativa-auditoria'] as const,
   matriz: (estId: string) => [...keys.all, 'matriz', estId] as const,
+  novedades: (estId: string) => [...keys.all, 'novedades', estId] as const,
   list: (estId: string) => [...keys.all, 'list', estId] as const,
   detalle: (audId: string) => [...keys.all, 'detalle', audId] as const,
 }
@@ -28,6 +30,18 @@ export function useMatrizLegal(establecimientoId: string) {
     queryKey: keys.matriz(establecimientoId),
     queryFn: async () => {
       const res = await getMatrizLegal(establecimientoId)
+      if (!res.success) throw new Error(res.error)
+      return res.data
+    },
+  })
+}
+
+/** Novedades: normas que aparecieron tras la última auditoría cerrada (2A.3). */
+export function useNovedadesNormativas(establecimientoId: string) {
+  return useQuery({
+    queryKey: keys.novedades(establecimientoId),
+    queryFn: async () => {
+      const res = await getNovedadesNormativas(establecimientoId)
       if (!res.success) throw new Error(res.error)
       return res.data
     },
@@ -65,7 +79,10 @@ export function useCreateAuditoria(establecimientoId: string) {
       if (!res.success) throw new Error(res.error)
       return res.data
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: keys.list(establecimientoId) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: keys.list(establecimientoId) })
+      qc.invalidateQueries({ queryKey: keys.novedades(establecimientoId) })
+    },
   })
 }
 
@@ -93,6 +110,8 @@ export function useUpdateAuditoriaEstado(establecimientoId: string) {
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: keys.detalle(vars.auditoriaId) })
       qc.invalidateQueries({ queryKey: keys.list(establecimientoId) })
+      // Cerrar/reabrir cambia el snapshot base contra el que se comparan novedades.
+      qc.invalidateQueries({ queryKey: keys.novedades(establecimientoId) })
     },
   })
 }
@@ -104,7 +123,10 @@ export function useDeleteAuditoria(establecimientoId: string) {
       const res = await deleteAuditoria(auditoriaId)
       if (!res.success) throw new Error(res.error)
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: keys.list(establecimientoId) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: keys.list(establecimientoId) })
+      qc.invalidateQueries({ queryKey: keys.novedades(establecimientoId) })
+    },
   })
 }
 

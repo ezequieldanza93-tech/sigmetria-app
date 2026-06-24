@@ -74,6 +74,80 @@ export async function getMatrizLegal(establecimientoId: string): Promise<ActionR
   return { success: true, data: normas.map((n) => ({ ...n, requisitos_count: counts.get(n.id) ?? 0 })) }
 }
 
+export interface NormaNueva {
+  id: string
+  tipo: string
+  numero: string | null
+  titulo: string
+}
+
+export interface NovedadesNormativas {
+  /** ¿Hay al menos una auditoría cerrada contra la cual comparar? */
+  tieneAuditoriaCerrada: boolean
+  /** Fecha de la última auditoría cerrada (referencia del snapshot comparado). */
+  ultimaCerradaFecha: string | null
+  /** Normas que hoy aplican y NO estaban en el snapshot de esa auditoría cerrada. */
+  normasNuevas: NormaNueva[]
+}
+
+/**
+ * Detecta normas que aparecieron como aplicables DESPUÉS de la última auditoría
+ * cerrada (2A.3): "apareció una norma nueva aplicable a tu establecimiento".
+ *
+ * Compara la matriz viva (getNormativasAplicables) contra el snapshot de la
+ * última auditoría CERRADA. Es una lectura pura: NO modifica ninguna auditoría
+ * (el snapshot cerrado queda intacto). Si no hay auditoría cerrada, no hay nada
+ * que comparar (la primera auditoría se crea desde cero con el badge existente).
+ */
+export async function getNovedadesNormativas(
+  establecimientoId: string,
+): Promise<ActionResult<NovedadesNormativas>> {
+  const supabase = await createClient()
+
+  const { data: ultima, error: audErr } = await supabase
+    .from('normativa_auditorias')
+    .select('id, fecha')
+    .eq('establecimiento_id', establecimientoId)
+    .eq('estado', 'cerrada')
+    .order('fecha', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (audErr) return { success: false, error: audErr.message }
+
+  if (!ultima) {
+    return { success: true, data: { tieneAuditoriaCerrada: false, ultimaCerradaFecha: null, normasNuevas: [] } }
+  }
+
+  // norma_ids congelados en esa auditoría cerrada (snapshot).
+  const { data: itemsPrev, error: itErr } = await supabase
+    .from('normativa_auditoria_items')
+    .select('norma_id')
+    .eq('auditoria_id', (ultima as { id: string }).id)
+  if (itErr) return { success: false, error: itErr.message }
+
+  const yaAuditadas = new Set(
+    ((itemsPrev ?? []) as { norma_id: string | null }[])
+      .map((i) => i.norma_id)
+      .filter((id): id is string => id !== null),
+  )
+
+  // Normas que hoy aplican y NO estaban en el snapshot cerrado.
+  const aplicables = await getNormativasAplicables(establecimientoId)
+  const normasNuevas: NormaNueva[] = aplicables
+    .filter((n) => !yaAuditadas.has(n.id))
+    .map((n) => ({ id: n.id, tipo: n.tipo, numero: n.numero, titulo: n.titulo }))
+
+  return {
+    success: true,
+    data: {
+      tieneAuditoriaCerrada: true,
+      ultimaCerradaFecha: (ultima as { fecha: string }).fecha,
+      normasNuevas,
+    },
+  }
+}
+
 /** Lista de auditorías del establecimiento, con el tally de estados de cada una. */
 export async function getAuditorias(establecimientoId: string): Promise<ActionResult<AuditoriaResumen[]>> {
   const supabase = await createClient()

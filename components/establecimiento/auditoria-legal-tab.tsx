@@ -12,12 +12,14 @@ import {
   CheckCircle,
   Lock,
   ClipboardCheck,
+  BellRing,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/lib/hooks/use-toast'
 import {
   useMatrizLegal,
+  useNovedadesNormativas,
   useAuditorias,
   useAuditoriaDetalle,
   useCreateAuditoria,
@@ -175,6 +177,7 @@ function AuditoriaListado({
   const { success, error } = useToast()
   const { data: matriz, isLoading: loadingMatriz } = useMatrizLegal(establecimientoId)
   const { data: auditorias, isLoading: loadingAuds } = useAuditorias(establecimientoId)
+  const { data: novedades } = useNovedadesNormativas(establecimientoId)
   const crear = useCreateAuditoria(establecimientoId)
 
   async function handleCrear() {
@@ -209,6 +212,39 @@ function AuditoriaListado({
           </Button>
         )}
       </div>
+
+      {/* Novedades normativas: normas que aparecieron tras la última auditoría
+          cerrada (2A.3). El snapshot cerrado NO se altera; esto es solo un aviso. */}
+      {novedades?.tieneAuditoriaCerrada && novedades.normasNuevas.length > 0 && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 dark:border-amber-800/60 dark:bg-amber-900/20 p-4">
+          <div className="flex items-start gap-2.5">
+            <BellRing className="h-4 w-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                {novedades.normasNuevas.length === 1
+                  ? 'Apareció 1 norma nueva aplicable a este establecimiento'
+                  : `Aparecieron ${novedades.normasNuevas.length} normas nuevas aplicables a este establecimiento`}
+              </p>
+              <p className="text-xs text-amber-700 dark:text-amber-300/90 mt-0.5">
+                No estaban en tu última auditoría cerrada. Creá una nueva auditoría para incorporarlas
+                (la auditoría anterior queda intacta).
+              </p>
+              <ul className="mt-2 space-y-0.5">
+                {novedades.normasNuevas.slice(0, 6).map((n) => (
+                  <li key={n.id} className="text-xs text-amber-800 dark:text-amber-200">
+                    • {normaLabel(n)}
+                  </li>
+                ))}
+                {novedades.normasNuevas.length > 6 && (
+                  <li className="text-xs text-amber-700 dark:text-amber-300/90">
+                    …y {novedades.normasNuevas.length - 6} más
+                  </li>
+                )}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Matriz legal aplicable */}
       <div className="rounded-xl border border-border-subtle bg-surface-base p-4">

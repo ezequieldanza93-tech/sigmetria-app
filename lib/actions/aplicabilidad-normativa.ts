@@ -56,6 +56,8 @@ interface NormaRow {
   requiere_habilitacion: boolean
   requiere_pregunta: boolean
   pregunta_id: string | null
+  min_empleados: number | null
+  max_empleados: number | null
   normativa_categorias: { nombre: string } | null
   normativa_normas_tipos_establecimiento: JoinTipo[] | null
 }
@@ -65,23 +67,32 @@ interface EstabDims {
   tiene_habilitacion: boolean
   provincia_id: string | null
   actividad_id: string | null
+  // Dotación TOTAL declarada (operativos + administrativos), o null si el
+  // establecimiento todavía no cargó ninguno de los dos. Headcount puro: NO es
+  // el "equivalente" del Dec. 1338/96 (ese cálculo, que define las HORAS del
+  // servicio de HyS, vive aparte en lib/hys/calculo-1338.ts).
+  dotacion: number | null
 }
 
 async function getEstabDims(establecimientoId: string): Promise<EstabDims | null> {
   const supabase = await createClient()
   const { data } = await supabase
     .from('establecimientos')
-    .select('tipo_id, tiene_habilitacion, actividad_id, localidades(provincia_id)')
+    .select('tipo_id, tiene_habilitacion, actividad_id, cantidad_trabajadores_operativos, cantidad_trabajadores_administrativos, localidades(provincia_id)')
     .eq('id', establecimientoId)
     .single()
   if (!data) return null
   const loc = data.localidades as unknown as { provincia_id: string | null } | { provincia_id: string | null }[] | null
   const provincia_id = Array.isArray(loc) ? (loc[0]?.provincia_id ?? null) : (loc?.provincia_id ?? null)
+  const op = data.cantidad_trabajadores_operativos as number | null
+  const adm = data.cantidad_trabajadores_administrativos as number | null
+  const dotacion = op == null && adm == null ? null : (op ?? 0) + (adm ?? 0)
   return {
     tipo_id: data.tipo_id as string | null,
     tiene_habilitacion: Boolean(data.tiene_habilitacion),
     provincia_id,
     actividad_id: (data.actividad_id as string | null) ?? null,
+    dotacion,
   }
 }
 
@@ -97,7 +108,7 @@ export async function getNormativasAplicables(establecimientoId: string): Promis
   const { data } = await supabase
     .from('normativa_normas')
     .select(
-      'id, tipo, numero, anio, titulo, nombre_completo, organismo, ambito, estado, descripcion, aplica_a_todos, provincia_id, requiere_habilitacion, requiere_pregunta, pregunta_id, normativa_categorias(nombre), normativa_normas_tipos_establecimiento(tipo_establecimiento_id, modo)'
+      'id, tipo, numero, anio, titulo, nombre_completo, organismo, ambito, estado, descripcion, aplica_a_todos, provincia_id, requiere_habilitacion, requiere_pregunta, pregunta_id, min_empleados, max_empleados, normativa_categorias(nombre), normativa_normas_tipos_establecimiento(tipo_establecimiento_id, modo)'
     )
     .order('orden', { ascending: true, nullsFirst: false })
 
@@ -155,7 +166,15 @@ export async function getNormativasAplicables(establecimientoId: string): Promis
       // establecimiento debe estar entre las cargadas.
       const actSet = actividadesPorNorma.get(n.id)
       const aplicaActividad = !actSet || actSet.size === 0 || (dims.actividad_id !== null && actSet.has(dims.actividad_id))
-      return incluido && !excluido && aplicaJurisdiccion && aplicaHabilitacion && aplicaPregunta && aplicaActividad
+      // Dotación (rango de empleados): sin cota = aplica siempre. Con cota pero
+      // sin dotación declarada → NO aplica (no podemos afirmar el umbral).
+      const tieneCotaEmpleados = n.min_empleados !== null || n.max_empleados !== null
+      const aplicaEmpleados =
+        !tieneCotaEmpleados ||
+        (dims.dotacion !== null &&
+          (n.min_empleados === null || dims.dotacion >= n.min_empleados) &&
+          (n.max_empleados === null || dims.dotacion <= n.max_empleados))
+      return incluido && !excluido && aplicaJurisdiccion && aplicaHabilitacion && aplicaPregunta && aplicaActividad && aplicaEmpleados
     })
     .map((n) => ({
       id: n.id,
