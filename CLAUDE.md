@@ -92,7 +92,7 @@ Consultora
 - `.env.e2e` — credenciales de tests
 - `.vercel/.env.production.local`
 - Migraciones ya aplicadas — **solo agregar nuevas**
-- `public/sw.js` — kill switch del Service Worker (deshabilitado por React #418, no re-habilitar sin resolver el bug)
+- `public/sw.js` — Service Worker **ACTIVO y sano** desde `bc2379d` (2026-06-13). **NO lo deshabilites ni lo "mates".** El bug histórico de React #418 ya está resuelto de raíz por diseño: las **navegaciones** (HTML) van siempre a la red (network-first, nunca se cachea HTML → imposible servir HTML viejo que no matchee el JS nuevo → sin mismatch de hidratación). Solo se cachea `/_next/static/` (assets inmutables con hash de contenido). `/api`, `/auth` y `/_next/data` nunca se cachean. `/offline` queda precacheado para sin-conexión. Para invalidar la caché tras un cambio incompatible, **bumpeá la constante `VERSION`** en `public/sw.js` (su `activate` purga las cachés viejas). El registro lo hace `app/layout.tsx`.
 
 ---
 
