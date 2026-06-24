@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { revalidatePath } from 'next/cache'
 import { consultoraIdFromEstablecimiento } from '@/lib/storage/tenant-path'
 import { getNormativasAplicables, type NormaAplicable } from '@/lib/actions/aplicabilidad-normativa'
 import type { ActionResult } from '@/lib/types'
@@ -320,4 +321,75 @@ export async function quitarEvidenciaItem(itemId: string): Promise<ActionResult<
     .eq('id', itemId)
   if (error) return { success: false, error: error.message }
   return { success: true, data: null }
+}
+
+/**
+ * Agrega un requisito ad-hoc a una auditoría.
+ * Crea una norma custom (tipo "Otro") en la librería de la consultora
+ * para que sea reutilizable en futuras auditorías.
+ */
+export async function addAdHocItemToAuditoria(
+  auditoriaId: string,
+  data: {
+    titulo: string
+    descripcion?: string
+    referencia?: string
+  },
+): Promise<ActionResult<AuditoriaItem>> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'No autenticado' }
+
+  const titulo = data.titulo?.trim()
+  if (!titulo) return { success: false, error: 'El título del requisito es obligatorio' }
+
+  const { data: auditoria } = await supabase
+    .from('normativa_auditorias')
+    .select('id, consultora_id, estado')
+    .eq('id', auditoriaId)
+    .single()
+
+  if (!auditoria) return { success: false, error: 'Auditoría no encontrada' }
+  if ((auditoria as { estado: string }).estado === 'cerrada') return { success: false, error: 'La auditoría está cerrada' }
+
+  const consultoraId = (auditoria as { consultora_id: string }).consultora_id
+  const normaTitulo = data.referencia?.trim() || 'Requisito propio'
+
+  const { data: norma, error: normaError } = await supabase
+    .from('normativa_normas')
+    .insert({ consultora_id: consultoraId, tipo: 'Otro', titulo: normaTitulo, estado: 'Vigente' })
+    .select('id, tipo, titulo')
+    .single()
+
+  if (normaError || !norma) return { success: false, error: normaError?.message ?? 'No se pudo crear la norma' }
+
+  const { data: req, error: reqError } = await supabase
+    .from('normativa_requisitos')
+    .insert({ norma_id: (norma as { id: string }).id, articulo: titulo, descripcion_corta: data.descripcion?.trim() || null, orden: 1 })
+    .select('id')
+    .single()
+
+  if (reqError || !req) return { success: false, error: reqError?.message ?? 'No se pudo crear el requisito' }
+
+  const { data: newItem, error: itemError } = await supabase
+    .from('normativa_auditoria_items')
+    .insert({
+      auditoria_id: auditoriaId,
+      norma_id: (norma as { id: string }).id,
+      requisito_id: (req as { id: string }).id,
+      estado: 'pendiente',
+      norma_numero: null,
+      norma_titulo: normaTitulo,
+      norma_tipo: 'Otro',
+      articulo: titulo,
+      descripcion_corta: data.descripcion?.trim() || null,
+      orden: 9999,
+    })
+    .select('*')
+    .single()
+
+  if (itemError || !newItem) return { success: false, error: itemError?.message ?? 'No se pudo agregar el requisito' }
+
+  revalidatePath('/dashboard/empresas', 'layout')
+  return { success: true, data: newItem as unknown as AuditoriaItem }
 }

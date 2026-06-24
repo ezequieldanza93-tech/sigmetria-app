@@ -22,6 +22,7 @@ const establecimientoActionSchema = z.object({
   description: z.string().nullable().optional(),
   ubicacion_gmaps: z.string().nullable().optional(),
   aplica_iso_45001: z.literal('on').optional(),
+  tiene_habilitacion: z.literal('on').optional(),
   cantidad_trabajadores: z.coerce.number().int().min(0).nullable().optional(),
   cantidad_trabajadores_operativos: z.coerce.number().int().min(0).nullable().optional(),
   cantidad_trabajadores_administrativos: z.coerce.number().int().min(0).nullable().optional(),
@@ -205,7 +206,7 @@ export async function createEstablecimiento(
   if (!parsed.success) {
     return { success: false, error: formatZodErrors(parsed.error) }
   }
-  const { nombre, tipo_id, domicilio, localidad_id, codigo_postal, actividad_principal, actividad_id, description, aplica_iso_45001, cantidad_trabajadores, cantidad_trabajadores_operativos, cantidad_trabajadores_administrativos, categoria_hys } = parsed.data
+  const { nombre, tipo_id, domicilio, localidad_id, codigo_postal, actividad_principal, actividad_id, description, aplica_iso_45001, tiene_habilitacion, cantidad_trabajadores, cantidad_trabajadores_operativos, cantidad_trabajadores_administrativos, categoria_hys } = parsed.data
 
   const { latitud, longitud } = await resolveCoordenadas(formData, domicilio)
 
@@ -231,6 +232,7 @@ export async function createEstablecimiento(
       latitud,
       longitud,
       aplica_iso_45001: aplica_iso_45001 === 'on',
+      tiene_habilitacion: tiene_habilitacion === 'on',
       cantidad_trabajadores: cantidad_trabajadores ?? null,
       cantidad_trabajadores_operativos: cantidad_trabajadores_operativos ?? null,
       cantidad_trabajadores_administrativos: cantidad_trabajadores_administrativos ?? null,
@@ -301,7 +303,7 @@ export async function updateEstablecimiento(
   if (!parsed.success) {
     return { success: false, error: formatZodErrors(parsed.error) }
   }
-  const { nombre, tipo_id, domicilio, localidad_id, codigo_postal, actividad_principal, actividad_id, description, aplica_iso_45001, cantidad_trabajadores, cantidad_trabajadores_operativos, cantidad_trabajadores_administrativos, categoria_hys } = parsed.data
+  const { nombre, tipo_id, domicilio, localidad_id, codigo_postal, actividad_principal, actividad_id, description, aplica_iso_45001, tiene_habilitacion, cantidad_trabajadores, cantidad_trabajadores_operativos, cantidad_trabajadores_administrativos, categoria_hys } = parsed.data
 
   const { latitud, longitud } = await resolveCoordenadas(formData, domicilio)
 
@@ -342,6 +344,7 @@ export async function updateEstablecimiento(
       latitud,
       longitud,
       aplica_iso_45001: aplica_iso_45001 === 'on',
+      tiene_habilitacion: tiene_habilitacion === 'on',
       cantidad_trabajadores: cantidad_trabajadores ?? null,
       cantidad_trabajadores_operativos: cantidad_trabajadores_operativos ?? null,
       cantidad_trabajadores_administrativos: cantidad_trabajadores_administrativos ?? null,

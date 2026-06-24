@@ -11,6 +11,7 @@ import {
   deleteAuditoria,
   subirEvidenciaItem,
   quitarEvidenciaItem,
+  addAdHocItemToAuditoria,
   type AuditoriaItemEstado,
   type AuditoriaEstado,
 } from '@/lib/actions/normativa-auditoria'
@@ -129,5 +130,20 @@ export function useQuitarEvidencia(auditoriaId: string) {
       if (!res.success) throw new Error(res.error)
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.detalle(auditoriaId) }),
+  })
+}
+
+export function useAddAdHocItem(establecimientoId: string, auditoriaId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (data: { titulo: string; descripcion?: string; referencia?: string }) => {
+      const res = await addAdHocItemToAuditoria(auditoriaId, data)
+      if (!res.success) throw new Error(res.error)
+      return res.data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: keys.detalle(auditoriaId) })
+      qc.invalidateQueries({ queryKey: keys.list(establecimientoId) })
+    },
   })
 }

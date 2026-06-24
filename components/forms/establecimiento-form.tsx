@@ -204,6 +204,7 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
   const [respuestas, setRespuestas] = useState<Record<string, boolean>>({})
   const [selectedProvincia, setSelectedProvincia] = useState(establecimiento?.localidades?.provincia ?? '')
   const [selectedTipoId, setSelectedTipoId] = useState(establecimiento?.tipo_id ?? '')
+  const [tieneHabilitacion, setTieneHabilitacion] = useState(establecimiento?.tiene_habilitacion ?? true)
   const [selectedLocalidadId, setSelectedLocalidadId] = useState(establecimiento?.localidad_id ?? '')
   const [selectedActividadId, setSelectedActividadId] = useState(establecimiento?.actividad_id ?? '')
   const [semana, setSemana] = useState<Record<number, DiaConfig>>(HORARIO_DEFAULT)
@@ -290,7 +291,7 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const ps = (data as any[])
           .map(row => row.riesgos_preguntas)
-          .filter(Boolean)
+          .filter((p: PreguntaRiesgo) => p && p.is_active !== false)
           .sort((a: PreguntaRiesgo, b: PreguntaRiesgo) => a.orden - b.orden)
         setPreguntas(ps as PreguntaRiesgo[])
       })
@@ -687,6 +688,27 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
           <label htmlFor="aplica_iso_45001" className="text-sm font-medium text-text-secondary cursor-pointer">
             Aplica ISO 45001
           </label>
+        </div>
+
+        <div>
+          <div className="flex items-center gap-2">
+            <input
+              id="tiene_habilitacion"
+              name="tiene_habilitacion"
+              type="checkbox"
+              checked={tieneHabilitacion}
+              onChange={e => setTieneHabilitacion(e.target.checked)}
+              className="w-4 h-4 rounded border-border-default text-sig-600 focus:ring-sig-500"
+            />
+            <label htmlFor="tiene_habilitacion" className="text-sm font-medium text-text-secondary cursor-pointer">
+              Tiene habilitación municipal
+            </label>
+          </div>
+          {!tieneHabilitacion && (
+            <p className="mt-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              Sin habilitación — las normas que la requieren no se incluirán en la auditoría de requisitos legales hasta obtenerla.
+            </p>
+          )}
         </div>
 
         <div className="border-t border-border-subtle pt-4 space-y-3">

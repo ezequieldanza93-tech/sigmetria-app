@@ -26,6 +26,7 @@ import {
   useDeleteAuditoria,
   useSubirEvidencia,
   useQuitarEvidencia,
+  useAddAdHocItem,
 } from '@/lib/queries/normativa-auditoria'
 import { useSignedUrls } from '@/lib/storage/sign-client'
 import type {
@@ -217,7 +218,18 @@ function AuditoriaListado({
         {loadingAuds ? (
           <Loading />
         ) : (auditorias?.length ?? 0) === 0 ? (
-          <p className="text-sm text-text-tertiary">Todavía no hay auditorías. Creá la primera con &quot;Nueva auditoría&quot;.</p>
+          !sinNormas ? (
+            <div className="rounded-xl border border-sig-200 bg-sig-50/30 p-4 space-y-1">
+              <p className="text-sm font-semibold text-sig-800">
+                Tenés {matriz!.length} normas aplicables · {totalArticulos} artículos a auditar
+              </p>
+              <p className="text-xs text-text-secondary">
+                Creá tu primera auditoría para registrar el cumplimiento de este establecimiento.
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm text-text-tertiary">Todavía no hay auditorías.</p>
+          )
         ) : (
           <div className="flex flex-col gap-2">
             {auditorias!.map((a) => {
@@ -476,15 +488,20 @@ function AuditoriaDetalle({
   canWrite: boolean
   onBack: () => void
 }) {
-  const { error } = useToast()
+  const { error, success } = useToast()
   const { data, isLoading } = useAuditoriaDetalle(auditoriaId)
   const updateItem = useUpdateAuditoriaItem(establecimientoId, auditoriaId)
   const updateEstado = useUpdateAuditoriaEstado(establecimientoId)
   const eliminar = useDeleteAuditoria(establecimientoId)
   const subirEv = useSubirEvidencia(auditoriaId)
   const quitarEv = useQuitarEvidencia(auditoriaId)
+  const addAdHoc = useAddAdHocItem(establecimientoId, auditoriaId)
   const [cerrados, setCerrados] = useState<Set<string>>(new Set())
   const [subiendoItemId, setSubiendoItemId] = useState<string | null>(null)
+  const [showAdHocForm, setShowAdHocForm] = useState(false)
+  const [adHocTitulo, setAdHocTitulo] = useState('')
+  const [adHocDescripcion, setAdHocDescripcion] = useState('')
+  const [adHocReferencia, setAdHocReferencia] = useState('')
 
   // Firma en batch las URLs de los archivos de evidencia (bucket privado).
   const evidenciaPaths = (data?.items ?? [])
@@ -550,6 +567,21 @@ function AuditoriaDetalle({
       onBack()
     } catch (e) {
       error(e instanceof Error ? e.message : 'No se pudo eliminar')
+    }
+  }
+
+  async function handleAddAdHoc(e: React.FormEvent) {
+    e.preventDefault()
+    if (!adHocTitulo.trim()) return
+    try {
+      await addAdHoc.mutateAsync({ titulo: adHocTitulo, descripcion: adHocDescripcion || undefined, referencia: adHocReferencia || undefined })
+      success('Requisito agregado')
+      setAdHocTitulo('')
+      setAdHocDescripcion('')
+      setAdHocReferencia('')
+      setShowAdHocForm(false)
+    } catch (e) {
+      error(e instanceof Error ? e.message : 'No se pudo agregar el requisito')
     }
   }
 
@@ -654,6 +686,54 @@ function AuditoriaDetalle({
                   />
                 ))}
               </div>
+
+              {editable && (
+                <div className="rounded-xl border border-dashed border-border-default bg-surface-base p-3">
+                  {showAdHocForm ? (
+                    <form onSubmit={handleAddAdHoc} className="space-y-2">
+                      <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Agregar requisito propio</p>
+                      <input
+                        required
+                        value={adHocTitulo}
+                        onChange={e => setAdHocTitulo(e.target.value)}
+                        placeholder="Título del requisito *"
+                        className="w-full rounded-lg border border-border-default bg-surface-base px-2.5 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
+                      />
+                      <input
+                        value={adHocDescripcion}
+                        onChange={e => setAdHocDescripcion(e.target.value)}
+                        placeholder="Descripción (opcional)"
+                        className="w-full rounded-lg border border-border-default bg-surface-base px-2.5 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
+                      />
+                      <input
+                        value={adHocReferencia}
+                        onChange={e => setAdHocReferencia(e.target.value)}
+                        placeholder="Referencia normativa (ej: Dec. 351/79 Art. 40)"
+                        className="w-full rounded-lg border border-border-default bg-surface-base px-2.5 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
+                      />
+                      <p className="text-xs text-text-tertiary">El requisito se guardará en tu librería para reutilizarlo en futuras auditorías.</p>
+                      <div className="flex gap-2">
+                        <Button type="submit" size="sm" disabled={addAdHoc.isPending || !adHocTitulo.trim()}>
+                          {addAdHoc.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                          Guardar
+                        </Button>
+                        <Button type="button" size="sm" variant="secondary" onClick={() => { setShowAdHocForm(false); setAdHocTitulo(''); setAdHocDescripcion(''); setAdHocReferencia('') }}>
+                          Cancelar
+                        </Button>
+                      </div>
+                    </form>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setShowAdHocForm(true)}
+                      className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Agregar requisito propio
+                    </button>
+                  )}
+                </div>
+              )}
             </>
           )
         })()
