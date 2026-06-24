@@ -5,7 +5,7 @@ import type {
   RiesgoNivel, IncidenteTipo, MedicionTipo, CategoriaLegajo,
 } from '@/lib/types'
 
-interface LegajoEstablecimiento {
+export interface LegajoEstablecimiento {
   nombre: string
   domicilio: string | null
   actividad_principal: string | null
@@ -24,6 +24,18 @@ export interface LegajoTecnicoProps {
   medicionesPorTipo: Record<string, Medicion[]>
   incidentes: Incidente[]
   ahora: Date
+  /**
+   * Modo VISTA PÚBLICA del QR (inspector). Si es true, oculta los documentos
+   * VENCIDOS (solo muestra vigentes) — 2C.2. Default false (la app interna ve
+   * todo, con su propia alerta de vencimiento por tipo).
+   */
+  soloVigentes?: boolean
+  /**
+   * Resolver de URL (firmada) por documento, para que el inspector pueda
+   * ABRIR/DESCARGAR el PDF de los documentos visibles — 2C.1. Si no se provee,
+   * no se muestra el link (la app interna ya tiene su propio acceso al archivo).
+   */
+  getDocUrl?: (doc: Documento) => string | null
 }
 
 const NIVEL_ORDER: Record<RiesgoNivel, number> = { critico: 0, alto: 1, medio: 2, bajo: 3 }
@@ -85,16 +97,21 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
 export function LegajoTecnico({
   establecimiento, empresa, ultimaInspeccion, totalInspecciones12m,
   documentos, capacitaciones, riesgos, medicionesPorTipo, incidentes, ahora,
+  soloVigentes = false, getDocUrl,
 }: LegajoTecnicoProps) {
   const riesgosOrdenados = [...riesgos].sort((a, b) => NIVEL_ORDER[a.nivel] - NIVEL_ORDER[b.nivel])
+
+  const isVigente = (fecha: string | null) => !fecha || new Date(fecha) >= ahora
 
   // Documentos del legajo agrupados por las 6 categorías fijas.
   // VISTA PÚBLICA: solo lo CARGADO. Dedupe por tipo_id quedándose con el ÚLTIMO
   // (más nuevo por created_at) — no se publica historial ni "Pendiente".
+  // En modo `soloVigentes` (QR del inspector) se ocultan los documentos VENCIDOS.
   const documentosPorCategoria = (cat: CategoriaLegajo): Documento[] => {
     const ultimoPorTipo = new Map<string, Documento>()
     for (const d of documentos) {
       if ((d.documentos_tipos?.categoria_legajo ?? null) !== cat) continue
+      if (soloVigentes && !isVigente(d.fecha_vencimiento)) continue
       // Agrupamos por tipo_id; los que no tienen tipo se mantienen por id propio.
       const key = d.tipo_id ?? `__sin_tipo__${d.id}`
       const prev = ultimoPorTipo.get(key)
@@ -104,8 +121,6 @@ export function LegajoTecnico({
     }
     return Array.from(ultimoPorTipo.values())
   }
-
-  const isVigente = (fecha: string | null) => !fecha || new Date(fecha) >= ahora
 
   const diasSinCerrar = (fechaOcurrencia: string) =>
     Math.floor((ahora.getTime() - new Date(fechaOcurrencia).getTime()) / 86400000)
@@ -157,7 +172,7 @@ export function LegajoTecnico({
       </SeccionLT>
 
       {/* Documentación — agrupada por las 6 categorías fijas del Legajo Técnico */}
-      <SeccionLT titulo="Documentación vigente">
+      <SeccionLT titulo={soloVigentes ? 'Documentación vigente' : 'Documentación'}>
         <div className="space-y-5">
           {CATEGORIAS_LEGAJO.map(({ key, titulo }) => {
             const docsCat = documentosPorCategoria(key)
@@ -176,11 +191,15 @@ export function LegajoTecnico({
                         <th className="pb-2 text-xs text-text-tertiary font-medium">Renovación</th>
                         <th className="pb-2 text-xs text-text-tertiary font-medium">Vencimiento</th>
                         <th className="pb-2 text-xs text-text-tertiary font-medium">Estado</th>
+                        {getDocUrl && (
+                          <th className="pb-2 text-xs text-text-tertiary font-medium text-right">Archivo</th>
+                        )}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border-subtle">
                       {docsCat.map(doc => {
                         const vigente = isVigente(doc.fecha_vencimiento)
+                        const url = getDocUrl ? getDocUrl(doc) : null
                         return (
                           <tr key={doc.id}>
                             <td className="py-2.5 pr-4 font-medium text-text-primary">
@@ -203,6 +222,22 @@ export function LegajoTecnico({
                                 </span>
                               )}
                             </td>
+                            {getDocUrl && (
+                              <td className="py-2.5 text-right">
+                                {url ? (
+                                  <a
+                                    href={url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 text-xs font-medium text-brand-primary hover:underline"
+                                  >
+                                    Abrir PDF ↗
+                                  </a>
+                                ) : (
+                                  <span className="text-text-tertiary text-xs">—</span>
+                                )}
+                              </td>
+                            )}
                           </tr>
                         )
                       })}

@@ -729,6 +729,8 @@ export interface Documento {
   fecha_emision: string | null
   fecha_vencimiento: string | null
   legajo_tecnico: boolean
+  /** Visibilidad en la vista pública del QR (inspector). Default true. */
+  legajo_publico_visible?: boolean
   subido_por: string | null
   created_at: string
 }

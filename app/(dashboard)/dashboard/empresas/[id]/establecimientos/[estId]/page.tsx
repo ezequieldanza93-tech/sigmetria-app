@@ -16,6 +16,7 @@ import { AnalyticsDashboard } from '@/components/analytics/real/analytics-dashbo
 import { LegajoTecnico } from '@/components/establecimiento/legajo-tecnico'
 import { LegajoTab } from '@/components/establecimiento/legajo-tab'
 import { QRPanel } from '@/components/establecimiento/qr-panel'
+import { LegajoPublicoVisibilidad } from '@/components/establecimiento/legajo-publico-visibilidad'
 
 // Las server actions invocadas desde esta ruta (entre ellas la generación del PDF
 // del protocolo con Chromium) necesitan más tiempo que el default: el cold start de
@@ -80,6 +81,8 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
   let legajoDocumentos: Documento[] = []
   const legajoMedicionesPorTipo: Record<string, Medicion[]> = {}
   let verificacionToken: string | null = null
+  let verificacionRevokedAt: string | null = null
+  let verificacionExpiresAt: string | null = null
 
   if (section === 'ficha') {
     const [s1, s2, s3, s4, s5] = await Promise.all([
@@ -174,9 +177,9 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
     const doce = ahora12m.toISOString().split('T')[0]
 
     const [tk, insp, docs, caps, rgs, meds, sins] = await Promise.all([
-      supabase.from('verificacion_tokens').select('token').eq('establecimiento_id', estId).single(),
+      supabase.from('verificacion_tokens').select('token, revoked_at, expires_at').eq('establecimiento_id', estId).single(),
       supabase.from('inspecciones').select('*').eq('establecimiento_id', estId).in('estado', ['realizada', 'con_observaciones']).order('fecha_realizada', { ascending: false }),
-      supabase.from('establecimientos_documentos').select('*, documentos_tipos(nombre, categoria_legajo, periodicidad)').eq('establecimiento_id', estId).eq('legajo_tecnico', true).order('fecha_vencimiento', { ascending: true, nullsFirst: false }),
+      supabase.from('establecimientos_documentos').select('*, legajo_publico_visible, documentos_tipos(nombre, categoria_legajo, periodicidad)').eq('establecimiento_id', estId).eq('legajo_tecnico', true).order('fecha_vencimiento', { ascending: true, nullsFirst: false }),
       supabase.from('capacitaciones').select('id, titulo, fecha_realizada, capacitaciones_asistentes(id)').eq('empresa_id', empresaId).or(`establecimiento_id.eq.${estId},establecimiento_id.is.null`).eq('estado', 'realizada').gte('fecha_realizada', doce).order('fecha_realizada', { ascending: false }),
       supabase.from('riesgos').select('*').eq('establecimiento_id', estId).eq('resuelto', false),
       supabase.from('mediciones').select('*, unidades(nombre, simbolo)').eq('establecimiento_id', estId).order('fecha', { ascending: false }),
@@ -184,6 +187,8 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
     ])
 
     verificacionToken = tk.data?.token ?? null
+    verificacionRevokedAt = (tk.data as { revoked_at?: string | null } | null)?.revoked_at ?? null
+    verificacionExpiresAt = (tk.data as { expires_at?: string | null } | null)?.expires_at ?? null
     legajoInspecciones = (insp.data ?? []) as unknown as Inspeccion[]
     legajoDocumentos = (docs.data ?? []) as unknown as Documento[]
     legajoCapacitaciones = ((caps.data ?? []) as unknown as (Capacitacion & { capacitaciones_asistentes?: { id: string }[] })[])
@@ -285,13 +290,15 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
                 ahora={new Date()}
               />
             </div>
-            <div className="w-full lg:w-72 shrink-0">
+            <div className="w-full lg:w-72 shrink-0 space-y-4">
               {verificacionToken ? (
                 <QRPanel
                   token={verificacionToken}
                   establecimientoId={estId}
                   empresaId={empresaId}
                   establecimientoNombre={establecimiento.nombre}
+                  revokedAt={verificacionRevokedAt}
+                  expiresAt={verificacionExpiresAt}
                 />
               ) : (
                 <div className="bg-surface-elevated border border-border-subtle rounded-xl p-5">
@@ -302,6 +309,14 @@ export default async function EstablecimientoDetailPage({ params, searchParams }
               )}
             </div>
           </div>
+
+          {/* Visibilidad por documento en el QR público (lo que ve el inspector). */}
+          <LegajoPublicoVisibilidad
+            documentos={legajoDocumentos}
+            establecimientoId={estId}
+            empresaId={empresaId}
+            canWrite={userCanWrite}
+          />
 
           <LegajoTab
             legajoEsperados={legajoEsperados}
