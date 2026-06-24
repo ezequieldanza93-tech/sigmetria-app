@@ -121,9 +121,9 @@ export function useMisAsignaciones() {
       if (!user) return []
 
       const { data: personas } = await supabase
-        .from('directorio_personas')
+        .from('personas_directorio')
         .select('id')
-        .eq('usuario_id', user.id)
+        .eq('user_id', user.id)
 
       if (!personas || personas.length === 0) return []
 
@@ -146,7 +146,7 @@ export function useAsignacionesCurso(cursoId: string) {
       const supabase = createClient()
       const { data } = await supabase
         .from('curso_asignaciones')
-        .select('*, directorio_personas!persona_id(*)')
+        .select('*, personas_directorio!persona_id(*)')
         .eq('curso_id', cursoId)
         .order('fecha_asignacion', { ascending: false })
 

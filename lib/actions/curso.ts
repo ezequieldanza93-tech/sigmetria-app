@@ -652,7 +652,7 @@ export async function asignarCurso(
 
   // Get persona consultora_ids for permission check
   const { data: personas } = await supabase
-    .from('directorio_personas')
+    .from('personas_directorio')
     .select('id')
     .in('id', personaIdsRaw)
 
@@ -698,7 +698,7 @@ export async function asignarMasivo(
   if (!curso) return { success: false, error: 'Curso no encontrado' }
 
   // Build query to get personas matching criteria
-  let query = supabase.from('directorio_personas').select('id')
+  let query = supabase.from('personas_directorio').select('id')
 
   if (criterios.puesto_id) {
     // Get personas by puesto via trabajador_puestos
@@ -728,7 +728,7 @@ export async function asignarMasivo(
   }
 
   if (criterios.establecimiento_id) {
-    // Filter by establecimiento - direct field on directorio_personas? 
+    // Filter by establecimiento - direct field on personas_directorio? 
     // Actually, let's check the schema... using organizacion_id for now
     const { data: est } = await supabase
       .from('establecimientos')
@@ -827,7 +827,7 @@ export async function importarAsignacionesCSV(
     const dni = dniIdx >= 0 ? cols[dniIdx] : null
     const email = emailIdx >= 0 ? cols[emailIdx] : null
 
-    let query = supabase.from('directorio_personas').select('id').limit(1)
+    let query = supabase.from('personas_directorio').select('id').limit(1)
     if (dni) query = query.eq('dni', dni)
     else if (email) query = query.eq('email', email)
     else { fallidas++; continue }
@@ -1112,14 +1112,14 @@ export async function emitirCertificado(asignacionId: string): Promise<ActionRes
 
   const { data: asig } = await supabase
     .from('curso_asignaciones')
-    .select('*, cursos(*), directorio_personas!persona_id(*)')
+    .select('*, cursos(*), personas_directorio!persona_id(*)')
     .eq('id', asignacionId)
     .single()
 
   if (!asig) return { success: false, error: 'Asignación no encontrada' }
 
   const curso = (asig as any).cursos
-  const persona = (asig as any).directorio_personas
+  const persona = (asig as any).personas_directorio
 
   // Generate validation code
   const codigo = `CERT-${crypto.randomUUID().slice(0, 8).toUpperCase()}`
@@ -1197,7 +1197,7 @@ export async function validarCertificadoPublico(
 
   const { data: cert } = await supabase
     .from('cursos_certificados')
-    .select('*, curso_asignaciones!asignacion_id(cursos!curso_id(titulo, consultora_id), directorio_personas!persona_id(nombre, apellido))')
+    .select('*, curso_asignaciones!asignacion_id(cursos!curso_id(titulo, consultora_id), personas_directorio!persona_id(nombre, apellido))')
     .eq('codigo_validacion', codigo)
     .maybeSingle()
 
@@ -1209,7 +1209,7 @@ export async function validarCertificadoPublico(
   if (!asig) return { valido: false }
 
   const cursoData = asig.cursos
-  const personaData = asig.directorio_personas
+  const personaData = asig.personas_directorio
 
   const estaVencido = cert.fecha_vencimiento && new Date(cert.fecha_vencimiento) < new Date()
 
@@ -1248,7 +1248,7 @@ export async function obtenerCumplimientoConsultora(): Promise<ActionResult<{
 
   // Get all personas of this consultora
   const { data: personas } = await supabase
-    .from('directorio_personas')
+    .from('personas_directorio')
     .select('id')
     .eq('created_in_consultora_id', member.consultora_id)
 
@@ -1370,7 +1370,7 @@ export async function obtenerTrendCumplimiento(): Promise<ActionResult<{ mes: st
 
   // Simplified: return last 12 months based on current data
   const { data: personas } = await supabase
-    .from('directorio_personas')
+    .from('personas_directorio')
     .select('id')
     .eq('created_in_consultora_id', member.consultora_id)
 

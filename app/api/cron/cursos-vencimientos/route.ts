@@ -42,7 +42,7 @@ async function ejecutar() {
 
   const { data: asignaciones } = await supabase
     .from('curso_asignaciones')
-    .select('id, curso_id, persona_id, fecha_limite, directorio_personas!persona_id(created_in_consultora_id, usuario_id, nombre, apellido), cursos!curso_id(titulo, consultora_id)')
+    .select('id, curso_id, persona_id, fecha_limite, personas_directorio!persona_id(created_in_consultora_id, user_id, nombre, apellido), cursos!curso_id(titulo, consultora_id)')
     .in('estado', ['pendiente', 'en_curso'])
     .not('fecha_limite', 'is', null)
 
@@ -55,7 +55,7 @@ async function ejecutar() {
     const diffDays = Math.ceil((fechaLimite.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
 
     if (diasAviso.includes(diffDays)) {
-      const consultoraId = asig.cursos?.consultora_id ?? asig.directorio_personas?.created_in_consultora_id
+      const consultoraId = asig.cursos?.consultora_id ?? asig.personas_directorio?.created_in_consultora_id
       if (!consultoraId) continue
 
       // Check if notification already exists
@@ -77,7 +77,7 @@ async function ejecutar() {
         titulo: `Curso próximo a vencer`,
         mensaje: `El curso "${asig.cursos?.titulo}" vence en ${diffDays} día(s). Completalo antes de la fecha límite.`,
         entidad_nombre: asig.cursos?.titulo ?? 'Curso',
-        contexto_nombre: `${asig.directorio_personas?.nombre ?? ''} ${asig.directorio_personas?.apellido ?? ''}`.trim() || null,
+        contexto_nombre: `${asig.personas_directorio?.nombre ?? ''} ${asig.personas_directorio?.apellido ?? ''}`.trim() || null,
         fecha_vencimiento: asig.fecha_limite,
         dias_restantes: diffDays,
       })

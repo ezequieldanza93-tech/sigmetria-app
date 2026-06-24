@@ -28,7 +28,7 @@ export async function GET(
       invalidado,
       curso_asignaciones!asignacion_id (
         cursos!curso_id (titulo),
-        directorio_personas!persona_id (nombre, apellido)
+        personas_directorio!persona_id (nombre, apellido)
       )
     `)
     .eq('codigo_validacion', codigo)
@@ -41,13 +41,13 @@ export async function GET(
   const asig = (cert as unknown as {
     curso_asignaciones: {
       cursos: { titulo: string } | null
-      directorio_personas: { nombre: string; apellido: string } | null
+      personas_directorio: { nombre: string; apellido: string } | null
     } | null
   }).curso_asignaciones
 
   const cursoTitulo = asig?.cursos?.titulo ?? 'Curso'
-  const personaNombre = asig?.directorio_personas
-    ? `${asig.directorio_personas.nombre} ${asig.directorio_personas.apellido}`
+  const personaNombre = asig?.personas_directorio
+    ? `${asig.personas_directorio.nombre} ${asig.personas_directorio.apellido}`
     : 'Participante'
 
   const fechaEmision = cert.fecha_emision

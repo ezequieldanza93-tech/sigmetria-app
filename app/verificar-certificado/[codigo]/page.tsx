@@ -28,7 +28,7 @@ export default async function VerificarCertificadoPage({
       *,
       curso_asignaciones!asignacion_id (
         cursos!curso_id (titulo, consultora_id),
-        directorio_personas!persona_id (nombre, apellido)
+        personas_directorio!persona_id (nombre, apellido)
       )
     `)
     .eq('codigo_validacion', codigo)
@@ -65,7 +65,7 @@ export default async function VerificarCertificadoPage({
   }
 
   const cursoData = asig.cursos
-  const personaData = asig.directorio_personas
+  const personaData = asig.personas_directorio
   const estaVencido = cert.fecha_vencimiento && new Date(cert.fecha_vencimiento) < new Date()
 
   return (

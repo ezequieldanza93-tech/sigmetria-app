@@ -69,7 +69,7 @@ export default function AsignacionesCursoPage({ params }: { params: Promise<{ id
                   <tr key={asig.id} className="border-b border-border-subtle hover:bg-surface-sunken/50 transition-colors">
                     <td className="px-4 py-3">
                       <span className="font-medium text-text-primary">
-                        {asig.directorio_personas?.nombre} {asig.directorio_personas?.apellido}
+                        {asig.personas_directorio?.nombre} {asig.personas_directorio?.apellido}
                       </span>
                     </td>
                     <td className="px-4 py-3">
