@@ -34,6 +34,14 @@ export const aiQuizRatelimit = createRatelimit(
   'ratelimit:ai-quiz'
 )
 
+// Cupo de usos de la IA inline de redacción de observaciones de campo.
+// Se keyea por consultora (cupo compartido del plan base) y vive en Upstash
+// (sin migración). Generoso para una jornada de campo, pero acota el abuso.
+export const sugerirObservacionRatelimit = createRatelimit(
+  Ratelimit.slidingWindow(30, '60 m'),
+  'ratelimit:sugerir-observacion'
+)
+
 export async function checkRateLimit(ratelimit: Ratelimit, identifier: string) {
   const { success, remaining } = await ratelimit.limit(identifier)
   if (!success) {

@@ -8,11 +8,12 @@ import { getGestionesAplicables } from '@/lib/actions/aplicabilidad'
 import { getGestionesPresentacionAplicables } from '@/lib/actions/aplicabilidad-normativa'
 import { createRegistroGestion, ejecutarGestion } from '@/lib/actions/registro-gestion'
 import { createObservacionGestion, cerrarObservacion } from '@/lib/actions/observacion-gestion'
+import { sugerirObservacion } from '@/lib/actions/sugerir-observacion'
 import { calcularEstadoGestion } from '@/lib/types'
 import { useOfflineSync } from '@/lib/hooks/use-offline-sync'
 import { enqueueMutation } from '@/lib/offline/queue'
 import { compressImage } from '@/lib/offline/compress-image'
-import { WifiOff } from 'lucide-react'
+import { WifiOff, Sparkles, Loader2 } from 'lucide-react'
 import type {
   GestionEstablecimiento,
   Gestion,
@@ -155,17 +156,27 @@ function ObservacionForm({
   registroGestionId,
   establecimientoId,
   personas,
+  gestionNombre,
+  establecimientoNombre,
   onSuccess,
 }: {
   registroGestionId: string
   establecimientoId: string
   personas: { id: string; nombre: string; apellido: string }[]
+  gestionNombre?: string | null
+  establecimientoNombre?: string | null
   onSuccess: () => void
 }) {
   const { isOnline, supported, syncNow } = useOfflineSync()
   const [categorias, setCategorias] = useState<{ id: string; nombre: string; nivel: number }[]>([])
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Controlados para que la IA pueda poblarlos. El profesional edita/confirma.
+  const [descripcion, setDescripcion] = useState('')
+  const [categoriaId, setCategoriaId] = useState('')
+  // Estado de la asistencia IA (independiente del guardado, no bloquea el form).
+  const [aiPending, setAiPending] = useState(false)
+  const [aiError, setAiError] = useState<string | null>(null)
   const formRef = useRef<HTMLFormElement>(null)
   const onSuccessRef = useRef(onSuccess)
   onSuccessRef.current = onSuccess
@@ -175,6 +186,39 @@ function ObservacionForm({
       setCategorias((data ?? []) as { id: string; nombre: string; nivel: number }[])
     })
   }, [])
+
+  // "Redactar con IA": toma las notas crudas del textarea, pide un borrador y lo
+  // vuelca al textarea + pre-selecciona la categoría. NUNCA guarda solo: el
+  // profesional edita y confirma. Si la IA falla, el form sigue editable a mano.
+  async function handleRedactarIA() {
+    const notas = descripcion.trim()
+    setAiError(null)
+    if (!notas) {
+      setAiError('Escribí unas notas (aunque sean breves) y la IA las redacta')
+      return
+    }
+    setAiPending(true)
+    try {
+      const res = await sugerirObservacion({
+        notas,
+        gestionNombre: gestionNombre ?? null,
+        establecimientoNombre: establecimientoNombre ?? null,
+      })
+      if (!res.success) {
+        setAiError(res.error)
+        return
+      }
+      setDescripcion(res.data.borrador)
+      // Sugerencia de categoría = pre-selección editable (solo si el id existe en el catálogo).
+      if (res.data.categoriaId && categorias.some(c => c.id === res.data.categoriaId)) {
+        setCategoriaId(res.data.categoriaId)
+      }
+    } catch {
+      setAiError('No se pudo redactar con IA. Escribí la observación a mano.')
+    } finally {
+      setAiPending(false)
+    }
+  }
 
   // Encolamos SIEMPRE (cero pérdida de datos): la observación se persiste en
   // IndexedDB con su op_id antes de tocar la red. Si hay señal, drenamos la cola
@@ -201,6 +245,7 @@ function ObservacionForm({
         const res = await createObservacionGestion(null, fd)
         if (!res.success) { setError(res.error); setPending(false); return }
         formRef.current?.reset()
+        setDescripcion(''); setCategoriaId(''); setAiError(null)
         onSuccessRef.current()
         return
       }
@@ -223,6 +268,7 @@ function ObservacionForm({
       })
 
       formRef.current?.reset()
+      setDescripcion(''); setCategoriaId(''); setAiError(null)
       // Online → intentar sincronizar ya. Offline → queda en cola (indicador lo muestra).
       if (isOnline) void syncNow()
       onSuccessRef.current()
@@ -246,7 +292,13 @@ function ObservacionForm({
         <label className="text-xs font-medium text-text-secondary block mb-1">
           Categoría <span className="text-danger">*</span>
         </label>
-        <select name="categoria_id" required className="w-full border border-border-default rounded px-2 py-1.5 text-xs bg-surface-base">
+        <select
+          name="categoria_id"
+          required
+          value={categoriaId}
+          onChange={e => setCategoriaId(e.target.value)}
+          className="w-full border border-border-default rounded px-2 py-1.5 text-xs bg-surface-base"
+        >
           <option value="">Seleccionar...</option>
           {categorias.map(c => (
             <option key={c.id} value={c.id}>{c.nombre}</option>
@@ -254,8 +306,31 @@ function ObservacionForm({
         </select>
       </div>
       <div>
-        <label className="text-xs font-medium text-text-secondary block mb-1">Descripción *</label>
-        <textarea name="descripcion" required rows={2} className="w-full border border-border-default rounded px-2 py-1.5 text-xs resize-none" />
+        <div className="flex items-center justify-between mb-1">
+          <label className="text-xs font-medium text-text-secondary">Descripción *</label>
+          <button
+            type="button"
+            onClick={handleRedactarIA}
+            disabled={aiPending}
+            title="Escribí tus notas y la IA arma un borrador. Vos lo editás y confirmás."
+            className="inline-flex items-center gap-1 text-xs font-medium text-sig-700 hover:text-sig-800 disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {aiPending
+              ? <><Loader2 size={13} className="animate-spin" aria-hidden="true" /> Redactando…</>
+              : <><Sparkles size={13} aria-hidden="true" /> Redactar con IA</>}
+          </button>
+        </div>
+        <textarea
+          name="descripcion"
+          required
+          rows={2}
+          value={descripcion}
+          onChange={e => setDescripcion(e.target.value)}
+          placeholder="Escribí tus notas crudas y tocá «Redactar con IA», o redactá la observación a mano."
+          className="w-full border border-border-default rounded px-2 py-1.5 text-xs resize-none"
+        />
+        {aiError && <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">{aiError}</p>}
+        <p className="text-[11px] text-text-tertiary mt-1">La IA sugiere un borrador; revisalo y editalo antes de guardar.</p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <div>
@@ -619,6 +694,7 @@ export function GestionesTab({ establecimientoId, canWrite }: GestionesTabProps)
                                 registroGestionId={r.id}
                                 establecimientoId={establecimientoId}
                                 personas={personas}
+                                gestionNombre={ge?.gestiones?.nombre ?? null}
                                 onSuccess={() => {
                                   setShowObsForm(null)
                                   loadObservaciones(registros.map(x => x.id)).then(setObservaciones)
