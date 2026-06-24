@@ -401,6 +401,7 @@ export function LegajoTab({
   // F2: estado de revisión del legajo (sello de cadena de custodia).
   const [revision, setRevision] = useState<LegajoRevision | null>(null)
   const [confirmando, setConfirmando] = useState(false)
+  const [revisionError, setRevisionError] = useState<string | null>(null)
   const reloadRevision = useCallback(() => {
     getLegajoRevision(establecimientoId).then(setRevision).catch(() => {})
   }, [establecimientoId])
@@ -408,10 +409,14 @@ export function LegajoTab({
 
   const confirmar = async () => {
     setConfirmando(true)
+    setRevisionError(null)
     const res = await confirmarLegajo(establecimientoId)
     setConfirmando(false)
     if (res.success) {
       setRevision({ revisado_at: res.data.revisado_at, revisado_by: null, revisor_nombre: res.data.revisor_nombre })
+    } else {
+      // Nunca tragarse el error: si falla, el usuario tiene que verlo.
+      setRevisionError(res.error)
     }
   }
 
@@ -531,7 +536,8 @@ export function LegajoTab({
   return (
     <div className="space-y-4">
       {/* F2 · Sello de revisión del legajo (cadena de custodia, Disp. 15/2026). */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-surface-base dark:bg-surface-elevated border border-border-subtle rounded-xl px-4 py-3">
+      <div className="bg-surface-base dark:bg-surface-elevated border border-border-subtle rounded-xl px-4 py-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
           {estaRevisado ? (
             <>
@@ -564,6 +570,10 @@ export function LegajoTab({
             {confirmando ? 'Confirmando…' : estaRevisado ? 'Volver a confirmar' : 'Confirmar legajo'}
           </button>
         )}
+      </div>
+      {revisionError && (
+        <p className="mt-2 text-xs text-danger">{revisionError}</p>
+      )}
       </div>
 
       {canWrite && (

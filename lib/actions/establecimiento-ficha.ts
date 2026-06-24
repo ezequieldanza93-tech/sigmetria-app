@@ -666,15 +666,27 @@ export async function confirmarLegajo(
 ): Promise<ActionResult<{ revisado_at: string; revisor_nombre: string | null }>> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'No autenticado' }
+  if (!user) return { success: false, error: 'Tu sesión expiró. Volvé a iniciar sesión e intentá de nuevo.' }
 
   const revisado_at = new Date().toISOString()
-  const { error } = await supabase
+  // .select(...).single() es clave: un UPDATE sin select devuelve { error: null }
+  // aunque RLS filtre el row a 0 filas (falso éxito silencioso). Con .single(),
+  // 0 filas -> error PGRST116, así un fallo de permisos nunca pasa desapercibido.
+  const { data: updated, error } = await supabase
     .from('establecimientos')
     .update({ legajo_revisado_at: revisado_at, legajo_revisado_by: user.id })
     .eq('id', establecimientoId)
+    .select('legajo_revisado_at')
+    .single()
 
-  if (error) return { success: false, error: error.message }
+  if (error) {
+    // PGRST116 = "no rows": el UPDATE no afectó ninguna fila (RLS o id inexistente).
+    if (error.code === 'PGRST116') {
+      return { success: false, error: 'No tenés permiso para confirmar el legajo de este establecimiento.' }
+    }
+    return { success: false, error: error.message }
+  }
+  if (!updated) return { success: false, error: 'No se pudo confirmar el legajo.' }
 
   const { data: prof } = await supabase
     .from('profiles')
