@@ -101,7 +101,8 @@ function InviteLinkView({ link, role }: { link: string; role: string }) {
 export function InviteUsuarioForm({ action, onSuccess, viewerOnly = false, seatsUsed, seatsMax, personas = [] }: InviteUsuarioFormProps) {
   const [friendly, setFriendly] = useState<FriendlyRoleKey>(viewerOnly ? 'visualizador' : 'colaborador')
   const [scope, setScope] = useState<ScopeKey>('especifico')
-  const [fullName, setFullName] = useState('')
+  const [nombre, setNombre] = useState('')
+  const [apellido, setApellido] = useState('')
   const [email, setEmail] = useState('')
   const [personaId, setPersonaId] = useState('')
 
@@ -125,7 +126,8 @@ export function InviteUsuarioForm({ action, onSuccess, viewerOnly = false, seats
     setPersonaId(id)
     const p = personas.find(x => x.id === id)
     if (p) {
-      setFullName(`${p.nombre} ${p.apellido}`.trim())
+      setNombre(p.nombre)
+      setApellido(p.apellido)
       setEmail(p.email ?? '')
     }
   }
@@ -209,15 +211,26 @@ export function InviteUsuarioForm({ action, onSuccess, viewerOnly = false, seats
       )}
 
       {/* Datos de la cuenta */}
-      <Input
-        label="Nombre Completo"
-        name="full_name"
-        required
-        placeholder="María García"
-        value={fullName}
-        onChange={(e) => setFullName(e.target.value)}
-        readOnly={esViewerObs && !!personaId}
-      />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <Input
+          label="Nombre"
+          name="nombre"
+          required
+          placeholder="María"
+          value={nombre}
+          onChange={(e) => setNombre(e.target.value)}
+          readOnly={esViewerObs && !!personaId}
+        />
+        <Input
+          label="Apellido"
+          name="apellido"
+          required
+          placeholder="García"
+          value={apellido}
+          onChange={(e) => setApellido(e.target.value)}
+          readOnly={esViewerObs && !!personaId}
+        />
+      </div>
       <Input
         label="Email"
         name="email"

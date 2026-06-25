@@ -2,16 +2,17 @@
 
 import { z } from 'zod'
 import { createClient as createServerClient } from '@/lib/supabase/server'
-import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import type { ActionResult, UserRole, SystemRole } from '@/lib/types'
 import { canManageUsers, canInviteViewers, isFreeViewerRole, consumesSeat } from '@/lib/types'
 import { validateFormData, formatZodErrors } from '@/lib/validation/helpers'
 import { userRole } from '@/lib/validation/schemas'
+import { ejecutarInvitacion } from '@/lib/actions/invitar-miembro'
 
 const inviteUsuarioSchema = z.object({
   email: z.string().email({ message: 'Email inválido' }),
-  full_name: z.string().min(1, { message: 'El nombre es obligatorio' }),
+  nombre: z.string().min(1, { message: 'El nombre es obligatorio' }),
+  apellido: z.string().min(1, { message: 'El apellido es obligatorio' }),
   role: userRole,
 })
 
@@ -47,7 +48,7 @@ export async function inviteUsuario(_prevState: ActionResult<InviteResult> | nul
   if (!parsed.success) {
     return { success: false, error: formatZodErrors(parsed.error) }
   }
-  const { email, full_name: fullName, role } = parsed.data
+  const { email, nombre, apellido, role } = parsed.data
   const personaId = (formData.get('persona_id') as string | null)?.trim() || null
   const consultoraId = membership?.consultora_id
 
@@ -81,41 +82,28 @@ export async function inviteUsuario(_prevState: ActionResult<InviteResult> | nul
     }
   }
 
-  const headersList = await headers()
-  const host = headersList.get('host') ?? 'localhost:3000'
-  const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https'
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? `${protocol}://${host}`
+  if (!consultoraId) {
+    return { success: false, error: 'No se encontró consultora' }
+  }
 
-  const response = await fetch(`${baseUrl}/api/admin/invite-user`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, full_name: fullName, role, ...(personaId ? { persona_id: personaId } : {}) }),
+  // Ejecuta la invitación EN PROCESO (sin fetch HTTP a la propia ruta API:
+  // ese patrón fallaba en prod porque el fetch interno no llevaba cookies y la
+  // URL armada a mano podía devolver HTML -> "No se pudo generar el link").
+  const result = await ejecutarInvitacion({
+    consultoraId,
+    invitedByUserId: user.id,
+    email,
+    nombre,
+    apellido,
+    role,
+    personaId,
   })
-
-  if (!response.ok) {
-    let errorMsg = `Error al invitar usuario (HTTP ${response.status})`
-    try {
-      const body = await response.json()
-      if (body?.error) errorMsg = body.error
-    } catch {
-      // el body no es JSON — el mensaje genérico con status es suficiente
-    }
-    console.error('[inviteUsuario] API error:', errorMsg)
-    return { success: false, error: errorMsg }
-  }
-
-  let payload: { link?: string; role?: string } | null = null
-  try {
-    payload = await response.json()
-  } catch {
-    console.error('[inviteUsuario] no se pudo parsear la respuesta JSON del API')
-  }
-  if (!payload?.link) {
-    return { success: false, error: 'No se pudo generar el link de invitación' }
+  if ('error' in result) {
+    return { success: false, error: result.error }
   }
 
   revalidatePath('/dashboard/usuarios')
-  return { success: true, data: { link: payload.link, role: payload.role ?? role } }
+  return { success: true, data: { link: result.link, role } }
 }
 
 export async function updateRol(memberId: string, role: UserRole): Promise<ActionResult<null>> {
@@ -182,23 +170,20 @@ export async function replaceMember(memberId: string, newFullName: string, newEm
     .eq('id', memberId)
   if (deactivateError) return { success: false, error: deactivateError.message }
 
-  // Invitación del reemplazo con el mismo rol.
-  const headersList = await headers()
-  const host = headersList.get('host') ?? 'localhost:3000'
-  const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https'
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? `${protocol}://${host}`
-  const response = await fetch(`${baseUrl}/api/admin/invite-user`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, full_name: fullName, role: member.role }),
+  // Invitación del reemplazo con el mismo rol (en proceso, sin fetch a sí mismo).
+  const partes = fullName.split(/\s+/)
+  const nombreRep = partes[0] ?? fullName
+  const apellidoRep = partes.slice(1).join(' ') || nombreRep
+  const result = await ejecutarInvitacion({
+    consultoraId: ctx.membership?.consultora_id ?? '',
+    invitedByUserId: ctx.user.id,
+    email,
+    nombre: nombreRep,
+    apellido: apellidoRep,
+    role: member.role,
   })
-  if (!response.ok) {
-    const { error } = await response.json().catch(() => ({ error: 'Error al invitar al reemplazo' }))
-    return { success: false, error }
-  }
-  const payload = await response.json().catch(() => null) as { link?: string; role?: string } | null
-  if (!payload?.link) return { success: false, error: 'No se pudo generar el link de invitación' }
+  if ('error' in result) return { success: false, error: result.error }
 
   revalidatePath('/dashboard/usuarios')
-  return { success: true, data: { link: payload.link, role: payload.role ?? member.role } }
+  return { success: true, data: { link: result.link, role: member.role } }
 }
