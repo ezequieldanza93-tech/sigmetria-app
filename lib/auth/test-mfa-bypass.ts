@@ -17,34 +17,19 @@
 
 import { createMfaCookie, MFA_COOKIE_NAME, MFA_COOKIE_TTL_MS } from '@/lib/mfa-cookie'
 
-const TEST_DOMAIN_SUFFIX = '@sigmetria.app'
-
-// Cuentas puntuales (sin dominio @sigmetria.app) que también bypassean en fase de
-// armado. Se suman con `MFA_BYPASS_EMAILS` (coma-separadas). TEMPORAL.
-// (La cuenta del fundador se sacó: ahora quiere recibir el 2FA real al mail.)
-const EXTRA_BYPASS_EMAILS: string[] = [
-  'ssmat.ed@gmail.com', // TEMP: cuenta de prueba de Ezequiel (founders-launch). Quitar antes del launch real (o ALLOW_MFA_TEST_BYPASS=false).
-]
-
-function extraBypassEmails(): string[] {
-  const fromEnv = (process.env.MFA_BYPASS_EMAILS ?? '')
-    .split(',')
-    .map(s => s.trim().toLowerCase())
-    .filter(Boolean)
-  return [...EXTRA_BYPASS_EMAILS, ...fromEnv]
-}
-
 // Fase de armado: el bypass está ACTIVO por defecto. Se desactiva (MFA real para
 // todas las cuentas) seteando `ALLOW_MFA_TEST_BYPASS=false`.
 function isBypassEnabled(): boolean {
   return process.env.ALLOW_MFA_TEST_BYPASS !== 'false'
 }
 
+// FASE DE ARMADO (decisión Ezequiel 2026-06-25): TODOS los usuarios actuales son de
+// prueba → bypass TOTAL del MFA mientras dure el armado (no se discrimina por dominio
+// ni allowlist). Cuando se pague/verifique el dominio de envío en Resend, se setea
+// `ALLOW_MFA_TEST_BYPASS=false` y rige el MFA real por OTP para TODAS las cuentas
+// (la exención permanente de `@sigmetria.app` se implementa en el fast-follow de MFA).
 export function isTestBypassAccount(email: string | null | undefined): boolean {
-  if (!isBypassEnabled()) return false
-  if (!email) return false
-  const e = email.toLowerCase()
-  return e.endsWith(TEST_DOMAIN_SUFFIX) || extraBypassEmails().includes(e)
+  return isBypassEnabled() && Boolean(email)
 }
 
 export interface BypassCookie {
