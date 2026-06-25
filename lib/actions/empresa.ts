@@ -8,6 +8,7 @@ import type { ActionResult } from '@/lib/types'
 import { uploadAsset, deleteAsset, storagePath } from '@/lib/storage/upload'
 import { validateFormData, formatZodErrors } from '@/lib/validation/helpers'
 import { geocodeAddress } from '@/lib/geocoding'
+import { checkPlanLimit, planLimitMessage } from '@/lib/billing/plan-limit'
 
 interface EmpresaFormState {
   success: boolean
@@ -173,6 +174,16 @@ export async function createEmpresa(_prev: EmpresaFormState | null, formData: Fo
 
   if (!canWrite) return { success: false, error: 'Sin permisos para crear empresas', fields }
   if (!isDev && !membership?.consultora_id) return { success: false, error: 'No pertenecés a ninguna consultora', fields }
+
+  // Pre-chequeo del cupo del plan ANTES del INSERT (mensaje prolijo). El trigger
+  // BEFORE INSERT en `empresas` sigue siendo la red de seguridad dura.
+  // Devs sin consultora no tienen plan que chequear → se saltea.
+  if (membership?.consultora_id) {
+    const limit = await checkPlanLimit(supabase, membership.consultora_id, 'empresas')
+    if (!limit.allowed) {
+      return { success: false, error: planLimitMessage(limit, 'empresas'), fields }
+    }
+  }
 
   const parsed = validateFormData(empresaActionSchema, formData)
   if (!parsed.success) {

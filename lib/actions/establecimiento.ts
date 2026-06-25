@@ -8,6 +8,7 @@ import { SECTORES_PREDEFINIDOS } from '@/lib/constants'
 import type { ActionResult } from '@/lib/types'
 import { validateFormData, formatZodErrors } from '@/lib/validation/helpers'
 import { uploadAsset, deleteAsset, storagePath } from '@/lib/storage/upload'
+import { checkPlanLimit, planLimitMessage } from '@/lib/billing/plan-limit'
 
 const establecimientoActionSchema = z.object({
   nombre: z.string().min(1, { error: 'El nombre es obligatorio' }).transform(s => s.trim()),
@@ -202,6 +203,24 @@ export async function createEstablecimiento(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
+  // Consultora dueña de la empresa: la necesitamos para el pre-chequeo de cupo
+  // y la reutilizamos más abajo para los uploads (foto / planos).
+  const { data: empresaConsultora } = await supabase
+    .from('empresas')
+    .select('consultora_id')
+    .eq('id', empresaId)
+    .single()
+  const consultoraId = empresaConsultora?.consultora_id ?? null
+
+  // Pre-chequeo del cupo del plan ANTES del INSERT (mensaje prolijo). El trigger
+  // BEFORE INSERT en `establecimientos` sigue siendo la red de seguridad dura.
+  if (consultoraId) {
+    const limit = await checkPlanLimit(supabase, consultoraId, 'establecimientos')
+    if (!limit.allowed) {
+      return { success: false, error: planLimitMessage(limit, 'establecimientos') }
+    }
+  }
+
   const parsed = validateFormData(establecimientoActionSchema, formData)
   if (!parsed.success) {
     return { success: false, error: formatZodErrors(parsed.error) }
@@ -241,23 +260,17 @@ export async function createEstablecimiento(
 
   if (error) return { success: false, error: error.message }
 
-  const { data: empresaConsultora } = await supabase
-    .from('empresas')
-    .select('consultora_id')
-    .eq('id', empresaId)
-    .single()
-
   const foto = formData.get('foto') as File | null
-  const photo_site = foto && empresaConsultora?.consultora_id
-    ? await uploadFoto(supabase, foto, empresaConsultora.consultora_id, establecimientoId)
+  const photo_site = foto && consultoraId
+    ? await uploadFoto(supabase, foto, consultoraId, establecimientoId)
     : null
   if (photo_site) {
     await supabase.from('establecimientos').update({ photo_site }).eq('id', establecimientoId)
   }
 
-  if (empresaConsultora?.consultora_id) {
+  if (consultoraId) {
     const plans = await processFloorPlans(
-      empresaConsultora.consultora_id,
+      consultoraId,
       establecimientoId,
       formData,
       { plano_url: null, floor_plan_cad_url: null },
