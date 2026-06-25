@@ -2,8 +2,9 @@
 //
 // Vercel Hobby permite un máximo de 2 cron jobs (diarios). Para no perder ninguno
 // de los jobs de la app, este único endpoint los dispara TODOS en una sola corrida
-// (vencimientos, alertas, inconsistencias, billing, GC de exports). Así vercel.json
-// tiene un solo cron y entra en el límite del plan Hobby.
+// (vencimientos, alertas, inconsistencias, máquina de estados de suscripciones,
+// billing, GC de exports). Así vercel.json tiene un solo cron y entra en el límite
+// del plan Hobby.
 //
 // Si en el futuro se necesita mayor frecuencia o jobs separados → Vercel Pro
 // (lifts el límite de crons) y se puede volver a un cron por job.
@@ -19,6 +20,10 @@ const JOBS = [
   '/api/cron/cursos-vencimientos',
   '/api/cron/alertas',
   '/api/cron/inconsistencias',
+  // Máquina de estados de suscripciones: trialing → trial_view_only → expired
+  // (corre 1 vez/día, idempotente: solo migra las que vencieron). Disjunto de
+  // expirar-past-due (estado past_due) y aplicar-cambios-plan (plan pendiente).
+  '/api/cron/subscriptions',
   '/api/cron/expirar-past-due',
   '/api/cron/aplicar-cambios-plan',
   '/api/cron/limpiar-exports',
