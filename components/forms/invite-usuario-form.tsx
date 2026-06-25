@@ -46,54 +46,74 @@ const ROLE_CARDS: { key: FriendlyRoleKey; label: string; desc: string }[] = [
   { key: 'auditor', label: 'Auditor — Organismo de control (solo lectura)', desc: 'Acceso de lectura a toda la consultora para el organismo de control (SRT). No modifica nada.' },
 ]
 
-function InviteLinkView({ link, role }: { link: string; role: string }) {
-  const [copiado, setCopiado] = useState(false)
+function InviteCredentialsView({ email, tempPassword, role }: { email: string; tempPassword: string; role: string }) {
+  const [copiado, setCopiado] = useState<string | null>(null)
   const friendly = roleToFriendly(role as never)
 
-  function copiar() {
+  function copiar(texto: string, cual: string) {
     navigator.clipboard
-      .writeText(link)
+      .writeText(texto)
       .then(() => {
-        setCopiado(true)
-        setTimeout(() => setCopiado(false), 1800)
+        setCopiado(cual)
+        setTimeout(() => setCopiado(null), 1800)
       })
-      .catch(() => { /* el usuario puede copiar manualmente desde el input */ })
+      .catch(() => { /* copia manual desde el campo */ })
+  }
+
+  function fila(label: string, value: string, cual: string) {
+    return (
+      <div>
+        <label className="text-xs font-medium text-text-tertiary">{label}</label>
+        <div className="flex items-center gap-1.5">
+          <input
+            readOnly
+            value={value}
+            onFocus={(e) => e.currentTarget.select()}
+            className="flex-1 min-w-0 text-sm font-mono border border-border-default rounded-lg px-3 py-2 bg-surface-elevated text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary"
+          />
+          <button
+            type="button"
+            onClick={() => copiar(value, cual)}
+            title={`Copiar ${label.toLowerCase()}`}
+            className={`shrink-0 inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm transition-colors ${
+              copiado === cual ? 'border-success/40 text-success bg-success-bg' : 'border-border-default text-text-secondary hover:bg-surface-elevated'
+            }`}
+          >
+            {copiado === cual ? <Check size={14} /> : <Copy size={14} />}
+            {copiado === cual ? 'Copiado' : 'Copiar'}
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (
     <div className="space-y-4">
       <div role="status" aria-live="polite" className="flex items-center gap-2 bg-success-bg border border-green-200 text-success text-sm rounded-lg px-4 py-3">
         <CheckCircle2 size={16} className="shrink-0" />
-        Link de invitación generado · rol {friendly.label}{friendly.scope ? ` (${friendly.scope})` : ''}.
+        Acceso creado · rol {friendly.label}{friendly.scope ? ` (${friendly.scope})` : ''}.
       </div>
 
       <p className="text-sm text-text-secondary">
-        Compartí este link con la persona como prefieras (WhatsApp, email, etc.). Al abrirlo
-        va a poder definir su contraseña y quedará unida con el rol asignado.{' '}
-        <span className="text-text-tertiary">No se envió ningún email automáticamente.</span>
+        Compartile estos datos (WhatsApp, email, etc.). Al ingresar por primera vez, el sistema le va a
+        pedir que <strong>defina su propia contraseña</strong>.
       </p>
 
-      <div className="flex items-center gap-1.5">
-        <input
-          readOnly
-          value={link}
-          onFocus={(e) => e.currentTarget.select()}
-          className="flex-1 min-w-0 text-xs border border-border-default rounded-lg px-3 py-2 bg-surface-elevated text-text-secondary focus:outline-none focus:ring-2 focus:ring-brand-primary"
-        />
-        <button
-          type="button"
-          onClick={copiar}
-          title="Copiar link"
-          className={`shrink-0 inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm transition-colors ${
-            copiado
-              ? 'border-success/40 text-success bg-success-bg'
-              : 'border-border-default text-text-secondary hover:bg-surface-elevated'
-          }`}
-        >
-          {copiado ? <Check size={14} /> : <Copy size={14} />}
-          {copiado ? 'Copiado' : 'Copiar link'}
-        </button>
+      <div className="space-y-3">
+        {fila('Email', email, 'email')}
+        {fila('Contraseña temporal', tempPassword, 'pass')}
       </div>
+
+      <button
+        type="button"
+        onClick={() => copiar(`Email: ${email}\nContraseña temporal: ${tempPassword}\n(Al entrar vas a definir tu propia contraseña.)`, 'ambos')}
+        className={`w-full inline-flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-sm transition-colors ${
+          copiado === 'ambos' ? 'border-success/40 text-success bg-success-bg' : 'border-border-default text-text-secondary hover:bg-surface-elevated'
+        }`}
+      >
+        {copiado === 'ambos' ? <Check size={14} /> : <Copy size={14} />}
+        {copiado === 'ambos' ? 'Copiado' : 'Copiar email + contraseña'}
+      </button>
     </div>
   )
 }
@@ -144,7 +164,7 @@ export function InviteUsuarioForm({ action, onSuccess, viewerOnly = false, seats
   )
 
   if (state?.success) {
-    return <InviteLinkView link={state.data.link} role={state.data.role} />
+    return <InviteCredentialsView email={state.data.email} tempPassword={state.data.tempPassword} role={state.data.role} />
   }
 
   const personaSinEmail = esViewerObs && !!personaId && !email
@@ -305,7 +325,7 @@ export function InviteUsuarioForm({ action, onSuccess, viewerOnly = false, seats
       ) : (
         <div className="flex gap-3 pt-1">
           <Button type="submit" disabled={isPending || (esViewerObs && !personaId)}>
-            {isPending ? 'Generando link…' : 'Generar link de invitación'}
+            {isPending ? 'Creando acceso…' : 'Crear acceso'}
           </Button>
         </div>
       )}

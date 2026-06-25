@@ -80,32 +80,39 @@ function ReplaceFlow({ memberId }: { memberId: string }) {
   const [nombre, setNombre] = useState('')
   const [email, setEmail] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const [link, setLink] = useState<string | null>(null)
-  const [copiado, setCopiado] = useState(false)
+  const [cred, setCred] = useState<{ email: string; tempPassword: string } | null>(null)
+  const [copiado, setCopiado] = useState<string | null>(null)
   const [pending, start] = useTransition()
 
   function reemplazar() {
     setError(null)
     start(async () => {
       const r = await replaceMember(memberId, nombre, email)
-      if (r.success) setLink(r.data.link)
+      if (r.success) setCred({ email: r.data.email, tempPassword: r.data.tempPassword })
       else setError(r.error)
     })
   }
 
-  if (link) {
+  function copiar(texto: string, cual: string) {
+    navigator.clipboard.writeText(texto).then(() => { setCopiado(cual); setTimeout(() => setCopiado(null), 1500) }).catch(() => {})
+  }
+
+  if (cred) {
     return (
       <div className="space-y-3">
         <div className="bg-success-bg border border-green-200 text-success text-sm rounded-lg px-4 py-3">
-          Listo. La persona anterior quedó dada de baja. Compartí este link con el reemplazo:
+          Listo. La persona anterior quedó dada de baja. Compartile estos datos al reemplazo (al entrar define su contraseña):
         </div>
         <div className="flex gap-1.5">
-          <input readOnly value={link} onFocus={e => e.currentTarget.select()} className="flex-1 min-w-0 text-xs border border-border-default rounded-lg px-3 py-2 bg-surface-elevated text-text-secondary" />
-          <button
-            onClick={() => navigator.clipboard.writeText(link).then(() => { setCopiado(true); setTimeout(() => setCopiado(false), 1500) }).catch(() => {})}
-            className="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-border-default px-3 py-2 text-sm text-text-secondary hover:bg-surface-elevated"
-          >
-            {copiado ? <Check size={14} /> : <Copy size={14} />}{copiado ? 'Copiado' : 'Copiar'}
+          <input readOnly value={cred.email} onFocus={e => e.currentTarget.select()} className="flex-1 min-w-0 text-sm font-mono border border-border-default rounded-lg px-3 py-2 bg-surface-elevated text-text-primary" />
+          <button onClick={() => copiar(cred.email, 'email')} className="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-border-default px-3 py-2 text-sm text-text-secondary hover:bg-surface-elevated">
+            {copiado === 'email' ? <Check size={14} /> : <Copy size={14} />}{copiado === 'email' ? 'Copiado' : 'Email'}
+          </button>
+        </div>
+        <div className="flex gap-1.5">
+          <input readOnly value={cred.tempPassword} onFocus={e => e.currentTarget.select()} className="flex-1 min-w-0 text-sm font-mono border border-border-default rounded-lg px-3 py-2 bg-surface-elevated text-text-primary" />
+          <button onClick={() => copiar(cred.tempPassword, 'pass')} className="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-border-default px-3 py-2 text-sm text-text-secondary hover:bg-surface-elevated">
+            {copiado === 'pass' ? <Check size={14} /> : <Copy size={14} />}{copiado === 'pass' ? 'Copiado' : 'Contraseña'}
           </button>
         </div>
       </div>
@@ -116,9 +123,9 @@ function ReplaceFlow({ memberId }: { memberId: string }) {
     <div className="space-y-4">
       {error && <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3">{error}</div>}
       <p className="text-xs text-text-tertiary">
-        Se da de baja a la persona actual (su historial queda intacto y trazable) y se invita al reemplazo con el mismo rol.
+        Se da de baja a la persona actual (su historial queda intacto y trazable) y se crea el acceso del reemplazo con el mismo rol.
       </p>
-      <Input label="Nombre del reemplazo" value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Juan Pérez" />
+      <Input label="Nombre y apellido del reemplazo" value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Juan Pérez" />
       <Input label="Email del reemplazo" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="reemplazo@empresa.com" />
       <Button onClick={reemplazar} disabled={pending || !nombre || !email}>{pending ? 'Reemplazando…' : 'Dar de baja e invitar'}</Button>
     </div>

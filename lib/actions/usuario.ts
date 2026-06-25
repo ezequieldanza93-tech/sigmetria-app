@@ -30,7 +30,7 @@ async function assertCanManage() {
   return { user, profile, membership }
 }
 
-export type InviteResult = { link: string; role: string }
+export type InviteResult = { email: string; tempPassword: string; role: string }
 
 export async function inviteUsuario(_prevState: ActionResult<InviteResult> | null, formData: FormData): Promise<ActionResult<InviteResult>> {
   const supabase = await createServerClient()
@@ -103,7 +103,7 @@ export async function inviteUsuario(_prevState: ActionResult<InviteResult> | nul
   }
 
   revalidatePath('/dashboard/usuarios')
-  return { success: true, data: { link: result.link, role } }
+  return { success: true, data: { email: result.email, tempPassword: result.tempPassword, role } }
 }
 
 export async function updateRol(memberId: string, role: UserRole): Promise<ActionResult<null>> {
@@ -185,5 +185,5 @@ export async function replaceMember(memberId: string, newFullName: string, newEm
   if ('error' in result) return { success: false, error: result.error }
 
   revalidatePath('/dashboard/usuarios')
-  return { success: true, data: { link: result.link, role: member.role } }
+  return { success: true, data: { email: result.email, tempPassword: result.tempPassword, role: member.role } }
 }
