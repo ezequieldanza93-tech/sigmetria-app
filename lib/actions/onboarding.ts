@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
+import { createAdminClient } from '@/lib/supabase/admin'
 import type { ActionResult } from '@/lib/types'
 import { revalidatePath } from 'next/cache'
 import { SECTORES_PREDEFINIDOS } from '@/lib/constants'
@@ -100,6 +101,98 @@ export async function createMyConsultora(
         })
         .eq('id', consultora.id)
     }
+  }
+
+  // ── Pickup de plan regalado por super-admin ──────────────────────────────────
+  // Si existe un gifted_plans 'pendiente' para este email, se activa la suscripción
+  // al plan regalado. Envuelto en try/catch robusto: si falla NO rompe el onboarding.
+  try {
+    const admin = createAdminClient()
+    const userEmail = user.email?.toLowerCase().trim()
+
+    if (userEmail) {
+      const { data: gift } = await admin
+        .from('gifted_plans')
+        .select('id, plan_id, ciclo, is_founder')
+        .eq('estado', 'pendiente')
+        .ilike('email', userEmail)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (gift) {
+        const { data: planRegalado } = await admin
+          .from('plans')
+          .select('id, max_colaboradores, tipo')
+          .eq('id', gift.plan_id)
+          .maybeSingle()
+
+        if (planRegalado && planRegalado.tipo !== 'trial') {
+          const now = new Date()
+          // Ciclo anual → 365 días; mensual → 30 días (primer periodo sin vencimiento real)
+          const diasPeriodo = gift.ciclo === 'annual' ? 365 : 30
+          const end = new Date(now.getTime() + diasPeriodo * 24 * 60 * 60 * 1000)
+
+          const subUpdate: Record<string, unknown> = {
+            plan_id: planRegalado.id,
+            estado: 'active',
+            periodo: gift.ciclo,
+            current_period_start: now.toISOString(),
+            current_period_end: end.toISOString(),
+            updated_at: now.toISOString(),
+          }
+
+          if (gift.is_founder) {
+            subUpdate.is_founder = true
+            subUpdate.founder_discount_pct = 20
+          }
+
+          await admin
+            .from('subscriptions')
+            .update(subUpdate)
+            .eq('consultora_id', consultora.id)
+
+          // Actualizar seats_max según el plan regalado
+          const seatsMax = planRegalado.max_colaboradores == null ? 999 : planRegalado.max_colaboradores + 1
+          await admin
+            .from('consultoras')
+            .update({
+              seats_max: seatsMax,
+              tipo: planRegalado.tipo === 'profesional_independiente' ? 'profesional' : 'consultora',
+            })
+            .eq('id', consultora.id)
+
+          // Obtener el id de la subscription para el audit log
+          const { data: sub } = await admin
+            .from('subscriptions')
+            .select('id')
+            .eq('consultora_id', consultora.id)
+            .maybeSingle()
+
+          if (sub) {
+            await admin.from('subscription_audit_log').insert({
+              subscription_id: sub.id,
+              estado_nuevo: 'active',
+              motivo: 'Plan regalado por super-admin (pickup en onboarding)',
+              actor_id: user.id,
+            })
+          }
+
+          // Marcar el regalo como activado
+          await admin
+            .from('gifted_plans')
+            .update({
+              estado: 'activado',
+              consultora_id: consultora.id,
+              activated_at: now.toISOString(),
+            })
+            .eq('id', gift.id)
+        }
+      }
+    }
+  } catch (giftPickupErr) {
+    // No crítico: loguear y seguir
+    console.error('[onboarding] pickup de plan regalado falló (no crítico):', giftPickupErr)
   }
 
   // Refrescar el cache de permisos de la sesión actual.

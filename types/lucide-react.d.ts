@@ -71,6 +71,7 @@ declare module 'lucide-react' {
   export const FolderOpen: Icon
   export const Gauge: Icon
   export const Gavel: Icon
+  export const Gift: Icon
   export const Globe: Icon
   export const GraduationCap: Icon
   export const Grid3X3: Icon
