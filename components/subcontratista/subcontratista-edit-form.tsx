@@ -3,6 +3,7 @@
 import { useActionState, useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PhoneInput } from '@/components/forms/phone-input'
 import { Select } from '@/components/ui/select'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -219,7 +220,7 @@ export function SubcontratistaEditForm({ action, sub, preguntas, respuestas }: P
       <SectionTitle>Contacto</SectionTitle>
       <div className="grid grid-cols-2 gap-4">
         <Input label="Email" name="email" type="email" defaultValue={org.email ?? ''} placeholder="correo@ejemplo.com" />
-        <Input label="Teléfono" name="telefono" defaultValue={org.telefono ?? ''} placeholder="+54 11 0000-0000" />
+        <PhoneInput label="Teléfono" name="telefono" defaultValue={org.telefono ?? ''} placeholder="+54 11 0000-0000" />
       </div>
 
       <div>

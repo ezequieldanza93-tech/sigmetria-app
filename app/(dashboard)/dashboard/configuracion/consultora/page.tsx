@@ -7,8 +7,9 @@ import { updateConsultora, uploadConsultoraLogo } from '@/lib/actions/consultora
 import { publicAssetUrl } from '@/lib/storage/asset-url'
 import { inviteUsuario } from '@/lib/actions/usuario'
 import { InviteUsuarioForm } from '@/components/forms/invite-usuario-form'
+import { PhoneInput } from '@/components/forms/phone-input'
 import NextImage from 'next/image'
-import { Save, Loader2, Building2, Globe, Mail, Phone, Image as LucideImage, Check, Upload, X, UserPlus, Users, Shield, ShieldAlert } from 'lucide-react'
+import { Save, Loader2, Building2, Globe, Mail, Image as LucideImage, Check, Upload, X, UserPlus, Users, Shield, ShieldAlert } from 'lucide-react'
 import { ROLE_LABELS, ROLE_COLORS, UserRole, isFreeViewerRole } from '@/lib/types'
 import type { Consultora } from '@/lib/types'
 
@@ -28,6 +29,7 @@ export default function ConsultoraInfoPage() {
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [logoError, setLogoError] = useState<string | null>(null)
   const logoInputRef = useRef<HTMLInputElement>(null)
+  const telefonoWrapRef = useRef<HTMLDivElement>(null)
   const [members, setMembers] = useState<any[]>([])
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [isMainAdmin, setIsMainAdmin] = useState(false)
@@ -120,9 +122,14 @@ export default function ConsultoraInfoPage() {
     setSaved(false)
     setError(null)
 
+    // PhoneInput maneja su propio estado interno y expone el valor en un
+    // <input hidden name="telefono">. Lo leemos acá al guardar.
+    const telefonoValue =
+      telefonoWrapRef.current?.querySelector<HTMLInputElement>('input[name="telefono"]')?.value ?? telefono
+
     const result = await updateConsultora({
       nombre,
-      telefono: telefono || null,
+      telefono: telefonoValue || null,
       email: email || null,
       website: website || null,
       logo_url: logoUrl || null,
@@ -206,17 +213,13 @@ export default function ConsultoraInfoPage() {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-text-secondary mb-1">Teléfono</label>
-              <div className="relative">
-                <Phone size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
-                <input
-                  value={telefono}
-                  onChange={e => setTelefono(e.target.value)}
-                  placeholder="+54 11 5555-5555"
-                  className="w-full rounded-lg border border-border-subtle bg-surface-base pl-9 pr-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition-colors"
-                />
-              </div>
+            <div ref={telefonoWrapRef}>
+              <PhoneInput
+                name="telefono"
+                label="Teléfono"
+                defaultValue={telefono}
+                placeholder="11 5555-5555"
+              />
             </div>
 
             <div>

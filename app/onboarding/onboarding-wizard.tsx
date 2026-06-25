@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Building2, Sparkles, Check, Briefcase } from 'lucide-react'
 import { Input } from '@/components/ui/input'
+import { PhoneInput } from '@/components/forms/phone-input'
 import { Button } from '@/components/ui/button'
 import { createMyConsultora } from '@/lib/actions/onboarding'
 import { InviteUsuarioForm } from '@/components/forms/invite-usuario-form'
@@ -174,7 +175,7 @@ export function OnboardingWizard({
               <Input label="Nombre de tu consultora o estudio" name="nombre" required placeholder="Sigmetría HyS" autoFocus />
               <Input label="CUIT" name="cuit" placeholder="30-12345678-9" />
               <Input label="Email de contacto" name="email" type="email" defaultValue={userEmail} placeholder="info@consultora.com" />
-              <Input label="Teléfono" name="telefono" placeholder="+54 11 1234-5678" />
+              <PhoneInput label="Teléfono" name="telefono" placeholder="11 1234-5678" />
               <Button type="submit" disabled={isPending} className="w-full">
                 {isPending ? 'Activando tu plan…' : `Activar ${selectedPlan.nombre} →`}
               </Button>

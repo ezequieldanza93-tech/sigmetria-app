@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { createPersona } from '@/lib/actions/persona'
 import { addOrganizacionToEstablecimiento } from '@/lib/actions/organizacion'
 import { TrabajadorModal } from '@/components/trabajador-modal'
+import { PhoneInput } from '@/components/forms/phone-input'
 import type { DirectorioPersona, Organizacion, ActionResult } from '@/lib/types'
 
 function AgregarPersonaStakeholderForm({
@@ -74,7 +75,7 @@ function AgregarOrgStakeholderForm({
       </select>
       <div className="grid grid-cols-2 gap-2">
         <input name="email" type="email" placeholder="Email" className="border border-border-default rounded px-2 py-1.5 text-sm" />
-        <input name="telefono" placeholder="Teléfono" className="border border-border-default rounded px-2 py-1.5 text-sm" />
+        <PhoneInput name="telefono" placeholder="Teléfono" />
       </div>
       {state && !state.success && <p className="text-xs text-danger">{state.error}</p>}
       <div className="flex gap-2 justify-end">

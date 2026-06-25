@@ -29,6 +29,7 @@ import { PersonaRolSelector } from '@/components/persona-rol-selector'
 import type { PersonaRolSelectorValue } from '@/components/persona-rol-selector'
 import { PersonaFirmanteSelector } from '@/components/persona-firmante-selector'
 import { PersonaSelectorConAlta } from '@/components/persona-selector-con-alta'
+import { PhoneInput } from '@/components/forms/phone-input'
 import {
   Building2, FileText, Plus, Trash2, ChevronLeft, ChevronRight, CheckCircle,
   Loader2, Info, ArrowRight, Check, Sparkles, AlertTriangle, Shield, ShieldCheck,
@@ -1261,7 +1262,12 @@ export function PresentacionAutoproteccionEjecutorModal({
               <Field label="Razón social" value={cab.razon_social} disabled={!canWrite} onChange={v => setCabField('razon_social', v)} />
               <Field label="CUIT" value={cab.cuit} disabled={!canWrite} onChange={v => setCabField('cuit', v)} placeholder="30-12345678-9" />
               <Field label="Nombre comercial / fantasía" value={cab.nombre_comercial} disabled={!canWrite} onChange={v => setCabField('nombre_comercial', v)} />
-              <Field label="Teléfono de emergencia" value={cab.telefono_emergencia} disabled={!canWrite} onChange={v => setCabField('telefono_emergencia', v)} />
+              <PhoneInput
+                name="telefono_emergencia"
+                label="Teléfono de emergencia"
+                value={cab.telefono_emergencia}
+                onChange={v => { if (canWrite) setCabField('telefono_emergencia', v) }}
+              />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

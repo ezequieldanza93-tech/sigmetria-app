@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { PersonaSelectorConAlta } from '@/components/persona-selector-con-alta'
+import { PhoneInput } from '@/components/forms/phone-input'
 import type { PersonaSeleccionada } from '@/components/persona-selector-con-alta'
 import { toast } from '@/lib/hooks/use-toast'
 import {
@@ -627,12 +628,11 @@ export function EjecutarCapacitacionModal({
                         placeholder="email@ejemplo.com (opcional)"
                         className="border border-border-default rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-sig-500"
                       />
-                      <input
-                        type="tel"
+                      <PhoneInput
+                        name="celular"
                         value={p.celular}
-                        onChange={(e) => actualizar(p.key, 'celular', e.target.value)}
+                        onChange={(value) => actualizar(p.key, 'celular', value)}
                         placeholder="Celular (opcional)"
-                        className="border border-border-default rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-sig-500"
                       />
                     </div>
                     <button

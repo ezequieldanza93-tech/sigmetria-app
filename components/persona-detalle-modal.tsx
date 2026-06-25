@@ -5,6 +5,7 @@ import { FileText, Trash2, Upload, User } from 'lucide-react'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { FileUploadInput } from '@/components/ui/file-upload-input'
+import { PhoneInput } from '@/components/forms/phone-input'
 import { createClient } from '@/lib/supabase/client'
 import { updatePersona } from '@/lib/actions/persona'
 import { createMatricula } from '@/lib/actions/matricula'
@@ -294,10 +295,11 @@ function DatosForm({
       <input type="hidden" name="tipo_id" value={persona.tipo_id ?? ''} />
 
       <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="text-sm font-medium text-text-secondary block mb-1">Teléfono</label>
-          <input name="telefono" defaultValue={persona.telefono ?? ''} disabled={disabled} className={inputCls} placeholder="+54 11 0000-0000" />
-        </div>
+        <PhoneInput
+          name="telefono"
+          label="Teléfono"
+          defaultValue={persona.telefono ?? ''}
+        />
         <div>
           <label className="text-sm font-medium text-text-secondary block mb-1">Email</label>
           <input name="email" type="email" defaultValue={persona.email ?? ''} disabled={disabled} className={inputCls} placeholder="correo@ejemplo.com" />

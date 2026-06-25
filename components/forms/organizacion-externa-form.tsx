@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { SearchableSelect } from '@/components/ui/searchable-select'
+import { PhoneInput } from '@/components/forms/phone-input'
 import { createClient } from '@/lib/supabase/client'
 import {
   useOrganizacionTipos,
@@ -260,7 +261,7 @@ export function OrganizacionExternaForm({ action }: Props) {
           {isSubcontratista && <SectionTitle>Contacto</SectionTitle>}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input label="Email" name="email" type="email" placeholder="correo@ejemplo.com" />
-            <Input label="Teléfono" name="telefono" placeholder="+54 11 0000-0000" />
+            <PhoneInput name="telefono" label="Teléfono" placeholder="+54 11 0000-0000" />
           </div>
 
           <div>

@@ -10,6 +10,7 @@ import { crearUsuarioTrabajador } from '@/lib/actions/trabajador-usuario'
 import { EntregaEppModal } from '@/components/entrega-epp-modal'
 import { SectorPuestoSelectorConAlta } from '@/components/sector-puesto-selector-con-alta'
 import { PersonaDetalleModal, type PersonaDetalle } from '@/components/persona-detalle-modal'
+import { PhoneInput } from '@/components/forms/phone-input'
 import type { TipoPersona, Empresa, Establecimiento, ActionResult } from '@/lib/types'
 
 // El listado trae más columnas que el listado base (foto/dni/user_id) para
@@ -152,8 +153,7 @@ function PersonaForm({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-sm font-medium text-text-secondary block mb-1">Teléfono</label>
-              <input name="telefono" className={inputCls} placeholder="+54 11 0000-0000" />
+              <PhoneInput name="telefono" label="Teléfono" placeholder="11 0000-0000" />
             </div>
             <div>
               <label className="text-sm font-medium text-text-secondary block mb-1">Email</label>
@@ -248,8 +248,7 @@ function PersonaForm({
                     <input name="contacto_emergencia_nombre" className="w-full border border-border-default rounded-lg px-2 py-1.5 text-sm" placeholder="Nombre completo" />
                   </div>
                   <div>
-                    <label className="text-xs text-text-secondary block mb-0.5">Teléfono</label>
-                    <input name="contacto_emergencia_telefono" className="w-full border border-border-default rounded-lg px-2 py-1.5 text-sm" placeholder="+54 11 0000-0000" />
+                    <PhoneInput name="contacto_emergencia_telefono" label="Teléfono" placeholder="11 0000-0000" />
                   </div>
                 </div>
               </details>

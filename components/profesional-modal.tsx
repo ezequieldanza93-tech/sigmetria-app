@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { FileUploadInput } from '@/components/ui/file-upload-input'
+import { PhoneInput } from '@/components/forms/phone-input'
 import { upsertPerfilProfesional, addMatriculaProfesional } from '@/lib/actions/perfil-profesional'
 import { usePerfil, useProvincias, useMatriculas } from '@/lib/queries/profesional'
 import { useSignedUrls } from '@/lib/storage/sign-client'
@@ -35,12 +36,11 @@ function DatosForm({
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="text-xs font-medium text-text-secondary block mb-1">Teléfono celular</label>
-          <input
+          <PhoneInput
             name="telefono"
+            label="Teléfono celular"
             defaultValue={perfil?.telefono ?? ''}
-            placeholder="+54 11 1234-5678"
-            className="w-full border border-border-default rounded-lg px-3 py-2 text-sm"
+            placeholder="11 1234-5678"
           />
         </div>
         <div>
