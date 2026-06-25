@@ -2,39 +2,81 @@
 
 import { useEffect } from 'react'
 
-interface CapturedError {
+export interface CapturedError {
   type: string
   message: string
   source?: string
   line?: number
   col?: number
   stack?: string
-  url: string
-  userAgent: string
+  url?: string
+  userAgent?: string
   timestamp: string
 }
 
-const STORAGE_KEY = '__sig_errors__'
+export const ERROR_STORAGE_KEY = '__sig_errors__'
 const MAX_ERRORS = 50
+// Ventana de retención: un error capturado caduca a las 48 h. Evita que un
+// error viejo viaje indefinidamente en cada reporte de feedback (acumulación
+// infinita): si nadie lo reportó en ese plazo, deja de ser relevante.
+const MAX_AGE_MS = 48 * 60 * 60 * 1000
 
-function loadErrors(): CapturedError[] {
+function isFresh(err: CapturedError, now: number): boolean {
+  const ts = Date.parse(err.timestamp)
+  // Si el timestamp es inválido lo conservamos — preferimos no descartar por
+  // un parseo fallido; el cap de MAX_ERRORS lo termina rotando igual.
+  if (Number.isNaN(ts)) return true
+  return now - ts <= MAX_AGE_MS
+}
+
+/**
+ * Lee los errores capturados de localStorage, descartando los que superan la
+ * ventana de retención (MAX_AGE_MS). Centraliza el acceso al storage para que
+ * tanto el hook como el modal de reporte usen la misma lógica de expiración.
+ */
+export function loadErrors(): CapturedError[] {
   if (typeof window === 'undefined') return []
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? JSON.parse(raw) : []
+    const raw = localStorage.getItem(ERROR_STORAGE_KEY)
+    const parsed: unknown = raw ? JSON.parse(raw) : []
+    if (!Array.isArray(parsed)) return []
+    const now = Date.now()
+    return (parsed as CapturedError[]).filter((e) => isFresh(e, now))
   } catch {
     return []
   }
 }
 
+function persist(errors: CapturedError[]) {
+  try {
+    localStorage.setItem(ERROR_STORAGE_KEY, JSON.stringify(errors.slice(0, MAX_ERRORS)))
+  } catch {
+    // localStorage puede fallar en modo privado u origin bloqueado — lo ignoramos
+  }
+}
+
 function saveError(err: CapturedError) {
   if (typeof window === 'undefined') return
-  try {
-    const all = loadErrors()
-    all.unshift(err)
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(all.slice(0, MAX_ERRORS)))
-    window.dispatchEvent(new Event('__sig_error_captured__'))
-  } catch {}
+  // loadErrors() ya purga los expirados, así que cada escritura limpia el storage.
+  const all = loadErrors()
+  all.unshift(err)
+  persist(all)
+  window.dispatchEvent(new Event('__sig_error_captured__'))
+}
+
+/**
+ * Quita del storage los errores cuyo timestamp esté incluido en `timestamps`.
+ * Se invoca tras enviar un reporte de problema con éxito para que esos errores
+ * NO se reenvíen en el próximo reporte (corta la re-cuenta del mismo error).
+ * También aprovecha para purgar los expirados (vía loadErrors).
+ */
+export function clearReportedErrors(timestamps: string[]) {
+  if (typeof window === 'undefined') return
+  if (timestamps.length === 0) return
+  const enviados = new Set(timestamps)
+  const restantes = loadErrors().filter((e) => !enviados.has(e.timestamp))
+  persist(restantes)
+  window.dispatchEvent(new Event('__sig_error_captured__'))
 }
 
 /**

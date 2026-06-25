@@ -6,6 +6,11 @@ import { cn } from '@/lib/utils'
 import { toast } from '@/lib/hooks/use-toast'
 import { useSpeechToText } from '@/lib/hooks/use-speech-to-text'
 import { enviarReporteProblema } from '@/lib/actions/reporte-problema'
+import {
+  loadErrors,
+  clearReportedErrors,
+  ERROR_STORAGE_KEY,
+} from '@/components/feedback/use-error-capture'
 
 interface ReportProblemModalProps {
   open: boolean
@@ -124,10 +129,11 @@ export function ReportProblemModal({ open, tipo, onClose }: ReportProblemModalPr
         // producción sin esto, lo que hace imposible rastrear la causa raíz
         console.warn('[ReportModal] screenshot capture failed:', err)
 
-        // Registramos en el mismo array que captura errores JS globales
+        // Registramos en el mismo array que captura errores JS globales.
+        // loadErrors() ya purga los expirados (>48 h), así que esta escritura
+        // también limpia el storage de errores viejos.
         try {
-          const raw = localStorage.getItem('__sig_errors__')
-          const existentes: unknown[] = raw ? (JSON.parse(raw) as unknown[]) : []
+          const existentes = loadErrors()
           const entrada = {
             type: 'screenshot_capture_error',
             message: err instanceof Error ? err.message : String(err),
@@ -135,7 +141,7 @@ export function ReportProblemModal({ open, tipo, onClose }: ReportProblemModalPr
           }
           // Máximo 50 entradas — rotamos desde el frente
           const actualizados = [...existentes, entrada].slice(-50)
-          localStorage.setItem('__sig_errors__', JSON.stringify(actualizados))
+          localStorage.setItem(ERROR_STORAGE_KEY, JSON.stringify(actualizados))
         } catch {
           // localStorage puede fallar en modo privado u origin bloqueado — lo ignoramos
         }
@@ -201,18 +207,12 @@ export function ReportProblemModal({ open, tipo, onClose }: ReportProblemModalPr
     setErrorMsg('')
 
     // Auto-contexto — siempre incluimos __sig_errors__ (tipo 'error' o 'idea')
-    // para que los errores de captura de screenshot queden visibles en cualquier reporte
-    const erroresJs = (() => {
-      try {
-        const raw = localStorage.getItem('__sig_errors__')
-        return raw ? JSON.parse(raw) : []
-      } catch {
-        return []
-      }
-    })()
+    // para que los errores de captura de screenshot queden visibles en cualquier
+    // reporte. loadErrors() ya descarta los caducados (>48 h).
+    const erroresJs = loadErrors()
 
     try {
-      await enviarReporteProblema({
+      const resultado = await enviarReporteProblema({
         tipo,
         resumen: resumen.trim(),
         descripcion: descripcion.trim(),
@@ -227,6 +227,17 @@ export function ReportProblemModal({ open, tipo, onClose }: ReportProblemModalPr
           erroresJs,
         },
       })
+
+      // El server action retorna { success } | { error }: si falló no es éxito.
+      if ('error' in resultado) {
+        setStatus('error')
+        setErrorMsg(`No se pudo enviar el reporte: ${resultado.error}. Tu texto está guardado — intentá de nuevo.`)
+        return
+      }
+
+      // Reporte OK: quitamos del storage los errores que acabamos de enviar para
+      // que NO se reenvíen en el próximo reporte (corta la re-cuenta del mismo error).
+      clearReportedErrors(erroresJs.map((e) => e.timestamp))
 
       setStatus('exito')
       toast.success('¡Gracias! Reporte enviado correctamente.')
