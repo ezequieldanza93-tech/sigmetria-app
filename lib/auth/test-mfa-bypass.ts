@@ -22,7 +22,9 @@ const TEST_DOMAIN_SUFFIX = '@sigmetria.app'
 // Cuentas puntuales (sin dominio @sigmetria.app) que también bypassean en fase de
 // armado. Se suman con `MFA_BYPASS_EMAILS` (coma-separadas). TEMPORAL.
 // (La cuenta del fundador se sacó: ahora quiere recibir el 2FA real al mail.)
-const EXTRA_BYPASS_EMAILS: string[] = []
+const EXTRA_BYPASS_EMAILS: string[] = [
+  'ssmat.ed@gmail.com', // TEMP: cuenta de prueba de Ezequiel (founders-launch). Quitar antes del launch real (o ALLOW_MFA_TEST_BYPASS=false).
+]
 
 function extraBypassEmails(): string[] {
   const fromEnv = (process.env.MFA_BYPASS_EMAILS ?? '')
