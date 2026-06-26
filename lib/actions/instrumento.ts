@@ -205,6 +205,90 @@ export async function crearModeloCatalogo(
   return { success: true, data: { id: data.id as string, nombre: data.nombre as string } }
 }
 
+/** Shape uniforme que los <select> de los modales de medición consumen. */
+export interface InstrumentoInlineCreado {
+  id: string
+  modelo: string
+  numero_serie: string | null
+  marca: string | null
+}
+
+/**
+ * Alta inline COMPLETA de un instrumento desde un modal de medición.
+ *
+ * Cada modal conoce el NOMBRE de su subcategoría ("Puesta a Tierra (PAT)",
+ * "Iluminación", "Ruido", "Carga Térmica") porque filtra sus instrumentos por
+ * `productos_componentes.nombre`. Acá resolvemos ese nombre → subcategoria_id,
+ * creamos un modelo PROPIO de la consultora en el catálogo (Mediciones HyS) y
+ * damos de alta el instrumento, todo en una sola llamada. Devolvemos el shape
+ * que el <select> del modal espera para auto-seleccionarlo sin recargar.
+ *
+ * Nota de producto: NO pide certificado de calibración acá (el flujo completo
+ * de /dashboard/instrumentos sí lo ofrece). El instrumento queda sin certificado
+ * vigente y el modal lo avisa con el CertificadoVigenteCard ("cargalo en el
+ * instrumento"). Esto es deliberado: el alta inline resuelve el caso "el equipo
+ * no estaba cargado" sin frenar la medición.
+ */
+export async function crearInstrumentoInline(input: {
+  subcategoriaNombre: string
+  modelo: string
+  numeroSerie?: string | null
+}): Promise<ActionResult<InstrumentoInlineCreado>> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'No autenticado' }
+
+  const modeloTrim = (input.modelo ?? '').trim()
+  if (!modeloTrim) return { success: false, error: 'El modelo del instrumento es obligatorio' }
+  if (!input.subcategoriaNombre) return { success: false, error: 'Falta el tipo de medición' }
+
+  // Resolver subcategoría (componente) por nombre dentro de Mediciones HyS.
+  const { data: subcat } = await supabase
+    .from('productos_componentes')
+    .select('id')
+    .eq('categoria_id', CAT_MEDICIONES_HYS)
+    .eq('nombre', input.subcategoriaNombre)
+    .maybeSingle()
+  if (!subcat?.id) {
+    return { success: false, error: `No encontré la subcategoría "${input.subcategoriaNombre}" en el catálogo` }
+  }
+  const subcategoriaId = subcat.id as string
+
+  // Crear el modelo en el catálogo (producto propio de la consultora) y dar de alta el instrumento.
+  const modeloRes = await crearModeloCatalogo(modeloTrim, subcategoriaId)
+  if (!modeloRes.success) return modeloRes
+
+  const { data: inserted, error } = await supabase
+    .from('mediciones_instrumentos')
+    .insert({
+      producto_id: modeloRes.data.id,
+      subcategoria_id: subcategoriaId,
+      marca_id: null,
+      modelo: modeloRes.data.nombre,
+      numero_serie: (input.numeroSerie ?? '').trim() || null,
+    })
+    .select('id')
+    .single()
+
+  if (error || !inserted) {
+    if (error?.code === '23505') {
+      return { success: false, error: 'Ya existe un instrumento con ese número de serie.' }
+    }
+    return { success: false, error: error?.message ?? 'No se pudo crear el instrumento' }
+  }
+
+  revalidatePath('/dashboard/instrumentos')
+  return {
+    success: true,
+    data: {
+      id: inserted.id as string,
+      modelo: modeloRes.data.nombre,
+      numero_serie: (input.numeroSerie ?? '').trim() || null,
+      marca: null,
+    },
+  }
+}
+
 export async function deleteInstrumento(id: string): Promise<ActionResult<null>> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

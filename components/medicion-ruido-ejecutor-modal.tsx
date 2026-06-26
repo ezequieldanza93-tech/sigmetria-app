@@ -14,6 +14,7 @@ import {
 import { getMedicionRuidoByRegistro } from '@/lib/actions/medicion-ruido-view'
 import { SectorPuestoSelectorConAlta } from '@/components/sector-puesto-selector-con-alta'
 import { PersonaSelectorConAlta } from '@/components/persona-selector-con-alta'
+import { InstrumentoSelectorConAlta } from '@/components/instrumento-selector-con-alta'
 import { ProtocoloAdjuntosControl } from '@/components/protocolo-adjuntos-control'
 import {
   tiempoMaxPermitido,
@@ -1175,17 +1176,15 @@ export function MedicionRuidoEjecutorModal({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className={labelCls}>Instrumento (sonómetro / dosímetro) <span className="text-danger">*</span></label>
-                  <select className={inputCls} value={instrumentoId} onChange={e => setInstrumentoId(e.target.value)}>
-                    <option value="">Seleccionar instrumento…</option>
-                    {instrumentos.map(i => (
-                      <option key={i.id} value={i.id}>
-                        {[i.marca, i.modelo].filter(Boolean).join(' ')}{i.tipo ? ` · ${i.tipo}` : ''}{i.numero_serie ? ` · N° ${i.numero_serie}` : ''}
-                      </option>
-                    ))}
-                  </select>
-                  {instrumentos.length === 0 && (
-                    <p className="text-xs text-text-tertiary mt-1">No hay sonómetros/dosímetros activos cargados.</p>
-                  )}
+                  <InstrumentoSelectorConAlta
+                    instrumentos={instrumentos}
+                    value={instrumentoId}
+                    onChange={setInstrumentoId}
+                    subcategoriaNombre="Ruido"
+                    instrumentoLabel="instrumento"
+                    emptyText="No hay sonómetros/dosímetros activos cargados."
+                    onCreated={nuevo => setInstrumentos(prev => [...prev, { ...nuevo, tipo: nuevo.tipo ?? 'Ruido' }])}
+                  />
                 </div>
                 <div>
                   <label className={labelCls}>Certificado de calibración</label>

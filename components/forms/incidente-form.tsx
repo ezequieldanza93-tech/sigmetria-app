@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
+import { VoiceTextarea } from '@/components/ui/voice-textarea'
 import { INCIDENTE_TIPO_OPTIONS } from '@/lib/constants'
 import { TIPO_PERSONA_INCIDENTE_LABELS } from '@/lib/constants'
 import { PersonaSelectorConAlta } from '@/components/persona-selector-con-alta'
@@ -31,6 +31,8 @@ export function IncidenteForm({ action, onSuccess, establecimientoId }: Props) {
   const [fechaBaja, setFechaBaja] = useState('')
   const [fechaAlta, setFechaAlta] = useState('')
   const [diasCalculados, setDiasCalculados] = useState<number | null>(null)
+  const [descripcion, setDescripcion] = useState('')
+  const [accionesCorrectivas, setAccionesCorrectivas] = useState('')
 
   const calcularDias = useCallback(() => {
     if (fechaBaja && fechaAlta) {
@@ -50,6 +52,8 @@ export function IncidenteForm({ action, onSuccess, establecimientoId }: Props) {
         setPersonaId(null)
         setInvolucrados(EMPTY_VINCULOS)
         setTestigos(EMPTY_VINCULOS)
+        setDescripcion('')
+        setAccionesCorrectivas('')
         onSuccess()
       }
       return result
@@ -100,7 +104,7 @@ export function IncidenteForm({ action, onSuccess, establecimientoId }: Props) {
 
       <Input label="Hora de ocurrencia" name="hora_ocurrencia" type="time" />
 
-      <Textarea label="Descripción" name="descripcion" placeholder="Breve descripción del incidente…" rows={3} />
+      <VoiceTextarea label="Descripción" name="descripcion" value={descripcion} onValueChange={setDescripcion} placeholder="Breve descripción del incidente…" rows={3} />
 
       <div className="border-t border-border-subtle pt-4 space-y-4">
         <p className="text-sm font-medium text-text-secondary">Personas vinculadas</p>
@@ -191,7 +195,7 @@ export function IncidenteForm({ action, onSuccess, establecimientoId }: Props) {
         </select>
       </div>
 
-      <Textarea label="Acciones correctivas" name="acciones_correctivas" placeholder="Acciones tomadas…" rows={3} />
+      <VoiceTextarea label="Acciones correctivas" name="acciones_correctivas" value={accionesCorrectivas} onValueChange={setAccionesCorrectivas} placeholder="Acciones tomadas…" rows={3} />
 
       <div className="flex flex-wrap gap-3 pt-1">
         <Button type="submit" disabled={isPending}>

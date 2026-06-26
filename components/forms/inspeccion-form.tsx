@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
+import { VoiceTextarea } from '@/components/ui/voice-textarea'
 import { createClient } from '@/lib/supabase/client'
 import type { ActionResult, EnteRegulador } from '@/lib/types'
 
@@ -19,6 +19,7 @@ interface InspeccionFormProps {
 
 export function InspeccionForm({ action, onSuccess }: InspeccionFormProps) {
   const [entes, setEntes] = useState<EnteRegulador[]>([])
+  const [observaciones, setObservaciones] = useState('')
 
   useEffect(() => {
     const supabase = createClient()
@@ -86,9 +87,11 @@ export function InspeccionForm({ action, onSuccess }: InspeccionFormProps) {
         placeholder="Nombre del ente si no está en la lista"
       />
 
-      <Textarea
+      <VoiceTextarea
         label="Observaciones"
         name="observaciones"
+        value={observaciones}
+        onValueChange={setObservaciones}
         placeholder="Detallar resultados de la inspección..."
         rows={3}
       />

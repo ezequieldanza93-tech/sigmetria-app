@@ -35,6 +35,7 @@ import { Button } from '@/components/ui/button'
 import { PersonaFirmanteSelector } from '@/components/persona-firmante-selector'
 import { PersonaSelectorConAlta } from '@/components/persona-selector-con-alta'
 import { SectorPuestoSelectorConAlta } from '@/components/sector-puesto-selector-con-alta'
+import { InstrumentoSelectorConAlta } from '@/components/instrumento-selector-con-alta'
 import { FirmaCanvas } from '@/components/firmas/firma-canvas'
 import { ProtocoloAdjuntosControl } from '@/components/protocolo-adjuntos-control'
 import { firmarProtocolo } from '@/lib/actions/firmar-protocolo'
@@ -1198,17 +1199,15 @@ export function MedicionCargaTermicaEjecutorModal({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className={labelCls}>Monitor de estrés térmico <span className="text-danger">*</span></label>
-                  <select className={inputCls} value={instrumentoId} onChange={e => setInstrumentoId(e.target.value)}>
-                    <option value="">Seleccionar instrumento…</option>
-                    {instrumentos.map(i => (
-                      <option key={i.id} value={i.id}>
-                        {[i.marca, i.modelo].filter(Boolean).join(' ')}{i.numero_serie ? ` · N° ${i.numero_serie}` : ''}
-                      </option>
-                    ))}
-                  </select>
-                  {instrumentos.length === 0 && (
-                    <p className="text-xs text-text-tertiary mt-1">No hay monitores de estrés térmico activos cargados.</p>
-                  )}
+                  <InstrumentoSelectorConAlta
+                    instrumentos={instrumentos}
+                    value={instrumentoId}
+                    onChange={setInstrumentoId}
+                    subcategoriaNombre="Carga Térmica"
+                    instrumentoLabel="monitor de estrés térmico"
+                    emptyText="No hay monitores de estrés térmico activos cargados."
+                    onCreated={nuevo => setInstrumentos(prev => [...prev, nuevo])}
+                  />
                 </div>
                 <div>
                   <label className={labelCls}>Certificado de calibración</label>

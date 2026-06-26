@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { SearchableSelect } from '@/components/ui/searchable-select'
+import { VoiceTextarea } from '@/components/ui/voice-textarea'
 import { FileUploadInput } from '@/components/ui/file-upload-input'
 import { DireccionAutocomplete } from '@/components/ui/direccion-autocomplete'
 import { createClient } from '@/lib/supabase/client'
@@ -207,6 +208,7 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
   const [tieneHabilitacion, setTieneHabilitacion] = useState(establecimiento?.tiene_habilitacion ?? true)
   const [selectedLocalidadId, setSelectedLocalidadId] = useState(establecimiento?.localidad_id ?? '')
   const [selectedActividadId, setSelectedActividadId] = useState(establecimiento?.actividad_id ?? '')
+  const [description, setDescription] = useState(establecimiento?.description ?? '')
   const [semana, setSemana] = useState<Record<number, DiaConfig>>(HORARIO_DEFAULT)
   const formRef = useRef<HTMLFormElement>(null)
   const submitIntentRef = useRef(false)
@@ -639,9 +641,10 @@ export function EstablecimientoForm({ action, establecimiento, submitLabel = 'Gu
       >
         <div>
           <label className="text-sm font-medium text-text-secondary block mb-1">Información del establecimiento</label>
-          <textarea
+          <VoiceTextarea
             name="description"
-            defaultValue={establecimiento?.description ?? ''}
+            value={description}
+            onValueChange={setDescription}
             rows={3}
             className="w-full border border-border-default rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500 focus:border-transparent resize-none"
             placeholder="Descripción, notas o información adicional del establecimiento…"

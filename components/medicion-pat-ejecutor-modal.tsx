@@ -25,6 +25,7 @@ import { FotoObservacionInput } from '@/components/ui/foto-observacion-input'
 import { FirmaCanvas } from '@/components/firmas/firma-canvas'
 import { PersonaFirmanteSelector } from '@/components/persona-firmante-selector'
 import { PersonaSelectorConAlta } from '@/components/persona-selector-con-alta'
+import { InstrumentoSelectorConAlta } from '@/components/instrumento-selector-con-alta'
 import { ProtocoloAdjuntosControl } from '@/components/protocolo-adjuntos-control'
 import { pickClasificacionDefault } from '@/lib/medicion/clasificacion-default'
 import type { CertificadoCalibracion } from '@/lib/types'
@@ -913,17 +914,15 @@ export function MedicionPatEjecutorModal({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className={labelCls}>Telurímetro <span className="text-danger">*</span></label>
-                  <select className={inputCls} value={instrumentoId} onChange={e => setInstrumentoId(e.target.value)}>
-                    <option value="">Seleccionar instrumento…</option>
-                    {instrumentos.map(i => (
-                      <option key={i.id} value={i.id}>
-                        {[i.marca, i.modelo].filter(Boolean).join(' ')}{i.numero_serie ? ` · N° ${i.numero_serie}` : ''}
-                      </option>
-                    ))}
-                  </select>
-                  {instrumentos.length === 0 && (
-                    <p className="text-xs text-text-tertiary mt-1">No hay telurímetros activos cargados.</p>
-                  )}
+                  <InstrumentoSelectorConAlta
+                    instrumentos={instrumentos}
+                    value={instrumentoId}
+                    onChange={setInstrumentoId}
+                    subcategoriaNombre="Puesta a Tierra (PAT)"
+                    instrumentoLabel="telurímetro"
+                    emptyText="No hay telurímetros activos cargados."
+                    onCreated={nuevo => setInstrumentos(prev => [...prev, nuevo])}
+                  />
                 </div>
                 <div>
                   <label className={labelCls}>Certificado de calibración</label>

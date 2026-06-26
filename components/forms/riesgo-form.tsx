@@ -1,10 +1,10 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
+import { VoiceTextarea } from '@/components/ui/voice-textarea'
 import { RIESGO_NIVEL_OPTIONS } from '@/lib/constants'
 import type { ActionResult } from '@/lib/types'
 
@@ -19,6 +19,8 @@ interface RiesgoFormProps {
 }
 
 export function RiesgoForm({ action, onSuccess }: RiesgoFormProps) {
+  const [descripcion, setDescripcion] = useState('')
+  const [medidaCorrectiva, setMedidaCorrectiva] = useState('')
   const [state, formAction, isPending] = useActionState(
     async (prev: ActionResult<null> | null, fd: FormData) => {
       const result = await action(prev, fd)
@@ -36,9 +38,11 @@ export function RiesgoForm({ action, onSuccess }: RiesgoFormProps) {
         </div>
       )}
 
-      <Textarea
+      <VoiceTextarea
         label="Descripción del Riesgo"
         name="descripcion"
+        value={descripcion}
+        onValueChange={setDescripcion}
         required
         placeholder="Describir el riesgo identificado..."
         rows={2}
@@ -62,9 +66,11 @@ export function RiesgoForm({ action, onSuccess }: RiesgoFormProps) {
         />
       </div>
 
-      <Textarea
+      <VoiceTextarea
         label="Medida Correctiva"
         name="medida_correctiva"
+        value={medidaCorrectiva}
+        onValueChange={setMedidaCorrectiva}
         placeholder="Acción a tomar..."
         rows={2}
       />

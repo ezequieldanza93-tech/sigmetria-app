@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { SearchableSelect } from '@/components/ui/searchable-select'
+import { VoiceTextarea } from '@/components/ui/voice-textarea'
 import { PhoneInput } from '@/components/forms/phone-input'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -55,6 +56,7 @@ export function OrganizacionExternaForm({ action }: Props) {
   const [selectedLocalidadId, setSelectedLocalidadId] = useState('')
   const [selectedArtId, setSelectedArtId] = useState('')
   const [selectedTipoEstId, setSelectedTipoEstId] = useState('')
+  const [infoONotas, setInfoONotas] = useState('')
 
   // Load preguntas when tipo_establecimiento changes
   useEffect(() => {
@@ -268,8 +270,10 @@ export function OrganizacionExternaForm({ action }: Props) {
             <label className="text-sm font-medium text-text-secondary block mb-1">
               {isSubcontratista ? 'Información general' : 'Notas'}
             </label>
-            <textarea
+            <VoiceTextarea
               name={isSubcontratista ? 'informacion_general' : 'notas'}
+              value={infoONotas}
+              onValueChange={setInfoONotas}
               rows={3}
               className="w-full border border-border-default rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500 focus:border-transparent resize-none"
               placeholder={isSubcontratista ? 'Descripción, notas o información adicional…' : 'Notas opcionales…'}

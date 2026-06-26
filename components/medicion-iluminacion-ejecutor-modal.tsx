@@ -18,6 +18,7 @@ import {
 import { getMedicionIluminacionByRegistro } from '@/lib/actions/medicion-iluminacion-view'
 import { SectorPuestoSelectorConAlta } from '@/components/sector-puesto-selector-con-alta'
 import { PersonaSelectorConAlta } from '@/components/persona-selector-con-alta'
+import { InstrumentoSelectorConAlta } from '@/components/instrumento-selector-con-alta'
 import {
   indiceLocal,
   numeroMinimoPuntos,
@@ -1229,17 +1230,15 @@ export function MedicionIluminacionEjecutorModal({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className={labelCls}>Luxómetro <span className="text-danger">*</span></label>
-                  <select className={inputCls} value={instrumentoId} onChange={e => setInstrumentoId(e.target.value)}>
-                    <option value="">Seleccionar instrumento…</option>
-                    {instrumentos.map(i => (
-                      <option key={i.id} value={i.id}>
-                        {[i.marca, i.modelo].filter(Boolean).join(' ')}{i.numero_serie ? ` · N° ${i.numero_serie}` : ''}
-                      </option>
-                    ))}
-                  </select>
-                  {instrumentos.length === 0 && (
-                    <p className="text-xs text-text-tertiary mt-1">No hay luxómetros activos cargados.</p>
-                  )}
+                  <InstrumentoSelectorConAlta
+                    instrumentos={instrumentos}
+                    value={instrumentoId}
+                    onChange={setInstrumentoId}
+                    subcategoriaNombre="Iluminación"
+                    instrumentoLabel="luxómetro"
+                    emptyText="No hay luxómetros activos cargados."
+                    onCreated={nuevo => setInstrumentos(prev => [...prev, nuevo])}
+                  />
                 </div>
                 <div>
                   <label className={labelCls}>Certificado de calibración</label>
