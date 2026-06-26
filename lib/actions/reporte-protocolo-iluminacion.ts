@@ -41,6 +41,7 @@ import {
   type MedicionRow,
 } from '@/lib/pdf/render-protocolo'
 import { type AnexoInput } from '@/lib/pdf/merge-anexos'
+import { getBrandColorConsultora } from '@/lib/pdf/brand-color-server'
 import { generarAnexoObservaciones } from '@/lib/pdf/anexo-observaciones'
 import { resolverMatriculaProfesional } from '@/lib/pdf/resolver-matricula'
 import {
@@ -487,9 +488,10 @@ export async function generarReporteProtocoloIluminacion(
 
   // ── 10. Generar PDF ───────────────────────────────────────────────────────
   console.warn('[PDF-REPORTE] datos mapeados, llamando renderProtocoloPdf', { folio, establecimiento: datos.establecimiento, filas: mediciones.length })
+  const brandMarca = await getBrandColorConsultora(consultoraId)
   let pdfBuffer: Buffer
   try {
-    pdfBuffer = await renderProtocoloPdf(datos)
+    pdfBuffer = await renderProtocoloPdf(datos, brandMarca)
   } catch (err) {
     const detalle = err instanceof Error ? (err.stack ?? err.message) : String(err)
     console.error('[PDF-REPORTE] renderProtocoloPdf lanzó:', detalle)
@@ -566,7 +568,7 @@ export async function generarReporteProtocoloIluminacion(
       const registroId = m.registro_gestion_id as string | null
       const rgFecha = m.rg_fecha_planificada as string | null
       if (registroId) {
-        const obsBuffer = await generarAnexoObservaciones(supabase, registroId, rgFecha)
+        const obsBuffer = await generarAnexoObservaciones(supabase, registroId, rgFecha, brandMarca)
         if (obsBuffer) {
           anexos.push({ titulo: 'Observaciones de Seguimiento', buffer: obsBuffer, mime: 'application/pdf', clave: 'observaciones' })
         }

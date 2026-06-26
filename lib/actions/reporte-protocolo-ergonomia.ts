@@ -26,6 +26,7 @@
 import { getProtocoloErgonomia } from '@/lib/actions/protocolo-ergonomia'
 import { resolveAssetUrl } from '@/lib/storage/resolve-url'
 import { renderProtocolo } from '@/lib/pdf/protocolo-engine'
+import { getBrandColorConsultora } from '@/lib/pdf/brand-color-server'
 import { getFotoYMapaEstablecimiento } from '@/lib/pdf/establecimiento-media'
 import { generarAnexoObservaciones } from '@/lib/pdf/anexo-observaciones'
 import { resolverMatriculaProfesional } from '@/lib/pdf/resolver-matricula'
@@ -373,9 +374,10 @@ export async function generarReporteProtocoloErgonomia(
     medidasEspecificas: medidas?.especificas.length ?? 0,
     seguimiento: seguimiento.length,
   })
+  const brandMarca = await getBrandColorConsultora(ev.consultora_id ?? null)
   let pdfBuffer: Buffer
   try {
-    pdfBuffer = await renderProtocolo(ERGONOMIA_DESCRIPTOR, datos)
+    pdfBuffer = await renderProtocolo(ERGONOMIA_DESCRIPTOR, datos, brandMarca)
   } catch (err) {
     const detalle = err instanceof Error ? (err.stack ?? err.message) : String(err)
     console.error('[PDF-ERGO] renderProtocolo lanzó:', detalle)
@@ -393,7 +395,7 @@ export async function generarReporteProtocoloErgonomia(
   const anexosSistema: AnexoInput[] = []
   try {
     if (registroId) {
-      const obsBuffer = await generarAnexoObservaciones(supabase, registroId, rgFecha)
+      const obsBuffer = await generarAnexoObservaciones(supabase, registroId, rgFecha, brandMarca)
       if (obsBuffer) {
         anexosSistema.push({
           titulo: 'Observaciones de Seguimiento',

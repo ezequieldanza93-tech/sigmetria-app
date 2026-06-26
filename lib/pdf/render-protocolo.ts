@@ -21,6 +21,7 @@
 
 import type { Browser } from 'puppeteer-core'
 import { PROTOCOLO_ILUMINACION_HTML } from './protocolos-html'
+import { type BrandColor, SIGMETRIA_BRAND } from './brand-color'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TIPOS PÚBLICOS
@@ -389,7 +390,8 @@ async function launchBrowser(): Promise<Browser> {
  * @returns Buffer con el contenido del PDF.
  */
 export async function renderProtocoloPdf(
-  datos: DatosProtocoloIluminacion = {}
+  datos: DatosProtocoloIluminacion = {},
+  brand?: BrandColor,
 ): Promise<Buffer> {
   // Merge datos del caller con los mock (los del caller tienen prioridad)
   const datosCompletos: Required<DatosProtocoloIluminacion> = {
@@ -399,7 +401,7 @@ export async function renderProtocoloPdf(
     mediciones: datos.mediciones ?? MOCK_DATOS.mediciones,
   }
 
-  return renderHtmlToPdf(ensamblarHtml(datosCompletos))
+  return renderHtmlToPdf(ensamblarHtml(datosCompletos), brand)
 }
 
 /**
@@ -408,7 +410,20 @@ export async function renderProtocoloPdf(
  * Fuerza la carga de las fuentes (Montserrat/Poppins) antes de page.pdf() para evitar
  * el bug de "texto superpuesto" (layout medido con la fuente de reemplazo).
  */
-export async function renderHtmlToPdf(html: string): Promise<Buffer> {
+export async function renderHtmlToPdf(html: string, brand?: BrandColor): Promise<Buffer> {
+  // Recoloreo de marca (white-label PDF): reemplaza el verde de Sigmetría por el
+  // color de la consultora en TODO el HTML (carátula, secciones, badges, bordes).
+  // Es el punto ÚNICO por el que pasan los protocolos y anexos —que tienen el verde
+  // hardcodeado en varios CSS— así que recolorearlos acá evita tocar cada archivo.
+  // Si la consultora no setea color (o usa el de Sigmetría), es no-op.
+  if (brand) {
+    if (brand.primario && brand.primario.toUpperCase() !== SIGMETRIA_BRAND.primario) {
+      html = html.replace(/#2E7D33/gi, brand.primario)
+    }
+    if (brand.secundario && brand.secundario.toUpperCase() !== SIGMETRIA_BRAND.secundario) {
+      html = html.replace(/#4CAF50/gi, brand.secundario)
+    }
+  }
   let browser: Browser | null = null
   try {
     console.warn('[PDF-RENDER] lanzando browser', { isVercel: !!process.env.VERCEL || process.env.NODE_ENV === 'production' })

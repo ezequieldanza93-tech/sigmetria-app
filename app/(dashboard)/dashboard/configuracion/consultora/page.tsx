@@ -29,6 +29,11 @@ export default function ConsultoraInfoPage() {
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [logoError, setLogoError] = useState<string | null>(null)
   const logoInputRef = useRef<HTMLInputElement>(null)
+  // Color de marca para los PDF (white-label). Desactivado = verde Sigmetría.
+  const [colorMarcaOn, setColorMarcaOn] = useState(false)
+  const [colorPrimario, setColorPrimario] = useState('#2E7D33')
+  const [secundarioOn, setSecundarioOn] = useState(false)
+  const [colorSecundario, setColorSecundario] = useState('#4CAF50')
   const telefonoWrapRef = useRef<HTMLDivElement>(null)
   const [members, setMembers] = useState<any[]>([])
   const [showInviteModal, setShowInviteModal] = useState(false)
@@ -80,6 +85,14 @@ export default function ConsultoraInfoPage() {
         setEmail(consultora.email ?? '')
         setWebsite(consultora.website ?? '')
         setLogoUrl(consultora.logo_url ?? '')
+        const cMarca = consultora as unknown as {
+          color_marca_primario?: string | null
+          color_marca_secundario?: string | null
+        }
+        setColorMarcaOn(!!cMarca.color_marca_primario)
+        if (cMarca.color_marca_primario) setColorPrimario(cMarca.color_marca_primario)
+        setSecundarioOn(!!cMarca.color_marca_secundario)
+        if (cMarca.color_marca_secundario) setColorSecundario(cMarca.color_marca_secundario)
       }
       setMembers((membersResult.data ?? []) as any[])
 
@@ -133,6 +146,8 @@ export default function ConsultoraInfoPage() {
       email: email || null,
       website: website || null,
       logo_url: logoUrl || null,
+      color_marca_primario: colorMarcaOn ? colorPrimario : null,
+      color_marca_secundario: colorMarcaOn && secundarioOn ? colorSecundario : null,
     })
 
     if (!result.success) {
@@ -372,6 +387,108 @@ export default function ConsultoraInfoPage() {
               )}
             </div>
           </div>
+        </section>
+
+        {/* Color de marca (PDF) */}
+        <section className="bg-surface-elevated rounded-xl border border-border-subtle p-6 space-y-4">
+          <div>
+            <h2 className="text-sm font-semibold text-text-primary uppercase tracking-wider">Color de marca</h2>
+            <p className="text-xs text-text-tertiary mt-1">
+              Reemplaza el verde de Sigmetría en los PDF que generás (protocolos, contrato y presupuesto).
+              Si lo dejás desactivado, se usa el verde de Sigmetría.
+            </p>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-text-primary">Usar un color propio</p>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={colorMarcaOn}
+              onClick={() => setColorMarcaOn(v => !v)}
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-brand-primary/30 ${colorMarcaOn ? 'bg-brand-primary' : 'bg-border-subtle'}`}
+            >
+              <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition-transform ${colorMarcaOn ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
+          </div>
+
+          {colorMarcaOn && (
+            <div className="space-y-4 border-t border-border-subtle pt-4">
+              {/* Color principal */}
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={colorPrimario}
+                  onChange={e => setColorPrimario(e.target.value)}
+                  aria-label="Color principal"
+                  className="h-10 w-14 shrink-0 cursor-pointer rounded-lg border border-border-subtle bg-surface-base"
+                />
+                <div>
+                  <label className="block text-xs font-medium text-text-secondary mb-1">Color principal</label>
+                  <input
+                    value={colorPrimario}
+                    onChange={e => setColorPrimario(e.target.value.toUpperCase())}
+                    placeholder="#2E7D33"
+                    maxLength={7}
+                    className="w-28 rounded-lg border border-border-subtle bg-surface-base px-3 py-2 text-sm uppercase text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition-colors"
+                  />
+                </div>
+              </div>
+
+              {/* Color secundario (opcional) */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-text-primary">Color secundario</p>
+                  <p className="text-xs text-text-tertiary">Opcional. Realces puntuales; si no lo activás, se usa el principal.</p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={secundarioOn}
+                  onClick={() => setSecundarioOn(v => !v)}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-brand-primary/30 ${secundarioOn ? 'bg-brand-primary' : 'bg-border-subtle'}`}
+                >
+                  <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition-transform ${secundarioOn ? 'translate-x-5' : 'translate-x-0'}`} />
+                </button>
+              </div>
+
+              {secundarioOn && (
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={colorSecundario}
+                    onChange={e => setColorSecundario(e.target.value)}
+                    aria-label="Color secundario"
+                    className="h-10 w-14 shrink-0 cursor-pointer rounded-lg border border-border-subtle bg-surface-base"
+                  />
+                  <div>
+                    <label className="block text-xs font-medium text-text-secondary mb-1">Color secundario</label>
+                    <input
+                      value={colorSecundario}
+                      onChange={e => setColorSecundario(e.target.value.toUpperCase())}
+                      placeholder="#4CAF50"
+                      maxLength={7}
+                      className="w-28 rounded-lg border border-border-subtle bg-surface-base px-3 py-2 text-sm uppercase text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition-colors"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Vista previa del encabezado del PDF */}
+              <div className="rounded-lg border border-border-subtle overflow-hidden">
+                <div className="px-4 py-2 text-xs font-semibold text-white" style={{ backgroundColor: colorPrimario }}>
+                  Vista previa — encabezado del PDF
+                </div>
+                <div className="px-4 py-3 text-sm text-text-secondary" style={{ borderLeft: `4px solid ${colorPrimario}` }}>
+                  Así se vería el acento de tu marca en los documentos.
+                </div>
+              </div>
+
+              <p className="text-xs text-text-tertiary">
+                El cambio se aplica con el botón <span className="font-medium">Guardar cambios</span> de abajo.
+              </p>
+            </div>
+          )}
         </section>
 
         {/* Nuestro Equipo */}

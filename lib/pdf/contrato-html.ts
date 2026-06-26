@@ -17,6 +17,8 @@
  * librería sin efectos: no lleva 'use server'.
  */
 
+import { resolveBrandColor } from '@/lib/pdf/brand-color'
+
 // ─────────────────────────────────────────────────────────────────────────────
 // TIPOS PÚBLICOS
 // ─────────────────────────────────────────────────────────────────────────────
@@ -62,6 +64,9 @@ export interface ContratoDatos {
   consultorNaturaleza?: string | null
   /** Logo de la consultora (URL pública del bucket `consultora`). Si falta, se usa el nombre como texto. */
   consultorLogoUrl?: string | null
+  /** Color de marca (hex #RRGGBB). NULL = verde Sigmetría. */
+  colorPrimario?: string | null
+  colorSecundario?: string | null
 
   // ── Responsable técnico (full_access_main de la consultora) ──
   responsableNombre?: string | null
@@ -243,6 +248,7 @@ function anexoEstablecimientos(d: ContratoDatos): string {
  */
 export function contratoHtml(datos: ContratoDatos): string {
   const d = datos
+  const { primario: cMarca } = resolveBrandColor(datos.colorPrimario, datos.colorSecundario)
 
   const cuerpo = `
   ${encabezado(d)}
@@ -359,7 +365,7 @@ export function contratoHtml(datos: ContratoDatos): string {
   }
   .hdr {
     display: flex; justify-content: space-between; align-items: center;
-    border-bottom: 2px solid #2E7D33; padding-bottom: 6px; margin-bottom: 10px;
+    border-bottom: 2px solid ${cMarca}; padding-bottom: 6px; margin-bottom: 10px;
   }
   .hdr-marca { display: flex; align-items: center; }
   .hdr-marca .logo { max-height: 16mm; max-width: 60mm; object-fit: contain; }
@@ -368,7 +374,7 @@ export function contratoHtml(datos: ContratoDatos): string {
     font-size: 14pt; color: #1b2b1b; letter-spacing: .3px;
   }
   .hdr-meta { text-align: right; font-family: 'Helvetica', Arial, sans-serif; }
-  .hdr-doc { font-size: 8pt; color: #2E7D33; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; }
+  .hdr-doc { font-size: 8pt; color: ${cMarca}; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; }
   .hdr-fecha { font-size: 7.5pt; color: #8a8f99; margin-top: 2px; }
   .titulo {
     font-family: 'Helvetica', Arial, sans-serif; font-size: 13.5pt; font-weight: 700;
@@ -387,7 +393,7 @@ export function contratoHtml(datos: ContratoDatos): string {
   }
   h2.cl {
     font-family: 'Helvetica', Arial, sans-serif; font-size: 10.5pt; font-weight: 700;
-    color: #2E7D33; border-bottom: 1px solid #D6E2D6; padding-bottom: 3px;
+    color: ${cMarca}; border-bottom: 1px solid #D6E2D6; padding-bottom: 3px;
     margin: 5mm 0 2mm; break-after: avoid; page-break-after: avoid;
   }
   p { margin: 0 0 2.4mm; orphans: 2; widows: 2; }
@@ -410,7 +416,7 @@ export function contratoHtml(datos: ContratoDatos): string {
   .anexo { break-before: page; page-break-before: always; }
   .anx-t {
     font-family: 'Helvetica', Arial, sans-serif; font-size: 11pt; font-weight: 700;
-    color: #2E7D33; border-bottom: 1px solid #D6E2D6; padding-bottom: 3px; margin: 0 0 2mm;
+    color: ${cMarca}; border-bottom: 1px solid #D6E2D6; padding-bottom: 3px; margin: 0 0 2mm;
   }
   .anx-p { font-family: 'Helvetica', Arial, sans-serif; font-size: 8.2pt; color: #4b5563; margin-bottom: 4mm; text-align: left; }
   .anx-tabla { width: 100%; border-collapse: collapse; font-family: 'Helvetica', Arial, sans-serif; font-size: 8pt; }

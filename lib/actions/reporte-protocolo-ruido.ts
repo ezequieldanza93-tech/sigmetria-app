@@ -27,6 +27,7 @@ import { getMedicionRuido } from '@/lib/actions/medicion-ruido'
 import { getFirmasEntidad } from '@/lib/actions/firmas'
 import { resolveAssetUrl } from '@/lib/storage/resolve-url'
 import { renderProtocolo } from '@/lib/pdf/protocolo-engine'
+import { getBrandColorConsultora } from '@/lib/pdf/brand-color-server'
 import {
   RUIDO_DESCRIPTOR,
   type DatosProtocoloRuido,
@@ -413,9 +414,10 @@ export async function generarReporteProtocoloRuido(
     establecimiento: datos.establecimiento,
     filas: filas.length,
   })
+  const brandMarca = await getBrandColorConsultora(consultoraId)
   let pdfBuffer: Buffer
   try {
-    pdfBuffer = await renderProtocolo(RUIDO_DESCRIPTOR, datos)
+    pdfBuffer = await renderProtocolo(RUIDO_DESCRIPTOR, datos, brandMarca)
   } catch (err) {
     const detalle = err instanceof Error ? (err.stack ?? err.message) : String(err)
     console.error('[PDF-REPORTE-RUIDO] renderProtocolo lanzó:', detalle)
@@ -452,7 +454,7 @@ export async function generarReporteProtocoloRuido(
     if (registroId) {
       const { createClient } = await import('@/lib/supabase/server')
       const supabase = await createClient()
-      const obsBuffer = await generarAnexoObservaciones(supabase, registroId, rgFecha)
+      const obsBuffer = await generarAnexoObservaciones(supabase, registroId, rgFecha, brandMarca)
       if (obsBuffer) {
         anexosSistema.push({ titulo: 'Observaciones de Seguimiento', buffer: obsBuffer, mime: 'application/pdf', clave: 'observaciones' })
       }

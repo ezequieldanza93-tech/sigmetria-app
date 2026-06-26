@@ -21,6 +21,7 @@
  */
 
 import { renderHtmlToPdf } from '@/lib/pdf/render-protocolo'
+import { type BrandColor } from './brand-color'
 
 // ─── TIPADO PARA LOS EMBEDS DE POSTGREST ─────────────────────────────────────
 
@@ -174,11 +175,13 @@ function construirHtmlAnexoObservaciones(items: ObsAnexoItem[]): string {
  * @param registroId - registro_gestion_id del registro ejecutado
  * @param rgFechaPlanificada - rg_fecha_planificada (segunda mitad de la FK suelta); si es
  *   null no se filtra por fecha.
+ * @param brand - color de marca de la consultora (opcional); recolorea el PDF del anexo.
  */
 export async function generarAnexoObservaciones(
   supabase: SupabaseServerClient,
   registroId: string,
   rgFechaPlanificada: string | null,
+  brand?: BrandColor,
 ): Promise<Buffer | null> {
   let query = supabase
     .from('gestiones_observaciones')
@@ -230,5 +233,5 @@ export async function generarAnexoObservaciones(
   )
 
   const html = construirHtmlAnexoObservaciones(items)
-  return renderHtmlToPdf(html)
+  return renderHtmlToPdf(html, brand)
 }

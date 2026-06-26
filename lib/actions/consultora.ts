@@ -107,6 +107,8 @@ export async function updateConsultora(data: {
   website: string | null
   logo_url: string | null
   social_links?: Record<string, string> | null
+  color_marca_primario?: string | null
+  color_marca_secundario?: string | null
 }): Promise<ActionResult<Consultora>> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -140,6 +142,15 @@ export async function updateConsultora(data: {
   // Solo incluimos social_links en el update si fue pasado explícitamente
   if ('social_links' in data) {
     payload.social_links = data.social_links
+  }
+  // Color de marca (white-label PDF): validamos hex #RRGGBB; vacío/ inválido → null
+  // (= verde Sigmetría). El CHECK de la tabla refuerza esto a nivel DB.
+  const hexOk = (v: string | null | undefined) => (v && /^#[0-9A-Fa-f]{6}$/.test(v) ? v : null)
+  if ('color_marca_primario' in data) {
+    payload.color_marca_primario = hexOk(data.color_marca_primario)
+  }
+  if ('color_marca_secundario' in data) {
+    payload.color_marca_secundario = hexOk(data.color_marca_secundario)
   }
 
   const { data: updated, error } = await supabase

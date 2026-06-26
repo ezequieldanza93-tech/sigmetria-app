@@ -17,6 +17,7 @@
  */
 
 import { formatMonto, formatFechaCorta, FIN_MONEDA_DEFAULT, FIN_LOCALE_DEFAULT } from '@/lib/finanzas/format'
+import { resolveBrandColor } from '@/lib/pdf/brand-color'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TIPOS PÚBLICOS
@@ -40,6 +41,9 @@ export interface PresupuestoDatos {
   consultoraEmail?: string | null
   consultoraDomicilio?: string | null // domicilio_legal | domicilio_fiscal
   logoUrl?: string | null // bucket público 'consultora' → URL directa
+  /** Color de marca (hex #RRGGBB). NULL = verde Sigmetría. */
+  colorPrimario?: string | null
+  colorSecundario?: string | null
 
   // Responsable técnico (opcional)
   responsableNombre?: string | null
@@ -93,6 +97,7 @@ export function presupuestoHtml(datos: PresupuestoDatos): string {
   const moneda = datos.moneda || FIN_MONEDA_DEFAULT
   const locale = datos.locale || FIN_LOCALE_DEFAULT
   const money = (n: number) => formatMonto(n, moneda, locale)
+  const { primario: cMarca } = resolveBrandColor(datos.colorPrimario, datos.colorSecundario)
 
   // Vencimiento de la oferta (fecha de emisión + validez en días)
   let vencimientoTxt = ''
@@ -171,31 +176,31 @@ export function presupuestoHtml(datos: PresupuestoDatos): string {
   @page { size: A4 portrait; margin: 16mm 16mm 18mm; }
   * { box-sizing: border-box; }
   body { font-family: 'Poppins','Segoe UI',sans-serif; color:#222; font-size:10.5pt; line-height:1.45; margin:0; }
-  .head { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid #2E7D33; padding-bottom:6mm; }
+  .head { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid ${cMarca}; padding-bottom:6mm; }
   .head .marca { max-width:60%; }
   .logo { max-width:60mm; max-height:22mm; object-fit:contain; display:block; }
-  .marca-txt { font-family:'Montserrat',sans-serif; font-size:18pt; font-weight:800; color:#2E7D33; }
+  .marca-txt { font-family:'Montserrat',sans-serif; font-size:18pt; font-weight:800; color:${cMarca}; }
   .emisor-nombre { font-family:'Montserrat',sans-serif; font-weight:700; font-size:11pt; color:#1f2d1f; margin-bottom:2px; }
   .head .doc { text-align:right; font-size:9pt; color:#666; }
-  .head .doc .folio { font-size:11pt; color:#222; } .head .doc .folio b { color:#2E7D33; }
+  .head .doc .folio { font-size:11pt; color:#222; } .head .doc .folio b { color:${cMarca}; }
   .ln { display:flex; gap:6px; font-size:8.5pt; line-height:1.5; }
   .ln-k { color:#888; min-width:18mm; } .ln-v { color:#333; font-weight:500; }
   .meta { display:flex; gap:6mm; margin-top:6mm; }
   .meta .box { flex:1; border:1px solid #E4E8E4; border-radius:8px; padding:4mm 5mm; }
-  .meta .box h3 { margin:0 0 3px; font-family:'Montserrat',sans-serif; font-size:8pt; letter-spacing:1px; text-transform:uppercase; color:#2E7D33; }
+  .meta .box h3 { margin:0 0 3px; font-family:'Montserrat',sans-serif; font-size:8pt; letter-spacing:1px; text-transform:uppercase; color:${cMarca}; }
   .meta .box .nombre { font-size:11pt; font-weight:600; margin-bottom:3px; }
   .concepto { margin-top:7mm; }
   .concepto h2 { font-family:'Montserrat',sans-serif; font-size:10pt; letter-spacing:.5px; text-transform:uppercase; color:#888; margin:0 0 2px; }
   .concepto p { margin:0; font-size:11pt; font-weight:500; }
   table.items { width:100%; border-collapse:collapse; margin-top:6mm; }
-  table.items th { background:#2E7D33; color:#fff; font-family:'Montserrat',sans-serif; font-size:8.5pt; letter-spacing:.5px; text-align:left; padding:6px 10px; }
+  table.items th { background:${cMarca}; color:#fff; font-family:'Montserrat',sans-serif; font-size:8.5pt; letter-spacing:.5px; text-align:left; padding:6px 10px; }
   table.items th.num, table.items td.num { text-align:right; white-space:nowrap; }
   table.items td { padding:7px 10px; border-bottom:1px solid #ECECEC; font-size:10pt; vertical-align:top; }
   table.items td.desc { width:75%; }
   .total { display:flex; justify-content:flex-end; margin-top:5mm; }
   .total .box { min-width:70mm; border:1px solid #E4E8E4; border-radius:8px; overflow:hidden; }
   .total .row { display:flex; justify-content:space-between; padding:7px 12px; }
-  .total .row.t { background:#F4F8F4; font-family:'Montserrat',sans-serif; font-weight:800; font-size:12pt; color:#2E7D33; border-top:1px solid #E4E8E4; }
+  .total .row.t { background:#F4F8F4; font-family:'Montserrat',sans-serif; font-weight:800; font-size:12pt; color:${cMarca}; border-top:1px solid #E4E8E4; }
   .total .row .lbl { color:#666; }
   .validez { margin-top:6mm; font-size:9.5pt; color:#555; }
   .validez b { color:#9A7B00; }

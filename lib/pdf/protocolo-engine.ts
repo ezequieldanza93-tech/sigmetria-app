@@ -11,6 +11,7 @@
  * los protocolos NUEVOS (ruido, PAT, carga térmica, ergonomía, ...) usan este motor.
  */
 import { renderHtmlToPdf } from './render-protocolo'
+import type { BrandColor } from './brand-color'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TIPOS
@@ -207,6 +208,7 @@ export function ensamblarProtocolo<T extends DatosProtocoloBase>(
 export async function renderProtocolo<T extends DatosProtocoloBase>(
   desc: ProtocoloDescriptor<T>,
   d: T,
+  brand?: BrandColor,
 ): Promise<Buffer> {
-  return renderHtmlToPdf(ensamblarProtocolo(desc, d))
+  return renderHtmlToPdf(ensamblarProtocolo(desc, d), brand)
 }

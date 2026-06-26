@@ -267,7 +267,7 @@ export async function generarPresupuestoPdf(
   // ── 2. Consultora emisora ──────────────────────────────────────
   const { data: consultoraRaw } = await supabase
     .from('consultoras')
-    .select('nombre, cuit, telefono, email, logo_url, domicilio_legal, domicilio_fiscal')
+    .select('nombre, cuit, telefono, email, logo_url, domicilio_legal, domicilio_fiscal, color_marca_primario, color_marca_secundario')
     .eq('id', consultoraId)
     .maybeSingle()
   const consultora = consultoraRaw as unknown as {
@@ -278,6 +278,8 @@ export async function generarPresupuestoPdf(
     logo_url: string | null
     domicilio_legal: string | null
     domicilio_fiscal: string | null
+    color_marca_primario: string | null
+    color_marca_secundario: string | null
   } | null
 
   // ── 3. Responsable técnico = full_access_main de la consultora ─
@@ -319,6 +321,8 @@ export async function generarPresupuestoPdf(
     consultoraEmail: consultora?.email ?? null,
     consultoraDomicilio: consultora?.domicilio_legal ?? consultora?.domicilio_fiscal ?? null,
     logoUrl: consultora?.logo_url ?? null,
+    colorPrimario: consultora?.color_marca_primario ?? null,
+    colorSecundario: consultora?.color_marca_secundario ?? null,
     responsableNombre: responsable.nombre,
     responsableTitulo: responsable.titulo,
     responsableMatricula: responsable.matricula,

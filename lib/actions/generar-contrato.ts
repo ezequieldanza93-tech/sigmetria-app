@@ -157,7 +157,7 @@ export async function getDatosContrato(
   // ── 2. Consultora (parte contratante: EL CONSULTOR) ──
   const { data: consRow } = await supabase
     .from('consultoras')
-    .select('nombre, cuit, telefono, email, logo_url, domicilio_legal, domicilio_fiscal')
+    .select('nombre, cuit, telefono, email, logo_url, domicilio_legal, domicilio_fiscal, color_marca_primario, color_marca_secundario')
     .eq('id', acc.consultoraId)
     .maybeSingle()
 
@@ -268,6 +268,9 @@ export async function getDatosContrato(
     consultorTelefono: clean(consRow?.telefono as string | null),
     consultorEmail: clean(consRow?.email as string | null),
     consultorLogoUrl: consultorLogoUrl ?? null,
+    // Color de marca (white-label PDF) — NULL = verde Sigmetría.
+    colorPrimario: clean(consRow?.color_marca_primario as string | null) ?? null,
+    colorSecundario: clean(consRow?.color_marca_secundario as string | null) ?? null,
     // Responsable técnico
     responsableNombre,
     responsableTitulo,

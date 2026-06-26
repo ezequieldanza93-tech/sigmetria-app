@@ -32,6 +32,7 @@ import { getCalculoCargaFuego } from '@/lib/actions/calculo-carga-fuego'
 import { getFirmasEntidad } from '@/lib/actions/firmas'
 import { resolveAssetUrl } from '@/lib/storage/resolve-url'
 import { renderProtocolo } from '@/lib/pdf/protocolo-engine'
+import { getBrandColorConsultora } from '@/lib/pdf/brand-color-server'
 import {
   CARGA_FUEGO_DESCRIPTOR,
   type DatosProtocoloCargaFuego,
@@ -629,9 +630,10 @@ export async function generarReporteProtocoloCargaFuego(
     establecimiento: datos.establecimiento,
     sectores: sectores.length,
   })
+  const brandMarca = await getBrandColorConsultora(consultoraId)
   let pdfBuffer: Buffer
   try {
-    pdfBuffer = await renderProtocolo(CARGA_FUEGO_DESCRIPTOR, datos)
+    pdfBuffer = await renderProtocolo(CARGA_FUEGO_DESCRIPTOR, datos, brandMarca)
   } catch (err) {
     const detalle = err instanceof Error ? (err.stack ?? err.message) : String(err)
     console.error('[PDF-REPORTE-CF] renderProtocolo lanzó:', detalle)
@@ -662,7 +664,7 @@ export async function generarReporteProtocoloCargaFuego(
     const registroId = c.registro_gestion_id as string | null
     const rgFecha = c.rg_fecha_planificada as string | null
     if (registroId) {
-      const obsBuffer = await generarAnexoObservaciones(supabase, registroId, rgFecha)
+      const obsBuffer = await generarAnexoObservaciones(supabase, registroId, rgFecha, brandMarca)
       if (obsBuffer) {
         anexosSistema.push({ titulo: 'Observaciones de Seguimiento', buffer: obsBuffer, mime: 'application/pdf', clave: 'observaciones' })
       }
