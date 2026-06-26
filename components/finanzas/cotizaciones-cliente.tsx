@@ -53,15 +53,16 @@ interface Props {
 type Destinatario = 'empresa' | 'lead' | 'manual'
 
 // Metadatos de estado para el embudo comercial.
+//  · clase → badge/selector.  · barra → franja de color al borde de la fila.
 const ESTADO_META: Record<
   CotizacionEstado,
-  { label: string; clase: string }
+  { label: string; clase: string; barra: string }
 > = {
-  borrador: { label: 'Borrador', clase: 'bg-slate-100 text-slate-700' },
-  enviada: { label: 'Enviada', clase: 'bg-blue-100 text-blue-800' },
-  aceptada: { label: 'Aceptada', clase: 'bg-green-100 text-green-800' },
-  rechazada: { label: 'Rechazada', clase: 'bg-red-100 text-red-800' },
-  vencida: { label: 'Vencida', clase: 'bg-amber-100 text-amber-800' },
+  borrador: { label: 'Borrador', clase: 'bg-slate-100 text-slate-700', barra: 'border-l-slate-400' },
+  enviada: { label: 'Enviada', clase: 'bg-blue-100 text-blue-800', barra: 'border-l-blue-500' },
+  aceptada: { label: 'Aceptada', clase: 'bg-green-100 text-green-800', barra: 'border-l-green-500' },
+  rechazada: { label: 'Rechazada', clase: 'bg-red-100 text-red-800', barra: 'border-l-red-500' },
+  vencida: { label: 'Vencida', clase: 'bg-amber-100 text-amber-800', barra: 'border-l-amber-500' },
 }
 
 const ESTADO_OPCIONES: CotizacionEstado[] = [
@@ -561,6 +562,9 @@ export function CotizacionesCliente({
   const [showModal, setShowModal] = useState(false)
   const [editando, setEditando] = useState<Cotizacion | null>(null)
   const [accionId, setAccionId] = useState<string | null>(null)
+  // Filtros de la lista (cliente-side; la página ya trae todas las cotizaciones).
+  const [filtroEstados, setFiltroEstados] = useState<Set<CotizacionEstado>>(new Set())
+  const [filtroCliente, setFiltroCliente] = useState('')
 
   // Suma una forma de pago recién creada al catálogo en memoria (sin recargar).
   function handleFormaPagoCreada(fp: FinFormaPago) {
@@ -585,6 +589,48 @@ export function CotizacionesCliente({
     if (cot.lead_id) return leadsNombre.get(cot.lead_id) ?? 'Prospecto'
     return cot.prospecto_nombre ?? '—'
   }
+
+  // Clave estable del destinatario para agrupar/filtrar por cliente.
+  function destinatarioKey(cot: Cotizacion): string {
+    if (cot.empresa_id) return `emp:${cot.empresa_id}`
+    if (cot.lead_id) return `lead:${cot.lead_id}`
+    if (cot.prospecto_nombre) return `man:${cot.prospecto_nombre}`
+    return ''
+  }
+
+  // Opciones del filtro por cliente: destinatarios distintos presentes en la lista.
+  const clienteOpciones = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const c of cotizaciones) {
+      const key = destinatarioKey(c)
+      if (key && !map.has(key)) map.set(key, destinatarioLabel(c))
+    }
+    return Array.from(map, ([value, label]) => ({ value, label })).sort((a, b) =>
+      a.label.localeCompare(b.label),
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cotizaciones, empresasNombre, leadsNombre])
+
+  // Lista visible tras aplicar los filtros (estado multi-select + cliente).
+  const cotizacionesFiltradas = useMemo(() => {
+    return cotizaciones.filter((c) => {
+      if (filtroEstados.size > 0 && !filtroEstados.has(c.estado)) return false
+      if (filtroCliente && destinatarioKey(c) !== filtroCliente) return false
+      return true
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cotizaciones, filtroEstados, filtroCliente])
+
+  function toggleEstado(est: CotizacionEstado) {
+    setFiltroEstados((prev) => {
+      const next = new Set(prev)
+      if (next.has(est)) next.delete(est)
+      else next.add(est)
+      return next
+    })
+  }
+
+  const hayFiltros = filtroEstados.size > 0 || filtroCliente !== ''
 
   function handleSuccess(cot: Cotizacion, esNueva: boolean) {
     setCotizaciones((prev) => {
@@ -685,7 +731,55 @@ export function CotizacionesCliente({
           action={{ label: 'Armá tu primer presupuesto', onClick: abrirAlta }}
         />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border-subtle bg-surface-elevated">
+        <>
+          {/* Filtros: por estado (chips multi-select) y por cliente. */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-xs font-medium text-text-tertiary">Estado:</span>
+              {ESTADO_OPCIONES.map((est) => {
+                const activo = filtroEstados.has(est)
+                return (
+                  <button
+                    key={est}
+                    type="button"
+                    onClick={() => toggleEstado(est)}
+                    aria-pressed={activo}
+                    className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-all ${
+                      activo
+                        ? `${ESTADO_META[est].clase} ring-2 ring-brand-primary ring-offset-1`
+                        : 'bg-surface-sunken text-text-tertiary hover:text-text-secondary'
+                    }`}
+                  >
+                    {ESTADO_META[est].label}
+                  </button>
+                )
+              })}
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-56">
+                <Select
+                  value={filtroCliente}
+                  onChange={(e) => setFiltroCliente(e.target.value)}
+                  placeholder="Todos los clientes"
+                  options={clienteOpciones}
+                />
+              </div>
+              {hayFiltros && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFiltroEstados(new Set())
+                    setFiltroCliente('')
+                  }}
+                  className="whitespace-nowrap text-[11px] font-medium text-text-tertiary underline hover:text-text-secondary"
+                >
+                  Limpiar filtros
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="overflow-hidden rounded-xl border border-border-subtle bg-surface-elevated">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-surface-sunken text-xs uppercase tracking-wider text-text-tertiary">
@@ -700,14 +794,14 @@ export function CotizacionesCliente({
                 </tr>
               </thead>
               <tbody>
-                {cotizaciones.map((cot) => {
+                {cotizacionesFiltradas.map((cot) => {
                   const ocupado = accionId === cot.id
                   return (
                     <tr
                       key={cot.id}
                       className="border-t border-border-subtle hover:bg-surface-sunken"
                     >
-                      <td className="px-3 py-2 text-text-primary">
+                      <td className={`border-l-4 px-3 py-2 text-text-primary ${ESTADO_META[cot.estado].barra}`}>
                         <span className="block max-w-[18rem] truncate font-medium">
                           {cot.concepto}
                         </span>
@@ -785,10 +879,21 @@ export function CotizacionesCliente({
                     </tr>
                   )
                 })}
+                {cotizacionesFiltradas.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={7}
+                      className="px-3 py-8 text-center text-sm text-text-tertiary"
+                    >
+                      No hay presupuestos que coincidan con los filtros.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
         </div>
+        </>
       )}
 
       {/* Modal alta / edición */}
