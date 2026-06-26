@@ -237,6 +237,7 @@ export function InstrumentoSelectorConAlta({
         <InstrumentoCreateForm
           lockedSubcategoriaNombre={subcategoriaNombre}
           onCreated={handleCreated}
+          inline
         />
       </Modal>
     </div>

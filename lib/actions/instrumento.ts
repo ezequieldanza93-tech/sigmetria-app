@@ -45,6 +45,14 @@ export async function createInstrumento(
   const subcategoriaId = (formData.get('subcategoria_id') as string) || ''
   const productoId = (formData.get('producto_id') as string) || ''
 
+  // Cuando el alta ocurre desde el selector inline dentro de un modal de medición,
+  // el form manda `inline=1`. En ese caso NO revalidamos /dashboard/instrumentos:
+  // ese revalidate global desmonta el árbol de la ruta actual (p. ej. /dashboard/gestiones)
+  // y cierra el modal con el formulario abierto. La UI inline ya refresca por estado
+  // local (el selector recibe el instrumento creado vía onCreated). El refresco de la
+  // página /dashboard/instrumentos solo es necesario cuando se crea desde su propia pantalla.
+  const esInline = formData.get('inline') === '1'
+
   if (!subcategoriaId) return { success: false, error: 'Elegí el tipo de medición (subcategoría)' }
   if (!productoId) return { success: false, error: 'Elegí el modelo del instrumento desde el catálogo' }
 
@@ -142,7 +150,7 @@ export async function createInstrumento(
     marcaNombre = (marca?.nombre as string | undefined) ?? null
   }
 
-  revalidatePath('/dashboard/instrumentos')
+  if (!esInline) revalidatePath('/dashboard/instrumentos')
   return {
     success: true,
     data: {

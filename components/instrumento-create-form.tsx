@@ -42,6 +42,13 @@ interface InstrumentoCreateFormProps {
    * agregue a su lista y lo seleccione. En edición `instrumento` es null.
    */
   onCreated: (instrumento: InstrumentoCreado | null) => void
+  /**
+   * Marca que el alta ocurre embebida en un modal de medición (selector inline).
+   * En ese caso el form envía `inline=1` para que `createInstrumento` NO revalide
+   * /dashboard/instrumentos: ese revalidate global desmonta la ruta actual y cierra
+   * el modal de medición abierto. La UI inline ya refresca por estado local.
+   */
+  inline?: boolean
 }
 
 /**
@@ -60,6 +67,7 @@ export function InstrumentoCreateForm({
   instrumento,
   lockedSubcategoriaNombre,
   onCreated,
+  inline = false,
 }: InstrumentoCreateFormProps) {
   const action = instrumento ? updateInstrumento : createInstrumento
   const [state, formAction, pending] = useActionState(
@@ -165,6 +173,7 @@ export function InstrumentoCreateForm({
         <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-4 py-3">{state.error}</div>
       )}
       {instrumento && <input type="hidden" name="id" value={instrumento.id} />}
+      {inline && <input type="hidden" name="inline" value="1" />}
       <input type="hidden" name="subcategoria_id" value={subcategoriaId} />
 
       {tipoFijo ? (
