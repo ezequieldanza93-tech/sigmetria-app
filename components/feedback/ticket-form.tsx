@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
+import { VoiceTextarea } from '@/components/ui/voice-textarea'
 import { Tabs } from '@/components/ui/tabs'
 import { useEnviarFeedbackTicket } from '@/lib/queries/feedback'
 import { MessageSquareWarning, Lightbulb, MessageSquare } from 'lucide-react'
@@ -67,11 +67,11 @@ export function TicketForm({ onSuccess }: { onSuccess?: () => void }) {
           disabled={mutation.isPending}
         />
 
-        <Textarea
+        <VoiceTextarea
           label="Descripción"
           placeholder={TICKET_CONFIG[tipo].placeholder}
           value={descripcion}
-          onChange={(e) => setDescripcion(e.target.value)}
+          onValueChange={setDescripcion}
           maxLength={4000}
           rows={5}
           required

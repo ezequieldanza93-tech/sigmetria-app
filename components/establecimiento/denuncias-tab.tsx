@@ -3,6 +3,7 @@
 import { useState, useEffect, useActionState, useRef } from 'react'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
+import { VoiceTextarea } from '@/components/ui/voice-textarea'
 import { formatDate } from '@/lib/utils'
 import { createDenuncia } from '@/lib/actions/establecimiento-info'
 import { useSignedUrls } from '@/lib/storage/sign-client'
@@ -40,6 +41,7 @@ function DenunciaForm({
   const [state, formAction, pending] = useActionState(action, null)
   const [personaId, setPersonaId] = useState<string | null>(null)
   const [involucrados, setInvolucrados] = useState<PersonaMultiSelectValue>(EMPTY_VINCULOS)
+  const [descripcion, setDescripcion] = useState('')
   const [archivoCount, setArchivoCount] = useState(0)
 
   const onSuccessRef = useRef(onSuccess)
@@ -48,6 +50,7 @@ function DenunciaForm({
     if (state?.success) {
       setPersonaId(null)
       setInvolucrados(EMPTY_VINCULOS)
+      setDescripcion('')
       onSuccessRef.current()
     }
   }, [state])
@@ -76,7 +79,7 @@ function DenunciaForm({
 
       <div>
         <label className="text-sm font-medium text-text-secondary dark:text-white block mb-1">Descripción *</label>
-        <textarea name="descripcion" required rows={3} className={`${inputCls} resize-none`} />
+        <VoiceTextarea name="descripcion" value={descripcion} onValueChange={setDescripcion} required rows={3} className={`${inputCls} resize-none`} />
       </div>
 
       <PersonaMultiSelectConSueltos

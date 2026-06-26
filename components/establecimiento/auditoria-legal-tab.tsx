@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { VoiceTextarea } from '@/components/ui/voice-textarea'
 import { useToast } from '@/lib/hooks/use-toast'
 import {
   useMatrizLegal,
@@ -129,6 +130,37 @@ function TextoArticulo({ texto }: { texto: string | null }) {
 // ============================================================
 // Componentes de presentación
 // ============================================================
+
+/**
+ * Campo de observación de un ítem de auditoría, con dictado por voz.
+ * Estado local seedeado desde `defaultValue`; persiste en blur si cambió.
+ * Se remonta vía `key` desde el padre cuando cambia el valor de origen.
+ */
+function ObservacionField({
+  defaultValue,
+  disabled,
+  onCommit,
+}: {
+  defaultValue: string
+  disabled: boolean
+  onCommit: (value: string | null) => void
+}) {
+  const [value, setValue] = useState(defaultValue)
+  return (
+    <VoiceTextarea
+      value={value}
+      onValueChange={setValue}
+      disabled={disabled}
+      placeholder="Observación (opcional)…"
+      rows={1}
+      onBlur={() => {
+        const v = value.trim()
+        if (v !== defaultValue) onCommit(v || null)
+      }}
+      className="mt-2 w-full resize-y rounded-lg border border-border-default bg-surface-base px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-tertiary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30 disabled:opacity-60"
+    />
+  )
+}
 
 function Loading() {
   return (
@@ -395,17 +427,11 @@ function ItemRow({
           })}
         </div>
       </div>
-      <textarea
+      <ObservacionField
         key={`${item.id}:${item.observacion ?? ''}`}
         defaultValue={item.observacion ?? ''}
         disabled={!editable}
-        placeholder="Observación (opcional)…"
-        rows={1}
-        onBlur={(e) => {
-          const v = e.target.value.trim()
-          if (v !== (item.observacion ?? '')) onObservacion(item.id, v || null)
-        }}
-        className="mt-2 w-full resize-y rounded-lg border border-border-default bg-surface-base px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-tertiary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30 disabled:opacity-60"
+        onCommit={(v) => onObservacion(item.id, v)}
       />
       <div className="mt-2 flex items-center gap-2">
         <input

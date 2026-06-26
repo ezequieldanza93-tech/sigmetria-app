@@ -3,6 +3,7 @@
 import { useActionState, useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { VoiceTextarea } from '@/components/ui/voice-textarea'
 import { PhoneInput } from '@/components/forms/phone-input'
 import { Select } from '@/components/ui/select'
 import { createClient } from '@/lib/supabase/client'
@@ -50,6 +51,7 @@ export function SubcontratistaEditForm({ action, sub, preguntas, respuestas }: P
   const [selectedLocalidadId, setSelectedLocalidadId] = useState(org.localidad_id ?? '')
   const [selectedArtId, setSelectedArtId] = useState(sub.art_id ?? '')
   const [selectedTipoEstId, setSelectedTipoEstId] = useState(sub.tipo_establecimiento_id ?? '')
+  const [informacionGeneral, setInformacionGeneral] = useState(sub.informacion_general ?? '')
 
   // Load preguntas when tipo_establecimiento changes
   const [preguntasDinamicas, setPreguntasDinamicas] = useState<PreguntaRiesgo[]>(preguntas ?? [])
@@ -225,10 +227,11 @@ export function SubcontratistaEditForm({ action, sub, preguntas, respuestas }: P
 
       <div>
         <label className="text-sm font-medium text-text-secondary block mb-1">Información general</label>
-        <textarea
+        <VoiceTextarea
           name="informacion_general"
           rows={3}
-          defaultValue={sub.informacion_general ?? ''}
+          value={informacionGeneral}
+          onValueChange={setInformacionGeneral}
           className="w-full border border-border-default rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500 focus:border-transparent resize-none"
           placeholder="Descripción, notas o información adicional…"
         />

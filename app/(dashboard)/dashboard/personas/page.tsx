@@ -11,6 +11,7 @@ import { EntregaEppModal } from '@/components/entrega-epp-modal'
 import { SectorPuestoSelectorConAlta } from '@/components/sector-puesto-selector-con-alta'
 import { PersonaDetalleModal, type PersonaDetalle } from '@/components/persona-detalle-modal'
 import { PhoneInput } from '@/components/forms/phone-input'
+import { VoiceTextarea } from '@/components/ui/voice-textarea'
 import type { TipoPersona, Empresa, Establecimiento, ActionResult } from '@/lib/types'
 
 // El listado trae más columnas que el listado base (foto/dni/user_id) para
@@ -40,6 +41,7 @@ function PersonaForm({
   const [selectedEstablecimientoId, setSelectedEstablecimientoId] = useState<string>('')
   const [sectorSel, setSectorSel] = useState<string>('')
   const [puestoSel, setPuestoSel] = useState<string>('')
+  const [notas, setNotas] = useState('')
   const [establecimientos, setEstablecimientos] = useState<Establecimiento[]>([])
 
   const onSuccessRef = useRef(onSuccess)
@@ -257,7 +259,7 @@ function PersonaForm({
 
           <div>
             <label className="text-sm font-medium text-text-secondary block mb-1">Notas</label>
-            <textarea name="notas" rows={2} className="w-full border border-border-default rounded-lg px-3 py-2 text-sm resize-none" placeholder="Opcional…" />
+            <VoiceTextarea name="notas" value={notas} onValueChange={setNotas} rows={2} className="w-full border border-border-default rounded-lg px-3 py-2 text-sm resize-none" placeholder="Opcional…" />
           </div>
           <div className="flex justify-end">
             <Button type="submit" disabled={pending}>{pending ? 'Guardando…' : 'Guardar'}</Button>

@@ -5,7 +5,7 @@ import { Mail, Phone, Download, CalendarDays, ShieldCheck, Globe, Tag, ExternalL
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
+import { VoiceTextarea } from '@/components/ui/voice-textarea'
 import { Badge } from '@/components/ui/badge'
 import { updateLead } from '@/lib/actions/crm'
 import {
@@ -201,12 +201,12 @@ export function LeadDetailModal({ lead, descargas, consentimientos, onClose, onU
             onChange={e => setEtapa(e.target.value)}
           />
 
-          <Textarea
+          <VoiceTextarea
             label="Notas"
             placeholder="Notas internas sobre el contacto, próximos pasos, etc."
             rows={6}
             value={notas}
-            onChange={e => setNotas(e.target.value)}
+            onValueChange={setNotas}
           />
 
           {error && <p className="text-xs text-[var(--danger)]">{error}</p>}

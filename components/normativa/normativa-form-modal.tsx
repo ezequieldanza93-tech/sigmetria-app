@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Modal } from '@/components/ui/modal'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
+import { VoiceTextarea } from '@/components/ui/voice-textarea'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/lib/hooks/use-toast'
 import {
@@ -46,11 +46,17 @@ export function NormativaFormModal({ open, onClose, norma, categorias, puedeGest
   // Al editar, el alcance lo determina la fila existente.
   const esBaseExistente = editando && norma?.consultora_id === null
   const [alcance, setAlcance] = useState<'propia' | 'base'>('propia')
+  const [modificaciones, setModificaciones] = useState(norma?.modificaciones ?? '')
 
   // Al (re)abrir para crear, arrancamos siempre en "propia".
   useEffect(() => {
     if (open && !editando) setAlcance('propia')
   }, [open, editando])
+
+  // Reseedea el textarea controlado cuando cambia la norma o se reabre el modal.
+  useEffect(() => {
+    setModificaciones(norma?.modificaciones ?? '')
+  }, [norma, open])
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -202,12 +208,14 @@ export function NormativaFormModal({ open, onClose, norma, categorias, puedeGest
           </p>
         </div>
 
-        <Textarea
+        <VoiceTextarea
           name="modificaciones"
           label="Modificaciones"
-          defaultValue={norma?.modificaciones ?? ''}
+          value={modificaciones}
+          onValueChange={setModificaciones}
           placeholder="Ej. Modificada por Res. SRT 1830/2005"
           rows={2}
+          className="w-full border border-border-default rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary resize-none bg-surface-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)] focus-visible:border-transparent disabled:bg-surface-sunken disabled:text-text-tertiary"
         />
 
         <div className="flex gap-2 justify-end pt-2">

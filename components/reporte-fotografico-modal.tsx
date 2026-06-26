@@ -6,6 +6,7 @@ import { PhotoCanvasEditor } from '@/components/photo-canvas-editor'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { FotoInput } from '@/components/ui/foto-input'
+import { VoiceTextarea } from '@/components/ui/voice-textarea'
 import { createClient } from '@/lib/supabase/client'
 import { Camera } from 'lucide-react'
 
@@ -238,9 +239,9 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
         {/* Comentario */}
         <div>
           <label className="text-sm font-medium text-text-secondary block mb-1">Comentario</label>
-          <textarea
+          <VoiceTextarea
             value={comentario}
-            onChange={e => setComentario(e.target.value)}
+            onValueChange={setComentario}
             rows={2}
             placeholder="Agregá un comentario opcional…"
             className={`${inputCls} resize-none`}
@@ -274,13 +275,15 @@ export function ReporteFotograficoModal({ establecimientoId, onClose, onSuccess 
                 <div key={obs.key} className="border border-border-subtle rounded-lg p-3 space-y-2 bg-gray-50/50">
                   <div className="flex items-start gap-2">
                     <span className="text-xs text-text-tertiary mt-2 w-4 shrink-0">{idx + 1}.</span>
-                    <textarea
-                      value={obs.descripcion}
-                      onChange={e => updateObs(obs.key, 'descripcion', e.target.value)}
-                      placeholder="Descripción de la observación…"
-                      rows={2}
-                      className="flex-1 border border-border-default rounded-lg px-3 py-1.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sig-500"
-                    />
+                    <div className="flex-1">
+                      <VoiceTextarea
+                        value={obs.descripcion}
+                        onValueChange={(v) => updateObs(obs.key, 'descripcion', v)}
+                        placeholder="Descripción de la observación…"
+                        rows={2}
+                        className="w-full border border-border-default rounded-lg px-3 py-1.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sig-500"
+                      />
+                    </div>
                     <button
                       type="button"
                       onClick={() => removeObs(obs.key)}

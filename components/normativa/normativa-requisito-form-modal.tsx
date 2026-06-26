@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Modal } from '@/components/ui/modal'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
+import { VoiceTextarea } from '@/components/ui/voice-textarea'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/lib/hooks/use-toast'
 import {
@@ -25,7 +25,13 @@ interface Props {
 export function NormativaRequisitoFormModal({ open, onClose, normaId, requisito, onSaved }: Props) {
   const { success, error } = useToast()
   const [saving, setSaving] = useState(false)
+  const [descripcionOficial, setDescripcionOficial] = useState(requisito?.descripcion_oficial ?? '')
   const editando = Boolean(requisito)
+
+  // Reseedea el textarea controlado cuando cambia el requisito (abrir/editar otro).
+  useEffect(() => {
+    setDescripcionOficial(requisito?.descripcion_oficial ?? '')
+  }, [requisito])
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -77,12 +83,14 @@ export function NormativaRequisitoFormModal({ open, onClose, normaId, requisito,
           placeholder="Resumen del requisito (visible en el encabezado)"
         />
 
-        <Textarea
+        <VoiceTextarea
           name="descripcion_oficial"
           label="Texto oficial"
-          defaultValue={requisito?.descripcion_oficial ?? ''}
+          value={descripcionOficial}
+          onValueChange={setDescripcionOficial}
           placeholder="Transcripción o paráfrasis del texto legal…"
           rows={5}
+          className="w-full border border-border-default rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary resize-none bg-surface-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)] focus-visible:border-transparent disabled:bg-surface-sunken disabled:text-text-tertiary"
         />
 
         <Input

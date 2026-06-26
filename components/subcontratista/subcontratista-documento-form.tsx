@@ -1,9 +1,10 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
+import { VoiceTextarea } from '@/components/ui/voice-textarea'
 import { FileUploadInput } from '@/components/ui/file-upload-input'
 import type { ActionResult, DocumentType } from '@/lib/types'
 
@@ -18,6 +19,7 @@ interface Props {
 
 export function SubcontratistaDocumentoForm({ action, documentTypes, onSuccess }: Props) {
   const [state, formAction, isPending] = useActionState(action, null)
+  const [observaciones, setObservaciones] = useState('')
 
   // Handle success
   if (state?.success) {
@@ -57,9 +59,11 @@ export function SubcontratistaDocumentoForm({ action, documentTypes, onSuccess }
 
       <div>
         <label className="text-sm font-medium text-text-secondary block mb-1">Observaciones</label>
-        <textarea
+        <VoiceTextarea
           name="observaciones"
           rows={2}
+          value={observaciones}
+          onValueChange={setObservaciones}
           className="w-full border border-border-default rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500 focus:border-transparent resize-none"
           placeholder="Observaciones opcionales…"
         />

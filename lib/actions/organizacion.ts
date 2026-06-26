@@ -117,6 +117,29 @@ export async function createOrganizacionExterna(
 
   if (tipoNombre === 'Subcontratista') {
     const cantTrab = formData.get('cantidad_trabajadores') as string
+
+    // ART: si el usuario eligió crear una ART nueva durante el alta, el form
+    // envía art_id='__new__' + new_art_nombre. La creamos ahora (scope global,
+    // que es el scope que lista el selector) y usamos su id.
+    const rawArtId = (formData.get('art_id') as string) || null
+    let artId = rawArtId === '__new__' ? null : rawArtId
+    const newArtNombre = (formData.get('new_art_nombre') as string)?.trim()
+    if (rawArtId === '__new__' && newArtNombre) {
+      const { data: tipoArt } = await supabase
+        .from('organizaciones_tipos')
+        .select('id')
+        .eq('nombre', 'ART')
+        .maybeSingle()
+      if (tipoArt) {
+        const { data: newArt } = await supabase
+          .from('organizaciones_externas')
+          .insert({ nombre: newArtNombre, tipo_id: tipoArt.id, scope: 'global', is_active: true })
+          .select('id')
+          .single()
+        if (newArt) artId = newArt.id
+      }
+    }
+
     const { data: sub, error: subError } = await supabase
       .from('subcontratistas')
       .insert({
@@ -127,7 +150,7 @@ export async function createOrganizacionExterna(
         domicilio: (formData.get('domicilio') as string) || null,
         localidad_id: (formData.get('localidad_id') as string) || null,
         codigo_postal: (formData.get('codigo_postal') as string) || null,
-        art_id: (formData.get('art_id') as string) || null,
+        art_id: artId,
         art_numero_contrato: (formData.get('art_numero_contrato') as string) || null,
         tipo_establecimiento_id: (formData.get('tipo_establecimiento_id') as string) || null,
         actividad_principal: (formData.get('actividad_principal') as string) || null,

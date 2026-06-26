@@ -58,6 +58,13 @@ export function OrganizacionExternaForm({ action }: Props) {
   const [selectedTipoEstId, setSelectedTipoEstId] = useState('')
   const [infoONotas, setInfoONotas] = useState('')
 
+  // Alta inline de ART (mismo patrón que empresa-form en modo creación): no hay
+  // entidad todavía, así que guardamos el nombre en estado, lo mostramos como
+  // opción seleccionable y la server action lo resuelve a un id al guardar.
+  const [showAddArt, setShowAddArt] = useState(false)
+  const [newArtName, setNewArtName] = useState('')
+  const [newArtPreview, setNewArtPreview] = useState<string | null>(null)
+
   // Load preguntas when tipo_establecimiento changes
   useEffect(() => {
     if (!selectedTipoEstId) { setPreguntas([]); return }
@@ -87,6 +94,20 @@ export function OrganizacionExternaForm({ action }: Props) {
     setSelectedTipoEstId('')
     setPreguntas([])
     setRespuestas({})
+    setShowAddArt(false)
+    setNewArtName('')
+    setNewArtPreview(null)
+  }
+
+  function handleAddArt() {
+    const nombre = newArtName.trim()
+    if (!nombre) return
+    // Sin entidad creada todavía: guardamos el nombre como "preview". La server
+    // action lo crea y enlaza al guardar (mirroring empresa-form en alta).
+    setNewArtPreview(nombre)
+    setSelectedArtId('__new__')
+    setNewArtName('')
+    setShowAddArt(false)
   }
 
   const provincias = [...new Set(localidades.map(l => l.provincia))].sort()
@@ -186,14 +207,73 @@ export function OrganizacionExternaForm({ action }: Props) {
           {/* ART */}
           <SectionTitle>ART</SectionTitle>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Select
-              label="ART"
-              name="art_id"
-              value={selectedArtId}
-              onChange={e => setSelectedArtId(e.target.value)}
-              options={artOrgs.map(o => ({ value: o.id, label: o.nombre }))}
-              placeholder="Seleccionar ART…"
-            />
+            <div>
+              <Select
+                label="ART"
+                name="art_id"
+                value={selectedArtId}
+                onChange={e => setSelectedArtId(e.target.value)}
+                options={[
+                  ...artOrgs.map(o => ({ value: o.id, label: o.nombre })),
+                  ...(newArtPreview ? [{ value: '__new__', label: `${newArtPreview} (nueva)` }] : []),
+                ]}
+                placeholder="Seleccionar ART…"
+              />
+              {newArtPreview && (
+                <input type="hidden" name="new_art_nombre" value={newArtPreview} />
+              )}
+              {!showAddArt && !newArtPreview && (
+                <button
+                  type="button"
+                  onClick={() => setShowAddArt(true)}
+                  className="mt-1 text-xs text-sig-500 hover:text-sig-700 hover:underline"
+                >
+                  + No encontrás tu ART? Agregar nueva
+                </button>
+              )}
+              {newArtPreview && (
+                <div className="mt-2 flex items-center gap-2 px-3 py-2 bg-sig-50 border border-sig-200 rounded-lg">
+                  <span className="text-xs text-sig-700 flex-1">Nueva ART: <strong>{newArtPreview}</strong></span>
+                  <button
+                    type="button"
+                    onClick={() => { setNewArtPreview(null); setSelectedArtId('') }}
+                    className="text-xs text-text-tertiary hover:text-danger transition-colors"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+              {showAddArt && (
+                <div className="mt-2 space-y-2">
+                  <input
+                    type="text"
+                    value={newArtName}
+                    onChange={e => setNewArtName(e.target.value)}
+                    placeholder="Nombre de la ART…"
+                    className="w-full border border-border-default rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500 focus:border-transparent"
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddArt() } }}
+                    autoFocus
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleAddArt}
+                      disabled={!newArtName.trim()}
+                      className="text-xs bg-sig-500 hover:bg-sig-700 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg font-medium transition-colors"
+                    >
+                      Agregar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setShowAddArt(false); setNewArtName('') }}
+                      className="text-xs text-text-secondary hover:text-text-secondary px-3 py-1.5 rounded-lg border border-border-subtle transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
             <Input label="Nº de contrato ART" name="art_numero_contrato" placeholder="Nº de contrato" />
           </div>
 

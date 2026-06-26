@@ -7,6 +7,7 @@ import { Search, Filter, Layers, Shield, ShieldCheck, Package } from 'lucide-rea
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { FotoInput } from '@/components/ui/foto-input'
+import { VoiceTextarea } from '@/components/ui/voice-textarea'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { MultiSelectFilter } from '@/components/ui/multi-select-filter'
 import { createClient } from '@/lib/supabase/client'
@@ -86,6 +87,7 @@ function ProductoForm({
     null as ActionResult<null> | null
   )
   const [fotoPreview, setFotoPreview] = useState<string | null>(null)
+  const [descripcion, setDescripcion] = useState('')
   // Cascada clase → categoría → componente (controlada, para resets en cadena).
   const [claseId, setClaseId] = useState('')
   const [categoriaId, setCategoriaId] = useState('')
@@ -205,7 +207,7 @@ function ProductoForm({
 
       <div>
         <label className="text-sm font-medium text-text-secondary block mb-1">Descripción</label>
-        <textarea name="descripcion" rows={2} className="w-full border border-border-default rounded-lg px-3 py-2 text-sm resize-none" placeholder="Opcional…" />
+        <VoiceTextarea name="descripcion" value={descripcion} onValueChange={setDescripcion} rows={2} className="w-full border border-border-default rounded-lg px-3 py-2 text-sm resize-none" placeholder="Opcional…" />
       </div>
 
       {/* Foto */}
@@ -254,6 +256,7 @@ function ProductoEditForm({
   const [componenteId, setComponenteId] = useState(producto.componente_id ?? '')
   const [marcaId, setMarcaId] = useState(producto.marca_id ?? '')
   const [unidadId, setUnidadId] = useState(producto.unidad_id ?? '')
+  const [descripcion, setDescripcion] = useState(producto.descripcion ?? '')
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [fotoFile, setFotoFile] = useState<File | null>(null)
@@ -355,7 +358,7 @@ function ProductoEditForm({
 
       <div>
         <label className="text-sm font-medium text-text-secondary block mb-1">Descripción</label>
-        <textarea name="descripcion" rows={2} defaultValue={producto.descripcion ?? ''} className="w-full border border-border-default rounded-lg px-3 py-2 text-sm resize-none" />
+        <VoiceTextarea name="descripcion" value={descripcion} onValueChange={setDescripcion} rows={2} className="w-full border border-border-default rounded-lg px-3 py-2 text-sm resize-none" />
       </div>
 
       {/* Foto del producto — visible para todos los que pueden editar */}

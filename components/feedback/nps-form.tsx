@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
+import { VoiceTextarea } from '@/components/ui/voice-textarea'
 import { NpsInput } from '@/components/feedback/nps-input'
 import { useEnviarFeedbackNps } from '@/lib/queries/feedback'
 
@@ -67,11 +67,11 @@ export function NpsForm({ lastNpsDate, onSuccess }: NpsFormProps) {
       </div>
 
       <div>
-        <Textarea
+        <VoiceTextarea
           label="Contanos por qué (opcional)"
           placeholder="¿Qué fue lo que más te gustó? ¿Qué mejorarías?"
           value={comentario}
-          onChange={(e) => setComentario(e.target.value)}
+          onValueChange={setComentario}
           maxLength={2000}
           rows={3}
           disabled={mutation.isPending}

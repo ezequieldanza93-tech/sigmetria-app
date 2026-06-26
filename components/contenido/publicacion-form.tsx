@@ -5,7 +5,7 @@ import { Loader2 } from 'lucide-react'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
+import { VoiceTextarea } from '@/components/ui/voice-textarea'
 import { Select } from '@/components/ui/select'
 import { MultiMediaUpload, type MediaFormSlot } from '@/components/contenido/multi-media-upload'
 import { createPublicacion, updatePublicacion } from '@/lib/actions/contenido'
@@ -159,10 +159,10 @@ export function PublicacionForm({ open, onClose, catalogos, editing, getUrl, onS
           placeholder="Título interno de la publicación"
         />
 
-        <Textarea
+        <VoiceTextarea
           label="Descripción / copy"
           value={descripcion}
-          onChange={(e) => setDescripcion(e.target.value)}
+          onValueChange={setDescripcion}
           rows={4}
           placeholder="El texto que va a acompañar la publicación…"
         />

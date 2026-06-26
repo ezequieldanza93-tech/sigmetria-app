@@ -4,6 +4,7 @@ import { useState, useEffect, useActionState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
+import { VoiceTextarea } from '@/components/ui/voice-textarea'
 import { formatDate } from '@/lib/utils'
 import { createFeedbackCliente } from '@/lib/actions/establecimiento-info'
 import { useSignedUrls } from '@/lib/storage/sign-client'
@@ -38,12 +39,16 @@ function FeedbackForm({
 }) {
   const [state, formAction, pending] = useActionState(action, null)
   const [personas, setPersonas] = useState<Pick<DirectorioPersona, 'id' | 'nombre' | 'apellido'>[]>([])
+  const [descripcion, setDescripcion] = useState('')
   const [archivoCount, setArchivoCount] = useState(0)
 
   const onSuccessRef = useRef(onSuccess)
   onSuccessRef.current = onSuccess
   useEffect(() => {
-    if (state?.success) onSuccessRef.current()
+    if (state?.success) {
+      setDescripcion('')
+      onSuccessRef.current()
+    }
   }, [state])
 
   useEffect(() => {
@@ -96,7 +101,7 @@ function FeedbackForm({
 
       <div>
         <label className="text-sm font-medium text-text-secondary dark:text-white block mb-1">Descripción *</label>
-        <textarea name="descripcion" required rows={3} className={`${inputCls} resize-none`} />
+        <VoiceTextarea name="descripcion" value={descripcion} onValueChange={setDescripcion} required rows={3} className={`${inputCls} resize-none`} />
       </div>
 
       <div>

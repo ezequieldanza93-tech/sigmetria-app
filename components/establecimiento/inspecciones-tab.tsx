@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
+import { VoiceTextarea } from '@/components/ui/voice-textarea'
 import { InspeccionForm } from '@/components/forms/inspeccion-form'
 import { formatDate } from '@/lib/utils'
 import { INSPECCION_ESTADO_LABELS, INSPECCION_ESTADO_VISUAL_LABELS, INSPECCION_ESTADO_VISUAL_COLORS } from '@/lib/constants'
@@ -33,6 +34,7 @@ export function InspeccionesTab({ inspecciones, establecimientoId, empresaId, ca
   const [showObsModal, setShowObsModal] = useState<string | null>(null)
   const [categorias, setCategorias] = useState<CategoriaObs[]>([])
   const [obsCategoriaId, setObsCategoriaId] = useState('')
+  const [obsDescripcion, setObsDescripcion] = useState('')
   const [obsError, setObsError] = useState<string | null>(null)
   const inspeccionAction = createInspeccion.bind(null, establecimientoId, empresaId)
 
@@ -201,7 +203,7 @@ export function InspeccionesTab({ inspecciones, establecimientoId, empresaId, ca
 
       <Modal
         open={!!showObsModal}
-        onClose={() => { setShowObsModal(null); setObsCategoriaId(''); setObsError(null) }}
+        onClose={() => { setShowObsModal(null); setObsCategoriaId(''); setObsDescripcion(''); setObsError(null) }}
         title="Agregar observación"
       >
         <form
@@ -216,6 +218,7 @@ export function InspeccionesTab({ inspecciones, establecimientoId, empresaId, ca
             if (!res.success) { setObsError(res.error); return }
             setShowObsModal(null)
             setObsCategoriaId('')
+            setObsDescripcion('')
           }}
           className="space-y-3"
         >
@@ -241,10 +244,10 @@ export function InspeccionesTab({ inspecciones, establecimientoId, empresaId, ca
           </div>
           <div>
             <label className="text-xs text-text-secondary block mb-1">Descripción *</label>
-            <textarea name="descripcion" required rows={3} className="w-full border border-border-default rounded px-3 py-2 text-sm" />
+            <VoiceTextarea name="descripcion" value={obsDescripcion} onValueChange={setObsDescripcion} required rows={3} className="w-full border border-border-default rounded px-3 py-2 text-sm" />
           </div>
           <div className="flex justify-end gap-2">
-            <Button size="sm" variant="secondary" type="button" onClick={() => { setShowObsModal(null); setObsCategoriaId(''); setObsError(null) }}>Cancelar</Button>
+            <Button size="sm" variant="secondary" type="button" onClick={() => { setShowObsModal(null); setObsCategoriaId(''); setObsDescripcion(''); setObsError(null) }}>Cancelar</Button>
             <Button size="sm" type="submit">Guardar</Button>
           </div>
         </form>
