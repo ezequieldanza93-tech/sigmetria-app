@@ -90,29 +90,44 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
 
   useEffect(() => {
     const supabase = createClient()
-    Promise.all([
-      supabase
-        .from('organizaciones_externas')
-        .select('id, nombre, organizaciones_tipos!inner(nombre)')
-        .eq('organizaciones_tipos.nombre', 'ART')
-        .eq('is_active', true)
-        .or(empresa?.id ? `scope.eq.global,empresa_id.eq.${empresa.id}` : 'scope.eq.global')
-        .order('nombre'),
-      supabase
-        .from('localidades')
-        .select('id, nombre, provincia, is_active, created_at')
-        .eq('is_active', true)
-        .order('nombre'),
-      supabase
-        .from('actividades_economicas')
-        .select('id, codigo, nombre')
-        .eq('is_active', true)
-        .order('codigo'),
-    ]).then(([{ data: arts }, { data: locs }, { data: actividadesData }]) => {
+    ;(async () => {
+      // Librería híbrida de ART: base de Sigmetría (consultora_id IS NULL) +
+      // propias de la consultora del usuario actual (consultora_id = X).
+      const { data: { user } } = await supabase.auth.getUser()
+      let consultoraId: string | null = null
+      if (user) {
+        const { data: membership } = await supabase
+          .from('consultoras_members')
+          .select('consultora_id')
+          .eq('user_id', user.id)
+          .eq('is_active', true)
+          .maybeSingle()
+        consultoraId = (membership?.consultora_id as string | undefined) ?? null
+      }
+
+      const [{ data: arts }, { data: locs }, { data: actividadesData }] = await Promise.all([
+        supabase
+          .from('organizaciones_externas')
+          .select('id, nombre, organizaciones_tipos!inner(nombre)')
+          .eq('organizaciones_tipos.nombre', 'ART')
+          .eq('is_active', true)
+          .or(consultoraId ? `consultora_id.is.null,consultora_id.eq.${consultoraId}` : 'consultora_id.is.null')
+          .order('nombre'),
+        supabase
+          .from('localidades')
+          .select('id, nombre, provincia, is_active, created_at')
+          .eq('is_active', true)
+          .order('nombre'),
+        supabase
+          .from('actividades_economicas')
+          .select('id, codigo, nombre')
+          .eq('is_active', true)
+          .order('codigo'),
+      ])
       if (arts) setArtOrgs(arts as { id: string; nombre: string }[])
       if (locs) setLocalidades(locs as Localidad[])
       if (actividadesData) setActividades(actividadesData as ActividadCiiu[])
-    })
+    })()
   }, [empresa?.id])
 
   // Safety net para edit mode: si llega el localidad_id pero no el join de

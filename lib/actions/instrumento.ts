@@ -22,10 +22,22 @@ async function productoCatalogo(
   return (data as { nombre: string; marca_id: string | null } | null) ?? null
 }
 
+/**
+ * Shape uniforme que consumen tanto la página /dashboard/instrumentos como los
+ * selectores de instrumento de los modales de medición. `marca` es el NOMBRE de
+ * la marca (no el id) — lo que el <select>/selector necesita para etiquetar.
+ */
+export interface InstrumentoCreado {
+  id: string
+  modelo: string
+  numero_serie: string | null
+  marca: string | null
+}
+
 export async function createInstrumento(
-  _prev: ActionResult<null> | null,
+  _prev: ActionResult<InstrumentoCreado> | null,
   formData: FormData
-): Promise<ActionResult<null>> {
+): Promise<ActionResult<InstrumentoCreado>> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
@@ -118,14 +130,34 @@ export async function createInstrumento(
     }
   }
 
+  // Resolver el NOMBRE de la marca para devolver el shape que consumen los
+  // selectores de los modales de medición (marca = nombre, no id).
+  let marcaNombre: string | null = null
+  if (marcaId) {
+    const { data: marca } = await supabase
+      .from('organizaciones_externas')
+      .select('nombre')
+      .eq('id', marcaId)
+      .maybeSingle()
+    marcaNombre = (marca?.nombre as string | undefined) ?? null
+  }
+
   revalidatePath('/dashboard/instrumentos')
-  return { success: true, data: null }
+  return {
+    success: true,
+    data: {
+      id: inserted.id as string,
+      modelo,
+      numero_serie: (formData.get('numero_serie') as string) || null,
+      marca: marcaNombre,
+    },
+  }
 }
 
 export async function updateInstrumento(
-  _prev: ActionResult<null> | null,
+  _prev: ActionResult<InstrumentoCreado> | null,
   formData: FormData
-): Promise<ActionResult<null>> {
+): Promise<ActionResult<InstrumentoCreado>> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
@@ -161,8 +193,28 @@ export async function updateInstrumento(
     return { success: false, error: error.message }
   }
 
+  // Resolver el NOMBRE de la marca para devolver el mismo shape que createInstrumento
+  // (lo consumen los selectores de los modales de medición).
+  let marcaNombre: string | null = null
+  if (prod.marca_id) {
+    const { data: marca } = await supabase
+      .from('organizaciones_externas')
+      .select('nombre')
+      .eq('id', prod.marca_id)
+      .maybeSingle()
+    marcaNombre = (marca?.nombre as string | undefined) ?? null
+  }
+
   revalidatePath('/dashboard/instrumentos')
-  return { success: true, data: null }
+  return {
+    success: true,
+    data: {
+      id,
+      modelo: prod.nombre,
+      numero_serie: (formData.get('numero_serie') as string) || null,
+      marca: marcaNombre,
+    },
+  }
 }
 
 /**

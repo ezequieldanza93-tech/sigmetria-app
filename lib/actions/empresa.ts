@@ -229,9 +229,11 @@ export async function createEmpresa(_prev: EmpresaFormState | null, formData: Fo
       .eq('nombre', 'ART')
       .maybeSingle()
     if (tipoArt) {
+      // ART consultora-privada (librería híbrida): reutilizable por toda la
+      // consultora, no atada a esta empresa.
       const { data: newArt } = await supabase
         .from('organizaciones_externas')
-        .insert({ nombre: newArtNombre, tipo_id: tipoArt.id, scope: 'empresa', empresa_id: empresaId, is_active: true })
+        .insert({ nombre: newArtNombre, tipo_id: tipoArt.id, consultora_id: membership!.consultora_id, is_active: true })
         .select('id')
         .single()
       if (newArt) {
@@ -316,8 +318,18 @@ export async function updateEmpresa(id: string, _prev: EmpresaFormState | null, 
   redirect(`/dashboard/empresas/${id}`)
 }
 
+/**
+ * Crea una ART CONSULTORA-PRIVADA (patrón librería híbrida).
+ *
+ * La ART queda asociada a la consultora del usuario actual (consultora_id),
+ * por lo que es reutilizable por TODA la consultora — no atada a una empresa.
+ * Las ART base de Sigmetría tienen consultora_id = NULL.
+ *
+ * El parámetro `empresaId` se conserva por compatibilidad de firma con el form,
+ * pero ya no se usa para el scope (antes ataba la ART a una sola empresa).
+ */
 export async function createPrivateArt(
-  empresaId: string,
+  _empresaId: string,
   nombre: string,
 ): Promise<ActionResult<{ id: string; nombre: string }>> {
   const supabase = await createClient()
@@ -326,6 +338,17 @@ export async function createPrivateArt(
 
   const nombreTrimmed = nombre.trim()
   if (!nombreTrimmed) return { success: false, error: 'El nombre es obligatorio' }
+
+  const { data: membership } = await supabase
+    .from('consultoras_members')
+    .select('consultora_id')
+    .eq('user_id', user.id)
+    .eq('is_active', true)
+    .maybeSingle()
+
+  if (!membership?.consultora_id) {
+    return { success: false, error: 'No pertenecés a ninguna consultora' }
+  }
 
   const { data: tipoArt } = await supabase
     .from('organizaciones_tipos')
@@ -337,7 +360,7 @@ export async function createPrivateArt(
 
   const { data, error } = await supabase
     .from('organizaciones_externas')
-    .insert({ nombre: nombreTrimmed, tipo_id: tipoArt.id, scope: 'empresa', empresa_id: empresaId, is_active: true })
+    .insert({ nombre: nombreTrimmed, tipo_id: tipoArt.id, consultora_id: membership.consultora_id, is_active: true })
     .select('id, nombre')
     .single()
 

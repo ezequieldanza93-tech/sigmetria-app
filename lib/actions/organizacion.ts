@@ -119,21 +119,28 @@ export async function createOrganizacionExterna(
     const cantTrab = formData.get('cantidad_trabajadores') as string
 
     // ART: si el usuario eligió crear una ART nueva durante el alta, el form
-    // envía art_id='__new__' + new_art_nombre. La creamos ahora (scope global,
-    // que es el scope que lista el selector) y usamos su id.
+    // envía art_id='__new__' + new_art_nombre. La creamos ahora como
+    // CONSULTORA-PRIVADA (librería híbrida): consultora_id = consultora del
+    // usuario, de modo que solo la vea esa consultora (no global/todos).
     const rawArtId = (formData.get('art_id') as string) || null
     let artId = rawArtId === '__new__' ? null : rawArtId
     const newArtNombre = (formData.get('new_art_nombre') as string)?.trim()
     if (rawArtId === '__new__' && newArtNombre) {
+      const { data: membership } = await supabase
+        .from('consultoras_members')
+        .select('consultora_id')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .maybeSingle()
       const { data: tipoArt } = await supabase
         .from('organizaciones_tipos')
         .select('id')
         .eq('nombre', 'ART')
         .maybeSingle()
-      if (tipoArt) {
+      if (tipoArt && membership?.consultora_id) {
         const { data: newArt } = await supabase
           .from('organizaciones_externas')
-          .insert({ nombre: newArtNombre, tipo_id: tipoArt.id, scope: 'global', is_active: true })
+          .insert({ nombre: newArtNombre, tipo_id: tipoArt.id, consultora_id: membership.consultora_id, is_active: true })
           .select('id')
           .single()
         if (newArt) artId = newArt.id

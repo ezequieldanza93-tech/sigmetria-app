@@ -42,12 +42,27 @@ export function useArtOrgs(enabled = true) {
     queryKey: ['art-orgs'],
     queryFn: async () => {
       const supabase = createClient()
+
+      // Librería híbrida: ART base de Sigmetría (consultora_id IS NULL) +
+      // ART propias de la consultora del usuario actual (consultora_id = X).
+      const { data: { user } } = await supabase.auth.getUser()
+      let consultoraId: string | null = null
+      if (user) {
+        const { data: membership } = await supabase
+          .from('consultoras_members')
+          .select('consultora_id')
+          .eq('user_id', user.id)
+          .eq('is_active', true)
+          .maybeSingle()
+        consultoraId = (membership?.consultora_id as string | undefined) ?? null
+      }
+
       const { data } = await supabase
         .from('organizaciones_externas')
         .select('id, nombre, organizaciones_tipos!inner(nombre)')
         .eq('organizaciones_tipos.nombre', 'ART')
         .eq('is_active', true)
-        .eq('scope', 'global')
+        .or(consultoraId ? `consultora_id.is.null,consultora_id.eq.${consultoraId}` : 'consultora_id.is.null')
         .order('nombre')
       return (data ?? []) as unknown as { id: string; nombre: string }[]
     },

@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, useRef, useEffect, useTransition } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { Check, ChevronDown, Search, Plus, X } from 'lucide-react'
-import { crearInstrumentoInline } from '@/lib/actions/instrumento'
+import { Modal } from '@/components/ui/modal'
+import { InstrumentoCreateForm } from '@/components/instrumento-create-form'
+import type { InstrumentoCreado } from '@/lib/actions/instrumento'
 
 // ── Tipos ──────────────────────────────────────────────────────────────────────
 
@@ -73,13 +75,9 @@ export function InstrumentoSelectorConAlta({
   const rootRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Mini-form de alta inline.
+  // Modal con el formulario COMPLETO de alta de instrumento (el mismo de
+  // /dashboard/instrumentos): marca/modelo del catálogo + certificado.
   const [showCrear, setShowCrear] = useState(false)
-  const [nuevoModelo, setNuevoModelo] = useState('')
-  const [nuevaSerie, setNuevaSerie] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [pending, startTransition] = useTransition()
-  const crearFormRef = useRef<HTMLDivElement>(null)
 
   const seleccionado = instrumentos.find(i => i.id === value) ?? null
 
@@ -97,11 +95,6 @@ export function InstrumentoSelectorConAlta({
   }, [open])
 
   useEffect(() => { if (open) inputRef.current?.focus() }, [open])
-
-  // Traer a la vista el mini-form al abrirlo (queda al fondo de un modal con scroll).
-  useEffect(() => {
-    if (showCrear) crearFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  }, [showCrear])
 
   function labelOf(i: InstrumentoOpcion): string {
     const base = [i.marca, i.modelo].filter(Boolean).join(' ')
@@ -130,29 +123,21 @@ export function InstrumentoSelectorConAlta({
     setOpen(false)
     setQuery('')
     setShowCrear(true)
-    setNuevoModelo('')
-    setNuevaSerie('')
-    setError(null)
   }
 
-  function handleCrearSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    const modelo = nuevoModelo.trim()
-    if (!modelo) { setError('El modelo es obligatorio'); return }
-    setError(null)
-    startTransition(async () => {
-      const res = await crearInstrumentoInline({
-        subcategoriaNombre,
-        modelo,
-        numeroSerie: nuevaSerie.trim() || null,
+  // El formulario completo creó un instrumento: lo agregamos a la lista del
+  // selector y lo dejamos seleccionado, sin salir del modal de medición.
+  function handleCreated(creado: InstrumentoCreado | null) {
+    if (creado) {
+      onCreated({
+        id: creado.id,
+        modelo: creado.modelo,
+        numero_serie: creado.numero_serie,
+        marca: creado.marca,
       })
-      if (!res.success) { setError(res.error); return }
-      onCreated(res.data)
-      onChange(res.data.id)
-      setShowCrear(false)
-      setNuevoModelo('')
-      setNuevaSerie('')
-    })
+      onChange(creado.id)
+    }
+    setShowCrear(false)
   }
 
   const triggerCls = cn(
@@ -239,55 +224,21 @@ export function InstrumentoSelectorConAlta({
         </div>
       )}
 
-      {/* Mini-form alta inline */}
-      {showCrear && (
-        <div ref={crearFormRef} className="mt-2 rounded-lg border border-sig-200 bg-sig-50/50 p-3 space-y-2">
-          <p className="text-xs font-semibold text-sig-700 uppercase tracking-wide">Nuevo {instrumentoLabel}</p>
-          <form onSubmit={handleCrearSubmit} className="space-y-2">
-            <div>
-              <label className="block text-xs text-text-secondary mb-0.5">
-                Modelo <span className="text-red-500">*</span>
-              </label>
-              <input
-                autoFocus
-                value={nuevoModelo}
-                onChange={e => setNuevoModelo(e.target.value)}
-                placeholder="Ej: Testo 815, Fluke 1623…"
-                className="w-full border border-border-default rounded px-2 py-1 text-sm bg-surface-base"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-text-secondary mb-0.5">N° de serie</label>
-              <input
-                value={nuevaSerie}
-                onChange={e => setNuevaSerie(e.target.value)}
-                placeholder="Opcional · Ej: SN-12345"
-                className="w-full border border-border-default rounded px-2 py-1 text-sm bg-surface-base"
-              />
-            </div>
-            {error && <p className="text-xs text-red-600">{error}</p>}
-            <p className="text-xs text-text-tertiary">
-              Se agrega al catálogo de instrumentos (Mediciones HyS) y queda seleccionado. El certificado de calibración se carga después en Instrumentos.
-            </p>
-            <div className="flex gap-2 justify-end pt-1">
-              <button
-                type="button"
-                onClick={() => { setShowCrear(false); setNuevoModelo(''); setNuevaSerie(''); setError(null) }}
-                className="px-3 py-1 text-sm text-text-secondary hover:text-text-primary transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                disabled={pending}
-                className="px-3 py-1 text-sm bg-sig-600 text-white rounded hover:bg-sig-700 disabled:opacity-60 transition-colors"
-              >
-                {pending ? 'Guardando…' : 'Crear y seleccionar'}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+      {/* Alta COMPLETA en Modal — el mismo formulario de /dashboard/instrumentos
+          (modelo/marca del catálogo + certificado de calibración), con el tipo
+          de medición fijado al de este selector. Al guardar, el nuevo instrumento
+          se agrega a la lista y queda seleccionado. */}
+      <Modal
+        open={showCrear}
+        onClose={() => setShowCrear(false)}
+        title={`Nuevo ${instrumentoLabel}`}
+        size="full"
+      >
+        <InstrumentoCreateForm
+          lockedSubcategoriaNombre={subcategoriaNombre}
+          onCreated={handleCreated}
+        />
+      </Modal>
     </div>
   )
 }
