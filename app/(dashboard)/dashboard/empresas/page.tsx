@@ -1,6 +1,8 @@
+import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { EmpresasList } from '@/components/empresas-list'
+import { EmpresaCreadaToast } from '@/components/empresas/empresa-creada-toast'
 import { GestionesAggregate } from '@/components/aggregate/gestiones-aggregate'
 import { SeguimientoAggregate } from '@/components/aggregate/seguimiento-aggregate'
 import { AnalyticsDashboard } from '@/components/analytics/real/analytics-dashboard'
@@ -15,7 +17,7 @@ import type { Consultora } from '@/lib/types'
 export const dynamic = 'force-dynamic'
 
 interface Props {
-  searchParams: Promise<{ section?: string }>
+  searchParams: Promise<{ section?: string; success?: string }>
 }
 
 const SECTIONS = ['empresas', 'ficha', 'gestiones', 'seguimiento', 'dashboard'] as const
@@ -108,6 +110,10 @@ export default async function EmpresasPage({ searchParams }: Props) {
 
   return (
     <>
+      <Suspense fallback={null}>
+        <EmpresaCreadaToast />
+      </Suspense>
+
       {section === 'empresas' && <EmpresasList />}
 
       {section === 'ficha' && consultora && (

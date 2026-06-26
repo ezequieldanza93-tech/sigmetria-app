@@ -260,7 +260,7 @@ export async function createEmpresa(_prev: EmpresaFormState | null, formData: Fo
   }
 
   revalidatePath('/dashboard/empresas')
-  redirect('/dashboard/empresas')
+  redirect('/dashboard/empresas?success=empresa_created')
 }
 
 export async function updateEmpresa(id: string, _prev: EmpresaFormState | null, formData: FormData): Promise<EmpresaFormState> {
