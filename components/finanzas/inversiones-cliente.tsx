@@ -16,6 +16,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { KpiCard } from '@/components/analytics/kpi-card'
+import { MoneyInput } from '@/components/finanzas/money-input'
 import { formatMonto, formatFechaCorta, formatNumero } from '@/lib/finanzas/format'
 import {
   crearInversion,
@@ -366,12 +367,12 @@ interface InversionFormProps {
 function InversionForm({ modo, inversion, moneda, vidaUtilDefault, onCancel, onDone }: InversionFormProps) {
   const [descripcion, setDescripcion] = useState(inversion?.descripcion ?? '')
   const [fecha, setFecha] = useState(inversion?.fecha_adquisicion?.slice(0, 10) ?? HOY)
-  const [monto, setMonto] = useState(inversion ? String(inversion.monto) : '')
+  const [monto, setMonto] = useState<number | null>(inversion ? Number(inversion.monto) : null)
   const [vidaUtil, setVidaUtil] = useState(
     inversion ? String(inversion.vida_util_meses) : String(vidaUtilDefault),
   )
-  const [valorResidual, setValorResidual] = useState(
-    inversion ? String(inversion.valor_residual) : '0',
+  const [valorResidual, setValorResidual] = useState<number | null>(
+    inversion ? Number(inversion.valor_residual) : 0,
   )
   const [notas, setNotas] = useState(inversion?.notas ?? '')
   const [guardando, setGuardando] = useState(false)
@@ -381,7 +382,7 @@ function InversionForm({ modo, inversion, moneda, vidaUtilDefault, onCancel, onD
     e.preventDefault()
     setError(null)
 
-    const montoNum = Number(monto)
+    const montoNum = monto ?? NaN
     if (!descripcion.trim()) return setError('Poné una descripción para la inversión')
     if (!fecha) return setError('Indicá la fecha de adquisición')
     if (!Number.isFinite(montoNum) || montoNum < 0) return setError('El monto tiene que ser un número válido')
@@ -392,7 +393,7 @@ function InversionForm({ modo, inversion, moneda, vidaUtilDefault, onCancel, onD
       fecha_adquisicion: fecha,
       monto: montoNum,
       vida_util_meses: Number(vidaUtil) || vidaUtilDefault,
-      valor_residual: Number(valorResidual) || 0,
+      valor_residual: valorResidual ?? 0,
       notas: notas.trim() || null,
     }
     const res =
@@ -431,15 +432,10 @@ function InversionForm({ modo, inversion, moneda, vidaUtilDefault, onCancel, onD
           />
         </Campo>
         <Campo label={`Monto (${moneda})`} requerido>
-          <input
-            type="number"
-            inputMode="decimal"
-            min={0}
-            step="0.01"
+          <MoneyInput
             value={monto}
-            onChange={(e) => setMonto(e.target.value)}
-            placeholder="0,00"
-            className={INPUT_CLASS}
+            onChange={setMonto}
+            moneda={moneda}
           />
         </Campo>
       </div>
@@ -457,15 +453,10 @@ function InversionForm({ modo, inversion, moneda, vidaUtilDefault, onCancel, onD
           />
         </Campo>
         <Campo label={`Valor residual (${moneda})`} ayuda="Lo que valdría al final de su vida útil">
-          <input
-            type="number"
-            inputMode="decimal"
-            min={0}
-            step="0.01"
+          <MoneyInput
             value={valorResidual}
-            onChange={(e) => setValorResidual(e.target.value)}
-            placeholder="0,00"
-            className={INPUT_CLASS}
+            onChange={setValorResidual}
+            moneda={moneda}
           />
         </Campo>
       </div>
@@ -519,7 +510,7 @@ function DesdeInstrumentoForm({
   onDone,
 }: DesdeInstrumentoFormProps) {
   const [instrumentoId, setInstrumentoId] = useState('')
-  const [monto, setMonto] = useState('')
+  const [monto, setMonto] = useState<number | null>(null)
   const [fecha, setFecha] = useState(HOY)
   const [vidaUtil, setVidaUtil] = useState(String(vidaUtilDefault))
   const [guardando, setGuardando] = useState(false)
@@ -551,7 +542,7 @@ function DesdeInstrumentoForm({
     e.preventDefault()
     setError(null)
 
-    const montoNum = Number(monto)
+    const montoNum = monto ?? NaN
     if (!instrumentoId) return setError('Elegí el instrumento que querés registrar')
     if (!fecha) return setError('Indicá la fecha de adquisición')
     if (!Number.isFinite(montoNum) || montoNum < 0) return setError('El monto tiene que ser un número válido')
@@ -605,15 +596,10 @@ function DesdeInstrumentoForm({
           />
         </Campo>
         <Campo label={`Monto (${moneda})`} requerido>
-          <input
-            type="number"
-            inputMode="decimal"
-            min={0}
-            step="0.01"
+          <MoneyInput
             value={monto}
-            onChange={(e) => setMonto(e.target.value)}
-            placeholder="0,00"
-            className={INPUT_CLASS}
+            onChange={setMonto}
+            moneda={moneda}
           />
         </Campo>
       </div>

@@ -33,6 +33,8 @@ export interface CotizacionInput {
   /** Total. Si se omite y tipo='especifico', se suma de los ítems. */
   montoTotal?: number
   moneda?: string
+  /** FK a fin_formas_pago. null = sin forma de pago. */
+  formaPagoId?: string | null
   validezDias?: number | null
   notas?: string | null
   // Destinatario: empresa-cliente existente, lead del CRM, o prospecto suelto.
@@ -94,6 +96,7 @@ export async function crearCotizacion(
       items,
       monto_total: montoTotal,
       moneda: input.moneda ?? undefined, // deja el default 'ARS' de la tabla si no viene
+      forma_pago_id: input.formaPagoId ?? null,
       validez_dias: input.validezDias ?? undefined,
       notas: input.notas ?? null,
       estado: input.estado ?? 'borrador',
@@ -140,6 +143,7 @@ export async function actualizarCotizacion(
       items,
       monto_total: montoTotal,
       ...(input.moneda ? { moneda: input.moneda } : {}),
+      forma_pago_id: input.formaPagoId ?? null,
       validez_dias: input.validezDias ?? null,
       notas: input.notas ?? null,
       ...(input.estado ? { estado: input.estado } : {}),
@@ -234,7 +238,7 @@ export async function generarPresupuestoPdf(
     .from('fin_cotizaciones')
     .select(
       'id, consultora_id, empresa_id, lead_id, prospecto_nombre, prospecto_email, prospecto_telefono, ' +
-        'tipo, concepto, items, monto_total, moneda, fecha_emision, validez_dias, notas',
+        'tipo, concepto, items, monto_total, moneda, forma_pago_id, fecha_emision, validez_dias, notas',
     )
     .eq('id', cotizacionId)
     .eq('consultora_id', consultoraId)
@@ -251,6 +255,7 @@ export async function generarPresupuestoPdf(
     items: PresupuestoItem[] | null
     monto_total: number | string | null
     moneda: string | null
+    forma_pago_id: string | null
     fecha_emision: string | null
     validez_dias: number | null
     notas: string | null
@@ -287,6 +292,17 @@ export async function generarPresupuestoPdf(
     prospectoTelefono: cot.prospecto_telefono ?? undefined,
   })
 
+  // ── 4b. Forma de pago (nombre, si la cotización tiene una asignada) ─
+  let formaPagoNombre: string | null = null
+  if (cot.forma_pago_id) {
+    const { data: fp } = await supabase
+      .from('fin_formas_pago')
+      .select('nombre')
+      .eq('id', cot.forma_pago_id)
+      .maybeSingle()
+    formaPagoNombre = (fp?.nombre as string | null) ?? null
+  }
+
   // ── 5. Formato (locale/moneda de la consultora) ────────────────
   const finConfig = await getFinConfig(consultoraId)
   const moneda = cot.moneda || finConfig.moneda
@@ -315,6 +331,7 @@ export async function generarPresupuestoPdf(
     tipo: cot.tipo ?? 'completo',
     items,
     montoTotal: Number(cot.monto_total) || 0,
+    formaPago: formaPagoNombre,
     notas: cot.notas ?? null,
     moneda,
     locale,

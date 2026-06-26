@@ -34,6 +34,8 @@ export interface Cotizacion {
   items: CotizacionItem[]
   monto_total: number
   moneda: string
+  /** FK a fin_formas_pago (NULL si no se eligió forma de pago). */
+  forma_pago_id: string | null
   estado: CotizacionEstado
   fecha_emision: string
   validez_dias: number | null
@@ -72,7 +74,7 @@ export interface DatosPrefillPresupuesto {
 }
 
 const SELECT_COTIZACION =
-  'id, consultora_id, empresa_id, lead_id, prospecto_nombre, prospecto_email, prospecto_telefono, tipo, concepto, items, monto_total, moneda, estado, fecha_emision, validez_dias, fecha_decision, convertida_empresa_id, notas, created_by, created_at, updated_at'
+  'id, consultora_id, empresa_id, lead_id, prospecto_nombre, prospecto_email, prospecto_telefono, tipo, concepto, items, monto_total, moneda, forma_pago_id, estado, fecha_emision, validez_dias, fecha_decision, convertida_empresa_id, notas, created_by, created_at, updated_at'
 
 /**
  * Lista las cotizaciones de la consultora, con filtros opcionales.

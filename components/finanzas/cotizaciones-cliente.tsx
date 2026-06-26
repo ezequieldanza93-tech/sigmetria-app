@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { EmptyState } from '@/components/ui/empty-state'
 import { VoiceTextarea } from '@/components/ui/voice-textarea'
+import { MoneyInput } from '@/components/finanzas/money-input'
 import { toast } from '@/lib/hooks/use-toast'
 import { formatMonto, formatFechaCorta } from '@/lib/finanzas/format'
 import {
@@ -18,12 +19,14 @@ import {
   generarPresupuestoPdf,
   type CotizacionInput,
 } from '@/lib/actions/finanzas-cotizaciones'
+import { crearFormaPago } from '@/lib/actions/finanzas-formas-pago'
 import type {
   Cotizacion,
   CotizacionTipo,
   CotizacionEstado,
   CotizacionItem,
 } from '@/lib/queries/cotizaciones'
+import type { FinFormaPago } from '@/lib/queries/finanzas-formas-pago'
 
 interface EmpresaLite {
   id: string
@@ -41,6 +44,7 @@ interface Props {
   cotizacionesIniciales: Cotizacion[]
   empresas: EmpresaLite[]
   leads: LeadLite[]
+  formasPagoIniciales: FinFormaPago[]
   moneda: string
   locale: string
 }
@@ -74,7 +78,11 @@ interface FormProps {
   cotizacion: Cotizacion | null
   empresas: EmpresaLite[]
   leads: LeadLite[]
+  formasPago: FinFormaPago[]
+  /** Registra en la lista (a nivel vista) una forma de pago recién creada. */
+  onFormaPagoCreada: (fp: FinFormaPago) => void
   moneda: string
+  locale: string
   onSuccess: (cotizacion: Cotizacion, esNueva: boolean) => void
 }
 
@@ -86,7 +94,16 @@ function destinatarioDe(cot: Cotizacion | null): Destinatario {
   return 'manual'
 }
 
-function CotizacionForm({ cotizacion, empresas, leads, moneda, onSuccess }: FormProps) {
+function CotizacionForm({
+  cotizacion,
+  empresas,
+  leads,
+  formasPago,
+  onFormaPagoCreada,
+  moneda,
+  locale,
+  onSuccess,
+}: FormProps) {
   const [destinatario, setDestinatario] = useState<Destinatario>(destinatarioDe(cotizacion))
   const [empresaId, setEmpresaId] = useState(cotizacion?.empresa_id ?? '')
   const [leadId, setLeadId] = useState(cotizacion?.lead_id ?? '')
@@ -96,8 +113,8 @@ function CotizacionForm({ cotizacion, empresas, leads, moneda, onSuccess }: Form
 
   const [tipo, setTipo] = useState<CotizacionTipo>(cotizacion?.tipo ?? 'completo')
   const [concepto, setConcepto] = useState(cotizacion?.concepto ?? '')
-  const [montoUnico, setMontoUnico] = useState(
-    cotizacion && cotizacion.tipo === 'completo' ? String(cotizacion.monto_total) : '',
+  const [montoUnico, setMontoUnico] = useState<number | null>(
+    cotizacion && cotizacion.tipo === 'completo' ? cotizacion.monto_total : null,
   )
   const [items, setItems] = useState<CotizacionItem[]>(
     cotizacion && cotizacion.tipo === 'especifico' && cotizacion.items.length > 0
@@ -105,6 +122,11 @@ function CotizacionForm({ cotizacion, empresas, leads, moneda, onSuccess }: Form
       : [{ descripcion: '', monto: 0 }],
   )
   const [monedaInput, setMonedaInput] = useState(cotizacion?.moneda ?? moneda)
+  const [formaPagoId, setFormaPagoId] = useState(cotizacion?.forma_pago_id ?? '')
+  // Inline "Agregar otra" forma de pago.
+  const [agregandoFormaPago, setAgregandoFormaPago] = useState(false)
+  const [nuevaFormaPago, setNuevaFormaPago] = useState('')
+  const [creandoFormaPago, setCreandoFormaPago] = useState(false)
   const [validezDias, setValidezDias] = useState(
     cotizacion?.validez_dias != null ? String(cotizacion.validez_dias) : '',
   )
@@ -142,6 +164,22 @@ function CotizacionForm({ cotizacion, empresas, leads, moneda, onSuccess }: Form
     setItems((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev))
   }
 
+  async function handleCrearFormaPago() {
+    const nombre = nuevaFormaPago.trim()
+    if (!nombre) return
+    setCreandoFormaPago(true)
+    const res = await crearFormaPago(nombre)
+    setCreandoFormaPago(false)
+    if (!res.success) {
+      toast.error(res.error)
+      return
+    }
+    onFormaPagoCreada(res.data)
+    setFormaPagoId(res.data.id)
+    setNuevaFormaPago('')
+    setAgregandoFormaPago(false)
+  }
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError(null)
@@ -169,7 +207,7 @@ function CotizacionForm({ cotizacion, empresas, leads, moneda, onSuccess }: Form
     let montoTotal: number | undefined
     let itemsLimpios: CotizacionItem[] | undefined
     if (tipo === 'completo') {
-      const m = Number(montoUnico)
+      const m = montoUnico ?? NaN
       if (!Number.isFinite(m) || m < 0) {
         setError('El monto debe ser un número válido')
         return
@@ -192,6 +230,7 @@ function CotizacionForm({ cotizacion, empresas, leads, moneda, onSuccess }: Form
       items: itemsLimpios,
       montoTotal,
       moneda: monedaInput || moneda,
+      formaPagoId: formaPagoId || null,
       validezDias: validezDias !== '' ? Number(validezDias) : null,
       notas: notas.trim() || null,
       empresaId: destinatario === 'empresa' ? empresaId : null,
@@ -228,6 +267,7 @@ function CotizacionForm({ cotizacion, empresas, leads, moneda, onSuccess }: Form
       items: tipo === 'especifico' ? itemsLimpios ?? [] : [],
       monto_total: total,
       moneda: monedaInput || moneda,
+      forma_pago_id: input.formaPagoId ?? null,
       estado: cotizacion?.estado ?? 'borrador',
       fecha_emision: cotizacion?.fecha_emision ?? ahora.slice(0, 10),
       validez_dias: input.validezDias ?? null,
@@ -341,15 +381,13 @@ function CotizacionForm({ cotizacion, empresas, leads, moneda, onSuccess }: Form
 
       {tipo === 'completo' ? (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Input
+          <MoneyInput
             label="Monto"
             required
-            type="number"
-            step="0.01"
-            min="0"
             value={montoUnico}
-            onChange={(e) => setMontoUnico(e.target.value)}
-            placeholder="0,00"
+            onChange={setMontoUnico}
+            moneda={monedaInput || moneda}
+            locale={locale}
           />
           <Input
             label="Moneda"
@@ -383,13 +421,11 @@ function CotizacionForm({ cotizacion, empresas, leads, moneda, onSuccess }: Form
                   />
                 </div>
                 <div className="w-36">
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={it.monto === 0 ? '' : String(it.monto)}
-                    onChange={(e) => updateItem(idx, { monto: Number(e.target.value) || 0 })}
-                    placeholder="0,00"
+                  <MoneyInput
+                    value={it.monto === 0 ? null : it.monto}
+                    onChange={(v) => updateItem(idx, { monto: v ?? 0 })}
+                    moneda={monedaInput || moneda}
+                    locale={locale}
                   />
                 </div>
                 <button
@@ -416,6 +452,63 @@ function CotizacionForm({ cotizacion, empresas, leads, moneda, onSuccess }: Form
           </div>
         </div>
       )}
+
+      {/* Forma de pago */}
+      <div className="space-y-2">
+        <Select
+          label="Forma de pago"
+          value={formaPagoId}
+          onChange={(e) => setFormaPagoId(e.target.value)}
+          placeholder="Sin especificar"
+          options={formasPago.map((fp) => ({ value: fp.id, label: fp.nombre }))}
+        />
+        {agregandoFormaPago ? (
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <Input
+                value={nuevaFormaPago}
+                onChange={(e) => setNuevaFormaPago(e.target.value)}
+                placeholder="Nombre de la forma de pago"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    void handleCrearFormaPago()
+                  }
+                }}
+              />
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => void handleCrearFormaPago()}
+              disabled={creandoFormaPago || !nuevaFormaPago.trim()}
+            >
+              {creandoFormaPago ? 'Guardando…' : 'Guardar'}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setAgregandoFormaPago(false)
+                setNuevaFormaPago('')
+              }}
+            >
+              Cancelar
+            </Button>
+          </div>
+        ) : (
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => setAgregandoFormaPago(true)}
+          >
+            <Plus size={14} />
+            Agregar otra
+          </Button>
+        )}
+      </div>
 
       {/* Validez */}
       <Input
@@ -459,13 +552,20 @@ export function CotizacionesCliente({
   cotizacionesIniciales,
   empresas,
   leads,
+  formasPagoIniciales,
   moneda,
   locale,
 }: Props) {
   const [cotizaciones, setCotizaciones] = useState<Cotizacion[]>(cotizacionesIniciales)
+  const [formasPago, setFormasPago] = useState<FinFormaPago[]>(formasPagoIniciales)
   const [showModal, setShowModal] = useState(false)
   const [editando, setEditando] = useState<Cotizacion | null>(null)
   const [accionId, setAccionId] = useState<string | null>(null)
+
+  // Suma una forma de pago recién creada al catálogo en memoria (sin recargar).
+  function handleFormaPagoCreada(fp: FinFormaPago) {
+    setFormasPago((prev) => (prev.some((x) => x.id === fp.id) ? prev : [...prev, fp]))
+  }
 
   const empresasNombre = useMemo(() => {
     const map = new Map<string, string>()
@@ -707,7 +807,10 @@ export function CotizacionesCliente({
           cotizacion={editando}
           empresas={empresas}
           leads={leads}
+          formasPago={formasPago}
+          onFormaPagoCreada={handleFormaPagoCreada}
           moneda={moneda}
+          locale={locale}
           onSuccess={handleSuccess}
         />
       </Modal>

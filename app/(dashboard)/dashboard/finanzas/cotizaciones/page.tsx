@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getFinanzasAccess, getFinConfig } from '@/lib/finanzas/access'
 import { listarCotizaciones } from '@/lib/queries/cotizaciones'
+import { listarFormasPago } from '@/lib/queries/finanzas-formas-pago'
 import { createClient } from '@/lib/supabase/server'
 import { CotizacionesCliente } from '@/components/finanzas/cotizaciones-cliente'
 
@@ -14,9 +15,10 @@ export default async function CotizacionesPage() {
   if (!acc.hasAccess) redirect('/dashboard')
 
   const supabase = await createClient()
-  const [cotizaciones, config, empresasResult, leadsResult] = await Promise.all([
+  const [cotizaciones, config, formasPago, empresasResult, leadsResult] = await Promise.all([
     listarCotizaciones(acc.consultoraId),
     getFinConfig(acc.consultoraId),
+    listarFormasPago(acc.consultoraId),
     supabase
       .from('empresas')
       .select('id, razon_social')
@@ -48,6 +50,7 @@ export default async function CotizacionesPage() {
         cotizacionesIniciales={cotizaciones}
         empresas={empresas}
         leads={leads}
+        formasPagoIniciales={formasPago}
         moneda={config.moneda}
         locale={config.locale}
       />

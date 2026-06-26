@@ -5,6 +5,7 @@ import { Plus, Pencil, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { Input } from '@/components/ui/input'
+import { MoneyInput } from '@/components/finanzas/money-input'
 import { Select } from '@/components/ui/select'
 import { EmptyState } from '@/components/ui/empty-state'
 import { MultiSelectFilter } from '@/components/ui/multi-select-filter'
@@ -79,7 +80,7 @@ interface FormProps {
 
 function GastoForm({ gasto, categorias, empresas, moneda, onSuccess }: FormProps) {
   const [concepto, setConcepto] = useState(gasto?.concepto ?? '')
-  const [monto, setMonto] = useState(gasto ? String(gasto.monto) : '')
+  const [monto, setMonto] = useState<number | null>(gasto ? gasto.monto : null)
   const [monedaInput, setMonedaInput] = useState(gasto?.moneda ?? moneda)
   const [categoriaId, setCategoriaId] = useState(gasto?.categoria_id ?? '')
   const [fecha, setFecha] = useState(gasto?.fecha ?? hoyISO())
@@ -99,7 +100,7 @@ function GastoForm({ gasto, categorias, empresas, moneda, onSuccess }: FormProps
     e.preventDefault()
     setError(null)
 
-    const montoNum = Number(monto)
+    const montoNum = monto ?? NaN
     if (!concepto.trim()) {
       setError('El concepto es obligatorio')
       return
@@ -158,15 +159,12 @@ function GastoForm({ gasto, categorias, empresas, moneda, onSuccess }: FormProps
       />
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Input
+        <MoneyInput
           label="Monto"
           required
-          type="number"
-          step="0.01"
-          min="0"
+          moneda={monedaInput || moneda}
           value={monto}
-          onChange={(e) => setMonto(e.target.value)}
-          placeholder="0,00"
+          onChange={setMonto}
         />
         <Input
           label="Moneda"

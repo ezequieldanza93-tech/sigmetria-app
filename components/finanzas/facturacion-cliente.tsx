@@ -19,6 +19,7 @@ import { SearchableSelect } from '@/components/ui/searchable-select'
 import { EmptyState } from '@/components/ui/empty-state'
 import { MultiSelectFilter } from '@/components/ui/multi-select-filter'
 import { VoiceTextarea } from '@/components/ui/voice-textarea'
+import { MoneyInput } from '@/components/finanzas/money-input'
 import { toast } from '@/lib/hooks/use-toast'
 import { formatMonto, formatFechaCorta } from '@/lib/finanzas/format'
 import {
@@ -28,12 +29,17 @@ import {
   marcarCobrada,
   marcarEmitida,
 } from '@/lib/actions/finanzas-comprobantes'
+import { crearFormaPago } from '@/lib/actions/finanzas-formas-pago'
+import type { FinFormaPago } from '@/lib/queries/finanzas-formas-pago'
 import type {
   FinComprobante,
   FinComprobanteInput,
   FinEstadoComprobante,
   FinTipoComprobante,
 } from '@/lib/finanzas/types'
+
+/** Valor centinela del select para disparar el alta inline de forma de pago. */
+const FORMA_PAGO_NUEVA = '__nueva__'
 
 interface EmpresaLite {
   id: string
@@ -43,6 +49,8 @@ interface EmpresaLite {
 interface Props {
   comprobantesIniciales: FinComprobante[]
   empresas: EmpresaLite[]
+  /** Formas de pago disponibles (genéricas + propias de la consultora). */
+  formasPagoIniciales: FinFormaPago[]
   moneda: string
   locale: string
   /** Tasa de IVA por defecto (porcentaje, ej. 21) desde fin_config. */
@@ -108,7 +116,12 @@ interface FormProps {
   /** En alta: empresa preseleccionada (ej. desde el bloque de abonos pendientes). */
   empresaInicial?: string
   empresas: EmpresaLite[]
+  /** Formas de pago disponibles para el select. */
+  formasPago: FinFormaPago[]
+  /** Avisa al padre cuando se crea una forma de pago nueva (para sumarla a la lista). */
+  onFormaPagoCreada: (forma: FinFormaPago) => void
   moneda: string
+  locale: string
   ivaTasa: number
   onSuccess: (comprobante: FinComprobante) => void
 }
@@ -117,23 +130,31 @@ function ComprobanteForm({
   comprobante,
   empresaInicial,
   empresas,
+  formasPago,
+  onFormaPagoCreada,
   moneda,
+  locale,
   ivaTasa,
   onSuccess,
 }: FormProps) {
   const [empresaId, setEmpresaId] = useState(comprobante?.empresa_id ?? empresaInicial ?? '')
   const [concepto, setConcepto] = useState(comprobante?.concepto ?? '')
   const [tipo, setTipo] = useState<FinTipoComprobante>(comprobante?.tipo ?? 'puntual')
-  const [montoNeto, setMontoNeto] = useState(
-    comprobante ? String(comprobante.monto_neto) : '',
+  const [montoNeto, setMontoNeto] = useState<number | null>(
+    comprobante ? comprobante.monto_neto : null,
   )
   // IVA editable: si hay comprobante usamos su valor; si es alta, lo dejamos
-  // vacío para que el server lo calcule con la tasa de config (placeholder informativo).
-  const [montoIva, setMontoIva] = useState(
-    comprobante ? String(comprobante.monto_iva) : '',
+  // vacío para que el server lo calcule con la tasa de config.
+  const [montoIva, setMontoIva] = useState<number | null>(
+    comprobante ? comprobante.monto_iva : null,
   )
   const [ivaAuto, setIvaAuto] = useState(comprobante == null)
   const [monedaInput, setMonedaInput] = useState(comprobante?.moneda ?? moneda)
+  const [formaPagoId, setFormaPagoId] = useState(comprobante?.forma_pago_id ?? '')
+  // Estado del alta inline de forma de pago.
+  const [nuevaFormaPago, setNuevaFormaPago] = useState('')
+  const [creandoFormaPago, setCreandoFormaPago] = useState(false)
+  const [formaPagoPending, setFormaPagoPending] = useState(false)
   const [numero, setNumero] = useState(comprobante?.numero ?? '')
   const [fechaEmision, setFechaEmision] = useState(comprobante?.fecha_emision ?? hoyISO())
   const [fechaVencimiento, setFechaVencimiento] = useState(
@@ -155,12 +176,12 @@ function ComprobanteForm({
   const esAbono = tipo === 'abono'
 
   // Cálculo en vivo de neto/iva/total para mostrarle al usuario el total final.
-  const netoNum = Number(montoNeto)
+  const netoNum = montoNeto ?? NaN
   const netoValido = Number.isFinite(netoNum) && netoNum >= 0
   const ivaCalc = ivaAuto
     ? round2((netoValido ? netoNum : 0) * (ivaTasa / 100))
-    : Number.isFinite(Number(montoIva))
-      ? round2(Number(montoIva))
+    : montoIva != null && Number.isFinite(montoIva)
+      ? round2(montoIva)
       : 0
   const totalCalc = round2((netoValido ? netoNum : 0) + ivaCalc)
 
@@ -184,7 +205,7 @@ function ComprobanteForm({
       setError('La fecha de emisión es obligatoria')
       return
     }
-    if (!ivaAuto && (!Number.isFinite(Number(montoIva)) || Number(montoIva) < 0)) {
+    if (!ivaAuto && (montoIva == null || !Number.isFinite(montoIva) || montoIva < 0)) {
       setError('El IVA debe ser un número válido')
       return
     }
@@ -205,12 +226,13 @@ function ComprobanteForm({
       tipo,
       // IVA: si ivaAuto, omitimos el campo para que el server lo calcule.
       monto_neto: netoNum,
-      ...(ivaAuto ? {} : { monto_iva: Number(montoIva) }),
+      ...(ivaAuto ? {} : { monto_iva: montoIva ?? 0 }),
       moneda: monedaInput || moneda,
       estado,
       numero: numero.trim() || null,
       fecha_emision: fechaEmision,
       fecha_vencimiento: fechaVencimiento || null,
+      forma_pago_id: formaPagoId || null,
       es_recurrente: esAbono ? esRecurrente : false,
       recurrencia_dia: esAbono && recurrenciaDia !== '' ? Number(recurrenciaDia) : null,
       notas: notas.trim() || null,
@@ -228,6 +250,36 @@ function ComprobanteForm({
     }
     toast.success(comprobante ? 'Comprobante actualizado' : 'Comprobante creado')
     onSuccess(res.data)
+  }
+
+  // El select dispara el alta inline al elegir "Agregar otra…".
+  function handleFormaPagoChange(value: string) {
+    if (value === FORMA_PAGO_NUEVA) {
+      setCreandoFormaPago(true)
+      setNuevaFormaPago('')
+      return
+    }
+    setFormaPagoId(value)
+  }
+
+  async function handleCrearFormaPago() {
+    const nombre = nuevaFormaPago.trim()
+    if (!nombre) {
+      setError('Escribí el nombre de la forma de pago')
+      return
+    }
+    setFormaPagoPending(true)
+    const res = await crearFormaPago(nombre)
+    setFormaPagoPending(false)
+    if (!res.success) {
+      setError(res.error)
+      return
+    }
+    onFormaPagoCreada(res.data)
+    setFormaPagoId(res.data.id)
+    setCreandoFormaPago(false)
+    setNuevaFormaPago('')
+    toast.success('Forma de pago agregada')
   }
 
   return (
@@ -272,15 +324,13 @@ function ComprobanteForm({
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Input
+        <MoneyInput
           label="Monto neto"
           required
-          type="number"
-          step="0.01"
-          min="0"
           value={montoNeto}
-          onChange={(e) => setMontoNeto(e.target.value)}
-          placeholder="0,00"
+          onChange={setMontoNeto}
+          moneda={monedaInput || moneda}
+          locale={locale}
         />
         <Input
           label="Moneda"
@@ -304,14 +354,13 @@ function ComprobanteForm({
           Calcular IVA automáticamente ({ivaTasa}%)
         </label>
         {!ivaAuto && (
-          <Input
+          <MoneyInput
             label="IVA"
-            type="number"
-            step="0.01"
-            min="0"
             value={montoIva}
-            onChange={(e) => setMontoIva(e.target.value)}
-            placeholder="0,00 (poné 0 si está exento)"
+            onChange={setMontoIva}
+            moneda={monedaInput || moneda}
+            locale={locale}
+            placeholder="Poné 0 si está exento"
           />
         )}
       </div>
@@ -349,6 +398,60 @@ function ComprobanteForm({
         onChange={(e) => setNumero(e.target.value)}
         placeholder="Ej: 0001-00001234"
       />
+
+      {/* Forma de pago: select con las formas (genéricas + propias) + alta inline. */}
+      {creandoFormaPago ? (
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium text-text-secondary">
+            Nueva forma de pago
+          </label>
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <Input
+                value={nuevaFormaPago}
+                onChange={(e) => setNuevaFormaPago(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    void handleCrearFormaPago()
+                  }
+                }}
+                placeholder="Ej: Western Union, USDT…"
+                autoFocus
+              />
+            </div>
+            <Button
+              type="button"
+              onClick={() => void handleCrearFormaPago()}
+              disabled={formaPagoPending}
+            >
+              {formaPagoPending ? 'Agregando…' : 'Agregar'}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setCreandoFormaPago(false)
+                setNuevaFormaPago('')
+              }}
+              disabled={formaPagoPending}
+            >
+              Cancelar
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <Select
+          label="Forma de pago (opcional)"
+          value={formaPagoId}
+          onChange={(e) => handleFormaPagoChange(e.target.value)}
+          placeholder="Sin especificar"
+          options={[
+            ...formasPago.map((fp) => ({ value: fp.id, label: fp.nombre })),
+            { value: FORMA_PAGO_NUEVA, label: '+ Agregar otra…' },
+          ]}
+        />
+      )}
 
       {esAbono && (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -404,11 +507,13 @@ function ComprobanteForm({
 export function FacturacionCliente({
   comprobantesIniciales,
   empresas,
+  formasPagoIniciales,
   moneda,
   locale,
   ivaTasa,
 }: Props) {
   const [comprobantes, setComprobantes] = useState<FinComprobante[]>(comprobantesIniciales)
+  const [formasPago, setFormasPago] = useState<FinFormaPago[]>(formasPagoIniciales)
   const [showModal, setShowModal] = useState(false)
   const [editando, setEditando] = useState<FinComprobante | null>(null)
   /** En alta, empresa preseleccionada (desde el bloque de abonos pendientes). */
@@ -513,6 +618,16 @@ export function FacturacionCliente({
     })
     setShowModal(false)
     setEditando(null)
+  }
+
+  // Suma la forma de pago recién creada a la lista (orden + nombre, espejo de la query).
+  function handleFormaPagoCreada(forma: FinFormaPago) {
+    setFormasPago((prev) => {
+      if (prev.some((f) => f.id === forma.id)) return prev
+      return [...prev, forma].sort(
+        (a, b) => a.orden - b.orden || a.nombre.localeCompare(b.nombre),
+      )
+    })
   }
 
   async function handleMarcarCobrada(c: FinComprobante) {
@@ -842,7 +957,10 @@ export function FacturacionCliente({
           comprobante={editando}
           empresaInicial={empresaInicial}
           empresas={empresas}
+          formasPago={formasPago}
+          onFormaPagoCreada={handleFormaPagoCreada}
           moneda={moneda}
+          locale={locale}
           ivaTasa={ivaTasa}
           onSuccess={handleSuccess}
         />

@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getFinanzasAccess, getFinConfig } from '@/lib/finanzas/access'
 import { listarComprobantes } from '@/lib/queries/finanzas'
+import { listarFormasPago } from '@/lib/queries/finanzas-formas-pago'
 import { createClient } from '@/lib/supabase/server'
 import { FacturacionCliente } from '@/components/finanzas/facturacion-cliente'
 
@@ -14,9 +15,10 @@ export default async function FacturacionPage() {
   if (!acc.hasAccess) redirect('/dashboard')
 
   const supabase = await createClient()
-  const [comprobantes, config, empresasResult] = await Promise.all([
+  const [comprobantes, config, formasPago, empresasResult] = await Promise.all([
     listarComprobantes(acc.consultoraId),
     getFinConfig(acc.consultoraId),
+    listarFormasPago(acc.consultoraId),
     supabase
       .from('empresas')
       .select('id, razon_social')
@@ -35,6 +37,7 @@ export default async function FacturacionPage() {
       <FacturacionCliente
         comprobantesIniciales={comprobantes}
         empresas={empresas}
+        formasPagoIniciales={formasPago}
         moneda={config.moneda}
         locale={config.locale}
         ivaTasa={config.iva_tasa}

@@ -7,7 +7,7 @@ import type { ActionResult } from '@/lib/types'
 import type { FinComprobante, FinComprobanteInput } from '@/lib/finanzas/types'
 
 const SELECT_COMPROBANTE =
-  'id, consultora_id, empresa_id, establecimiento_id, categoria_id, numero, concepto, tipo, fecha_emision, fecha_vencimiento, fecha_cobro, monto_neto, monto_iva, monto_total, moneda, estado, es_recurrente, recurrencia_dia, gestion_registro_id, notas, created_by, created_at, updated_at'
+  'id, consultora_id, empresa_id, establecimiento_id, categoria_id, numero, concepto, tipo, fecha_emision, fecha_vencimiento, fecha_cobro, monto_neto, monto_iva, monto_total, moneda, estado, es_recurrente, recurrencia_dia, forma_pago_id, gestion_registro_id, notas, created_by, created_at, updated_at'
 
 /** Redondea a 2 decimales evitando errores de coma flotante. */
 function round2(n: number): number {
@@ -95,6 +95,7 @@ export async function crearComprobante(
       estado: input.estado ?? 'pendiente',
       es_recurrente: esRecurrente,
       recurrencia_dia: tipo === 'abono' ? input.recurrencia_dia ?? null : null,
+      forma_pago_id: input.forma_pago_id ?? null,
       gestion_registro_id: input.gestion_registro_id ?? null,
       notas: input.notas ?? null,
       created_by: access.userId,
@@ -148,6 +149,7 @@ export async function actualizarComprobante(
       ...(input.estado !== undefined ? { estado: input.estado } : {}),
       es_recurrente: esRecurrente,
       recurrencia_dia: tipo === 'abono' ? input.recurrencia_dia ?? null : null,
+      forma_pago_id: input.forma_pago_id ?? null,
       gestion_registro_id: input.gestion_registro_id ?? null,
       notas: input.notas ?? null,
       updated_at: new Date().toISOString(),

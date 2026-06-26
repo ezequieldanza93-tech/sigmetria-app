@@ -58,6 +58,7 @@ export interface PresupuestoDatos {
   tipo: 'completo' | 'especifico'
   items?: PresupuestoItem[] // se listan si tipo='especifico'
   montoTotal: number
+  formaPago?: string | null // nombre de la forma de pago (ej. "Transferencia bancaria")
   notas?: string | null
 
   // Formato
@@ -235,6 +236,7 @@ export function presupuestoHtml(datos: PresupuestoDatos): string {
   </div>
 
   ${vencimientoTxt ? `<div class="validez">Validez de la oferta: <b>${esc(vencimientoTxt)}</b></div>` : ''}
+  ${datos.formaPago && datos.formaPago.trim() ? `<div class="validez">Forma de pago: <b>${esc(datos.formaPago)}</b></div>` : ''}
   ${datos.notas && datos.notas.trim() ? `<div class="notas">${esc(datos.notas)}</div>` : ''}
 
   ${responsable}

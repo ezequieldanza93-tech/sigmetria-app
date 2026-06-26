@@ -121,6 +121,8 @@ export interface FinComprobante {
   es_recurrente: boolean
   /** Día del mes (1-28) en que se factura el abono recurrente. */
   recurrencia_dia: number | null
+  /** Forma de pago (FK a fin_formas_pago). NULL = sin especificar. */
+  forma_pago_id: string | null
   gestion_registro_id: string | null
   notas: string | null
   created_by: string | null
@@ -192,6 +194,8 @@ export interface FinComprobanteInput {
   es_recurrente?: boolean
   /** Solo aplica si tipo = 'abono'. Día del mes 1-28. */
   recurrencia_dia?: number | null
+  /** Forma de pago (FK a fin_formas_pago). NULL/omitido = sin especificar. */
+  forma_pago_id?: string | null
   gestion_registro_id?: string | null
   notas?: string | null
 }
