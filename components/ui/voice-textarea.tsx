@@ -1,9 +1,10 @@
 'use client'
 
-import { TextareaHTMLAttributes } from 'react'
-import { Mic, MicOff } from 'lucide-react'
+import { TextareaHTMLAttributes, useState } from 'react'
+import { Mic, MicOff, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useSpeechToText } from '@/lib/hooks/use-speech-to-text'
+import { toast } from '@/lib/hooks/use-toast'
 
 interface VoiceTextareaProps
   extends Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'value' | 'onChange'> {
@@ -17,6 +18,13 @@ interface VoiceTextareaProps
   label?: string
   /** Mensaje de error opcional (borde rojo + texto). */
   error?: string
+  /**
+   * Si se pasa, aparece un botón chico "Pulir con IA" (icono Sparkles) que envía
+   * el valor actual a esta acción y, si vuelve `{ success, data }`, reemplaza el
+   * contenido por el texto pulido. Si vuelve `{ error }`, NO toca el texto actual
+   * (avisa con un toast suave). Sin la prop, el componente queda intacto.
+   */
+  pulirAction?: (texto: string) => Promise<{ success: true; data: string } | { error: string }>
 }
 
 /**
@@ -45,6 +53,7 @@ export function VoiceTextarea({
   className,
   disabled,
   id,
+  pulirAction,
   ...props
 }: VoiceTextareaProps) {
   const { isSupported, isListening, error: speechError, start, stop } = useSpeechToText({
@@ -54,6 +63,30 @@ export function VoiceTextarea({
       onValueChange(`${value}${sep}${text}`)
     },
   })
+
+  const [puliendo, setPuliendo] = useState(false)
+
+  async function handlePulir() {
+    if (!pulirAction || puliendo) return
+    const actual = value.trim()
+    if (!actual) {
+      toast.info('Escribí algo antes de pulir con IA.')
+      return
+    }
+    setPuliendo(true)
+    try {
+      const res = await pulirAction(value)
+      if ('error' in res) {
+        toast.error(res.error)
+        return
+      }
+      onValueChange(res.data)
+    } catch {
+      toast.error('No pudimos pulir el texto. Intentá de nuevo.')
+    } finally {
+      setPuliendo(false)
+    }
+  }
 
   const textareaId = id ?? label?.toLowerCase().replace(/\s+/g, '-')
 
@@ -74,39 +107,59 @@ export function VoiceTextarea({
           disabled={disabled}
           className={cn(
             className,
-            isSupported && 'pb-9',
+            (isSupported || pulirAction) && 'pb-9',
             isListening && 'border-rose-400 ring-1 ring-rose-300/60',
             error && 'border-[var(--danger)] focus-visible:ring-[var(--danger)]',
           )}
           {...props}
         />
 
-        {isSupported && (
-          <button
-            type="button"
-            onClick={isListening ? stop : start}
-            disabled={disabled}
-            title={isListening ? 'Detener dictado' : 'Dictar por voz (es-AR)'}
-            aria-pressed={isListening}
-            className={cn(
-              'absolute bottom-2 right-2 inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-50',
-              isListening
-                ? 'bg-rose-600 text-white hover:bg-rose-700'
-                : 'border border-border-subtle bg-surface-base/90 text-text-secondary hover:bg-surface-subtle hover:text-text-primary',
+        {(isSupported || pulirAction) && (
+          <div className="absolute bottom-2 right-2 flex items-center gap-1.5">
+            {pulirAction && (
+              <button
+                type="button"
+                onClick={handlePulir}
+                disabled={disabled || puliendo || isListening}
+                title="Reescribir como observación profesional con IA"
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-50',
+                  'border border-border-subtle bg-surface-base/90 text-text-secondary hover:bg-surface-subtle hover:text-text-primary',
+                )}
+              >
+                <Sparkles size={13} className={cn(puliendo && 'animate-pulse')} />
+                {puliendo ? 'Puliendo…' : 'Pulir con IA'}
+              </button>
             )}
-          >
-            {isListening ? (
-              <>
-                <MicOff size={13} className="animate-pulse" />
-                Grabando…
-              </>
-            ) : (
-              <>
-                <Mic size={13} />
-                Dictar
-              </>
+
+            {isSupported && (
+              <button
+                type="button"
+                onClick={isListening ? stop : start}
+                disabled={disabled}
+                title={isListening ? 'Detener dictado' : 'Dictar por voz (es-AR)'}
+                aria-pressed={isListening}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-50',
+                  isListening
+                    ? 'bg-rose-600 text-white hover:bg-rose-700'
+                    : 'border border-border-subtle bg-surface-base/90 text-text-secondary hover:bg-surface-subtle hover:text-text-primary',
+                )}
+              >
+                {isListening ? (
+                  <>
+                    <MicOff size={13} className="animate-pulse" />
+                    Grabando…
+                  </>
+                ) : (
+                  <>
+                    <Mic size={13} />
+                    Dictar
+                  </>
+                )}
+              </button>
             )}
-          </button>
+          </div>
         )}
       </div>
 

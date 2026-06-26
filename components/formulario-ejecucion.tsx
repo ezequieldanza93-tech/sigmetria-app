@@ -14,6 +14,7 @@ import { Modal } from '@/components/ui/modal'
 import { finalizarFormulario, getOrCreateRespuesta } from '@/lib/actions/formulario-ejecucion'
 import { guardarBorrador } from '@/lib/actions/formulario-ejecucion-guardar'
 import { crearObservaciones } from '@/lib/actions/registro-gestion'
+import { pulirObservacion } from '@/lib/actions/pulir-observacion'
 import { PhotoCanvasEditor } from '@/components/photo-canvas-editor'
 import { FirmaInternaModal } from '@/components/firmas/firma-interna-modal'
 import { Camera, FileSignature, CheckCircle } from 'lucide-react'
@@ -446,6 +447,7 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
         <VoiceTextarea
           value={comentario}
           onValueChange={(v) => setComentario(secId, v)}
+          pulirAction={pulirObservacion}
           placeholder="Comentario de la seccion…"
           rows={2}
           className="w-full border border-border-default rounded-lg px-3 py-1.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sig-500"
@@ -477,6 +479,7 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
                       <VoiceTextarea
                         value={obs.descripcion}
                         onValueChange={(v) => updateObs(secId, obs.key, { descripcion: v })}
+                        pulirAction={pulirObservacion}
                         placeholder="Descripcion de la observacion…"
                         rows={2}
                         className="w-full border border-border-default rounded-lg px-3 py-1.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sig-500"
