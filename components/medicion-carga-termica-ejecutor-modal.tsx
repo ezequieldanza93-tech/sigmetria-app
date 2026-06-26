@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useGeoCaptura } from '@/lib/hooks/use-geo-captura'
 import {
@@ -22,6 +22,7 @@ import {
   regimenFt,
 } from '@/lib/medicion-carga-termica/calculos'
 import { emitirEvidenciaCargaTermica } from '@/lib/actions/emitir-evidencia-carga-termica'
+import { fetchClima } from '@/lib/actions/fetch-clima'
 import { pulirObservacion } from '@/lib/actions/pulir-observacion'
 import { getBorradorCargaTermicaByRegistro } from '@/lib/actions/medicion-carga-termica-view'
 import { getCertificadoVigente } from '@/lib/actions/certificado'
@@ -379,6 +380,11 @@ export function MedicionCargaTermicaEjecutorModal({
 
   // ── Catálogos ───────────────────────────────────────────────────────
   const [estCtx, setEstCtx] = useState<EstablecimientoCtx | null>(null)
+  // Coordenadas del establecimiento (para autocompletar el clima vía Open-Meteo).
+  const [estLat, setEstLat] = useState<number | null>(null)
+  const [estLng, setEstLng] = useState<number | null>(null)
+  // El auto-clima corre una sola vez (tras hidratar el borrador): este flag lo garantiza.
+  const autoClimaHechoRef = useRef(false)
   const [instrumentos, setInstrumentos] = useState<InstrumentoCargaTermica[]>([])
   const [varRopa, setVarRopa] = useState<VarRopaOption[]>([])
   const [tmActividades, setTmActividades] = useState<TmActividadOption[]>([])
@@ -451,7 +457,7 @@ export function MedicionCargaTermicaEjecutorModal({
 
     supabase
       .from('establecimientos')
-      .select('nombre, domicilio, codigo_postal, localidades!localidad_id(nombre, provincia), empresas!inner(razon_social, cuit, domicilio)')
+      .select('nombre, domicilio, codigo_postal, latitud, longitud, localidades!localidad_id(nombre, provincia), empresas!inner(razon_social, cuit, domicilio)')
       .eq('id', establecimientoId)
       .maybeSingle()
       .then(({ data }) => {
@@ -460,6 +466,8 @@ export function MedicionCargaTermicaEjecutorModal({
         const locRow = Array.isArray(loc) ? loc[0] : loc
         const emp = data.empresas as { razon_social: string | null; cuit: string | null; domicilio: string | null } | { razon_social: string | null; cuit: string | null; domicilio: string | null }[] | null
         const empRow = Array.isArray(emp) ? emp[0] : emp
+        setEstLat(typeof data.latitud === 'number' ? data.latitud : null)
+        setEstLng(typeof data.longitud === 'number' ? data.longitud : null)
         setEstCtx({
           nombre: (data.nombre as string) ?? '',
           domicilio: (data.domicilio as string | null) ?? null,
@@ -622,6 +630,34 @@ export function MedicionCargaTermicaEjecutorModal({
     return () => { activo = false }
     // Solo al montar (por registro): la re-hidratación es una carga inicial.
   }, [registroId, rgFechaPlanificada])
+
+  // ── Auto-clima al abrir (decisión Ezequiel: AUTO + editable) ────────
+  // Tras hidratar el borrador, si el establecimiento tiene coordenadas pedimos el
+  // clima actual a Open-Meteo (fetchClima) y autocompletamos los campos atmosféricos
+  // que estén VACÍOS. Reglas:
+  //  · Corre UNA sola vez (autoClimaHechoRef), y SOLO cuando ya terminó la re-hidratación
+  //    del borrador (cargandoBorrador === false) → así no pisa datos guardados.
+  //  · Cada setter funcional respeta lo ya cargado: solo escribe si el campo está vacío.
+  //  · Degrada en silencio: sin coords o ante { error }, no hace nada ni muestra error.
+  useEffect(() => {
+    if (cargandoBorrador) return
+    if (autoClimaHechoRef.current) return
+    if (estLat == null || estLng == null) return
+    autoClimaHechoRef.current = true
+    let activo = true
+    fetchClima(estLat, estLng).then(res => {
+      if (!activo || !('success' in res)) return
+      const { data } = res
+      setAtmTempMax(prev => prev.trim() ? prev : String(data.tempMax ?? data.tempActual ?? ''))
+      setAtmTempMin(prev => prev.trim() ? prev : String(data.tempMin ?? ''))
+      setAtmHumedad(prev => prev.trim() ? prev : String(data.humedad ?? ''))
+      setAtmPresion(prev => prev.trim() ? prev : String(data.presion ?? ''))
+      setAtmViento(prev => prev.trim() ? prev : (data.viento != null ? String(data.viento) : ''))
+      // Fuente externa (servicio meteorológico): el radio usa 'SMN'.
+      setFuenteDatosAtm(prev => prev.trim() ? prev : 'SMN')
+    })
+    return () => { activo = false }
+  }, [cargandoBorrador, estLat, estLng])
 
   // Certificado de calibración VIGENTE del instrumento elegido. Ya NO se sube uno
   // por protocolo: se trae automáticamente el último certificado activo del

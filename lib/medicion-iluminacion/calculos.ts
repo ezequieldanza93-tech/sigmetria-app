@@ -111,3 +111,24 @@ export function generalRequeridaLocalizada(
   }
   return null
 }
+
+/**
+ * Distribución óptima de la grilla de medición a partir del número mínimo de puntos.
+ *
+ * Reparte `minPuntos` en una grilla lo más cuadrada posible:
+ *   filas    = ceil(√minPuntos)
+ *   columnas = ceil(minPuntos / filas)
+ * Garantiza filas · columnas ≥ minPuntos (nunca menos puntos que el mínimo exigido).
+ * Si minPuntos ≤ 0 → { filas: 1, columnas: 1 }.
+ *
+ * Ejemplos:
+ *   distribucionOptima(16) = { filas: 4, columnas: 4 }
+ *   distribucionOptima(9)  = { filas: 3, columnas: 3 }
+ *   distribucionOptima(12) = { filas: 4, columnas: 3 }
+ */
+export function distribucionOptima(minPuntos: number): { filas: number; columnas: number } {
+  if (minPuntos <= 0) return { filas: 1, columnas: 1 }
+  const filas = Math.ceil(Math.sqrt(minPuntos))
+  const columnas = Math.ceil(minPuntos / filas)
+  return { filas, columnas }
+}

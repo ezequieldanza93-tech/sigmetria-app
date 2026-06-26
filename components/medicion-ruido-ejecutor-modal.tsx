@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useGeoCaptura } from '@/lib/hooks/use-geo-captura'
 import { emitirEvidenciaRuido } from '@/lib/actions/emitir-evidencia-ruido'
+import { fetchClima, type CieloEstado } from '@/lib/actions/fetch-clima'
 import {
   crearMedicionRuido,
   getInstrumentosRuido,
@@ -115,6 +116,14 @@ const CARACTERISTICAS_LABEL: Record<CaracteristicasRuido, string> = {
 const METODO_LABEL: Record<Metodo, string> = {
   sonometro: 'Sonómetro',
   dosimetro: 'Dosímetro',
+}
+
+// Estado del cielo (Open-Meteo) → palabras legibles para la descripción auto del clima.
+const CIELO_PALABRAS: Record<CieloEstado, string> = {
+  despejado: 'despejado',
+  parcialmente_nublado: 'parcialmente nublado',
+  nublado: 'nublado',
+  lluvioso: 'lluvioso',
 }
 
 /** Parsea el campo `turnos` (string unido) a un set de opciones para el multi-select. */
@@ -337,6 +346,9 @@ export function MedicionRuidoEjecutorModal({
   const [estCtx, setEstCtx] = useState<EstablecimientoCtx | null>(null)
   const [instrumentos, setInstrumentos] = useState<InstrumentoRuido[]>([])
   const [sectores, setSectores] = useState<SectorConPuestos[]>([])
+  // Coordenadas del establecimiento para el auto-clima (clima al abrir, editable).
+  const [estLat, setEstLat] = useState<number | null>(null)
+  const [estLng, setEstLng] = useState<number | null>(null)
 
   // Certificado de calibración VIGENTE del instrumento elegido (read-only, traído
   // automáticamente con getCertificadoVigente). Ya no se sube uno por protocolo.
@@ -361,6 +373,8 @@ export function MedicionRuidoEjecutorModal({
   const [horaFin, setHoraFin] = useState(nowHHMM())
   // ¿El usuario tocó manualmente la hora de fin? Si no, la congelamos al finalizar.
   const horaFinEditadaRef = useRef(false)
+  // Auto-clima: garantiza que solo se intente una vez por apertura del modal.
+  const autoClimaIntentadoRef = useRef(false)
   const [jornadaHoras, setJornadaHoras] = useState('')
   const [turnos, setTurnos] = useState('')
   const [condicionesNormales, setCondicionesNormales] = useState('')
@@ -396,11 +410,18 @@ export function MedicionRuidoEjecutorModal({
     // Contexto del establecimiento + empresa (read-only, reusado de otras vistas).
     supabase
       .from('establecimientos')
-      .select('nombre, domicilio, codigo_postal, localidades!localidad_id(nombre, provincia), empresas!inner(razon_social, cuit, domicilio)')
+      .select('nombre, domicilio, codigo_postal, latitud, longitud, localidades!localidad_id(nombre, provincia), empresas!inner(razon_social, cuit, domicilio)')
       .eq('id', establecimientoId)
       .maybeSingle()
       .then(({ data }) => {
         if (!activo || !data) return
+        // Coordenadas para el auto-clima (degrada en silencio si no hay).
+        const lat = data.latitud as number | null
+        const lng = data.longitud as number | null
+        if (typeof lat === 'number' && typeof lng === 'number') {
+          setEstLat(lat)
+          setEstLng(lng)
+        }
         const loc = data.localidades as { nombre: string | null; provincia: string | null } | { nombre: string | null; provincia: string | null }[] | null
         const locRow = Array.isArray(loc) ? loc[0] : loc
         const emp = data.empresas as { razon_social: string | null; cuit: string | null; domicilio: string | null } | { razon_social: string | null; cuit: string | null; domicilio: string | null }[] | null
@@ -578,6 +599,35 @@ export function MedicionRuidoEjecutorModal({
       .finally(() => { if (activo) setBuscandoCertificado(false) })
     return () => { activo = false }
   }, [instrumentoId])
+
+  // ── Auto-clima al abrir (editable) ──────────────────────────────────
+  // Una sola vez por apertura, DESPUÉS de re-hidratar el borrador (para no pisar lo
+  // ya guardado) y solo si el establecimiento tiene coordenadas. Degrada en silencio:
+  // si no hay coords o fetchClima falla, no toca nada ni muestra error. Solo completa
+  // `condiciones durante la medición` si está vacío (no pisa el borrador re-hidratado).
+  useEffect(() => {
+    if (cargandoBorrador) return
+    if (autoClimaIntentadoRef.current) return
+    if (estLat == null || estLng == null) return
+    autoClimaIntentadoRef.current = true
+
+    let activo = true
+    fetchClima(estLat, estLng).then(res => {
+      if (!activo || !('success' in res)) return
+      const c = res.data
+      setCondicionesMedicion(prev => {
+        if (prev.trim() !== '') return prev // no pisar dato ya cargado / re-hidratado
+        const partes = [
+          `Cielo ${CIELO_PALABRAS[c.cielo]}`,
+          c.tempActual != null ? `${c.tempActual}°C` : null,
+          c.viento != null ? `viento ${c.viento} km/h` : null,
+          c.humedad != null ? `humedad ${c.humedad}%` : null,
+        ].filter(Boolean)
+        return partes.join(', ')
+      })
+    })
+    return () => { activo = false }
+  }, [cargandoBorrador, estLat, estLng])
 
   // ── Mutadores de puntos ─────────────────────────────────────────────
   function updatePunto(key: number, patch: Partial<PuntoState>) {

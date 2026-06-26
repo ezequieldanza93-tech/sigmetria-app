@@ -27,7 +27,9 @@ import {
   cumpleUniformidad,
   cumpleNivel,
   generalRequeridaLocalizada,
+  distribucionOptima,
 } from '@/lib/medicion-iluminacion/calculos'
+import { fetchClima } from '@/lib/actions/fetch-clima'
 import { getCertificadoVigente } from '@/lib/actions/certificado'
 import { firmarProtocolo } from '@/lib/actions/firmar-protocolo'
 import { useSignedUrls } from '@/lib/storage/sign-client'
@@ -199,6 +201,8 @@ interface EstablecimientoCtx {
   codigo_postal: string | null
   localidad: string | null
   provincia: string | null
+  latitud: number | null
+  longitud: number | null
   empresa_razon_social: string | null
   empresa_cuit: string | null
   empresa_domicilio: string | null
@@ -352,6 +356,10 @@ export function MedicionIluminacionEjecutorModal({
 
   // ── Catálogos ───────────────────────────────────────────────────────
   const [estCtx, setEstCtx] = useState<EstablecimientoCtx | null>(null)
+  // Coordenadas del establecimiento (para el auto-clima al abrir). null = sin geo.
+  const [latLng, setLatLng] = useState<{ lat: number | null; lng: number | null }>({ lat: null, lng: null })
+  // Guard del auto-clima: corre UNA sola vez tras hidratar el borrador.
+  const climaAutoCorrido = useRef(false)
   const [instrumentos, setInstrumentos] = useState<InstrumentoLuxometro[]>([])
   const [sectores, setSectores] = useState<SectorConPuestos[]>([])
   const [tabla4, setTabla4] = useState<Array<Record<string, unknown>>>([])
@@ -420,7 +428,7 @@ export function MedicionIluminacionEjecutorModal({
     // Contexto del establecimiento + empresa (read-only, reusado de otras vistas).
     supabase
       .from('establecimientos')
-      .select('nombre, domicilio, codigo_postal, localidades!localidad_id(nombre, provincia), empresas!inner(razon_social, cuit, domicilio)')
+      .select('nombre, domicilio, codigo_postal, latitud, longitud, localidades!localidad_id(nombre, provincia), empresas!inner(razon_social, cuit, domicilio)')
       .eq('id', establecimientoId)
       .maybeSingle()
       .then(({ data }) => {
@@ -429,12 +437,17 @@ export function MedicionIluminacionEjecutorModal({
         const locRow = Array.isArray(loc) ? loc[0] : loc
         const emp = data.empresas as { razon_social: string | null; cuit: string | null; domicilio: string | null } | { razon_social: string | null; cuit: string | null; domicilio: string | null }[] | null
         const empRow = Array.isArray(emp) ? emp[0] : emp
+        const lat = data.latitud != null ? Number(data.latitud) : null
+        const lng = data.longitud != null ? Number(data.longitud) : null
+        setLatLng({ lat: Number.isFinite(lat as number) ? lat : null, lng: Number.isFinite(lng as number) ? lng : null })
         setEstCtx({
           nombre: (data.nombre as string) ?? '',
           domicilio: (data.domicilio as string | null) ?? null,
           codigo_postal: (data.codigo_postal as string | null) ?? null,
           localidad: locRow?.nombre ?? null,
           provincia: locRow?.provincia ?? null,
+          latitud: Number.isFinite(lat as number) ? lat : null,
+          longitud: Number.isFinite(lng as number) ? lng : null,
           empresa_razon_social: empRow?.razon_social ?? null,
           empresa_cuit: empRow?.cuit ?? null,
           empresa_domicilio: empRow?.domicilio ?? null,
@@ -590,6 +603,62 @@ export function MedicionIluminacionEjecutorModal({
     // rgFechaPlanificada son estables durante la vida del modal.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // ── Auto-clima al abrir (decisión Ezequiel: AUTO + editable) ───────────
+  // Tras la hidratación del borrador, si hay coordenadas del establecimiento,
+  // consultamos Open-Meteo y autocompletamos las condiciones atmosféricas.
+  // Reglas:
+  //  - Corre UNA sola vez (climaAutoCorrido) y SOLO cuando el borrador ya cargó
+  //    (cargandoBorrador === false) → así NO pisa datos del borrador re-hidratado.
+  //  - Degrada en silencio: sin coords o { error } → no hace nada, sin mensaje.
+  //  - NO pisa valores ya cargados: solo autocompleta el campo que esté vacío.
+  useEffect(() => {
+    if (cargandoBorrador) return
+    if (climaAutoCorrido.current) return
+    const { lat, lng } = latLng
+    if (lat == null || lng == null) return
+    climaAutoCorrido.current = true
+    let activo = true
+    fetchClima(lat, lng).then(res => {
+      if (!activo || !('success' in res)) return
+      const data = res.data
+      setCondiciones(c => ({
+        ...c,
+        cielo: c.cielo || data.cielo,
+        temperatura: c.temperatura || String(data.tempActual ?? ''),
+        humedad: c.humedad || String(data.humedad ?? ''),
+      }))
+    })
+    return () => { activo = false }
+  }, [cargandoBorrador, latLng])
+
+  // ── Auto-armar la grilla al mínimo reglamentario ──────────────────────
+  // Cuando cambian las dimensiones del local (largo/ancho/altura) de un punto,
+  // fijamos su grilla a la distribución óptima del N° mínimo de puntos exigido.
+  // SOLO cuando el punto NO tiene celdas cargadas (grilla vacía): así nunca
+  // pisamos una grilla con datos (incluido un borrador re-hidratado). Si ya hay
+  // celdas, solo queda el aviso amarillo de refuerzo.
+  // Esperamos a que el borrador termine de hidratar para no competir con su carga.
+  useEffect(() => {
+    if (cargandoBorrador) return
+    setPuntos(prev => {
+      let cambio = false
+      const next = prev.map(p => {
+        // Punto con celdas cargadas → no tocar la grilla.
+        if (valoresDe(p).length > 0) return p
+        const k = indiceLocal(num(p.largo) ?? 0, num(p.ancho) ?? 0, num(p.altura) ?? 0)
+        const min = numeroMinimoPuntos(k)
+        if (min <= 0) return p
+        const { filas, columnas } = distribucionOptima(min)
+        if (filas === p.filas && columnas === p.columnas) return p
+        cambio = true
+        return { ...p, filas, columnas }
+      })
+      return cambio ? next : prev
+    })
+    // Reacciona a cambios de dimensiones de cualquier punto (y a la longitud de la lista).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cargandoBorrador, puntos.map(p => `${p.key}:${p.largo}:${p.ancho}:${p.altura}`).join('|')])
 
   // Certificado de calibración VIGENTE del instrumento elegido. Ya NO se sube uno
   // por protocolo: se trae automáticamente el último certificado activo del
@@ -776,6 +845,15 @@ export function MedicionIluminacionEjecutorModal({
         if (!p.tipo_fuente) { setError(`Punto ${n}: indicá el tipo de fuente.`); requestAnimationFrame(() => document.getElementById('error-iluminacion')?.scrollIntoView({ behavior: 'smooth', block: 'center' })); return }
         if (!p.tipo_sistema) { setError(`Punto ${n}: indicá el tipo de sistema (general/localizada/mixta).`); requestAnimationFrame(() => document.getElementById('error-iluminacion')?.scrollIntoView({ behavior: 'smooth', block: 'center' })); return }
         if (!p.valor_requerido_lux || String(p.valor_requerido_lux).trim() === '') { setError(`Punto ${n}: cargá el valor requerido (lux).`); requestAnimationFrame(() => document.getElementById('error-iluminacion')?.scrollIntoView({ behavior: 'smooth', block: 'center' })); return }
+        // Red de seguridad: la grilla nunca puede quedar por debajo del mínimo
+        // reglamentario. El auto-armar/recalculo ya la deja >= min; esto cubre el
+        // caso en que el usuario la achicó a mano.
+        const minPuntos = numeroMinimoPuntos(indiceLocal(num(p.largo) ?? 0, num(p.ancho) ?? 0, num(p.altura) ?? 0))
+        if (minPuntos > 0 && p.filas * p.columnas < minPuntos) {
+          setError(`Punto ${n}: la grilla tiene ${p.filas * p.columnas} celdas pero el mínimo reglamentario es ${minPuntos}; ampliala.`)
+          requestAnimationFrame(() => document.getElementById('error-iluminacion')?.scrollIntoView({ behavior: 'smooth', block: 'center' }))
+          return
+        }
         let vacias = 0
         for (let f = 0; f < p.filas; f++) {
           for (let c = 0; c < p.columnas; c++) {
@@ -1647,12 +1725,16 @@ export function MedicionIluminacionEjecutorModal({
                     <GridDimInput
                       label="Filas"
                       value={punto.filas}
-                      onChange={v => setGrid(punto.key, v, punto.columnas)}
+                      other={punto.columnas}
+                      minPuntos={resumenActivo?.minPuntos ?? 0}
+                      onChange={(self, other) => setGrid(punto.key, self, other)}
                     />
                     <GridDimInput
                       label="Columnas"
                       value={punto.columnas}
-                      onChange={v => setGrid(punto.key, punto.filas, v)}
+                      other={punto.filas}
+                      minPuntos={resumenActivo?.minPuntos ?? 0}
+                      onChange={(self, other) => setGrid(punto.key, other, self)}
                     />
                   </div>
                 </div>
@@ -2192,7 +2274,16 @@ function ReviewGrid({ children }: { children: React.ReactNode }) {
  * - Cuando el padre cambia `value` desde afuera (ej: el otro stepper), el efecto
  *   resincroniza el draft SOLO si no hay edición activa (draft = string del valor anterior).
  */
-function GridDimInput({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
+function GridDimInput({ label, value, other, minPuntos, onChange }: {
+  label: string
+  value: number
+  /** Valor de la OTRA dimensión (para el recálculo cruzado contra el mínimo). */
+  other: number
+  /** N° mínimo reglamentario de puntos del local. 0 = sin mínimo conocido. */
+  minPuntos: number
+  /** Emite (estaDimensión, otraDimensión) ya con el cruce aplicado y clampeadas. */
+  onChange: (self: number, other: number) => void
+}) {
   const [draft, setDraft] = useState<string>(String(value))
 
   // Resincronizar draft cuando el padre cambia value desde afuera (p.ej. el stepper
@@ -2203,17 +2294,30 @@ function GridDimInput({ label, value, onChange }: { label: string; value: number
     setDraft(String(value))
   }, [value])
 
+  // Aplica el clamp [1,20] a ESTA dimensión y, si el producto cae por debajo del
+  // mínimo reglamentario, recalcula la OTRA dimensión: otra = ceil(min / esta).
+  // El recálculo respeta el tope 20 (la red de seguridad de la validación cubre el
+  // caso extremo donde ni 20×20 alcanza el mínimo).
+  function emit(self: number) {
+    const selfClamped = Math.max(1, Math.min(20, self))
+    let otherNext = other
+    if (minPuntos > 0 && selfClamped * other < minPuntos) {
+      otherNext = Math.max(1, Math.min(20, Math.ceil(minPuntos / selfClamped)))
+    }
+    onChange(selfClamped, otherNext)
+  }
+
   function commit(raw: string) {
     const n = parseInt(raw, 10)
     const clamped = Number.isFinite(n) && n > 0 ? Math.min(20, n) : value
     setDraft(String(clamped))
-    if (clamped !== value) onChange(clamped)
+    emit(clamped)
   }
 
   function step(delta: number) {
     const next = Math.max(1, Math.min(20, value + delta))
     setDraft(String(next))
-    onChange(next)
+    emit(next)
   }
 
   return (
