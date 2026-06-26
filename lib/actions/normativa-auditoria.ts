@@ -260,6 +260,9 @@ export async function createAuditoria(
     const base = {
       auditoria_id: aud.id,
       norma_id: n.id,
+      // Default optimista: arranca como "cumple"; el auditor solo cambia los que
+      // NO cumplen (o no aplican). Reduce clics en auditorías largas.
+      estado: 'cumple' as AuditoriaItemEstado,
       norma_numero: n.numero,
       norma_titulo: n.titulo,
       norma_tipo: n.tipo,
@@ -453,7 +456,8 @@ export async function addAdHocItemToAuditoria(
       auditoria_id: auditoriaId,
       norma_id: (norma as { id: string }).id,
       requisito_id: (req as { id: string }).id,
-      estado: 'pendiente',
+      // Coherente con el default optimista: arranca en "cumple".
+      estado: 'cumple',
       norma_numero: null,
       norma_titulo: normaTitulo,
       norma_tipo: 'Otro',

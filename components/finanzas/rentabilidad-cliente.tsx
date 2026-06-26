@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
+  ArrowLeft,
   Users,
   Megaphone,
   TrendingUp,
@@ -243,6 +244,15 @@ export function RentabilidadCliente({ filas, resumen, periodo, moneda, locale }:
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6 lg:p-8">
+      {/* ── Volver a Finanzas ───────────────────────────────── */}
+      <Link
+        href="/dashboard/finanzas"
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-text-tertiary transition-colors hover:text-text-primary"
+      >
+        <ArrowLeft size={16} aria-hidden="true" />
+        Volver a Finanzas
+      </Link>
+
       {/* ── Encabezado ──────────────────────────────────────── */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>

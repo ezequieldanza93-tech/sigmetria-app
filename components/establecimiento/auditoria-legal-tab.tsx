@@ -390,9 +390,16 @@ function ItemRow({
   getArchivoUrl: (path: string | null | undefined) => string | null
   subiendo: boolean
 }) {
+  // Detalle (observación + evidencia) solo se muestra cuando hay algo que
+  // justificar: el ítem no cumple/no aplica, o ya tiene datos cargados. Así una
+  // fila que "cumple" queda compacta en una sola línea y no se hace larga.
+  const requiereJustificar = item.estado === 'no_cumple' || item.estado === 'no_aplica'
+  const tieneDatos = !!(item.observacion || item.evidencia_url || item.evidencia_path)
+  const mostrarDetalle = requiereJustificar || tieneDatos
+
   return (
     <div className="border-t border-border-subtle/60 py-3 first:border-t-0">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
         <div className="min-w-0">
           {item.articulo ? (
             <p className="text-sm font-medium text-text-primary">{item.articulo}</p>
@@ -404,20 +411,28 @@ function ItemRow({
           )}
           <TextoArticulo texto={item.descripcion_oficial} />
         </div>
-        <div className="flex shrink-0 gap-1">
+        {/* Control segmentado: los 3 estados unidos en un solo bloque para que
+            las etiquetas queden juntas y legibles, sin desacomodarse. */}
+        <div
+          role="radiogroup"
+          aria-label="Estado de cumplimiento"
+          className="inline-flex shrink-0 self-start overflow-hidden rounded-lg border border-border-default"
+        >
           {ESTADO_ITEM_OPCIONES.map((opt) => {
             const active = item.estado === opt.value
             return (
               <button
                 key={opt.value}
                 type="button"
+                role="radio"
+                aria-checked={active}
                 disabled={!editable}
                 onClick={() => onEstado(item.id, opt.value)}
                 className={cn(
-                  'rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors',
+                  'px-2.5 py-1 text-xs font-medium transition-colors whitespace-nowrap border-l border-border-default first:border-l-0',
                   active
                     ? opt.activeClass
-                    : 'border-border-default text-text-secondary hover:bg-surface-elevated',
+                    : 'text-text-secondary hover:bg-surface-elevated',
                   !editable && 'opacity-60 cursor-not-allowed',
                 )}
               >
@@ -427,6 +442,8 @@ function ItemRow({
           })}
         </div>
       </div>
+      {mostrarDetalle && (
+      <>
       <ObservacionField
         key={`${item.id}:${item.observacion ?? ''}`}
         defaultValue={item.observacion ?? ''}
@@ -501,6 +518,8 @@ function ItemRow({
           </label>
         )}
       </div>
+      </>
+      )}
     </div>
   )
 }

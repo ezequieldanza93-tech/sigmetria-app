@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useTransition, useRef, Fragment, memo, useMemo } from 'react'
+import { useState, useEffect, useLayoutEffect, useTransition, useRef, Fragment, memo, useMemo } from 'react'
 import { useQueryClient, useQuery } from '@tanstack/react-query'
 
 import { createClient } from '@/lib/supabase/client'
@@ -1887,6 +1887,10 @@ function AgendaActionsCell({
   establecimientoNombre?: string
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
+  // Rect del botón disparador (viewport-relative, vía getBoundingClientRect).
+  // La posición final del menú se calcula tras medir su tamaño real (useLayoutEffect),
+  // clampeando a los bordes del viewport y volcando arriba/izquierda si no entra.
+  const [triggerRect, setTriggerRect] = useState<DOMRect | null>(null)
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
   const triggerRef = useRef<HTMLDivElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -1945,11 +1949,64 @@ function AgendaActionsCell({
 
   function toggleMenu(e: { currentTarget: HTMLElement }) {
     if (!menuOpen) {
-      const rect = e.currentTarget.getBoundingClientRect()
-      setMenuPos({ top: rect.bottom + 4, left: rect.right })
+      // Guardamos el rect del disparador; la posición final la resuelve el
+      // useLayoutEffect de abajo una vez que el menú ya midió su tamaño real.
+      setTriggerRect(e.currentTarget.getBoundingClientRect())
+      setMenuPos(null) // evita un frame con la posición vieja
     }
     setMenuOpen(v => !v)
   }
+
+  // Posicionamiento robusto: medimos el tamaño REAL del menú ya renderizado y lo
+  // clampeamos al viewport. Por defecto abre debajo y alineado a la derecha del
+  // disparador; si no entra hacia abajo vuelca hacia arriba, y si no entra hacia
+  // la izquierda (al alinear a derecha) se reancla para no salirse por el borde.
+  useLayoutEffect(() => {
+    if (!menuOpen || !triggerRect) return
+    const el = dropdownRef.current
+    if (!el) return
+
+    const GAP = 4
+    const MARGIN = 8 // respiro mínimo contra los bordes del viewport
+    const vw = window.innerWidth
+    const vh = window.innerHeight
+    const menuW = el.offsetWidth
+    const menuH = el.offsetHeight
+
+    // Eje X: alineamos el borde derecho del menú con el del disparador.
+    let left = triggerRect.right - menuW
+    // Si se sale por la izquierda, lo empujamos hacia adentro.
+    if (left < MARGIN) left = MARGIN
+    // Si aun así se sale por la derecha, lo clampeamos al borde derecho.
+    if (left + menuW > vw - MARGIN) left = Math.max(MARGIN, vw - MARGIN - menuW)
+
+    // Eje Y: por defecto debajo del disparador; si no entra, volcamos arriba.
+    let top = triggerRect.bottom + GAP
+    const fitsBelow = top + menuH <= vh - MARGIN
+    if (!fitsBelow) {
+      const above = triggerRect.top - GAP - menuH
+      top = above >= MARGIN ? above : Math.max(MARGIN, vh - MARGIN - menuH)
+    }
+
+    setMenuPos({ top, left })
+  }, [menuOpen, triggerRect])
+
+  // Reposiciona o cierra ante scroll/resize para que el menú no quede desincronizado
+  // del disparador (la tabla vive en un contenedor scrolleable).
+  useEffect(() => {
+    if (!menuOpen) return
+    function reposition() {
+      const trigger = triggerRef.current
+      if (!trigger) return
+      setTriggerRect(trigger.getBoundingClientRect())
+    }
+    window.addEventListener('resize', reposition)
+    window.addEventListener('scroll', reposition, true) // capture: atrapa scroll de cualquier ancestro
+    return () => {
+      window.removeEventListener('resize', reposition)
+      window.removeEventListener('scroll', reposition, true)
+    }
+  }, [menuOpen])
 
   const yaEjecutada = !!(r.fecha_ejecutada || r.evidencia_url)
   const tieneEvidencia = !!r.evidencia_url
@@ -2123,11 +2180,19 @@ function AgendaActionsCell({
           </button>
         </div>
 
-        {menuOpen && menuPos && createPortal(
+        {menuOpen && triggerRect && createPortal(
           <div
             ref={dropdownRef}
             role="menu"
-            style={{ position: 'fixed', top: menuPos.top, left: menuPos.left, transform: 'translateX(-100%)', zIndex: 9999 }}
+            style={{
+              position: 'fixed',
+              top: menuPos?.top ?? triggerRect.bottom + 4,
+              left: menuPos?.left ?? triggerRect.left,
+              // Mientras medimos (menuPos null) lo dejamos invisible para no
+              // mostrar un frame en la posición provisoria.
+              visibility: menuPos ? 'visible' : 'hidden',
+              zIndex: 9999,
+            }}
             className="bg-surface-base border border-border-subtle rounded-xl shadow-xl overflow-hidden min-w-[200px]"
           >
             <button
@@ -2194,11 +2259,19 @@ function AgendaActionsCell({
           </button>
         </div>
 
-        {menuOpen && menuPos && createPortal(
+        {menuOpen && triggerRect && createPortal(
           <div
             ref={dropdownRef}
             role="menu"
-            style={{ position: 'fixed', top: menuPos.top, left: menuPos.left, transform: 'translateX(-100%)', zIndex: 9999 }}
+            style={{
+              position: 'fixed',
+              top: menuPos?.top ?? triggerRect.bottom + 4,
+              left: menuPos?.left ?? triggerRect.left,
+              // Mientras medimos (menuPos null) lo dejamos invisible para no
+              // mostrar un frame en la posición provisoria.
+              visibility: menuPos ? 'visible' : 'hidden',
+              zIndex: 9999,
+            }}
             className="bg-surface-base border border-border-subtle rounded-xl shadow-xl overflow-hidden min-w-[200px]"
           >
             <button
@@ -2248,11 +2321,19 @@ function AgendaActionsCell({
           </button>
         </div>
 
-        {menuOpen && menuPos && createPortal(
+        {menuOpen && triggerRect && createPortal(
           <div
             ref={dropdownRef}
             role="menu"
-            style={{ position: 'fixed', top: menuPos.top, left: menuPos.left, transform: 'translateX(-100%)', zIndex: 9999 }}
+            style={{
+              position: 'fixed',
+              top: menuPos?.top ?? triggerRect.bottom + 4,
+              left: menuPos?.left ?? triggerRect.left,
+              // Mientras medimos (menuPos null) lo dejamos invisible para no
+              // mostrar un frame en la posición provisoria.
+              visibility: menuPos ? 'visible' : 'hidden',
+              zIndex: 9999,
+            }}
             className="bg-surface-base border border-border-subtle rounded-xl shadow-xl overflow-hidden min-w-[200px]"
           >
             <button
@@ -2302,11 +2383,19 @@ function AgendaActionsCell({
           </button>
         </div>
 
-        {menuOpen && menuPos && createPortal(
+        {menuOpen && triggerRect && createPortal(
           <div
             ref={dropdownRef}
             role="menu"
-            style={{ position: 'fixed', top: menuPos.top, left: menuPos.left, transform: 'translateX(-100%)', zIndex: 9999 }}
+            style={{
+              position: 'fixed',
+              top: menuPos?.top ?? triggerRect.bottom + 4,
+              left: menuPos?.left ?? triggerRect.left,
+              // Mientras medimos (menuPos null) lo dejamos invisible para no
+              // mostrar un frame en la posición provisoria.
+              visibility: menuPos ? 'visible' : 'hidden',
+              zIndex: 9999,
+            }}
             className="bg-surface-base border border-border-subtle rounded-xl shadow-xl overflow-hidden min-w-[200px]"
           >
             <button
@@ -2356,11 +2445,19 @@ function AgendaActionsCell({
           </button>
         </div>
 
-        {menuOpen && menuPos && createPortal(
+        {menuOpen && triggerRect && createPortal(
           <div
             ref={dropdownRef}
             role="menu"
-            style={{ position: 'fixed', top: menuPos.top, left: menuPos.left, transform: 'translateX(-100%)', zIndex: 9999 }}
+            style={{
+              position: 'fixed',
+              top: menuPos?.top ?? triggerRect.bottom + 4,
+              left: menuPos?.left ?? triggerRect.left,
+              // Mientras medimos (menuPos null) lo dejamos invisible para no
+              // mostrar un frame en la posición provisoria.
+              visibility: menuPos ? 'visible' : 'hidden',
+              zIndex: 9999,
+            }}
             className="bg-surface-base border border-border-subtle rounded-xl shadow-xl overflow-hidden min-w-[200px]"
           >
             <button
@@ -2410,11 +2507,19 @@ function AgendaActionsCell({
           </button>
         </div>
 
-        {menuOpen && menuPos && createPortal(
+        {menuOpen && triggerRect && createPortal(
           <div
             ref={dropdownRef}
             role="menu"
-            style={{ position: 'fixed', top: menuPos.top, left: menuPos.left, transform: 'translateX(-100%)', zIndex: 9999 }}
+            style={{
+              position: 'fixed',
+              top: menuPos?.top ?? triggerRect.bottom + 4,
+              left: menuPos?.left ?? triggerRect.left,
+              // Mientras medimos (menuPos null) lo dejamos invisible para no
+              // mostrar un frame en la posición provisoria.
+              visibility: menuPos ? 'visible' : 'hidden',
+              zIndex: 9999,
+            }}
             className="bg-surface-base border border-border-subtle rounded-xl shadow-xl overflow-hidden min-w-[200px]"
           >
             <button
@@ -2464,11 +2569,19 @@ function AgendaActionsCell({
           </button>
         </div>
 
-        {menuOpen && menuPos && createPortal(
+        {menuOpen && triggerRect && createPortal(
           <div
             ref={dropdownRef}
             role="menu"
-            style={{ position: 'fixed', top: menuPos.top, left: menuPos.left, transform: 'translateX(-100%)', zIndex: 9999 }}
+            style={{
+              position: 'fixed',
+              top: menuPos?.top ?? triggerRect.bottom + 4,
+              left: menuPos?.left ?? triggerRect.left,
+              // Mientras medimos (menuPos null) lo dejamos invisible para no
+              // mostrar un frame en la posición provisoria.
+              visibility: menuPos ? 'visible' : 'hidden',
+              zIndex: 9999,
+            }}
             className="bg-surface-base border border-border-subtle rounded-xl shadow-xl overflow-hidden min-w-[200px]"
           >
             <button
@@ -2518,11 +2631,19 @@ function AgendaActionsCell({
           </button>
         </div>
 
-        {menuOpen && menuPos && createPortal(
+        {menuOpen && triggerRect && createPortal(
           <div
             ref={dropdownRef}
             role="menu"
-            style={{ position: 'fixed', top: menuPos.top, left: menuPos.left, transform: 'translateX(-100%)', zIndex: 9999 }}
+            style={{
+              position: 'fixed',
+              top: menuPos?.top ?? triggerRect.bottom + 4,
+              left: menuPos?.left ?? triggerRect.left,
+              // Mientras medimos (menuPos null) lo dejamos invisible para no
+              // mostrar un frame en la posición provisoria.
+              visibility: menuPos ? 'visible' : 'hidden',
+              zIndex: 9999,
+            }}
             className="bg-surface-base border border-border-subtle rounded-xl shadow-xl overflow-hidden min-w-[200px]"
           >
             <button
@@ -2572,11 +2693,19 @@ function AgendaActionsCell({
           </button>
         </div>
 
-        {menuOpen && menuPos && createPortal(
+        {menuOpen && triggerRect && createPortal(
           <div
             ref={dropdownRef}
             role="menu"
-            style={{ position: 'fixed', top: menuPos.top, left: menuPos.left, transform: 'translateX(-100%)', zIndex: 9999 }}
+            style={{
+              position: 'fixed',
+              top: menuPos?.top ?? triggerRect.bottom + 4,
+              left: menuPos?.left ?? triggerRect.left,
+              // Mientras medimos (menuPos null) lo dejamos invisible para no
+              // mostrar un frame en la posición provisoria.
+              visibility: menuPos ? 'visible' : 'hidden',
+              zIndex: 9999,
+            }}
             className="bg-surface-base border border-border-subtle rounded-xl shadow-xl overflow-hidden min-w-[200px]"
           >
             <button

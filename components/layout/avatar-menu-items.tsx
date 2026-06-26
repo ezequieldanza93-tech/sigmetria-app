@@ -7,7 +7,7 @@
  * Secciones:
  *  1. Info de usuario (nombre, email, consultora)
  *  2. RoleSwitcher
- *  3. Consultora (Usuarios, API Keys, Papelera) — gateado
+ *  3. Consultora (Equipo, API Keys, Papelera) — gateado
  *  4. Herramientas (Super Admin, Feedback Admin) — solo isSuperAdmin
  *  5. Perfil y ayuda (Mi perfil, Seguridad, Tutoriales, Atajos)
  *  6. LanguageSwitcher
@@ -94,7 +94,7 @@ export function AvatarMenuContent({
         <div className="py-1 border-b border-border-subtle">
           <MenuGroupLabel>Consultora</MenuGroupLabel>
           {(canManageUsers(userRole, systemRole) || isSuperAdmin) && (
-            <MenuLink href="/dashboard/usuarios" icon={Users} label="Usuarios" />
+            <MenuLink href="/dashboard/usuarios" icon={Users} label="Equipo" />
           )}
           {/* Finanzas: solo el admin main de la consultora (full_access_main),
               developer o super-admin. Espejo de canAccessFinanzas (lib/finanzas/access).
