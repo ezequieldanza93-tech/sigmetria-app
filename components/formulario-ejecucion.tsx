@@ -7,6 +7,8 @@ import type {
   FormularioSeccion, FormularioItem,
   AnswerValue, RespuestaDraft, RegistroGestion,
 } from '@/lib/types'
+import { todayISO, nowHHMM } from '@/lib/utils'
+import { VoiceTextarea } from '@/components/ui/voice-textarea'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { finalizarFormulario, getOrCreateRespuesta } from '@/lib/actions/formulario-ejecucion'
@@ -83,7 +85,7 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
   const [categorias, setCategorias] = useState<CategoriaObs[]>([])
   const [comentariosSeccion, setComentariosSeccion] = useState<Map<string, string>>(new Map())
   const [observacionesSeccion, setObservacionesSeccion] = useState<Map<string, ObsDraft[]>>(new Map())
-  const [fechaEjecutada, setFechaEjecutada] = useState(registro.fecha_ejecutada ?? new Date().toISOString().split('T')[0])
+  const [fechaEjecutada, setFechaEjecutada] = useState(registro.fecha_ejecutada ?? todayISO())
   const [responsableId, setResponsableId] = useState(registro.responsable_id ?? '')
   const [notas, setNotas] = useState(registro.notas ?? '')
   const [fotoPreview, setFotoPreview] = useState<string | null>(null)
@@ -441,9 +443,9 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
 
     return (
       <div className="border-t border-border-subtle pt-3 mt-3 space-y-3">
-        <textarea
+        <VoiceTextarea
           value={comentario}
-          onChange={e => setComentario(secId, e.target.value)}
+          onValueChange={(v) => setComentario(secId, v)}
           placeholder="Comentario de la seccion…"
           rows={2}
           className="w-full border border-border-default rounded-lg px-3 py-1.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sig-500"
@@ -471,13 +473,15 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
                 <div key={obs.key} className="border border-border-subtle rounded-lg p-3 space-y-2 bg-gray-50/50">
                   <div className="flex items-start gap-2">
                     <span className="text-xs text-text-tertiary mt-2 w-4 shrink-0">{idx + 1}.</span>
-                    <textarea
-                      value={obs.descripcion}
-                      onChange={e => updateObs(secId, obs.key, { descripcion: e.target.value })}
-                      placeholder="Descripcion de la observacion…"
-                      rows={2}
-                      className="flex-1 border border-border-default rounded-lg px-3 py-1.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sig-500"
-                    />
+                    <div className="flex-1">
+                      <VoiceTextarea
+                        value={obs.descripcion}
+                        onValueChange={(v) => updateObs(secId, obs.key, { descripcion: v })}
+                        placeholder="Descripcion de la observacion…"
+                        rows={2}
+                        className="w-full border border-border-default rounded-lg px-3 py-1.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sig-500"
+                      />
+                    </div>
                     <button
                       type="button"
                       onClick={() => removeObs(secId, obs.key)}
@@ -699,10 +703,10 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
             </div>
             <div>
               <label className="text-sm font-medium text-text-secondary block mb-1">Notas</label>
-              <textarea
+              <VoiceTextarea
                 rows={2}
                 value={notas}
-                onChange={e => setNotas(e.target.value)}
+                onValueChange={setNotas}
                 className={`${inputCls} resize-none`}
               />
             </div>

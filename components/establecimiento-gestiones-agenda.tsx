@@ -11,6 +11,7 @@ import { calcularEstadoGestion } from '@/lib/types'
 import type { EstadoGestion, Gestion, CategoriaGestion, GrupoGestion, RegistroGestion, Riesgo, ActionResult } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
+import { VoiceTextarea } from '@/components/ui/voice-textarea'
 import { MultiSelectFilter } from '@/components/ui/multi-select-filter'
 import { ViewSelector } from '@/components/ui/view-selector'
 import {
@@ -1009,9 +1010,9 @@ function BibliotecaForm({
             {/* Notas */}
             <div>
               <label className="text-sm font-medium text-text-secondary block mb-1">Notas</label>
-              <textarea
+              <VoiceTextarea
                 value={notas}
-                onChange={e => setNotas(e.target.value)}
+                onValueChange={setNotas}
                 rows={3}
                 className="w-full border border-border-default rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sig-500"
               />
@@ -1257,9 +1258,9 @@ function NuevaGestionForm({
           {/* Notas */}
           <div>
             <label className="text-sm font-medium text-text-secondary block mb-1">Notas</label>
-            <textarea
+            <VoiceTextarea
               value={notas}
-              onChange={e => setNotas(e.target.value)}
+              onValueChange={setNotas}
               rows={3}
               className={`${selectCls} resize-none`}
             />
@@ -1647,13 +1648,15 @@ function EjecucionModal({
                 <div key={obs.key} className="border border-border-subtle rounded-lg p-3 space-y-2 bg-gray-50/50">
                   <div className="flex items-start gap-2">
                     <span className="text-xs text-text-tertiary mt-2 w-4 shrink-0">{idx + 1}.</span>
-                    <textarea
-                      value={obs.descripcion}
-                      onChange={e => updateObs(obs.key, 'descripcion', e.target.value)}
-                      placeholder="Descripción de la observación…"
-                      rows={2}
-                      className="flex-1 border border-border-default rounded-lg px-3 py-1.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sig-500"
-                    />
+                    <div className="flex-1">
+                      <VoiceTextarea
+                        value={obs.descripcion}
+                        onValueChange={(v) => updateObs(obs.key, 'descripcion', v)}
+                        placeholder="Descripción de la observación…"
+                        rows={2}
+                        className="w-full border border-border-default rounded-lg px-3 py-1.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sig-500"
+                      />
+                    </div>
                     <button
                       type="button"
                       onClick={() => removeObs(obs.key)}

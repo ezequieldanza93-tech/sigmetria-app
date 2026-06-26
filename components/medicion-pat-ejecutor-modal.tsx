@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { todayISO, nowHHMM } from '@/lib/utils'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
+import { VoiceTextarea } from '@/components/ui/voice-textarea'
 import { useGeoCaptura } from '@/lib/hooks/use-geo-captura'
 import { emitirEvidenciaPat } from '@/lib/actions/emitir-evidencia-pat'
 import {
@@ -90,6 +92,22 @@ const METODOLOGIA_OPCIONES = [
 
 // Opciones de los selects del protocolo.
 const ECT_OPCIONES: Ect[] = ['TT', 'TN-S', 'TN-C', 'TN-C-S', 'IT']
+// Descripciones cortas de cada esquema de conexión a tierra (para el tooltip y las opciones del select).
+const ECT_DESCRIPCIONES: Record<Ect, string> = {
+  'TT': 'Neutro del transformador a tierra; las masas a una toma de tierra propia e independiente.',
+  'TN-S': 'Neutro a tierra; conductor neutro (N) y de protección (PE) separados en toda la instalación.',
+  'TN-C': 'Neutro y protección combinados en un único conductor (PEN) en toda la instalación.',
+  'TN-C-S': 'Combinado (PEN) en una parte y separado (N/PE) en otra. Es el más habitual.',
+  'IT': 'Neutro aislado de tierra (o por impedancia); las masas a tierra propia.',
+}
+// Etiqueta visible (más descriptiva) de cada esquema para las opciones del <select>.
+const ECT_OPCION_LABEL: Record<Ect, string> = {
+  'TT': 'TT — masas a tierra propia',
+  'TN-S': 'TN-S — N y PE separados',
+  'TN-C': 'TN-C — N y PE combinados (PEN)',
+  'TN-C-S': 'TN-C-S — combinado y separado',
+  'IT': 'IT — neutro aislado',
+}
 const CONDICION_TERRENO_OPCIONES = ['Seco', 'Húmedo', 'Saturado', 'Rocoso', 'Arenoso', 'Arcilloso'] as const
 const USO_PAT_OPCIONES = [
   'Protección de personas',
@@ -224,9 +242,9 @@ export function MedicionPatEjecutorModal({
   // un PAT viejo trae un valor que no está en la lista → se marca 'Otro'.
   const [metodologia, setMetodologia] = useState('')
   const [metodologiaSelector, setMetodologiaSelector] = useState('')
-  const [fechaMedicion, setFechaMedicion] = useState(rgFechaPlanificada || new Date().toISOString().slice(0, 10))
-  const [fechaMedicionFin, setFechaMedicionFin] = useState('')
-  const [horaInicio, setHoraInicio] = useState('')
+  const [fechaMedicion, setFechaMedicion] = useState(todayISO())
+  const [fechaMedicionFin, setFechaMedicionFin] = useState(todayISO())
+  const [horaInicio, setHoraInicio] = useState(nowHHMM())
   const [horaFin, setHoraFin] = useState('')
   const [observacionesGenerales, setObservacionesGenerales] = useState('')
   const [planoFile, setPlanoFile] = useState<File | null>(null)
@@ -816,7 +834,7 @@ export function MedicionPatEjecutorModal({
 
   return (
     <Modal open title="Protocolo de Puesta a Tierra (SRT 900/2015)" onClose={onClose} size="full">
-      <div className="space-y-4 max-h-[86vh] overflow-y-auto pr-1">
+      <div className="space-y-4 max-md:max-h-none md:max-h-[86vh] overflow-y-auto pr-1">
         {/* ── Gamificación: anillo de progreso sticky ──────────────── */}
         <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 bg-surface-base/90 backdrop-blur-md border-b border-border-subtle">
           <div className="flex items-center gap-4">
@@ -1019,7 +1037,7 @@ export function MedicionPatEjecutorModal({
 
               <div>
                 <label className={labelCls}>Observaciones generales</label>
-                <textarea className={`${inputCls} resize-none`} rows={2} value={observacionesGenerales} onChange={e => setObservacionesGenerales(e.target.value)} placeholder="Observaciones generales del protocolo…" />
+                <VoiceTextarea className={`${inputCls} resize-none`} rows={2} value={observacionesGenerales} onValueChange={setObservacionesGenerales} placeholder="Observaciones generales del protocolo…" />
               </div>
             </section>
           </div>
@@ -1105,10 +1123,16 @@ export function MedicionPatEjecutorModal({
                   </select>
                 </div>
                 <div>
-                  <label className={labelCls}>Esquema de conexión a tierra (ECT)</label>
+                  <label className={labelCls}>
+                    Esquema de conexión a tierra (ECT)
+                    <InfoTooltip
+                      className="ml-1 align-middle"
+                      text={ECT_OPCIONES.map(o => `• ${o}: ${ECT_DESCRIPCIONES[o]}`).join('  ')}
+                    />
+                  </label>
                   <select className={inputCls} value={toma.ect} onChange={e => updateToma(toma.key, { ect: e.target.value as Ect | '' })}>
                     <option value="">Sin especificar</option>
-                    {ECT_OPCIONES.map(o => <option key={o} value={o}>{o}</option>)}
+                    {ECT_OPCIONES.map(o => <option key={o} value={o}>{ECT_OPCION_LABEL[o]}</option>)}
                   </select>
                 </div>
               </div>
@@ -1173,7 +1197,7 @@ export function MedicionPatEjecutorModal({
 
               <div>
                 <label className={labelCls}>Observaciones de la toma</label>
-                <textarea className={`${inputCls} resize-none`} rows={2} value={toma.observaciones} onChange={e => updateToma(toma.key, { observaciones: e.target.value })} placeholder="Notas de esta toma de tierra…" />
+                <VoiceTextarea className={`${inputCls} resize-none`} rows={2} value={toma.observaciones} onValueChange={(v) => updateToma(toma.key, { observaciones: v })} placeholder="Notas de esta toma de tierra…" />
               </div>
             </div>
 
@@ -1223,13 +1247,15 @@ export function MedicionPatEjecutorModal({
                   <div key={obs.key} className="border border-border-subtle rounded-lg p-3 space-y-2 bg-surface-elevated/30">
                     <div className="flex items-start gap-2">
                       <span className="text-xs text-text-tertiary mt-2 w-4 shrink-0">{idx + 1}.</span>
-                      <textarea
-                        value={obs.descripcion}
-                        onChange={e => updateObs(obs.key, 'descripcion', e.target.value)}
-                        placeholder="Descripción de la observación…"
-                        rows={2}
-                        className="flex-1 border border-border-default rounded-lg px-3 py-1.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sig-500"
-                      />
+                      <div className="flex-1">
+                        <VoiceTextarea
+                          value={obs.descripcion}
+                          onValueChange={(v) => updateObs(obs.key, 'descripcion', v)}
+                          placeholder="Descripción de la observación…"
+                          rows={2}
+                          className="w-full border border-border-default rounded-lg px-3 py-1.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sig-500"
+                        />
+                      </div>
                       <button
                         type="button"
                         onClick={() => removeObs(obs.key)}
@@ -1355,11 +1381,11 @@ export function MedicionPatEjecutorModal({
 
             <div>
               <label className={labelCls}>Conclusiones</label>
-              <textarea className={`${inputCls} resize-y`} rows={5} value={conclusiones} onChange={e => setConclusiones(e.target.value)} placeholder="Conclusiones del relevamiento de puesta a tierra…" />
+              <VoiceTextarea className={`${inputCls} resize-y`} rows={5} value={conclusiones} onValueChange={setConclusiones} placeholder="Conclusiones del relevamiento de puesta a tierra…" />
             </div>
             <div>
               <label className={labelCls}>Recomendaciones</label>
-              <textarea className={`${inputCls} resize-y`} rows={5} value={recomendaciones} onChange={e => setRecomendaciones(e.target.value)} placeholder="Recomendaciones y acciones de mejora propuestas…" />
+              <VoiceTextarea className={`${inputCls} resize-y`} rows={5} value={recomendaciones} onValueChange={setRecomendaciones} placeholder="Recomendaciones y acciones de mejora propuestas…" />
             </div>
           </div>
         )}

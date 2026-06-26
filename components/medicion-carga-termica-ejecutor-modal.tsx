@@ -26,8 +26,10 @@ import { getBorradorCargaTermicaByRegistro } from '@/lib/actions/medicion-carga-
 import { getCertificadoVigente } from '@/lib/actions/certificado'
 import { useSignedUrls } from '@/lib/storage/sign-client'
 import { pickClasificacionDefault } from '@/lib/medicion/clasificacion-default'
+import { todayISO, nowHHMM } from '@/lib/utils'
 import type { CertificadoCalibracion } from '@/lib/types'
 import { Modal } from '@/components/ui/modal'
+import { VoiceTextarea } from '@/components/ui/voice-textarea'
 import { Button } from '@/components/ui/button'
 import { PersonaFirmanteSelector } from '@/components/persona-firmante-selector'
 import { PersonaSelectorConAlta } from '@/components/persona-selector-con-alta'
@@ -392,9 +394,9 @@ export function MedicionCargaTermicaEjecutorModal({
   // Firma a mano del profesional (dataURL PNG) capturada en el paso de revisión.
   // Es deseable, no obligatoria: NO bloquea el cierre del protocolo.
   const [firmaSvg, setFirmaSvg] = useState<string | null>(null)
-  const [fechaMedicion, setFechaMedicion] = useState(rgFechaPlanificada || new Date().toISOString().slice(0, 10))
-  const [fechaMedicionFin, setFechaMedicionFin] = useState('')
-  const [horaInicio, setHoraInicio] = useState('')
+  const [fechaMedicion, setFechaMedicion] = useState(todayISO())
+  const [fechaMedicionFin, setFechaMedicionFin] = useState(todayISO())
+  const [horaInicio, setHoraInicio] = useState(nowHHMM())
   const [horaFin, setHoraFin] = useState('')
   const [turnos, setTurnos] = useState('')
   // Condiciones atmosféricas
@@ -1108,7 +1110,7 @@ export function MedicionCargaTermicaEjecutorModal({
 
   return (
     <Modal open title="Protocolo de Estrés Térmico por Calor / Carga Térmica" onClose={onClose} size="full">
-      <div className="space-y-4 max-h-[86vh] overflow-y-auto pr-1">
+      <div className="space-y-4 max-md:max-h-none md:max-h-[86vh] overflow-y-auto pr-1">
         {/* ── Gamificación: anillo de progreso sticky ──────────────── */}
         <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 bg-surface-base/90 backdrop-blur-md border-b border-border-subtle">
           <div className="flex items-center gap-4">
@@ -1322,7 +1324,7 @@ export function MedicionCargaTermicaEjecutorModal({
               <h3 className="text-sm font-semibold text-text-primary">Condiciones del puesto y representantes</h3>
               <div>
                 <label className={labelCls}>Condiciones generales del puesto</label>
-                <textarea className={`${inputCls} resize-none`} rows={2} value={condicionesPuesto} onChange={e => setCondicionesPuesto(e.target.value)} placeholder="Ventilación, fuentes de calor, características del ambiente…" />
+                <VoiceTextarea className={`${inputCls} resize-none`} rows={2} value={condicionesPuesto} onValueChange={setCondicionesPuesto} placeholder="Ventilación, fuentes de calor, características del ambiente…" />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <PersonaSelectorConAlta
@@ -1361,7 +1363,7 @@ export function MedicionCargaTermicaEjecutorModal({
               </div>
               <div>
                 <label className={labelCls}>Observaciones generales</label>
-                <textarea className={`${inputCls} resize-none`} rows={2} value={observacionesGenerales} onChange={e => setObservacionesGenerales(e.target.value)} placeholder="Observaciones generales del protocolo…" />
+                <VoiceTextarea className={`${inputCls} resize-none`} rows={2} value={observacionesGenerales} onValueChange={setObservacionesGenerales} placeholder="Observaciones generales del protocolo…" />
               </div>
             </section>
 
@@ -1664,7 +1666,7 @@ export function MedicionCargaTermicaEjecutorModal({
               {/* Conclusión del puesto */}
               <div>
                 <label className={labelCls}>Conclusión de este puesto / trabajador</label>
-                <textarea className={`${inputCls} resize-none`} rows={2} value={puesto.conclusion} onChange={e => updatePuesto(puesto.key, { conclusion: e.target.value })} placeholder="Conclusión específica del puesto medido…" />
+                <VoiceTextarea className={`${inputCls} resize-none`} rows={2} value={puesto.conclusion} onValueChange={(v) => updatePuesto(puesto.key, { conclusion: v })} placeholder="Conclusión específica del puesto medido…" />
               </div>
             </div>
 
@@ -1710,7 +1712,9 @@ export function MedicionCargaTermicaEjecutorModal({
                   <div key={obs.key} className="border border-border-subtle rounded-lg p-3 space-y-2 bg-surface-elevated/30">
                     <div className="flex items-start gap-2">
                       <span className="text-xs text-text-tertiary mt-2 w-4 shrink-0">{idx + 1}.</span>
-                      <textarea value={obs.descripcion} onChange={e => updateObs(obs.key, 'descripcion', e.target.value)} placeholder="Descripción de la observación…" rows={2} className="flex-1 border border-border-default rounded-lg px-3 py-1.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sig-500" />
+                      <div className="flex-1">
+                        <VoiceTextarea value={obs.descripcion} onValueChange={(v) => updateObs(obs.key, 'descripcion', v)} placeholder="Descripción de la observación…" rows={2} className="w-full border border-border-default rounded-lg px-3 py-1.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sig-500" />
+                      </div>
                       <button type="button" onClick={() => removeObs(obs.key)} className="text-text-tertiary hover:text-danger mt-1 shrink-0" title="Eliminar observación">
                         <Trash2 size={15} />
                       </button>
@@ -1790,15 +1794,15 @@ export function MedicionCargaTermicaEjecutorModal({
 
             <div>
               <label className={labelCls}>Conclusiones — trabajador NO aclimatado (VLP)</label>
-              <textarea className={`${inputCls} resize-y`} rows={4} value={conclusionesNoAclimatado} onChange={e => setConclusionesNoAclimatado(e.target.value)} placeholder="Conclusiones aplicables al trabajador no aclimatado (límite VLP)…" />
+              <VoiceTextarea className={`${inputCls} resize-y`} rows={4} value={conclusionesNoAclimatado} onValueChange={setConclusionesNoAclimatado} placeholder="Conclusiones aplicables al trabajador no aclimatado (límite VLP)…" />
             </div>
             <div>
               <label className={labelCls}>Conclusiones — trabajador aclimatado (VLA)</label>
-              <textarea className={`${inputCls} resize-y`} rows={4} value={conclusionesAclimatado} onChange={e => setConclusionesAclimatado(e.target.value)} placeholder="Conclusiones aplicables al trabajador aclimatado (límite VLA)…" />
+              <VoiceTextarea className={`${inputCls} resize-y`} rows={4} value={conclusionesAclimatado} onValueChange={setConclusionesAclimatado} placeholder="Conclusiones aplicables al trabajador aclimatado (límite VLA)…" />
             </div>
             <div>
               <label className={labelCls}>Recomendaciones</label>
-              <textarea className={`${inputCls} resize-y`} rows={4} value={recomendaciones} onChange={e => setRecomendaciones(e.target.value)} placeholder="Recomendaciones y acciones de mejora propuestas (regímenes de trabajo/descanso, hidratación, EPP, etc.)…" />
+              <VoiceTextarea className={`${inputCls} resize-y`} rows={4} value={recomendaciones} onValueChange={setRecomendaciones} placeholder="Recomendaciones y acciones de mejora propuestas (regímenes de trabajo/descanso, hidratación, EPP, etc.)…" />
             </div>
           </div>
         )}

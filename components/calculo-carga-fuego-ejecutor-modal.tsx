@@ -27,6 +27,7 @@ import { firmarProtocolo } from '@/lib/actions/firmar-protocolo'
 import { pickClasificacionDefault } from '@/lib/medicion/clasificacion-default'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
+import { VoiceTextarea } from '@/components/ui/voice-textarea'
 import { FirmaCanvas } from '@/components/firmas/firma-canvas'
 import { PersonaFirmanteSelector } from '@/components/persona-firmante-selector'
 import { PersonaSelectorConAlta } from '@/components/persona-selector-con-alta'
@@ -884,7 +885,7 @@ export function CalculoCargaFuegoEjecutorModal({
 
   return (
     <Modal open title="Cálculo de Carga de Fuego (Dec 351/79 Anexo VII)" onClose={onClose} size="full">
-      <div className="space-y-4 max-h-[86vh] overflow-y-auto pr-1">
+      <div className="space-y-4 max-md:max-h-none md:max-h-[86vh] overflow-y-auto pr-1">
         {/* ── Gamificación: anillo de progreso sticky ──────────────── */}
         <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 bg-surface-base/90 backdrop-blur-md border-b border-border-subtle">
           <div className="flex items-center gap-4">
@@ -1128,7 +1129,7 @@ export function CalculoCargaFuegoEjecutorModal({
               </div>
               <div>
                 <label className={labelCls}>Observaciones generales</label>
-                <textarea className={`${inputCls} resize-none`} rows={2} value={observacionesGenerales} onChange={e => setObservacionesGenerales(e.target.value)} placeholder="Observaciones generales del cálculo…" />
+                <VoiceTextarea className={`${inputCls} resize-none`} rows={2} value={observacionesGenerales} onValueChange={setObservacionesGenerales} placeholder="Observaciones generales del cálculo…" />
               </div>
             </section>
 
@@ -1402,13 +1403,15 @@ export function CalculoCargaFuegoEjecutorModal({
                   <div key={obs.key} className="border border-border-subtle rounded-lg p-3 space-y-2 bg-surface-elevated/30">
                     <div className="flex items-start gap-2">
                       <span className="text-xs text-text-tertiary mt-2 w-4 shrink-0">{idx + 1}.</span>
-                      <textarea
-                        value={obs.descripcion}
-                        onChange={e => updateObs(obs.key, 'descripcion', e.target.value)}
-                        placeholder="Descripción de la observación…"
-                        rows={2}
-                        className="flex-1 border border-border-default rounded-lg px-3 py-1.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sig-500"
-                      />
+                      <div className="flex-1">
+                        <VoiceTextarea
+                          value={obs.descripcion}
+                          onValueChange={(v) => updateObs(obs.key, 'descripcion', v)}
+                          placeholder="Descripción de la observación…"
+                          rows={2}
+                          className="w-full border border-border-default rounded-lg px-3 py-1.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sig-500"
+                        />
+                      </div>
                       <button
                         type="button"
                         onClick={() => removeObs(obs.key)}
@@ -1527,11 +1530,11 @@ export function CalculoCargaFuegoEjecutorModal({
 
             <div>
               <label className={labelCls}>Conclusiones</label>
-              <textarea className={`${inputCls} resize-y`} rows={5} value={conclusiones} onChange={e => setConclusiones(e.target.value)} placeholder="Conclusiones del cálculo de carga de fuego…" />
+              <VoiceTextarea className={`${inputCls} resize-y`} rows={5} value={conclusiones} onValueChange={setConclusiones} placeholder="Conclusiones del cálculo de carga de fuego…" />
             </div>
             <div>
               <label className={labelCls}>Recomendaciones</label>
-              <textarea className={`${inputCls} resize-y`} rows={5} value={recomendaciones} onChange={e => setRecomendaciones(e.target.value)} placeholder="Recomendaciones (medios de extinción, resistencia estructural, etc.)…" />
+              <VoiceTextarea className={`${inputCls} resize-y`} rows={5} value={recomendaciones} onValueChange={setRecomendaciones} placeholder="Recomendaciones (medios de extinción, resistencia estructural, etc.)…" />
             </div>
           </div>
         )}

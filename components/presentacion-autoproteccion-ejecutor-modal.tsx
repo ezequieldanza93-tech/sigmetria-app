@@ -21,6 +21,7 @@ import { useSignedUrls } from '@/lib/storage/sign-client'
 import { toast } from '@/lib/hooks/use-toast'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
+import { VoiceTextarea } from '@/components/ui/voice-textarea'
 import { Badge } from '@/components/ui/badge'
 import { Select } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
@@ -948,7 +949,7 @@ export function PresentacionAutoproteccionEjecutorModal({
 
   return (
     <Modal open title="Sistema de Autoprotección — Ley 5920 CABA" onClose={onClose} size="wide">
-      <div className="space-y-4 max-h-[86vh] overflow-y-auto pr-1">
+      <div className="space-y-4 max-md:max-h-none md:max-h-[86vh] overflow-y-auto pr-1">
         {/* ── Encabezado gamificado sticky ──────────────────────────── */}
         <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 bg-surface-base/90 backdrop-blur-md border-b border-border-subtle">
           <div className="flex items-center gap-4">
@@ -1220,8 +1221,8 @@ export function PresentacionAutoproteccionEjecutorModal({
 
             <div>
               <label className={labelCls}>Elementos de mitigación de incendio</label>
-              <textarea className={inputCls} rows={3} value={cab.g1_elementos_mitigacion} disabled={!canWrite}
-                onChange={e => setCabField('g1_elementos_mitigacion', e.target.value)}
+              <VoiceTextarea className={inputCls} rows={3} value={cab.g1_elementos_mitigacion} disabled={!canWrite}
+                onValueChange={(v) => setCabField('g1_elementos_mitigacion', v)}
                 placeholder="Matafuegos, detectores de humo, luces de emergencia, señalización de salidas…" />
               <Ayuda>Listá los elementos de seguridad contra incendio con los que cuenta el lugar.</Ayuda>
             </div>
@@ -1499,25 +1500,25 @@ export function PresentacionAutoproteccionEjecutorModal({
               onChange={v => setCabField('aviso_viva_voz', v)} />
             <div>
               <label className={labelCls}>Procedimiento de evacuación</label>
-              <textarea className={inputCls} rows={3} value={cab.evacuacion_procedimiento} disabled={!canWrite}
-                onChange={e => setCabField('evacuacion_procedimiento', e.target.value)} placeholder="Paso a paso: quién avisa, por dónde se sale, quién controla, etc." />
+              <VoiceTextarea className={inputCls} rows={3} value={cab.evacuacion_procedimiento} disabled={!canWrite}
+                onValueChange={(v) => setCabField('evacuacion_procedimiento', v)} placeholder="Paso a paso: quién avisa, por dónde se sale, quién controla, etc." />
             </div>
             <div>
               <label className={labelCls}>Punto de reunión</label>
-              <textarea className={inputCls} rows={2} value={cab.punto_reunion_descripcion} disabled={!canWrite}
-                onChange={e => setCabField('punto_reunion_descripcion', e.target.value)} placeholder="Lugar seguro afuera donde se concentra la gente tras evacuar." />
+              <VoiceTextarea className={inputCls} rows={2} value={cab.punto_reunion_descripcion} disabled={!canWrite}
+                onValueChange={(v) => setCabField('punto_reunion_descripcion', v)} placeholder="Lugar seguro afuera donde se concentra la gente tras evacuar." />
             </div>
             <DocsSection titulo="Imágenes del punto de reunión" ayuda="Fotos del lugar seguro de encuentro." tipoCodigo="PUNTO_REUNION_IMG" docs={docsDeTipo('PUNTO_REUNION_IMG')} canWrite={canWrite} getUrl={getUrl} onSubir={handleSubirDoc} onEliminar={handleEliminarDoc} />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className={labelCls}>Puesta a resguardo</label>
-                <textarea className={inputCls} rows={2} value={cab.puesta_a_resguardo} disabled={!canWrite}
-                  onChange={e => setCabField('puesta_a_resguardo', e.target.value)} placeholder="Si no se puede evacuar, dónde y cómo resguardarse." />
+                <VoiceTextarea className={inputCls} rows={2} value={cab.puesta_a_resguardo} disabled={!canWrite}
+                  onValueChange={(v) => setCabField('puesta_a_resguardo', v)} placeholder="Si no se puede evacuar, dónde y cómo resguardarse." />
               </div>
               <div>
                 <label className={labelCls}>Enclavamientos</label>
-                <textarea className={inputCls} rows={2} value={cab.enclavamientos} disabled={!canWrite}
-                  onChange={e => setCabField('enclavamientos', e.target.value)} placeholder="Cortes automáticos de gas/electricidad, etc." />
+                <VoiceTextarea className={inputCls} rows={2} value={cab.enclavamientos} disabled={!canWrite}
+                  onValueChange={(v) => setCabField('enclavamientos', v)} placeholder="Cortes automáticos de gas/electricidad, etc." />
               </div>
             </div>
             <DocsSection titulo="Croquis de evacuación" ayuda="A3 color, mínimo 2 por planta, con recorridos y salidas marcadas." tipoCodigo="CROQUIS_EVACUACION" docs={docsDeTipo('CROQUIS_EVACUACION')} canWrite={canWrite} getUrl={getUrl} onSubir={handleSubirDoc} onEliminar={handleEliminarDoc} />
@@ -1586,8 +1587,8 @@ export function PresentacionAutoproteccionEjecutorModal({
             )}
             <div>
               <label className={labelCls}>Medidas supletorias</label>
-              <textarea className={inputCls} rows={2} value={cab.medidas_supletorias} disabled={!canWrite}
-                onChange={e => setCabField('medidas_supletorias', e.target.value)} placeholder="Medidas adicionales cuando falta personal o recursos." />
+              <VoiceTextarea className={inputCls} rows={2} value={cab.medidas_supletorias} disabled={!canWrite}
+                onValueChange={(v) => setCabField('medidas_supletorias', v)} placeholder="Medidas adicionales cuando falta personal o recursos." />
             </div>
             <DocsSection titulo="Planilla de capacitación" ayuda="Constancia de capacitación del personal en emergencias." tipoCodigo="PLANILLA_CAPACITACION" docs={docsDeTipo('PLANILLA_CAPACITACION')} canWrite={canWrite} getUrl={getUrl} onSubir={handleSubirDoc} onEliminar={handleEliminarDoc} />
           </div>
@@ -1604,23 +1605,23 @@ export function PresentacionAutoproteccionEjecutorModal({
             </Explica>
             <div>
               <label className={labelCls}>Riesgos del entorno</label>
-              <textarea className={inputCls} rows={2} value={cab.g3_riesgos_entorno} disabled={!canWrite}
-                onChange={e => setCabField('g3_riesgos_entorno', e.target.value)} placeholder="Estación de servicio linderan, depósito de gas cercano, etc." />
+              <VoiceTextarea className={inputCls} rows={2} value={cab.g3_riesgos_entorno} disabled={!canWrite}
+                onValueChange={(v) => setCabField('g3_riesgos_entorno', v)} placeholder="Estación de servicio linderan, depósito de gas cercano, etc." />
             </div>
             <div>
               <label className={labelCls}>Riesgos de los procesos</label>
-              <textarea className={inputCls} rows={2} value={cab.g3_riesgos_procesos} disabled={!canWrite}
-                onChange={e => setCabField('g3_riesgos_procesos', e.target.value)} placeholder="Riesgos propios de la actividad: soldadura, hornos, químicos…" />
+              <VoiceTextarea className={inputCls} rows={2} value={cab.g3_riesgos_procesos} disabled={!canWrite}
+                onValueChange={(v) => setCabField('g3_riesgos_procesos', v)} placeholder="Riesgos propios de la actividad: soldadura, hornos, químicos…" />
             </div>
             <div>
               <label className={labelCls}>Procedimientos de respuesta</label>
-              <textarea className={inputCls} rows={3} value={cab.g3_procedimientos_respuesta} disabled={!canWrite}
-                onChange={e => setCabField('g3_procedimientos_respuesta', e.target.value)} placeholder="Cómo se actúa ante cada riesgo identificado." />
+              <VoiceTextarea className={inputCls} rows={3} value={cab.g3_procedimientos_respuesta} disabled={!canWrite}
+                onValueChange={(v) => setCabField('g3_procedimientos_respuesta', v)} placeholder="Cómo se actúa ante cada riesgo identificado." />
             </div>
             <div>
               <label className={labelCls}>Procedimiento de alarma</label>
-              <textarea className={inputCls} rows={2} value={cab.g3_procedimiento_alarma} disabled={!canWrite}
-                onChange={e => setCabField('g3_procedimiento_alarma', e.target.value)} placeholder="Quién detecta, cómo se escala el aviso, a quién se notifica." />
+              <VoiceTextarea className={inputCls} rows={2} value={cab.g3_procedimiento_alarma} disabled={!canWrite}
+                onValueChange={(v) => setCabField('g3_procedimiento_alarma', v)} placeholder="Quién detecta, cómo se escala el aviso, a quién se notifica." />
             </div>
             {requisitos.includes('simulacion_evacuacion') && (
               <DocsSection titulo="Simulación de evacuación" ayuda="Estudio profesional del tiempo de evacuación (requerido para este uso)." tipoCodigo="SIMULACION_EVACUACION" docs={docsDeTipo('SIMULACION_EVACUACION')} canWrite={canWrite} getUrl={getUrl} onSubir={handleSubirDoc} onEliminar={handleEliminarDoc} />

@@ -3,6 +3,7 @@
 import { useState, useEffect, useActionState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
+import { VoiceTextarea } from '@/components/ui/voice-textarea'
 import { addGestionToEstablecimiento } from '@/lib/actions/gestion-establecimiento'
 import { getGestionesAplicables } from '@/lib/actions/aplicabilidad'
 import { getGestionesPresentacionAplicables } from '@/lib/actions/aplicabilidad-normativa'
@@ -320,12 +321,12 @@ function ObservacionForm({
               : <><Sparkles size={13} aria-hidden="true" /> Redactar con IA</>}
           </button>
         </div>
-        <textarea
+        <VoiceTextarea
           name="descripcion"
           required
           rows={2}
           value={descripcion}
-          onChange={e => setDescripcion(e.target.value)}
+          onValueChange={setDescripcion}
           placeholder="Escribí tus notas crudas y tocá «Redactar con IA», o redactá la observación a mano."
           className="w-full border border-border-default rounded px-2 py-1.5 text-xs resize-none"
         />

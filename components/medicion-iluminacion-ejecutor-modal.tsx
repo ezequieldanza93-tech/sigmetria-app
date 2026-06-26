@@ -33,9 +33,11 @@ import { useSignedUrls } from '@/lib/storage/sign-client'
 import { ProtocoloAdjuntosControl } from '@/components/protocolo-adjuntos-control'
 import type { AdjuntoProtocoloItem } from '@/lib/actions/protocolo-adjuntos'
 import { pickClasificacionDefault } from '@/lib/medicion/clasificacion-default'
+import { todayISO, nowHHMM } from '@/lib/utils'
 import type { CertificadoCalibracion } from '@/lib/types'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
+import { VoiceTextarea } from '@/components/ui/voice-textarea'
 import { FirmaCanvas } from '@/components/firmas/firma-canvas'
 import { PersonaFirmanteSelector } from '@/components/persona-firmante-selector'
 import {
@@ -367,8 +369,8 @@ export function MedicionIluminacionEjecutorModal({
   // metodologiaSelector: opción elegida en el <select> (una de METODOLOGIA_OPCIONES o 'Otro').
   // `metodologia` guarda el valor final (texto) que se envía al server action y al PDF.
   const [metodologiaSelector, setMetodologiaSelector] = useState('')
-  const [fechaMedicion, setFechaMedicion] = useState(rgFechaPlanificada || new Date().toISOString().slice(0, 10))
-  const [horaInicio, setHoraInicio] = useState('')
+  const [fechaMedicion, setFechaMedicion] = useState(todayISO())
+  const [horaInicio, setHoraInicio] = useState(nowHHMM())
   const [horaFin, setHoraFin] = useState('')
   const [alturaCriterio, setAlturaCriterio] = useState<AlturaCriterio>('piso')
   const [condiciones, setCondiciones] = useState<CondicionesAtmosfericas>({
@@ -1148,7 +1150,7 @@ export function MedicionIluminacionEjecutorModal({
 
   return (
     <Modal open title="Protocolo de Medición de Iluminación" onClose={onClose} size="full">
-      <div className="space-y-4 max-h-[86vh] overflow-y-auto pr-1">
+      <div className="space-y-4 max-md:max-h-none md:max-h-[86vh] overflow-y-auto pr-1">
         {/* ── Gamificación: anillo de progreso sticky ──────────────── */}
         <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 bg-surface-base/90 backdrop-blur-md border-b border-border-subtle">
           <div className="flex items-center gap-4">
@@ -1369,7 +1371,7 @@ export function MedicionIluminacionEjecutorModal({
               </div>
               <div>
                 <label className={labelCls}>Observaciones generales</label>
-                <textarea className={`${inputCls} resize-none`} rows={2} value={observacionesGenerales} onChange={e => setObservacionesGenerales(e.target.value)} placeholder="Observaciones generales del protocolo…" />
+                <VoiceTextarea className={`${inputCls} resize-none`} rows={2} value={observacionesGenerales} onValueChange={setObservacionesGenerales} placeholder="Observaciones generales del protocolo…" />
               </div>
             </section>
           </div>
@@ -1680,7 +1682,7 @@ export function MedicionIluminacionEjecutorModal({
 
                 <div>
                   <label className={labelCls}>Observaciones del punto</label>
-                  <textarea className={`${inputCls} resize-none`} rows={2} value={punto.observaciones} onChange={e => updatePunto(punto.key, { observaciones: e.target.value })} placeholder="Notas de este punto de muestreo…" />
+                  <VoiceTextarea className={`${inputCls} resize-none`} rows={2} value={punto.observaciones} onValueChange={(v) => updatePunto(punto.key, { observaciones: v })} placeholder="Notas de este punto de muestreo…" />
                 </div>
               </div>
             </div>
@@ -1717,11 +1719,11 @@ export function MedicionIluminacionEjecutorModal({
 
             <div>
               <label className={labelCls}>Conclusiones</label>
-              <textarea className={`${inputCls} resize-y`} rows={5} value={conclusiones} onChange={e => setConclusiones(e.target.value)} placeholder="Conclusiones del relevamiento de iluminación…" />
+              <VoiceTextarea className={`${inputCls} resize-y`} rows={5} value={conclusiones} onValueChange={setConclusiones} placeholder="Conclusiones del relevamiento de iluminación…" />
             </div>
             <div>
               <label className={labelCls}>Recomendaciones</label>
-              <textarea className={`${inputCls} resize-y`} rows={5} value={recomendaciones} onChange={e => setRecomendaciones(e.target.value)} placeholder="Recomendaciones y acciones de mejora propuestas…" />
+              <VoiceTextarea className={`${inputCls} resize-y`} rows={5} value={recomendaciones} onValueChange={setRecomendaciones} placeholder="Recomendaciones y acciones de mejora propuestas…" />
             </div>
           </div>
         )}
@@ -1766,9 +1768,9 @@ export function MedicionIluminacionEjecutorModal({
                   <div key={obs.key} className="border border-border-subtle rounded-lg p-3 space-y-2 bg-surface-elevated/30">
                     <div className="flex items-start gap-2">
                       <span className="text-xs text-text-tertiary mt-2 w-4 shrink-0">{idx + 1}.</span>
-                      <textarea
+                      <VoiceTextarea
                         value={obs.descripcion}
-                        onChange={e => updateObs(obs.key, 'descripcion', e.target.value)}
+                        onValueChange={(v) => updateObs(obs.key, 'descripcion', v)}
                         placeholder="Descripción de la observación…"
                         rows={2}
                         className="flex-1 border border-border-default rounded-lg px-3 py-1.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sig-500"

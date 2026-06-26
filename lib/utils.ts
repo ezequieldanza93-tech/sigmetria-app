@@ -59,3 +59,23 @@ export function formatHours(hours: number | null | undefined): string {
   if (hours === null || hours === undefined) return '—'
   return `${hours}h`
 }
+
+/**
+ * Fecha de HOY en formato `YYYY-MM-DD` según la zona horaria LOCAL del dispositivo
+ * (no UTC). Importante para defaults de formularios: con `toISOString()` (UTC), de
+ * noche en Argentina (UTC-3) devolvería el día siguiente. Acá usamos la fecha local.
+ */
+export function todayISO(): string {
+  const d = new Date()
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+  return local.toISOString().slice(0, 10)
+}
+
+/**
+ * Hora actual LOCAL en formato `HH:MM` (24h), lista para un `<input type="time">`.
+ * Default de "hora de inicio" al abrir un formulario de ejecución.
+ */
+export function nowHHMM(): string {
+  const d = new Date()
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}

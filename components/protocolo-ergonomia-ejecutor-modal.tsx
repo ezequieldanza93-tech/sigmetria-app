@@ -16,6 +16,8 @@ import type {
 } from '@/lib/types'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
+import { VoiceTextarea } from '@/components/ui/voice-textarea'
+import { todayISO } from '@/lib/utils'
 import { PersonaFirmanteSelector, type PersonaFirmanteValue } from '@/components/persona-firmante-selector'
 import { ProtocoloAdjuntosControl } from '@/components/protocolo-adjuntos-control'
 import { PersonaSelectorConAlta, type PersonaSeleccionada } from '@/components/persona-selector-con-alta'
@@ -361,7 +363,7 @@ export function ProtocoloErgonomiaEjecutorModal({
   const [nombreTrabajadores, setNombreTrabajadores] = useState('')
   const [trabajadorPersonaId, setTrabajadorPersonaId] = useState<string | null>(null)
   const [manifestacionTemprana, setManifestacionTemprana] = useState<boolean | null>(null)
-  const [fechaEvaluacion, setFechaEvaluacion] = useState(new Date().toISOString().slice(0, 10))
+  const [fechaEvaluacion, setFechaEvaluacion] = useState(todayISO())
   const [firmante, setFirmante] = useState('')
   const [firmantePersonaId, setFirmantePersonaId] = useState<string | null>(null)
   const [observacionesGlobales, setObservacionesGlobales] = useState('')
@@ -995,11 +997,11 @@ export function ProtocoloErgonomiaEjecutorModal({
           {/* Observaciones generales */}
           <div>
             <label className="text-xs font-medium text-text-secondary block mb-1">Observaciones generales (opcional)</label>
-            <textarea
+            <VoiceTextarea
               className="w-full rounded-lg border border-border-default px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-400 resize-none"
               rows={2}
               value={observacionesGlobales}
-              onChange={e => setObservacionesGlobales(e.target.value)}
+              onValueChange={setObservacionesGlobales}
               placeholder="Observaciones generales del protocolo..."
             />
           </div>
@@ -1263,13 +1265,13 @@ export function ProtocoloErgonomiaEjecutorModal({
                 {/* Observaciones */}
                 <div>
                   <label className="text-xs font-medium text-text-secondary block mb-1">Observaciones (opcional)</label>
-                  <textarea
+                  <VoiceTextarea
                     className="w-full rounded-lg border border-border-default px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-400 resize-none"
                     rows={2}
                     value={currentEval.observaciones}
-                    onChange={e => {
+                    onValueChange={(v) => {
                       setEvalFactores(prev => prev.map((ef, i) =>
-                        i === evalIdx ? { ...ef, observaciones: e.target.value } : ef
+                        i === evalIdx ? { ...ef, observaciones: v } : ef
                       ))
                     }}
                     placeholder="Notas adicionales sobre este factor..."
@@ -1558,17 +1560,17 @@ export function ProtocoloErgonomiaEjecutorModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-border-default">
             <div>
               <label className="text-xs font-medium text-text-secondary block mb-1">Conclusiones</label>
-              <textarea
+              <VoiceTextarea
                 className="w-full rounded-lg border border-border-default px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-400 resize-none"
-                rows={3} value={conclusiones} onChange={e => setConclusiones(e.target.value)}
+                rows={3} value={conclusiones} onValueChange={setConclusiones}
                 placeholder="Conclusiones generales del protocolo..."
               />
             </div>
             <div>
               <label className="text-xs font-medium text-text-secondary block mb-1">Recomendaciones</label>
-              <textarea
+              <VoiceTextarea
                 className="w-full rounded-lg border border-border-default px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-400 resize-none"
-                rows={3} value={recomendaciones} onChange={e => setRecomendaciones(e.target.value)}
+                rows={3} value={recomendaciones} onValueChange={setRecomendaciones}
                 placeholder="Recomendaciones para reducir el riesgo..."
               />
             </div>
