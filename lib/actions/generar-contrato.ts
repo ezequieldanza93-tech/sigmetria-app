@@ -135,7 +135,7 @@ export async function getDatosContrato(
       art_numero_contrato,
       actividades_economicas ( codigo, nombre ),
       localidades ( nombre, provincia ),
-      organizaciones_externas ( nombre )
+      organizaciones_externas!empresas_art_id_fkey ( nombre )
     `)
     .eq('id', empresaId)
     .eq('consultora_id', acc.consultoraId)
