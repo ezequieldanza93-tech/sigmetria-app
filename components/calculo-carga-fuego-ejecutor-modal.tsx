@@ -27,6 +27,7 @@ import { firmarProtocolo } from '@/lib/actions/firmar-protocolo'
 import { pickClasificacionDefault } from '@/lib/medicion/clasificacion-default'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
+import { FotoObservacionInput } from '@/components/ui/foto-observacion-input'
 import { VoiceTextarea } from '@/components/ui/voice-textarea'
 import { FirmaCanvas } from '@/components/firmas/firma-canvas'
 import { PersonaFirmanteSelector } from '@/components/persona-firmante-selector'
@@ -1068,31 +1069,31 @@ export function CalculoCargaFuegoEjecutorModal({
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
                     <label className={labelCls}>Situación</label>
-                    <textarea
+                    <VoiceTextarea
                       className={`${inputCls} resize-none`}
                       rows={3}
                       value={sectorActivo.condicionSituacion}
-                      onChange={e => updateSectorActivo({ condicionSituacion: e.target.value })}
+                      onValueChange={v => updateSectorActivo({ condicionSituacion: v })}
                       placeholder="Condiciones de situación relevadas…"
                     />
                   </div>
                   <div>
                     <label className={labelCls}>Construcción</label>
-                    <textarea
+                    <VoiceTextarea
                       className={`${inputCls} resize-none`}
                       rows={3}
                       value={sectorActivo.condicionConstruccion}
-                      onChange={e => updateSectorActivo({ condicionConstruccion: e.target.value })}
+                      onValueChange={v => updateSectorActivo({ condicionConstruccion: v })}
                       placeholder="Condiciones de construcción relevadas…"
                     />
                   </div>
                   <div>
                     <label className={labelCls}>Extinción</label>
-                    <textarea
+                    <VoiceTextarea
                       className={`${inputCls} resize-none`}
                       rows={3}
                       value={sectorActivo.condicionExtincion}
-                      onChange={e => updateSectorActivo({ condicionExtincion: e.target.value })}
+                      onValueChange={v => updateSectorActivo({ condicionExtincion: v })}
                       placeholder="Condiciones de extinción relevadas…"
                     />
                   </div>
@@ -1476,36 +1477,12 @@ export function CalculoCargaFuegoEjecutorModal({
                       </div>
                     </div>
 
-                    {/* Foto de la observación (adjuntar / tomar, con preview) */}
+                    {/* Foto de la observación: una sola, editable con herramientas */}
                     <div className="pl-6">
-                      {!obs.foto_preview ? (
-                        <label className="inline-flex items-center gap-1.5 text-xs text-text-tertiary hover:text-sig-600 cursor-pointer transition-colors">
-                          <Camera size={13} />
-                          Adjuntar / sacar foto
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={e => {
-                              const f = e.target.files?.[0]
-                              if (!f) return
-                              updateObsFoto(obs.key, f)
-                            }}
-                          />
-                        </label>
-                      ) : (
-                        <div className="flex items-center gap-3">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={obs.foto_preview} alt="Foto observación" className="w-14 h-14 object-cover rounded-lg border border-border-subtle" />
-                          <button
-                            type="button"
-                            onClick={() => updateObsFoto(obs.key, null)}
-                            className="text-xs text-red-400 hover:text-danger"
-                          >
-                            Eliminar foto
-                          </button>
-                        </div>
-                      )}
+                      <FotoObservacionInput
+                        value={obs.foto_file ?? null}
+                        onChange={(f) => updateObsFoto(obs.key, f)}
+                      />
                     </div>
                   </div>
                 ))}

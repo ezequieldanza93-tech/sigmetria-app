@@ -7,6 +7,7 @@ import { Select } from '@/components/ui/select'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { FileUploadInput } from '@/components/ui/file-upload-input'
 import { DireccionAutocomplete } from '@/components/ui/direccion-autocomplete'
+import { VoiceTextarea } from '@/components/ui/voice-textarea'
 import { createClient } from '@/lib/supabase/client'
 import { createPrivateArt } from '@/lib/actions/empresa'
 import { publicAssetUrl } from '@/lib/storage/asset-url'
@@ -347,11 +348,11 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
 
       <div>
         <label htmlFor="empresa-informacion-general" className="text-sm font-medium text-text-secondary block mb-1">Información general</label>
-        <textarea
+        <VoiceTextarea
           id="empresa-informacion-general"
           name="informacion_general"
           value={form.informacion_general}
-          onChange={set('informacion_general')}
+          onValueChange={v => setForm(f => ({ ...f, informacion_general: v }))}
           rows={3}
           className="w-full border border-border-default rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sig-500 focus:border-transparent resize-none"
           placeholder="Descripción, notas o información adicional de la empresa…"

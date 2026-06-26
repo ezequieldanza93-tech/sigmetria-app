@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Plus, Trash2, Loader2 } from 'lucide-react'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
+import { VoiceTextarea } from '@/components/ui/voice-textarea'
 import { createClient } from '@/lib/supabase/client'
 import { registrarEntregaEpp } from '@/lib/actions/entrega-epp'
 
@@ -147,9 +148,9 @@ export function EntregaEppModal({ open, onClose, persona, onDone }: Props) {
 
         <div>
           <label className="text-sm font-medium text-text-secondary block mb-1">Observaciones (opcional)</label>
-          <textarea
+          <VoiceTextarea
             value={observaciones}
-            onChange={e => setObservaciones(e.target.value)}
+            onValueChange={setObservaciones}
             rows={2}
             placeholder="Notas de la entrega…"
             className="w-full border border-border-default rounded-lg px-3 py-2 text-sm resize-none"

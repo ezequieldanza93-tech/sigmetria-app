@@ -29,6 +29,7 @@ import { pickClasificacionDefault } from '@/lib/medicion/clasificacion-default'
 import { todayISO, nowHHMM } from '@/lib/utils'
 import type { CertificadoCalibracion } from '@/lib/types'
 import { Modal } from '@/components/ui/modal'
+import { FotoObservacionInput } from '@/components/ui/foto-observacion-input'
 import { VoiceTextarea } from '@/components/ui/voice-textarea'
 import { Button } from '@/components/ui/button'
 import { PersonaFirmanteSelector } from '@/components/persona-firmante-selector'
@@ -1754,19 +1755,10 @@ export function MedicionCargaTermicaEjecutorModal({
                       </div>
                     </div>
                     <div className="pl-6">
-                      {!obs.foto_preview ? (
-                        <label className="inline-flex items-center gap-1.5 text-xs text-text-tertiary hover:text-sig-600 cursor-pointer transition-colors">
-                          <Camera size={13} />
-                          Adjuntar / sacar foto
-                          <input type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (!f) return; updateObsFoto(obs.key, f) }} />
-                        </label>
-                      ) : (
-                        <div className="flex items-center gap-3">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={obs.foto_preview} alt="Foto observación" className="w-14 h-14 object-cover rounded-lg border border-border-subtle" />
-                          <button type="button" onClick={() => updateObsFoto(obs.key, null)} className="text-xs text-red-400 hover:text-danger">Eliminar foto</button>
-                        </div>
-                      )}
+                      <FotoObservacionInput
+                        value={obs.foto_file ?? null}
+                        onChange={(f) => updateObsFoto(obs.key, f)}
+                      />
                     </div>
                   </div>
                 ))}
