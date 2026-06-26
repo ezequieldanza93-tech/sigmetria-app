@@ -3,6 +3,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { todayISO, nowHHMM } from '@/lib/utils'
+import { useDiasLaborables } from '@/lib/queries/agenda'
+import { calcularFechaSubsanacion } from '@/lib/utils/fecha-subsanacion'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { VoiceTextarea } from '@/components/ui/voice-textarea'
 import { useGeoCaptura } from '@/lib/hooks/use-geo-captura'
@@ -256,6 +258,7 @@ export function MedicionPatEjecutorModal({
   const [tomaActiva, setTomaActiva] = useState(0)
 
   // ── Hoja 3: observaciones de seguimiento ────────────────────────────
+  const { data: diasLaborables = [] } = useDiasLaborables(establecimientoId)
   const [observacionesSeguimiento, setObservacionesSeguimiento] = useState<ObsDraft[]>([])
   const [categoriasObs, setCategoriasObs] = useState<CategoriaObs[]>([])
   const [clasificacionesObs, setClasificacionesObs] = useState<{ id: string; nombre: string }[]>([])
@@ -479,6 +482,18 @@ export function MedicionPatEjecutorModal({
 
   function updateObs(key: number, field: keyof Omit<ObsDraft, 'key' | 'foto_preview' | 'foto_file'>, value: string) {
     setObservacionesSeguimiento(prev => prev.map(o => o.key === key ? { ...o, [field]: value } : o))
+  }
+
+  // Al elegir/cambiar la categoría, autocompletamos la fecha de subsanación según
+  // la severidad (nivel) y los días laborables del establecimiento. Queda EDITABLE.
+  function updateObsCategoria(key: number, categoriaId: string) {
+    const nivel = categoriasObs.find(c => c.id === categoriaId)?.nivel ?? null
+    const sugerida = calcularFechaSubsanacion(nivel, todayISO(), diasLaborables)
+    setObservacionesSeguimiento(prev => prev.map(o =>
+      o.key === key
+        ? { ...o, categoria_id: categoriaId, ...(sugerida ? { fecha_subsanacion: sugerida } : {}) }
+        : o,
+    ))
   }
 
   function updateObsFoto(key: number, file: File | null) {
@@ -1272,7 +1287,7 @@ export function MedicionPatEjecutorModal({
                         </label>
                         <select
                           value={obs.categoria_id}
-                          onChange={e => updateObs(obs.key, 'categoria_id', e.target.value)}
+                          onChange={e => updateObsCategoria(obs.key, e.target.value)}
                           className="w-full border border-border-default rounded-lg px-2 py-1.5 text-xs bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500"
                           style={obs.categoria_id ? { backgroundColor: categoriasObs.find(c => c.id === obs.categoria_id)?.color, color: '#000' } : {}}
                         >
@@ -1317,6 +1332,9 @@ export function MedicionPatEjecutorModal({
                           onChange={e => updateObs(obs.key, 'fecha_subsanacion', e.target.value)}
                           className="w-full border border-border-default rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-sig-500"
                         />
+                        {obs.categoria_id && obs.fecha_subsanacion && (
+                          <p className="text-[10px] text-text-tertiary mt-0.5">Sugerida por severidad — ajustala si hace falta.</p>
+                        )}
                       </div>
                     </div>
 

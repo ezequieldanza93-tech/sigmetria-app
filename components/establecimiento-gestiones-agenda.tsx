@@ -5,7 +5,9 @@ import { useQueryClient, useQuery } from '@tanstack/react-query'
 
 import { createClient } from '@/lib/supabase/client'
 import { useSignedUrls, signBucketPaths } from '@/lib/storage/sign-client'
-import { useCanWrite, useGestionesEstablecimiento, useRegistrosGestion, useCatalogo } from '@/lib/queries/agenda'
+import { useCanWrite, useGestionesEstablecimiento, useRegistrosGestion, useCatalogo, useDiasLaborables } from '@/lib/queries/agenda'
+import { calcularFechaSubsanacion } from '@/lib/utils/fecha-subsanacion'
+import { todayISO } from '@/lib/utils'
 import { esSapAplicable } from '@/lib/actions/aplicabilidad-normativa'
 import { calcularEstadoGestion } from '@/lib/types'
 import type { EstadoGestion, Gestion, CategoriaGestion, GrupoGestion, RegistroGestion, Riesgo, ActionResult } from '@/lib/types'
@@ -1347,6 +1349,9 @@ function EjecucionModal({
   const [clasificaciones, setClasificaciones] = useState<{ id: string; nombre: string }[]>([])
   const [categorias, setCategorias] = useState<CategoriaObs[]>([])
   const [observaciones, setObservaciones] = useState<ObsDraft[]>([])
+  // Días laborables del establecimiento (0=dom..6=sáb), para sugerir la fecha de
+  // subsanación según la severidad de la categoría. Vacío → el helper cae a L-V.
+  const { data: diasLaborables = [] } = useDiasLaborables(establecimientoId)
   const [autoDownload, setAutoDownload] = useState(true)
   const [showFirmaModal, setShowFirmaModal] = useState(false)
   const obsKeyRef = useRef(0)
@@ -1411,6 +1416,19 @@ function EjecucionModal({
 
   function updateObs(key: number, field: keyof Omit<ObsDraft, 'key' | 'foto'>, value: string) {
     setObservaciones(prev => prev.map(o => o.key === key ? { ...o, [field]: value } : o))
+  }
+
+  // Al elegir/cambiar la categoría, autocompletamos la fecha de subsanación según
+  // la severidad (nivel) y los días laborables del establecimiento. Queda EDITABLE:
+  // es una sugerencia. Si el nivel es desconocido, no tocamos la fecha.
+  function updateObsCategoria(key: number, categoriaId: string) {
+    const nivel = categorias.find(c => c.id === categoriaId)?.nivel ?? null
+    const sugerida = calcularFechaSubsanacion(nivel, todayISO(), diasLaborables)
+    setObservaciones(prev => prev.map(o =>
+      o.key === key
+        ? { ...o, categoria_id: categoriaId, ...(sugerida ? { fecha_subsanacion: sugerida } : {}) }
+        : o,
+    ))
   }
 
   function updateObsFoto(key: number, file: File | null) {
@@ -1674,7 +1692,7 @@ function EjecucionModal({
                       <select
                         required
                         value={obs.categoria_id}
-                        onChange={e => updateObs(obs.key, 'categoria_id', e.target.value)}
+                        onChange={e => updateObsCategoria(obs.key, e.target.value)}
                         className="w-full border border-border-default rounded-lg px-2 py-1.5 text-xs bg-surface-base focus:outline-none focus:ring-2 focus:ring-sig-500"
                         style={obs.categoria_id ? { backgroundColor: categorias.find(c => c.id === obs.categoria_id)?.color, color: '#000' } : {}}
                       >
@@ -1714,6 +1732,9 @@ function EjecucionModal({
                         onChange={e => updateObs(obs.key, 'fecha_subsanacion', e.target.value)}
                         className="w-full border border-border-default rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-sig-500"
                       />
+                      {obs.categoria_id && obs.fecha_subsanacion && (
+                        <p className="text-[10px] text-text-tertiary mt-0.5">Sugerida por severidad — ajustala si hace falta.</p>
+                      )}
                     </div>
                   </div>
                   {/* Foto de la observación */}

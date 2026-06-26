@@ -191,6 +191,30 @@ export function useMiPersona() {
   })
 }
 
+/**
+ * Días laborables del establecimiento como números de día de semana JS
+ * (0=domingo … 6=sábado), tal como los espera `calcularFechaSubsanacion`.
+ * Lee `establecimientos_horarios` (filas con activo=true). Si el establecimiento
+ * no tiene horario cargado, devuelve `[]` → el helper cae a L-V por defecto.
+ */
+export function useDiasLaborables(establecimientoId: string | undefined) {
+  return useQuery({
+    queryKey: ['dias-laborables', establecimientoId],
+    queryFn: async () => {
+      if (!establecimientoId) return [] as number[]
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('establecimientos_horarios')
+        .select('dia_semana')
+        .eq('establecimiento_id', establecimientoId)
+        .eq('activo', true)
+      return ((data ?? []) as { dia_semana: number }[]).map(d => d.dia_semana)
+    },
+    enabled: !!establecimientoId,
+    staleTime: 1000 * 60 * 10,
+  })
+}
+
 export function useObservacionesClasificaciones() {
   return useQuery({
     queryKey: ['observaciones-clasificaciones'],

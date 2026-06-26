@@ -10,6 +10,9 @@ import { getGestionesPresentacionAplicables } from '@/lib/actions/aplicabilidad-
 import { createRegistroGestion, ejecutarGestion } from '@/lib/actions/registro-gestion'
 import { createObservacionGestion, cerrarObservacion } from '@/lib/actions/observacion-gestion'
 import { sugerirObservacion } from '@/lib/actions/sugerir-observacion'
+import { calcularFechaSubsanacion } from '@/lib/utils/fecha-subsanacion'
+import { todayISO } from '@/lib/utils'
+import { useDiasLaborables } from '@/lib/queries/agenda'
 import { calcularEstadoGestion } from '@/lib/types'
 import { useOfflineSync } from '@/lib/hooks/use-offline-sync'
 import { enqueueMutation } from '@/lib/offline/queue'
@@ -179,8 +182,26 @@ function ObservacionForm({
   const [aiPending, setAiPending] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
   const formRef = useRef<HTMLFormElement>(null)
+  // Input de fecha límite (uncontrolled): seteamos su .value vía ref al sugerir,
+  // sin volverlo controlado, para no tocar el camino de submit por FormData.
+  const fechaRef = useRef<HTMLInputElement>(null)
+  const [fechaSugerida, setFechaSugerida] = useState(false)
+  // Días laborables del establecimiento (0=dom..6=sáb). Vacío → helper cae a L-V.
+  const { data: diasLaborables = [] } = useDiasLaborables(establecimientoId)
   const onSuccessRef = useRef(onSuccess)
   onSuccessRef.current = onSuccess
+
+  // Al elegir/cambiar la categoría, autocompletamos la fecha límite según la
+  // severidad (nivel) y los días laborables. Queda EDITABLE: es una sugerencia.
+  function handleCategoriaChange(id: string) {
+    setCategoriaId(id)
+    const nivel = categorias.find(c => c.id === id)?.nivel ?? null
+    const sugerida = calcularFechaSubsanacion(nivel, todayISO(), diasLaborables)
+    if (sugerida && fechaRef.current) {
+      fechaRef.current.value = sugerida
+      setFechaSugerida(true)
+    }
+  }
 
   useEffect(() => {
     createClient().from('observaciones_categorias').select('id, nombre, nivel').order('nivel').then(({ data }) => {
@@ -211,8 +232,9 @@ function ObservacionForm({
       }
       setDescripcion(res.data.borrador)
       // Sugerencia de categoría = pre-selección editable (solo si el id existe en el catálogo).
+      // Reusamos el handler para que también sugiera la fecha límite por severidad.
       if (res.data.categoriaId && categorias.some(c => c.id === res.data.categoriaId)) {
-        setCategoriaId(res.data.categoriaId)
+        handleCategoriaChange(res.data.categoriaId)
       }
     } catch {
       setAiError('No se pudo redactar con IA. Escribí la observación a mano.')
@@ -246,7 +268,7 @@ function ObservacionForm({
         const res = await createObservacionGestion(null, fd)
         if (!res.success) { setError(res.error); setPending(false); return }
         formRef.current?.reset()
-        setDescripcion(''); setCategoriaId(''); setAiError(null)
+        setDescripcion(''); setCategoriaId(''); setAiError(null); setFechaSugerida(false)
         onSuccessRef.current()
         return
       }
@@ -297,7 +319,7 @@ function ObservacionForm({
           name="categoria_id"
           required
           value={categoriaId}
-          onChange={e => setCategoriaId(e.target.value)}
+          onChange={e => handleCategoriaChange(e.target.value)}
           className="w-full border border-border-default rounded px-2 py-1.5 text-xs bg-surface-base"
         >
           <option value="">Seleccionar...</option>
@@ -336,7 +358,10 @@ function ObservacionForm({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <div>
           <label className="text-xs font-medium text-text-secondary block mb-1">Fecha límite *</label>
-          <input name="fecha_planificada" type="date" required className="w-full border border-border-default rounded px-2 py-1.5 text-xs" />
+          <input ref={fechaRef} name="fecha_planificada" type="date" required className="w-full border border-border-default rounded px-2 py-1.5 text-xs" />
+          {fechaSugerida && (
+            <p className="text-[11px] text-text-tertiary mt-0.5">Sugerida por severidad — ajustala si hace falta.</p>
+          )}
         </div>
         <div>
           <label className="text-xs font-medium text-text-secondary block mb-1">Responsable cierre</label>
