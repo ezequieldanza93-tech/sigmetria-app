@@ -13,16 +13,9 @@ import {
   Bot,
   Menu,
   Users,
-  Building2,
   Library,
-  Shield,
   ShieldCheck,
-  Package,
-  AlertTriangle,
-  ScrollText,
-  GraduationCap,
   BookOpen,
-  CheckCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useNavigationLevel } from '@/lib/hooks/use-navigation-level'
@@ -54,9 +47,12 @@ const TABS: NavTab[] = [
 ]
 
 // ─── Ítems del menú hamburguesa (☰), se despliega hacia arriba ────────
-// Ficha y Dashboard navegan (?section=); SIGIA y Planificar emiten acciones:
-//  · plan-gestion → resuelta por GestionLauncher (global).
-//  · open-sigia → manejada por el ChatWidget (abre el panel en cualquier nivel).
+// Exactamente 6 ítems de PRIMER NIVEL, sin sub-menús que se expandan inline:
+// cada uno NAVEGA a su sección/hub y el detalle se ve al ingresar (mejor UX en
+// móvil que desplegar decenas de opciones).
+//  · Librerías / Directorios → href absoluto (hubs con sus propias cards).
+//  · Ficha / Dashboard → ?section= del contexto actual.
+//  · SIGIA / Planificar → emiten acciones (ChatWidget / GestionLauncher globales).
 interface MenuItem {
   id: string
   label: string
@@ -68,6 +64,8 @@ interface MenuItem {
 }
 
 const MENU_ITEMS: MenuItem[] = [
+  { id: 'librerias', label: 'Librerías', icon: Library, href: '/dashboard/librerias' },
+  { id: 'directorios', label: 'Directorios', icon: Users, href: '/dashboard/directorio' },
   { id: 'ficha', label: 'Ficha', icon: FileText, section: 'ficha' },
   { id: 'dashboard', label: 'Dashboard', icon: BarChart3, section: 'dashboard' },
   { id: 'sigia', label: 'SIGIA', icon: Bot, action: 'open-sigia' },
@@ -77,13 +75,13 @@ const MENU_ITEMS: MenuItem[] = [
 // ─── Componente ──────────────────────────────────────────────────────
 
 interface ContextualBottomNavProps {
-  /** Muestra "Administrar Cursos" y "Compliance" en el grupo Librerías (gate full_access + superAdmin). */
+  /** @deprecated Ya no se usa acá: Cursos/Compliance viven dentro del hub de Librerías. Se mantiene para no romper el caller. */
   canManageCursos?: boolean
   /** Rol efectivo del usuario. Trabajadores ven solo Mis EPP + Mis Capacitaciones. */
   userRole?: string | null
 }
 
-export function ContextualBottomNav({ canManageCursos = false, userRole }: ContextualBottomNavProps) {
+export function ContextualBottomNav({ userRole }: ContextualBottomNavProps) {
   const { level, empresaId, establecimientoId } = useNavigationLevel()
   const { emit } = useShortcuts()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -231,77 +229,36 @@ export function ContextualBottomNav({ canManageCursos = false, userRole }: Conte
           {/* Menú desplegable hacia arriba desde la hamburguesa. */}
           {menuOpen && (
             <div className="absolute bottom-full right-1 mb-2 w-56 rounded-2xl border border-border-subtle bg-surface-base shadow-xl animate-in fade-in slide-in-from-bottom-2 duration-150 max-h-[70vh] overflow-y-auto">
-              {/* ── Directorio (arriba de todo) ── */}
-              <div className="px-4 pt-2.5 pb-1">
-                <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-text-tertiary">
-                  <Users size={11} aria-hidden="true" />
-                  Directorio
-                </span>
-              </div>
-              {[
-                { id: 'dir-hub', label: 'Directorio', icon: Users, href: '/dashboard/directorio' },
-                { id: 'dir-personas', label: 'Personas', icon: Users, href: '/dashboard/personas' },
-                { id: 'dir-organizaciones', label: 'Organizaciones externas', icon: Building2, href: '/dashboard/organizaciones-externas' },
-              ].map(({ id, label, icon: Icon, href }) => (
-                <Link
-                  key={id}
-                  href={href}
-                  onClick={() => setMenuOpen(false)}
-                  aria-label={label}
-                  className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-medium text-text-secondary hover:bg-brand-muted/30 hover:text-brand-primary active:bg-brand-muted/50 transition-colors border-t border-border-subtle/60"
-                >
-                  <Icon size={17} strokeWidth={1.75} className="shrink-0 text-text-tertiary" aria-hidden="true" />
-                  <span>{label}</span>
-                </Link>
-              ))}
-
-              {/* ── Librerías ── */}
-              <div className="border-t border-border-subtle px-4 pt-2.5 pb-1">
-                <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-text-tertiary">
-                  <Library size={11} aria-hidden="true" />
-                  Librerías
-                </span>
-              </div>
-              {[
-                { id: 'lib-hub', label: 'Librerías', icon: Library, href: '/dashboard/librerias' },
-                { id: 'lib-epp', label: 'Elementos de Protección (EPP)', icon: Shield, href: '/dashboard/productos?clase=epp' },
-                { id: 'lib-epc', label: 'Protección Colectiva (EPC)', icon: ShieldCheck, href: '/dashboard/productos?clase=epc' },
-                { id: 'lib-equipamiento', label: 'Equipamiento', icon: Package, href: '/dashboard/productos?clase=equipamiento' },
-                { id: 'lib-gestiones', label: 'Gestiones', icon: ClipboardList, href: '/dashboard/libreria-gestiones' },
-                { id: 'lib-iperc', label: 'IPERC', icon: AlertTriangle, href: '/dashboard/configuracion/iperc' },
-                { id: 'lib-normativa', label: 'Normativa Legal', icon: ScrollText, href: '/dashboard/configuracion/normativa-legal' },
-                { id: 'lib-docs-catalogo', label: 'Catálogo Documentos', icon: FileText, href: '/dashboard/configuracion/documentos-catalogo' },
-                { id: 'lib-cursos', label: 'Campus', icon: GraduationCap, href: '/dashboard/cursos' },
-                ...(canManageCursos
-                  ? [
-                      { id: 'lib-cursos-admin', label: 'Administrar Cursos', icon: BookOpen, href: '/dashboard/cursos/admin' },
-                      { id: 'lib-compliance', label: 'Compliance', icon: CheckCircle, href: '/dashboard/cursos/compliance' },
-                    ]
-                  : []),
-              ].map(({ id, label, icon: Icon, href }) => (
-                <Link
-                  key={id}
-                  href={href}
-                  onClick={() => setMenuOpen(false)}
-                  aria-label={label}
-                  className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-medium text-text-secondary hover:bg-brand-muted/30 hover:text-brand-primary active:bg-brand-muted/50 transition-colors border-t border-border-subtle/60"
-                >
-                  <Icon size={17} strokeWidth={1.75} className="shrink-0 text-text-tertiary" aria-hidden="true" />
-                  <span>{label}</span>
-                </Link>
-              ))}
-
-              {/* ── Ítems base (Ficha, Dashboard, SIGIA, Planificar) ── */}
-              {MENU_ITEMS.map(({ id, label, icon: Icon, action, section }) => {
+              {/* 6 ítems de primer nivel: cada uno NAVEGA a su sección/hub
+                  (no se expande inline; para ver el contenido se ingresa). */}
+              {MENU_ITEMS.map(({ id, label, icon: Icon, action, section, href }, i) => {
                 const rowClasses = cn(
                   'flex w-full items-center gap-3 px-4 py-3 text-sm font-medium',
                   'text-text-secondary hover:bg-brand-muted/30 hover:text-brand-primary',
-                  'active:bg-brand-muted/50 transition-colors border-t border-border-subtle',
+                  'active:bg-brand-muted/50 transition-colors',
+                  i > 0 && 'border-t border-border-subtle',
                 )
                 const iconEl = (
                   <Icon size={18} strokeWidth={1.75} className="shrink-0 text-text-tertiary" aria-hidden="true" />
                 )
 
+                // Librerías / Directorios → href absoluto (hubs).
+                if (href) {
+                  return (
+                    <Link
+                      key={id}
+                      href={href}
+                      onClick={() => setMenuOpen(false)}
+                      aria-label={label}
+                      className={rowClasses}
+                    >
+                      {iconEl}
+                      <span>{label}</span>
+                    </Link>
+                  )
+                }
+
+                // Ficha / Dashboard → ?section= del contexto actual.
                 if (section) {
                   return (
                     <Link
@@ -317,6 +274,7 @@ export function ContextualBottomNav({ canManageCursos = false, userRole }: Conte
                   )
                 }
 
+                // SIGIA / Planificar → emiten acción (no navegan).
                 return (
                   <button
                     key={id}
