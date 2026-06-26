@@ -1,0 +1,20 @@
+{
+  "//": "Type-check de PRODUCCION. Replica lo que chequea `next build` en Vercel:",
+  "//2": "solo el codigo que va al bundle, sin tests ni tooling. Lo usa el hook pre-push.",
+  "extends": "./tsconfig.json",
+  "exclude": [
+    "node_modules",
+    "supabase/functions",
+    "_preview",
+    "tests",
+    "test-results",
+    "evidencia-tmp",
+    "**/__tests__/**",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx",
+    "playwright.config.ts",
+    "vitest.config.ts"
+  ]
+}

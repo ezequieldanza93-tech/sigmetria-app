@@ -1,0 +1,37 @@
+#!/usr/bin/env sh
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Pre-push: replica el paso "Linting and checking validity of types" de Vercel
+#  ANTES de pushear. Si esto falla, el build de Vercel TAMBIEN iba a fallar.
+#  Mejor enterarte acá en 30s que perder un deploy y un rato de tu vida.
+# ─────────────────────────────────────────────────────────────────────────────
+
+echo ""
+echo "🔍 pre-push: chequeando lo mismo que Vercel antes de dejarte pushear..."
+echo ""
+
+# 1) ESLint — solo frena en reglas nivel 'error' (no-unused-vars, prefer-const).
+#    Los 'warning' (any, console, exhaustive-deps) NO frenan: son ruido.
+echo "→ [1/2] ESLint (next lint)"
+if ! npm run lint --silent; then
+  echo ""
+  echo "❌ ESLint encontró un ERROR. Vercel te iba a rebotar el build."
+  echo "   Arreglá el error de arriba y volvé a pushear."
+  echo "   (Tip: lo que dice 'Warning:' NO es esto — buscá la línea que dice 'Error:')"
+  exit 1
+fi
+
+# 2) TypeScript — chequeo de tipos SOLO del codigo que va a produccion
+#    (via tsconfig.build.json, que excluye tests/tooling — igual que Vercel).
+echo ""
+echo "→ [2/2] TypeScript (tsc -p tsconfig.build.json)"
+if ! npm run type-check:build --silent; then
+  echo ""
+  echo "❌ TypeScript encontró un error de tipos. Vercel te iba a rebotar el build."
+  echo "   Arreglá el error de arriba y volvé a pushear."
+  exit 1
+fi
+
+echo ""
+echo "✅ Todo limpio. Pusheando — el build de Vercel debería pasar."
+echo ""

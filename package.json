@@ -10,6 +10,7 @@
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
+    "type-check:build": "tsc --noEmit -p tsconfig.build.json",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
@@ -20,7 +21,8 @@
     "analyze": "ANALYZE=true next build",
     "security:audit": "npm audit --audit-level=high",
     "security:check": "node scripts/security-check.js",
-    "security:all": "npm run security:audit && npm run security:check"
+    "security:all": "npm run security:audit && npm run security:check",
+    "prepare": "husky"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.100.1",
@@ -81,6 +83,7 @@
     "autoprefixer": "^10.4.20",
     "eslint": "^9",
     "eslint-config-next": "15.5.19",
+    "husky": "^9.1.7",
     "jsdom": "^29.1.1",
     "postcss": "^8",
     "sharp": "^0.34.5",
