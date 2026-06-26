@@ -19,7 +19,7 @@
 
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
-import { LogOut, ShieldCheck, MessageSquare, Keyboard, BookMarked, KeyRound, User, Users, Trash2, Gift, CreditCard } from 'lucide-react'
+import { LogOut, ShieldCheck, MessageSquare, Keyboard, BookMarked, KeyRound, User, Users, Trash2, Gift, CreditCard, FileText, FileCheck } from 'lucide-react'
 import { SystemRole, UserRole, canManageUsers } from '@/lib/types'
 import { RoleSwitcher } from '@/components/layout/role-switcher'
 import { LanguageSwitcher } from '@/components/layout/language-switcher'
@@ -101,6 +101,12 @@ export function AvatarMenuContent({
               full_access_branch NO ve este ítem. El gate por plan lo aplican las páginas. */}
           {(canManageUsers(userRole, systemRole) || isSuperAdmin) && (
             <MenuLink href="/dashboard/finanzas" icon={CreditCard} label="Finanzas" />
+          )}
+          {(canManageUsers(userRole, systemRole) || isSuperAdmin) && (
+            <MenuLink href="/dashboard/finanzas/cotizaciones" icon={FileText} label="Presupuestos" />
+          )}
+          {(canManageUsers(userRole, systemRole) || isSuperAdmin) && (
+            <MenuLink href="/dashboard/finanzas/contratos" icon={FileCheck} label="Contratos" />
           )}
           <MenuLink href="/dashboard/configuracion/api-keys" icon={KeyRound} label="API Keys" />
           {(userRole === 'full_access_main' || isSuperAdmin) && (
