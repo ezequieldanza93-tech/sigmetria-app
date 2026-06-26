@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Plus,
   Pencil,
@@ -55,6 +55,11 @@ interface Props {
   locale: string
   /** Tasa de IVA por defecto (porcentaje, ej. 21) desde fin_config. */
   ivaTasa: number
+  /**
+   * Prefill desde la conversión de un presupuesto (Presupuestos → Facturar).
+   * Si viene, se abre el alta automáticamente con estos datos precargados.
+   */
+  prefill?: { empresaId?: string; concepto?: string; monto?: number }
 }
 
 // ─── Metadatos de estado (badges) ────────────────────────────────────────────
@@ -115,6 +120,10 @@ interface FormProps {
   comprobante: FinComprobante | null
   /** En alta: empresa preseleccionada (ej. desde el bloque de abonos pendientes). */
   empresaInicial?: string
+  /** En alta: concepto precargado (ej. desde la conversión de un presupuesto). */
+  conceptoInicial?: string
+  /** En alta: monto neto precargado (ej. desde la conversión de un presupuesto). */
+  montoNetoInicial?: number
   empresas: EmpresaLite[]
   /** Formas de pago disponibles para el select. */
   formasPago: FinFormaPago[]
@@ -129,6 +138,8 @@ interface FormProps {
 function ComprobanteForm({
   comprobante,
   empresaInicial,
+  conceptoInicial,
+  montoNetoInicial,
   empresas,
   formasPago,
   onFormaPagoCreada,
@@ -138,10 +149,10 @@ function ComprobanteForm({
   onSuccess,
 }: FormProps) {
   const [empresaId, setEmpresaId] = useState(comprobante?.empresa_id ?? empresaInicial ?? '')
-  const [concepto, setConcepto] = useState(comprobante?.concepto ?? '')
+  const [concepto, setConcepto] = useState(comprobante?.concepto ?? conceptoInicial ?? '')
   const [tipo, setTipo] = useState<FinTipoComprobante>(comprobante?.tipo ?? 'puntual')
   const [montoNeto, setMontoNeto] = useState<number | null>(
-    comprobante ? comprobante.monto_neto : null,
+    comprobante ? comprobante.monto_neto : montoNetoInicial ?? null,
   )
   // IVA editable: si hay comprobante usamos su valor; si es alta, lo dejamos
   // vacío para que el server lo calcule con la tasa de config.
@@ -511,6 +522,7 @@ export function FacturacionCliente({
   moneda,
   locale,
   ivaTasa,
+  prefill,
 }: Props) {
   const [comprobantes, setComprobantes] = useState<FinComprobante[]>(comprobantesIniciales)
   const [formasPago, setFormasPago] = useState<FinFormaPago[]>(formasPagoIniciales)
@@ -518,7 +530,22 @@ export function FacturacionCliente({
   const [editando, setEditando] = useState<FinComprobante | null>(null)
   /** En alta, empresa preseleccionada (desde el bloque de abonos pendientes). */
   const [empresaInicial, setEmpresaInicial] = useState('')
+  /** En alta, concepto/monto precargados (desde la conversión de un presupuesto). */
+  const [conceptoInicial, setConceptoInicial] = useState('')
+  const [montoInicial, setMontoInicial] = useState<number | undefined>(undefined)
   const [accionId, setAccionId] = useState<string | null>(null)
+
+  // Si llegamos desde la conversión de un presupuesto, abrimos el alta con los
+  // datos precargados (empresa + concepto + monto neto). Solo una vez al montar.
+  useEffect(() => {
+    if (!prefill) return
+    setEditando(null)
+    setEmpresaInicial(prefill.empresaId ?? '')
+    setConceptoInicial(prefill.concepto ?? '')
+    setMontoInicial(prefill.monto)
+    setShowModal(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Filtros (null = "Todos", sin filtrar).
   const [empresaSel, setEmpresaSel] = useState<Set<string> | null>(null)
@@ -676,12 +703,16 @@ export function FacturacionCliente({
   function abrirAlta(empresaPre?: string) {
     setEditando(null)
     setEmpresaInicial(empresaPre ?? '')
+    setConceptoInicial('')
+    setMontoInicial(undefined)
     setShowModal(true)
   }
 
   function abrirEdicion(c: FinComprobante) {
     setEditando(c)
     setEmpresaInicial('')
+    setConceptoInicial('')
+    setMontoInicial(undefined)
     setShowModal(true)
   }
 
@@ -948,14 +979,18 @@ export function FacturacionCliente({
           setShowModal(false)
           setEditando(null)
           setEmpresaInicial('')
+          setConceptoInicial('')
+          setMontoInicial(undefined)
         }}
         title={editando ? 'Editar comprobante' : 'Facturar a un cliente'}
       >
         {/* key fuerza remount del form al cambiar entre alta/edición → resetea estado. */}
         <ComprobanteForm
-          key={editando?.id ?? `nuevo-${empresaInicial}`}
+          key={editando?.id ?? `nuevo-${empresaInicial}-${conceptoInicial}-${montoInicial ?? ''}`}
           comprobante={editando}
           empresaInicial={empresaInicial}
+          conceptoInicial={conceptoInicial}
+          montoNetoInicial={montoInicial}
           empresas={empresas}
           formasPago={formasPago}
           onFormaPagoCreada={handleFormaPagoCreada}

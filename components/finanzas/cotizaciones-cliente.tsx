@@ -1,7 +1,8 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Plus, Pencil, Trash2, FileText } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Plus, Pencil, Trash2, FileText, Receipt, FileSignature } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { Input } from '@/components/ui/input'
@@ -20,6 +21,10 @@ import {
   type CotizacionInput,
 } from '@/lib/actions/finanzas-cotizaciones'
 import { crearFormaPago } from '@/lib/actions/finanzas-formas-pago'
+import {
+  getPrefillEmpresaDeCotizacion,
+  crearEmpresaDesdeCotizacion,
+} from '@/lib/actions/finanzas-conversion'
 import type {
   Cotizacion,
   CotizacionTipo,
@@ -557,11 +562,23 @@ export function CotizacionesCliente({
   moneda,
   locale,
 }: Props) {
+  const router = useRouter()
   const [cotizaciones, setCotizaciones] = useState<Cotizacion[]>(cotizacionesIniciales)
   const [formasPago, setFormasPago] = useState<FinFormaPago[]>(formasPagoIniciales)
   const [showModal, setShowModal] = useState(false)
   const [editando, setEditando] = useState<Cotizacion | null>(null)
   const [accionId, setAccionId] = useState<string | null>(null)
+  // Alta de empresa-cliente con confirmación (cuando la cotización apunta a un
+  // lead o prospecto manual). `destinoPendiente` recuerda adónde seguir luego.
+  const [empresaConfirm, setEmpresaConfirm] = useState<{
+    cot: Cotizacion
+    razonSocial: string
+    cuit: string
+    email: string
+    telefono: string
+  } | null>(null)
+  const [destinoPendiente, setDestinoPendiente] = useState<'factura' | 'contrato' | null>(null)
+  const [creandoEmpresa, setCreandoEmpresa] = useState(false)
   // Filtros de la lista (cliente-side; la página ya trae todas las cotizaciones).
   const [filtroEstados, setFiltroEstados] = useState<Set<CotizacionEstado>>(new Set())
   const [filtroCliente, setFiltroCliente] = useState('')
@@ -695,6 +712,70 @@ export function CotizacionesCliente({
       return
     }
     window.open(res.data.pdfUrl, '_blank')
+  }
+
+  // Navega al destino (facturación/contrato) con la empresa ya resuelta.
+  function irADestino(destino: 'factura' | 'contrato', empresaId: string, cot: Cotizacion) {
+    if (destino === 'factura') {
+      router.push(
+        `/dashboard/finanzas/facturacion?empresaId=${empresaId}` +
+          `&concepto=${encodeURIComponent(cot.concepto)}&monto=${cot.monto_total}`,
+      )
+    } else {
+      router.push(`/dashboard/finanzas/contratos?empresaId=${empresaId}&honorarios=${cot.monto_total}`)
+    }
+  }
+
+  // "Facturar" / "Generar contrato": resuelve la empresa-cliente destino. Si ya
+  // existe, navega directo; si no, abre el mini-form de alta con confirmación.
+  async function handleConvertir(cot: Cotizacion, destino: 'factura' | 'contrato') {
+    setAccionId(cot.id)
+    const res = await getPrefillEmpresaDeCotizacion(cot.id)
+    setAccionId(null)
+    if (!res.success) {
+      toast.error(res.error)
+      return
+    }
+    if (res.data.empresaId) {
+      irADestino(destino, res.data.empresaId, cot)
+      return
+    }
+    const prefill = res.data.prefill
+    setDestinoPendiente(destino)
+    setEmpresaConfirm({
+      cot,
+      razonSocial: prefill?.razonSocial ?? '',
+      cuit: prefill?.cuit ?? '',
+      email: prefill?.email ?? '',
+      telefono: prefill?.telefono ?? '',
+    })
+  }
+
+  // Confirma el alta de la empresa-cliente y continúa al destino pendiente.
+  async function handleConfirmarEmpresa() {
+    if (!empresaConfirm || !destinoPendiente) return
+    if (!empresaConfirm.razonSocial.trim()) {
+      toast.error('La razón social es obligatoria')
+      return
+    }
+    setCreandoEmpresa(true)
+    const res = await crearEmpresaDesdeCotizacion(empresaConfirm.cot.id, {
+      razonSocial: empresaConfirm.razonSocial,
+      cuit: empresaConfirm.cuit || null,
+      email: empresaConfirm.email || null,
+      telefono: empresaConfirm.telefono || null,
+    })
+    setCreandoEmpresa(false)
+    if (!res.success) {
+      toast.error(res.error)
+      return
+    }
+    const cot = empresaConfirm.cot
+    const destino = destinoPendiente
+    setEmpresaConfirm(null)
+    setDestinoPendiente(null)
+    toast.success('Empresa-cliente creada')
+    irADestino(destino, res.data.empresaId, cot)
   }
 
   function abrirAlta() {
@@ -846,6 +927,26 @@ export function CotizacionesCliente({
                         <div className="flex items-center justify-end gap-1">
                           <button
                             type="button"
+                            onClick={() => void handleConvertir(cot, 'factura')}
+                            disabled={ocupado}
+                            aria-label="Facturar este presupuesto"
+                            title="Facturar"
+                            className="rounded-lg p-1.5 text-text-tertiary transition-colors hover:bg-surface-base hover:text-green-600 disabled:opacity-50"
+                          >
+                            <Receipt size={15} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleConvertir(cot, 'contrato')}
+                            disabled={ocupado}
+                            aria-label="Generar contrato desde este presupuesto"
+                            title="Generar contrato"
+                            className="rounded-lg p-1.5 text-text-tertiary transition-colors hover:bg-surface-base hover:text-brand-primary disabled:opacity-50"
+                          >
+                            <FileSignature size={15} />
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => void handleGenerarPdf(cot)}
                             disabled={ocupado}
                             aria-label="Generar PDF del presupuesto"
@@ -918,6 +1019,88 @@ export function CotizacionesCliente({
           locale={locale}
           onSuccess={handleSuccess}
         />
+      </Modal>
+
+      {/* Modal de alta de empresa-cliente con confirmación (lead / prospecto manual) */}
+      <Modal
+        open={empresaConfirm !== null}
+        onClose={() => {
+          if (creandoEmpresa) return
+          setEmpresaConfirm(null)
+          setDestinoPendiente(null)
+        }}
+        title="Dar de alta como empresa-cliente"
+      >
+        {empresaConfirm && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              void handleConfirmarEmpresa()
+            }}
+            className="space-y-4"
+          >
+            <p className="text-sm text-text-secondary">
+              {destinoPendiente === 'factura'
+                ? 'Para facturar este presupuesto necesitás darlo de alta como empresa-cliente. Revisá los datos y confirmá.'
+                : 'Para generar el contrato necesitás darlo de alta como empresa-cliente. Revisá los datos y confirmá.'}
+            </p>
+            <Input
+              label="Razón social"
+              required
+              value={empresaConfirm.razonSocial}
+              onChange={(e) =>
+                setEmpresaConfirm((prev) => (prev ? { ...prev, razonSocial: e.target.value } : prev))
+              }
+              placeholder="Ej: Distribuidora del Sur S.A."
+            />
+            <Input
+              label="CUIT"
+              value={empresaConfirm.cuit}
+              onChange={(e) =>
+                setEmpresaConfirm((prev) => (prev ? { ...prev, cuit: e.target.value } : prev))
+              }
+              placeholder="Ej: 30-12345678-9"
+            />
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Input
+                label="Email"
+                type="email"
+                value={empresaConfirm.email}
+                onChange={(e) =>
+                  setEmpresaConfirm((prev) => (prev ? { ...prev, email: e.target.value } : prev))
+                }
+                placeholder="contacto@cliente.com"
+              />
+              <Input
+                label="Teléfono"
+                value={empresaConfirm.telefono}
+                onChange={(e) =>
+                  setEmpresaConfirm((prev) => (prev ? { ...prev, telefono: e.target.value } : prev))
+                }
+                placeholder="Ej: 11 5555-5555"
+              />
+            </div>
+            <p className="text-[11px] text-text-tertiary">
+              El email y el teléfono se guardan como contacto en la información general de la empresa.
+            </p>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  setEmpresaConfirm(null)
+                  setDestinoPendiente(null)
+                }}
+                disabled={creandoEmpresa}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={creandoEmpresa}>
+                {creandoEmpresa ? 'Creando…' : 'Crear y continuar'}
+              </Button>
+            </div>
+          </form>
+        )}
       </Modal>
     </div>
   )

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import {
   FileSignature,
@@ -30,6 +30,10 @@ interface EmpresaLite {
 
 interface Props {
   empresas: EmpresaLite[]
+  /** Empresa preseleccionada (desde la conversión de un presupuesto). */
+  empresaInicial?: string
+  /** Honorarios precargados (monto del presupuesto convertido). */
+  honorariosInicial?: string
 }
 
 // ─── Estado del formulario (espejo de ContratoFormInput) ──────────────────────
@@ -109,7 +113,7 @@ function DatoLinea({ label, value }: DatoLineaProps) {
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
-export function ContratoGenerador({ empresas }: Props) {
+export function ContratoGenerador({ empresas, empresaInicial, honorariosInicial }: Props) {
   const [empresaId, setEmpresaId] = useState('')
   const [cargandoDatos, setCargandoDatos] = useState(false)
   const [datos, setDatos] = useState<Partial<ContratoDatos> | null>(null)
@@ -117,6 +121,16 @@ export function ContratoGenerador({ empresas }: Props) {
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [generando, setGenerando] = useState(false)
   const [errorCarga, setErrorCarga] = useState<string | null>(null)
+
+  // Si llegamos desde la conversión de un presupuesto, preseleccionamos la
+  // empresa (carga sus datos desde la base) y sembramos los honorarios con el
+  // monto del presupuesto. El seed de honorarios va DESPUÉS del prefill de la
+  // empresa, porque ese prefill reescribe todo el form. Solo al montar.
+  useEffect(() => {
+    if (!empresaInicial) return
+    void handleSeleccionEmpresa(empresaInicial, honorariosInicial)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Falta un dato crítico de la consultora que NO se completa en este form
   // (debe cargarse en Configuración): domicilio legal/fiscal de la consultora.
@@ -126,7 +140,7 @@ export function ContratoGenerador({ empresas }: Props) {
     setForm((prev) => ({ ...prev, [key]: value }))
   }
 
-  async function handleSeleccionEmpresa(id: string) {
+  async function handleSeleccionEmpresa(id: string, honorariosOverride?: string) {
     setEmpresaId(id)
     setDatos(null)
     setFaltantes([])
@@ -144,7 +158,11 @@ export function ContratoGenerador({ empresas }: Props) {
     }
     setDatos(res.data.datos)
     setFaltantes(res.data.faltantes)
-    setForm(prefillToForm(res.data.datos))
+    // El prefill de la empresa reescribe el form; si vino un override de
+    // honorarios (conversión de presupuesto), lo sembramos por encima.
+    const next = prefillToForm(res.data.datos)
+    if (honorariosOverride) next.honorarios = honorariosOverride
+    setForm(next)
   }
 
   async function handleGenerar() {

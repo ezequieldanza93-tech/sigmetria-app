@@ -122,6 +122,7 @@ declare module 'lucide-react' {
   export const Play: Icon
   export const Plus: Icon
   export const QrCode: Icon
+  export const Receipt: Icon
   export const RefreshCw: Icon
   export const RotateCcw: Icon
   export const Save: Icon
