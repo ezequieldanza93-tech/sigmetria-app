@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest'
-import { readFileSync } from 'fs'
+import { readFileSync, readdirSync } from 'fs'
 import { join } from 'path'
-import { globSync } from 'glob'
 
 const MIGRATIONS_DIR = join(__dirname, '../../supabase/migrations')
 const SKIP_TABLES = new Set([
@@ -12,7 +11,9 @@ let migrations: string[]
 let fullContent: string
 
 beforeAll(() => {
-  migrations = globSync('**/*.sql', { cwd: MIGRATIONS_DIR }).sort()
+  migrations = readdirSync(MIGRATIONS_DIR, { recursive: true })
+    .filter((f): f is string => typeof f === 'string' && f.endsWith('.sql'))
+    .sort()
   fullContent = migrations
     .map(f => readFileSync(join(MIGRATIONS_DIR, f), 'utf-8'))
     .join('\n')
