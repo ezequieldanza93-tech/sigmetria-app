@@ -26,6 +26,9 @@ const JOBS = [
   '/api/cron/subscriptions',
   '/api/cron/expirar-past-due',
   '/api/cron/aplicar-cambios-plan',
+  // Marca 'vencida' los fin_comprobantes (emitida/pendiente) cuyo vencimiento
+  // pasó y siguen sin cobro. Idempotente.
+  '/api/cron/comprobantes-vencidos',
   '/api/cron/limpiar-exports',
   '/api/cron/papelera-purga',
 ] as const
