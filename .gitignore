@@ -23,7 +23,7 @@ supabase/.temp/
 auditoria_tablas.xlsx
 
 # Build artifacts
-tsconfig.tsbuildinfo
+*.tsbuildinfo
 
 # Backups locales (dumps DB + Storage, bundles cifrados) — NUNCA commitear
 backups/
