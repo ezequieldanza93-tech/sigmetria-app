@@ -213,17 +213,32 @@ export async function cambiarEstadoCotizacion(
   return { success: true, data: { id: data.id as string } }
 }
 
-// ── Generación del PDF ────────────────────────────────────────
+// ── Armado de datos del presupuesto (compartido) ──────────────
 
 /**
- * Genera el PDF del presupuesto de una cotización, lo guarda en el bucket
- * privado `documentos` y devuelve un signed URL para descargarlo.
- *
- * La cotización debe pertenecer a la consultora del usuario (scope multi-tenant).
+ * Resultado de armarDatosPresupuesto: los `datos` listos para renderizar el PDF
+ * + algunos campos de cabecera ya resueltos (nombre/email del cliente, nombre
+ * de la consultora y del responsable) que consume el flujo de envío por email.
  */
-export async function generarPresupuestoPdf(
+export interface DatosPresupuesto {
+  datos: PresupuestoDatos
+  clienteNombre: string
+  clienteEmail: string | null
+  consultoraNombre: string
+  responsableNombre: string | null
+}
+
+/**
+ * Carga y ESCOPEA la cotización contra la consultora del usuario, resuelve la
+ * consultora emisora, el responsable técnico, el cliente/prospecto y la forma de
+ * pago, y arma el objeto `datos: PresupuestoDatos` listo para `presupuestoHtml`.
+ *
+ * Helper compartido por generarPresupuestoPdf (descarga del PDF) y por el flujo
+ * de envío por email — para no duplicar el gating, el scope ni el armado.
+ */
+export async function armarDatosPresupuesto(
   cotizacionId: string,
-): Promise<ActionResult<{ pdfUrl: string }>> {
+): Promise<ActionResult<DatosPresupuesto>> {
   const acc = await getFinanzasAccess()
   if (!acc.hasAccess || !acc.consultoraId) {
     return { success: false, error: 'No tenés acceso al módulo de presupuestos' }
@@ -312,10 +327,12 @@ export async function generarPresupuestoPdf(
 
   const items = Array.isArray(cot.items) ? cot.items : []
 
+  const consultoraNombre = consultora?.nombre ?? 'Consultora'
+
   const datos: PresupuestoDatos = {
     fechaEmision: cot.fecha_emision ?? new Date().toISOString().slice(0, 10),
     validezDias: cot.validez_dias ?? null,
-    consultoraNombre: consultora?.nombre ?? 'Consultora',
+    consultoraNombre,
     consultoraCuit: consultora?.cuit ?? null,
     consultoraTelefono: consultora?.telefono ?? null,
     consultoraEmail: consultora?.email ?? null,
@@ -340,6 +357,41 @@ export async function generarPresupuestoPdf(
     moneda,
     locale,
   }
+
+  return {
+    success: true,
+    data: {
+      datos,
+      clienteNombre: cliente.nombre,
+      clienteEmail: cliente.email,
+      consultoraNombre,
+      responsableNombre: responsable.nombre,
+    },
+  }
+}
+
+// ── Generación del PDF ────────────────────────────────────────
+
+/**
+ * Genera el PDF del presupuesto de una cotización, lo guarda en el bucket
+ * privado `documentos` y devuelve un signed URL para descargarlo.
+ *
+ * La cotización debe pertenecer a la consultora del usuario (scope multi-tenant).
+ */
+export async function generarPresupuestoPdf(
+  cotizacionId: string,
+): Promise<ActionResult<{ pdfUrl: string }>> {
+  // El gating, el scope multi-tenant y todo el armado de `datos` viven en el
+  // helper compartido; acá solo renderizamos, subimos y firmamos.
+  const armado = await armarDatosPresupuesto(cotizacionId)
+  if (!armado.success) return armado
+
+  const acc = await getFinanzasAccess()
+  if (!acc.consultoraId) {
+    return { success: false, error: 'No tenés acceso al módulo de presupuestos' }
+  }
+  const consultoraId = acc.consultoraId
+  const { datos } = armado.data
 
   // ── 6. Render HTML → PDF ───────────────────────────────────────
   let buffer: Buffer

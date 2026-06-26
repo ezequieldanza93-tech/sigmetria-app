@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Pencil, Trash2, FileText, Receipt, FileSignature } from 'lucide-react'
+import { Plus, Pencil, Trash2, FileText, Receipt, FileSignature, Send, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { Input } from '@/components/ui/input'
@@ -21,6 +21,10 @@ import {
   type CotizacionInput,
 } from '@/lib/actions/finanzas-cotizaciones'
 import { crearFormaPago } from '@/lib/actions/finanzas-formas-pago'
+import {
+  redactarMailPresupuesto,
+  enviarPresupuestoPorMail,
+} from '@/lib/actions/finanzas-mail'
 import {
   getPrefillEmpresaDeCotizacion,
   crearEmpresaDesdeCotizacion,
@@ -579,6 +583,14 @@ export function CotizacionesCliente({
   } | null>(null)
   const [destinoPendiente, setDestinoPendiente] = useState<'factura' | 'contrato' | null>(null)
   const [creandoEmpresa, setCreandoEmpresa] = useState(false)
+  // Envío del presupuesto por email (cuerpo redactado con IA, PDF adjunto).
+  const [mailCot, setMailCot] = useState<Cotizacion | null>(null)
+  const [mailTo, setMailTo] = useState('')
+  const [mailAsunto, setMailAsunto] = useState('')
+  const [mailCuerpo, setMailCuerpo] = useState('')
+  const [mailRedactando, setMailRedactando] = useState(false)
+  const [mailEnviando, setMailEnviando] = useState(false)
+  const [mailRedactadoIA, setMailRedactadoIA] = useState(false)
   // Filtros de la lista (cliente-side; la página ya trae todas las cotizaciones).
   const [filtroEstados, setFiltroEstados] = useState<Set<CotizacionEstado>>(new Set())
   const [filtroCliente, setFiltroCliente] = useState('')
@@ -712,6 +724,53 @@ export function CotizacionesCliente({
       return
     }
     window.open(res.data.pdfUrl, '_blank')
+  }
+
+  // Carga (con IA) el borrador del email para la cotización abierta en el modal.
+  async function redactarBorrador(cot: Cotizacion) {
+    setMailRedactando(true)
+    const res = await redactarMailPresupuesto(cot.id)
+    setMailRedactando(false)
+    if (!res.success) {
+      toast.error(res.error)
+      return
+    }
+    setMailTo(res.data.toSugerido ?? '')
+    setMailAsunto(res.data.asunto)
+    setMailCuerpo(res.data.cuerpo)
+    setMailRedactadoIA(true)
+  }
+
+  // Abre el modal de envío por email y dispara la redacción IA del borrador.
+  function abrirMail(cot: Cotizacion) {
+    setMailCot(cot)
+    setMailTo('')
+    setMailAsunto('')
+    setMailCuerpo('')
+    setMailRedactadoIA(false)
+    void redactarBorrador(cot)
+  }
+
+  function cerrarMail() {
+    if (mailEnviando) return
+    setMailCot(null)
+  }
+
+  async function handleEnviarMail() {
+    if (!mailCot) return
+    setMailEnviando(true)
+    const res = await enviarPresupuestoPorMail(mailCot.id, {
+      to: mailTo.trim(),
+      asunto: mailAsunto.trim(),
+      cuerpo: mailCuerpo.trim(),
+    })
+    setMailEnviando(false)
+    if (!res.success) {
+      toast.error(res.error)
+      return
+    }
+    toast.success('Presupuesto enviado por email')
+    setMailCot(null)
   }
 
   // Navega al destino (facturación/contrato) con la empresa ya resuelta.
@@ -957,6 +1016,16 @@ export function CotizacionesCliente({
                           </button>
                           <button
                             type="button"
+                            onClick={() => abrirMail(cot)}
+                            disabled={ocupado}
+                            aria-label="Enviar presupuesto por email"
+                            title="Enviar por email"
+                            className="rounded-lg p-1.5 text-text-tertiary transition-colors hover:bg-surface-base hover:text-brand-primary disabled:opacity-50"
+                          >
+                            <Send size={15} />
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => abrirEdicion(cot)}
                             disabled={ocupado}
                             aria-label="Editar presupuesto"
@@ -1098,6 +1167,90 @@ export function CotizacionesCliente({
               <Button type="submit" disabled={creandoEmpresa}>
                 {creandoEmpresa ? 'Creando…' : 'Crear y continuar'}
               </Button>
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      {/* Modal de envío del presupuesto por email (cuerpo IA + PDF adjunto) */}
+      <Modal
+        open={mailCot !== null}
+        onClose={cerrarMail}
+        title="Enviar presupuesto por email"
+      >
+        {mailCot && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              void handleEnviarMail()
+            }}
+            className="space-y-4"
+          >
+            <p className="text-sm text-text-secondary">
+              Le mandamos el presupuesto <strong>{mailCot.concepto}</strong> al cliente, con el
+              PDF adjunto. Revisá el mensaje y enviá.
+            </p>
+
+            <Input
+              label="Email del destinatario"
+              type="email"
+              required
+              value={mailTo}
+              onChange={(e) => setMailTo(e.target.value)}
+              placeholder="contacto@cliente.com"
+            />
+
+            <Input
+              label="Asunto"
+              value={mailAsunto}
+              onChange={(e) => setMailAsunto(e.target.value)}
+              placeholder="Presupuesto — …"
+            />
+
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-text-secondary">Mensaje</label>
+                {mailRedactadoIA && !mailRedactando && (
+                  <span className="inline-flex items-center gap-1 text-[11px] text-text-tertiary">
+                    <Sparkles size={12} />
+                    redactado con IA
+                  </span>
+                )}
+              </div>
+              <VoiceTextarea
+                value={mailCuerpo}
+                onValueChange={setMailCuerpo}
+                rows={8}
+                disabled={mailRedactando}
+                className="w-full resize-none rounded-lg border border-border-default bg-surface-base px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary disabled:opacity-60"
+                placeholder={mailRedactando ? 'Redactando con IA…' : 'Escribí el mensaje…'}
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-2 pt-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => void redactarBorrador(mailCot)}
+                disabled={mailRedactando || mailEnviando}
+              >
+                <Sparkles size={14} />
+                {mailRedactando ? 'Redactando…' : 'Volver a redactar'}
+              </Button>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={cerrarMail}
+                  disabled={mailEnviando}
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={mailEnviando || mailRedactando || !mailCuerpo.trim()}>
+                  {mailEnviando ? 'Enviando…' : 'Enviar'}
+                </Button>
+              </div>
             </div>
           </form>
         )}
