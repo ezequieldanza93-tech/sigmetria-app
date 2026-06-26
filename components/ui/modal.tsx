@@ -11,6 +11,12 @@ interface ModalProps {
   children: React.ReactNode
   className?: string
   size?: 'default' | 'full' | 'wide'
+  /**
+   * Si es `false`, el modal NO se cierra al hacer click en el backdrop
+   * ni con la tecla ESC. Solo se cierra por los botones que llaman a `onClose`.
+   * Default `true` (comportamiento actual intacto).
+   */
+  dismissable?: boolean
 }
 
 const SIZE_CLASSES = {
@@ -19,7 +25,7 @@ const SIZE_CLASSES = {
   wide: 'md:max-w-6xl',
 }
 
-export function Modal({ open, onClose, title, children, className, size = 'default' }: ModalProps) {
+export function Modal({ open, onClose, title, children, className, size = 'default', dismissable = true }: ModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const titleId = useId()
 
@@ -43,6 +49,11 @@ export function Modal({ open, onClose, title, children, className, size = 'defau
     <dialog
       ref={dialogRef}
       onClose={onClose}
+      onCancel={e => {
+        // El evento `cancel` lo dispara ESC. Si el modal no es dismissable,
+        // lo prevenimos para que ESC no cierre (solo se cierra por botón).
+        if (!dismissable) e.preventDefault()
+      }}
       aria-labelledby={titleId}
       className={cn(
         'bg-surface-base p-0 backdrop:bg-black/40',
@@ -54,7 +65,7 @@ export function Modal({ open, onClose, title, children, className, size = 'defau
         className,
       )}
       onClick={e => {
-        if (e.target === dialogRef.current) onClose()
+        if (dismissable && e.target === dialogRef.current) onClose()
       }}
     >
       <div className="md:p-6 max-md:flex max-md:flex-col max-md:h-full">

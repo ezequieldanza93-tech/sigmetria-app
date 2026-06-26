@@ -156,6 +156,22 @@ export async function crearMedicionIluminacion(
     return { success: false, error: 'No se pudo resolver la consultora del establecimiento' }
   }
 
+  // ── Validación de firmante: debe ser la persona del usuario logueado ──
+  // El selector preselecciona y bloquea (readOnly) la persona del usuario
+  // (profiles.persona_id). Acá lo verificamos server-side: nadie puede firmar
+  // por otro. Si llegó un firmante distinto al del perfil, rechazamos.
+  if (firmantePersonaId) {
+    const { data: perfil } = await supabase
+      .from('profiles')
+      .select('persona_id')
+      .eq('id', user.id)
+      .maybeSingle()
+    if (!perfil?.persona_id || perfil.persona_id !== firmantePersonaId) {
+      console.error('[MEDICION-ILUM] guardar falló:', 'El firmante no coincide con el usuario logueado')
+      return { success: false, error: 'Solo podés firmar el protocolo con tu propia persona' }
+    }
+  }
+
   const ts = Date.now()
 
   // ── 0. Buscar una medición EXISTENTE del mismo registro (edición de borrador) ──
@@ -473,39 +489,39 @@ export interface ValorRequeridoSugerido {
 }
 
 /**
- * Sugiere candidatos de valor de iluminación requerido (lux) según el Anexo IV.
+ * Sugiere candidatos de valor de iluminación requerido (lux) según el Anexo IV
+ * a partir de UNA descripción libre (lo que el técnico escribe/dicta del punto).
  *
  * Estrategia:
- *  1. Busca primero en Tabla 2 (intensidad mínima por rubro/local/tarea, is_active).
+ *  1. Busca primero en Tabla 2 (intensidad mínima por rubro/local/tarea, is_active)
+ *     haciendo match OR (ilike) de la descripción contra rubro, local o tarea.
  *     Si hay match → devuelve esos candidatos con fuente:'Tabla 2'.
- *  2. Si Tabla 2 no matchea, devuelve candidatos de Tabla 1 (clase de tarea visual)
- *     con fuente:'Tabla 1'.
+ *  2. Si Tabla 2 no matchea, hace fallback a Tabla 1 (clase de tarea visual):
+ *     match OR de la descripción contra clase_tarea o detalle, con fuente:'Tabla 1'.
  *
- * El match es laxo (ilike por los criterios provistos): la UI muestra los candidatos
- * y el técnico elige.
+ * El match es laxo: la UI muestra los candidatos y el técnico elige.
  */
-export async function sugerirValorRequerido(input: {
-  rubro?: string
-  local?: string
-  tarea?: string
-  claseTarea?: string
-}): Promise<ActionResult<ValorRequeridoSugerido[]>> {
+export async function sugerirValorRequerido(
+  descripcion: string
+): Promise<ActionResult<ValorRequeridoSugerido[]>> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
-  const { rubro, local, tarea, claseTarea } = input
+  const q = (descripcion ?? '').trim()
+  if (!q) return { success: true, data: [] }
+  // PostgREST: en un filtro `.or(...)` los `%` del patrón ilike van dentro del
+  // valor; comas y paréntesis romperían el parser del or(), pero rubro/local/tarea
+  // son texto técnico simple — no los sanitizamos más allá del trim.
+  const patron = `%${q}%`
 
-  // ── 1. Tabla 2 (rubro / local / tarea) ──────────────────────────────
-  let q2 = supabase
+  // ── 1. Tabla 2 (match OR sobre rubro / local / tarea) ───────────────
+  const { data: t2, error: t2Err } = await supabase
     .from('dec351_iluminacion_tabla2')
     .select('lux_min, rubro, local, tarea')
     .eq('is_active', true)
-  if (rubro) q2 = q2.ilike('rubro', `%${rubro}%`)
-  if (local) q2 = q2.ilike('local', `%${local}%`)
-  if (tarea) q2 = q2.ilike('tarea', `%${tarea}%`)
-
-  const { data: t2, error: t2Err } = await q2.order('orden', { ascending: true })
+    .or(`rubro.ilike.${patron},local.ilike.${patron},tarea.ilike.${patron}`)
+    .order('orden', { ascending: true })
   if (t2Err) return { success: false, error: t2Err.message }
 
   if (t2 && t2.length > 0) {
@@ -518,13 +534,13 @@ export async function sugerirValorRequerido(input: {
   }
 
   // ── 2. Fallback: Tabla 1 (clase de tarea visual) ────────────────────
-  let q1 = supabase
+  // Match OR sobre clase_tarea / detalle con la misma descripción.
+  const { data: t1, error: t1Err } = await supabase
     .from('dec351_iluminacion_tabla1')
     .select('lux_min, lux_max, clase_tarea, detalle')
     .eq('is_active', true)
-  if (claseTarea) q1 = q1.ilike('clase_tarea', `%${claseTarea}%`)
-
-  const { data: t1, error: t1Err } = await q1.order('orden', { ascending: true })
+    .or(`clase_tarea.ilike.${patron},detalle.ilike.${patron}`)
+    .order('orden', { ascending: true })
   if (t1Err) return { success: false, error: t1Err.message }
 
   const result: ValorRequeridoSugerido[] = (t1 ?? []).map(r => ({

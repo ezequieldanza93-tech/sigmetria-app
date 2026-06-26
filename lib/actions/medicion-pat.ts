@@ -137,6 +137,21 @@ export async function crearMedicionPat(
   const consultoraId = await consultoraIdFromEstablecimiento(supabase, establecimientoId)
   if (!consultoraId) return { success: false, error: 'No se pudo resolver la consultora del establecimiento' }
 
+  // ── Validación de firmante: debe ser la persona del usuario logueado ──
+  // El selector preselecciona y bloquea (readOnly) la persona del usuario
+  // (profiles.persona_id). Acá lo verificamos server-side: nadie puede firmar
+  // por otro. Si llegó un firmante distinto al del perfil, rechazamos.
+  if (firmantePersonaId) {
+    const { data: perfil } = await supabase
+      .from('profiles')
+      .select('persona_id')
+      .eq('id', user.id)
+      .maybeSingle()
+    if (!perfil?.persona_id || perfil.persona_id !== firmantePersonaId) {
+      return { success: false, error: 'Solo podés firmar el protocolo con tu propia persona' }
+    }
+  }
+
   const ts = Date.now()
 
   // ── 1. Subir adjuntos opcionales (certificado / plano) → guardamos PATH, no URL ──

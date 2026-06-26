@@ -19,6 +19,13 @@ interface PersonaFirmanteSelectorProps {
   establecimientoId: string | undefined
   disabled?: boolean
   placeholder?: string
+  /**
+   * Si es `true`, el firmante queda FIJADO a la persona del usuario logueado:
+   * se muestra estático su nombre (sin dropdown ni botón de limpiar) y se emite
+   * ese valor por `onChange` al montar, para que el form igual lo envíe.
+   * Default `false` (selector completo, comportamiento actual intacto).
+   */
+  readOnly?: boolean
 }
 
 // ── Componente ───────────────────────────────────────────────────────────────
@@ -42,6 +49,7 @@ export function PersonaFirmanteSelector({
   establecimientoId,
   disabled = false,
   placeholder = 'Buscar usuario ejecutor…',
+  readOnly = false,
 }: PersonaFirmanteSelectorProps) {
   const { data: ejecutores = [], isLoading } = useUsuariosEjecutores(establecimientoId)
   const { data: miPersonaId } = useMiPersona()
@@ -118,6 +126,33 @@ export function PersonaFirmanteSelector({
   }
 
   const sinEjecutores = !isLoading && ejecutores.length === 0
+
+  // Modo readOnly: firmante fijado al usuario logueado. La emisión del valor por
+  // `onChange` la sigue haciendo el efecto de default de arriba (misma lógica:
+  // busca la persona del logueado entre los ejecutores). Acá solo renderizamos
+  // estático: el nombre ya seleccionado, sin dropdown ni botón de limpiar.
+  if (readOnly) {
+    const miPersona = miPersonaId ? ejecutores.find(p => p.id === miPersonaId) ?? null : null
+    const mostrado = selected ?? miPersona
+    return (
+      <div className="w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-subtle text-text-primary">
+        {isLoading ? (
+          <span className="text-text-tertiary">Cargando…</span>
+        ) : mostrado ? (
+          <span>
+            <span className="font-medium">{mostrado.apellido}</span>, {mostrado.nombre}
+            {mostrado.dni && (
+              <span className="text-xs text-text-tertiary ml-2">{mostrado.dni}</span>
+            )}
+          </span>
+        ) : (
+          <span className="text-amber-600 text-xs">
+            Tu usuario no figura como ejecutor en esta consultora.
+          </span>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div ref={ref} className="relative">

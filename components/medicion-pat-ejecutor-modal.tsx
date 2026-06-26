@@ -9,6 +9,7 @@ import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { VoiceTextarea } from '@/components/ui/voice-textarea'
 import { useGeoCaptura } from '@/lib/hooks/use-geo-captura'
 import { emitirEvidenciaPat } from '@/lib/actions/emitir-evidencia-pat'
+import { pulirObservacion } from '@/lib/actions/pulir-observacion'
 import {
   crearMedicionPat,
   getInstrumentosPat,
@@ -249,7 +250,10 @@ export function MedicionPatEjecutorModal({
   const [fechaMedicion, setFechaMedicion] = useState(todayISO())
   const [fechaMedicionFin, setFechaMedicionFin] = useState(todayISO())
   const [horaInicio, setHoraInicio] = useState(nowHHMM())
-  const [horaFin, setHoraFin] = useState('')
+  // La hora de fin arranca con la hora actual. Si el usuario NO la edita a mano, al
+  // finalizar se "congela" a la hora del cierre (nowHHMM en ese momento). Editable.
+  const [horaFin, setHoraFin] = useState(nowHHMM())
+  const [horaFinEditadaManual, setHoraFinEditadaManual] = useState(false)
   const [observacionesGenerales, setObservacionesGenerales] = useState('')
   const [planoFile, setPlanoFile] = useState<File | null>(null)
 
@@ -400,7 +404,9 @@ export function MedicionPatEjecutorModal({
         if (d.fecha_medicion) setFechaMedicion(d.fecha_medicion)
         if (d.fecha_medicion_fin) setFechaMedicionFin(d.fecha_medicion_fin)
         if (d.hora_inicio) setHoraInicio(String(d.hora_inicio).slice(0, 5))
-        if (d.hora_fin) setHoraFin(String(d.hora_fin).slice(0, 5))
+        // Si el borrador ya traía hora de fin, la respetamos como valor cargado: no la
+        // pisamos con la hora actual al finalizar.
+        if (d.hora_fin) { setHoraFin(String(d.hora_fin).slice(0, 5)); setHoraFinEditadaManual(true) }
         if (d.observaciones) setObservacionesGenerales(d.observaciones)
         if (d.conclusiones) setConclusiones(d.conclusiones)
         if (d.recomendaciones) setRecomendaciones(d.recomendaciones)
@@ -598,6 +604,13 @@ export function MedicionPatEjecutorModal({
     if (idx > 0) setStep(STEP_ORDER[idx - 1])
   }
 
+  // Cierre del wizard con confirmación: el modal NO es dismissable (no cierra por
+  // click afuera ni ESC), y "Cancelar" pide confirmar para no perder lo cargado.
+  function handleCancelar() {
+    if (!window.confirm('Vas a cerrar sin guardar y se perderán todos los datos cargados. ¿Querés continuar?')) return
+    onClose()
+  }
+
   // ── Guardar ─────────────────────────────────────────────────────────
   // finalizar=false → guarda como BORRADOR (no cierra la gestión, deja el wizard
   //   editable para seguir cargando).
@@ -611,6 +624,16 @@ export function MedicionPatEjecutorModal({
       setError('Toda observación de seguimiento requiere una categoría.')
       setStep('observaciones')
       return
+    }
+
+    // Hora de finalización: si el usuario NO la editó a mano, la congelamos a la hora
+    // actual EN EL MOMENTO de finalizar (no es un reloj en vivo, se fija una vez). En
+    // borrador la dejamos como está. Persistimos el valor congelado en el estado para
+    // que el campo de revisión refleje lo guardado.
+    let horaFinFinal = horaFin
+    if (finalizar && !horaFinEditadaManual) {
+      horaFinFinal = nowHHMM()
+      setHoraFin(horaFinFinal)
     }
 
     setSaving(true)
@@ -632,7 +655,7 @@ export function MedicionPatEjecutorModal({
       fd.set('fecha_medicion', fechaMedicion)
       if (fechaMedicionFin) fd.set('fecha_medicion_fin', fechaMedicionFin)
       fd.set('hora_inicio', horaInicio)
-      fd.set('hora_fin', horaFin)
+      fd.set('hora_fin', horaFinFinal)
       fd.set('conclusiones', conclusiones)
       fd.set('recomendaciones', recomendaciones)
       fd.set('observaciones', observacionesGenerales)
@@ -850,7 +873,7 @@ export function MedicionPatEjecutorModal({
   }
 
   return (
-    <Modal open title="Protocolo de Puesta a Tierra (SRT 900/2015)" onClose={onClose} size="full">
+    <Modal open title="Protocolo de Puesta a Tierra (SRT 900/2015)" onClose={onClose} size="full" dismissable={false}>
       <div className="space-y-4 max-md:max-h-none md:max-h-[86vh] overflow-y-auto pr-1">
         {/* ── Gamificación: anillo de progreso sticky ──────────────── */}
         <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 bg-surface-base/90 backdrop-blur-md border-b border-border-subtle">
@@ -951,7 +974,9 @@ export function MedicionPatEjecutorModal({
                 </div>
                 <div>
                   <label className={labelCls}>Profesional firmante <span className="text-danger">*</span></label>
+                  {/* Firmante FIJO al usuario logueado (compliance SRT 15/2026): readOnly. */}
                   <PersonaFirmanteSelector
+                    readOnly
                     value={firmantePersonaId || null}
                     establecimientoId={establecimientoId}
                     onChange={p => {
@@ -964,7 +989,6 @@ export function MedicionPatEjecutorModal({
                     }}
                     placeholder="Buscar usuario ejecutor…"
                   />
-                  <p className="text-xs text-text-tertiary mt-1">Por defecto firma el usuario logueado. Podés elegir otro usuario ejecutor de la consultora.</p>
                 </div>
                 <div>
                   <label className={labelCls}>Metodología</label>
@@ -1052,7 +1076,7 @@ export function MedicionPatEjecutorModal({
 
               <div>
                 <label className={labelCls}>Observaciones generales</label>
-                <VoiceTextarea className={`${inputCls} resize-none`} rows={2} value={observacionesGenerales} onValueChange={setObservacionesGenerales} placeholder="Observaciones generales del protocolo…" />
+                <VoiceTextarea className={`${inputCls} resize-none`} rows={2} value={observacionesGenerales} onValueChange={setObservacionesGenerales} placeholder="Observaciones generales del protocolo…" pulirAction={pulirObservacion} />
               </div>
             </section>
           </div>
@@ -1212,7 +1236,7 @@ export function MedicionPatEjecutorModal({
 
               <div>
                 <label className={labelCls}>Observaciones de la toma</label>
-                <VoiceTextarea className={`${inputCls} resize-none`} rows={2} value={toma.observaciones} onValueChange={(v) => updateToma(toma.key, { observaciones: v })} placeholder="Notas de esta toma de tierra…" />
+                <VoiceTextarea className={`${inputCls} resize-none`} rows={2} value={toma.observaciones} onValueChange={(v) => updateToma(toma.key, { observaciones: v })} placeholder="Notas de esta toma de tierra…" pulirAction={pulirObservacion} />
               </div>
             </div>
 
@@ -1269,6 +1293,7 @@ export function MedicionPatEjecutorModal({
                           placeholder="Descripción de la observación…"
                           rows={2}
                           className="w-full border border-border-default rounded-lg px-3 py-1.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sig-500"
+                          pulirAction={pulirObservacion}
                         />
                       </div>
                       <button
@@ -1375,11 +1400,11 @@ export function MedicionPatEjecutorModal({
 
             <div>
               <label className={labelCls}>Conclusiones</label>
-              <VoiceTextarea className={`${inputCls} resize-y`} rows={5} value={conclusiones} onValueChange={setConclusiones} placeholder="Conclusiones del relevamiento de puesta a tierra…" />
+              <VoiceTextarea className={`${inputCls} resize-y`} rows={5} value={conclusiones} onValueChange={setConclusiones} placeholder="Conclusiones del relevamiento de puesta a tierra…" pulirAction={pulirObservacion} />
             </div>
             <div>
               <label className={labelCls}>Recomendaciones</label>
-              <VoiceTextarea className={`${inputCls} resize-y`} rows={5} value={recomendaciones} onValueChange={setRecomendaciones} placeholder="Recomendaciones y acciones de mejora propuestas…" />
+              <VoiceTextarea className={`${inputCls} resize-y`} rows={5} value={recomendaciones} onValueChange={setRecomendaciones} placeholder="Recomendaciones y acciones de mejora propuestas…" pulirAction={pulirObservacion} />
             </div>
           </div>
         )}
@@ -1394,7 +1419,7 @@ export function MedicionPatEjecutorModal({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className={labelCls}>Hora de finalización</label>
-                  <input type="time" className={inputCls} value={horaFin} onChange={e => setHoraFin(e.target.value)} />
+                  <input type="time" className={inputCls} value={horaFin} onChange={e => { setHoraFin(e.target.value); setHoraFinEditadaManual(true) }} />
                 </div>
               </div>
             </ReviewSection>
@@ -1505,7 +1530,7 @@ export function MedicionPatEjecutorModal({
               <Button type="button" variant="secondary" onClick={() => handleGuardar(false)} disabled={saving}>
                 {saving ? <><Loader2 size={14} className="animate-spin" /> Guardando…</> : <><Save size={14} /> Guardar borrador</>}
               </Button>
-              <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>Cancelar</Button>
+              <Button type="button" variant="secondary" onClick={handleCancelar} disabled={saving}>Cancelar</Button>
             </>
           ) : (
             <>
@@ -1515,6 +1540,8 @@ export function MedicionPatEjecutorModal({
               </Button>
               <Button
                 type="button"
+                // Acción incentivada → destacada en verde (success). Misma lógica de cierre.
+                className="!bg-success hover:!bg-success/90 !text-white"
                 onClick={() => {
                   // Confirmación de cierre definitivo. Texto exacto pedido por el flujo.
                   if (!window.confirm('Al finalizar, el protocolo queda cerrado y no se podra modificar. ¿Confirmas?')) return
@@ -1524,7 +1551,7 @@ export function MedicionPatEjecutorModal({
               >
                 {saving ? <><Loader2 size={14} className="animate-spin" /> Guardando…</> : <><ShieldCheck size={14} /> Finalizar protocolo</>}
               </Button>
-              <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>Cancelar</Button>
+              <Button type="button" variant="secondary" onClick={handleCancelar} disabled={saving}>Cancelar</Button>
             </>
           )}
         </div>

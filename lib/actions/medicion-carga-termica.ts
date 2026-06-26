@@ -161,6 +161,21 @@ export async function crearMedicionCargaTermica(
   const consultoraId = await consultoraIdFromEstablecimiento(supabase, establecimientoId)
   if (!consultoraId) return { success: false, error: 'No se pudo resolver la consultora del establecimiento' }
 
+  // ── Validación de firmante: debe ser la persona del usuario logueado ──
+  // El selector preselecciona y bloquea (readOnly) la persona del usuario
+  // (profiles.persona_id). Acá lo verificamos server-side: nadie puede firmar
+  // por otro. Si llegó un firmante distinto al del perfil, rechazamos.
+  if (firmantePersonaId) {
+    const { data: perfil } = await supabase
+      .from('profiles')
+      .select('persona_id')
+      .eq('id', user.id)
+      .maybeSingle()
+    if (!perfil?.persona_id || perfil.persona_id !== firmantePersonaId) {
+      return { success: false, error: 'Solo podés firmar el protocolo con tu propia persona' }
+    }
+  }
+
   // ── EDICIÓN / UPSERT: ¿ya existe una medición para este registro? ─────
   // Buscamos la cabecera existente del mismo registro (mismo registro_gestion_id +
   // rg_fecha_planificada). Si está 'finalizado' NO se puede tocar. Si es 'borrador'

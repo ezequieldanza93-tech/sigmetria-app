@@ -34,6 +34,7 @@ import { useSignedUrls } from '@/lib/storage/sign-client'
 import { ProtocoloAdjuntosControl } from '@/components/protocolo-adjuntos-control'
 import type { AdjuntoProtocoloItem } from '@/lib/actions/protocolo-adjuntos'
 import { pickClasificacionDefault } from '@/lib/medicion/clasificacion-default'
+import { pulirObservacion } from '@/lib/actions/pulir-observacion'
 import { todayISO, nowHHMM } from '@/lib/utils'
 import { useDiasLaborables } from '@/lib/queries/agenda'
 import { calcularFechaSubsanacion } from '@/lib/utils/fecha-subsanacion'
@@ -90,8 +91,8 @@ interface PuntoState {
   columnas: number
   /** Valores en lux por celda, indexados como `${fila}-${columna}` (0-based). '' = vacío. */
   celdas: Record<string, string>
-  /** Criterios de búsqueda para sugerir el valor requerido. */
-  busqueda: { rubro: string; local: string; tarea: string; claseTarea: string }
+  /** Descripción libre de la tarea/lugar para sugerir el valor requerido (match OR). */
+  busqueda: { descripcion: string }
 }
 
 type WizardStep = 'datos' | 'puntos' | 'analisis' | 'observaciones' | 'revisar' | 'listo'
@@ -253,7 +254,7 @@ function nuevoPunto(): PuntoState {
     filas: 4,
     columnas: 4,
     celdas: {},
-    busqueda: { rubro: '', local: '', tarea: '', claseTarea: '' },
+    busqueda: { descripcion: '' },
   }
 }
 
@@ -375,7 +376,11 @@ export function MedicionIluminacionEjecutorModal({
   const [metodologiaSelector, setMetodologiaSelector] = useState('')
   const [fechaMedicion, setFechaMedicion] = useState(todayISO())
   const [horaInicio, setHoraInicio] = useState(nowHHMM())
-  const [horaFin, setHoraFin] = useState('')
+  // La hora de finalización arranca con la hora actual (se congela al finalizar si
+  // el usuario no la editó manualmente). Sigue siendo editable en el paso de revisión.
+  const [horaFin, setHoraFin] = useState(nowHHMM())
+  // Marca si el usuario tocó manualmente la hora de fin (para no pisarla al finalizar).
+  const horaFinEditada = useRef(false)
   const [alturaCriterio, setAlturaCriterio] = useState<AlturaCriterio>('piso')
   const [condiciones, setCondiciones] = useState<CondicionesAtmosfericas>({
     cielo: '', temperatura: '', humedad: '', observaciones: '',
@@ -511,7 +516,13 @@ export function MedicionIluminacionEjecutorModal({
         }
         if (row.fecha_medicion) setFechaMedicion(row.fecha_medicion as string)
         setHoraInicio(hhmm((row.hora_inicio as string | null) ?? ''))
-        setHoraFin(hhmm((row.hora_fin as string | null) ?? ''))
+        // Si el borrador ya tenía una hora de fin guardada, la respetamos y la
+        // tratamos como editada (no se pisa al finalizar). Si no, queda el nowHHMM() inicial.
+        const horaFinGuardada = hhmm((row.hora_fin as string | null) ?? '')
+        if (horaFinGuardada) {
+          horaFinEditada.current = true
+          setHoraFin(horaFinGuardada)
+        }
         const altura = (row.altura_criterio as string | null) ?? 'piso'
         setAlturaCriterio(altura === 'plano_trabajo' ? 'plano_trabajo' : 'piso')
         const cond = (row.condiciones_atmosfericas as Record<string, unknown> | null) ?? null
@@ -566,7 +577,7 @@ export function MedicionIluminacionEjecutorModal({
               filas,
               columnas,
               celdas,
-              busqueda: { rubro: '', local: '', tarea: '', claseTarea: '' },
+              busqueda: { descripcion: '' },
             }
           })
           setPuntos(mapped)
@@ -633,12 +644,7 @@ export function MedicionIluminacionEjecutorModal({
   async function buscarSugerencia(punto: PuntoState) {
     setBuscandoSugerencia(punto.key)
     try {
-      const res = await sugerirValorRequerido({
-        rubro: punto.busqueda.rubro || undefined,
-        local: punto.busqueda.local || undefined,
-        tarea: punto.busqueda.tarea || undefined,
-        claseTarea: punto.busqueda.claseTarea || undefined,
-      })
+      const res = await sugerirValorRequerido(punto.busqueda.descripcion)
       if (res.success) {
         setSugerencias(prev => ({ ...prev, [punto.key]: res.data }))
       }
@@ -813,6 +819,15 @@ export function MedicionIluminacionEjecutorModal({
       return
     }
 
+    // Al FINALIZAR, si el usuario nunca editó la hora de fin a mano, la congelamos a
+    // la hora actual en este momento (no antes: el wizard puede estar abierto un rato).
+    // Reflejamos el cambio en el estado para la UI y lo usamos en el FormData de abajo.
+    let horaFinFinal = horaFin
+    if (finalizar && !horaFinEditada.current) {
+      horaFinFinal = nowHHMM()
+      setHoraFin(horaFinFinal)
+    }
+
     setSaving(true)
     try {
       const fd = new FormData()
@@ -829,7 +844,7 @@ export function MedicionIluminacionEjecutorModal({
       fd.set('metodologia', metodologia)
       fd.set('fecha_medicion', fechaMedicion)
       fd.set('hora_inicio', horaInicio)
-      fd.set('hora_fin', horaFin)
+      fd.set('hora_fin', horaFinFinal)
       fd.set('condiciones_atmosfericas', JSON.stringify(condiciones))
       fd.set('altura_criterio', alturaCriterio)
       fd.set('conclusiones', conclusiones)
@@ -949,6 +964,14 @@ export function MedicionIluminacionEjecutorModal({
   function handleFinalizar() {
     if (!window.confirm('Al finalizar, el protocolo queda cerrado y no se podra modificar. ¿Confirmas?')) return
     handleGuardar(true)
+  }
+
+  // Cierre del wizard con confirmación: el Modal NO es dismissable (no cierra por
+  // click afuera ni ESC), así que el único cierre accidental posible es por botón.
+  // Pedimos confirmación antes de descartar para evitar perder los datos cargados.
+  function handleCerrarConConfirmacion() {
+    if (!window.confirm('Vas a cerrar sin guardar y se perderan todos los datos cargados. Queres continuar?')) return
+    onClose()
   }
 
   // Sincroniza la lista de adjuntos con el control. El control de adjuntos vive en
@@ -1166,7 +1189,7 @@ export function MedicionIluminacionEjecutorModal({
   }
 
   return (
-    <Modal open title="Protocolo de Medición de Iluminación" onClose={onClose} size="full">
+    <Modal open title="Protocolo de Medición de Iluminación" onClose={handleCerrarConConfirmacion} dismissable={false} size="full">
       <div className="space-y-4 max-md:max-h-none md:max-h-[86vh] overflow-y-auto pr-1">
         {/* ── Gamificación: anillo de progreso sticky ──────────────── */}
         <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 bg-surface-base/90 backdrop-blur-md border-b border-border-subtle">
@@ -1270,6 +1293,7 @@ export function MedicionIluminacionEjecutorModal({
                   <PersonaFirmanteSelector
                     value={firmantePersonaId || null}
                     establecimientoId={establecimientoId}
+                    readOnly
                     onChange={p => {
                       setFirmantePersonaId(p?.id ?? '')
                       setFirmante(p ? `${p.apellido}, ${p.nombre}` : '')
@@ -1277,7 +1301,6 @@ export function MedicionIluminacionEjecutorModal({
                     }}
                     placeholder="Buscar usuario ejecutor…"
                   />
-                  <p className="text-xs text-text-tertiary mt-1">Por defecto firma el usuario logueado. Podés elegir otro usuario ejecutor de la consultora.</p>
                 </div>
                 <div>
                   <label className={labelCls}>Metodología</label>
@@ -1386,7 +1409,7 @@ export function MedicionIluminacionEjecutorModal({
               </div>
               <div>
                 <label className={labelCls}>Observaciones generales</label>
-                <VoiceTextarea className={`${inputCls} resize-none`} rows={2} value={observacionesGenerales} onValueChange={setObservacionesGenerales} placeholder="Observaciones generales del protocolo…" />
+                <VoiceTextarea className={`${inputCls} resize-none`} rows={2} value={observacionesGenerales} onValueChange={setObservacionesGenerales} pulirAction={pulirObservacion} placeholder="Observaciones generales del protocolo…" />
               </div>
             </section>
           </div>
@@ -1551,11 +1574,15 @@ export function MedicionIluminacionEjecutorModal({
                 <h4 className="text-sm font-semibold text-text-primary flex items-center gap-2">
                   <Lightbulb size={15} className="text-sig-500" /> Valor requerido (lux)
                 </h4>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  <input type="text" className={`${inputCls} text-sm`} placeholder="Rubro" value={punto.busqueda.rubro} onChange={e => updatePunto(punto.key, { busqueda: { ...punto.busqueda, rubro: e.target.value } })} />
-                  <input type="text" className={`${inputCls} text-sm`} placeholder="Local" value={punto.busqueda.local} onChange={e => updatePunto(punto.key, { busqueda: { ...punto.busqueda, local: e.target.value } })} />
-                  <input type="text" className={`${inputCls} text-sm`} placeholder="Tarea" value={punto.busqueda.tarea} onChange={e => updatePunto(punto.key, { busqueda: { ...punto.busqueda, tarea: e.target.value } })} />
-                  <input type="text" className={`${inputCls} text-sm`} placeholder="Clase de tarea (Tabla 1)" value={punto.busqueda.claseTarea} onChange={e => updatePunto(punto.key, { busqueda: { ...punto.busqueda, claseTarea: e.target.value } })} />
+                <div>
+                  <label className={labelCls}>Descripción de la tarea/lugar</label>
+                  <input
+                    type="text"
+                    className={`${inputCls} text-sm`}
+                    placeholder="Ej: oficina administrativa, taller de carpintería, control de calidad…"
+                    value={punto.busqueda.descripcion}
+                    onChange={e => updatePunto(punto.key, { busqueda: { descripcion: e.target.value } })}
+                  />
                 </div>
                 <Button type="button" variant="secondary" size="sm" onClick={() => buscarSugerencia(punto)} disabled={buscandoSugerencia === punto.key}>
                   {buscandoSugerencia === punto.key ? <><Loader2 size={13} className="animate-spin" /> Buscando…</> : <><Sparkles size={13} /> Sugerir valor</>}
@@ -1697,7 +1724,7 @@ export function MedicionIluminacionEjecutorModal({
 
                 <div>
                   <label className={labelCls}>Observaciones del punto</label>
-                  <VoiceTextarea className={`${inputCls} resize-none`} rows={2} value={punto.observaciones} onValueChange={(v) => updatePunto(punto.key, { observaciones: v })} placeholder="Notas de este punto de muestreo…" />
+                  <VoiceTextarea className={`${inputCls} resize-none`} rows={2} value={punto.observaciones} onValueChange={(v) => updatePunto(punto.key, { observaciones: v })} pulirAction={pulirObservacion} placeholder="Notas de este punto de muestreo…" />
                 </div>
               </div>
             </div>
@@ -1734,11 +1761,11 @@ export function MedicionIluminacionEjecutorModal({
 
             <div>
               <label className={labelCls}>Conclusiones</label>
-              <VoiceTextarea className={`${inputCls} resize-y`} rows={5} value={conclusiones} onValueChange={setConclusiones} placeholder="Conclusiones del relevamiento de iluminación…" />
+              <VoiceTextarea className={`${inputCls} resize-y`} rows={5} value={conclusiones} onValueChange={setConclusiones} pulirAction={pulirObservacion} placeholder="Conclusiones del relevamiento de iluminación…" />
             </div>
             <div>
               <label className={labelCls}>Recomendaciones</label>
-              <VoiceTextarea className={`${inputCls} resize-y`} rows={5} value={recomendaciones} onValueChange={setRecomendaciones} placeholder="Recomendaciones y acciones de mejora propuestas…" />
+              <VoiceTextarea className={`${inputCls} resize-y`} rows={5} value={recomendaciones} onValueChange={setRecomendaciones} pulirAction={pulirObservacion} placeholder="Recomendaciones y acciones de mejora propuestas…" />
             </div>
           </div>
         )}
@@ -1786,6 +1813,7 @@ export function MedicionIluminacionEjecutorModal({
                       <VoiceTextarea
                         value={obs.descripcion}
                         onValueChange={(v) => updateObs(obs.key, 'descripcion', v)}
+                        pulirAction={pulirObservacion}
                         placeholder="Descripción de la observación…"
                         rows={2}
                         className="flex-1 border border-border-default rounded-lg px-3 py-1.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sig-500"
@@ -1881,7 +1909,7 @@ export function MedicionIluminacionEjecutorModal({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className={labelCls}>Hora de finalización</label>
-                  <input type="time" className={inputCls} value={horaFin} onChange={e => setHoraFin(e.target.value)} />
+                  <input type="time" className={inputCls} value={horaFin} onChange={e => { horaFinEditada.current = true; setHoraFin(e.target.value) }} />
                 </div>
               </div>
             </ReviewSection>
@@ -2035,13 +2063,14 @@ export function MedicionIluminacionEjecutorModal({
                 {saving ? <><Loader2 size={14} className="animate-spin" /> Guardando…</> : <>Guardar borrador</>}
               </Button>
               {/* Finalizar: cierra el protocolo, marca la gestión Realizada y emite la
-                  evidencia/PDF (paso 'listo'). Pide confirmación explícita. */}
-              <Button type="button" onClick={handleFinalizar} disabled={saving}>
+                  evidencia/PDF (paso 'listo'). Pide confirmación explícita. Destacado en
+                  VERDE como acción incentivada (override del color de la variante primaria). */}
+              <Button type="button" onClick={handleFinalizar} disabled={saving} className="!bg-success hover:!bg-success !text-white">
                 {saving ? <><Loader2 size={14} className="animate-spin" /> Guardando…</> : <><Check size={14} /> Finalizar protocolo</>}
               </Button>
             </>
           )}
-          <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>Cancelar</Button>
+          <Button type="button" variant="secondary" onClick={handleCerrarConConfirmacion} disabled={saving}>Cancelar</Button>
         </div>
 
         {/* Hojas ocultas del PDF oficial (se rasterizan al descargar). */}

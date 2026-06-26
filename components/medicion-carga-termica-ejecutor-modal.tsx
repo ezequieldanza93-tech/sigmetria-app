@@ -22,6 +22,7 @@ import {
   regimenFt,
 } from '@/lib/medicion-carga-termica/calculos'
 import { emitirEvidenciaCargaTermica } from '@/lib/actions/emitir-evidencia-carga-termica'
+import { pulirObservacion } from '@/lib/actions/pulir-observacion'
 import { getBorradorCargaTermicaByRegistro } from '@/lib/actions/medicion-carga-termica-view'
 import { getCertificadoVigente } from '@/lib/actions/certificado'
 import { useSignedUrls } from '@/lib/storage/sign-client'
@@ -401,7 +402,10 @@ export function MedicionCargaTermicaEjecutorModal({
   const [fechaMedicion, setFechaMedicion] = useState(todayISO())
   const [fechaMedicionFin, setFechaMedicionFin] = useState(todayISO())
   const [horaInicio, setHoraInicio] = useState(nowHHMM())
-  const [horaFin, setHoraFin] = useState('')
+  const [horaFin, setHoraFin] = useState(nowHHMM())
+  // ¿El usuario editó la hora de finalización a mano? Si NO, al finalizar la
+  // congelamos a la hora actual del momento del cierre (sin reloj en vivo).
+  const [horaFinEditada, setHoraFinEditada] = useState(false)
   const [turnos, setTurnos] = useState('')
   // Condiciones atmosféricas
   const [fuenteDatosAtm, setFuenteDatosAtm] = useState('')
@@ -531,7 +535,9 @@ export function MedicionCargaTermicaEjecutorModal({
         if (d.fecha_medicion) setFechaMedicion(str(d.fecha_medicion))
         setFechaMedicionFin(str(d.fecha_medicion_fin))
         setHoraInicio(str(d.hora_inicio))
-        setHoraFin(str(d.hora_fin))
+        // Si el borrador ya traía una hora de finalización guardada, la respetamos
+        // y la consideramos "editada" para no pisarla al finalizar.
+        if (d.hora_fin) { setHoraFin(str(d.hora_fin)); setHoraFinEditada(true) }
         setTurnos(str(d.turnos))
         setFuenteDatosAtm(str(d.fuente_datos_atm))
         setAtmTempMax(str(d.atm_temp_max))
@@ -885,8 +891,10 @@ export function MedicionCargaTermicaEjecutorModal({
   // finalizar=false → guarda BORRADOR re-editable (la gestión NO queda Realizada y el
   // wizard sigue abierto/editable). finalizar=true → cierra el protocolo (inmutable),
   // marca la gestión Realizada y avanza al paso 'listo' (emisión de evidencia).
-  async function handleGuardar(finalizar: boolean) {
+  async function handleGuardar(finalizar: boolean, horaFinOverride?: string) {
     setError(null)
+    // Al finalizar sin haber editado la hora, la congelamos a la del cierre.
+    const horaFinAEnviar = horaFinOverride ?? horaFin
     const obsSinCat = observacionesSeguimiento.filter(o => o.descripcion.trim() && !o.categoria_id)
     if (obsSinCat.length > 0) {
       setError('Toda observación de seguimiento requiere una categoría.')
@@ -912,7 +920,7 @@ export function MedicionCargaTermicaEjecutorModal({
       fd.set('fecha_medicion', fechaMedicion)
       if (fechaMedicionFin) fd.set('fecha_medicion_fin', fechaMedicionFin)
       fd.set('hora_inicio', horaInicio)
-      fd.set('hora_fin', horaFin)
+      fd.set('hora_fin', horaFinAEnviar)
       fd.set('turnos', turnos)
       fd.set('fuente_datos_atm', fuenteDatosAtm)
       fd.set('atm_temp_max', atmTempMax)
@@ -1053,7 +1061,18 @@ export function MedicionCargaTermicaEjecutorModal({
   // y delega en handleGuardar(true).
   function handleFinalizar() {
     if (!window.confirm('Al finalizar, el protocolo queda cerrado y no se podra modificar. ¿Confirmas?')) return
-    handleGuardar(true)
+    // Si el usuario no editó la hora de finalización, la congelamos a la del cierre.
+    const horaFinFinal = horaFinEditada ? horaFin : nowHHMM()
+    if (!horaFinEditada) { setHoraFin(horaFinFinal); setHoraFinEditada(true) }
+    handleGuardar(true, horaFinFinal)
+  }
+
+  // Cancelar: el modal NO es dismissable (no cierra por backdrop/ESC), así que el
+  // único camino de salida sin guardar es este botón. Pedimos confirmación explícita
+  // para evitar perder todo lo cargado por accidente.
+  function handleCancelar() {
+    if (!window.confirm('Vas a cerrar sin guardar y se perderan todos los datos cargados. Queres continuar?')) return
+    onClose()
   }
 
   const stepIdx = STEP_ORDER.indexOf(step)
@@ -1125,7 +1144,7 @@ export function MedicionCargaTermicaEjecutorModal({
   }
 
   return (
-    <Modal open title="Protocolo de Estrés Térmico por Calor / Carga Térmica" onClose={onClose} size="full">
+    <Modal open title="Protocolo de Estrés Térmico por Calor / Carga Térmica" onClose={onClose} size="full" dismissable={false}>
       <div className="space-y-4 max-md:max-h-none md:max-h-[86vh] overflow-y-auto pr-1">
         {/* ── Gamificación: anillo de progreso sticky ──────────────── */}
         <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 bg-surface-base/90 backdrop-blur-md border-b border-border-subtle">
@@ -1238,6 +1257,7 @@ export function MedicionCargaTermicaEjecutorModal({
                   <PersonaFirmanteSelector
                     value={firmantePersonaId || null}
                     establecimientoId={establecimientoId}
+                    readOnly
                     onChange={p => {
                       setFirmantePersonaId(p?.id ?? '')
                       setFirmante(p ? `${p.apellido}, ${p.nombre}` : '')
@@ -1246,7 +1266,7 @@ export function MedicionCargaTermicaEjecutorModal({
                     }}
                     placeholder="Buscar usuario ejecutor…"
                   />
-                  <p className="text-xs text-text-tertiary mt-1">Por defecto firma el usuario logueado. Podés elegir otro usuario ejecutor de la consultora.</p>
+                  <p className="text-xs text-text-tertiary mt-1">El protocolo lo firma el usuario logueado (cumplimiento SRT 15/2026).</p>
                 </div>
               </div>
             </section>
@@ -1338,7 +1358,7 @@ export function MedicionCargaTermicaEjecutorModal({
               <h3 className="text-sm font-semibold text-text-primary">Condiciones del puesto y representantes</h3>
               <div>
                 <label className={labelCls}>Condiciones generales del puesto</label>
-                <VoiceTextarea className={`${inputCls} resize-none`} rows={2} value={condicionesPuesto} onValueChange={setCondicionesPuesto} placeholder="Ventilación, fuentes de calor, características del ambiente…" />
+                <VoiceTextarea className={`${inputCls} resize-none`} rows={2} value={condicionesPuesto} onValueChange={setCondicionesPuesto} pulirAction={pulirObservacion} placeholder="Ventilación, fuentes de calor, características del ambiente…" />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <PersonaSelectorConAlta
@@ -1377,7 +1397,7 @@ export function MedicionCargaTermicaEjecutorModal({
               </div>
               <div>
                 <label className={labelCls}>Observaciones generales</label>
-                <VoiceTextarea className={`${inputCls} resize-none`} rows={2} value={observacionesGenerales} onValueChange={setObservacionesGenerales} placeholder="Observaciones generales del protocolo…" />
+                <VoiceTextarea className={`${inputCls} resize-none`} rows={2} value={observacionesGenerales} onValueChange={setObservacionesGenerales} pulirAction={pulirObservacion} placeholder="Observaciones generales del protocolo…" />
               </div>
             </section>
 
@@ -1680,7 +1700,7 @@ export function MedicionCargaTermicaEjecutorModal({
               {/* Conclusión del puesto */}
               <div>
                 <label className={labelCls}>Conclusión de este puesto / trabajador</label>
-                <VoiceTextarea className={`${inputCls} resize-none`} rows={2} value={puesto.conclusion} onValueChange={(v) => updatePuesto(puesto.key, { conclusion: v })} placeholder="Conclusión específica del puesto medido…" />
+                <VoiceTextarea className={`${inputCls} resize-none`} rows={2} value={puesto.conclusion} onValueChange={(v) => updatePuesto(puesto.key, { conclusion: v })} pulirAction={pulirObservacion} placeholder="Conclusión específica del puesto medido…" />
               </div>
             </div>
 
@@ -1727,7 +1747,7 @@ export function MedicionCargaTermicaEjecutorModal({
                     <div className="flex items-start gap-2">
                       <span className="text-xs text-text-tertiary mt-2 w-4 shrink-0">{idx + 1}.</span>
                       <div className="flex-1">
-                        <VoiceTextarea value={obs.descripcion} onValueChange={(v) => updateObs(obs.key, 'descripcion', v)} placeholder="Descripción de la observación…" rows={2} className="w-full border border-border-default rounded-lg px-3 py-1.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sig-500" />
+                        <VoiceTextarea value={obs.descripcion} onValueChange={(v) => updateObs(obs.key, 'descripcion', v)} pulirAction={pulirObservacion} placeholder="Descripción de la observación…" rows={2} className="w-full border border-border-default rounded-lg px-3 py-1.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sig-500" />
                       </div>
                       <button type="button" onClick={() => removeObs(obs.key)} className="text-text-tertiary hover:text-danger mt-1 shrink-0" title="Eliminar observación">
                         <Trash2 size={15} />
@@ -1802,15 +1822,15 @@ export function MedicionCargaTermicaEjecutorModal({
 
             <div>
               <label className={labelCls}>Conclusiones — trabajador NO aclimatado (VLP)</label>
-              <VoiceTextarea className={`${inputCls} resize-y`} rows={4} value={conclusionesNoAclimatado} onValueChange={setConclusionesNoAclimatado} placeholder="Conclusiones aplicables al trabajador no aclimatado (límite VLP)…" />
+              <VoiceTextarea className={`${inputCls} resize-y`} rows={4} value={conclusionesNoAclimatado} onValueChange={setConclusionesNoAclimatado} pulirAction={pulirObservacion} placeholder="Conclusiones aplicables al trabajador no aclimatado (límite VLP)…" />
             </div>
             <div>
               <label className={labelCls}>Conclusiones — trabajador aclimatado (VLA)</label>
-              <VoiceTextarea className={`${inputCls} resize-y`} rows={4} value={conclusionesAclimatado} onValueChange={setConclusionesAclimatado} placeholder="Conclusiones aplicables al trabajador aclimatado (límite VLA)…" />
+              <VoiceTextarea className={`${inputCls} resize-y`} rows={4} value={conclusionesAclimatado} onValueChange={setConclusionesAclimatado} pulirAction={pulirObservacion} placeholder="Conclusiones aplicables al trabajador aclimatado (límite VLA)…" />
             </div>
             <div>
               <label className={labelCls}>Recomendaciones</label>
-              <VoiceTextarea className={`${inputCls} resize-y`} rows={4} value={recomendaciones} onValueChange={setRecomendaciones} placeholder="Recomendaciones y acciones de mejora propuestas (regímenes de trabajo/descanso, hidratación, EPP, etc.)…" />
+              <VoiceTextarea className={`${inputCls} resize-y`} rows={4} value={recomendaciones} onValueChange={setRecomendaciones} pulirAction={pulirObservacion} placeholder="Recomendaciones y acciones de mejora propuestas (regímenes de trabajo/descanso, hidratación, EPP, etc.)…" />
             </div>
           </div>
         )}
@@ -1824,7 +1844,7 @@ export function MedicionCargaTermicaEjecutorModal({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className={labelCls}>Hora de finalización</label>
-                  <input type="time" className={inputCls} value={horaFin} onChange={e => setHoraFin(e.target.value)} />
+                  <input type="time" className={inputCls} value={horaFin} onChange={e => { setHoraFin(e.target.value); setHoraFinEditada(true) }} />
                 </div>
               </div>
             </ReviewSection>
@@ -1936,13 +1956,19 @@ export function MedicionCargaTermicaEjecutorModal({
                 {saving ? <><Loader2 size={14} className="animate-spin" /> Guardando…</> : <>Guardar borrador</>}
               </Button>
               {/* Finalizar: cierra el protocolo, marca la gestión Realizada y emite la
-                  evidencia/PDF (paso 'listo'). Pide confirmación explícita. */}
-              <Button type="button" onClick={handleFinalizar} disabled={saving}>
+                  evidencia/PDF (paso 'listo'). Pide confirmación explícita. Destacado en
+                  VERDE como opción incentivada (cierre correcto del protocolo). */}
+              <Button
+                type="button"
+                onClick={handleFinalizar}
+                disabled={saving}
+                className="bg-success hover:bg-success/90 text-white disabled:opacity-50"
+              >
                 {saving ? <><Loader2 size={14} className="animate-spin" /> Guardando…</> : <><Check size={14} /> Finalizar protocolo</>}
               </Button>
             </>
           )}
-          <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>Cancelar</Button>
+          <Button type="button" variant="secondary" onClick={handleCancelar} disabled={saving}>Cancelar</Button>
         </div>
       </div>
     </Modal>

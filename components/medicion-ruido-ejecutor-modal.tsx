@@ -25,6 +25,7 @@ import {
 } from '@/lib/medicion-ruido/calculos'
 import { getCertificadoVigente } from '@/lib/actions/certificado'
 import { firmarProtocolo } from '@/lib/actions/firmar-protocolo'
+import { pulirObservacion } from '@/lib/actions/pulir-observacion'
 import { useSignedUrls } from '@/lib/storage/sign-client'
 import { pickClasificacionDefault } from '@/lib/medicion/clasificacion-default'
 import { todayISO, nowHHMM } from '@/lib/utils'
@@ -355,7 +356,11 @@ export function MedicionRuidoEjecutorModal({
   const [fechaMedicion, setFechaMedicion] = useState(todayISO())
   const [fechaMedicionFin, setFechaMedicionFin] = useState(todayISO())
   const [horaInicio, setHoraInicio] = useState(nowHHMM())
-  const [horaFin, setHoraFin] = useState('')
+  // Hora de finalización: arranca con la hora actual (auto). Si el usuario NO la edita
+  // a mano, al finalizar se congela a la hora de ese momento (ver handleGuardar).
+  const [horaFin, setHoraFin] = useState(nowHHMM())
+  // ¿El usuario tocó manualmente la hora de fin? Si no, la congelamos al finalizar.
+  const horaFinEditadaRef = useRef(false)
   const [jornadaHoras, setJornadaHoras] = useState('')
   const [turnos, setTurnos] = useState('')
   const [condicionesNormales, setCondicionesNormales] = useState('')
@@ -482,7 +487,9 @@ export function MedicionRuidoEjecutorModal({
         if (d.fecha_medicion) setFechaMedicion(String(d.fecha_medicion))
         if (d.fecha_medicion_fin) setFechaMedicionFin(String(d.fecha_medicion_fin))
         if (d.hora_inicio) setHoraInicio(String(d.hora_inicio).slice(0, 5))
-        if (d.hora_fin) setHoraFin(String(d.hora_fin).slice(0, 5))
+        // Borrador con hora de fin ya guardada: la respetamos como "editada" para que
+        // al finalizar no se pise con la hora actual.
+        if (d.hora_fin) { horaFinEditadaRef.current = true; setHoraFin(String(d.hora_fin).slice(0, 5)) }
         if (d.jornada_horas != null) setJornadaHoras(String(d.jornada_horas))
         if (d.turnos) setTurnos(String(d.turnos))
         if (d.condiciones_normales) setCondicionesNormales(String(d.condiciones_normales))
@@ -780,6 +787,15 @@ export function MedicionRuidoEjecutorModal({
       return
     }
 
+    // Hora de finalización automática: si se está FINALIZANDO y el usuario nunca tocó
+    // la hora de fin a mano, la congelamos a la hora actual de este momento (cierre real
+    // del relevamiento). Si la editó, se respeta lo que cargó.
+    let horaFinFinal = horaFin
+    if (finalizar && !horaFinEditadaRef.current) {
+      horaFinFinal = nowHHMM()
+      setHoraFin(horaFinFinal)
+    }
+
     setSaving(true)
     try {
       const fd = new FormData()
@@ -796,7 +812,7 @@ export function MedicionRuidoEjecutorModal({
       fd.set('fecha_medicion', fechaMedicion)
       if (fechaMedicionFin) fd.set('fecha_medicion_fin', fechaMedicionFin)
       fd.set('hora_inicio', horaInicio)
-      fd.set('hora_fin', horaFin)
+      fd.set('hora_fin', horaFinFinal)
       fd.set('jornada_horas', jornadaHoras)
       fd.set('turnos', turnos)
       fd.set('condiciones_normales', condicionesNormales)
@@ -1112,7 +1128,7 @@ export function MedicionRuidoEjecutorModal({
   }
 
   return (
-    <Modal open title="Protocolo de Medición de Ruido" onClose={onClose} size="full">
+    <Modal open title="Protocolo de Medición de Ruido" onClose={onClose} size="full" dismissable={false}>
       <div className="space-y-4 max-md:max-h-none md:max-h-[86vh] overflow-y-auto pr-1">
         {/* ── Gamificación: anillo de progreso sticky ──────────────── */}
         <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 bg-surface-base/90 backdrop-blur-md border-b border-border-subtle">
@@ -1222,8 +1238,8 @@ export function MedicionRuidoEjecutorModal({
                       setFirmanteDni(p?.dni ?? '')
                     }}
                     placeholder="Buscar usuario ejecutor…"
+                    readOnly
                   />
-                  <p className="text-xs text-text-tertiary mt-1">Por defecto firma el usuario logueado. Podés elegir otro usuario ejecutor de la consultora.</p>
                 </div>
               </div>
             </section>
@@ -1248,7 +1264,7 @@ export function MedicionRuidoEjecutorModal({
                 </div>
                 <div>
                   <label className={labelCls}>Hora de fin (opcional)</label>
-                  <input type="time" className={inputCls} value={horaFin} onChange={e => setHoraFin(e.target.value)} />
+                  <input type="time" className={inputCls} value={horaFin} onChange={e => { horaFinEditadaRef.current = true; setHoraFin(e.target.value) }} />
                 </div>
                 <div>
                   <label className={labelCls}>Jornada (horas)</label>
@@ -1306,7 +1322,7 @@ export function MedicionRuidoEjecutorModal({
               </div>
               <div>
                 <label className={labelCls}>Observaciones generales</label>
-                <VoiceTextarea className={`${inputCls} resize-none`} rows={2} value={observacionesGenerales} onValueChange={setObservacionesGenerales} placeholder="Observaciones generales del protocolo…" />
+                <VoiceTextarea className={`${inputCls} resize-none`} rows={2} value={observacionesGenerales} onValueChange={setObservacionesGenerales} placeholder="Observaciones generales del protocolo…" pulirAction={pulirObservacion} />
               </div>
             </section>
 
@@ -1576,7 +1592,7 @@ export function MedicionRuidoEjecutorModal({
 
               <div>
                 <label className={labelCls}>Información adicional del punto</label>
-                <VoiceTextarea className={`${inputCls} resize-none`} rows={2} value={punto.info_adicional} onValueChange={(v) => updatePunto(punto.key, { info_adicional: v })} placeholder="Notas de este punto de muestreo…" />
+                <VoiceTextarea className={`${inputCls} resize-none`} rows={2} value={punto.info_adicional} onValueChange={(v) => updatePunto(punto.key, { info_adicional: v })} placeholder="Notas de este punto de muestreo…" pulirAction={pulirObservacion} />
               </div>
             </div>
 
@@ -1608,11 +1624,11 @@ export function MedicionRuidoEjecutorModal({
 
             <div>
               <label className={labelCls}>Conclusiones</label>
-              <VoiceTextarea className={`${inputCls} resize-y`} rows={5} value={conclusiones} onValueChange={setConclusiones} placeholder="Conclusiones del relevamiento de ruido…" />
+              <VoiceTextarea className={`${inputCls} resize-y`} rows={5} value={conclusiones} onValueChange={setConclusiones} placeholder="Conclusiones del relevamiento de ruido…" pulirAction={pulirObservacion} />
             </div>
             <div>
               <label className={labelCls}>Recomendaciones</label>
-              <VoiceTextarea className={`${inputCls} resize-y`} rows={5} value={recomendaciones} onValueChange={setRecomendaciones} placeholder="Jerarquía de control del ruido: 1) en la fuente, 2) barreras / encerramientos, 3) EPP (último recurso) + rotación de personal." />
+              <VoiceTextarea className={`${inputCls} resize-y`} rows={5} value={recomendaciones} onValueChange={setRecomendaciones} placeholder="Jerarquía de control del ruido: 1) en la fuente, 2) barreras / encerramientos, 3) EPP (último recurso) + rotación de personal." pulirAction={pulirObservacion} />
             </div>
           </div>
         )}
@@ -1663,6 +1679,7 @@ export function MedicionRuidoEjecutorModal({
                         placeholder="Descripción de la observación…"
                         rows={2}
                         className="flex-1 border border-border-default rounded-lg px-3 py-1.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sig-500"
+                        pulirAction={pulirObservacion}
                       />
                       <button
                         type="button"
@@ -1755,7 +1772,7 @@ export function MedicionRuidoEjecutorModal({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className={labelCls}>Hora de finalización</label>
-                  <input type="time" className={inputCls} value={horaFin} onChange={e => setHoraFin(e.target.value)} />
+                  <input type="time" className={inputCls} value={horaFin} onChange={e => { horaFinEditadaRef.current = true; setHoraFin(e.target.value) }} />
                 </div>
               </div>
             </ReviewSection>
@@ -1873,6 +1890,8 @@ export function MedicionRuidoEjecutorModal({
                 <Button
                   type="button"
                   disabled={saving}
+                  // CTA incentivada: verde sólido para destacar el cierre del protocolo.
+                  className="bg-[var(--success)] hover:opacity-90 text-white shadow-md"
                   onClick={() => {
                     // Confirm de cierre: una vez finalizado, el protocolo queda inmutable.
                     if (!window.confirm('Al finalizar, el protocolo queda cerrado y no se podra modificar. ¿Confirmas?')) return
@@ -1884,7 +1903,19 @@ export function MedicionRuidoEjecutorModal({
               )}
             </>
           )}
-          <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>Cancelar</Button>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={saving}
+            onClick={() => {
+              // El modal no cierra por click afuera ni ESC (dismissable={false}): este es
+              // el único camino de descarte. Confirmamos para no perder datos sin querer.
+              if (!window.confirm('Vas a cerrar sin guardar y se perderan todos los datos cargados. Queres continuar?')) return
+              onClose()
+            }}
+          >
+            Cancelar
+          </Button>
         </div>
 
         {/* Hojas ocultas del PDF oficial (se rasterizan al descargar). */}
