@@ -4,7 +4,8 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useGeoCaptura } from '@/lib/hooks/use-geo-captura'
 import { emitirEvidenciaRuido } from '@/lib/actions/emitir-evidencia-ruido'
-import { fetchClima, type CieloEstado } from '@/lib/actions/fetch-clima'
+import { fetchClima } from '@/lib/actions/fetch-clima'
+import type { CieloEstado } from '@/lib/clima'
 import {
   crearMedicionRuido,
   getInstrumentosRuido,
