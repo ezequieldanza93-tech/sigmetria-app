@@ -7,7 +7,7 @@ import type {
   FormularioSeccion, FormularioItem,
   AnswerValue, RespuestaDraft, RegistroGestion,
 } from '@/lib/types'
-import { todayISO, nowHHMM } from '@/lib/utils'
+import { todayISO } from '@/lib/utils'
 import { VoiceTextarea } from '@/components/ui/voice-textarea'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
