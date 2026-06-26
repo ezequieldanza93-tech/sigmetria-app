@@ -30,6 +30,7 @@ export interface PersonaDetalle {
   telefono: string | null
   email: string | null
   direccion: string | null
+  notas: string | null
   user_id: string | null
   foto_url: string | null
   dni_frente_url: string | null

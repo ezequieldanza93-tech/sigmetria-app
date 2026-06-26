@@ -13,7 +13,7 @@ const CARDS: HubCard[] = [
     href: '/dashboard/personas',
     icon: Users,
     title: 'Personas',
-    description: 'Trabajadores y contactos vinculados a la consultora.',
+    description: 'Trabajadores y contactos (Operativo) + prospectos de marketing.',
   },
   {
     href: '/dashboard/organizaciones-externas',

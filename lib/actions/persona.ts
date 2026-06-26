@@ -142,15 +142,18 @@ export async function createPersona(
 
   if (personaError || !persona) return { success: false, error: personaError?.message ?? 'Error al crear persona' }
 
-  // Link to selected establecimiento
-  const { error: junctionError } = await supabase
-    .from('personas_establecimientos')
-    .upsert(
-      { persona_id: persona.id, establecimiento_id: establecimientoId },
-      { onConflict: 'persona_id,establecimiento_id', ignoreDuplicates: true }
-    )
+  // Link to selected establecimiento. Algunos tipos (p. ej. Prospectos) se
+  // dan de alta sin establecimiento — en ese caso no creamos el vínculo.
+  if (establecimientoId) {
+    const { error: junctionError } = await supabase
+      .from('personas_establecimientos')
+      .upsert(
+        { persona_id: persona.id, establecimiento_id: establecimientoId },
+        { onConflict: 'persona_id,establecimiento_id', ignoreDuplicates: true }
+      )
 
-  if (junctionError) return { success: false, error: junctionError.message }
+    if (junctionError) return { success: false, error: junctionError.message }
+  }
 
   // Si se eligió un puesto en el alta (trabajador con sector/puesto), lo asignamos.
   const puestoId = (formData.get('puesto_id') as string)?.trim() || null
