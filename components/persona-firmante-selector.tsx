@@ -86,13 +86,33 @@ export function PersonaFirmanteSelector({
   // persona_id guardado pero NO el nombre/apellido/DNI), al resolver la persona en la
   // lista re-emitimos el contrato COMPLETO una sola vez por id. Sin esto, el DNI queda
   // vacío y la firma a mano no se registra al finalizar un borrador re-abierto.
+  // En `readOnly` NO corre: ahí el firmante SIEMPRE es el usuario logueado (ver abajo),
+  // no el que tenga guardado el borrador (que pudo planificarse para otra persona).
   const syncedValueId = useRef<string | null>(null)
   useEffect(() => {
+    if (readOnly) return
     if (!value || !selected) return
     if (syncedValueId.current === selected.id) return
     syncedValueId.current = selected.id
     onChange({ id: selected.id, nombre: selected.nombre, apellido: selected.apellido, dni: selected.dni })
-  }, [value, selected, onChange])
+  }, [readOnly, value, selected, onChange])
+
+  // readOnly: el firmante es SIEMPRE la persona del usuario logueado (quien ejecuta y
+  // firma), aunque el borrador se haya planificado/empezado para OTRA persona. Pisa el
+  // `value` guardado para no quedar bloqueado por la validación server-side
+  // (firmante == usuario logueado). El "para quién estaba planificada" se preserva
+  // aparte en registro_gestiones.responsable_id.
+  const miFirmaForzadaId = useRef<string | null>(null)
+  useEffect(() => {
+    if (!readOnly || !miPersonaId) return
+    const mia = ejecutores.find(p => p.id === miPersonaId)
+    if (!mia) return
+    if (miFirmaForzadaId.current === mia.id && value === mia.id) return
+    miFirmaForzadaId.current = mia.id
+    if (value !== mia.id) {
+      onChange({ id: mia.id, nombre: mia.nombre, apellido: mia.apellido, dni: mia.dni })
+    }
+  }, [readOnly, miPersonaId, ejecutores, value, onChange])
 
   // Click-outside.
   useEffect(() => {
@@ -133,7 +153,9 @@ export function PersonaFirmanteSelector({
   // estático: el nombre ya seleccionado, sin dropdown ni botón de limpiar.
   if (readOnly) {
     const miPersona = miPersonaId ? ejecutores.find(p => p.id === miPersonaId) ?? null : null
-    const mostrado = selected ?? miPersona
+    // Siempre mostramos al usuario logueado (es quien firma). Solo si no se puede
+    // resolver su persona caemos al `selected` para no quedar en blanco.
+    const mostrado = miPersona ?? selected
     return (
       <div className="w-full border border-border-default rounded-lg px-3 py-2 text-sm bg-surface-subtle text-text-primary">
         {isLoading ? (
