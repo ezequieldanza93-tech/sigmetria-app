@@ -2,7 +2,7 @@
 // Escribe _auditoria-db/schema.json con todo lo necesario para la auditoría.
 import { writeFileSync, mkdirSync } from 'node:fs'
 
-const token = 'sbp_9852fc06dbed30f7f5937feb37fac608c36e6538'
+const token = process.env.SUPABASE_ACCESS_TOKEN ?? ''
 const ref = 'lslzhgmoaxgkcjeweqaz'
 const URL = `https://api.supabase.com/v1/projects/${ref}/database/query`
 
