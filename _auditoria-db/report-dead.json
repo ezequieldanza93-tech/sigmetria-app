@@ -1,0 +1,154 @@
+{
+  "backupTables": [
+    { "name": "_backup_clasif_20260618", "rows": 4960 },
+    { "name": "_backup_nombres_pre_renombrar", "rows": 4230 },
+    { "name": "_backup_pampero_borrados_20260618", "rows": 190 },
+    { "name": "_backup_pampero_casual_dup", "rows": 65 },
+    { "name": "_backup_pampero_miembrossup_20260618", "rows": 172 },
+    { "name": "_backup_pre_dedupe_map", "rows": 5247 },
+    { "name": "_backup_pre_dedupe_prod", "rows": 4578 },
+    { "name": "_backup_pre_dedupe_var", "rows": 2181 }
+  ],
+  "unusedTables": [
+    {
+      "name": "scraper_categorias",
+      "rows": 591,
+      "reason": "Tabla staging del scraper de catalogo EPP. El unico archivo de app que toca tablas scraper_* es lib/actions/scraper-catalogo.ts, y solo usa scraper_catalogos, scraper_productos y scraper_producto_assets. scraper_categorias NO tiene .from ni RPC en el codigo de la app. Candidata a limpieza de staging."
+    },
+    {
+      "name": "scraper_producto_variantes",
+      "rows": 2191,
+      "reason": "Tabla staging del scraper de catalogo EPP. No referenciada por lib/actions/scraper-catalogo.ts (que solo lee scraper_catalogos/productos/assets) ni por ningun otro codigo de app. Las variantes productivas viven en producto_variantes (esa SI se usa). Candidata a limpieza de staging."
+    },
+    {
+      "name": "founder_review_bonuses",
+      "rows": 0,
+      "reason": "Sin .from ni RPC en codigo de app. NO es leftover viejo: creada el 20260625000001_billing_founder_cuotas_gifted_schema.sql (muy reciente). Es scaffolding adelantado al codigo (feature de bonos founder/billing aun sin UI). Verificar antes de tocar: tabla nueva pendiente de cablear, no basura."
+    },
+    {
+      "name": "payment_installments",
+      "rows": 0,
+      "reason": "Sin .from ni RPC en codigo de app. NO es leftover: creada el 20260625000001_billing_founder_cuotas_gifted_schema.sql (reciente). Scaffolding de cuotas de pago adelantado al codigo. Verificar: tabla nueva pendiente de cablear."
+    },
+    {
+      "name": "web_profiles",
+      "rows": 1,
+      "reason": "Sin .from directo en el codigo del SaaS escaneado. NO es basura: creada el 20260715000001_web_profiles_onboarding.sql; se escribe por TRIGGER de DB (INSERT ... ON CONFLICT en handle del nuevo user) y pertenece al onboarding de la WEB (otro repo, C:\\dev\\sigmetria-web), no a esta app. RLS activa. Probablemente usada desde el repo web. NO dropear sin chequear sigmetria-web."
+    },
+    {
+      "name": "cursos_versiones_material",
+      "rows": 0,
+      "reason": "Sin .from ni RPC en codigo de app; solo aparece en specs (.sdd/prompts/campus-virtual.md) y migraciones. Tabla de versionado de material del campus virtual creada (20260601000003_campus_virtual.sql) con RLS, pero el versionado aun no esta cableado en la app. Scaffolding de feature parcial; verificar antes de tocar."
+    },
+    {
+      "name": "iperc_historial_estados",
+      "rows": 0,
+      "reason": "Sin .from ni RPC en codigo de app; solo en specs (.sdd/prompts/mapas-riesgo-iperc.md) y migracion 20260529000002_iperc_schema.sql (con RLS select/insert). Modulo IPERC creado pero el historial de estados aun no esta cableado en la UI/acciones. Scaffolding; verificar antes de tocar."
+    }
+  ],
+  "unusedColumns": [
+    {
+      "table": "scraper_categorias",
+      "column": "(toda la tabla)",
+      "reason": "No se inspeccionaron columnas individuales: la tabla entera es staging sin uso de app. Si se conserva el scraper, sus columnas siguen siendo validas para el proceso externo."
+    },
+    {
+      "table": "(general)",
+      "column": "(ninguna columna *_old / *_legacy / *_deprecated en el schema actual)",
+      "reason": "Las migraciones limpiaron los leftovers de columnas: DROP COLUMN de art, sector, unidad, localidad, provincia, instructor, cargo, is_active, construction_type, photo_url, country, etc. ya aplicados. Las unicas columnas con nombre 'sospechoso' son iperc_historial_estados.estado_anterior_id y subscription_audit_log.estado_anterior, que son semanticamente correctas (estado previo en tablas de historial/auditoria), NO leftovers."
+    }
+  ],
+  "partitioning": [
+    {
+      "group": "asistencia_diaria_YYYY",
+      "tables": [
+        "asistencia_diaria_2026",
+        "asistencia_diaria_2027",
+        "asistencia_diaria_2028",
+        "asistencia_diaria_2029",
+        "asistencia_diaria_2030",
+        "asistencia_diaria_2031"
+      ],
+      "vacias": [
+        "asistencia_diaria_2027",
+        "asistencia_diaria_2028",
+        "asistencia_diaria_2029",
+        "asistencia_diaria_2030",
+        "asistencia_diaria_2031"
+      ],
+      "note": "Particionado por rango de fecha (migracion 20260525000001_partition_asistencia_diaria.sql). El parent 'asistencia_diaria' es la tabla particionada que usa el codigo; los hijos no tienen .from directo y eso es ESPERADO. NO desuso. Solo 2026 tiene datos (4 filas)."
+    },
+    {
+      "group": "gestiones_registros_YYYY (+future)",
+      "tables": [
+        "gestiones_registros_2025",
+        "gestiones_registros_2026",
+        "gestiones_registros_2027",
+        "gestiones_registros_2028",
+        "gestiones_registros_2029",
+        "gestiones_registros_2030",
+        "gestiones_registros_2031",
+        "gestiones_registros_future"
+      ],
+      "vacias": [
+        "gestiones_registros_2025",
+        "gestiones_registros_2028",
+        "gestiones_registros_2029",
+        "gestiones_registros_2030",
+        "gestiones_registros_2031",
+        "gestiones_registros_future"
+      ],
+      "note": "Particionado por anio (migracion 20260525000014_partition_gestiones_registros.sql). El parent 'gestiones_registros' es lo que usa el codigo (resultado de renombrar registro_gestiones en 20260522000001). Hijos sin .from directo = ESPERADO, NO desuso. Datos: 2026=1045, 2027=2. Hay particion catch-all 'future'."
+    },
+    {
+      "group": "audit_log_YYYYMM (+historical)",
+      "tables": [
+        "audit_log_202606",
+        "audit_log_202607",
+        "audit_log_202608",
+        "audit_log_202609",
+        "audit_log_historical"
+      ],
+      "vacias": [
+        "audit_log_202607",
+        "audit_log_202608",
+        "audit_log_202609",
+        "audit_log_historical"
+      ],
+      "note": "Particionado por mes (migracion 20260612000002_audit_log_partition.sql) con funcion fn_create_audit_partition_next_month que autogenera particiones futuras. El parent 'audit_log' es lo que escribe el trigger de auditoria. Hijos sin .from = ESPERADO. Datos: 202606=1883. 'historical' es la particion de archivo (vacia)."
+    }
+  ],
+  "migrationChurn": [
+    {
+      "detalle": "Gran renombrado de modelo viejo->nuevo en 20260522000001_rename_tables.sql (176 ALTER TABLE/POLICY RENAME). Ej: grupo_gestiones->gestiones_grupos, registro_gestiones->gestiones_registros, sectores_establecimiento->establecimientos_sectores, directorio_personas->personas_directorio, consultora_members->consultoras_members, instrumentos_medicion->mediciones_instrumentos, epp_por_puesto->puestos_epp, etc. Son RENAME (no dejan copia). El snapshot de los nombres viejos quedo en la backup _backup_nombres_pre_renombrar (4230 filas) -> esa SI es basura dropeable."
+    },
+    {
+      "detalle": "Algunos nombres renombrados en 20260522000001 NO existen en el schema actual (fueron dropeados despues): establecimientos_tipos_documentos, empresas_rubros_documentos, mediciones_instrumentos_tipos, formularios_secciones_aspectos. No quedaron leftovers; estan eliminados. OK."
+    },
+    {
+      "detalle": "Modelo 'empleados' viejo eliminado: DROP TABLE empleados (20260516000007), DROP TABLE empleado_sector (20260516000003), reemplazados por personas_directorio + puestos_de_trabajo + personas_establecimientos. Columnas empleado_id renombradas a persona_id. Sin leftovers en schema actual."
+    },
+    {
+      "detalle": "Modulo incidentes/denuncias rehecho: 20260614000001_drop_modulo_incidentes_denuncias_viejo.sql (10 drops) + 20260614000002_rename_siniestros_a_incidentes.sql (siniestros->incidentes). Sin tablas leftover detectadas (las incidentes_* y denuncias_* actuales son el modelo nuevo, hoy con 0 filas)."
+    },
+    {
+      "detalle": "Drops de columnas legacy ya aplicados y sin residuo en schema: 20260525000005_drop_legacy_text_columns.sql, 20260518000003_mediciones_drop_sector_text.sql, 20260518000002_unidades_library.sql (productos.unidad, mediciones.unidad), 20260518000006_localidades_fk.sql (empresas/establecimientos .localidad/.provincia texto), 20260518000007_architecture_hardening.sql (establecimientos.construction_type/photo_url/country), 20260622000002_drop_instrumento_tipo_legacy.sql, 20260630000003_drop_mediciones_tipo_enum.sql, 20260630000004_drop_documentos_tipos_nivel.sql, 20260624000021_drop_documentos_tipos_reglas.sql."
+    },
+    {
+      "detalle": "Hay migraciones con timestamp 'futuro' relativo a la fecha actual (20260630*, 20260705*, 20260715*, 20260730*) pero ya aplicadas en la base (sus objetos existen en el schema). Es solo convencion de numeracion; no es churn ni problema."
+    }
+  ],
+  "scraperTables": [
+    { "name": "scraper_catalogos", "rows": 25, "usadaEnApp": true },
+    { "name": "scraper_productos", "rows": 13835, "usadaEnApp": true },
+    { "name": "scraper_producto_assets", "rows": 26111, "usadaEnApp": true },
+    { "name": "scraper_categorias", "rows": 591, "usadaEnApp": false },
+    { "name": "scraper_producto_variantes", "rows": 2191, "usadaEnApp": false }
+  ],
+  "resumen": {
+    "backups": 8,
+    "candidatasDesuso": 7,
+    "columnasSospechosas": 0,
+    "notaMetodo": "Metodo: parse de _auditoria-db/schema.json (257 tablas, 2781 columnas, 299 migraciones). Como el entorno NO tiene rg en PATH, escribi un script Node (_auditoria-db/_analyze.cjs) que camina el filesystem (14786 archivos .ts/.tsx/.js, excluyendo node_modules/.next/migrations/_preview/.sdd/*.md) y extrae 3 senales: (1) .from('tabla') -> 229 tablas, (2) recurso embebido 'tabla(' o 'tabla!' -> 160 tablas, (3) mencion del nombre en cualquier parte del codigo. Union de (1)+(2) deja 36 tablas sin referencia. De esas, 22 son hijos de particionado (asistencia_diaria_*, gestiones_registros_*, audit_log_*) que el codigo usa via el PARENT -> NO desuso. 8 son _backup_* -> basura segura. Quedan 7 candidatas reales: 2 staging de scraper sin uso (scraper_categorias, scraper_producto_variantes) y 5 tablas creadas recientemente cuyo codigo aun no esta cableado (founder_review_bonuses, payment_installments, web_profiles -> esta ultima escrita por trigger y usada por el repo WEB, cursos_versiones_material, iperc_historial_estados). Tambien cruce RPC: legajo_qr_accesos NO aparece como dead aunque no tenga .from porque se escribe via la RPC registrar_acceso_legajo (LIVE). Columnas: 0 leftovers tipo *_old/*_legacy; las migraciones de drop ya limpiaron todo. Recomendacion: los 8 _backup_* son dropeables sin riesgo; las 2 scraper_* staging tras confirmar que el scraper externo no las repuebla; las 5 nuevas NO tocar (scaffolding/trigger/web). Conservador: ninguna se borro."
+  }
+}

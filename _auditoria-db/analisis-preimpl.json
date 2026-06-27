@@ -1,0 +1,325 @@
+{
+  "catResults": {
+    "alertas_emitidas_log.referencia_tipo": [],
+    "alertas_emitidas_log.severidad": [],
+    "alertas_emitidas_log.tipo": [],
+    "calculo_carga_fuego_materiales.estado": [],
+    "calculo_carga_fuego_sector_materiales.estado": [],
+    "ct_var_ropa.tipo_ropa": [
+      {
+        "val": "Ropa tejida de doble capa",
+        "cnt": 1
+      },
+      {
+        "val": "Overol de polipropileno SMS",
+        "cnt": 1
+      },
+      {
+        "val": "Ropa de trabajo (algodón)",
+        "cnt": 1
+      },
+      {
+        "val": "Overol de poliolefina",
+        "cnt": 1
+      },
+      {
+        "val": "Overol barrera de vapor con capucha",
+        "cnt": 1
+      },
+      {
+        "val": "Overol de tejido",
+        "cnt": 1
+      }
+    ],
+    "cursos.categoria": [
+      {
+        "val": "Seguridad",
+        "cnt": 2
+      }
+    ],
+    "dec351_materiales_pci.categoria": [
+      {
+        "val": "Celulósicos",
+        "cnt": 9
+      },
+      {
+        "val": "Líq. inflam.",
+        "cnt": 8
+      },
+      {
+        "val": "Plásticos",
+        "cnt": 6
+      },
+      {
+        "val": "Gases",
+        "cnt": 3
+      },
+      {
+        "val": "Cauchos",
+        "cnt": 2
+      },
+      {
+        "val": "Carbones",
+        "cnt": 2
+      }
+    ],
+    "empresas.tipo_identidad_impositiva": [
+      {
+        "val": "CUIT",
+        "cnt": 6
+      }
+    ],
+    "feedback.nps_categoria": [],
+    "gestiones_registros_2026.estado": [],
+    "iperc_consecuencias.nivel": [
+      {
+        "val": "Daño Leve",
+        "cnt": 1
+      },
+      {
+        "val": "Daño Moderado",
+        "cnt": 1
+      },
+      {
+        "val": "Daño Fatal",
+        "cnt": 1
+      },
+      {
+        "val": "Daño Muy Grave",
+        "cnt": 1
+      },
+      {
+        "val": "Daño Grave",
+        "cnt": 1
+      }
+    ],
+    "iperc_probabilidades.nivel": [
+      {
+        "val": "Moderada",
+        "cnt": 1
+      },
+      {
+        "val": "Improbable",
+        "cnt": 1
+      },
+      {
+        "val": "Probable",
+        "cnt": 1
+      },
+      {
+        "val": "Muy Probable",
+        "cnt": 1
+      },
+      {
+        "val": "Muy Improbable",
+        "cnt": 1
+      }
+    ],
+    "leads.tipo_contacto": [
+      {
+        "val": "suscriptor",
+        "cnt": 2
+      }
+    ],
+    "normativa_auditoria_items.categoria_nombre": [],
+    "normativa_auditoria_items.norma_tipo": [],
+    "notificaciones.entidad_tipo": [],
+    "notificaciones.tipo": [],
+    "observaciones_fotos_cliente.categoria": [],
+    "payments.mp_status": []
+  },
+  "ginExisting": [
+    {
+      "tabla": "medidas_control",
+      "indexname": "idx_mc_texto",
+      "indexdef": "CREATE INDEX idx_mc_texto ON public.medidas_control USING gin (to_tsvector('spanish'::regconfig, (texto)::text))"
+    }
+  ],
+  "partitions": [
+    {
+      "partition_name": "asistencia_diaria_2026",
+      "bounds": "FOR VALUES FROM ('2026-01-01') TO ('2027-01-01')"
+    },
+    {
+      "partition_name": "asistencia_diaria_2027",
+      "bounds": "FOR VALUES FROM ('2027-01-01') TO ('2028-01-01')"
+    },
+    {
+      "partition_name": "asistencia_diaria_2028",
+      "bounds": "FOR VALUES FROM ('2028-01-01') TO ('2029-01-01')"
+    },
+    {
+      "partition_name": "asistencia_diaria_2029",
+      "bounds": "FOR VALUES FROM ('2029-01-01') TO ('2030-01-01')"
+    },
+    {
+      "partition_name": "asistencia_diaria_2030",
+      "bounds": "FOR VALUES FROM ('2030-01-01') TO ('2031-01-01')"
+    },
+    {
+      "partition_name": "asistencia_diaria_2031",
+      "bounds": "FOR VALUES FROM ('2031-01-01') TO ('2032-01-01')"
+    },
+    {
+      "partition_name": "asistencia_diaria_default",
+      "bounds": "DEFAULT"
+    },
+    {
+      "partition_name": "audit_log_202606",
+      "bounds": "FOR VALUES FROM ('2026-06-01 00:00:00+00') TO ('2026-07-01 00:00:00+00')"
+    },
+    {
+      "partition_name": "audit_log_202607",
+      "bounds": "FOR VALUES FROM ('2026-07-01 00:00:00+00') TO ('2026-08-01 00:00:00+00')"
+    },
+    {
+      "partition_name": "audit_log_202608",
+      "bounds": "FOR VALUES FROM ('2026-08-01 00:00:00+00') TO ('2026-09-01 00:00:00+00')"
+    },
+    {
+      "partition_name": "audit_log_202609",
+      "bounds": "FOR VALUES FROM ('2026-09-01 00:00:00+00') TO ('2026-10-01 00:00:00+00')"
+    },
+    {
+      "partition_name": "audit_log_default",
+      "bounds": "DEFAULT"
+    },
+    {
+      "partition_name": "audit_log_historical",
+      "bounds": "FOR VALUES FROM (MINVALUE) TO ('2026-06-01 00:00:00+00')"
+    },
+    {
+      "partition_name": "gestiones_registros_2025",
+      "bounds": "FOR VALUES FROM ('2025-01-01') TO ('2026-01-01')"
+    },
+    {
+      "partition_name": "gestiones_registros_2026",
+      "bounds": "FOR VALUES FROM ('2026-01-01') TO ('2027-01-01')"
+    },
+    {
+      "partition_name": "gestiones_registros_2027",
+      "bounds": "FOR VALUES FROM ('2027-01-01') TO ('2028-01-01')"
+    },
+    {
+      "partition_name": "gestiones_registros_2028",
+      "bounds": "FOR VALUES FROM ('2028-01-01') TO ('2029-01-01')"
+    },
+    {
+      "partition_name": "gestiones_registros_2029",
+      "bounds": "FOR VALUES FROM ('2029-01-01') TO ('2030-01-01')"
+    },
+    {
+      "partition_name": "gestiones_registros_2030",
+      "bounds": "FOR VALUES FROM ('2030-01-01') TO ('2031-01-01')"
+    },
+    {
+      "partition_name": "gestiones_registros_2031",
+      "bounds": "FOR VALUES FROM ('2031-01-01') TO ('2032-01-01')"
+    },
+    {
+      "partition_name": "gestiones_registros_future",
+      "bounds": "FOR VALUES FROM ('2032-01-01') TO ('9999-12-31')"
+    }
+  ],
+  "fn3Results": {
+    "entregas_epp.entregado_por_nombre": {
+      "total": 0,
+      "divergentes": null
+    },
+    "notificaciones.entidad_nombre": "polymorphic - cannot check directly"
+  },
+  "tableKinds": [
+    {
+      "name": "alertas_emitidas_log",
+      "relkind": "r",
+      "kind_label": "tabla normal"
+    },
+    {
+      "name": "asistencia_diaria",
+      "relkind": "p",
+      "kind_label": "tabla particionada (padre)"
+    },
+    {
+      "name": "audit_log",
+      "relkind": "p",
+      "kind_label": "tabla particionada (padre)"
+    },
+    {
+      "name": "calculo_carga_fuego_materiales",
+      "relkind": "r",
+      "kind_label": "tabla normal"
+    },
+    {
+      "name": "calculo_carga_fuego_sector_materiales",
+      "relkind": "r",
+      "kind_label": "tabla normal"
+    },
+    {
+      "name": "ct_var_ropa",
+      "relkind": "r",
+      "kind_label": "tabla normal"
+    },
+    {
+      "name": "cursos",
+      "relkind": "r",
+      "kind_label": "tabla normal"
+    },
+    {
+      "name": "dec351_materiales_pci",
+      "relkind": "r",
+      "kind_label": "tabla normal"
+    },
+    {
+      "name": "empresas",
+      "relkind": "r",
+      "kind_label": "tabla normal"
+    },
+    {
+      "name": "feedback",
+      "relkind": "r",
+      "kind_label": "tabla normal"
+    },
+    {
+      "name": "gestiones_registros",
+      "relkind": "p",
+      "kind_label": "tabla particionada (padre)"
+    },
+    {
+      "name": "iperc_consecuencias",
+      "relkind": "r",
+      "kind_label": "tabla normal"
+    },
+    {
+      "name": "iperc_probabilidades",
+      "relkind": "r",
+      "kind_label": "tabla normal"
+    },
+    {
+      "name": "leads",
+      "relkind": "r",
+      "kind_label": "tabla normal"
+    },
+    {
+      "name": "normativa_auditoria_items",
+      "relkind": "r",
+      "kind_label": "tabla normal"
+    },
+    {
+      "name": "notificaciones",
+      "relkind": "r",
+      "kind_label": "tabla normal"
+    },
+    {
+      "name": "observaciones_fotos_cliente",
+      "relkind": "r",
+      "kind_label": "tabla normal"
+    },
+    {
+      "name": "payments",
+      "relkind": "r",
+      "kind_label": "tabla normal"
+    }
+  ],
+  "existingChecks": [],
+  "tablesWithChecks": []
+}
