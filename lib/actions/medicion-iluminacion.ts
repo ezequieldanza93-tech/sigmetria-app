@@ -508,19 +508,27 @@ export async function sugerirValorRequerido(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
-  const q = (descripcion ?? '').trim()
-  if (!q) return { success: true, data: [] }
-  // PostgREST: en un filtro `.or(...)` los `%` del patrón ilike van dentro del
-  // valor; comas y paréntesis romperían el parser del or(), pero rubro/local/tarea
-  // son texto técnico simple — no los sanitizamos más allá del trim.
-  const patron = `%${q}%`
+  const raw = (descripcion ?? '').trim()
+  if (!raw) return { success: true, data: [] }
+
+  // Split en palabras individuales y filtramos vacíos/too-short.
+  // Esto permite que "oficina administrativa" busque MATCH por cada término
+  // individual en vez de buscar la frase exacta (bug reportado).
+  const palabras = raw.split(/\s+/).filter(p => p.length >= 2)
+  if (palabras.length === 0) return { success: true, data: [] }
+
+  // Construye condiciones OR para cada palabra en cada columna.
+  // Ej: "oficina admin" → `rubro.ilike.%oficina%,local.ilike.%oficina%,tarea.ilike.%oficina%,rubro.ilike.%admin%,...`
+  function orCond(fields: string[], terms: string[]): string {
+    return terms.flatMap(t => fields.map(f => `${f}.ilike.%${t}%`)).join(',')
+  }
 
   // ── 1. Tabla 2 (match OR sobre rubro / local / tarea) ───────────────
   const { data: t2, error: t2Err } = await supabase
     .from('dec351_iluminacion_tabla2')
     .select('lux_min, rubro, local, tarea')
     .eq('is_active', true)
-    .or(`rubro.ilike.${patron},local.ilike.${patron},tarea.ilike.${patron}`)
+    .or(orCond(['rubro', 'local', 'tarea'], palabras))
     .order('orden', { ascending: true })
   if (t2Err) return { success: false, error: t2Err.message }
 
@@ -534,12 +542,11 @@ export async function sugerirValorRequerido(
   }
 
   // ── 2. Fallback: Tabla 1 (clase de tarea visual) ────────────────────
-  // Match OR sobre clase_tarea / detalle con la misma descripción.
   const { data: t1, error: t1Err } = await supabase
     .from('dec351_iluminacion_tabla1')
     .select('lux_min, lux_max, clase_tarea, detalle')
     .eq('is_active', true)
-    .or(`clase_tarea.ilike.${patron},detalle.ilike.${patron}`)
+    .or(orCond(['clase_tarea', 'detalle'], palabras))
     .order('orden', { ascending: true })
   if (t1Err) return { success: false, error: t1Err.message }
 

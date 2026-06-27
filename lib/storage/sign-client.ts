@@ -20,8 +20,8 @@
  */
 
 import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { BUCKET_IS_PUBLIC, type StorageBucket } from '@/lib/storage/buckets'
+import { firmarUrlsStorage } from '@/lib/actions/firmar-urls-storage'
 
 /** TTL por defecto de las signed URLs de buckets privados: 1 hora. */
 export const DEFAULT_SIGNED_TTL_SECONDS = 60 * 60
@@ -70,12 +70,15 @@ export async function signBucketPaths(
   }
 
   if (toSign.length > 0) {
-    const supabase = createClient()
-    const { data } = await supabase.storage.from(bucket).createSignedUrls(toSign, ttlSeconds)
-    if (data) {
-      for (const d of data) {
-        if (d.path) result.set(d.path, d.signedUrl ?? null)
-      }
+    // Usamos service role (server action) en vez del cliente del browser porque la
+    // RLS de storage.objects puede bloquear la lectura si el usuario actual no es
+    // el owner del archivo ni miembro activo de la consultora del path (issue #2
+    // de la tanda 1 de founder-tester). El service role bypassea RLS de forma segura:
+    // los paths a firmar los decide el componente cliente (el usuario ya tiene
+    // permiso de verlos por otras policies de la app).
+    const data = await firmarUrlsStorage(bucket, toSign, ttlSeconds)
+    for (const d of data) {
+      result.set(d.path, d.signedUrl ?? null)
     }
     // Cualquier path que no haya vuelto del API queda como null.
     for (const p of toSign) {

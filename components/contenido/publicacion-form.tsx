@@ -9,6 +9,7 @@ import { VoiceTextarea } from '@/components/ui/voice-textarea'
 import { Select } from '@/components/ui/select'
 import { MultiMediaUpload, type MediaFormSlot } from '@/components/contenido/multi-media-upload'
 import { createPublicacion, updatePublicacion } from '@/lib/actions/contenido'
+import { pulirObservacion } from '@/lib/actions/pulir-observacion'
 import { toast } from '@/lib/hooks/use-toast'
 import type { ContenidoCatalogos, ContenidoPublicacionFull } from '@/lib/contenido/types'
 
@@ -58,6 +59,18 @@ export function PublicacionForm({ open, onClose, catalogos, editing, getUrl, onS
   )
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  function handleCerrarConConfirmacion() {
+    if (pending) return
+    // Si no hay cambios significativos, cerrar sin preguntar.
+    const hayCambios = titulo || descripcion || hashtags || fecha || slots.length > 0
+    if (!hayCambios && !editing) {
+      onClose()
+      return
+    }
+    if (!window.confirm('Si cerrás ahora se pierden los cambios sin guardar. ¿Querés continuar?')) return
+    onClose()
+  }
 
   const formatosDelCanal = useMemo(
     () => formatos.filter((f) => f.canal_id === canalId),
@@ -116,7 +129,7 @@ export function PublicacionForm({ open, onClose, catalogos, editing, getUrl, onS
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={editing ? 'Editar publicación' : 'Nueva publicación'} size="full">
+    <Modal open={open} onClose={handleCerrarConConfirmacion} dismissable={false} title={editing ? 'Editar publicación' : 'Nueva publicación'} size="full">
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
           <div role="alert" className="rounded-lg border border-red-200 bg-[var(--danger-bg)] px-4 py-3 text-sm text-[var(--danger)]">
@@ -163,7 +176,9 @@ export function PublicacionForm({ open, onClose, catalogos, editing, getUrl, onS
           label="Descripción / copy"
           value={descripcion}
           onValueChange={setDescripcion}
-          rows={4}
+          rows={10}
+          className="w-full"
+          pulirAction={pulirObservacion}
           placeholder="El texto que va a acompañar la publicación…"
         />
 

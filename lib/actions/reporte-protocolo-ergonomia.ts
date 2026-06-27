@@ -247,8 +247,8 @@ export async function generarReporteProtocoloErgonomia(
   let logoEmpresaDataUrl: string | undefined
   let logoConsultoraDataUrl: string | undefined
 
-  const { createClient } = await import('@/lib/supabase/server')
-  const supabase = await createClient()
+  const { createServiceClient } = await import('@/lib/supabase/service')
+  const supabase = createServiceClient()
 
   if (ev.establecimiento_id) {
     const { data: estRow } = await supabase

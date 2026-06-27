@@ -1,8 +1,13 @@
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import { BUCKET_IS_PUBLIC, type StorageBucket } from '@/lib/storage/buckets'
 
 /**
  * Resolución de URLs on-read a partir del PATH relativo guardado en DB.
+ *
+ * NOTA: Usa createServiceClient() (service role) porque estas funciones se
+ * llaman desde server actions (PDF generation) donde el JWT del usuario
+ * puede expirar (ver bug #8 de founder-tester). El service role bypassea
+ * RLS de storage.objects de forma segura: la autorización ya ocurrió.
  *
  * Por qué existe: desde el refactor de pre-lanzamiento la DB guarda el
  * `path` relativo del objeto (no la URL). La URL se deriva en el momento
@@ -40,7 +45,7 @@ export async function resolveAssetUrl(
   // Dato legacy: ya es una URL absoluta → devolver tal cual.
   if (isAbsoluteUrl(pathOrUrl)) return pathOrUrl
 
-  const supabase = await createClient()
+  const supabase = createServiceClient()
 
   if (BUCKET_IS_PUBLIC[bucket]) {
     const { data } = supabase.storage.from(bucket).getPublicUrl(pathOrUrl)
@@ -68,7 +73,7 @@ export async function resolveAssetUrls(
 ): Promise<(string | null)[]> {
   if (paths.length === 0) return []
 
-  const supabase = await createClient()
+  const supabase = createServiceClient()
   const isPublic = BUCKET_IS_PUBLIC[bucket]
 
   // Resolución sincrónica de públicos y legacy; juntamos los privados nuevos

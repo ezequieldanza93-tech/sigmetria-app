@@ -39,7 +39,6 @@ import { emitirEvidenciaPat } from '@/lib/actions/emitir-evidencia-pat'
 import { emitirEvidenciaCargaTermica } from '@/lib/actions/emitir-evidencia-carga-termica'
 import { emitirEvidenciaErgonomia } from '@/lib/actions/emitir-evidencia-ergonomia'
 import { emitirEvidenciaCargaFuego } from '@/lib/actions/emitir-evidencia-carga-fuego'
-import { PersonaSelector } from '@/components/persona-selector'
 import { PersonaSelectorConAlta } from '@/components/persona-selector-con-alta'
 import { AuditHistorialLink } from '@/components/auditoria/audit-historial-link'
 import { useFirmasEntidad } from '@/lib/queries/firmas'
@@ -999,12 +998,11 @@ function BibliotecaForm({
                 Responsable
                 <span className="text-xs text-text-tertiary font-normal ml-1">(opcional)</span>
               </label>
-              <PersonaSelector
+              <PersonaSelectorConAlta
                 name="responsable_id_lote"
                 value={responsableId}
-                onChange={setResponsableId}
+                onChange={p => setResponsableId(p?.id ?? null)}
                 placeholder="Buscar responsable…"
-                soloEjecutores
                 establecimientoId={establecimientoId}
               />
             </div>
@@ -1247,12 +1245,11 @@ function NuevaGestionForm({
               Responsable
               <span className="text-xs text-text-tertiary font-normal ml-1">(opcional)</span>
             </label>
-            <PersonaSelector
+            <PersonaSelectorConAlta
               name="responsable_id_nueva"
               value={responsableId}
-              onChange={setResponsableId}
+              onChange={p => setResponsableId(p?.id ?? null)}
               placeholder="Buscar responsable…"
-              soloEjecutores
               establecimientoId={establecimientoId}
             />
           </div>

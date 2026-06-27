@@ -14,7 +14,7 @@
  *   4. Devuelve un signed URL para descargar/visualizar.
  */
 
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import { generarReporteProtocoloCargaTermica } from '@/lib/actions/reporte-protocolo-carga-termica'
 import { guardarEvidenciaProtocolo } from '@/lib/actions/protocolo-evidencia'
 import { getAdjuntosManualesComoAnexos } from '@/lib/pdf/anexos-manuales'
@@ -27,7 +27,7 @@ export async function emitirEvidenciaCargaTermica(
 ): Promise<ActionResult<{ pdfUrl: string }>> {
   if (!registroId) return { success: false, error: 'registroId requerido' }
 
-  const supabase = await createClient()
+  const supabase = createServiceClient()
 
   // ── 1. Resolver el medicionId desde el registro de gestión ──────────────────
   // MISMA lógica que getMedicionCargaTermicaByRegistro: filtrar por rg_fecha_planificada
@@ -70,10 +70,5 @@ export async function emitirEvidenciaCargaTermica(
   }
   console.warn('[PDF-EVIDENCIA-CT] OK, evidencia guardada', { path: ev.path, bytes: buffer.length })
 
-  // ── 4. Signed URL para descargar/visualizar ─────────────────────────────────
-  const { data: signed } = await supabase.storage
-    .from('documentos')
-    .createSignedUrl(ev.path, 60 * 60)
-
-  return { success: true, data: { pdfUrl: signed?.signedUrl ?? '' } }
+  return { success: true, data: { pdfUrl: ev.signedUrl } }
 }

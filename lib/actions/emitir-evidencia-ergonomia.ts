@@ -14,20 +14,28 @@
  *   4. Devuelve un signed URL para descargar/visualizar.
  */
 
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import { generarReporteProtocoloErgonomia } from '@/lib/actions/reporte-protocolo-ergonomia'
 import { guardarEvidenciaProtocolo } from '@/lib/actions/protocolo-evidencia'
 import { getAdjuntosManualesComoAnexos } from '@/lib/pdf/anexos-manuales'
 import { armarPdfFinalConAnexos } from '@/lib/pdf/ensamblar-anexos'
 import type { ActionResult } from '@/lib/types'
 
+/**
+ * Emite la evidencia PDF del Protocolo de Evaluación Ergonómica.
+ *
+ * NOTA: Usa createServiceClient() para TODAS las operaciones internas (queries,
+ * storage upload, signed URL) porque el JWT del usuario PUEDE expirar durante
+ * su sesión prolongada en el formulario. El service role bypassea RLS de forma
+ * segura: la autorización ya ocurrió cuando el usuario accedió al registro.
+ */
 export async function emitirEvidenciaErgonomia(
   registroId: string,
   rgFechaPlanificada: string,
 ): Promise<ActionResult<{ pdfUrl: string }>> {
   if (!registroId) return { success: false, error: 'registroId requerido' }
 
-  const supabase = await createClient()
+  const supabase = createServiceClient()
 
   // ── 1. Resolver el evaluacionId desde el registro de gestión ────────────────
   // MISMA lógica que getProtocoloErgonomiaByRegistro (la vista que SÍ funciona):
@@ -73,10 +81,6 @@ export async function emitirEvidenciaErgonomia(
   }
   console.warn('[PDF-ERGO-EVIDENCIA] OK, evidencia guardada', { path: evi.path, bytes: buffer.length })
 
-  // ── 4. Signed URL para descargar/visualizar ─────────────────────────────────
-  const { data: signed } = await supabase.storage
-    .from('documentos')
-    .createSignedUrl(evi.path, 60 * 60)
-
-  return { success: true, data: { pdfUrl: signed?.signedUrl ?? '' } }
+  // ── 4. Signed URL (ya viene firmada con service role desde guardarEvidenciaProtocolo) ──
+  return { success: true, data: { pdfUrl: evi.signedUrl } }
 }

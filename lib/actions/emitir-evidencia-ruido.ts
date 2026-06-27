@@ -13,7 +13,7 @@
  *   4. Devuelve un signed URL para descargar/visualizar.
  */
 
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import { generarReporteProtocoloRuido } from '@/lib/actions/reporte-protocolo-ruido'
 import { guardarEvidenciaProtocolo } from '@/lib/actions/protocolo-evidencia'
 import { getAdjuntosManualesComoAnexos } from '@/lib/pdf/anexos-manuales'
@@ -26,7 +26,7 @@ export async function emitirEvidenciaRuido(
 ): Promise<ActionResult<{ pdfUrl: string }>> {
   if (!registroId) return { success: false, error: 'registroId requerido' }
 
-  const supabase = await createClient()
+  const supabase = createServiceClient()
 
   // ── 1. Resolver el medicionId desde el registro de gestión ──────────────────
   // MISMA lógica que getMedicionRuidoByRegistro: filtrar por rg_fecha_planificada SOLO
@@ -69,10 +69,5 @@ export async function emitirEvidenciaRuido(
   }
   console.warn('[PDF-EVIDENCIA-RUIDO] OK, evidencia guardada', { path: ev.path, bytes: buffer.length })
 
-  // ── 4. Signed URL para descargar/visualizar ─────────────────────────────────
-  const { data: signed } = await supabase.storage
-    .from('documentos')
-    .createSignedUrl(ev.path, 60 * 60)
-
-  return { success: true, data: { pdfUrl: signed?.signedUrl ?? '' } }
+  return { success: true, data: { pdfUrl: ev.signedUrl } }
 }
