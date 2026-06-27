@@ -107,8 +107,9 @@ export async function getOrCreatePresentacion(establecimientoId: string): Promis
 // ─── Cargar la presentación completa (hidratar el wizard) ───
 export async function getPresentacionCompleta(presentacionId: string): Promise<ActionResult<Record<string, unknown>>> {
   const { supabase } = await getUser()
+  // sap_presentaciones_full: LEFT JOINs con los 5 satélites, devuelve todas las cols
   const { data: presentacion, error } = await supabase
-    .from('sap_presentaciones')
+    .from('sap_presentaciones_full')
     .select('*')
     .eq('id', presentacionId)
     .single()
@@ -185,22 +186,10 @@ export async function clasificarPresentacion(
 
   const { data: uso } = await supabase.from('sap_usos').select('id').eq('codigo', parsed.data.usoCodigo).single()
 
-  const { error } = await supabase
+  // Tabla principal: clasificación (CORE) + Bloque H (flags de alta consulta)
+  const { error: errMain } = await supabase
     .from('sap_presentaciones')
     .update({
-      uso_id: uso?.id ?? null,
-      superficie_cubierta_m2: parsed.data.superficieCubiertaM2,
-      superficie_aire_libre_m2: parsed.data.superficieAireLibreM2 ?? null,
-      pisos_elevados: parsed.data.pisosElevados,
-      tiene_subsuelo: parsed.data.tieneSubsuelo,
-      cantidad_subsuelos: parsed.data.cantidadSubsuelos ?? null,
-      actividad_en_subsuelo: parsed.data.actividadEnSubsuelo,
-      tiene_inflamables: (parsed.data.litrosInflamables ?? 0) > 0,
-      litros_inflamables: parsed.data.litrosInflamables ?? null,
-      tiene_baterias_litio: (parsed.data.kgBateriasLitio ?? 0) > 0,
-      kg_baterias_litio: parsed.data.kgBateriasLitio ?? null,
-      estaciones_carga_ev: parsed.data.estacionesCargaEv ?? false,
-      presta_servicio_ve: parsed.data.prestaServicioVehiculosElectricos ?? false,
       procesos_soldadura: parsed.data.procesosSoldadura ?? false,
       tiene_internacion: parsed.data.tieneInternacion ?? false,
       gases_medicinales: parsed.data.gasesMedicinales ?? false,
@@ -214,7 +203,29 @@ export async function clasificarPresentacion(
     })
     .eq('id', presentacionId)
 
-  if (error) return { success: false, error: error.message }
+  if (errMain) return { success: false, error: errMain.message }
+
+  // Satélite local (Bloque A): upsert para crear o actualizar en la misma operación
+  const { error: errLocal } = await supabase
+    .from('sap_presentaciones_local')
+    .upsert({
+      presentacion_id: presentacionId,
+      uso_id: uso?.id ?? null,
+      superficie_cubierta_m2: parsed.data.superficieCubiertaM2,
+      superficie_aire_libre_m2: parsed.data.superficieAireLibreM2 ?? null,
+      pisos_elevados: parsed.data.pisosElevados,
+      tiene_subsuelo: parsed.data.tieneSubsuelo,
+      cantidad_subsuelos: parsed.data.cantidadSubsuelos ?? null,
+      actividad_en_subsuelo: parsed.data.actividadEnSubsuelo,
+      tiene_inflamables: (parsed.data.litrosInflamables ?? 0) > 0,
+      litros_inflamables: parsed.data.litrosInflamables ?? null,
+      tiene_baterias_litio: (parsed.data.kgBateriasLitio ?? 0) > 0,
+      kg_baterias_litio: parsed.data.kgBateriasLitio ?? null,
+      estaciones_carga_ev: parsed.data.estacionesCargaEv ?? false,
+      presta_servicio_ve: parsed.data.prestaServicioVehiculosElectricos ?? false,
+    })
+
+  if (errLocal) return { success: false, error: errLocal.message }
 
   // Guardar sustancias peligrosas seleccionadas (replace-all)
   if (sustanciaIds) {
@@ -252,26 +263,58 @@ async function replaceSustancias(presentacionId: string, sustanciaIds: string[])
 }
 
 // ─── Guardado parcial de la cabecera (borrador) ─────────────
-// Campos editables de la cabecera (whitelist; snake_case = columnas).
-const CAMPOS_EDITABLES = new Set<string>([
+// Campos editables agrupados por tabla destino (snake_case = columnas).
+// Los campos del Bloque A van a sap_presentaciones_local (upsert).
+// Los del Bloque B a sap_presentaciones_actividad (upsert).
+// Los del Bloque C a sap_presentaciones_g1 (upsert).
+// Los del Bloque D a sap_presentaciones_g3 (upsert).
+// Los del Bloque F a sap_presentaciones_evacuacion (upsert).
+// El resto (CORE + Bloque E snapshot + Bloque G + Bloque H) a sap_presentaciones (update).
+
+const CAMPOS_PRINCIPAL = new Set<string>([
   'paso_actual',
-  // DDJJ Grupo 1
+  // CORE — estado y trámite
+  'decl_viabilidad', 'decl_comunicar_cambios',
+  'telefono_emergencia', 'qr_ifci',
+  'fecha_presentacion', 'fecha_aprobacion', 'fecha_vencimiento',
+  'expediente_nro', 'disposicion_nro', 'observaciones_autoridad',
+  // Bloque E — snapshot profesional actuante (intencional, no mover a satélite)
+  'profesional_persona_id',
+  'profesional_nombre', 'profesional_titulo', 'profesional_matricula',
+  'profesional_email', 'profesional_telefono',
+])
+
+const CAMPOS_LOCAL = new Set<string>([
+  // Bloque A — estos van por clasificarPresentacion; si llegan por patch también los enrutamos
+  'uso_id', 'superficie_cubierta_m2', 'superficie_aire_libre_m2',
+  'pisos_elevados', 'tiene_subsuelo', 'cantidad_subsuelos', 'actividad_en_subsuelo',
+  'tiene_inflamables', 'litros_inflamables', 'tiene_baterias_litio', 'kg_baterias_litio',
+  'estaciones_carga_ev', 'presta_servicio_ve', 'propiedad_horizontal',
+])
+
+const CAMPOS_ACTIVIDAD = new Set<string>([
+  // Bloque B
+  'razon_social', 'cuit', 'nombre_comercial', 'habilitacion_tipo', 'habilitacion_detalle',
+  'dias_horarios', 'aforo', 'ocupacion_diurna', 'ocupacion_nocturna', 'personas_movilidad_reducida',
+])
+
+const CAMPOS_G1 = new Set<string>([
+  // Bloque C
   'g1_declarante_persona_id',
   'g1_declarante_nombre', 'g1_declarante_dni_cuit', 'g1_caracter', 'g1_capacidad_m2_persona',
   'g1_tiene_entrepiso', 'g1_entrepiso_superficie', 'g1_entrepiso_destino', 'g1_subsuelo_destino',
   'g1_elementos_mitigacion', 'g1_personal_instruido', 'g1_responsabilidad_evacuacion',
-  // SAP G2/G3 datos
-  'razon_social', 'cuit', 'nombre_comercial', 'habilitacion_tipo', 'habilitacion_detalle',
-  'dias_horarios', 'ocupacion_diurna', 'ocupacion_nocturna', 'personas_movilidad_reducida',
-  'telefono_emergencia', 'qr_ifci',
-  'profesional_persona_id',
-  'profesional_nombre', 'profesional_titulo', 'profesional_matricula', 'profesional_email', 'profesional_telefono',
+])
+
+const CAMPOS_G3 = new Set<string>([
+  // Bloque D
+  'g3_riesgos_entorno', 'g3_riesgos_procesos', 'g3_procedimientos_respuesta', 'g3_procedimiento_alarma',
+])
+
+const CAMPOS_EVACUACION = new Set<string>([
+  // Bloque F
   'aviso_descripcion', 'aviso_viva_voz', 'evacuacion_procedimiento', 'punto_reunion_descripcion',
   'puesta_a_resguardo', 'enclavamientos', 'medidas_supletorias',
-  'g3_riesgos_entorno', 'g3_riesgos_procesos', 'g3_procedimientos_respuesta', 'g3_procedimiento_alarma',
-  'decl_viabilidad', 'decl_comunicar_cambios',
-  'fecha_presentacion', 'fecha_aprobacion', 'fecha_vencimiento', 'expediente_nro', 'disposicion_nro',
-  'observaciones_autoridad',
 ])
 
 export async function guardarBorradorPresentacion(
@@ -281,14 +324,53 @@ export async function guardarBorradorPresentacion(
   const { supabase, user } = await getUser()
   if (!user) return { success: false, error: 'No autenticado' }
 
-  const clean: Record<string, unknown> = {}
-  for (const [k, v] of Object.entries(patch)) {
-    if (CAMPOS_EDITABLES.has(k)) clean[k] = v === '' ? null : v
-  }
-  if (Object.keys(clean).length === 0) return { success: true, data: null }
+  const normalizeVal = (v: unknown) => (v === '' ? null : v)
 
-  const { error } = await supabase.from('sap_presentaciones').update(clean).eq('id', presentacionId)
-  if (error) return { success: false, error: error.message }
+  // Separar el patch por tabla destino
+  const patchPrincipal: Record<string, unknown> = {}
+  const patchLocal: Record<string, unknown> = {}
+  const patchActividad: Record<string, unknown> = {}
+  const patchG1: Record<string, unknown> = {}
+  const patchG3: Record<string, unknown> = {}
+  const patchEvacuacion: Record<string, unknown> = {}
+
+  for (const [k, v] of Object.entries(patch)) {
+    const val = normalizeVal(v)
+    if (CAMPOS_PRINCIPAL.has(k))  { patchPrincipal[k] = val; continue }
+    if (CAMPOS_LOCAL.has(k))      { patchLocal[k] = val; continue }
+    if (CAMPOS_ACTIVIDAD.has(k))  { patchActividad[k] = val; continue }
+    if (CAMPOS_G1.has(k))         { patchG1[k] = val; continue }
+    if (CAMPOS_G3.has(k))         { patchG3[k] = val; continue }
+    if (CAMPOS_EVACUACION.has(k)) { patchEvacuacion[k] = val; continue }
+    // campos desconocidos se ignoran silenciosamente (sin whitelist explícita)
+  }
+
+  const ops: Promise<{ error: { message: string } | null }>[] = []
+
+  if (Object.keys(patchPrincipal).length > 0)
+    ops.push(supabase.from('sap_presentaciones').update(patchPrincipal).eq('id', presentacionId))
+
+  if (Object.keys(patchLocal).length > 0)
+    ops.push(supabase.from('sap_presentaciones_local').upsert({ presentacion_id: presentacionId, ...patchLocal }))
+
+  if (Object.keys(patchActividad).length > 0)
+    ops.push(supabase.from('sap_presentaciones_actividad').upsert({ presentacion_id: presentacionId, ...patchActividad }))
+
+  if (Object.keys(patchG1).length > 0)
+    ops.push(supabase.from('sap_presentaciones_g1').upsert({ presentacion_id: presentacionId, ...patchG1 }))
+
+  if (Object.keys(patchG3).length > 0)
+    ops.push(supabase.from('sap_presentaciones_g3').upsert({ presentacion_id: presentacionId, ...patchG3 }))
+
+  if (Object.keys(patchEvacuacion).length > 0)
+    ops.push(supabase.from('sap_presentaciones_evacuacion').upsert({ presentacion_id: presentacionId, ...patchEvacuacion }))
+
+  if (ops.length === 0) return { success: true, data: null }
+
+  const results = await Promise.all(ops)
+  const firstError = results.find((r) => r.error)?.error
+  if (firstError) return { success: false, error: firstError.message }
+
   return { success: true, data: null }
 }
 
