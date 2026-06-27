@@ -345,31 +345,30 @@ export async function guardarBorradorPresentacion(
     // campos desconocidos se ignoran silenciosamente (sin whitelist explícita)
   }
 
-  const ops: Promise<{ error: { message: string } | null }>[] = []
-
-  if (Object.keys(patchPrincipal).length > 0)
-    ops.push(supabase.from('sap_presentaciones').update(patchPrincipal).eq('id', presentacionId))
-
-  if (Object.keys(patchLocal).length > 0)
-    ops.push(supabase.from('sap_presentaciones_local').upsert({ presentacion_id: presentacionId, ...patchLocal }))
-
-  if (Object.keys(patchActividad).length > 0)
-    ops.push(supabase.from('sap_presentaciones_actividad').upsert({ presentacion_id: presentacionId, ...patchActividad }))
-
-  if (Object.keys(patchG1).length > 0)
-    ops.push(supabase.from('sap_presentaciones_g1').upsert({ presentacion_id: presentacionId, ...patchG1 }))
-
-  if (Object.keys(patchG3).length > 0)
-    ops.push(supabase.from('sap_presentaciones_g3').upsert({ presentacion_id: presentacionId, ...patchG3 }))
-
-  if (Object.keys(patchEvacuacion).length > 0)
-    ops.push(supabase.from('sap_presentaciones_evacuacion').upsert({ presentacion_id: presentacionId, ...patchEvacuacion }))
-
-  if (ops.length === 0) return { success: true, data: null }
-
-  const results = await Promise.all(ops)
-  const firstError = results.find((r) => r.error)?.error
-  if (firstError) return { success: false, error: firstError.message }
+  if (Object.keys(patchPrincipal).length > 0) {
+    const { error } = await supabase.from('sap_presentaciones').update(patchPrincipal).eq('id', presentacionId)
+    if (error) return { success: false, error: error.message }
+  }
+  if (Object.keys(patchLocal).length > 0) {
+    const { error } = await supabase.from('sap_presentaciones_local').upsert({ presentacion_id: presentacionId, ...patchLocal })
+    if (error) return { success: false, error: error.message }
+  }
+  if (Object.keys(patchActividad).length > 0) {
+    const { error } = await supabase.from('sap_presentaciones_actividad').upsert({ presentacion_id: presentacionId, ...patchActividad })
+    if (error) return { success: false, error: error.message }
+  }
+  if (Object.keys(patchG1).length > 0) {
+    const { error } = await supabase.from('sap_presentaciones_g1').upsert({ presentacion_id: presentacionId, ...patchG1 })
+    if (error) return { success: false, error: error.message }
+  }
+  if (Object.keys(patchG3).length > 0) {
+    const { error } = await supabase.from('sap_presentaciones_g3').upsert({ presentacion_id: presentacionId, ...patchG3 })
+    if (error) return { success: false, error: error.message }
+  }
+  if (Object.keys(patchEvacuacion).length > 0) {
+    const { error } = await supabase.from('sap_presentaciones_evacuacion').upsert({ presentacion_id: presentacionId, ...patchEvacuacion })
+    if (error) return { success: false, error: error.message }
+  }
 
   return { success: true, data: null }
 }
