@@ -1,8 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { ApiKeysClient } from './api-keys-client'
+import { ConnectionGuide } from './connection-guide'
 
-export default async function ApiKeysPage() {
+export default async function ConexionesPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -25,23 +26,58 @@ export default async function ApiKeysPage() {
     .order('created_at', { ascending: false })
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-text-primary">API Keys</h1>
-        <p className="text-sm text-text-secondary mt-1">
-          Claves de acceso externo para integración de datos según Art. 4.7 Res. SRT 48/2025.{' '}
-          <a href="/api/v1/docs" target="_blank" rel="noopener" className="text-brand-primary hover:underline">
-            Ver documentación →
-          </a>
+    <div className="max-w-3xl mx-auto px-4 py-8 space-y-10">
+
+      {/* ================================================================ */}
+      {/* HERO — Conexiones                                                */}
+      {/* ================================================================ */}
+      <div className="space-y-3">
+        <h1 className="text-xl font-semibold text-text-primary">Conexiones</h1>
+        <p className="text-sm text-text-secondary leading-relaxed">
+          Conectá Sigmetría con las herramientas que usás todos los días. Vas a poder consultar
+          los datos de tu consultora desde el escritorio, sin tener que abrir el navegador.
         </p>
+        <div className="rounded-xl bg-brand-primary/5 border border-brand-primary/10 px-4 py-3 text-xs text-text-secondary leading-relaxed space-y-1">
+          <p>
+            <strong className="text-text-primary">¿Qué información se ve?</strong> Cada consultora
+            se conecta con su propia clave de acceso y ve:
+          </p>
+          <ul className="list-disc list-inside space-y-0.5 pl-1">
+            <li>La información general de Sigmetría que compartimos con todas las consultoras (catálogo de gestiones, normativa, etc.)</li>
+            <li><strong className="text-text-primary">Su información exclusiva:</strong> empresas, establecimientos, empleados, incidentes, riesgos, vencimientos, librerías customizadas, directorios y todos los registros propios de la consultora</li>
+            <li>Cada consultora ve <strong className="text-text-primary">solamente sus propios datos</strong>. La información de otras consultoras no es accesible.</li>
+          </ul>
+        </div>
       </div>
 
-      <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-800 space-y-1">
-        <p className="font-semibold">Límite de uso: 60 requests por minuto por key</p>
-        <p>Las keys tienen acceso de lectura a todas las empresas y establecimientos de tu consultora. Tratá cada key como una contraseña.</p>
-      </div>
+      {/* ================================================================ */}
+      {/* GUÍA PASO A PASO                                                  */}
+      {/* ================================================================ */}
+      <ConnectionGuide />
 
-      <ApiKeysClient keys={keys ?? []} isAdmin={isAdmin} />
+      {/* ================================================================ */}
+      {/* TUS CLAVES DE ACCESO                                              */}
+      {/* ================================================================ */}
+      <section className="space-y-4">
+        <div className="border-t border-border-subtle pt-8">
+          <h2 className="text-lg font-semibold text-text-primary">Tus claves de acceso</h2>
+          <p className="text-sm text-text-secondary mt-1 leading-relaxed">
+            Estas claves son como una contraseña que le das a cada aplicación para que pueda
+            conectarse a Sigmetría. Cada conexión usa su propia clave.
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-800 space-y-1">
+          <p className="font-semibold">Límite de uso: 60 consultas por minuto por clave</p>
+          <p>
+            Tratá cada clave como una contraseña. Si una clave se pierde o ya no la usás,
+            revocala y creá una nueva.
+          </p>
+        </div>
+
+        <ApiKeysClient keys={keys ?? []} isAdmin={isAdmin} />
+      </section>
+
     </div>
   )
 }
