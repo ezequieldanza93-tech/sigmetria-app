@@ -4,6 +4,12 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import type { ActionResult, Notificacion } from '@/lib/types'
 
+function addDays(dateStr: string, days: number): string {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const dt = new Date(y, m - 1, d + days)
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`
+}
+
 function diasRestantes(fecha: string): number {
   const hoy = new Date()
   hoy.setHours(0, 0, 0, 0)
@@ -186,6 +192,95 @@ export async function refrescarNotificaciones(): Promise<ActionResult<{ creadas:
       entidad_nombre: 'Certificado de Calibración',
       contexto_nombre: c.instrumentos?.nombre ?? null,
       fecha_vencimiento: c.fecha_vencimiento,
+    })
+  }
+
+  // 7. sap_presentaciones con fecha_vencimiento
+  const { data: sapPres } = await supabase
+    .from('sap_presentaciones')
+    .select(`
+      id,
+      fecha_vencimiento,
+      establecimientos!inner(nombre),
+      empresas!inner(razon_social)
+    `)
+    .not('fecha_vencimiento', 'is', null)
+    .eq('consultora_id', consultoraId)
+    .is('deleted_at', null)
+    .neq('estado', 'no_aplica')
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const s of (sapPres ?? []) as any[]) {
+    rows.push({
+      entidad_tipo: 'sap_presentacion',
+      entidad_id: s.id,
+      entidad_nombre: `SAP — ${s.empresas?.razon_social ?? 'Empresa'}`,
+      contexto_nombre: s.establecimientos?.nombre ?? null,
+      fecha_vencimiento: s.fecha_vencimiento,
+    })
+  }
+
+  // 8. observaciones clasificadas como acción inmediata (nivel >= 2)
+  // Primero obtenemos los gestiones_registros IDs para esta consultora
+  const grIds = (gestiones ?? []).map((g: any) => g.id) // eslint-disable-line @typescript-eslint/no-explicit-any
+  const grEstMap = new Map<string, string>()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const g of (gestiones ?? []) as any[]) {
+    grEstMap.set(g.id, g.gestiones_establecimientos?.establecimientos?.nombre ?? null)
+  }
+
+  if (grIds.length > 0) {
+    const { data: obsActions } = await supabase
+      .from('gestiones_observaciones')
+      .select(`
+        id,
+        descripcion,
+        fecha_planificada,
+        registro_gestion_id,
+        observaciones_categorias!inner(nivel)
+      `)
+      .is('fecha_cierre', null)
+      .not('fecha_planificada', 'is', null)
+      .gte('observaciones_categorias.nivel', 2)
+      .in('registro_gestion_id', grIds)
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const obs of (obsActions ?? []) as any[]) {
+      rows.push({
+        entidad_tipo: 'observacion_accion_inmediata',
+        entidad_id: obs.id,
+        entidad_nombre: obs.descripcion?.slice(0, 80) ?? 'Acción inmediata',
+        contexto_nombre: grEstMap.get(obs.registro_gestion_id) ?? null,
+        fecha_vencimiento: obs.fecha_planificada,
+      })
+    }
+  }
+
+  // 9. Incidentes abiertos — SLA implícito de 30 días para cierre
+  const { data: incidentesAbiertos } = await supabase
+    .from('incidentes')
+    .select(`
+      id,
+      titulo,
+      fecha_incidente,
+      empresas!inner(razon_social),
+      establecimientos(nombre)
+    `)
+    .eq('consultora_id', consultoraId)
+    .neq('estado', 'cerrada')
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const inc of (incidentesAbiertos ?? []) as any[]) {
+    const contexto = [
+      inc.empresas?.razon_social,
+      inc.establecimientos?.nombre,
+    ].filter(Boolean).join(' — ')
+    rows.push({
+      entidad_tipo: 'incidente',
+      entidad_id: inc.id,
+      entidad_nombre: inc.titulo,
+      contexto_nombre: contexto || null,
+      fecha_vencimiento: addDays(inc.fecha_incidente, 30),
     })
   }
 

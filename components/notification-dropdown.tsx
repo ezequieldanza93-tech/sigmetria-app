@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef, useCallback } from 'react'
-import { Bell, CheckCheck, FileText, GraduationCap, Gauge, ExternalLink } from 'lucide-react'
+import { Bell, CheckCheck, FileText, GraduationCap, Gauge, ExternalLink, Shield, AlertTriangle, AlertCircle, ClipboardCheck } from 'lucide-react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import type { Notificacion } from '@/lib/types'
@@ -13,8 +13,14 @@ const ENTIDAD_ICON: Record<string, React.ComponentType<{ size?: number; classNam
   documento_empresa: FileText,
   documento_establecimiento: FileText,
   documento_persona: FileText,
+  documento_subcontratista: FileText,
   matricula: GraduationCap,
   certificado: Gauge,
+  sap_presentacion: Shield,
+  observacion_accion_inmediata: AlertTriangle,
+  incidente: AlertCircle,
+  constancia_visita: ClipboardCheck,
+  protocolo_medicion: Gauge,
 }
 
 function getEntidadIcon(tipo: string) {

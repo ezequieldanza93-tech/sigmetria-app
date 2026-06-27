@@ -202,6 +202,101 @@ Deno.serve(async (req: Request) => {
       })
     }
 
+    // 7. sap_presentaciones con fecha_vencimiento
+    const { data: sapPres } = await supabase
+      .from('sap_presentaciones')
+      .select(`
+        id, fecha_vencimiento,
+        establecimientos!inner(nombre),
+        empresas!inner(razon_social)
+      `)
+      .not('fecha_vencimiento', 'is', null)
+      .eq('consultora_id', consultora.id)
+      .is('deleted_at', null)
+      .neq('estado', 'no_aplica')
+
+    for (const s of (sapPres ?? []) as any[]) {
+      rows.push({
+        entidad_tipo: 'sap_presentacion',
+        entidad_id: s.id,
+        entidad_nombre: `SAP — ${s.empresas?.razon_social ?? 'Empresa'}`,
+        contexto_nombre: s.establecimientos?.nombre ?? null,
+        fecha_vencimiento: s.fecha_vencimiento,
+        consultora_id: consultora.id,
+      })
+    }
+
+    // 8. observaciones acciones inmediatas (nivel >= 2) — deadline = fecha_planificada
+    // Obtenemos los gestiones_registros para esta consultora vía cadena de joins
+    const { data: grCron } = await supabase
+      .from('gestiones_registros')
+      .select(`
+        id,
+        gestiones_establecimientos!inner(
+          establecimientos!inner(nombre, empresas!inner(consultora_id))
+        )
+      `)
+      .eq('gestiones_establecimientos.establecimientos.empresas.consultora_id', consultora.id)
+
+    const grIdsCron = (grCron ?? []).map((g: any) => g.id)
+    const grEstMapCron = new Map<string, string>()
+    for (const g of (grCron ?? []) as any[]) {
+      grEstMapCron.set(g.id, g.gestiones_establecimientos?.establecimientos?.nombre ?? null)
+    }
+
+    if (grIdsCron.length > 0) {
+      const { data: obsAct } = await supabase
+        .from('gestiones_observaciones')
+        .select(`
+          id,
+          descripcion,
+          fecha_planificada,
+          registro_gestion_id,
+          observaciones_categorias!inner(nivel)
+        `)
+        .is('fecha_cierre', null)
+        .not('fecha_planificada', 'is', null)
+        .gte('observaciones_categorias.nivel', 2)
+        .in('registro_gestion_id', grIdsCron)
+
+      for (const obs of (obsAct ?? []) as any[]) {
+        rows.push({
+          entidad_tipo: 'observacion_accion_inmediata',
+          entidad_id: obs.id,
+          entidad_nombre: obs.descripcion?.slice(0, 80) ?? 'Acción inmediata',
+          contexto_nombre: grEstMapCron.get(obs.registro_gestion_id) ?? null,
+          fecha_vencimiento: obs.fecha_planificada,
+          consultora_id: consultora.id,
+        })
+      }
+    }
+
+    // 9. Incidentes abiertos — SLA implícito 30 días
+    const { data: incAbiertos } = await supabase
+      .from('incidentes')
+      .select(`
+        id, titulo, fecha_incidente,
+        empresas!inner(razon_social),
+        establecimientos(nombre)
+      `)
+      .eq('consultora_id', consultora.id)
+      .neq('estado', 'cerrada')
+
+    for (const inc of (incAbiertos ?? []) as any[]) {
+      const [y, m, d] = (inc.fecha_incidente as string).split('-').map(Number)
+      const dt = new Date(y, m - 1, d + 30)
+      const fechaVenc = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`
+      const contexto = [inc.empresas?.razon_social, inc.establecimientos?.nombre].filter(Boolean).join(' — ')
+      rows.push({
+        entidad_tipo: 'incidente',
+        entidad_id: inc.id,
+        entidad_nombre: inc.titulo,
+        contexto_nombre: contexto || null,
+        fecha_vencimiento: fechaVenc,
+        consultora_id: consultora.id,
+      })
+    }
+
     const hoy = new Date()
     hoy.setHours(0, 0, 0, 0)
 
@@ -253,6 +348,9 @@ Deno.serve(async (req: Request) => {
       .eq('consultora_id', consultora.id)
 
     if (existing) {
+      // Tipos que no dependen de configuracion_vencimientos — solo se limpian si la entidad desaparece
+      const independentTypes = new Set(['matricula', 'certificado', 'sap_presentacion', 'observacion_accion_inmediata', 'incidente'])
+
       const staleIds: string[] = []
       for (const n of existing) {
         const row = rows.find(
@@ -261,6 +359,9 @@ Deno.serve(async (req: Request) => {
         if (!row) {
           staleIds.push(n.id)
           continue
+        }
+        if (independentTypes.has(n.entidad_tipo)) {
+          continue // la entidad existe → la notificación sigue vigente
         }
         const venc = new Date(row.fecha_vencimiento + 'T00:00:00')
         const dias = Math.ceil((venc.getTime() - hoy.getTime()) / 86400000)
@@ -271,7 +372,7 @@ Deno.serve(async (req: Request) => {
             : 'gestion',
           row.entidad_nombre
         )
-        if (!cfg || dias < 0 || dias > cfg.dias_aviso) {
+        if (!cfg || (dias >= 0 && dias > cfg.dias_aviso)) {
           staleIds.push(n.id)
         }
       }

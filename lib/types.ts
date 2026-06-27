@@ -1348,6 +1348,11 @@ export type NotificacionEntidadTipo =
   | 'documento_subcontratista'
   | 'matricula'
   | 'certificado'
+  | 'sap_presentacion'
+  | 'observacion_accion_inmediata'
+  | 'incidente'
+  | 'constancia_visita'
+  | 'protocolo_medicion'
 
 export interface Notificacion {
   id: string
