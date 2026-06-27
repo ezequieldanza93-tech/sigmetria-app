@@ -19,8 +19,8 @@ const guides: Record<Platform, Guide> = {
     title: 'Conectar con Claude Desktop',
     steps: [
       'Abrí Claude Desktop y andá a Configuración (el engranaje ⚙️).',
-      'Entrá a la sección "Developer" o "Integraciones".',
-      'Buscá "Edit Config" al lado de "MCP Servers" y hace click.',
+      'Andá a "Aplicación de escritorio → Desarrollador".',
+      'En "Servidores MCP locales", hace click en "Editar configuración".',
       'Se va a abrir un archivo de texto. Pegá esto:',
       'Reemplazá TU_CLAVE por la clave de acceso que creaste más abajo.',
       'Guardá el archivo y reiniciá Claude Desktop. ¡Listo!',
