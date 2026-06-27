@@ -12,7 +12,7 @@ const platforms: { id: Platform; label: string; icon: typeof Globe }[] = [
   { id: 'other', label: 'Otros', icon: Smartphone },
 ]
 
-type Guide = { title: string; steps: string[]; code?: string }
+type Guide = { title: string; steps: string[]; code?: string; note?: string }
 
 const guides: Record<Platform, Guide> = {
   claude: {
@@ -21,20 +21,19 @@ const guides: Record<Platform, Guide> = {
       'Abrí Claude Desktop y andá a Configuración (el engranaje ⚙️).',
       'Andá a "Aplicación de escritorio → Desarrollador".',
       'En "Servidores MCP locales", hace click en "Editar configuración".',
-      'Se va a abrir un archivo de texto. Pegá esto:',
+      'Se va a abrir un archivo de texto. Agregá lo siguiente dentro de las llaves de "mcpServers":',
       'Reemplazá TU_CLAVE por la clave de acceso que creaste más abajo.',
       'Guardá el archivo y reiniciá Claude Desktop. ¡Listo!',
     ],
     code: `{
   "mcpServers": {
     "sigmetria": {
-      "url": "https://hys-app-sig.vercel.app/api/mcp",
-      "headers": {
-        "Authorization": "Bearer TU_CLAVE"
-      }
+      "command": "C:\\\\Users\\\\TU_USUARIO\\\\sigmetria-mcp.cmd",
+      "args": []
     }
   }
 }`,
+    note: 'Antes necesitás crear un archivo sigmetria-mcp.cmd en tu carpeta de usuario (C:\\Users\\TU_USUARIO\\) con este contenido (reemplazando TU_CLAVE): @\"C:\\Program Files\\nodejs\\npx.cmd\" -y mcp-remote \"https://hys-app-sig.vercel.app/api/mcp\" --transport http-only --header \"Authorization: Bearer TU_CLAVE\"',
   },
 
   cursor: {
@@ -143,6 +142,14 @@ export function ConnectionGuide() {
             >
               Copiar configuración
             </button>
+          </div>
+        )}
+
+        {/* Nota adicional */}
+        {guides[active].note && (
+          <div className="rounded-lg bg-blue-50 border border-blue-200 px-4 py-3 text-xs text-blue-800 leading-relaxed">
+            <p className="font-semibold mb-1">📝 Importante</p>
+            <p>{guides[active].note}</p>
           </div>
         )}
 
