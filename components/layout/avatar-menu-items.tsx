@@ -46,6 +46,8 @@ interface AvatarMenuContentProps {
   showMarketing?: boolean
   /** Gate para Reportes. False por defecto. */
   showReportes?: boolean
+  /** Callback para cerrar el menú cuando se navega. */
+  onMenuClose?: () => void
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -65,6 +67,7 @@ export function AvatarMenuContent({
   onSignOut,
   showMarketing = false,
   showReportes = false,
+  onMenuClose,
 }: AvatarMenuContentProps) {
   const tNav = useTranslations('nav')
 
@@ -99,26 +102,26 @@ export function AvatarMenuContent({
       {showConsultoraSection && (
         <div className="py-1 border-b border-border-subtle">
           <MenuGroupLabel>Consultora</MenuGroupLabel>
-          <MenuLink href="/dashboard/configuracion/consultora" icon={Building2} label="Información" />
+          <MenuLink onClose={onMenuClose} href="/dashboard/configuracion/consultora" icon={Building2} label="Información" />
           {(canManageUsers(userRole, systemRole) || isSuperAdmin) && (
-            <MenuLink href="/dashboard/usuarios" icon={Users} label="Equipo" />
+            <MenuLink onClose={onMenuClose} href="/dashboard/usuarios" icon={Users} label="Equipo" />
           )}
-          <MenuLink href="/dashboard/instrumentos" icon={Gauge} label="Instrumentos" />
+          <MenuLink onClose={onMenuClose} href="/dashboard/instrumentos" icon={Gauge} label="Instrumentos" />
           {/* Finanzas: solo admin main (full_access_main), developer o super-admin.
               Espejo de canAccessFinanzas (lib/finanzas/access).
               full_access_branch NO ve este ítem. El gate por plan lo aplican las páginas. */}
           {(canManageUsers(userRole, systemRole) || isSuperAdmin) && (
-            <MenuLink href="/dashboard/finanzas" icon={CreditCard} label="Finanzas" />
+            <MenuLink onClose={onMenuClose} href="/dashboard/finanzas" icon={CreditCard} label="Finanzas" />
           )}
           {showMarketing && (
-            <MenuLink href="/dashboard/contenido" icon={Megaphone} label="Marketing" />
+            <MenuLink onClose={onMenuClose} href="/dashboard/contenido" icon={Megaphone} label="Marketing" />
           )}
-          <MenuLink href="/dashboard/configuracion/api-keys" icon={Globe} label="Conexiones" />
+          <MenuLink onClose={onMenuClose} href="/dashboard/configuracion/api-keys" icon={Globe} label="Conexiones" />
           {showReportes && (
-            <MenuLink href="/dashboard/reportes" icon={FileText} label="Reportes" />
+            <MenuLink onClose={onMenuClose} href="/dashboard/reportes" icon={FileText} label="Reportes" />
           )}
           {(userRole === 'full_access_main' || isSuperAdmin) && (
-            <MenuLink href="/dashboard/papelera" icon={Trash2} label="Papelera de reciclaje" />
+            <MenuLink onClose={onMenuClose} href="/dashboard/papelera" icon={Trash2} label="Papelera de reciclaje" />
           )}
         </div>
       )}
@@ -127,19 +130,19 @@ export function AvatarMenuContent({
       {isSuperAdmin && (
         <div className="py-1 border-b border-border-subtle">
           <MenuGroupLabel>Herramientas</MenuGroupLabel>
-          <MenuLink href="/dashboard/admin" icon={ShieldCheck} label={tNav('superAdmin')} />
-          <MenuLink href="/dashboard/admin/feedback" icon={MessageSquare} label={tNav('feedbackAdmin')} />
-          <MenuLink href="/dashboard/admin/regalar-plan" icon={Gift} label="Regalar plan" />
+          <MenuLink onClose={onMenuClose} href="/dashboard/admin" icon={ShieldCheck} label={tNav('superAdmin')} />
+          <MenuLink onClose={onMenuClose} href="/dashboard/admin/feedback" icon={MessageSquare} label={tNav('feedbackAdmin')} />
+          <MenuLink onClose={onMenuClose} href="/dashboard/admin/regalar-plan" icon={Gift} label="Regalar plan" />
         </div>
       )}
 
       {/* ── 5. Perfil y ayuda ── */}
       <div className="py-1 border-t border-border-subtle">
-        <MenuLink href="/dashboard/perfil" icon={User} label="Mi perfil" />
-        <MenuLink href="/dashboard/configuracion/seguridad" icon={ShieldCheck} label="Seguridad" />
-        <MenuLink href="/dashboard/tutoriales" icon={BookMarked} label="Tutoriales de Uso" />
+        <MenuLink onClose={onMenuClose} href="/dashboard/perfil" icon={User} label="Mi perfil" />
+        <MenuLink onClose={onMenuClose} href="/dashboard/configuracion/seguridad" icon={ShieldCheck} label="Seguridad" />
+        <MenuLink onClose={onMenuClose} href="/dashboard/tutoriales" icon={BookMarked} label="Tutoriales de Uso" />
         {!hideKeyboardShortcuts && (
-          <MenuLink href="/dashboard/atajos" icon={Keyboard} label="Atajos de teclado" />
+          <MenuLink onClose={onMenuClose} href="/dashboard/atajos" icon={Keyboard} label="Atajos de teclado" />
         )}
       </div>
 
@@ -179,15 +182,18 @@ function MenuLink({
   href,
   icon: Icon,
   label,
+  onClose,
 }: {
   href: string
   icon: React.ComponentType<{ size?: number; strokeWidth?: number; 'aria-hidden'?: boolean | 'true' | 'false' }>
   label: string
+  onClose?: () => void
 }) {
   return (
     <Link
       href={href}
       role="menuitem"
+      onClick={onClose}
       className="flex items-center gap-2.5 px-4 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-surface-sunken transition-colors focus-visible:outline-none focus-visible:bg-surface-sunken"
     >
       <span className="text-text-tertiary shrink-0" aria-hidden="true">

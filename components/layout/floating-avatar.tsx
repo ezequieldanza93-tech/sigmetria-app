@@ -99,7 +99,7 @@ export function FloatingAvatar({
           aria-label="Menú de usuario"
           className={cn(
             'absolute right-0 top-full mt-2',
-            'w-64 bg-surface-elevated/98 backdrop-blur-md',
+            'w-64 bg-surface-elevated',
             'border border-border-subtle',
             'rounded-2xl shadow-2xl',
             'z-50 overflow-hidden',
@@ -122,6 +122,7 @@ export function FloatingAvatar({
             onSignOut={handleLogout}
             showMarketing={showMarketing}
             showReportes={showReportes}
+            onMenuClose={() => setMenuOpen(false)}
           />
         </div>
       )}

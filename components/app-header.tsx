@@ -363,6 +363,7 @@ export function AppHeader({
                     onSignOut={handleLogout}
                     showMarketing={showMarketing}
                     showReportes={showReportes}
+                    onMenuClose={() => setMenuOpen(false)}
                   />
               </div>
             )}
