@@ -27,6 +27,9 @@ export default function ConsultoraInfoPage() {
   const [telefono, setTelefono] = useState('')
   const [email, setEmail] = useState('')
   const [website, setWebsite] = useState('')
+  const [cuit, setCuit] = useState('')
+  const [domicilioLegal, setDomicilioLegal] = useState('')
+  const [domicilioFiscal, setDomicilioFiscal] = useState('')
   const [logoUrl, setLogoUrl] = useState('')
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [logoError, setLogoError] = useState<string | null>(null)
@@ -88,6 +91,9 @@ export default function ConsultoraInfoPage() {
         setTelefono(consultora.telefono ?? '')
         setEmail(consultora.email ?? '')
         setWebsite(consultora.website ?? '')
+        setCuit(consultora.cuit ?? '')
+        setDomicilioLegal(consultora.domicilio_legal ?? '')
+        setDomicilioFiscal(consultora.domicilio_fiscal ?? '')
         setLogoUrl(consultora.logo_url ?? '')
         const cMarca = consultora as unknown as {
           color_marca_primario?: string | null
@@ -153,6 +159,9 @@ export default function ConsultoraInfoPage() {
 
     const result = await updateConsultora({
       nombre,
+      cuit: cuit || null,
+      domicilio_legal: domicilioLegal || null,
+      domicilio_fiscal: domicilioFiscal || null,
       telefono: telefonoValue || null,
       email: email || null,
       website: website || null,
@@ -275,6 +284,44 @@ export default function ConsultoraInfoPage() {
                 className="w-full rounded-lg border border-border-subtle bg-surface-base pl-9 pr-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition-colors"
               />
             </div>
+          </div>
+        </section>
+
+        {/* Datos fiscales */}
+        <section className="bg-surface-elevated rounded-xl border border-border-subtle p-6 space-y-4">
+          <h2 className="text-sm font-semibold text-text-primary uppercase tracking-wider">Datos fiscales</h2>
+          <p className="text-xs text-text-tertiary">
+            Estos datos se usan al generar contratos y presupuestos. Completalos una sola vez acá y se precargan automáticamente.
+          </p>
+
+          <div>
+            <label className="block text-xs font-medium text-text-secondary mb-1">CUIT</label>
+            <input
+              value={cuit}
+              onChange={e => setCuit(e.target.value)}
+              placeholder="30-12345678-9"
+              className="w-full rounded-lg border border-border-subtle bg-surface-base px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition-colors"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-text-secondary mb-1">Domicilio legal</label>
+            <input
+              value={domicilioLegal}
+              onChange={e => setDomicilioLegal(e.target.value)}
+              placeholder="Av. Corrientes 1234, CABA"
+              className="w-full rounded-lg border border-border-subtle bg-surface-base px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition-colors"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-text-secondary mb-1">Domicilio fiscal <span className="text-text-tertiary">(si es distinto del legal)</span></label>
+            <input
+              value={domicilioFiscal}
+              onChange={e => setDomicilioFiscal(e.target.value)}
+              placeholder="Av. de Mayo 567, CABA"
+              className="w-full rounded-lg border border-border-subtle bg-surface-base px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition-colors"
+            />
           </div>
         </section>
 

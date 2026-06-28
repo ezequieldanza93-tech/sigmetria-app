@@ -102,6 +102,9 @@ export async function inviteConsultoraAdmin(formData: FormData): Promise<ActionR
 
 export async function updateConsultora(data: {
   nombre: string
+  cuit: string | null
+  domicilio_legal: string | null
+  domicilio_fiscal: string | null
   telefono: string | null
   email: string | null
   website: string | null
@@ -133,6 +136,9 @@ export async function updateConsultora(data: {
 
   const payload: Record<string, unknown> = {
     nombre: data.nombre,
+    cuit: data.cuit || null,
+    domicilio_legal: data.domicilio_legal || null,
+    domicilio_fiscal: data.domicilio_fiscal || null,
     telefono: data.telefono,
     email: data.email,
     website: data.website,

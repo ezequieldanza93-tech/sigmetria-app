@@ -125,6 +125,10 @@ export interface Consultora {
   website: string | null
   social_links: Record<string, string> | null
   tipo: string | null
+  domicilio_legal: string | null
+  domicilio_fiscal: string | null
+  color_marca_primario: string | null
+  color_marca_secundario: string | null
   is_active: boolean
   seats_max: number
   trial_used_at: string | null
