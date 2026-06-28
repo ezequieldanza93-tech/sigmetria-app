@@ -313,7 +313,7 @@ export async function getDatosContrato(
     clienteActividad: actividad ? clean(actividad.nombre) : undefined,
     clienteCiiu: actividad ? clean(actividad.codigo) : undefined,
     clienteArtNombre: art ? clean(art.nombre) : undefined,
-    clienteArtNumeroContrato: clean(empRow.art_numero_contrao as string | null),
+    clienteArtNumeroContrato: clean(empRow.art_numero_contrato as string | null),
     // Provincia de la comparecencia: sugerimos la de la empresa.
     provincia: clean(localidadEmp?.provincia),
     ciudad: clean(localidadEmp?.nombre),
