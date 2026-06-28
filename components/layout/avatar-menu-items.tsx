@@ -19,7 +19,7 @@
 
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
-import { LogOut, ShieldCheck, MessageSquare, Keyboard, BookMarked, Globe, User, Users, Trash2, Gift, CreditCard, FileText, Building2, Gauge, Megaphone } from 'lucide-react'
+import { LogOut, ShieldCheck, MessageSquare, Keyboard, BookMarked, User, Users, Trash2, Gift, CreditCard, FileText, Building2, Gauge, Megaphone } from 'lucide-react'
 import { SystemRole, UserRole, canManageUsers } from '@/lib/types'
 import { RoleSwitcher } from '@/components/layout/role-switcher'
 import { LanguageSwitcher } from '@/components/layout/language-switcher'
@@ -116,7 +116,7 @@ export function AvatarMenuContent({
           {showMarketing && (
             <MenuLink onClose={onMenuClose} href="/dashboard/contenido" icon={Megaphone} label="Marketing" />
           )}
-          <MenuLink onClose={onMenuClose} href="/dashboard/configuracion/api-keys" icon={Globe} label="Conexiones" />
+          {/* Conexiones ahora está dentro de Configuración > Consultora */}
           {showReportes && (
             <MenuLink onClose={onMenuClose} href="/dashboard/reportes" icon={FileText} label="Reportes" />
           )}

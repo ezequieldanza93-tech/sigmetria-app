@@ -8,8 +8,10 @@ import { publicAssetUrl } from '@/lib/storage/asset-url'
 import { inviteUsuario } from '@/lib/actions/usuario'
 import { InviteUsuarioForm } from '@/components/forms/invite-usuario-form'
 import { PhoneInput } from '@/components/forms/phone-input'
+import { ConnectionGuide } from '@/app/(dashboard)/dashboard/configuracion/api-keys/connection-guide'
+import { ApiKeysClient } from '@/app/(dashboard)/dashboard/configuracion/api-keys/api-keys-client'
 import NextImage from 'next/image'
-import { Save, Loader2, Building2, Globe, Mail, Image as LucideImage, Check, Upload, X, UserPlus, Users, Shield, ShieldAlert } from 'lucide-react'
+import { Save, Loader2, Building2, Globe, Mail, Image as LucideImage, Check, Upload, X, UserPlus, Users, Shield, ShieldAlert, ChevronDown } from 'lucide-react'
 import { ROLE_LABELS, ROLE_COLORS, UserRole, isFreeViewerRole } from '@/lib/types'
 import type { Consultora } from '@/lib/types'
 
@@ -44,6 +46,8 @@ export default function ConsultoraInfoPage() {
   const [autoDownloadSaved, setAutoDownloadSaved] = useState(false)
   const [savingAutoDownload, setSavingAutoDownload] = useState(false)
   const [mfaActive, setMfaActive] = useState<boolean | null>(null)
+  const [apiKeys, setApiKeys] = useState<any[]>([])
+  const [conexionesOpen, setConexionesOpen] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -102,6 +106,13 @@ export default function ConsultoraInfoPage() {
         .eq('id', user.id)
         .maybeSingle()
       if (profile) setAutoDownload(profile.auto_download_gestion ?? true)
+
+      const { data: keys } = await supabase
+        .from('api_keys')
+        .select('id, name, key_prefix, permisos, created_at, last_used_at, revoked_at')
+        .eq('consultora_id', membership.consultora_id)
+        .order('created_at', { ascending: false })
+      setApiKeys(keys ?? [])
 
       setLoading(false)
     }
@@ -584,6 +595,38 @@ export default function ConsultoraInfoPage() {
             </div>
           </div>
         )}
+
+        {/* ================================================================ */}
+        {/* Conexiones (MCP + API Keys)                                      */}
+        {/* ================================================================ */}
+        <section className="bg-surface-elevated rounded-xl border border-border-subtle overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setConexionesOpen(v => !v)}
+            className="w-full flex items-center justify-between px-6 py-4 hover:bg-surface-base transition-colors text-left"
+          >
+            <div className="flex items-center gap-2">
+              <Globe size={18} className="text-brand-primary" />
+              <div>
+                <h2 className="text-sm font-semibold text-text-primary">Conexiones</h2>
+                <p className="text-xs text-text-tertiary mt-0.5">API keys y guía de conexión MCP para Claude, Cursor y otros</p>
+              </div>
+            </div>
+            <ChevronDown
+              size={18}
+              className={`text-text-tertiary transition-transform duration-200 ${conexionesOpen ? 'rotate-180' : ''}`}
+            />
+          </button>
+
+          {conexionesOpen && (
+            <div className="px-6 pb-6 space-y-6 border-t border-border-subtle pt-6">
+              <ConnectionGuide />
+              <div className="border-t border-border-subtle pt-6">
+                <ApiKeysClient keys={apiKeys} isAdmin={isMainAdmin} />
+              </div>
+            </div>
+          )}
+        </section>
 
         {/* Actions */}
         <div className="flex items-center justify-between pt-2">
