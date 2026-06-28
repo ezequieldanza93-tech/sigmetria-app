@@ -159,8 +159,8 @@ async function processWithLLM(
     })
   } else {
     model = new ChatGoogleGenerativeAI({
-      model: 'gemini-2.5-flash',
-      temperature: 0.3,
+      model: 'gemini-2.0-flash',
+      temperature: 0.2,
       maxOutputTokens: 2048,
       apiKey: process.env.GOOGLE_API_KEY,
     })
