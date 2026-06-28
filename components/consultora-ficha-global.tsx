@@ -15,18 +15,12 @@ import {
   ExternalLink,
   Users,
   Briefcase,
-  Gauge,
-  UserCog,
-  CreditCard,
-  FileCheck,
   Package,
   Settings2,
   CalendarClock,
   MessageSquare,
   Map,
   Pencil,
-  Megaphone,
-  Contact,
 } from 'lucide-react'
 import Image from 'next/image'
 import { publicAssetUrl } from '@/lib/storage/asset-url'
@@ -54,10 +48,6 @@ interface Props {
   usuario?: UsuarioInfo | null
   userRole?: UserRole | null
   isSuperAdmin?: boolean
-  /** Gate Contenido (canAccessContenido). */
-  showContenido?: boolean
-  /** Gate CRM + Comentarios (isCrmAdmin). */
-  showCrm?: boolean
 }
 
 interface NavItem {
@@ -97,34 +87,10 @@ function antiguedad(desde: string | null): string | null {
  * No embebe el contenido de las fichas: es un árbol liviano para navegar rápido
  * y abrir la ficha que corresponda a cada nivel.
  */
-export function ConsultoraFichaGlobal({ consultora, empresas, usuario, userRole, isSuperAdmin = false, showContenido = false, showCrm = false }: Props) {
+export function ConsultoraFichaGlobal({ consultora, empresas, usuario, userRole, isSuperAdmin = false }: Props) {
   const canEditConsultora = userRole === 'full_access_main' || isSuperAdmin
-  const canVerReportes =
-    userRole === 'full_access_main' || userRole === 'responsable_estandares' || isSuperAdmin
-
-  const marketingItems: NavItem[] = [
-    ...(showContenido ? [{ href: '/dashboard/contenido', icon: Megaphone, label: 'Contenido' }] : []),
-    ...(showCrm
-      ? [
-          { href: '/dashboard/crm', icon: Contact, label: 'CRM' },
-          { href: '/dashboard/crm/comentarios', icon: MessageSquare, label: 'Comentarios' },
-        ]
-      : []),
-  ]
 
   const navGroups: NavGroup[] = [
-    {
-      label: 'Consultora',
-      items: [
-        { href: '/dashboard/configuracion/consultora', icon: Building2, label: 'Información' },
-        { href: '/dashboard/instrumentos', icon: Gauge, label: 'Instrumentos' },
-        { href: '/dashboard/usuarios', icon: UserCog, label: 'Usuarios' },
-        { href: '/dashboard/billing', icon: CreditCard, label: 'Suscripción' },
-        ...(canVerReportes
-          ? [{ href: '/dashboard/reportes', icon: FileCheck, label: 'Reportes' }]
-          : []),
-      ],
-    },
     {
       label: 'Herramientas',
       items: [
@@ -138,9 +104,6 @@ export function ConsultoraFichaGlobal({ consultora, empresas, usuario, userRole,
           : []),
       ],
     },
-    ...(marketingItems.length > 0
-      ? [{ label: 'Marketing', items: marketingItems }]
-      : []),
   ]
 
   const tipoLabel = consultora.tipo ? (TIPO_LABEL[consultora.tipo] ?? consultora.tipo) : null
@@ -212,15 +175,23 @@ export function ConsultoraFichaGlobal({ consultora, empresas, usuario, userRole,
                   Ficha global de la consultora
                 </p>
               </div>
-              {canEditConsultora && (
+              <div className="flex items-center gap-2 shrink-0 mt-0.5">
                 <Link
-                  href="/dashboard/configuracion/consultora"
-                  className="inline-flex items-center gap-1.5 text-xs font-medium text-text-secondary hover:text-sig-600 transition-colors shrink-0 mt-0.5"
+                  href="/dashboard/billing"
+                  className="inline-flex items-center gap-1 text-xs font-medium text-text-secondary hover:text-sig-600 transition-colors"
                 >
-                  <Pencil size={13} aria-hidden="true" />
-                  Editar
+                  Suscripción
                 </Link>
-              )}
+                {canEditConsultora && (
+                  <Link
+                    href="/dashboard/configuracion/consultora"
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-text-secondary hover:text-sig-600 transition-colors"
+                  >
+                    <Pencil size={13} aria-hidden="true" />
+                    Editar
+                  </Link>
+                )}
+              </div>
             </div>
 
             <dl className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5">

@@ -14,7 +14,7 @@ const platforms: { id: Platform; label: string; icon: typeof Globe }[] = [
 
 const SERVER_URL = 'https://hys-app-sig.vercel.app/api/mcp'
 
-function generateBatContent(_apiKey: string) {
+function generateBatContent(apiKey: string) {
   const bridgePath = '%USERPROFILE%\\sigmetria-mcp.cmd'
   return `@echo off
 title Configurador Sigmetria
@@ -23,23 +23,27 @@ echo  Configurador automatico - Sigmetria MCP
 echo ============================================
 echo.
 
-if not "%1"=="" set CLAVE=%1
-if "%CLAVE%"=="" set /p CLAVE="Pega tu clave de acceso Sigmetria: "
-if "%CLAVE%"=="" echo ERROR: No ingresaste una clave. & pause & exit /b
+if "%1"=="" (
+  set "CLAVE=${apiKey}"
+) else (
+  set CLAVE=%1
+)
+
+if "%CLAVE%"=="" echo ERROR: No hay clave. & pause & exit /b
 
 echo.
 echo [1/3] Creando archivo de conexion...
-echo @"C:\\Program Files\\nodejs\\npx.cmd" -y mcp-remote "${SERVER_URL}" --transport http-only --header "Authorization: Bearer %CLAVE%" > ${bridgePath}
+echo @"C:\\Program Files\\nodejs\\npx.cmd" -y mcp-remote "${SERVER_URL}" --transport http-only --header "Authorization: Bearer %CLAVE%" > "${bridgePath}"
 
 echo [2/3] Configurando Claude Desktop...
-set CFG=%LOCALAPPDATA%\\Packages\\Claude_pzs8sxrjxfjjc\\LocalCache\\Roaming\\Claude\\claude_desktop_config.json
-if not exist "%CFG%" set CFG=%APPDATA%\\Claude\\claude_desktop_config.json
+set "CFG=%LOCALAPPDATA%\\Packages\\Claude_pzs8sxrjxfjjc\\LocalCache\\Roaming\\Claude\\claude_desktop_config.json"
+if not exist "%CFG%" set "CFG=%APPDATA%\\Claude\\claude_desktop_config.json"
 if exist "%CFG%" (
   powershell -ExecutionPolicy Bypass -Command "$c='%CFG%';$j=Get-Content $c -Raw|ConvertFrom-Json;if(-not $j.mcpServers){$j|Add-Member -NotePropertyName mcpServers -NotePropertyValue @{}};$j.mcpServers.sigmetria=@{command='${bridgePath}';args=@()};$j|ConvertTo-Json -Depth 10|Set-Content $c -Encoding utf8;Write-Host 'OK'"
 ) else (
   echo No se encontro config de Claude.
   echo Abri Claude ^> Configuracion ^> Desarrollador y agrega el servidor
-  echo "sigmetria" apuntando a: ${bridgePath}
+  echo "sigmetria" apuntando a: "${bridgePath}"
 )
 
 echo [3/3] Reiniciando Claude...

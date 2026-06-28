@@ -15,6 +15,7 @@ import { useInstallPrompt } from '@/components/install-pwa'
 import { useShortcutAction } from '@/lib/contexts/shortcuts-context'
 import { ShortcutTooltip } from '@/components/ui/shortcut-tooltip'
 import { useIsMobile } from '@/lib/hooks/use-is-mobile'
+import { canAccessContenido } from '@/lib/contenido/access'
 
 interface AppHeaderProps {
   fullName: string
@@ -57,6 +58,9 @@ export function AppHeader({
   const [menuOpen, setMenuOpen] = useState(false)
   const [roleSimOpen, setRoleSimOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+
+  const showMarketing = canAccessContenido(userRole, systemRole)
+  const showReportes = userRole === 'full_access_main' || userRole === 'responsable_estandares' || isSuperAdmin
 
   // Ctrl+Shift+A → open avatar menu
   useShortcutAction('open-avatar-menu', () => setMenuOpen(true))
@@ -345,19 +349,21 @@ export function AppHeader({
                 aria-label="Menú de usuario"
                 className="absolute right-0 top-full mt-2 w-56 bg-surface-elevated border border-border-subtle rounded-xl shadow-[var(--shadow-lg)] z-50 animate-in fade-in slide-in-from-top-2 duration-150 overflow-hidden"
               >
-                <AvatarMenuContent
-                  fullName={fullName}
-                  email={email}
-                  userRole={userRole}
-                  systemRole={systemRole}
-                  isSuperAdmin={isSuperAdmin}
-                  simulatedRole={simulatedRole}
-                  canSwitchRole={canSwitchRole}
-                  hideKeyboardShortcuts={isMobile}
-                  roleSimOpen={roleSimOpen}
-                  onRoleSimOpenChange={setRoleSimOpen}
-                  onSignOut={handleLogout}
-                />
+                  <AvatarMenuContent
+                    fullName={fullName}
+                    email={email}
+                    userRole={userRole}
+                    systemRole={systemRole}
+                    isSuperAdmin={isSuperAdmin}
+                    simulatedRole={simulatedRole}
+                    canSwitchRole={canSwitchRole}
+                    hideKeyboardShortcuts={isMobile}
+                    roleSimOpen={roleSimOpen}
+                    onRoleSimOpenChange={setRoleSimOpen}
+                    onSignOut={handleLogout}
+                    showMarketing={showMarketing}
+                    showReportes={showReportes}
+                  />
               </div>
             )}
           </div>

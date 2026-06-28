@@ -8,6 +8,7 @@ import { UserRole, SystemRole } from '@/lib/types'
 import { AvatarMenuContent } from '@/components/layout/avatar-menu-items'
 import { type SwitchableRole } from '@/lib/actions/change-role'
 import { useIsMobile } from '@/lib/hooks/use-is-mobile'
+import { canAccessContenido } from '@/lib/contenido/access'
 
 interface FloatingAvatarProps {
   fullName: string
@@ -35,6 +36,9 @@ export function FloatingAvatar({
   const [menuOpen, setMenuOpen] = useState(false)
   const [roleSimOpen, setRoleSimOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+
+  const showMarketing = canAccessContenido(userRole, systemRole)
+  const showReportes = userRole === 'full_access_main' || userRole === 'responsable_estandares' || isSuperAdmin
 
   const initials = fullName
     .split(' ')
@@ -116,6 +120,8 @@ export function FloatingAvatar({
             roleSimOpen={roleSimOpen}
             onRoleSimOpenChange={setRoleSimOpen}
             onSignOut={handleLogout}
+            showMarketing={showMarketing}
+            showReportes={showReportes}
           />
         </div>
       )}

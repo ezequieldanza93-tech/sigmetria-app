@@ -7,19 +7,19 @@
  * Secciones:
  *  1. Info de usuario (nombre, email, consultora)
  *  2. RoleSwitcher
- *  3. Consultora (Equipo, Conexiones, Papelera) — gateado
+ *  3. Consultora — acceso completo a navegación de la consultora
  *  4. Herramientas (Super Admin, Feedback Admin) — solo isSuperAdmin
  *  5. Perfil y ayuda (Mi perfil, Seguridad, Tutoriales, Atajos)
  *  6. LanguageSwitcher
  *  7. Logout
  *
- * NO incluye navegación principal (Consultora / Directorio / Librerías).
- * Esos viven en la Ficha Global de consultora.
+ * La navegación principal de la consultora (Consultora, Marketing) vive acá.
+ * Herramientas (Catalogación, Vencimientos, etc.) sigue en la Ficha Global.
  */
 
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
-import { LogOut, ShieldCheck, MessageSquare, Keyboard, BookMarked, Globe, User, Users, Trash2, Gift, CreditCard, FileText, FileCheck } from 'lucide-react'
+import { LogOut, ShieldCheck, MessageSquare, Keyboard, BookMarked, Globe, User, Users, Trash2, Gift, CreditCard, FileText, Building2, Gauge, Megaphone } from 'lucide-react'
 import { SystemRole, UserRole, canManageUsers } from '@/lib/types'
 import { RoleSwitcher } from '@/components/layout/role-switcher'
 import { LanguageSwitcher } from '@/components/layout/language-switcher'
@@ -42,6 +42,10 @@ interface AvatarMenuContentProps {
   roleSimOpen: boolean
   onRoleSimOpenChange: (open: boolean) => void
   onSignOut: () => void
+  /** Gate para Marketing (contenido / CRM). */
+  showMarketing?: boolean
+  /** Gate para Reportes. False por defecto. */
+  showReportes?: boolean
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -59,6 +63,8 @@ export function AvatarMenuContent({
   roleSimOpen,
   onRoleSimOpenChange,
   onSignOut,
+  showMarketing = false,
+  showReportes = false,
 }: AvatarMenuContentProps) {
   const tNav = useTranslations('nav')
 
@@ -93,22 +99,24 @@ export function AvatarMenuContent({
       {showConsultoraSection && (
         <div className="py-1 border-b border-border-subtle">
           <MenuGroupLabel>Consultora</MenuGroupLabel>
+          <MenuLink href="/dashboard/configuracion/consultora" icon={Building2} label="Información" />
           {(canManageUsers(userRole, systemRole) || isSuperAdmin) && (
             <MenuLink href="/dashboard/usuarios" icon={Users} label="Equipo" />
           )}
-          {/* Finanzas: solo el admin main de la consultora (full_access_main),
-              developer o super-admin. Espejo de canAccessFinanzas (lib/finanzas/access).
+          <MenuLink href="/dashboard/instrumentos" icon={Gauge} label="Instrumentos" />
+          {/* Finanzas: solo admin main (full_access_main), developer o super-admin.
+              Espejo de canAccessFinanzas (lib/finanzas/access).
               full_access_branch NO ve este ítem. El gate por plan lo aplican las páginas. */}
           {(canManageUsers(userRole, systemRole) || isSuperAdmin) && (
             <MenuLink href="/dashboard/finanzas" icon={CreditCard} label="Finanzas" />
           )}
-          {(canManageUsers(userRole, systemRole) || isSuperAdmin) && (
-            <MenuLink href="/dashboard/finanzas/cotizaciones" icon={FileText} label="Presupuestos" />
-          )}
-          {(canManageUsers(userRole, systemRole) || isSuperAdmin) && (
-            <MenuLink href="/dashboard/finanzas/contratos" icon={FileCheck} label="Contratos" />
+          {showMarketing && (
+            <MenuLink href="/dashboard/contenido" icon={Megaphone} label="Marketing" />
           )}
           <MenuLink href="/dashboard/configuracion/api-keys" icon={Globe} label="Conexiones" />
+          {showReportes && (
+            <MenuLink href="/dashboard/reportes" icon={FileText} label="Reportes" />
+          )}
           {(userRole === 'full_access_main' || isSuperAdmin) && (
             <MenuLink href="/dashboard/papelera" icon={Trash2} label="Papelera de reciclaje" />
           )}
