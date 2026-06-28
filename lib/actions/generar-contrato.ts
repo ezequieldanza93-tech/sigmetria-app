@@ -157,7 +157,22 @@ export async function getDatosContrato(
   // ── 2. Consultora (parte contratante: EL CONSULTOR) ──
   const { data: consRow } = await supabase
     .from('consultoras')
-    .select('nombre, cuit, telefono, email, logo_url, domicilio_legal, domicilio_fiscal, color_marca_primario, color_marca_secundario')
+    .select(`
+      nombre, cuit, telefono, email, logo_url,
+      domicilio_legal, domicilio_fiscal,
+      color_marca_primario, color_marca_secundario,
+      contrato_plazo_respuesta_default,
+      contrato_honorarios_plazo_pago_dias_default,
+      contrato_honorarios_medio_pago_default,
+      contrato_actualizacion_periodicidad_default,
+      contrato_actualizacion_indice_default,
+      contrato_dias_no_renovacion_default,
+      contrato_responsable_caracter_default,
+      contrato_responsable_matricula_emisor_default,
+      contrato_suma_asegurada_rc_default,
+      contrato_jurisdiccion_default,
+      contrato_responsable_dni_default
+    `)
     .eq('id', acc.consultoraId)
     .maybeSingle()
 
@@ -257,8 +272,22 @@ export async function getDatosContrato(
     }
   })
 
-  // ── 5. Ensamblar el prefill ──
+  // ── 5. Fecha actual en Argentina (se precarga dia/mes/año + inicio vigencia) ──
+  const ahoraAr = new Date().toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })
+  const partesFecha = ahoraAr.split(',')[0].split('/') // DD/MM/YYYY
+  const hoyDia = String(Number(partesFecha[0]))          // sin leading zero
+  const hoyMes = [
+    'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+  ][Number(partesFecha[1]) - 1]
+  const hoyAnio = partesFecha[2]
+
+  // ── 6. Ensamblar el prefill ──
   const datos: Partial<ContratoDatos> = {
+    // Comparecencia — fecha actual de Argentina
+    dia: hoyDia,
+    mes: hoyMes,
+    anio: hoyAnio,
     // Consultor / consultora
     consultorRazonSocial: clean(consRow?.nombre as string | null),
     consultorCuit: clean(consRow?.cuit as string | null),
@@ -284,7 +313,7 @@ export async function getDatosContrato(
     clienteActividad: actividad ? clean(actividad.nombre) : undefined,
     clienteCiiu: actividad ? clean(actividad.codigo) : undefined,
     clienteArtNombre: art ? clean(art.nombre) : undefined,
-    clienteArtNumeroContrato: clean(empRow.art_numero_contrato as string | null),
+    clienteArtNumeroContrato: clean(empRow.art_numero_contrao as string | null),
     // Provincia de la comparecencia: sugerimos la de la empresa.
     provincia: clean(localidadEmp?.provincia),
     ciudad: clean(localidadEmp?.nombre),
@@ -292,6 +321,20 @@ export async function getDatosContrato(
     establecimientos,
     // Metadatos
     fechaEmision: hoyDDMMYYYY(),
+    // Defaults de contrato desde config consultora (precargados, editables)
+    responsableDni: clean(consRow?.contrato_responsable_dni_default as string | null),
+    responsableCaracter: clean(consRow?.contrato_responsable_caracter_default as string | null),
+    responsableMatriculaEmisor: clean(consRow?.contrato_responsable_matricula_emisor_default as string | null),
+    plazoRespuesta: clean(consRow?.contrato_plazo_respuesta_default as string | null),
+    honorariosPlazoPagoDias: clean(consRow?.contrato_honorarios_plazo_pago_dias_default as string | null),
+    honorariosMedioPago: clean(consRow?.contrato_honorarios_medio_pago_default as string | null),
+    actualizacionPeriodicidad: clean(consRow?.contrato_actualizacion_periodicidad_default as string | null),
+    actualizacionIndice: clean(consRow?.contrato_actualizacion_indice_default as string | null),
+    diasNoRenovacion: clean(consRow?.contrato_dias_no_renovacion_default as string | null),
+    sumaAseguradaRC: clean(consRow?.contrato_suma_asegurada_rc_default as string | null),
+    jurisdiccion: clean(consRow?.contrato_jurisdiccion_default as string | null),
+    // Fecha de inicio de vigencia: precargamos hoy (editable)
+    fechaInicioVigencia: `${hoyDia}/${hoyMes}/${hoyAnio}`,
   }
 
   // ── 6. Faltantes: campos a completar en el formulario ──

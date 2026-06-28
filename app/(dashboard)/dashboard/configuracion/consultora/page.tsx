@@ -30,6 +30,18 @@ export default function ConsultoraInfoPage() {
   const [cuit, setCuit] = useState('')
   const [domicilioLegal, setDomicilioLegal] = useState('')
   const [domicilioFiscal, setDomicilioFiscal] = useState('')
+  // Contrato defaults
+  const [contratoPlazoRespuesta, setContratoPlazoRespuesta] = useState('')
+  const [contratoHonorariosPlazoPagoDias, setContratoHonorariosPlazoPagoDias] = useState('')
+  const [contratoHonorariosMedioPago, setContratoHonorariosMedioPago] = useState('')
+  const [contratoActualizacionPeriodicidad, setContratoActualizacionPeriodicidad] = useState('')
+  const [contratoActualizacionIndice, setContratoActualizacionIndice] = useState('')
+  const [contratoDiasNoRenovacion, setContratoDiasNoRenovacion] = useState('')
+  const [contratoResponsableCaracter, setContratoResponsableCaracter] = useState('')
+  const [contratoResponsableMatriculaEmisor, setContratoResponsableMatriculaEmisor] = useState('')
+  const [contratoSumaAseguradaRc, setContratoSumaAseguradaRc] = useState('')
+  const [contratoJurisdiccion, setContratoJurisdiccion] = useState('')
+  const [contratoResponsableDni, setContratoResponsableDni] = useState('')
   const [logoUrl, setLogoUrl] = useState('')
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [logoError, setLogoError] = useState<string | null>(null)
@@ -94,6 +106,17 @@ export default function ConsultoraInfoPage() {
         setCuit(consultora.cuit ?? '')
         setDomicilioLegal(consultora.domicilio_legal ?? '')
         setDomicilioFiscal(consultora.domicilio_fiscal ?? '')
+        setContratoPlazoRespuesta(consultora.contrato_plazo_respuesta_default ?? '')
+        setContratoHonorariosPlazoPagoDias(consultora.contrato_honorarios_plazo_pago_dias_default ?? '')
+        setContratoHonorariosMedioPago(consultora.contrato_honorarios_medio_pago_default ?? '')
+        setContratoActualizacionPeriodicidad(consultora.contrato_actualizacion_periodicidad_default ?? '')
+        setContratoActualizacionIndice(consultora.contrato_actualizacion_indice_default ?? '')
+        setContratoDiasNoRenovacion(consultora.contrato_dias_no_renovacion_default ?? '')
+        setContratoResponsableCaracter(consultora.contrato_responsable_caracter_default ?? '')
+        setContratoResponsableMatriculaEmisor(consultora.contrato_responsable_matricula_emisor_default ?? '')
+        setContratoSumaAseguradaRc(consultora.contrato_suma_asegurada_rc_default ?? '')
+        setContratoJurisdiccion(consultora.contrato_jurisdiccion_default ?? '')
+        setContratoResponsableDni(consultora.contrato_responsable_dni_default ?? '')
         setLogoUrl(consultora.logo_url ?? '')
         const cMarca = consultora as unknown as {
           color_marca_primario?: string | null
@@ -168,6 +191,17 @@ export default function ConsultoraInfoPage() {
       logo_url: logoUrl || null,
       color_marca_primario: colorMarcaOn ? colorPrimario : null,
       color_marca_secundario: colorMarcaOn && secundarioOn ? colorSecundario : null,
+      contrato_plazo_respuesta_default: contratoPlazoRespuesta || null,
+      contrato_honorarios_plazo_pago_dias_default: contratoHonorariosPlazoPagoDias || null,
+      contrato_honorarios_medio_pago_default: contratoHonorariosMedioPago || null,
+      contrato_actualizacion_periodicidad_default: contratoActualizacionPeriodicidad || null,
+      contrato_actualizacion_indice_default: contratoActualizacionIndice || null,
+      contrato_dias_no_renovacion_default: contratoDiasNoRenovacion || null,
+      contrato_responsable_caracter_default: contratoResponsableCaracter || null,
+      contrato_responsable_matricula_emisor_default: contratoResponsableMatriculaEmisor || null,
+      contrato_suma_asegurada_rc_default: contratoSumaAseguradaRc || null,
+      contrato_jurisdiccion_default: contratoJurisdiccion || null,
+      contrato_responsable_dni_default: contratoResponsableDni || null,
     })
 
     if (!result.success) {
@@ -322,6 +356,132 @@ export default function ConsultoraInfoPage() {
               placeholder="Av. de Mayo 567, CABA"
               className="w-full rounded-lg border border-border-subtle bg-surface-base px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition-colors"
             />
+          </div>
+        </section>
+
+        {/* Defaults de contratos */}
+        <section className="bg-surface-elevated rounded-xl border border-border-subtle p-6 space-y-4">
+          <div>
+            <h2 className="text-sm font-semibold text-text-primary uppercase tracking-wider">Defaults de contratos</h2>
+            <p className="text-xs text-text-tertiary mt-1">
+              Estos valores se precargan automáticamente al generar un contrato nuevo.
+              Si algún default no aplica a un contrato en particular, se puede modificar antes de generar el PDF.
+              Si dejás un campo vacío, aparecerá sin precargar en el formulario.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-text-secondary mb-1">Plazo de respuesta</label>
+              <input
+                value={contratoPlazoRespuesta}
+                onChange={e => setContratoPlazoRespuesta(e.target.value)}
+                placeholder="48 horas hábiles"
+                className="w-full rounded-lg border border-border-subtle bg-surface-base px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition-colors"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-text-secondary mb-1">Plazo de pago (días)</label>
+              <input
+                value={contratoHonorariosPlazoPagoDias}
+                onChange={e => setContratoHonorariosPlazoPagoDias(e.target.value)}
+                placeholder="10"
+                className="w-full rounded-lg border border-border-subtle bg-surface-base px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition-colors"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-text-secondary mb-1">Medio de pago</label>
+              <input
+                value={contratoHonorariosMedioPago}
+                onChange={e => setContratoHonorariosMedioPago(e.target.value)}
+                placeholder="transferencia bancaria"
+                className="w-full rounded-lg border border-border-subtle bg-surface-base px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition-colors"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-text-secondary mb-1">Actualización — periodicidad</label>
+              <input
+                value={contratoActualizacionPeriodicidad}
+                onChange={e => setContratoActualizacionPeriodicidad(e.target.value)}
+                placeholder="trimestral"
+                className="w-full rounded-lg border border-border-subtle bg-surface-base px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition-colors"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-text-secondary mb-1">Actualización — índice</label>
+              <input
+                value={contratoActualizacionIndice}
+                onChange={e => setContratoActualizacionIndice(e.target.value)}
+                placeholder="IPC INDEC"
+                className="w-full rounded-lg border border-border-subtle bg-surface-base px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition-colors"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-text-secondary mb-1">Días preaviso no renovación</label>
+              <input
+                value={contratoDiasNoRenovacion}
+                onChange={e => setContratoDiasNoRenovacion(e.target.value)}
+                placeholder="30"
+                className="w-full rounded-lg border border-border-subtle bg-surface-base px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition-colors"
+              />
+            </div>
+          </div>
+
+          <div className="border-t border-border-subtle pt-4 space-y-4">
+            <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Responsable técnico</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1">DNI</label>
+                <input
+                  value={contratoResponsableDni}
+                  onChange={e => setContratoResponsableDni(e.target.value)}
+                  placeholder="12.345.678"
+                  className="w-full rounded-lg border border-border-subtle bg-surface-base px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition-colors"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1">Carácter</label>
+                <input
+                  value={contratoResponsableCaracter}
+                  onChange={e => setContratoResponsableCaracter(e.target.value)}
+                  placeholder="Titular"
+                  className="w-full rounded-lg border border-border-subtle bg-surface-base px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition-colors"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1">Emisor de la matrícula</label>
+                <input
+                  value={contratoResponsableMatriculaEmisor}
+                  onChange={e => setContratoResponsableMatriculaEmisor(e.target.value)}
+                  placeholder="Consejo Profesional de ..."
+                  className="w-full rounded-lg border border-border-subtle bg-surface-base px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition-colors"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-border-subtle pt-4 space-y-4">
+            <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Seguro y jurisdicción</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1">Suma asegurada RC</label>
+                <input
+                  value={contratoSumaAseguradaRc}
+                  onChange={e => setContratoSumaAseguradaRc(e.target.value)}
+                  placeholder="$ 10.000.000"
+                  className="w-full rounded-lg border border-border-subtle bg-surface-base px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition-colors"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-text-secondary mb-1">Jurisdicción</label>
+              <input
+                value={contratoJurisdiccion}
+                onChange={e => setContratoJurisdiccion(e.target.value)}
+                placeholder="Tribunales Ordinarios de la Ciudad de Córdoba"
+                className="w-full rounded-lg border border-border-subtle bg-surface-base px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition-colors"
+              />
+            </div>
           </div>
         </section>
 

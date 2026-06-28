@@ -129,6 +129,17 @@ export interface Consultora {
   domicilio_fiscal: string | null
   color_marca_primario: string | null
   color_marca_secundario: string | null
+  contrato_plazo_respuesta_default: string | null
+  contrato_honorarios_plazo_pago_dias_default: string | null
+  contrato_honorarios_medio_pago_default: string | null
+  contrato_actualizacion_periodicidad_default: string | null
+  contrato_actualizacion_indice_default: string | null
+  contrato_dias_no_renovacion_default: string | null
+  contrato_responsable_caracter_default: string | null
+  contrato_responsable_matricula_emisor_default: string | null
+  contrato_suma_asegurada_rc_default: string | null
+  contrato_jurisdiccion_default: string | null
+  contrato_responsable_dni_default: string | null
   is_active: boolean
   seats_max: number
   trial_used_at: string | null

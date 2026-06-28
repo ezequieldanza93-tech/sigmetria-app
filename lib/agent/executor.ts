@@ -192,9 +192,9 @@ async function processWithLLM(
     })
   } else {
     model = new ChatGoogleGenerativeAI({
-      model: 'gemini-2.0-flash',
-      temperature: 0.2,
-      maxOutputTokens: 512,
+      model: 'gemini-2.5-flash',
+      temperature: 0.3,
+      maxOutputTokens: 2048,
       apiKey: process.env.GOOGLE_API_KEY,
     })
   }
@@ -214,7 +214,7 @@ async function processWithLLM(
   ]
 
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 20000)
+  const timeout = setTimeout(() => controller.abort(), 30000)
   let reply: string
   try {
     const response = await modelWithTools.invoke(messages, { signal: controller.signal })

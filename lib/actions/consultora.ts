@@ -112,6 +112,17 @@ export async function updateConsultora(data: {
   social_links?: Record<string, string> | null
   color_marca_primario?: string | null
   color_marca_secundario?: string | null
+  contrato_plazo_respuesta_default?: string | null
+  contrato_honorarios_plazo_pago_dias_default?: string | null
+  contrato_honorarios_medio_pago_default?: string | null
+  contrato_actualizacion_periodicidad_default?: string | null
+  contrato_actualizacion_indice_default?: string | null
+  contrato_dias_no_renovacion_default?: string | null
+  contrato_responsable_caracter_default?: string | null
+  contrato_responsable_matricula_emisor_default?: string | null
+  contrato_suma_asegurada_rc_default?: string | null
+  contrato_jurisdiccion_default?: string | null
+  contrato_responsable_dni_default?: string | null
 }): Promise<ActionResult<Consultora>> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -157,6 +168,25 @@ export async function updateConsultora(data: {
   }
   if ('color_marca_secundario' in data) {
     payload.color_marca_secundario = hexOk(data.color_marca_secundario)
+  }
+  // Contrato defaults (solo se incluyen si el usuario los tocó en el form)
+  const contratoFields = [
+    'contrato_plazo_respuesta_default',
+    'contrato_honorarios_plazo_pago_dias_default',
+    'contrato_honorarios_medio_pago_default',
+    'contrato_actualizacion_periodicidad_default',
+    'contrato_actualizacion_indice_default',
+    'contrato_dias_no_renovacion_default',
+    'contrato_responsable_caracter_default',
+    'contrato_responsable_matricula_emisor_default',
+    'contrato_suma_asegurada_rc_default',
+    'contrato_jurisdiccion_default',
+    'contrato_responsable_dni_default',
+  ] as const
+  for (const key of contratoFields) {
+    if (key in data) {
+      payload[key] = (data as Record<string, unknown>)[key] || null
+    }
   }
 
   const { data: updated, error } = await supabase
