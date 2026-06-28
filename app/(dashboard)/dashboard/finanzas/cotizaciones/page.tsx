@@ -45,15 +45,13 @@ export default async function CotizacionesPage() {
   }))
 
   return (
-    <div className="mx-auto max-w-7xl p-4 md:p-6">
-      <CotizacionesCliente
-        cotizacionesIniciales={cotizaciones}
-        empresas={empresas}
-        leads={leads}
-        formasPagoIniciales={formasPago}
-        moneda={config.moneda}
-        locale={config.locale}
-      />
-    </div>
+    <CotizacionesCliente
+      cotizacionesIniciales={cotizaciones}
+      empresas={empresas}
+      leads={leads}
+      formasPagoIniciales={formasPago}
+      moneda={config.moneda}
+      locale={config.locale}
+    />
   )
 }

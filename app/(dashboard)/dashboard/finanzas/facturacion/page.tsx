@@ -50,16 +50,14 @@ export default async function FacturacionPage({ searchParams }: PageProps) {
       : undefined
 
   return (
-    <div className="mx-auto max-w-7xl p-4 md:p-6">
-      <FacturacionCliente
-        comprobantesIniciales={comprobantes}
-        empresas={empresas}
-        formasPagoIniciales={formasPago}
-        moneda={config.moneda}
-        locale={config.locale}
-        ivaTasa={config.iva_tasa}
-        prefill={prefill}
-      />
-    </div>
+    <FacturacionCliente
+      comprobantesIniciales={comprobantes}
+      empresas={empresas}
+      formasPagoIniciales={formasPago}
+      moneda={config.moneda}
+      locale={config.locale}
+      ivaTasa={config.iva_tasa}
+      prefill={prefill}
+    />
   )
 }
