@@ -228,12 +228,12 @@ export function ConnectionGuide() {
                 <p className="text-xs font-medium text-text-secondary mb-1">En PowerShell (Windows):</p>
                 <pre className="bg-gray-900 text-gray-100 text-xs rounded-lg p-3 overflow-x-auto leading-relaxed">
 {`$env:GEMINI_API_KEY = "tu_key_de_google"
-node test-mcp-gemini.mjs tu_api_key_sigmetria`}
+npm run sigiagemini tu_api_key_sigmetria`}
                 </pre>
                 <p className="text-xs font-medium text-text-secondary mb-1 mt-3">En bash/Mac:</p>
                 <pre className="bg-gray-900 text-gray-100 text-xs rounded-lg p-3 overflow-x-auto leading-relaxed">
 {`GEMINI_API_KEY="tu_key_de_google" \\
-  node test-mcp-gemini.mjs tu_api_key_sigmetria`}
+  npm run sigiagemini tu_api_key_sigmetria`}
                 </pre>
               </div>
 

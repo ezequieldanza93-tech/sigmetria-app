@@ -22,6 +22,7 @@
     "security:audit": "npm audit --audit-level=high",
     "security:check": "node scripts/security-check.js",
     "security:all": "npm run security:audit && npm run security:check",
+    "sigiagemini": "node scripts/sigiagemini.mjs",
     "prepare": "husky"
   },
   "dependencies": {
