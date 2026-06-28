@@ -1,14 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { Globe, Monitor, Code, Smartphone, Download } from 'lucide-react'
+import { Globe, Monitor, Code, Smartphone, Download, Sparkles } from 'lucide-react'
 
-type Platform = 'claude' | 'cursor' | 'vscode' | 'other'
+type Platform = 'claude' | 'cursor' | 'vscode' | 'gemini' | 'other'
 
 const platforms: { id: Platform; label: string; icon: typeof Globe }[] = [
   { id: 'claude', label: 'Claude Desktop', icon: Monitor },
   { id: 'cursor', label: 'Cursor', icon: Code },
   { id: 'vscode', label: 'VS Code', icon: Code },
+  { id: 'gemini', label: 'Gemini', icon: Sparkles },
   { id: 'other', label: 'Otros', icon: Smartphone },
 ]
 
@@ -200,6 +201,63 @@ export function ConnectionGuide() {
                 </li>
               ))}
             </ol>
+          </>
+        )}
+
+        {/* ─── GEMINI ──────────────────────────────────────────── */}
+        {active === 'gemini' && (
+          <>
+            <h3 className="text-sm font-semibold text-text-primary">Probar con Gemini</h3>
+            <div className="space-y-4">
+              <ol className="space-y-3">
+                <li className="flex items-start gap-3 text-sm text-text-secondary">
+                  <span className="shrink-0 flex items-center justify-center w-5 h-5 rounded-full bg-brand-primary/10 text-brand-primary text-[11px] font-bold">1</span>
+                  <span className="leading-relaxed pt-0.5">Creá una clave de acceso en &ldquo;Tus claves de acceso&rdquo; (más abajo en esta página).</span>
+                </li>
+                <li className="flex items-start gap-3 text-sm text-text-secondary">
+                  <span className="shrink-0 flex items-center justify-center w-5 h-5 rounded-full bg-brand-primary/10 text-brand-primary text-[11px] font-bold">2</span>
+                  <span className="leading-relaxed pt-0.5">Asegurate de tener la variable <strong>GEMINI_API_KEY</strong> configurada (la clave de Google AI Studio).</span>
+                </li>
+                <li className="flex items-start gap-3 text-sm text-text-secondary">
+                  <span className="shrink-0 flex items-center justify-center w-5 h-5 rounded-full bg-brand-primary/10 text-brand-primary text-[11px] font-bold">3</span>
+                  <span className="leading-relaxed pt-0.5">Ejecutá el script de prueba desde la terminal:</span>
+                </li>
+              </ol>
+
+              <div className="rounded-lg bg-gray-50 border border-border-subtle p-4 space-y-3">
+                <p className="text-xs font-medium text-text-secondary mb-1">En PowerShell (Windows):</p>
+                <pre className="bg-gray-900 text-gray-100 text-xs rounded-lg p-3 overflow-x-auto leading-relaxed">
+{`$env:GEMINI_API_KEY = "tu_key_de_google"
+node test-mcp-gemini.mjs tu_api_key_sigmetria`}
+                </pre>
+                <p className="text-xs font-medium text-text-secondary mb-1 mt-3">En bash/Mac:</p>
+                <pre className="bg-gray-900 text-gray-100 text-xs rounded-lg p-3 overflow-x-auto leading-relaxed">
+{`GEMINI_API_KEY="tu_key_de_google" \\
+  node test-mcp-gemini.mjs tu_api_key_sigmetria`}
+                </pre>
+              </div>
+
+              <ol className="space-y-3" start={4}>
+                <li className="flex items-start gap-3 text-sm text-text-secondary">
+                  <span className="shrink-0 flex items-center justify-center w-5 h-5 rounded-full bg-brand-primary/10 text-brand-primary text-[11px] font-bold">4</span>
+                  <span className="leading-relaxed pt-0.5">El script se conecta al servidor MCP, lista las herramientas, y te abre un chat interactivo.</span>
+                </li>
+                <li className="flex items-start gap-3 text-sm text-text-secondary">
+                  <span className="shrink-0 flex items-center justify-center w-5 h-5 rounded-full bg-brand-primary/10 text-brand-primary text-[11px] font-bold">5</span>
+                  <span className="leading-relaxed pt-0.5">Preguntale cosas como: <strong>&ldquo;mostrame mis empresas&rdquo;</strong> o <strong>&ldquo;qué establecimientos tengo&rdquo;</strong></span>
+                </li>
+              </ol>
+            </div>
+
+            <div className="rounded-lg bg-purple-50 border border-purple-200 px-4 py-3 text-xs text-purple-800 leading-relaxed">
+              <p className="font-semibold">⚡ Cómo funciona</p>
+              <p className="mt-1">
+                El script funciona como puente entre Gemini y el MCP de Sigmetría. Cuando le hacés una pregunta,
+                Gemini decide qué herramienta MCP llamar, el script la ejecuta contra el servidor, y le devuelve
+                el resultado a Gemini para que te responda. Es un patron <strong>function calling</strong> con
+                MCP como backend de datos reales.
+              </p>
+            </div>
           </>
         )}
 
