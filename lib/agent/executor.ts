@@ -1,6 +1,6 @@
 import { tools } from './tools'
 import { searchKnowledge } from './knowledge'
-import { matchIntent, extractEstablishment, listEstablecimientos, HANDLERS, type SigiaIntent } from './intent-engine'
+import { extractEstablishment, listEstablecimientos, HANDLERS } from './intent-engine'
 
 const HAS_ANTHROPIC = !!process.env.ANTHROPIC_API_KEY
 const HAS_GEMINI = !!process.env.GOOGLE_API_KEY
@@ -104,39 +104,6 @@ export async function processMessage(
         establecimientos.map(e => `• **${e.empresa_razon}** — ${e.nombre}`).join('\n')
       }`
     )
-  }
-
-  // --- Load intents & match ---
-  const { data: dbIntents } = await supabase
-    .from('sigia_intents')
-    .select('*')
-    .eq('is_active', true)
-  const intents = (dbIntents ?? []) as SigiaIntent[]
-
-  const match = matchIntent(message, intents)
-  if (match && consultoraId) {
-    const handler = HANDLERS[match.intent.handler]
-    if (handler) {
-      const establecimientoMatch = context?.establecimientoId && establecimientos
-        ? establecimientos.find(e => e.id === context.establecimientoId) ?? null
-        : null
-
-      const result = await handler(
-        supabase, userId, consultoraId, message, establecimientos, establecimientoMatch, lastAssistantMsg, convId!,
-      )
-
-      if (result.reply) {
-        return saveAndReturn(supabase, convId!, result.reply, result.pendingActions)
-      }
-
-      if (!establecimientoMatch && establecimientos && establecimientos.length > 1) {
-        return saveAndReturn(supabase, convId!,
-          `Tenés varios establecimientos. Decime cuál te interesa:\n\n${
-            establecimientos.map(e => `• **${e.empresa_razon}** — ${e.nombre}`).join('\n')
-          }`
-        )
-      }
-    }
   }
 
   // --- Try LLM ---
