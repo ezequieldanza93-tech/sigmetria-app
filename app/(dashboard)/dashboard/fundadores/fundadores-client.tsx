@@ -128,7 +128,7 @@ export function FundadoresClient({
   planNombre,
   bonuses: initialBonuses,
 }: FundadoresClientProps) {
-  const [bonuses, setBonuses] = useState(initialBonuses)
+  const bonuses = initialBonuses
   const [showFormVideo, setShowFormVideo] = useState(false)
   const [showFormNota, setShowFormNota] = useState(false)
 

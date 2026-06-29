@@ -50,7 +50,7 @@ export async function GET(request: Request) {
           .single()
 
         let nuevoEstado: 'pagado' | 'fallido' = 'fallido'
-        let mpPaymentId: string | null = cuota.mp_payment_id
+        const mpPaymentId: string | null = cuota.mp_payment_id
 
         if (sub?.mp_preapproval_id) {
           try {
