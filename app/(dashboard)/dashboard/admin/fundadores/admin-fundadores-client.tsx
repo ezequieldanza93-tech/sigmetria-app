@@ -139,7 +139,7 @@ function BonusRow({
 export function AdminFundadoresClient({ bonuses: initialBonuses }: AdminFundadoresClientProps) {
   const [bonuses, setBonuses] = useState(initialBonuses)
 
-  function handleActualizado(id: string, nuevoEstado: 'verificado' | 'rechazado') {
+  function handleActualizado(id: string, _nuevoEstado: 'verificado' | 'rechazado') {
     // Sacar el bonus de la lista pendiente
     setBonuses(prev => prev.filter(b => b.id !== id))
   }
