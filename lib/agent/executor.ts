@@ -111,7 +111,8 @@ export async function processMessage(
     try {
       const provider = HAS_ANTHROPIC ? 'anthropic' : 'google'
       return await processWithLLM(message, convId!, userId, supabase, prevMessages, context, provider)
-    } catch {
+    } catch (err) {
+      console.error('[SIGIA] LLM invocation failed:', err)
       // fall through to knowledge base
     }
   }
@@ -187,8 +188,9 @@ async function processWithLLM(
     const response = await modelWithTools.invoke(messages, { signal: controller.signal })
     reply = response.content as string
     clearTimeout(timeout)
-  } catch {
+  } catch (err) {
     clearTimeout(timeout)
+    console.error('[SIGIA] Gemini invoke error:', err)
     throw new Error('LLM invocation failed')
   }
 
