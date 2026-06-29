@@ -15,7 +15,6 @@ interface Bonus {
 }
 
 interface FundadoresClientProps {
-  subId: string
   founderDiscountPct: number
   currentPeriodEnd: string | null
   planNombre: string | null
@@ -55,11 +54,9 @@ function EstadoBadge({ estado }: { estado: Bonus['estado'] }) {
 }
 
 function SolicitarBonusForm({
-  subId,
   tipo,
   onSuccess,
 }: {
-  subId: string
   tipo: 'video' | 'nota'
   onSuccess: () => void
 }) {
@@ -122,7 +119,6 @@ function SolicitarBonusForm({
 }
 
 export function FundadoresClient({
-  subId,
   founderDiscountPct,
   currentPeriodEnd,
   planNombre,
@@ -225,7 +221,6 @@ export function FundadoresClient({
           </div>
           {showFormVideo && !hasPendingVideo && (
             <SolicitarBonusForm
-              subId={subId}
               tipo="video"
               onSuccess={() => handleSuccess('video')}
             />
@@ -256,7 +251,6 @@ export function FundadoresClient({
           </div>
           {showFormNota && !hasPendingNota && (
             <SolicitarBonusForm
-              subId={subId}
               tipo="nota"
               onSuccess={() => handleSuccess('nota')}
             />

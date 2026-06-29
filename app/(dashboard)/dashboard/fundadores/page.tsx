@@ -42,7 +42,6 @@ export default async function FundadoresPage() {
 
   return (
     <FundadoresClient
-      subId={sub.id}
       founderDiscountPct={sub.founder_discount_pct ?? 0}
       currentPeriodEnd={
         sub.current_period_end
