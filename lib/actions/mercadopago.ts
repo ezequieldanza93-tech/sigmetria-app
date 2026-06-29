@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import { mpPreApproval, mpPreApprovalPlan, mpPayment, isMercadoPagoConfigured } from '@/lib/mercadopago/client'
 import { calcularProrrata } from '@/lib/mercadopago/prorrata'
 import { getUserAndMembership, requireMainAdmin } from '@/lib/auth/require-active-subscription'
+import { calcularPrecioFinal, generarCuotasAnuales } from '@/lib/billing/descuento'
 import type { ActionResult } from '@/lib/types'
 
 // ─── Admin: sincronizar plan con MP ───────────────────────
@@ -134,6 +135,10 @@ export async function iniciarSuscripcionMP(
     const planId = formData.get('plan_id') as string
     if (!planId) return { success: false, error: 'plan_id requerido' }
 
+    // Leer ciclo e intento_founder del FormData
+    const ciclo = (formData.get('ciclo') as 'monthly' | 'annual') ?? 'monthly'
+    const intentoFounder = formData.get('intento_founder') === 'true'
+
     const admin = createAdminClient()
 
     // Verificar que no haya sub activa
@@ -155,6 +160,19 @@ export async function iniciarSuscripcionMP(
     const appUrl = process.env.NEXT_PUBLIC_APP_URL
     if (!appUrl) return { success: false, error: 'NEXT_PUBLIC_APP_URL no configurada' }
 
+    // Calcular precio según ciclo y descuentos
+    let montoTransaccion: number | undefined
+    if (ciclo === 'annual') {
+      const precioCalculado = calcularPrecioFinal(
+        plan.precio_mensual_neto ? Number(plan.precio_mensual_neto) : null,
+        'annual',
+        false, // El descuento founder se aplica si se otorga el cupo (oportunístico en webhook)
+      )
+      if (precioCalculado) {
+        montoTransaccion = precioCalculado.precioFinal
+      }
+    }
+
     // Crear o actualizar subscription row
     let subscriptionId: string
 
@@ -171,6 +189,8 @@ export async function iniciarSuscripcionMP(
           // reventaba con 'invalid input value for enum' y el alta fallaba.
           // El webhook la pasa a 'active' al confirmarse el pago.
           estado: 'trialing',
+          ciclo,
+          intento_founder: intentoFounder,
         })
         .select('id')
         .single()
@@ -182,7 +202,7 @@ export async function iniciarSuscripcionMP(
       await admin.from('subscription_audit_log').insert({
         subscription_id: subscriptionId,
         estado_nuevo: 'trialing',
-        motivo: 'Inicio de suscripción MP',
+        motivo: `Inicio de suscripción MP (ciclo: ${ciclo}, intento_founder: ${intentoFounder})`,
         actor_id: user.id,
       })
     }
@@ -193,9 +213,17 @@ export async function iniciarSuscripcionMP(
         preapproval_plan_id: plan.mp_preapproval_plan_id,
         payer_email: user.email!,
         back_url: `${appUrl}/dashboard/billing/checkout/success`,
-        reason: `Suscripción ${plan.nombre}`,
+        reason: `Suscripción ${plan.nombre}${ciclo === 'annual' ? ' (anual)' : ''}`,
         external_reference: subscriptionId,
         status: 'pending',
+        ...(montoTransaccion !== undefined && {
+          auto_recurring: {
+            frequency: 1,
+            frequency_type: 'months' as const,
+            transaction_amount: montoTransaccion,
+            currency_id: 'ARS',
+          },
+        }),
       },
     })
 
@@ -207,6 +235,12 @@ export async function iniciarSuscripcionMP(
       mp_status: 'pending',
       plan_id: planId,
     }).eq('id', subscriptionId)
+
+    // Si es ciclo anual, generar cuotas programadas en payment_installments
+    if (ciclo === 'annual' && montoTransaccion !== undefined) {
+      const cuotas = generarCuotasAnuales(subscriptionId, planId, montoTransaccion)
+      await admin.from('payment_installments').insert(cuotas)
+    }
 
     if (!preapproval.init_point) {
       return { success: false, error: 'MP no devolvió init_point' }

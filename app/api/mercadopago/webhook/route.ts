@@ -234,7 +234,7 @@ async function handlePaymentWebhook(paymentId: string, admin: ReturnType<typeof 
     if (mpStatus === 'approved' && newPayment) {
       const { data: currentSub } = await admin
         .from('subscriptions')
-        .select('current_period_end')
+        .select('id, current_period_end, plan_id, intento_founder, estado')
         .eq('id', sub.id)
         .single()
 
@@ -256,12 +256,41 @@ async function handlePaymentWebhook(paymentId: string, admin: ReturnType<typeof 
         metodo_pago: paymentTypeId === 'credit_card' ? 'Tarjeta de crédito' : 'Tarjeta de débito',
       }).eq('id', sub.id)
 
-      // Log audit
+      // Log audit base
       await admin.from('subscription_audit_log').insert({
         subscription_id: sub.id,
         estado_nuevo: 'active' as any,
         motivo: `Pago recurrente aprobado (MP: ${paymentId})`,
       })
+
+      // Otorgar cupo Fundador si corresponde (oportunístico: no bloquea el flujo)
+      if (currentSub?.intento_founder && currentSub.plan_id) {
+        try {
+          const { data: cupoOtorgado } = await admin
+            .rpc('otorgar_cupo_founder', {
+              p_subscription_id: sub.id,
+              p_plan_id: currentSub.plan_id,
+              p_discount_pct: 20,
+            })
+
+          await admin.from('subscription_audit_log').insert({
+            subscription_id: sub.id,
+            estado_anterior: currentSub.estado,
+            estado_nuevo: 'active' as any,
+            motivo: cupoOtorgado
+              ? 'Cupo Fundador otorgado exitosamente (webhook pago aprobado)'
+              : 'Intento de cupo Fundador: sin cupos disponibles para el plan',
+          })
+        } catch (founderError) {
+          // Error no-bloqueante: loguear y continuar
+          console.warn('[MP Webhook] Error al otorgar cupo founder:', founderError)
+          await admin.from('subscription_audit_log').insert({
+            subscription_id: sub.id,
+            estado_nuevo: 'active' as any,
+            motivo: `Error al intentar otorgar cupo Fundador: ${founderError instanceof Error ? founderError.message : 'Error desconocido'}`,
+          }).catch(() => undefined) // silenciar error de log también
+        }
+      }
     }
   }
 }

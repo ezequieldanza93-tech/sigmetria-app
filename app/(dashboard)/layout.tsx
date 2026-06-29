@@ -11,6 +11,8 @@ import { GestionLauncher } from '@/components/gestion-launcher'
 import { FloatingReportButtons } from '@/components/feedback/floating-report-buttons'
 import { BannerPastDueWrapper } from '@/components/billing/banner-past-due-wrapper'
 import { TrialCountdown } from '@/components/billing/trial-countdown'
+import { UsageSummaryBar } from '@/components/billing/usage-summary-bar'
+import { getSubscriptionUsage } from '@/lib/queries/subscription-usage'
 import { GeoConsentModal } from '@/components/legal/geo-consent-modal'
 import { PreviewProvider } from '@/lib/contexts/preview-context'
 import { EffectiveRoleProvider } from '@/lib/contexts/effective-role-context'
@@ -65,6 +67,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   let isPastDue = false
   let pastDueGraceUntil: string | null = null
   let trialEndsAt: string | null = null
+  let subscriptionUsage: Awaited<ReturnType<typeof getSubscriptionUsage>> = null
   if (membership) {
     try {
       const admin = createAdminClient()
@@ -87,6 +90,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
             ? sub.past_due_grace_until
             : sub.past_due_grace_until.toISOString()
           : null
+      }
+
+      // Cargar usage solo para estados que muestran el bar
+      if (sub?.estado === 'active' || sub?.estado === 'trialing') {
+        subscriptionUsage = await getSubscriptionUsage(membership.consultora_id)
       }
     } catch {
       // Si no hay sub, ignorar
@@ -125,6 +133,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <BannerPastDueWrapper graceUntil={pastDueGraceUntil} />
       )}
       {trialEndsAt && <TrialCountdown endsAt={trialEndsAt} />}
+      {subscriptionUsage && (
+        <UsageSummaryBar
+          empresas={subscriptionUsage.empresas}
+          establecimientos={subscriptionUsage.establecimientos}
+          colaboradores={subscriptionUsage.colaboradores}
+        />
+      )}
       <DevicePreviewPanel>{children}</DevicePreviewPanel>
       <ContextualBottomNav
             canManageCursos={

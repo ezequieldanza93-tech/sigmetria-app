@@ -31,6 +31,10 @@ const JOBS = [
   '/api/cron/comprobantes-vencidos',
   '/api/cron/limpiar-exports',
   '/api/cron/papelera-purga',
+  // Programa Fundadores: procesar cuotas anuales vencidas
+  '/api/cron/cuotas-anuales',
+  // Limpiar subs trialing sin preapproval MP (checkout abandonado > 2hs)
+  '/api/cron/cleanup-subs',
 ] as const
 
 function baseUrl(): string {

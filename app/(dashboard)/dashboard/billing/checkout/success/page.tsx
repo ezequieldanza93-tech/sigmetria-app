@@ -28,6 +28,11 @@ export default function CheckoutSuccessPage() {
         if (res.success && res.data.estado === 'active') {
           setStatus('active')
           clearInterval(poll)
+          // Redirigir a celebración con el preapproval_id como contexto
+          const dest = preapprovalId
+            ? `/onboarding/celebracion?preapproval_id=${preapprovalId}`
+            : `/onboarding/celebracion`
+          router.push(dest)
         }
       } catch {
         // Ignorar errores de polling
@@ -64,12 +69,10 @@ export default function CheckoutSuccessPage() {
             <div>
               <h1 className="text-xl font-bold text-text-primary">¡Suscripción activada!</h1>
               <p className="text-sm text-text-tertiary mt-2">
-                Tu suscripción ya está activa. Ya podés usar todas las funcionalidades.
+                Redirigiendo a tu panel de bienvenida...
               </p>
             </div>
-            <Button onClick={() => router.push('/dashboard/billing')}>
-              Ir a mi suscripción
-            </Button>
+            <Loader2 className="w-5 h-5 animate-spin text-text-tertiary mx-auto" />
           </>
         )}
 
