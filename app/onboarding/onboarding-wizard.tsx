@@ -2,13 +2,14 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Building2, Sparkles, Check, Briefcase } from 'lucide-react'
+import { Building2, Sparkles, Check, Briefcase, Star } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { PhoneInput } from '@/components/forms/phone-input'
 import { Button } from '@/components/ui/button'
 import { createMyConsultora } from '@/lib/actions/onboarding'
 import { InviteUsuarioForm } from '@/components/forms/invite-usuario-form'
 import { inviteUsuario } from '@/lib/actions/usuario'
+import type { DeepLink } from './page'
 
 interface Plan {
   id: string
@@ -43,26 +44,36 @@ function colaboradoresLabel(p: Plan): string {
 }
 
 const fmt = (n: number | null) => (n == null ? 'Ilimitados' : String(n))
+const fmtARS = (n: number) => `$${n.toLocaleString('es-AR')}`
 
 export function OnboardingWizard({
   userEmail,
   fullName,
   planes,
+  deepLink,
 }: {
   userEmail: string
   fullName: string | null
   planes: Plan[]
+  deepLink?: DeepLink | null
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [step, setStep] = useState<Step>('plan')
   const [error, setError] = useState<string | null>(null)
-  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null)
   const [invitedCount, setInvitedCount] = useState(0)
   const [inviteKey, setInviteKey] = useState(0)
+  const [forzarGrilla, setForzarGrilla] = useState(false)
 
   const primerNombre = fullName?.trim().split(/\s+/)[0] ?? null
   const allPlanes = planes.some(p => p.slug === 'trial') ? planes : [FREE_PLAN, ...planes]
+
+  // Inicializar plan desde deep-link si existe
+  const planInicial: Plan | null = deepLink
+    ? allPlanes.find(p => p.slug === deepLink.planSlug) ?? null
+    : null
+
+  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(planInicial)
 
   const seats = selectedPlan
     ? selectedPlan.max_colaboradores == null ? 999 : selectedPlan.max_colaboradores + 1
@@ -78,6 +89,11 @@ export function OnboardingWizard({
   function handleDatos(formData: FormData) {
     if (!selectedPlan) return
     formData.set('plan_slug', selectedPlan.slug)
+    // Propagar ciclo e intento Fundador si vienen del deep-link
+    if (deepLink) {
+      formData.set('ciclo', deepLink.ciclo)
+      formData.set('intento_founder', deepLink.esFounderIntentado ? '1' : '0')
+    }
     setError(null)
     startTransition(async () => {
       const result = await createMyConsultora(formData)
@@ -141,27 +157,105 @@ export function OnboardingWizard({
 
         {/* Paso 1 — Plan */}
         {step === 'plan' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {allPlanes.map(p => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => pickPlan(p)}
-                className="text-left rounded-2xl border border-border-default bg-surface-base p-5 hover:border-brand-primary hover:ring-1 hover:ring-brand-primary transition-all"
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-semibold text-text-primary">{p.nombre}</span>
-                  <Building2 className="h-4 w-4 text-text-tertiary" aria-hidden="true" />
+          <>
+            {/* Deep-link: plan preseleccionado — mostrar resumen en lugar de grilla */}
+            {deepLink && !forzarGrilla ? (
+              <div className="rounded-2xl border border-brand-primary ring-1 ring-brand-primary bg-surface-base p-6 space-y-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs text-text-tertiary uppercase tracking-wide font-semibold mb-1">Plan seleccionado</p>
+                    <h2 className="text-lg font-bold text-text-primary">{deepLink.planNombre}</h2>
+                    <p className="text-xs text-text-secondary mt-0.5">
+                      Ciclo {deepLink.ciclo === 'annual' ? 'anual' : 'mensual'}
+                    </p>
+                  </div>
+                  <Building2 className="h-5 w-5 text-text-tertiary flex-shrink-0 mt-1" aria-hidden="true" />
                 </div>
-                <p className="text-brand-primary font-bold text-sm">{precioLabel(p)}</p>
-                <ul className="mt-3 space-y-1 text-xs text-text-secondary">
-                  <li>• {fmt(p.max_empresas)} empresas</li>
-                  <li>• {fmt(p.max_establecimientos)} establecimientos</li>
-                  <li>• {colaboradoresLabel(p)}</li>
-                </ul>
-              </button>
-            ))}
-          </div>
+
+                {/* Precio calculado */}
+                {deepLink.precioCalculado && (
+                  <div className="bg-surface-sunken rounded-xl p-4 space-y-1">
+                    {deepLink.precioCalculado.descuentoAnualPct > 0 && (
+                      <p className="text-xs text-text-tertiary line-through">
+                        Precio base: {fmtARS(deepLink.precioCalculado.precioBase)}
+                      </p>
+                    )}
+                    <p className="text-2xl font-extrabold text-brand-primary">
+                      {fmtARS(deepLink.precioCalculado.precioFinal)}
+                    </p>
+                    <p className="text-xs text-text-secondary">
+                      {deepLink.ciclo === 'annual' ? 'pago anual' : 'por mes'} + IVA
+                    </p>
+                    {deepLink.precioCalculado.ahorroTotal > 0 && (
+                      <p className="text-xs text-success font-semibold">
+                        Ahorrás {fmtARS(deepLink.precioCalculado.ahorroTotal)} ({deepLink.precioCalculado.ahorroTotalPct}% off)
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Estado Fundador */}
+                {deepLink.esFounderIntentado && deepLink.hayFounder && (
+                  <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                    <Star className="h-4 w-4 text-amber-600 flex-shrink-0" aria-hidden="true" />
+                    <p className="text-xs text-amber-800 font-semibold">
+                      ¡Cupo Fundador disponible! Tu precio incluye −20% extra de por vida.
+                    </p>
+                  </div>
+                )}
+                {deepLink.esFounderIntentado && !deepLink.hayFounder && (
+                  <div className="bg-warning-bg border border-yellow-200 rounded-lg px-3 py-2">
+                    <p className="text-xs text-warning font-medium">
+                      Los cupos Fundadores para este plan se agotaron — tu precio es el anual estándar.
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-3 pt-1">
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      const plan = allPlanes.find(p => p.slug === deepLink.planSlug)
+                      if (plan) pickPlan(plan)
+                    }}
+                    className="flex-1"
+                  >
+                    Continuar con este plan →
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => setForzarGrilla(true)}
+                    className="text-sm text-text-secondary hover:text-brand-primary hover:underline whitespace-nowrap"
+                  >
+                    Cambiar plan
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* Grilla normal de planes */
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {allPlanes.map(p => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => pickPlan(p)}
+                    className="text-left rounded-2xl border border-border-default bg-surface-base p-5 hover:border-brand-primary hover:ring-1 hover:ring-brand-primary transition-all"
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-semibold text-text-primary">{p.nombre}</span>
+                      <Building2 className="h-4 w-4 text-text-tertiary" aria-hidden="true" />
+                    </div>
+                    <p className="text-brand-primary font-bold text-sm">{precioLabel(p)}</p>
+                    <ul className="mt-3 space-y-1 text-xs text-text-secondary">
+                      <li>• {fmt(p.max_empresas)} empresas</li>
+                      <li>• {fmt(p.max_establecimientos)} establecimientos</li>
+                      <li>• {colaboradoresLabel(p)}</li>
+                    </ul>
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
         )}
 
         {/* Paso 2 — Datos */}

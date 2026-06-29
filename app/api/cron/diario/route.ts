@@ -35,6 +35,8 @@ const JOBS = [
   '/api/cron/cuotas-anuales',
   // Limpiar subs trialing sin preapproval MP (checkout abandonado > 2hs)
   '/api/cron/cleanup-subs',
+  // Emails de billing: trial próximo a vencer (3d antes) + pago fallido (past_due reciente)
+  '/api/cron/notificaciones-billing',
 ] as const
 
 function baseUrl(): string {
