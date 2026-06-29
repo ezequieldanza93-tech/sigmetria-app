@@ -1,0 +1,25 @@
+# No subir node_modules — Vercel instala desde package-lock.json
+node_modules
+
+# No subir archivos de preview / testing
+_preview
+auxiliares autoauditorías
+docs
+000_importante_antes_lansamiento
+_inventario_checklists.json
+_inventario_checklists.md
+listado_CIIU.pdf
+desuso.png
+_query-reports.mjs
+test-mcp.mjs
+PROMPT-orquestador-lanzamiento.md
+SIGMETRIA_MCP.md
+
+# No subir entornos locales
+.env*
+!.env.example
+!.env.production
+
+# No subir directorios de build local
+.next
+out
