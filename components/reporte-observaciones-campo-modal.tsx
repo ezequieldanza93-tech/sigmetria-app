@@ -41,7 +41,7 @@ import {
   fmtFechaCorta,
 } from '@/lib/reportes/periodo-campo'
 import {
-  FileText, CalendarDays, Download, Copy, Send, CheckCircle, Loader2, Mail,
+  FileText, CalendarDays, Download, Copy, Send, CheckCircle, Loader2, Mail, Share2,
 } from 'lucide-react'
 
 type Nivel = 'establecimiento' | 'empresa'
@@ -147,8 +147,13 @@ function ReporteModal({ nivel, id, onClose }: { nivel: Nivel; id: string; onClos
   const [comentario, setComentario] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [emailOk, setEmailOk] = useState(false)
+  const [supportsShare, setSupportsShare] = useState(false)
 
   const hojasRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    setSupportsShare(typeof navigator !== 'undefined' && 'share' in navigator)
+  }, [])
 
   useEffect(() => {
     const now = new Date()
@@ -295,17 +300,17 @@ function ReporteModal({ nivel, id, onClose }: { nivel: Nivel; id: string; onClos
     setTimeout(() => URL.revokeObjectURL(url), 0)
   }
 
-  async function subirYObtenerLink(conEmail: boolean): Promise<void> {
-    if (!data) return
+  async function subirYObtenerLink(conEmail: boolean): Promise<string | null> {
+    if (!data) return null
     const blob = await asegurarPdf()
-    if (!blob) { setError('No se pudo generar el PDF.'); return }
+    if (!blob) { setError('No se pudo generar el PDF.'); return null }
     // Guard de tamaño: el server action tiene bodySizeLimit (25mb). Un consolidado
     // de empresa con muchas fotos puede superarlo → avisamos accionable en vez de
     // dejar que falle con un error opaco de red. La descarga local no pasa por acá.
     const MAX_BYTES = 23 * 1024 * 1024
     if (blob.size > MAX_BYTES) {
       setError('El reporte es demasiado pesado para compartir/enviar (supera el límite del servidor). Acotá el período o filtrá por responsable de cierre. La descarga local (botón "Descargar PDF") sigue disponible.')
-      return
+      return null
     }
     setEnviando(true)
     setError(null)
@@ -323,11 +328,13 @@ function ReporteModal({ nivel, id, onClose }: { nivel: Nivel; id: string; onClos
         fd.set('comentario', comentario)
       }
       const res = await emitirReporteObservacionesCampo(fd)
-      if (!res.success) { setError(res.error); setEnviando(false); return }
+      if (!res.success) { setError(res.error); setEnviando(false); return null }
       setPdfSignedUrl(res.data.pdfSignedUrl)
       if (conEmail && res.data.emailEnviado) setEmailOk(true)
+      return res.data.pdfSignedUrl
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error al emitir el reporte')
+      return null
     } finally {
       setEnviando(false)
     }
@@ -339,6 +346,28 @@ function ReporteModal({ nivel, id, onClose }: { nivel: Nivel; id: string; onClos
       setLinkCopiado(true)
       setTimeout(() => setLinkCopiado(false), 2000)
     }).catch(() => {})
+  }
+
+  async function handleCompartir() {
+    if (!data) return
+    const blob = await asegurarPdf()
+    if (!blob) return
+    // Intentar compartir el archivo directamente (móvil / Chrome/Edge desktop)
+    const file = new File([blob], filename, { type: 'application/pdf' })
+    if (navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: periodoLabel })
+        return
+      } catch {
+        // cancelado o rechazado — caemos a compartir link
+      }
+    }
+    // Fallback: generar link y abrirlo con el sheet nativo de compartir
+    const url = pdfSignedUrl ?? await subirYObtenerLink(false)
+    if (!url) return
+    try {
+      await navigator.share({ url, title: periodoLabel })
+    } catch { /* cancelado */ }
   }
 
   function volverAConfig() {
@@ -443,6 +472,11 @@ function ReporteModal({ nivel, id, onClose }: { nivel: Nivel; id: string; onClos
                 <Button type="button" onClick={handleDescargar} disabled={enviando}>
                   <Download size={14} className="inline mr-1.5" /> Descargar PDF
                 </Button>
+                {supportsShare && (
+                  <Button type="button" variant="secondary" onClick={handleCompartir} disabled={enviando}>
+                    <Share2 size={14} className="inline mr-1.5" /> Compartir
+                  </Button>
+                )}
                 <Button type="button" variant="secondary" onClick={() => subirYObtenerLink(false)} disabled={enviando}>
                   <Copy size={14} className="inline mr-1.5" /> Generar link
                 </Button>

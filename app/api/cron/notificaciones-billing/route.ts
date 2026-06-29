@@ -11,7 +11,7 @@ const MOTIVO_PAST_DUE_EMAIL = 'cron:past_due_email_sent'
  * 1. Trial expiry warning (≤3 días restantes)
  * 2. Pago fallido (past_due reciente, primer aviso)
  *
- * NO agregar al dispatcher diario — el orquestador lo conecta manualmente.
+ * Corre diariamente vía el dispatcher /api/cron/diario.
  */
 export async function GET(request: Request) {
   const auth = request.headers.get('authorization')
