@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { CheckCircle2, Star, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
-import { Button } from '@/components/ui/button'
 
 const FEATURE_LABELS: Record<string, string> = {
   gestion_documental: 'Gestión documental',
@@ -240,11 +239,12 @@ export function CelebracionClient({
 
         {/* ── CTA final ── */}
         <div className="text-center pt-2">
-          <Button asChild size="lg">
-            <Link href="/dashboard/empresas">
-              Ir a mi panel <ArrowRight className="w-4 h-4 ml-1" />
-            </Link>
-          </Button>
+          <Link
+            href="/dashboard/empresas"
+            className="inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-colors bg-brand-primary hover:bg-brand-hover text-white hover:-translate-y-px hover:shadow-md active:translate-y-0 px-5 py-2.5 text-sm"
+          >
+            Ir a mi panel <ArrowRight className="w-4 h-4 ml-1" />
+          </Link>
         </div>
       </div>
 

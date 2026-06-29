@@ -44,10 +44,7 @@ function BonusRow({
     setLoading(accion)
     setError(null)
     try {
-      const result = await verificarBonus({
-        bonusId: bonus.id,
-        accion,
-      })
+      const result = await verificarBonus(bonus.id, accion)
       if ('error' in result) {
         setError(result.error)
       } else {

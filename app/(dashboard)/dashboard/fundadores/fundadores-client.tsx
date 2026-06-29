@@ -76,7 +76,7 @@ function SolicitarBonusForm({
     setLoading(true)
     setError(null)
     try {
-      const result = await solicitarBonus({ subId, tipo, url: url.trim() })
+      const result = await solicitarBonus(tipo, url.trim())
       if ('error' in result) {
         setError(result.error)
       } else {

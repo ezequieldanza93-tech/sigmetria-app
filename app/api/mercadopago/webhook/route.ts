@@ -288,7 +288,7 @@ async function handlePaymentWebhook(paymentId: string, admin: ReturnType<typeof 
             subscription_id: sub.id,
             estado_nuevo: 'active' as any,
             motivo: `Error al intentar otorgar cupo Fundador: ${founderError instanceof Error ? founderError.message : 'Error desconocido'}`,
-          }).catch(() => undefined) // silenciar error de log también
+          }) // silenciar error de log en el catch exterior
         }
       }
     }
