@@ -948,7 +948,7 @@ export function PresentacionAutoproteccionEjecutorModal({
   }
 
   return (
-    <Modal open title="Sistema de Autoprotección — Ley 5920 CABA" onClose={onClose} size="wide">
+    <Modal open title="Sistema de Autoprotección — Ley 5920 CABA" onClose={onClose} size="wide" dismissable={false}>
       <div className="space-y-4 max-md:max-h-none md:max-h-[86vh] overflow-y-auto pr-1">
         {/* ── Encabezado gamificado sticky ──────────────────────────── */}
         <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 bg-surface-base/90 backdrop-blur-md border-b border-border-subtle">

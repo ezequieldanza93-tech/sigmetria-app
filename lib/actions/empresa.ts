@@ -30,6 +30,8 @@ const empresaActionSchema = z.object({
   longitude: z.string().nullable().optional(),
   art_id: z.string().uuid().nullable().optional(),
   art_numero_contrato: z.string().nullable().optional(),
+  art_fecha_inicio: z.string().nullable().optional(),
+  art_fecha_vencimiento: z.string().nullable().optional(),
   informacion_general: z.string().nullable().optional(),
 })
 
@@ -47,7 +49,7 @@ function extractFields(formData: FormData): Record<string, string> {
   const fieldNames = [
     'razon_social', 'tipo_identidad_impositiva', 'cuit', 'actividad_id',
     'domicilio', 'localidad_id', 'codigo_postal', 'latitude', 'longitude',
-    'art_id', 'art_numero_contrato',
+    'art_id', 'art_numero_contrato', 'art_fecha_inicio', 'art_fecha_vencimiento',
     'informacion_general',
   ]
   const fields: Record<string, string> = {}
@@ -214,6 +216,8 @@ export async function createEmpresa(_prev: EmpresaFormState | null, formData: Fo
       longitude,
       art_id: fields.art_id || null,
       art_numero_contrato: fields.art_numero_contrato || null,
+      art_fecha_inicio: fields.art_fecha_inicio || null,
+      art_fecha_vencimiento: fields.art_fecha_vencimiento || null,
       informacion_general: fields.informacion_general || null,
     })
 
@@ -306,6 +310,8 @@ export async function updateEmpresa(id: string, _prev: EmpresaFormState | null, 
       longitude,
       art_id: fields.art_id || null,
       art_numero_contrato: fields.art_numero_contrato || null,
+      art_fecha_inicio: fields.art_fecha_inicio || null,
+      art_fecha_vencimiento: fields.art_fecha_vencimiento || null,
       informacion_general: fields.informacion_general || null,
       ...(logos.logo_small_url !== undefined && { logo_small_url: logos.logo_small_url }),
       ...(logos.logo_destacado_url !== undefined && { logo_destacado_url: logos.logo_destacado_url }),

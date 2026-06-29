@@ -228,6 +228,8 @@ export interface Empresa {
   longitude: number | null
   art_id: string | null
   art_numero_contrato: string | null
+  art_fecha_inicio: string | null
+  art_fecha_vencimiento: string | null
   logo_small_url: string | null
   logo_destacado_url: string | null
   informacion_general: string | null

@@ -20,7 +20,11 @@ export async function firmarUrlsStorage(
   ttlSeconds: number = 60 * 60,
 ): Promise<Array<{ path: string; signedUrl: string | null }>> {
   const supabase = createServiceClient()
-  const { data } = await supabase.storage.from(bucket).createSignedUrls(paths, ttlSeconds)
+  const { data, error } = await supabase.storage.from(bucket).createSignedUrls(paths, ttlSeconds)
+  if (error) {
+    console.error(`[firmarUrlsStorage] Error creating signed URLs for bucket ${bucket}:`, error.message)
+    return paths.map(p => ({ path: p, signedUrl: null }))
+  }
   return (data ?? []).map(d => ({
     path: d.path ?? '',
     signedUrl: d.signedUrl ?? null,

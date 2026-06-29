@@ -2,9 +2,11 @@
 
 import { Fragment, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ChevronDown, ChevronRight, Search, Plus } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { ChevronDown, ChevronRight, Search, Plus, Loader2 } from 'lucide-react'
 import { formatCUIT } from '@/lib/utils'
 import { EmptyState } from '@/components/ui/empty-state'
+import { cambiarEstadoActivo } from '@/lib/actions/papelera'
 
 interface Establecimiento {
   id: string
@@ -30,15 +32,26 @@ function normalize(value: string | null | undefined): string {
 export function EmpresasListView({
   empresas,
   puedeCrear,
+  esAdminPrincipal,
 }: {
   empresas: Empresa[]
   puedeCrear: boolean
+  esAdminPrincipal?: boolean
 }) {
   const [search, setSearch] = useState('')
   const [rubroSel, setRubroSel] = useState<string>('todos')
   // Por defecto SOLO activas (a nivel consultora). El usuario puede elegir inactivas o todas.
   const [estadoSel, setEstadoSel] = useState<string>('activas')
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [toggling, setToggling] = useState<Set<string>>(new Set())
+  const router = useRouter()
+
+  async function handleToggle(id: string, active: boolean) {
+    setToggling(prev => new Set(prev).add(id))
+    await cambiarEstadoActivo('empresas', id, !active)
+    setToggling(prev => { const next = new Set(prev); next.delete(id); return next })
+    router.refresh()
+  }
 
   const rubroOptions = useMemo(() => {
     const set = new Set<string>()
@@ -257,15 +270,32 @@ export function EmpresasListView({
                         </td>
                         <td className="px-5 py-2.5 text-text-secondary text-center align-top">{count}</td>
                         <td className="px-5 py-2.5 align-top">
-                          <span
-                            className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full ${
-                              e.is_active
-                                ? 'bg-success-bg text-success'
-                                : 'bg-surface-sunken text-text-tertiary'
-                            }`}
-                          >
-                            {e.is_active ? 'Activa' : 'Inactiva'}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full ${
+                                e.is_active
+                                  ? 'bg-success-bg text-success'
+                                  : 'bg-surface-sunken text-text-tertiary'
+                              }`}
+                            >
+                              {e.is_active ? 'Activa' : 'Inactiva'}
+                            </span>
+                            {esAdminPrincipal && (
+                              <button
+                                type="button"
+                                onClick={() => handleToggle(e.id, e.is_active)}
+                                disabled={toggling.has(e.id)}
+                                title={e.is_active ? 'Desactivar empresa' : 'Activar empresa'}
+                                className="inline-flex items-center justify-center w-7 h-7 rounded-lg border border-border-default text-text-tertiary hover:bg-surface-elevated hover:text-text-primary transition-colors disabled:opacity-50"
+                              >
+                                {toggling.has(e.id) ? (
+                                  <Loader2 size={13} className="animate-spin" />
+                                ) : (
+                                  <span className="text-xs font-medium">{e.is_active ? '✕' : '✓'}</span>
+                                )}
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                       {isExpanded && count > 0 && (
@@ -322,16 +352,33 @@ export function EmpresasListView({
                           </p>
                         )}
                       </div>
-                      <span
-                        className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${
-                          e.is_active
-                            ? 'bg-success-bg text-success'
-                            : 'bg-surface-sunken text-text-tertiary'
-                        }`}
-                      >
-                        {e.is_active ? 'Activa' : 'Inactiva'}
-                      </span>
-                    </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                          <span
+                            className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                              e.is_active
+                                ? 'bg-success-bg text-success'
+                                : 'bg-surface-sunken text-text-tertiary'
+                            }`}
+                          >
+                            {e.is_active ? 'Activa' : 'Inactiva'}
+                          </span>
+                          {esAdminPrincipal && (
+                            <button
+                              type="button"
+                              onClick={() => handleToggle(e.id, e.is_active)}
+                              disabled={toggling.has(e.id)}
+                              title={e.is_active ? 'Desactivar empresa' : 'Activar empresa'}
+                              className="inline-flex items-center justify-center w-7 h-7 rounded-lg border border-border-default text-text-tertiary hover:bg-surface-elevated hover:text-text-primary transition-colors disabled:opacity-50"
+                            >
+                              {toggling.has(e.id) ? (
+                                <Loader2 size={13} className="animate-spin" />
+                              ) : (
+                                <span className="text-xs font-medium">{e.is_active ? '✕' : '✓'}</span>
+                              )}
+                            </button>
+                          )}
+                        </div>
+                      </div>
 
                     <div className="mt-3 flex items-center gap-4 text-xs text-text-secondary">
                       {(e.empresas_rubros as { nombre?: string } | null)?.nombre && (

@@ -155,6 +155,8 @@ export const empresaSchema = z.object({
   localidad_id: z.string().uuid().nullable(),
   art_id: z.string().uuid().nullable(),
   art_numero_contrato: z.string().nullable(),
+  art_fecha_inicio: z.string().nullable(),
+  art_fecha_vencimiento: z.string().nullable(),
   logo_small_url: z.string().url().nullable(),
   logo_destacado_url: z.string().url().nullable(),
   informacion_general: z.string().nullable(),

@@ -646,7 +646,7 @@ export function FormularioEjecucion({ registro, establecimientoId, onClose, onSu
   // ── Edit view ──────────────────────────────────────────────────────
   if (view === 'edit') {
     return (
-      <Modal open title={registro.ge_gestion_nombre ?? 'Ejecutar'} onClose={onClose} size="full">
+      <Modal open title={registro.ge_gestion_nombre ?? 'Ejecutar'} onClose={onClose} size="full" dismissable={false}>
         <div className="space-y-5 max-md:max-h-none md:max-h-[88vh] overflow-y-auto pr-2">
           {error && (
             <div className="bg-danger-bg border border-red-200 text-danger text-sm rounded-lg px-3 py-2">{error}</div>

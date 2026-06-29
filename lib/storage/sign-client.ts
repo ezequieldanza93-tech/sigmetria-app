@@ -122,18 +122,21 @@ export function useSignedUrls(
       setUrls(new Map())
       return
     }
-    setIsLoading(true)
-    signBucketPaths(bucket, key.split('|'), ttlSeconds)
-      .then(map => {
-        if (!cancelled) setUrls(map)
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false)
-      })
+    async function load() {
+      setIsLoading(true)
+      const map = await signBucketPaths(bucket, key.split('|'), ttlSeconds)
+      if (!cancelled) setUrls(map)
+      if (!cancelled) setIsLoading(false)
+    }
+    load()
+
+    // Refresh periódico antes de que expiren las signed URLs (75% del TTL).
+    const interval = setInterval(load, ttlSeconds * 1000 * 0.75)
+
     return () => {
       cancelled = true
+      clearInterval(interval)
     }
-    // key resume todos los paths; bucket/ttl también disparan re-firma.
   }, [bucket, key, ttlSeconds])
 
   function getUrl(pathOrUrl: string | null | undefined): string | null {

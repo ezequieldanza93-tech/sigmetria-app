@@ -267,6 +267,16 @@ export default async function EmpresaDetailPage({ params, searchParams }: Props)
                   <div>
                     <p className="text-text-tertiary text-xs font-medium mb-0.5">ART</p>
                     <p className="text-text-primary">{empresa.organizaciones_externas.nombre}</p>
+                    {empresa.art_numero_contrato && (
+                      <p className="text-xs text-text-tertiary mt-0.5">Contrato: {empresa.art_numero_contrato}</p>
+                    )}
+                    {(empresa.art_fecha_inicio || empresa.art_fecha_vencimiento) && (
+                      <p className="text-xs text-text-tertiary mt-0.5">
+                        {empresa.art_fecha_inicio && `Desde ${empresa.art_fecha_inicio}`}
+                        {empresa.art_fecha_inicio && empresa.art_fecha_vencimiento && ' | '}
+                        {empresa.art_fecha_vencimiento && `Hasta ${empresa.art_fecha_vencimiento}`}
+                      </p>
+                    )}
                   </div>
                 )}
               </div>

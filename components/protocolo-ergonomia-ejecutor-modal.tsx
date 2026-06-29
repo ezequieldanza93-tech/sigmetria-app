@@ -814,7 +814,7 @@ export function ProtocoloErgonomiaEjecutorModal({
   // pisar inputs del usuario con los datos que llegan asíncronos.
   if (hidratando) {
     return (
-      <Modal open title="Protocolo de Ergonomía — Res. SRT 886/15" onClose={onClose} size="full">
+      <Modal open title="Protocolo de Ergonomía — Res. SRT 886/15" onClose={onClose} size="full" dismissable={false}>
         <div className="flex items-center justify-center py-16 gap-3">
           <Loader2 size={20} className="animate-spin text-sig-600" />
           <span className="text-sm text-text-secondary">Cargando protocolo…</span>

@@ -61,6 +61,8 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
     longitude: empresa?.longitude != null ? String(empresa.longitude) : '',
     art_id: (empresa?.art_id as string | undefined) ?? '',
     art_numero_contrato: empresa?.art_numero_contrato ?? '',
+    art_fecha_inicio: empresa?.art_fecha_inicio ?? '',
+    art_fecha_vencimiento: empresa?.art_fecha_vencimiento ?? '',
     informacion_general: (empresa?.informacion_general as string | undefined) ?? '',
   }))
 
@@ -348,6 +350,22 @@ export function EmpresaForm({ action, empresa, submitLabel = 'Guardar' }: Empres
           onChange={set('art_numero_contrato')}
           placeholder="Nº de contrato"
           {...fb('art_numero_contrato')}
+        />
+        <Input
+          label="Vigencia desde"
+          type="date"
+          name="art_fecha_inicio"
+          value={form.art_fecha_inicio}
+          onChange={set('art_fecha_inicio')}
+          {...fb('art_fecha_inicio')}
+        />
+        <Input
+          label="Vigencia hasta"
+          type="date"
+          name="art_fecha_vencimiento"
+          value={form.art_fecha_vencimiento}
+          onChange={set('art_fecha_vencimiento')}
+          {...fb('art_fecha_vencimiento')}
         />
       </div>
 

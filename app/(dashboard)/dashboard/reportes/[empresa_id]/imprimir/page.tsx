@@ -112,11 +112,11 @@ export default async function ImprimirReportePage({ params }: Props) {
   return (
     <>
       {/* Botón de impresión — se oculta en @media print */}
-      <div className="print:hidden fixed top-4 right-4 z-50 flex gap-2">
+      <div className="print:hidden flex items-center gap-2 px-6 py-3 border-b border-border-subtle bg-surface-base sticky top-0 z-10">
         <PrintButton />
         <a
           href="/dashboard/reportes"
-          className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium border border-border-subtle bg-surface-base text-text-secondary hover:bg-surface-elevated transition-colors shadow-lg"
+          className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium border border-border-subtle bg-surface-base text-text-secondary hover:bg-surface-elevated transition-colors"
         >
           ← Volver
         </a>

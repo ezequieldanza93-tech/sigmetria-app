@@ -38,6 +38,7 @@ export async function EmpresasList() {
   })
 
   const puedeCrear = canWrite(effective.effectiveUserRole, effective.effectiveSystemRole)
+  const esAdminPrincipal = effective.effectiveUserRole === 'full_access_main' || effective.isSuperAdmin === true
 
-  return <EmpresasListView empresas={empresas} puedeCrear={puedeCrear} />
+  return <EmpresasListView empresas={empresas} puedeCrear={puedeCrear} esAdminPrincipal={esAdminPrincipal} />
 }

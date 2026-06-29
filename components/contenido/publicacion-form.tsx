@@ -176,8 +176,8 @@ export function PublicacionForm({ open, onClose, catalogos, editing, getUrl, onS
           label="Descripción / copy"
           value={descripcion}
           onValueChange={setDescripcion}
-          rows={10}
-          className="w-full"
+          rows={6}
+          className="w-full min-h-[200px]"
           pulirAction={pulirObservacion}
           placeholder="El texto que va a acompañar la publicación…"
         />
